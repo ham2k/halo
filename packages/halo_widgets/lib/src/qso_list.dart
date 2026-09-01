@@ -1057,11 +1057,17 @@ class _QsoListState extends State<QsoList> {
                       ),
                     ),
                   ),
-                  if (plan.showRefs && refCountsByType.isNotEmpty) ...[
+                  if (plan.showRefs && (refCountsByType.isNotEmpty || qso.serialConflict)) ...[
                     const SizedBox(width: _columnGap),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
+                        // A serial another position also sent: the number
+                        // stands, and the row says it is not alone.
+                        if (qso.serialConflict) ...[
+                          Icon(MdiIcons.alert, size: 14, color: theme.colorScheme.error),
+                          const SizedBox(width: _refIconGap),
+                        ],
                         for (final entry in refCountsByType.entries) ...[
                           // An unrecognized type (its extension isn't
                           // installed/loaded right now) gets a small
@@ -1355,10 +1361,12 @@ _QsoListMetrics _computeMetrics({
   // loop rather than per row.
   var mostRefIcons = 0;
   var largestRefCount = 0;
+  var anySerialConflict = false;
   for (final q in qsos) {
     if (q.isEvent) continue;
     final refCounts = _refCountsByType(q, activityControls);
     if (refCounts.length > mostRefIcons) mostRefIcons = refCounts.length;
+    if (q.serialConflict) anySerialConflict = true;
     for (final count in refCounts.values) {
       if (count > largestRefCount) largestRefCount = count;
     }
@@ -1446,8 +1454,12 @@ _QsoListMetrics _computeMetrics({
   // under-reserving costs a row that overflows.
   final refCountWidth =
       largestRefCount > 1 ? textWidth(context, '×$largestRefCount', mono.copyWith(fontSize: 11)) : 0.0;
-  final refsWidth =
-      mostRefIcons == 0 ? 0.0 : _columnGap + mostRefIcons * (_refIconWidth + _refIconGap + refCountWidth);
+  // The duplicate-serial mark (docs/design/contests.md §5.8.1) shares the
+  // refs column, one more icon on the rows that carry it.
+  final conflictWidth = anySerialConflict ? _refIconWidth + _refIconGap : 0.0;
+  final refsWidth = mostRefIcons == 0 && !anySerialConflict
+      ? 0.0
+      : _columnGap + mostRefIcons * (_refIconWidth + _refIconGap + refCountWidth) + conflictWidth;
 
   // `qsos` arrives oldest-first (QsosRepository.watchForOperation orders
   // by startAtMillis) — bucket it into consecutive UTC-day runs so each

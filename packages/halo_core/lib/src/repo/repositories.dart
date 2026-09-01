@@ -977,6 +977,11 @@ class QsosRepository {
 
     // Either way the field ends up an int, so exports and the derived
     // high-water mark never have to care which path a number came from.
+    // A number the operator was shown is written even when the log already
+    // holds it — it went on the air — but the record says so
+    // (docs/design/contests.md §5.8.1): the alert is the honest outcome of two
+    // positions sending one number, and a silently duplicated log is not.
+    final duplicate = sent != null && await sequences!.isIssued(operationUuid, request, sent);
     final value = sent ?? await sequences!.allocate(operationUuid, request);
     if (sent != null) await sequences!.raiseTo(operationUuid, request, sent);
     // Keep the derived-mark memo exact rather than making the next insert
@@ -991,7 +996,7 @@ class QsosRepository {
     return Qso(
       uuid: qso.uuid,
       operationUuid: qso.operationUuid,
-      data: {...qso.data, 'refs': refs},
+      data: {...qso.data, 'refs': refs, if (duplicate) Qso.serialConflictKey: true},
       deleted: qso.deleted,
       scoreCache: qso.scoreCache,
     );
@@ -1330,6 +1335,32 @@ class QsosRepository {
     // read the pre-edit log and memoize that as current.
     sequences?.invalidate();
     onChange?.call();
+  }
+
+  /// Marks the QSO carrying [number] on [request]'s sequence as a serial
+  /// another position also sent (docs/design/contests.md §5.8.1) — the
+  /// write-back for a conflict that reaches this device after its own QSO
+  /// was committed. A no-op when no such QSO is here, or it is marked already.
+  Future<void> markSerialConflict(String operationUuid, SequenceRequest request, int number) async {
+    final rows = await (db.select(db.qsos)..where((q) => q.operation.equals(operationUuid))).get();
+    for (final row in rows) {
+      final qso = Qso(
+        uuid: row.uuid,
+        operationUuid: row.operation,
+        data: jsonDecode(row.data) as Map<String, dynamic>,
+        deleted: row.deleted,
+      );
+      if (qso.isEvent || qso.serialConflict || !request.includes(qso)) continue;
+      if (request.serialOn(qso) != number) continue;
+      await update(Qso(
+        uuid: qso.uuid,
+        operationUuid: qso.operationUuid,
+        data: {...qso.data, Qso.serialConflictKey: true},
+        deleted: qso.deleted,
+        scoreCache: qso.scoreCache,
+      ));
+      return;
+    }
   }
 
   Future<void> softDelete(Qso qso) => _writeDeleted(qso, deleted: true);

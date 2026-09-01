@@ -1523,6 +1523,138 @@ no UI surfaces it yet.
 `scope: ['band']` works and is covered by tests, but no shipped extension uses it
 until M7 — so the label design is only proven against the flat case so far.
 
+#### 5.8.1 Multi-client coordination: claims over the peer link (v2, designed)
+
+Several devices logging the same operation — one operator with a phone and a
+laptop, or a Multi-Single with a run position and a mult position on one
+sequence — each need a number on screen *before* the QSO is committed, because
+the operator reads it off the screen and sends it on the air. v1's
+detect-after-sync cannot help there: LoFi latency is seconds to minutes, and the
+number is needed in under one. The peer link (HALO-310/395) already carries
+every position's draft between devices in real time, and that is the channel.
+
+**The rule that keeps this simple: a number the operator has been shown is
+never changed.** Everything below is arranged so that any negotiation happens
+before display, and anything that arrives after display is recorded, not acted
+on.
+
+**Claims.** A claim is `(operation uuid, sequence label, number, client id)`.
+The label is the binding key plus the scope values resolved from the draft
+(`serial`, `serial/20m`), so scoped sequences coordinate per label with no extra
+machinery.
+
+- **Taken on the operator's first edit to a fresh draft** — a keystroke into
+  any main-row field, a spot tapped, a call list pasted — not at peek: an idle
+  panel holds nothing, so a phone left on the table burns no number and a
+  device that never logs leaves no gap. A band or mode change from the radio
+  is not an edit and never claims. Until a claim exists the serial field shows
+  **no tentative number** — a blank, never a number that might move — and that
+  holds with no peers connected too: one rule everywhere, at the cost of the
+  where-does-the-series-stand glance at open (the log answers that).
+- **Chosen locally** as the smallest number above the local `peek` that no live
+  peer currently claims on the same label, then announced on the ephemeral
+  channel as its own `serialClaims` message beside the draft — the draft goes
+  out on the keystroke, the claim only once the database has answered, so
+  they cannot share a message. Every message carries the sender's whole
+  current claim set, versioned, so a missed one costs nothing and the
+  establish-time snapshot is the same message again. Peers skip claimed
+  numbers when choosing their own — and a number just **committed** stays in
+  the sender's set for a minute, flagged as such, since the QSO carrying it
+  reaches the peers through the durable sync a moment later than the release
+  would. A committed number stands against any claimant whatever the
+  tie-break would have said: it is in a log already.
+- **Released by wipe**, by leaving the operation, and — for that label only —
+  by a band/mode change that moves a scoped sequence to a different label
+  (release, re-claim on the new label; the displayed number changes, which is
+  correct — nothing has been sent yet; an unscoped sequence beside it keeps
+  its number). An undo-wipe, or an edit opened over the draft, keeps the hold:
+  both put the draft back. Several operations can be composing at once — one
+  opened over another — and each holds its own.
+- **Consumed by commit**, which writes it to the ref exactly as today; the core's
+  allocate-at-commit treats the number on the ref as authoritative and raises
+  the counter past it. Nothing in `halo_core` learns what a claim is.
+- **Survives sleep.** A claim stands as long as the draft does: the phone that
+  slept mid-QSO usually wakes up and logs it. A claim whose session drops stays
+  blocked on the other devices until the peer re-establishes, when its
+  snapshot — one message per operation it has ever held in, an empty set
+  included — replaces whatever was on its books. Switching sharing off lets
+  every hold go locally without telling anyone: the sessions drop with it,
+  and a hold the peers keep for a device that left costs a gap, never a
+  duplicate. A number logged late (an `042` at the end of the log) is not an
+  error if that is what went out on the air, and a gap is never an error.
+
+**Crossing claims.** Claims are announcements, not requests. Two devices that
+claim the same number inside one round trip each hear the other's claim and
+apply the same tie-break — lowest client id wins, the loser redraws. No ack is
+needed for that to be correct. Acks answer a different question: *have I heard
+from every live peer, so no crossing claim is still in flight?* — and that is
+the only thing the pre-display wait is for.
+
+- **Show after every live peer has acked, capped at ~500 ms.** The cap is set
+  by the human, not the network: the claim is taken on the first keystroke of
+  the call, and nobody reads the number aloud before finishing the call and
+  reaching for the exchange. On a LAN the acks arrive in tens of milliseconds
+  and the blank is never seen.
+- **Live** means an established LAN session that has been answering. A peer
+  that lets one round run to the cap — a phone asleep in a pocket behind a
+  session TCP has not yet closed, or a build predating the message, which
+  never answers — is **quiet**: still told every claim, so it skips them on
+  waking, but not waited on again until it next says anything. Otherwise a
+  dead device would cost the cap on every QSO.
+- **Every peer sharing the operation competes.** Should peers ever carry a
+  role — a position that logs, against a bridge or a spectator that never
+  will — only the logging ones need consulting, and the roster a claim is
+  announced to is the one place to narrow.
+- **Needing the number settles it.** A commit inside the window waits for the
+  claim (at most the cap) rather than writing a blank the allocator would
+  fill from the local counter alone, blind to the peers' holds.
+- **A losing conflict that arrives after display is kept, not redrawn.** The
+  operator may already have sent it. The loser re-announces its claim so both
+  sides know the collision happened, and **both QSOs are flagged at commit**
+  through the duplicate-serial alert (the one v1 declares and does not yet
+  build): a marker persisted on the QSO at commit whenever the number is
+  already in the log for that label, synced like any field and drawn as a
+  warning on the log row. When the loser's mark reaches the winner only after
+  the winner's QSO was committed, the mark is written onto that record after
+  the fact (`QsosRepository.markSerialConflict`). The same marker serves v1's
+  sync-time detection. The outcome is a duplicate serial, which most adjudicators do not
+  penalize — they check what the other station copied. The design leans toward
+  availability because the strict alternative, redrawing inside a grace window
+  after display, buys almost nothing and breaks the one rule above.
+
+**Where it lives.** The counter, the `sequences` table and allocate-at-commit
+stay in `halo_core`, network-unaware as now. The claim service lives in the app
+beside `PeerDrafts` / `PeerChannels`, where the ephemeral session and the draft
+snapshot already are: claim for a draft, release, the live claims from peers,
+the ack round. The logging panel asks that service for the number instead of
+calling `peek` directly; the service consults `peek` plus the live claims.
+Devices that do not share the operation exchange no claims and fall through to
+v1's sync-time alert. **The extension-facing API does not change**: an extension
+still declares `{ kind: 'serial', field, sequence }` and never sees a claim,
+which is the test §5.8 set for any v2.
+
+**As built.** `SerialNumberSource` (halo_core, beside `SequencesRepository`)
+is the panel's seam: `claim`, `release(committed:)`, `isConflicted`. The app's
+`SerialClaims` (`app/lib/services/peer/serial_claims.dart`) implements it over
+`PeerService.sendEphemeralTo`, and `LocalSerialNumberSource` is the fallback
+when nothing is wired (tests, tooling) — `peek`, straight away. `LoggingControls`
+takes the number from the source once the draft has content (a call, or a
+touched exchange field), releases it on wipe, and hands the committed numbers
+back after the insert. The alert is `Qso.serialConflict`, set by
+`_withAllocatedSerial` when `SequencesRepository.isIssued` already knows the
+number, or by the panel when the source says another position showed it; the
+QSO list draws it as an error-coloured mark in the refs column. **Not yet
+built:** the sync-time half of the alert — a QSO arriving through LoFi or peer
+sync with a number already in the log is not marked, because the merge path
+does not know which ref field is the serial; it only raises the counter, as
+v1 did.
+
+**Not in scope, decided.** Per-position stride or blocks (zero coordination,
+works with no peer link) is not built: it changes what the operator sees, some
+sponsors expect consecutive numbers, and the scope mechanism already covers the
+cases where sponsors allow separate sequences (CQ WPX Multi-Two/Multi-Multi per
+band). Server-side coordination stays the reconciler of last resort.
+
 ---
 
 ### 5.9 Field ops: `fd`, `wfd`, `colonies`

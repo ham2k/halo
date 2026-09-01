@@ -41,6 +41,7 @@ import 'peer_screen_views.dart';
 import 'peer_screens.dart';
 import 'peer_service.dart';
 import 'peer_station_radios.dart';
+import 'serial_claims.dart';
 
 class PeerChannels {
   PeerChannels({
@@ -50,6 +51,7 @@ class PeerChannels {
     this.screens,
     this.views,
     this.drafts,
+    this.claims,
     this.station,
     this.remoteRadios,
   }) {
@@ -76,6 +78,10 @@ class PeerChannels {
   /// of it, and this router then has nowhere to hand those messages — which
   /// is what keeps them from being routed at all.
   final PeerDrafts? drafts;
+
+  /// The serial numbers held per position (HALO-476), gated with [drafts]:
+  /// both are the live-logging half of peer sync.
+  final SerialClaims? claims;
 
   /// Peers that had an established session when this last looked — the
   /// before-picture a loss is spotted against. `PeerService` reports
@@ -374,6 +380,9 @@ class PeerChannels {
       // A peer that arrives between two keystrokes would otherwise show an
       // empty block for this device until the operator next types.
       drafts?.snapshotTo(session);
+      // Same reasoning for the numbers this device is holding: a position
+      // that arrives mid-contact must skip them from its first keystroke.
+      claims?.peerEstablished(peerDeviceId);
     }
   }
 
@@ -387,6 +396,7 @@ class PeerChannels {
       unawaited(screens?.forgetPeer(gone) ?? Future<void>.value());
       views?.forgetPeer(gone);
       drafts?.forgetPeer(gone);
+      claims?.forgetPeer(gone);
       // The selection itself is NOT cleared — a peer walking away must not
       // undo the operator's pick (`CatService.remoteRadio1`). What goes is
       // only what it is offering, so the picker says unavailable rather
@@ -494,6 +504,15 @@ class PeerChannels {
         drafts?.forgetPeer(peerDeviceId);
       } else {
         drafts?.onDraft(peerDeviceId, draft);
+      }
+      return;
+    }
+    if (message.type == PeerMessageType.serialClaims) {
+      final payload = message.serialClaimsOrNull;
+      if (payload == null) {
+        debugPrint('[peer] unreadable serialClaims from $peerDeviceId');
+      } else {
+        claims?.onPeerClaims(peerDeviceId, payload);
       }
       return;
     }

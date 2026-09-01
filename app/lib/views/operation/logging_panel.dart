@@ -94,6 +94,7 @@ class LoggingPanel extends StatefulWidget {
   /// [LoggingControls.onCallEdited]. The spots list closes any open slid row
   /// on it.
   final VoidCallback? onCallEdited;
+  final SerialNumberSource? serialNumbers;
 
   /// Forwards LoggingControls' command output up to the operation view,
   /// which shows it on the Info pane (the wide layout is the operation
@@ -149,6 +150,7 @@ class LoggingPanel extends StatefulWidget {
     this.suggestedQsoIsTentative = false,
     this.suggestionSettledSerial = 0,
     this.onCallEdited,
+    this.serialNumbers,
     this.onCommandMessageChanged,
     this.onCallInfoChanged,
     this.onQsoChanged,
@@ -818,6 +820,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
             suggestedQsoIsTentative: widget.suggestedQsoIsTentative,
             suggestionSettledSerial: widget.suggestionSettledSerial,
             onCallEdited: widget.onCallEdited,
+            serialNumbers: widget.serialNumbers,
             onEditCanceled: () => setState(() => _selectedQso = null),
             onNavigateToQsoList: _handleNavigateToQsoList,
             onLogged: (qso) {

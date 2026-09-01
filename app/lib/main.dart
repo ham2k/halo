@@ -79,6 +79,7 @@ import 'services/cat/cat_service.dart';
 import 'services/peer/ble/peer_ble.dart';
 import 'services/peer/peer_channels.dart';
 import 'services/peer/peer_drafts.dart';
+import 'services/peer/serial_claims.dart';
 import 'services/peer/peer_account_tag.dart';
 import 'services/peer/peer_screen_views.dart';
 import 'services/peer/peer_remote_radios.dart';
@@ -1556,6 +1557,7 @@ class HaLoServices {
     // Gated on p2p rather than on `remote`: this is peer sync's own live
     // logging view, not screen sharing.
     drafts: settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ? peerDrafts : null,
+    claims: settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */ ? serialClaims : null,
     station: cat,
     remoteRadios: peerRemoteRadios,
   );
@@ -1576,6 +1578,23 @@ class HaLoServices {
   /// install that never turns the experiment on never constructs it, and
   /// `PeerChannels` then has nowhere to route a `qsoDraft`.
   late final PeerDrafts peerDrafts = PeerDrafts(peers: peerService);
+
+  /// The contest serial numbers this device holds while composing, against
+  /// its peers' (HALO-476). Lazy like the rest: the panel only asks for it
+  /// while sharing drafts, and falls back to `peek` otherwise. LAN-only like
+  /// the drafts, for the same reason — a claim round on Bluetooth would sit
+  /// behind the credit window.
+  late final SerialClaims serialClaims = SerialClaims(
+    localDeviceId: peerService.localDeviceId,
+    peek: sequences.peek,
+    livePeers: () => [
+      for (final deviceId in peerService.peers.keys)
+        if (peerService.hasLanSession(deviceId)) deviceId,
+    ],
+    send: peerService.sendEphemeralTo,
+    onCommittedConflict: (operationUuid, request, number) =>
+        unawaited(qsos.markSerialConflict(operationUuid, request, number)),
+  );
 
   /// The viewer half — what this device's peers offer, and what its Remote
   /// Screen panes are watching (HALO-369).
@@ -2020,6 +2039,9 @@ class HaLoServices {
     // so switching OFF still tears down what switching on built.
     if (!wanted && settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */) {
       peerDrafts.clearLocal();
+      // And the numbers held: the panel stops asking this source the moment
+      // sharing is off, so nothing else would ever let them go.
+      serialClaims.releaseAll();
     }
   }
 

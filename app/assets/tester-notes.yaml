@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "A contest serial number now appears once you start a contact, not before"
+
 "159":
   changes:
     - The operator callsign now travels with the operation, stored per operating position

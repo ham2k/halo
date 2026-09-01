@@ -295,4 +295,95 @@ void main() {
       isNull,
     );
   });
+
+  group('the duplicate-serial mark (docs/design/contests.md §5.8.1)', () {
+    test('a number already in the log is written, and the QSO says so', () async {
+      // Two positions sent 1: the second record keeps the number that went
+      // on the air — renumbering it would make the log lie — but wears the
+      // mark, which is the only thing that tells the operator afterwards.
+      await qsos.add(op, _qsoData(), serialSequences: [_serial]);
+      final again = await qsos.add(
+        op,
+        _qsoData(call: 'W1AW', refs: [{'type': 'cqwpx', 'serial': 1}]),
+        serialSequences: [_serial],
+      );
+      expect(_serialOf(again), 1);
+      expect(again.serialConflict, isTrue);
+    });
+
+    test('a fresh number carries no mark', () async {
+      await qsos.add(op, _qsoData(), serialSequences: [_serial]);
+      final shown = await qsos.add(
+        op,
+        _qsoData(call: 'W1AW', refs: [{'type': 'cqwpx', 'serial': 2}]),
+        serialSequences: [_serial],
+      );
+      expect(shown.serialConflict, isFalse);
+      final allocated = await qsos.add(op, _qsoData(call: 'K1ABC'), serialSequences: [_serial]);
+      expect(allocated.serialConflict, isFalse);
+    });
+
+    test('a mark seeded after an invalidation does not stand in for the issued set', () async {
+      // `noteIssued` refills the high-water memo on the hot path, with no
+      // scan. If the issued set were assumed present whenever the mark is,
+      // every check after an invalidation would answer "never issued".
+      final first = await qsos.add(op, _qsoData(), serialSequences: [_serial]);
+      final request = _serial.requestFor(first);
+      sequences.invalidate();
+      sequences.noteIssued(op, request, 5);
+      expect(await sequences.isIssued(op, request, 1), isTrue);
+    });
+
+    test('an invalidation landing mid-scan does not turn a duplicate into a fresh number', () async {
+      // The scan may not memoize what it read, but what it read is still the
+      // answer — a sync batch invalidating at the wrong moment must not skip
+      // the one alert built for the synced-in duplicate.
+      final first = await qsos.add(op, _qsoData(), serialSequences: [_serial]);
+      final request = _serial.requestFor(first);
+      sequences.invalidate();
+      sequences.debugAfterScan = () async => sequences.invalidate();
+      expect(await sequences.isIssued(op, request, 1), isTrue);
+    });
+
+    test('a scan never lowers a mark seeded ahead of the log', () async {
+      // `noteIssued` runs before the row is written; a scan triggered in
+      // between must not replace 10 with what the log holds so far.
+      final first = await qsos.add(op, _qsoData(), serialSequences: [_serial]);
+      final request = _serial.requestFor(first);
+      sequences.invalidate();
+      sequences.noteIssued(op, request, 10);
+      await sequences.isIssued(op, request, 1);
+      expect(await sequences.peek(op, request), 11);
+    });
+
+    test('a conflict learned after the commit is written onto the record', () async {
+      final logged = await qsos.add(op, _qsoData(), serialSequences: [_serial]);
+      final request = _serial.requestFor(logged);
+      await qsos.markSerialConflict(op, request, 1);
+      expect((await qsos.get(logged.uuid))!.serialConflict, isTrue);
+      // The wrong number, or one already marked, changes nothing.
+      await qsos.markSerialConflict(op, request, 7);
+      expect((await qsos.get(logged.uuid))!.serialConflict, isTrue);
+    });
+
+    test('a deleted QSO\'s number still counts as issued', () async {
+      final first = await qsos.add(op, _qsoData(), serialSequences: [_serial]);
+      await qsos.softDelete(first);
+      expect(await sequences.isIssued(op, _serial.requestFor(first), 1), isTrue);
+    });
+
+    test('the issued set is kept exact without a rescan, and rebuilt after one', () async {
+      final first = await qsos.add(op, _qsoData(), serialSequences: [_serial]);
+      final request = _serial.requestFor(first);
+      expect(await sequences.isIssued(op, request, 1), isTrue);
+      expect(await sequences.isIssued(op, request, 2), isFalse);
+      // The hot path: noteIssued keeps the set current with no scan.
+      await qsos.add(op, _qsoData(call: 'W1AW'), serialSequences: [_serial]);
+      expect(await sequences.isIssued(op, request, 2), isTrue);
+      // A number that reached the log without the allocator (a sync, an
+      // import) is only seen after the memo is dropped.
+      sequences.invalidate();
+      expect(await sequences.isIssued(op, request, 2), isTrue);
+    });
+  });
 }

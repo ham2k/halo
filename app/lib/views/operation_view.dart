@@ -2641,6 +2641,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             suggestedQsoIsTentative: _suggestedQsoIsTentative,
             suggestionSettledSerial: _suggestionSettledSerial,
             onCallEdited: _onCallEdited,
+            // Gated like the drafts: with sharing off the panel's own fallback
+            // is the same answer, and touching the field would construct the
+            // peer service on an install that never turned the experiment on.
+            serialNumbers: _peerSharingDrafts ? widget.services.serialClaims : null,
             logRequest: _logRequest,
             confirmLogOverwrite: _confirmLogOverwrite,
             onCallInfoChanged: (info) {

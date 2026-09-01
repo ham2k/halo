@@ -297,8 +297,15 @@ void main() {
     return null;
   }
 
-  /// Pumps until a serial field has picked up its previewed number. The peek is
-  /// a drift query kicked off outside the frame, so it needs interleaved pumps
+  /// Starts a contact — the first character of a call is what takes a serial
+  /// number (docs/design/contests.md §5.8.1); an idle panel shows none.
+  Future<void> startContact(WidgetTester tester, [String call = 'W']) async {
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), call);
+    await tester.pump();
+  }
+
+  /// Pumps until a serial field has picked up its number. The claim is a
+  /// drift query kicked off outside the frame, so it needs interleaved pumps
   /// to resolve — same reasoning as waitForQsos below.
   Future<void> pumpUntilSerial(WidgetTester tester, String label) async {
     for (var i = 0; i < 20; i++) {
@@ -3402,6 +3409,7 @@ void main() {
     testWidgets('shows the number the sequence will issue, and logs it', (tester) async {
       final repo = allocating();
       await tester.pumpWidget(hostWith(repo));
+      await startContact(tester);
       await pumpUntilSerial(tester, 'Our #');
 
       // The operator has to be able to read the number they're about to send
@@ -3421,20 +3429,175 @@ void main() {
     testWidgets('advances after each QSO instead of repeating the last number', (tester) async {
       final repo = allocating();
       await tester.pumpWidget(hostWith(repo));
+      await startContact(tester);
       await pumpUntilSerial(tester, 'Our #');
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await waitForQsos(tester, 1, repository: repo);
+      await startContact(tester);
       await pumpUntilSerial(tester, 'Our #');
 
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '2');
     });
 
+    testWidgets('shows no number until the operator starts a contact', (tester) async {
+      // A shown number is held against every other position from that moment
+      // (docs/design/contests.md §5.8.1), so an idle panel holds nothing —
+      // and a blank is the only honest display of nothing. The same on a
+      // single device: one rule, not a peers-connected special case.
+      final repo = allocating();
+      await tester.pumpWidget(hostWith(repo));
+      for (var i = 0; i < 5; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+      }
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '');
+
+      await startContact(tester);
+      await pumpUntilSerial(tester, 'Our #');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '1');
+    });
+
+    testWidgets('a wipe lets go of the number and shows none again', (tester) async {
+      final repo = allocating();
+      final source = _RecordingSerialSource(repo.sequences!);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: running(['cqwpx']),
+            qsosRepository: repo,
+            serialNumbers: source,
+            activityControls: controls,
+          ),
+        ),
+      ));
+      await startContact(tester);
+      await pumpUntilSerial(tester, 'Our #');
+      expect(source.claims, 1);
+
+      await tester.tap(find.bySemanticsIdentifier('action.wipe'));
+      await tester.pump();
+      expect(source.releases, greaterThanOrEqualTo(1), reason: 'the hold goes with the draft');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '');
+    });
+
+    testWidgets('Enter inside the claim window waits for the number rather than logging a blank', (tester) async {
+      // The commit-time allocator is blind to the peers' holds: a blank
+      // serial field on Enter would be filled from the local counter, and
+      // two positions would send one number with neither record marked.
+      final repo = allocating();
+      final source = _RecordingSerialSource(repo.sequences!, gate: Completer<void>());
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: running(['cqwpx']),
+            qsosRepository: repo,
+            serialNumbers: source,
+            activityControls: controls,
+          ),
+        ),
+      ));
+      await startContact(tester, 'W1AW');
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '',
+          reason: 'the claim is still settling');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(await tester.runAsync(() => repo.watchForOperation(operation.uuid).first), isEmpty,
+          reason: 'nothing committed while the number is unsettled');
+
+      // The peers answer: the number lands in the field and the commit goes
+      // through with it.
+      source.gate!.complete();
+      final logged = await waitForQsos(tester, 1, repository: repo);
+      expect(logged.single.refs, [
+        {'type': 'cqwpx', 'ourSerial': 1},
+      ]);
+    });
+
+    testWidgets('backspacing the call to nothing lets the number go', (tester) async {
+      // A hold with no draft behind it blocks the other positions for as
+      // long as the operator leaves the panel — and shows a number nobody
+      // is about to send.
+      final repo = allocating();
+      final source = _RecordingSerialSource(repo.sequences!);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: running(['cqwpx']),
+            qsosRepository: repo,
+            serialNumbers: source,
+            activityControls: controls,
+          ),
+        ),
+      ));
+      await startContact(tester, 'W1');
+      await pumpUntilSerial(tester, 'Our #');
+      expect(source.releases, 0);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), '');
+      await tester.pump();
+      expect(source.releases, 1);
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '');
+    });
+
+    testWidgets('leaving the panel mid-contact lets the number go', (tester) async {
+      final repo = allocating();
+      final source = _RecordingSerialSource(repo.sequences!);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: running(['cqwpx']),
+            qsosRepository: repo,
+            serialNumbers: source,
+            activityControls: controls,
+          ),
+        ),
+      ));
+      await startContact(tester);
+      await pumpUntilSerial(tester, 'Our #');
+      await tester.pumpWidget(const SizedBox());
+      expect(source.releases, 1);
+    });
+
+    testWidgets('a number another position also showed is logged with the mark', (tester) async {
+      // The number went on the air, so it is written as shown; the record
+      // wearing the mark is what tells the operator two stations sent it.
+      final repo = allocating();
+      final source = _RecordingSerialSource(repo.sequences!, conflicted: {1});
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: running(['cqwpx']),
+            qsosRepository: repo,
+            serialNumbers: source,
+            activityControls: controls,
+          ),
+        ),
+      ));
+      await startContact(tester, 'W1AW');
+      await pumpUntilSerial(tester, 'Our #');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1, repository: repo);
+      expect(logged.single.refs, [
+        {'type': 'cqwpx', 'ourSerial': 1},
+      ]);
+      expect(logged.single.serialConflict, isTrue);
+      expect(source.committed.map((request, number) => MapEntry(request.label, number)), {'cqwpx/serial': 1},
+          reason: 'the source is told what the log now holds');
+    });
+
     testWidgets('a number the operator types over the preview is what gets logged', (tester) async {
       final repo = allocating();
       await tester.pumpWidget(hostWith(repo));
+      await startContact(tester);
       await pumpUntilSerial(tester, 'Our #');
 
       // "I've been logging on paper, I'm actually on 57."
@@ -3466,6 +3629,7 @@ void main() {
       // guess) makes this the one place it must NOT be copied.
       final repo = allocating();
       await tester.pumpWidget(hostWith(repo));
+      await startContact(tester);
       await pumpUntilSerial(tester, 'Our #');
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW,K1ABC,N1XYZ');
@@ -3492,6 +3656,7 @@ void main() {
       // A duplicate is the honest outcome here; a silently wrong number is not.
       final repo = allocating();
       await tester.pumpWidget(hostWith(repo));
+      await startContact(tester);
       await pumpUntilSerial(tester, 'Our #');
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '1');
 
@@ -3683,6 +3848,7 @@ void main() {
       expect(find.widgetWithText(TextField, 'Our #'), findsNothing);
 
       await tester.pumpWidget(hostControls(List<Map<String, dynamic>>.from(controls)));
+      await startContact(tester);
       await pumpUntilSerial(tester, 'Our #');
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Our #')).controller?.text, '1');
     });
@@ -12216,4 +12382,36 @@ class _VfoWatcherState extends State<_VfoWatcher> {
   @override
   Widget build(BuildContext context) => Text('vfo changes: $_changes');
 
+}
+
+/// A number source that answers from the sequence and records what the panel
+/// asked of it — the seam the peer claims plug into in the app.
+class _RecordingSerialSource implements SerialNumberSource {
+  _RecordingSerialSource(this.sequences, {this.conflicted = const {}, this.gate});
+
+  final SequencesRepository sequences;
+  final Set<int> conflicted;
+
+  /// When set, a claim does not resolve until this completes — the peers'
+  /// acks still in flight.
+  final Completer<void>? gate;
+  int claims = 0;
+  int releases = 0;
+  Map<SequenceRequest, int> committed = const {};
+
+  @override
+  Future<int> claim(String operationUuid, SequenceRequest request) async {
+    claims++;
+    if (gate case final gate?) await gate.future;
+    return sequences.peek(operationUuid, request);
+  }
+
+  @override
+  void release(String operationUuid, {Map<SequenceRequest, int> committed = const {}, Set<String>? labels}) {
+    releases++;
+    if (committed.isNotEmpty) this.committed = committed;
+  }
+
+  @override
+  bool isConflicted(String operationUuid, SequenceRequest request, int number) => conflicted.contains(number);
 }

@@ -20,6 +20,7 @@ import 'package:ham2k_logger/services/location_service.dart';
 import 'package:ham2k_logger/services/peer/peer_channels.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/peer/peer_remote_radios.dart';
+import 'package:ham2k_logger/services/peer/serial_claims.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
@@ -190,11 +191,18 @@ class _Device {
       network: host.network,
     );
     drafts = PeerDrafts(peers: service);
+    claims = SerialClaims(
+      localDeviceId: deviceId,
+      peek: (_, __) async => 1,
+      livePeers: () => [for (final id in service.peers.keys) if (service.hasLanSession(id)) id],
+      send: service.sendEphemeralTo,
+    );
     channels = PeerChannels(
       peers: service,
       location: location,
       radio: radio,
       drafts: drafts,
+      claims: claims,
       station: station,
       remoteRadios: remoteRadios,
     );
@@ -226,6 +234,7 @@ class _Device {
   late final LocationService location;
   late final PeerService service;
   late final PeerDrafts drafts;
+  late final SerialClaims claims;
   late final PeerChannels channels;
 
   Future<void> dispose() async {
@@ -776,6 +785,34 @@ void main() {
 
       expect(laptop.drafts.blocksFor('op-1'), isEmpty);
       expect(laptop.drafts.localDraft, isNull);
+    });
+  });
+
+  group('serial claims (HALO-476)', () {
+    const descriptor = SequenceDescriptor(refType: 'cqwpx', field: 'ourSerial', key: 'cqwpx/serial');
+    final request = descriptor.requestFor(Qso(uuid: '', operationUuid: 'op-1', data: const {'band': '20m'}));
+
+    test('a number held on one device is skipped on the other — live, then by snapshot', () async {
+      await paired();
+      expect(await laptop.claims.claim('op-1', request), 1);
+      // Whether the laptop's claim has landed yet or crosses the phone's own,
+      // the phone ends up on 2 — the two cases are the two halves of §5.8.1.
+      expect(await phone.claims.claim('op-1', request), 2);
+      await waitFor('the claim to arrive', () => phone.claims.peerClaimsFor('op-1', request.label)['device-a']?.contains(1) ?? false);
+      await waitFor('the phone\'s claim to arrive', () => laptop.claims.peerClaimsFor('op-1', request.label)['device-b']?.contains(2) ?? false);
+
+      // The phone drops: its hold stays on the laptop's books (its operator
+      // may be mid-contact). It wipes while away and comes back: the
+      // establish-time snapshot says so, and the laptop's hold reaches it
+      // the same way, with no keystroke to wait for.
+      await phone.service.setEnabled(false);
+      await waitFor('the pair to drop', () => !(laptop.service.peers['device-b']?.session?.established ?? false));
+      expect(laptop.claims.peerClaimsFor('op-1', request.label), {'device-b': {2}}, reason: 'a dropped peer still holds its number');
+      phone.claims.release('op-1');
+      await phone.service.setEnabled(true);
+      await waitFor('the pair to re-establish', () => phone.service.peers['device-a']?.session?.established ?? false);
+      await waitFor('the snapshot to arrive', () => phone.claims.peerClaimsFor('op-1', request.label)['device-a']?.contains(1) ?? false);
+      await waitFor('the phone\'s empty snapshot to arrive', () => laptop.claims.peerClaimsFor('op-1', request.label).isEmpty);
     });
   });
 }

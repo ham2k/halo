@@ -167,6 +167,15 @@ abstract final class PeerMessageType {
   /// position says it has just logged or wiped, and a viewer that treats it
   /// as "nothing to update" leaves the last contact on screen indefinitely.
   static const qsoDraft = 'qsoDraft';
+
+  /// Ephemeral, latest-value-wins: the contest serial numbers the sender is
+  /// holding for the contact it is composing, one per sequence label, so no
+  /// other position hands out the same number (docs/design/contests.md
+  /// §5.8.1). Carries the sender's WHOLE current claim set every time, so a
+  /// missed message costs nothing. With `ack` set it also acknowledges the
+  /// peer's claim round of that sequence number — the only reply a claimant
+  /// waits for before showing the operator a number.
+  static const serialClaims = 'serialClaims';
 }
 
 /// Why a session was refused. On the wire so the far side can SAY why to its
@@ -339,6 +348,39 @@ class PeerMessage {
       position: this.fields['pos'] is String ? this.fields['pos'] as String : '',
       operatorCall: this.fields['oper'] is String ? this.fields['oper'] as String : '',
       left: this.fields['left'] == true,
+    );
+  }
+
+  /// See [PeerMessageType.serialClaims]. [seq] numbers the sender's claim
+  /// rounds; [ack] names the receiver's round being acknowledged, if any.
+  static PeerMessage serialClaims({
+    required String operationUuid,
+    required int seq,
+    required List<PeerSerialClaim> claims,
+    int? ack,
+  }) =>
+      PeerMessage(PeerMessageType.serialClaims, {
+        'opUuid': operationUuid,
+        'seq': seq,
+        'claims': [for (final claim in claims) claim.toJson()],
+        if (ack != null) 'ack': ack,
+      });
+
+  /// Null unless this is a well-formed [PeerMessageType.serialClaims]. An
+  /// empty claim set is well-formed — it is how a position says it holds
+  /// nothing any more.
+  PeerSerialClaimsPayload? get serialClaimsOrNull {
+    if (type != PeerMessageType.serialClaims) return null;
+    final operationUuid = fields['opUuid'];
+    final seq = fields['seq'];
+    if (operationUuid is! String || operationUuid.isEmpty || seq is! int) return null;
+    final raw = fields['claims'];
+    final ack = fields['ack'];
+    return PeerSerialClaimsPayload(
+      operationUuid: operationUuid,
+      seq: seq,
+      claims: raw is List ? [for (final entry in raw) if (PeerSerialClaim.from(entry) case final claim?) claim] : const [],
+      ack: ack is int ? ack : null,
     );
   }
 
@@ -594,6 +636,75 @@ class PeerQsoDraftPayload {
     this.position = '',
     this.operatorCall = '',
     this.left = false,
+  });
+}
+
+/// One serial number a position is holding (docs/design/contests.md §5.8.1).
+///
+/// [label] is the sequence's resolved label — the binding key plus any
+/// band/mode scope, exactly as `SequenceRequest.label` spells it — so two
+/// devices agree on which numbers compete without either knowing the
+/// contest. [conflicted] says the holder KEPT this number after losing a
+/// tie-break, because the operator may already have sent it; the winner
+/// marks its own QSO on seeing it, so both records carry the alert.
+/// [committed] says the number is already in the holder's log — it stands
+/// against any claimant, whatever the tie-break would have said.
+class PeerSerialClaim {
+  final String label;
+  final int number;
+  final bool conflicted;
+  final bool committed;
+
+  const PeerSerialClaim({
+    required this.label,
+    required this.number,
+    this.conflicted = false,
+    this.committed = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'l': label,
+        'n': number,
+        if (conflicted) 'c': true,
+        if (committed) 'k': true,
+      };
+
+  static PeerSerialClaim? from(Object? raw) {
+    if (raw is! Map) return null;
+    final label = raw['l'];
+    final number = raw['n'];
+    if (label is! String || label.isEmpty || number is! int) return null;
+    return PeerSerialClaim(label: label, number: number, conflicted: raw['c'] == true, committed: raw['k'] == true);
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is PeerSerialClaim &&
+      other.label == label &&
+      other.number == number &&
+      other.conflicted == conflicted &&
+      other.committed == committed;
+
+  @override
+  int get hashCode => Object.hash(label, number, conflicted, committed);
+
+  @override
+  String toString() =>
+      'PeerSerialClaim($label #$number${conflicted ? ' conflicted' : ''}${committed ? ' committed' : ''})';
+}
+
+/// See [PeerMessageType.serialClaims].
+class PeerSerialClaimsPayload {
+  final String operationUuid;
+  final int seq;
+  final List<PeerSerialClaim> claims;
+  final int? ack;
+
+  const PeerSerialClaimsPayload({
+    required this.operationUuid,
+    required this.seq,
+    required this.claims,
+    this.ack,
   });
 }
 

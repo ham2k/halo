@@ -319,6 +319,15 @@ class Qso {
   List<Map<String, dynamic>> get refs =>
       (asQsonList(data['refs']) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
 
+  /// The QSON key under which a QSO says a contest serial it carries was
+  /// also sent by another position (docs/design/contests.md §5.8.1). Set at
+  /// commit, kept through edits and sync like any other field; nothing
+  /// clears it, since the number that went out cannot be unsent.
+  static const serialConflictKey = 'serialConflict';
+
+  /// See [serialConflictKey].
+  bool get serialConflict => data[serialConflictKey] == true;
+
   /// Start/break/end markers ride the QSO timeline as pseudo-QSOs with
   /// `band == 'event'`, same convention as web-lofi/app-polo — see
   /// `event`/`eventKind`. They interleave with real QSOs via `startAtMillis`

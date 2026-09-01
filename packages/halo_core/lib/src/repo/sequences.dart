@@ -124,6 +124,60 @@ class SequenceRequest {
   /// A per-band sequence must not see another band's numbers when rebuilding
   /// its high-water mark, or every band after the first starts mid-series.
   bool includes(Qso qso) => descriptor.requestFor(qso).label == label;
+
+  /// The number [qso] carries for this sequence, or null — read off the ref
+  /// of the descriptor's type, whichever way it was stored.
+  int? serialOn(Qso qso) {
+    for (final ref in qso.refs) {
+      if (ref['type'] != descriptor.refType) continue;
+      final raw = ref[descriptor.field];
+      if (raw is int) return raw;
+      if (raw is String) return int.tryParse(raw.trim());
+      if (raw is num) return raw.toInt();
+    }
+    return null;
+  }
+}
+
+/// Where the logging panel gets the number to SHOW for a serial control while
+/// a contact is being composed (docs/design/contests.md §5.8.1).
+///
+/// The panel never calls `peek` for that directly: with several devices on
+/// one operation the number shown has to be held against the others before
+/// the operator reads it aloud, and the holding is the app's business — this
+/// package sees no network. The commit path is unchanged either way: the
+/// number on the ref is what gets written, and `allocate` is the fallback.
+abstract class SerialNumberSource {
+  /// The number to show for [request] on the draft in [operationUuid].
+  /// Resolves once it is safe to show — instantly with no peers to consult —
+  /// and a number this has resolved is never taken back.
+  Future<int> claim(String operationUuid, SequenceRequest request);
+
+  /// The draft is gone — wiped, or committed with [committed] (label to
+  /// number) — so whatever was held for it no longer stands. With [labels],
+  /// only those sequences let go: a band change moves a scoped sequence to
+  /// another label while an unscoped one beside it keeps its number.
+  void release(String operationUuid, {Map<SequenceRequest, int> committed = const {}, Set<String>? labels});
+
+  /// Whether [number] on [request]'s label is known to have been shown on
+  /// another device too, so the QSO carrying it must say so.
+  bool isConflicted(String operationUuid, SequenceRequest request, int number);
+}
+
+/// The panel's source when nothing coordinates: `peek`, straight away.
+class LocalSerialNumberSource implements SerialNumberSource {
+  final SequencesRepository sequences;
+
+  LocalSerialNumberSource(this.sequences);
+
+  @override
+  Future<int> claim(String operationUuid, SequenceRequest request) => sequences.peek(operationUuid, request);
+
+  @override
+  void release(String operationUuid, {Map<SequenceRequest, int> committed = const {}, Set<String>? labels}) {}
+
+  @override
+  bool isConflicted(String operationUuid, SequenceRequest request, int number) => false;
 }
 
 class SequencesRepository {
@@ -146,6 +200,12 @@ class SequencesRepository {
   /// on the air. Hence [noteIssued] only ever raises it, and anything that can
   /// introduce a number this repository did not issue must [invalidate].
   final Map<String, int?> _derived = {};
+
+  /// Every number the log holds per sequence, filled by the same scan as
+  /// [_derived] and kept exact by [noteIssued]. What [isIssued] answers from,
+  /// so a commit can tell that the number it is writing already went out from
+  /// another device — without rescanning the log per QSO.
+  final Map<String, Set<int>> _issued = {};
 
   String _cacheKey(String operationUuid, String label) => '$operationUuid|$label';
 
@@ -175,6 +235,7 @@ class SequencesRepository {
   /// between would read the old log and cache that as current.
   void invalidate() {
     _derived.clear();
+    _issued.clear();
     _generation++;
   }
 
@@ -184,6 +245,21 @@ class SequencesRepository {
     final key = _cacheKey(operationUuid, request.label);
     final current = _derived[key];
     if (current == null || value > current) _derived[key] = value;
+    _issued[key]?.add(value);
+  }
+
+  /// Whether [value] is already on a QSO in the log for this sequence —
+  /// soft-deleted ones included, since their number went on the air too.
+  /// The duplicate-serial alert's question (docs/design/contests.md §5.8.1).
+  Future<bool> isIssued(String operationUuid, SequenceRequest request, int value) async {
+    final key = _cacheKey(operationUuid, request.label);
+    // Its own check, not [_derivedHighWaterMark]'s: [noteIssued] can seed the
+    // mark after an invalidation with no set beside it, and the mark being
+    // known must not stand in for the set being known.
+    // The scanned set is used whether or not it was memoized: an
+    // invalidation landing mid-scan forbids caching it, not consulting it.
+    final issued = _issued[key] ?? (await _scan(operationUuid, request)).issued;
+    return issued.contains(value);
   }
 
   /// The number this sequence would issue next, without consuming it — for the
@@ -266,10 +342,19 @@ class SequencesRepository {
   Future<int?> _derivedHighWaterMark(String operationUuid, SequenceRequest request) async {
     final cacheKey = _cacheKey(operationUuid, request.label);
     if (_derived.containsKey(cacheKey)) return _derived[cacheKey];
+    return (await _scan(operationUuid, request)).highest;
+  }
 
+  /// Scans the log for this sequence, memoizing both the high-water mark and
+  /// the issued set — unless an invalidation landed meanwhile. A mark
+  /// [noteIssued] seeded since is kept if it is the higher: the row behind
+  /// it may not be written yet, and lowering it re-issues a number.
+  Future<({int? highest, Set<int> issued})> _scan(String operationUuid, SequenceRequest request) async {
+    final cacheKey = _cacheKey(operationUuid, request.label);
     final generation = _generation;
     final rows = await (db.select(db.qsos)..where((q) => q.operation.equals(operationUuid))).get();
     int? highest;
+    final issued = <int>{};
     for (final row in rows) {
       final qso = Qso(
         uuid: row.uuid,
@@ -278,25 +363,20 @@ class SequencesRepository {
         deleted: row.deleted,
       );
       if (qso.isEvent || !request.includes(qso)) continue;
-      final value = _serialOn(qso, request);
-      if (value != null && (highest == null || value > highest)) highest = value;
+      final value = request.serialOn(qso);
+      if (value == null) continue;
+      issued.add(value);
+      if (highest == null || value > highest) highest = value;
     }
     if (debugAfterScan != null) await debugAfterScan!();
     // Someone invalidated while this scan was in flight — the rows above are
     // the pre-invalidation log, so answer with them but do NOT memoize them.
-    if (generation == _generation) _derived[cacheKey] = highest;
-    return highest;
-  }
-
-  int? _serialOn(Qso qso, SequenceRequest request) {
-    for (final ref in qso.refs) {
-      if (ref['type'] != request.refType) continue;
-      final raw = ref[request.field];
-      if (raw is int) return raw;
-      if (raw is String) return int.tryParse(raw.trim());
-      if (raw is num) return raw.toInt();
+    if (generation == _generation) {
+      final seeded = _derived[cacheKey];
+      _derived[cacheKey] = seeded != null && (highest == null || seeded > highest) ? seeded : highest;
+      _issued[cacheKey] = issued..addAll(_issued[cacheKey] ?? const {});
     }
-    return null;
+    return (highest: highest, issued: issued);
   }
 
   /// The stored counter wins only when it is AHEAD of the log — a counter that

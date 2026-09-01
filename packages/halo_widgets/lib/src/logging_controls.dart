@@ -322,6 +322,11 @@ class LoggingControls extends StatefulWidget {
   final Operation operation;
   final QsosRepository qsosRepository;
 
+  /// Where a `kind: 'serial'` control gets the number it shows while a
+  /// contact is composed (docs/design/contests.md §5.8.1). Null falls back to
+  /// the sequence's `peek` — the single-device answer, and every test's.
+  final SerialNumberSource? serialNumbers;
+
   /// Current QSOs in the operation, used for dupe hints.
   final List<Qso> qsos;
   final void Function(Qso qso)? onLogged;
@@ -829,6 +834,7 @@ class LoggingControls extends StatefulWidget {
     super.key,
     required this.operation,
     required this.qsosRepository,
+    this.serialNumbers,
     this.controller,
     this.onOpenLink,
     this.qsos = const [],
@@ -1527,6 +1533,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// the log every frame.
   String? _serialPreviewSignature;
 
+  /// The sequence labels the previews were last claimed under. A band or mode
+  /// change moves a scoped sequence to another label; the label it left is
+  /// released, the rest keep their numbers.
+  Set<String> _serialPreviewLabels = const {};
+
+  /// The claims still settling, by control key — what a commit waits on.
+  final Map<String, Future<int>> _pendingSerialClaims = {};
+
   /// Refreshes the previewed next number for each serial control — one query
   /// per sequence, and only when the declarations or their scope changed.
   ///
@@ -1535,26 +1549,69 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// *next* number has nothing to do with it. Filling it here would overwrite a
   /// logged serial on a record that merely had its RST corrected, or invent one
   /// for a QSO that never carried a contest ref at all.
+  ///
+  /// Nor before the operator has put anything into the draft. A number is
+  /// held against the other positions from the moment it is shown
+  /// (docs/design/contests.md §5.8.1), so an idle panel holds nothing and
+  /// shows nothing — a blank, never a tentative number that might move. The
+  /// first edit — a typed call, a tapped spot, an exchange field touched —
+  /// is what takes the number; a band or mode change from the radio is not
+  /// an edit, and only moves a claim already held to its new label.
   Future<void> _refreshSerialPreviews() async {
     final sequences = widget.qsosRepository.sequences;
     if (sequences == null || widget.editingQso != null) return;
 
-    final data = _getCurrentQsoData();
     final descriptors = <String, SequenceDescriptor>{};
     for (final control in _textControls) {
       final descriptor = _serialDescriptorFor(control);
       if (descriptor != null) descriptors[control['key'] as String] = descriptor;
     }
-
-    final signature = '${descriptors.keys.join(',')}|${data['band']}|${data['mode']}';
-    if (signature == _serialPreviewSignature && _serialPreviews.isNotEmpty) return;
-    _serialPreviewSignature = signature;
     if (descriptors.isEmpty) return;
 
-    final qso = Qso(uuid: '', operationUuid: widget.operation.uuid, data: data);
+    final hasContent = _call.trim().isNotEmpty || _touchedTextControls.isNotEmpty;
+    if (!hasContent) {
+      // Nothing composed — never started, or backspaced to nothing. An idle
+      // panel holds nothing, so a number taken earlier goes back, and off the
+      // screen with it.
+      if (_serialPreviews.isEmpty && _serialPreviewLabels.isEmpty) return;
+      _serialPreviews.clear();
+      _serialPreviewLabels = const {};
+      _serialPreviewSignature = null;
+      _pendingSerialClaims.clear();
+      widget.serialNumbers?.release(widget.operation.uuid);
+      for (final key in descriptors.keys) {
+        if (_touchedTextControls.contains(key)) continue;
+        _controlTextValues.remove(key);
+        _textControllerFor(key).clear();
+      }
+      if (mounted) setState(() {});
+      return;
+    }
+
+    final qso = Qso(uuid: '', operationUuid: widget.operation.uuid, data: _getCurrentQsoData());
+    final requests = {for (final entry in descriptors.entries) entry.key: entry.value.requestFor(qso)};
+    final labels = {for (final request in requests.values) request.label};
+    final signature = '${descriptors.keys.join(',')}|${labels.join(',')}';
+    if (signature == _serialPreviewSignature && _serialPreviews.isNotEmpty) return;
+    _serialPreviewSignature = signature;
+
+    final source = widget.serialNumbers ?? LocalSerialNumberSource(sequences);
+    // A scoped sequence keys off the band or mode: a label the draft has moved
+    // off is let go — and only that one. An unscoped sequence beside it keeps
+    // the number the operator may already have read.
+    final moved = _serialPreviewLabels.difference(labels);
+    if (moved.isNotEmpty) source.release(widget.operation.uuid, labels: moved);
+    _serialPreviewLabels = labels;
+
     var changed = false;
-    for (final entry in descriptors.entries) {
-      final next = await sequences.peek(widget.operation.uuid, entry.value.requestFor(qso));
+    for (final entry in requests.entries) {
+      final pending = source.claim(widget.operation.uuid, entry.value);
+      _pendingSerialClaims[entry.key] = pending;
+      final next = await pending;
+      // A wipe or a scope change while the claim was settling: that answer is
+      // for a draft that no longer exists, and the refresh it triggered fills
+      // the field for the current one.
+      if (!mounted || _serialPreviewSignature != signature) return;
       if (_serialPreviews[entry.key] == next) continue;
       _serialPreviews[entry.key] = next;
       changed = true;
@@ -1567,6 +1624,26 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       }
     }
     if (changed && mounted) setState(() {});
+  }
+
+  /// Waits for every serial claim still settling, so a commit never runs
+  /// ahead of the number it is about to write. Needing the number is what
+  /// settles it (docs/design/contests.md §5.8.1); the wait is bounded by the
+  /// source's own cap. False when a claim failed and the commit must not go
+  /// ahead.
+  Future<bool> _settleSerialClaims() async {
+    final pending = _pendingSerialClaims.values.toList();
+    if (pending.isEmpty) return true;
+    try {
+      await Future.wait(pending);
+      return true;
+    } on Exception {
+      // Already reported by the refresh that owns the claim (it awaits the
+      // same future unguarded). Here it means the number never settled, and
+      // a commit without it would be allocated blind to the peers — refused,
+      // like a locked form: the fields keep everything typed.
+      return false;
+    }
   }
 
   TextEditingController _textControllerFor(String key) =>
@@ -1651,11 +1728,49 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // otherwise see the same declarations and leave them blank.
     _serialPreviews.clear();
     _serialPreviewSignature = null;
+    _serialPreviewLabels = const {};
+    _pendingSerialClaims.clear();
+    // Deliberately NOT releasing the held number here: an undo-wipe and an
+    // edit opening over the draft pass through this too, and both put the
+    // draft back. Only `_wipe` and a commit let a number go.
     for (final controller in _controlTextControllers.values) {
       controller.clear();
     }
     unawaited(_refreshSerialPreviews());
   }
+
+  /// [data] with the duplicate-serial mark set wherever the number on a ref
+  /// is one another position is known to have shown too
+  /// (docs/design/contests.md §5.8.1). The number is written regardless —
+  /// it went on the air — and the record says so.
+  Map<String, dynamic> _withSerialConflicts(Map<String, dynamic> data) {
+    final source = widget.serialNumbers;
+    if (source == null) return data;
+    final qso = Qso(uuid: '', operationUuid: widget.operation.uuid, data: data);
+    for (final descriptor in _serialSequences) {
+      final request = descriptor.requestFor(qso);
+      final number = request.serialOn(qso);
+      if (number != null && source.isConflicted(widget.operation.uuid, request, number)) {
+        return {...data, Qso.serialConflictKey: true};
+      }
+    }
+    return data;
+  }
+
+  /// Tells the number source the committed QSO's numbers are now in the log,
+  /// so its hold on them ends without handing them out again meanwhile.
+  void _releaseCommittedSerials(Qso qso) {
+    final source = widget.serialNumbers;
+    if (source == null) return;
+    final committed = <SequenceRequest, int>{};
+    for (final descriptor in _serialSequences) {
+      final request = descriptor.requestFor(qso);
+      final number = request.serialOn(qso);
+      if (number != null) committed[request] = number;
+    }
+    source.release(widget.operation.uuid, committed: committed);
+  }
+
 
   /// Applies each text control's `suggestedValue` — a callsign-lookup-derived
   /// prefill — to fields the operator hasn't touched. Called when the controls
@@ -2100,9 +2215,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       focusSecondaryControls: _focusPillAndOpen,
       focusLastPrimaryField: _focusLastPrimaryField,
     );
-    // Show the next serial number straight away — an operator opening a WPX
-    // operation needs to know where the series stands before the first QSO,
-    // not after it.
+    // Settles the serial previews' baseline: an idle panel shows no number
+    // (docs/design/contests.md §5.8.1), but a panel constructed mid-contact —
+    // a rebuild with the call already typed — takes its number now.
     unawaited(_refreshSerialPreviews());
     // A station that has never been set up has nothing in its VFO. Open the
     // Radio control so the operator is looking at the fields that need
@@ -2239,6 +2354,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // for the rest of the composing session, with nothing left to bring
       // it back except retyping the callsign.
       if (_lookupFor != null) unawaited(_refreshActivityControlsFor(_lookupFor!));
+      unawaited(_refreshSerialPreviews());
+    }
+    // The source is the panel's only handle on its held number: a source
+    // swapped out (sharing switched off) or an operation swapped under the
+    // panel would otherwise leave that number held with nothing left to
+    // release it — and served again the moment the source came back.
+    if (widget.editingQso == null &&
+        (oldWidget.serialNumbers != widget.serialNumbers || oldWidget.operation.uuid != widget.operation.uuid)) {
+      oldWidget.serialNumbers?.release(oldWidget.operation.uuid);
+      _serialPreviews.clear();
+      _serialPreviewSignature = null;
+      _serialPreviewLabels = const {};
+      _pendingSerialClaims.clear();
       unawaited(_refreshSerialPreviews());
     }
     if (oldWidget.controller != widget.controller) {
@@ -2622,6 +2750,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _manualStartAtMillis = null;
     setState(() {});
     _populating = false;
+    // A tapped spot starts a contact as surely as a typed call does, and it
+    // bypasses `_onCallChanged` — so the serial number is taken here.
+    unawaited(_refreshSerialPreviews());
     // Populating a suggestion sets the call without the user typing, so
     // `_populating` suppressed _onCallChanged's own _scheduleLookup()/
     // _scheduleScore(). Any source that sets the current QSO's callsign must
@@ -3012,6 +3143,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   @override
   @override
   void dispose() {
+    // Leaving the operation lets its number go (docs/design/contests.md
+    // §5.8.1): a hold with no panel behind it would block the other
+    // positions for as long as the operator stays away.
+    if (widget.editingQso == null) widget.serialNumbers?.release(widget.operation.uuid);
     // A published row would otherwise outlive this panel, hanging over
     // whatever replaced it with a handler that types into nothing. The
     // controller defers the write when the tree is locked, which it is here
@@ -6010,6 +6145,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             // Once typed, a later lookup-derived suggestion must not overwrite
             // it (docs/design/contests.md §5.3).
             _touchedTextControls.add(key);
+            // An exchange typed before the call starts the contact just as a
+            // call would, and takes the serial number with it (§5.8.1).
+            unawaited(_refreshSerialPreviews());
             // A new character is a new question: the offer comes back even if
             // the last one was dismissed, and the highlight starts over at the
             // best match rather than pointing at a row that may no longer be
@@ -7263,6 +7401,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // about. A suggestion filling the field never reaches here.
     widget.onCallEdited?.call();
     setState(() {});
+    // The first character of a call is what takes a serial number.
+    unawaited(_refreshSerialPreviews());
     _lookupDebounce?.cancel();
     _commandDescribeDebounce?.cancel();
 
@@ -7548,6 +7688,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// would raise the mobile keyboard over the list they are actually working.
   ///
   void _wipe({bool focusCall = true}) {
+    // The draft is gone, and so is its hold on a number. After a commit this
+    // is a no-op — the log path released with the committed numbers already.
+    widget.serialNumbers?.release(widget.operation.uuid);
     _suggestedCall = null;
     _suggestionWasTentative = false;
     _settlePendingFreqEdit();
@@ -7828,6 +7971,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // command interpretation at all, least of all while confirming a
     // staged delete.
     final call = _call;
+    if (widget.editingQso == null) {
+      // Enter inside the claim window would otherwise commit a blank serial
+      // field, and the allocator's fallback knows nothing of the peers' holds.
+      final settled = await _settleSerialClaims();
+      if (!settled || !mounted || _call != call || _isLogging) return;
+    }
     if (widget.editingQso == null && call.isNotEmpty && widget.interpretCommand != null) {
       _commandDescribeDebounce?.cancel();
       final qsoData = _getCurrentQsoData();
@@ -8132,8 +8281,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           final data = dataFor(calls[i], i)..remove('uuid');
           final Qso qso;
           try {
-            qso = await widget.qsosRepository
-                .add(widget.operation.uuid, await _decorated(data), serialSequences: _serialSequences);
+            qso = await widget.qsosRepository.add(widget.operation.uuid, await _decorated(_withSerialConflicts(data)),
+                serialSequences: _serialSequences);
           } catch (e, stack) {
             // Calls before [i] are already committed: keep the edited
             // record's own call plus only the still-unlogged ones in the
@@ -8143,6 +8292,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             _reportWriteFailure(e, stack);
             return;
           }
+          _releaseCommittedSerials(qso);
           widget.onLogged?.call(qso);
           widget.enqueueLookup?.call(qso);
         }
@@ -8159,8 +8309,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         for (var i = 0; i < calls.length; i++) {
           final Qso qso;
           try {
-            qso = await widget.qsosRepository
-                .add(widget.operation.uuid, await _decorated(dataFor(calls[i], i)), serialSequences: _serialSequences);
+            qso = await widget.qsosRepository.add(
+                widget.operation.uuid, await _decorated(_withSerialConflicts(dataFor(calls[i], i))),
+                serialSequences: _serialSequences);
           } catch (e, stack) {
             // Nothing is wiped on failure — the fields keep every typed
             // value. With calls already committed (i > 0), the field is
@@ -8180,6 +8331,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             _reportWriteFailure(e, stack);
             return;
           }
+          _releaseCommittedSerials(qso);
           widget.onLogged?.call(qso);
           widget.enqueueLookup?.call(qso);
         }
