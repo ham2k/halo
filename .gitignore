@@ -41,3 +41,9 @@ Scratch*
 # (embedded as the DSAPub resource, like macOS's SUPublicEDKey in Info.plist).
 !app/windows/runner/dsa_pub.pem
 *.p12
+
+# Dev data sandboxes (HALO_DEV_DATA, DEVELOPMENT.md): scratch log databases,
+# never a checkout's to keep. A glob rather than the one documented name —
+# running two sandboxes side by side is the point, and the second one is
+# named by whoever starts it.
+/.halo-dev-data*/

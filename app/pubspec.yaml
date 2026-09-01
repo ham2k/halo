@@ -36,10 +36,12 @@ dependencies:
   # no file-drag concept and reaches the same import through the Options menu.
   desktop_drop: ^0.6.0
   shared_preferences: ^2.5.5
-  # Direct dependencies because app_storage_prefs_io.dart substitutes the
-  # Windows preference store's path provider, to keep the preferences file
-  # with the rest of the app's files (see app_storage.dart). Otherwise these
-  # are implementation details of shared_preferences and path_provider.
+  # Direct dependencies because app_storage_prefs_io.dart substitutes a
+  # preference store's path provider: the Windows one to keep the preferences
+  # file with the rest of the app's files, and the Linux one — on every
+  # platform — to give a dev data sandbox its own settings (see
+  # app_storage.dart). Otherwise these are implementation details of
+  # shared_preferences and path_provider.
   shared_preferences_platform_interface: ^2.4.1
   shared_preferences_windows: ^2.4.1
   shared_preferences_linux: ^2.4.1
@@ -47,6 +49,7 @@ dependencies:
   # seam, which is where installAtomicPreferenceWrites hooks in.
   file: ^7.0.1
   path_provider_windows: ^2.3.0
+  path_provider_linux: ^2.2.2
   uuid: ^4.5.0
   # Locale-aware month/weekday names for QSO-list day headers; version left
   # to flutter_localizations' own constraint (it already pins intl).

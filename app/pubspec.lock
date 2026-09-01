@@ -870,7 +870,7 @@ packages:
     source: hosted
     version: "2.6.0"
   path_provider_linux:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: path_provider_linux
       sha256: "58c2005f147315b11e9b4a7bc889cd5203e250cba8e3f012dae259b4972b5c16"

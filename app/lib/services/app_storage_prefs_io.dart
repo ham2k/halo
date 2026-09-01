@@ -5,6 +5,7 @@ import 'dart:convert' show Encoding, utf8;
 import 'dart:io' as io;
 
 import 'package:file/file.dart';
+import 'package:path_provider_linux/path_provider_linux.dart';
 import 'package:path_provider_windows/path_provider_windows.dart';
 import 'package:shared_preferences_linux/shared_preferences_linux.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
@@ -46,6 +47,42 @@ Future<void> redirectPreferencesDirectory(String directory) async {
 /// otherwise behaves normally.
 class _FixedPathProviderWindows extends PathProviderWindows {
   _FixedPathProviderWindows(this.supportPath);
+
+  final String supportPath;
+
+  @override
+  Future<String?> getApplicationSupportPath() async => supportPath;
+}
+
+/// Points shared_preferences at a `shared_preferences.json` inside [directory]
+/// on EVERY platform, replacing whatever store the platform registered.
+///
+/// Only ever called for a dev data sandbox. macOS, iOS and Android hand
+/// preferences to NSUserDefaults or Android's SharedPreferences, which are
+/// keyed by bundle/application id and expose no path of any kind — so a
+/// sandbox that redirected only its database would still have two builds
+/// writing one another's settings, which is the same entanglement in a form
+/// that looks like settings changing by themselves. The Linux store is the
+/// plugin's own pure-Dart, file-backed implementation and runs anywhere, so
+/// substituting it is what makes one sandbox one whole environment.
+///
+/// Substituting the store's path provider rather than reimplementing storage,
+/// for the reason [redirectPreferencesDirectory] gives. Must run before
+/// anything awaits `SharedPreferences.getInstance()`, and before
+/// [installAtomicPreferenceWrites], which wraps whatever store it finds.
+Future<void> installSandboxPreferencesStore(String directory) async {
+  SharedPreferencesStorePlatform.instance = SharedPreferencesLinux()
+    // ignore: invalid_use_of_visible_for_testing_member
+    ..pathProvider = _FixedPathProviderLinux(directory);
+}
+
+/// A [PathProviderLinux] that answers with one fixed support directory.
+///
+/// Every other member is inherited and unreachable in practice: the store
+/// asks for nothing else, and this provider is never registered as the
+/// app-wide [PathProviderPlatform].
+class _FixedPathProviderLinux extends PathProviderLinux {
+  _FixedPathProviderLinux(this.supportPath);
 
   final String supportPath;
 

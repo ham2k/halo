@@ -20,6 +20,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
+import '../config/dev_flags.dart';
 import '../config/user_agent.dart';
 import 'error_reporting_service.dart';
 
@@ -549,6 +550,13 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// callsign, so a genuinely new install still reads as new.
   Future<void> seedSyncEnabledDefault() async {
     if (_prefs.containsKey(_syncEnabledKey)) return;
+    // A dev data sandbox is NOT a fresh install, however empty it looks. The
+    // keychain is keyed by bundle id and nothing sandboxes it, so this
+    // launch holds the developer's real sync device key — defaulting an
+    // empty log to sync-on would point it at their actual account, with two
+    // processes claiming one device key. Off unless they ask for it; the
+    // setting is theirs to turn on once they know which log they are in.
+    if (devDataDirectory.isNotEmpty) return setSyncEnabled(false);
     await setSyncEnabled(!defaultProfileCallsignDefined);
   }
 

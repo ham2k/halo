@@ -184,6 +184,7 @@ platforms (e.g. `NAME=value flutter run …`).
 | `ONBOARD_AS` | dart-define **or** env | *(unset)* | **Debug builds only** (inert in release). Skips first-run onboarding and applies it directly: `ONBOARD_AS=CALL,activity,…` — the first token is the operator callsign, the rest are extension keys to enable. e.g. `ONBOARD_AS=KI2D,pota,sota`. |
 | `DEV_LABEL` | dart-define **or** env | *(unset)* | **Debug builds only** (inert in release). Shows the given string in the home-screen header, right after the edition badge — to mark which dev build / session is running. e.g. `DEV_LABEL="header work"`. Also suppresses the tester-notes overlay, which otherwise covers the app on every cold start of a working copy; run without the label (or use `DEVTESTER`) to see it. On deployed **web preview** builds (which are release builds, so the compile-time value is stripped) the label is auto-derived from the preview URL instead — previews go to testers, so they keep showing the overlay. |
 | `POLO_OPEN_FIRST_OP` | dart-define **or** env (`=1`) | off | On launch, jump straight into the most recent operation. Handy for iterating on the operation view. |
+| `HALO_DEV_DATA` | env (dart-define reaches only Dart — see below) | *(unset)* | **Debug builds only** (inert in release). Puts this launch's whole app data — log database, data-file cache and settings — under the given absolute path instead of the one directory every build of this edition shares. Nothing is migrated in or out; an empty directory starts with an empty log. **The keychain is not sandboxed** — it is keyed by bundle id — so the launch still holds your real sync device key; a sandbox therefore starts with sync OFF, and turning it on points an empty log at your actual account. It also lets several instances run at once: the macOS single-instance guard steps aside for a sandboxed launch, which is why this has to be an environment variable — native code cannot read a dart-define, and a dart-defined sandbox would be killed at launch by whichever build started first. |
 | `DEV_LOCATION` | dart-define **or** env | *(unset)* | **Debug builds only** (inert in release). Mocks the device GPS with the given Maidenhead grid locator, so `LocationService` never touches OS permissions or a real fix — e.g. `DEV_LOCATION=FN21rq`. An invalid locator is logged and ignored (falls back to the real GPS). |
 | `DEV_LOCATION_STATUS` | dart-define **or** env | *(unset)* | **Debug builds only** (inert in release). Pins `LocationService` at one `LocationStatus` — `unknown`, `determining`, `available`, `unavailable` or `permissionDenied` — so the states behind it can be reviewed on demand instead of by revoking an OS permission. Outranks `DEV_LOCATION`, which still supplies the position for a pinned `available`. An unrecognized name is logged and ignored. |
 | `HALO_STUB_LOOKUPS` | dart-define (`=1`) | off | **Debug builds only** (read via `debugEnvFlag`, empty in release). Makes callsign lookups return a deterministic canned result instead of calling the network/credentialed lookup extensions (QRZ/Ham2K Lookup Service/…) — for fast, offline, reproducible verification. See *Driving the app from a browser / agent* below. |
@@ -200,7 +201,18 @@ ONBOARD_AS=KI2D,pota flutter run -d macos
 
 # Label the running build in the home header (e.g. with your session name)
 cd app && flutter run -d macos --dart-define=DEV_LABEL="header work"
+
+# A data sandbox of this worktree's own, and a second instance alongside
+# whatever else is already running (HALO-315)
+cd app && HALO_DEV_DATA="$PWD/../.halo-dev-data" flutter run -d macos \
+  --dart-define=DEV_LABEL="my task"
 ```
+
+Sandbox the data whenever a branch changes `schemaVersion`. Drift migrations
+are one-way and every Dev build otherwise shares one database, so the first
+build to run with a higher version migrates the log for **every** checkout on
+the machine, and the ones on older branches then refuse to open it — with
+deleting the database the only way back.
 
 Build-time values (`app/lib/config/secrets.dart` — award API keys,
 per-edition OAuth clients) and, for release CI, signing secrets are **not**

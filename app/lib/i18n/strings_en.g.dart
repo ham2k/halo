@@ -1605,6 +1605,15 @@ class Translations$notices$en {
 	/// en: 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.'
 	String get webStorageUnreliable => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.';
 
+	/// en: 'This log needs a newer version'
+	String get logFromNewerBuildTitle => 'This log needs a newer version';
+
+	/// en: 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}'
+	String logFromNewerBuild({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}';
+
+	/// en: 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Open this log with that newer version instead.'
+	String logFromNewerBuildNoLocation({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Open this log with that newer version instead.';
+
 	/// en: 'Settings restored from a backup'
 	String get preferencesRestoredTitle => 'Settings restored from a backup';
 
@@ -6819,6 +6828,9 @@ extension on Translations {
 			'notices.emptyHistory' => 'No notices yet',
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',
 			'notices.webStorageUnreliable' => 'This browser is using fallback storage that is not safe with multiple tabs — keep a single tab open, and keep sync on.',
+			'notices.logFromNewerBuildTitle' => 'This log needs a newer version',
+			'notices.logFromNewerBuild' => ({required Object storage, required Object understood, required Object location}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Install the newer version again — or, if you meant to run this build, point it at a different data folder. The log is in ${location}',
+			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Open this log with that newer version instead.',
 			'notices.preferencesRestoredTitle' => 'Settings restored from a backup',
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Settings reset',

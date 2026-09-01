@@ -14,6 +14,9 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/app_storage.dart';
+import 'package:ham2k_logger/services/app_storage_prefs.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 import 'package:path/path.dart' as p;
 
 void main() {
@@ -342,6 +345,52 @@ void main() {
       await guardPreferencesFile(target);
 
       expect(await quarantined(), hasLength(2));
+    });
+  });
+
+  group('dev data sandbox preferences', () {
+    late SharedPreferencesStorePlatform original;
+
+    setUp(() {
+      original = SharedPreferencesStorePlatform.instance;
+    });
+
+    tearDown(() {
+      SharedPreferencesStorePlatform.instance = original;
+      SharedPreferences.resetStatic();
+    });
+
+    File sandboxPreferences() => targetFile(kPreferencesFileName);
+
+    test('settings are written into the sandbox, not the platform store', () async {
+      // The half a sandboxed DATA directory cannot deliver on its own: macOS,
+      // iOS and Android keep preferences in NSUserDefaults keyed by bundle
+      // id, with no path anywhere in the API. Without this substitution two
+      // sandboxed builds isolate their logs and then quietly overwrite each
+      // other's settings — the same entanglement, wearing a disguise.
+      await installSandboxPreferencesStore(target.path);
+      SharedPreferences.resetStatic();
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('operatorCall', 'N0DEV');
+
+      expect(await sandboxPreferences().exists(), isTrue,
+          reason: 'the sandbox owns its settings file, wherever the platform would have put one');
+      expect(await sandboxPreferences().readAsString(), contains('N0DEV'));
+    });
+
+    test('a second sandbox reads its own settings, not the first one\'s', () async {
+      // One sandbox per checkout is the entire point: if the second launch
+      // could see the first one's settings, it could see — and migrate — its
+      // log too.
+      await installSandboxPreferencesStore(target.path);
+      SharedPreferences.resetStatic();
+      await (await SharedPreferences.getInstance()).setString('operatorCall', 'N0DEV');
+
+      await installSandboxPreferencesStore(legacy.path);
+      SharedPreferences.resetStatic();
+
+      expect((await SharedPreferences.getInstance()).getString('operatorCall'), isNull);
     });
   });
 }

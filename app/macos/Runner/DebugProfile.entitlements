@@ -27,5 +27,32 @@
 	     entitlement files — a Release-only miss is the documented trap. -->
 	<key>com.apple.security.device.bluetooth</key>
 	<true/>
+	<!-- DEBUG ONLY, and the one key here that must NOT be mirrored into
+	     Release.entitlements — the exact opposite of the device.serial and
+	     device.bluetooth trap above, so read that comment and then don't do
+	     what it says for this one.
+
+	     A dev data sandbox (HALO_DEV_DATA, DEVELOPMENT.md) points the app's
+	     whole data directory — log database, data-file cache and settings —
+	     at a path the developer names, typically inside a worktree. App
+	     Sandbox otherwise refuses to create it ("Operation not permitted")
+	     and the launch fails outright; that failure is deliberate, because
+	     falling back to the shared directory is the cross-worktree migration
+	     the flag exists to prevent.
+
+	     KNOW WHAT THIS COSTS: a Debug build can write anywhere its user can,
+	     so a path a Release build would be refused is one Debug accepts in
+	     silence. Every other writer in the app goes through
+	     appDataDirectory() or a user-selected file, so nothing today depends
+	     on it — but a NEW writer added under Debug does not meet the sandbox
+	     until someone runs a Release build.
+
+	     A sandbox relaxation like the other temporary-exception keys, not an
+	     AMFI-restricted entitlement: no provisioning profile, no effect on
+	     spawning. -->
+	<key>com.apple.security.temporary-exception.files.absolute-path.read-write</key>
+	<array>
+		<string>/</string>
+	</array>
 </dict>
 </plist>

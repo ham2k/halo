@@ -924,6 +924,17 @@ Future<HaLoServices> bootstrap({
     // Documents: no boot step can accidentally open the database first.
     native: kIsWeb ? null : DriftNativeOptions(databaseDirectory: appDataDirectory),
   ));
+  // Opened HERE rather than left to whichever query happens to be first.
+  // drift runs its migration on the first statement, so a log written by a
+  // newer build refuses to open somewhere deep in a sync round or a list
+  // rebuild — and what the operator sees is a feature that quietly stops
+  // working, with the only account of why in the console. Asking at boot is
+  // what lets the notice below name the cause.
+  //
+  // NOT awaited here: the open is what every step below is already waiting on
+  // lazily, and holding boot for it would put a disk round-trip in front of
+  // the extension runtime and the settings load, which currently overlap it.
+  final logRefusal = _openLogNow(db);
   final extensions = ExtensionService();
   // Fire-and-forget, and kicked off before awaiting settings below so these
   // two independent boot steps run concurrently instead of serialized; the
@@ -1026,6 +1037,7 @@ Future<HaLoServices> bootstrap({
   // instead of to one caller's control flow.
   if (settings.secureStorageUnavailable) maybeShowNoKeyringNotice(services);
   showPreferencesRecoveryNotice(services, preferencesRecovery);
+  await showLogFromNewerBuildNotice(services, await logRefusal);
 
   // Reconnect the designated radio (docs/design/cat.md). Not awaited: the
   // radio may be off, and boot must not wait on a socket timeout. Gated on
@@ -1239,6 +1251,65 @@ void showPreferencesRecoveryNotice(HaLoServices services, PreferencesRecovery re
     icon: 'cog-refresh',
     title: restored ? t.notices.preferencesRestoredTitle : t.notices.preferencesResetTitle,
     text: restored ? t.notices.preferencesRestored : t.notices.preferencesReset,
+  );
+}
+
+/// Opens the log, and answers with the refusal if it was written by a build
+/// newer than this one.
+///
+/// Every OTHER failure is left alone: the open is retried by the first real
+/// query, so an error swallowed here is reported there instead — exactly as
+/// it is today. Turning them all into boot failures is a much bigger change
+/// than naming this one.
+Future<LogFromNewerBuild?> _openLogNow(HaLoDatabase db) async {
+  try {
+    await db.customSelect('SELECT 1').get();
+  } catch (e, st) {
+    // Through `within` rather than an `on LogFromNewerBuild` clause, which
+    // would match only in a test: the app opens its database over a
+    // background isolate, so the refusal arrives wrapped in a
+    // DriftRemoteException. See LogFromNewerBuild.within.
+    final refusal = LogFromNewerBuild.within(e);
+    if (refusal == null) {
+      // Every other failure is left alone: the open is retried by the first
+      // real query and reported from there, exactly as it is today.
+      debugPrint('[boot] the log did not open yet: $e');
+      return null;
+    }
+    ErrorReportingService.report(e, st, context: 'db:log-from-newer-build');
+    return refusal;
+  }
+  return null;
+}
+
+/// Tells the operator that this build cannot open the log it found, and why.
+///
+/// The versions and the directory are all in the notice, because the two
+/// questions this raises — which build wrote it, and which file is it — have
+/// no other answer anywhere in the app, and the alternative is diagnosing an
+/// app that simply refuses to save from a console line.
+@visibleForTesting
+Future<void> showLogFromNewerBuildNotice(HaLoServices services, LogFromNewerBuild? refusal) async {
+  if (refusal == null) return;
+  // Two strings rather than one with a stand-in for the path: on web there
+  // is no folder to name — the log is in the browser's own storage — and
+  // splicing an English "this browser" into the sentence would leave every
+  // other locale reading its own words and then a foreign phrase.
+  final text = kIsWeb
+      ? t.notices.logFromNewerBuildNoLocation(
+          storage: refusal.storage.toString(),
+          understood: refusal.understood.toString(),
+        )
+      : t.notices.logFromNewerBuild(
+          storage: refusal.storage.toString(),
+          understood: refusal.understood.toString(),
+          location: (await appDataDirectory()).path,
+        );
+  services.statusBar.showNotice(
+    key: 'logFromNewerBuild',
+    icon: 'database-alert',
+    title: t.notices.logFromNewerBuildTitle,
+    text: text,
   );
 }
 

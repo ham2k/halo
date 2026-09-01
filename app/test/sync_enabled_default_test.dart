@@ -4,6 +4,7 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/config/dev_flags.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,6 +32,22 @@ void main() {
       final settings = await build({});
       await settings.seedSyncEnabledDefault();
       expect(settings.syncEnabled, isTrue);
+    });
+
+    test('a dev data sandbox keeps sync off, however empty its log looks', () async {
+      // The trap this exists for: a sandbox has empty preferences, so it
+      // reads as a brand-new install and would default to sync ON — while
+      // the KEYCHAIN is keyed by bundle id and is not sandboxed at all, so
+      // the launch is holding the developer's real device key. Sync on would
+      // point an empty log at their actual account, with two processes
+      // claiming one device key.
+      addTearDown(() => debugDataDirectoryOverride = null);
+      debugDataDirectoryOverride = '/tmp/halo-dev-data-test';
+
+      final settings = await build({});
+      await settings.seedSyncEnabledDefault();
+
+      expect(settings.syncEnabled, isFalse);
     });
 
     test('an install that predates this default keeps sync off', () async {

@@ -8,6 +8,9 @@
 // are derived from it on every write.
 
 import 'package:drift/drift.dart';
+// The wrapper drift reports a background-isolate failure through; see
+// LogFromNewerBuild.within, which exists entirely because of it.
+import 'package:drift/isolate.dart' show DriftRemoteException;
 
 part 'database.g.dart';
 
@@ -325,13 +328,7 @@ class HaLoDatabase extends _$HaLoDatabase {
           // build afterwards re-runs its steps against a schema that already
           // has them, and `addColumn` is a one-way door (see below). Refusing
           // is the only outcome that keeps the log openable.
-          if (from > to) {
-            throw StateError(
-              'This log was written by a newer version of Ham2K Logger '
-              '(storage v$from; this build understands v$to). '
-              'Update the app instead of opening it with this build.',
-            );
-          }
+          if (from > to) throw LogFromNewerBuild(storage: from, understood: to);
 
           // The whole upgrade is one transaction. `addColumn` is not
           // idempotent and drift only writes `user_version` once this
@@ -435,4 +432,50 @@ class HaLoDatabase extends _$HaLoDatabase {
         AND json_extract(data, '\$.updatedAtMillis') IS NOT NULL
     ''');
   }
+}
+
+/// A log file written by a build newer than this one, refused rather than
+/// migrated back down (see the `from > to` guard in [HaLoDatabase.migration]).
+///
+/// Its own type rather than a StateError with a recognizable message: this is
+/// the payload of an ErrorPolicy rule, and a rule that matches on message
+/// text eventually claims a real error that merely reads the same. It also
+/// carries the two versions as numbers, so a caller can say which build wrote
+/// the log without parsing them back out of a sentence.
+class LogFromNewerBuild implements Exception {
+  const LogFromNewerBuild({required this.storage, required this.understood});
+
+  /// The storage version the file on disk is at.
+  final int storage;
+
+  /// The highest storage version this build knows how to read.
+  final int understood;
+
+  /// This refusal, wherever it is in [error] — or null if [error] is
+  /// something else entirely.
+  ///
+  /// The app opens its database over a background isolate
+  /// (`driftDatabase(native:)` → `NativeDatabase.createBackgroundConnection`),
+  /// and drift reports anything raised on the far side as a
+  /// `DriftRemoteException` holding the original in `remoteCause`. So the
+  /// exception this class describes NEVER arrives as itself in the running
+  /// app — only in a test that opens a `NativeDatabase` in-process. Any
+  /// `catch (e) if (e is LogFromNewerBuild)`, or any policy matching on the
+  /// type, silently stops working the moment it leaves the test harness.
+  /// Every such site goes through here instead.
+  ///
+  /// A loop rather than one unwrap: the request crosses the boundary in both
+  /// directions, and a re-raised remote error can be wrapped again.
+  static LogFromNewerBuild? within(Object? error) {
+    var current = error;
+    while (current is DriftRemoteException) {
+      current = current.remoteCause;
+    }
+    return current is LogFromNewerBuild ? current : null;
+  }
+
+  @override
+  String toString() =>
+      'LogFromNewerBuild: this log was written by a newer version of Ham2K Logger '
+      '(storage v$storage; this build understands v$understood)';
 }

@@ -683,9 +683,17 @@ void main() {
       });
 
       final db = HaLoDatabase(NativeDatabase(file));
+      // The TYPE and the two versions, not merely "something threw": the
+      // boot-time notice that tells the operator which build wrote their log
+      // is dispatched on this type and prints these two numbers, and
+      // ErrorPolicy classifies it by type as well. A refusal that arrived as
+      // a bare StateError would still fail the open — and would silently
+      // reduce that notice to a generic "Something went wrong".
       await expectLater(
         db.customSelect('SELECT * FROM operations').get(),
-        throwsA(anything),
+        throwsA(isA<LogFromNewerBuild>()
+            .having((e) => e.storage, 'storage', currentVersion + 1)
+            .having((e) => e.understood, 'understood', currentVersion)),
         reason: 'opening a newer log must fail loudly rather than restamp it',
       );
       await db.close();
@@ -695,6 +703,39 @@ void main() {
       addTearDown(raw.dispose);
       expect(raw.userVersion, currentVersion + 1,
           reason: 'the newer version stamp must survive the refused open');
+    });
+
+    test('the refusal survives the background isolate the app actually opens over', () async {
+      // The shipped app never opens a NativeDatabase in-process: it goes
+      // through driftDatabase(native:) → createBackgroundConnection, and
+      // drift reports anything raised on the far side as a
+      // DriftRemoteException wrapping the original. So every test above,
+      // which opens in-process, is blind to the one thing the boot notice
+      // and the ErrorPolicy rule depend on — that the refusal can still be
+      // RECOGNIZED after crossing an isolate. Recognized here the way both
+      // of them do it, through `within`.
+      final file = dbFile();
+      await createAtVersion(file, currentVersion, whileAtOldVersion: (db) async {
+        await db.customStatement('PRAGMA user_version = ${currentVersion + 1}');
+      });
+
+      final db = HaLoDatabase(await NativeDatabase.createBackgroundConnection(file));
+      Object? thrown;
+      try {
+        await db.customSelect('SELECT * FROM operations').get();
+      } catch (e) {
+        thrown = e;
+      }
+      await db.close();
+
+      expect(thrown, isNotNull, reason: 'a newer log must be refused over any connection');
+      expect(
+        LogFromNewerBuild.within(thrown),
+        isA<LogFromNewerBuild>()
+            .having((e) => e.storage, 'storage', currentVersion + 1)
+            .having((e) => e.understood, 'understood', currentVersion),
+        reason: 'the refusal has to be recoverable from whatever the isolate wrapped it in',
+      );
     });
 
     test('an upgrade that fails partway applies nothing at all', () async {

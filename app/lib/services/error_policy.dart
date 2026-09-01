@@ -25,7 +25,7 @@ import 'package:flutter/services.dart' show PlatformException;
 import 'package:flutter/widgets.dart';
 import 'package:halo_extension_host/halo_extension_host.dart'
     show ExtensionHostException, HookTimeoutException;
-import 'package:halo_core/halo_core.dart' show MalformedQsonDataException, WriteRefused;
+import 'package:halo_core/halo_core.dart' show LogFromNewerBuild, MalformedQsonDataException, WriteRefused;
 import 'package:http/http.dart' show ClientException;
 
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
@@ -334,6 +334,22 @@ class ErrorPolicy {
           'rate across installs that says whether the quit path is sound',
       disposition: ErrorDisposition.report,
       matches: (error, details) => error is UncleanDatabaseQuit,
+    ),
+    ErrorRule(
+      id: 'log-from-newer-build',
+      reason: 'the log on disk was written by a newer build and this one refuses to migrate it '
+          'back down (halo_core\'s LogFromNewerBuild). The operator has ALREADY been told, at '
+          'boot, in a notice naming both storage versions and the folder the log is in, so the '
+          'generic notice on top of that would say strictly less. Console-only rather than '
+          'uploaded because EVERY query throws this for as long as the app runs — a refused '
+          'database refuses each stream rebuild, sync round and list read — and report() has no '
+          'dedup, so uploading would send one session\'s worth of the same fact. The cost is '
+          'that a downgrade in the field is now invisible to the backend; recovering that needs '
+          'a once-per-session upload path, not a louder tier here. Matched through `within`, '
+          'because a background-isolate open delivers this wrapped in a DriftRemoteException '
+          'and a bare type test would quietly never fire',
+      disposition: ErrorDisposition.logOnly,
+      matches: (error, details) => LogFromNewerBuild.within(error) != null,
     ),
     ErrorRule(
       id: 'preferences-file-unreadable',

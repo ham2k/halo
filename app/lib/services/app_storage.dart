@@ -14,6 +14,7 @@ import 'package:halo_core/halo_core.dart' show realNowUtc;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../config/dev_flags.dart';
 import 'app_storage_prefs.dart';
 import 'error_reporting_service.dart';
 
@@ -104,6 +105,23 @@ Future<PreferencesRecovery> initializeAppStorage() async {
   final storage = await _storage();
   if (kIsWeb) return PreferencesRecovery.none;
 
+  // Before the atomic-write wrapper below, which wraps whichever store is
+  // installed when it runs — installing the sandbox store afterwards would
+  // replace the wrapped store with a bare one and reopen the truncation
+  // window. Before anything awaits SharedPreferences.getInstance() too, for
+  // the reason this whole function is sequenced the way it is.
+  if (storage.sandboxed) {
+    try {
+      await installSandboxPreferencesStore(storage.directory.path);
+    } catch (e, st) {
+      // Reported, not swallowed into a shared store: preferences that keep
+      // going to the platform's own location are preferences two sandboxed
+      // builds still fight over, which reads as settings changing by
+      // themselves rather than as a failure here.
+      ErrorReportingService.report(e, st, context: 'app-storage:sandbox-preferences');
+    }
+  }
+
   // FIRST, and on its own: this is the half that stops the file being
   // truncated in the first place, and it depends on nothing below. Sequenced
   // after the repair — or inside its try — a launch that cannot resolve its
@@ -147,6 +165,11 @@ Future<PreferencesRecovery> initializeAppStorage() async {
 /// any relocation this launch performs — or null on the platforms that keep
 /// preferences in a store of the system's own.
 Future<Directory?> _preferencesDirectory(_Storage storage) async {
+  // A sandbox has just been given a file-backed store pointed at its own
+  // directory, on every platform — so the file is ours to guard there even on
+  // the ones whose preferences normally belong to the system.
+  if (storage.sandboxed) return storage.directory;
+
   // macOS, iOS and Android hand preferences to NSUserDefaults or Android's
   // SharedPreferences, which write atomically and own their own storage.
   // Only the two Dart, file-backed stores are ours to guard.
@@ -327,7 +350,9 @@ Future<void> _writeAtomically(File file, String contents) async {
 /// [directory] is where the app's files are; [relocated] is false when that's
 /// the platform's documents directory — either because the platform's is
 /// private already, or because a migration failed and we stayed put.
-typedef _Storage = ({Directory directory, bool relocated});
+/// [sandboxed] is a dev data sandbox ([devDataDirectory]), which every
+/// platform treats the same way and which owns its preferences too.
+typedef _Storage = ({Directory directory, bool relocated, bool sandboxed});
 
 Future<_Storage>? _resolved;
 
@@ -344,7 +369,32 @@ Future<_Storage> _resolveStorage() async {
   // consumed there: drift opens IndexedDB, and every other user of this path
   // (data-file cache, the Developer panel's data-folder row) is
   // !kIsWeb-guarded.
-  if (kIsWeb) return (directory: Directory('.'), relocated: false);
+  if (kIsWeb) return (directory: Directory('.'), relocated: false, sandboxed: false);
+
+  // A dev data sandbox owns EVERYTHING under this directory — the database,
+  // the data-file cache and (below) the preferences — so that two builds from
+  // two checkouts never share a log. Nothing is migrated into it and nothing
+  // out: it is a scratch environment, and a half-adopted one would be exactly
+  // the entanglement it exists to end.
+  //
+  // Deliberately ahead of every platform branch and outside the try: a
+  // sandbox that cannot be created must FAIL, not quietly fall back to the
+  // shared directory — falling back is how one build migrates another
+  // worktree's log, which is the whole failure this prevents. Debug builds
+  // only, by construction ([debugEnvFlag] answers '' in release).
+  final sandbox = devDataDirectory;
+  if (sandbox.isNotEmpty) {
+    // A RELATIVE path would resolve against the process working directory,
+    // which for a bundled desktop app is nothing the developer typed — so it
+    // would quietly succeed and put the log somewhere they cannot find,
+    // which is the one outcome this branch promises never to produce.
+    if (!p.isAbsolute(sandbox)) {
+      throw ArgumentError.value(sandbox, 'HALO_DEV_DATA', 'must be an absolute path');
+    }
+    final directory = Directory(sandbox);
+    await directory.create(recursive: true);
+    return (directory: directory, relocated: true, sandboxed: true);
+  }
 
   final documents = await getApplicationDocumentsDirectory();
   try {
@@ -365,12 +415,16 @@ Future<_Storage> _resolveStorage() async {
       // consolidation, with no preferences migration to run.
       target = await getApplicationSupportDirectory();
     } else {
-      return (directory: documents, relocated: false);
+      return (directory: documents, relocated: false, sandboxed: false);
     }
 
     await target.create(recursive: true);
     final resolved = await migrateLegacyAppData(legacy: documents, target: target);
-    return (directory: resolved, relocated: p.equals(resolved.path, target.path));
+    return (
+      directory: resolved,
+      relocated: p.equals(resolved.path, target.path),
+      sandboxed: false,
+    );
   } catch (e, st) {
     // Creating the directory can fail outright — group policy, an antivirus
     // product holding it, an unwritable %LOCALAPPDATA%. Boot must survive
@@ -378,7 +432,7 @@ Future<_Storage> _resolveStorage() async {
     // and failing it must never be worse than not having tried. Everything
     // keeps working from documents, and the next launch retries.
     ErrorReportingService.report(e, st, context: 'app-storage:resolve');
-    return (directory: documents, relocated: false);
+    return (directory: documents, relocated: false, sandboxed: false);
   }
 }
 

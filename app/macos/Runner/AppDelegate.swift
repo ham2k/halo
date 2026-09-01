@@ -62,7 +62,21 @@ class AppDelegate: FlutterAppDelegate {
     // Only one instance of the app runs at a time: if another instance (by
     // bundle identifier) is already up, bring it to the front and quit this
     // newly launched one instead of leaving two windows open side by side.
-    if let bundleId = Bundle.main.bundleIdentifier {
+    //
+    // Unless this launch carries a dev data sandbox, which is a build running
+    // against its own database, cache and preferences: a second one is then
+    // not a second window onto the same log, and several checkouts' builds
+    // are meant to run side by side. An ENVIRONMENT variable because a
+    // dart-define is invisible here, and Dart reads the same name.
+    //
+    // Debug builds only, matching the Dart side (debugEnvFlag answers '' in
+    // release) — a shipped app must not be talked out of its guard by a
+    // variable anything could export.
+    var dataSandbox = false
+    #if DEBUG
+      dataSandbox = !(ProcessInfo.processInfo.environment["HALO_DEV_DATA"] ?? "").isEmpty
+    #endif
+    if !dataSandbox, let bundleId = Bundle.main.bundleIdentifier {
       let others = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId)
         .filter { $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }
       if let existing = others.first {

@@ -29,7 +29,8 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.d
 import 'package:ham2k_logger/services/cat/transports/serial_transport_io.dart' show SerialPortUnavailable;
 import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
-import 'package:halo_core/halo_core.dart' show MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
+import 'package:halo_core/halo_core.dart'
+    show LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
 import 'package:ham2k_logger/services/extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
@@ -717,6 +718,31 @@ void main() {
     test('an unrelated StateError during the quit stays loud', () {
       ErrorPolicy.appIsExiting = true;
       expect(dispositionFor(StateError('boom')), ErrorDisposition.notify);
+    });
+  });
+
+  group('a log written by a newer build', () {
+    test('is console-only, because boot has already said more', () {
+      // The generic "Something went wrong" would REPLACE a notice that names
+      // both storage versions and the folder the log is in — so quietening
+      // this one is what keeps the specific message the only thing shown.
+      // And a refused database refuses EVERY query, so a tier that uploads
+      // would send one session's worth of the same fact.
+      expect(
+        dispositionFor(const LogFromNewerBuild(storage: 14, understood: 13)),
+        ErrorDisposition.logOnly,
+      );
+    });
+
+    test('a StateError merely quoting the same words is still loud', () {
+      // The refusal used to BE a StateError with this sentence in it. A rule
+      // that matched the text would keep quietening any error that happens
+      // to read the same, long after the type stopped being one.
+      expect(
+        dispositionFor(StateError('This log was written by a newer version of Ham2K Logger '
+            '(storage v14; this build understands v13)')),
+        ErrorDisposition.notify,
+      );
     });
   });
 }
