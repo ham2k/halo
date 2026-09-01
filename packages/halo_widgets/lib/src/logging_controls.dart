@@ -190,11 +190,19 @@ class _ControlDescriptor {
   /// checkbox permanently checked and disabled.
   final bool mandatory;
 
+  /// Off until the operator asks for it. The operator's own decision is
+  /// recorded the moment they save the settings dialog — which always
+  /// writes the full order — so "this key is not in `controlOrder` yet" is
+  /// what distinguishes "never decided" from "decided against", and is why
+  /// a default-hidden control needs no second stored set of its own.
+  final bool defaultHidden;
+
   const _ControlDescriptor({
     required this.key,
     required this.icon,
     required this.label,
     this.mandatory = false,
+    this.defaultHidden = false,
   });
 }
 
@@ -666,6 +674,18 @@ class LoggingControls extends StatefulWidget {
   final String? bandLabel;
   final String? timeControlLabel;
   final String? radioControlLabel;
+  final String? powerControlLabel;
+  final String? powerLabel;
+
+  /// The app is capturing the current power onto every QSO it saves
+  /// (Station Configuration's "Track Station Info", with `power` among the
+  /// tracked fields). The panel doesn't do that capture — the app does, at
+  /// save — but it has to know, because a power that is being logged has to
+  /// be visible and editable whether or not the Power control is in the row.
+  final bool trackingPower;
+  /// The unit shown after the power value ("W"), in the chip's summary and
+  /// beside its field.
+  final String? powerUnitLabel;
   final String? controlSettingsTitle;
   final String? saveLabel;
   final String? cancelLabel;
@@ -893,6 +913,10 @@ class LoggingControls extends StatefulWidget {
     this.bandLabel,
     this.timeControlLabel,
     this.radioControlLabel,
+    this.powerControlLabel,
+    this.powerLabel,
+    this.powerUnitLabel,
+    this.trackingPower = false,
     this.controlSettingsTitle,
     this.saveLabel,
     this.cancelLabel,
@@ -942,6 +966,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   final _dateController = TextEditingController();
   final _gridController = TextEditingController();
   final _stateController = TextEditingController();
+  /// The Power control's watts. Mirrors the VFO's power while composing
+  /// (seeded by [_seedFromRadioService]) and the QSO's own while editing
+  /// one, exactly as the frequency field mirrors [Vfo.freq].
+  final _powerController = TextEditingController();
   // NOTE/TODO's inline editor — the only event kinds with editable free
   // text. Populated in `_populateFromEditingQso`, read back in
   // `_eventDataForSave`.
@@ -980,6 +1008,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   final _dateFocus = FocusNode();
   final _gridFocus = FocusNode();
   final _stateFocus = FocusNode();
+  final _powerFocus = FocusNode();
 
   String _mode = 'SSB';
 
@@ -1972,6 +2001,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // an optional Grid/State field changes too.
     _gridController.addListener(_onSentOrRcvdChanged);
     _stateController.addListener(_onSentOrRcvdChanged);
+    // Same reason again, plus the Power chip's own summary, which reads the
+    // field rather than the VFO (blur is what commits one to the other).
+    _powerController.addListener(_onSentOrRcvdChanged);
     _bandDropdownController.addListener(_onBandDropdownTextChanged);
     _modeDropdownController.addListener(_onModeDropdownTextChanged);
     // All fields place the cursor at the end on focus, rather than selecting
@@ -1990,6 +2022,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       (_dateFocus, _dateController),
       (_gridFocus, _gridController),
       (_stateFocus, _stateController),
+      (_powerFocus, _powerController),
     ]) {
       focus.addListener(() {
         if (focus.hasFocus) {
@@ -2010,6 +2043,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           if (widget.editingQso == null && _freqController.text.trim().length > 3) {
             _pushVfoToRadioService();
           }
+        } else if (identical(focus, _powerFocus)) {
+          // Committed on blur rather than on every keystroke: typing "100"
+          // passes through 1 and 10, and each would be a power command sent
+          // to the radio. Blur covers Enter too — it closes the control
+          // (_onExpandedKeyEvent) and takes the focus with it.
+          _commitPower();
         } else if (identical(focus, _sentFocus) || identical(focus, _rcvdFocus)) {
           // Show the operator what their shorthand became, at the moment they
           // are done with the field — the save expands it either way
@@ -2124,6 +2163,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // held from the way in has nothing left to say.
       _heldSuggestion = null;
       unawaited(_handleLogRequest(request.qso));
+    }
+    // Power may have just come into play — the operator added the control to
+    // the row, or switched station-info tracking on. The field is seeded from
+    // the VFO only while power IS in play, so without this it stays empty
+    // until the next VFO notification, and a QSO logged in between carries
+    // none. Decided from the inputs rather than a remembered flag: a `late`
+    // field's initializer runs on its first READ, which is here, and would
+    // simply record the new state and see no change.
+    final controlsChanged = oldWidget.trackingPower != widget.trackingPower ||
+        !const ListEquality<String>().equals(oldWidget.controlOrder, widget.controlOrder) ||
+        !const SetEquality<String>().equals(oldWidget.hiddenControlKeys, widget.hiddenControlKeys);
+    if (controlsChanged && _powerInPlay && widget.editingQso == null && !_powerFocus.hasFocus) {
+      final power = widget.radioService?.vfoA.power;
+      _powerController.text = power == null ? '' : '$power';
     }
     // The rest of the slide's lifecycle, up here for the same reason: an edit
     // in progress is exactly when a tentative suggestion has something to say,
@@ -2634,6 +2687,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _freqController.text = freq != null ? fmtFreqInput(freq) : '';
     _mode = asQsonString(data['mode']) ?? _mode;
     _manualBand = freq == null ? asQsonString(data['band']) : null;
+    final power = asQsonNum(data['power']);
+    _powerOnRecord = power != null;
+    _powerController.text = power == null ? '' : '$power';
     // A wholesale repopulate — a spot tapped, a QSO opened for editing —
     // replaces every field, so nothing in a dropdown survives it either.
     _resyncDropdownFieldsToSelection();
@@ -2661,6 +2717,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       ..remove('freq')
       ..remove('band')
       ..remove('mode')
+      ..remove('power')
       ..remove('startAtMillis');
     _controlRefs.clear();
     _guessedRefs = const [];
@@ -2825,6 +2882,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (vfo.mode != null && vfo.mode != _mode) {
       _mode = vfo.mode!;
     }
+    // Never over the operator's own typing, and never over a QSO already
+    // logged — an existing record's power is its own (`_applyFieldsFromData`
+    // seeds it), not whatever the rig happens to be set to now.
+    if (_powerInPlay && widget.editingQso == null && !_powerFocus.hasFocus) {
+      final text = vfo.power == null ? '' : '${vfo.power}';
+      if (_powerController.text != text) _powerController.text = text;
+    }
   }
 
   /// The VFO moved underneath us — a connected radio was tuned, or
@@ -2931,6 +2995,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _manualStartAtMillis = null;
     _manualBand = null;
     _selectedControlKey = null;
+    _clearPowerEntry();
     // Back to composing a new QSO — the Radio control goes back to
     // mirroring the operation's VFO, not whatever the just-edited QSO's
     // own freq/band/mode happened to be.
@@ -2991,6 +3056,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _dateController.dispose();
     _gridController.dispose();
     _stateController.dispose();
+    _powerController.dispose();
     _eventTextController.dispose();
     _eventTextFocus.dispose();
     _bandDropdownController.dispose();
@@ -3003,6 +3069,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _freqFocus.dispose();
     _gridFocus.dispose();
     _stateFocus.dispose();
+    _powerFocus.dispose();
     _timeFocus.dispose();
     _dateFocus.dispose();
     super.dispose();
@@ -3600,6 +3667,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // into, and on touch platforms the dropdowns refuse focus outright.
       case 'radio':
         return _freqFocus;
+      case 'power':
+        return _powerFocus;
       case 'spotting':
         return _spotState.showComment ? _spotCommentFocus : null;
       default:
@@ -3632,6 +3701,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           (_freqFocus, _freqController),
           (_modeDropdownFocus, _modeDropdownController),
         ];
+      case 'power':
+        return [(_powerFocus, _powerController)];
       case 'spotting':
         return _spotState.showComment ? [(_spotCommentFocus, _spotCommentController)] : const [];
       default:
@@ -4461,6 +4532,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           label: widget.radioControlLabel ?? 'Radio',
           mandatory: true,
         ),
+        // Only with somewhere to keep the value: power lives on the VFO
+        // ([Vfo.power]), and without a store the control would edit nothing.
+        if (widget.radioService != null)
+          _ControlDescriptor(
+            key: 'power',
+            icon: MdiIcons.flash,
+            label: widget.powerControlLabel ?? 'Power',
+            defaultHidden: true,
+          ),
         if (widget.suggestSpotSources != null && widget.sendSpot != null)
           _ControlDescriptor(
             key: 'spotting',
@@ -4483,18 +4563,71 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         ),
       ];
 
+  /// Whether this control stays out of the row. A [_ControlDescriptor
+  /// .defaultHidden] control is out until the operator has been asked —
+  /// which the saved order records, since the settings dialog writes every
+  /// key it offered whether or not it was checked.
+  bool _descriptorHidden(_ControlDescriptor descriptor) {
+    if (descriptor.mandatory) return false;
+    if (widget.hiddenControlKeys.contains(descriptor.key)) return true;
+    return descriptor.defaultHidden && !widget.controlOrder.contains(descriptor.key);
+  }
+
+  /// Whether the Power control is in the row.
+  bool get _powerControlVisible =>
+      _controlDescriptors().where((d) => d.key == 'power').map(_descriptorHidden).firstOrNull == false;
+
+  /// Something is logging power for this QSO: the operator put the control
+  /// in the row, or the app is capturing it with the rest of the station
+  /// info. This is what lets a composed QSO carry a power at all — without
+  /// it the field stays empty and nothing is stamped.
+  bool get _powerInPlay => _powerControlVisible || widget.trackingPower;
+
+  /// The record being edited arrived carrying a power. Read from the record,
+  /// never from the field: with the field as the test, emptying it would take
+  /// the power OUT of the entry — and the write below would then omit the key
+  /// and leave the old value standing, so a wrong power could never be
+  /// cleared. It also survives past the record, so it is cleared with the
+  /// rest of the entry ([_resetLocalFields], [_wipe]) — otherwise a value
+  /// left over from an edit goes on stamping every QSO logged afterwards.
+  bool _powerOnRecord = false;
+
+  /// Whether power is part of THIS entry — in play, or already on the record
+  /// being edited. A QSO that carries a power keeps showing it after the
+  /// control is switched back off: it went out on the air that way, and a
+  /// value nothing displays is a value nothing can correct.
+  bool get _powerShown => _powerInPlay || _powerOnRecord;
+
   /// `widget.controlOrder`, filtered to keys that still exist and
-  /// de-duplicated, with any remaining known keys appended in their default
-  /// order — so a fresh install (empty order) or a newly-added extension
-  /// control both fall back to sane placement.
+  /// de-duplicated, with any remaining known keys slotted in where the
+  /// descriptor list puts them — so a fresh install (empty order) or a
+  /// newly-added control both land in their intended place.
+  ///
+  /// Slotted rather than appended: every operator who has ever saved the
+  /// settings dialog has a stored order, and appending puts a new control
+  /// at the very end of the row — past More — however deliberately the
+  /// descriptor list placed it beside its neighbour. A key with no earlier
+  /// descriptor already in the order still goes last, which is what the
+  /// append did for all of them.
   List<String> _effectiveControlOrder(List<_ControlDescriptor> descriptors) {
     final allKeys = descriptors.map((d) => d.key).toSet();
     final order = <String>[];
     for (final key in widget.controlOrder) {
       if (allKeys.contains(key) && !order.contains(key)) order.add(key);
     }
-    for (final descriptor in descriptors) {
-      if (!order.contains(descriptor.key)) order.add(descriptor.key);
+    for (final (index, descriptor) in descriptors.indexed) {
+      if (order.contains(descriptor.key)) continue;
+      // Immediately after the nearest preceding descriptor that IS placed —
+      // walking backwards, so a run of new keys keeps its own relative order.
+      var insertAt = order.length;
+      for (var previous = index - 1; previous >= 0; previous--) {
+        final at = order.indexOf(descriptors[previous].key);
+        if (at >= 0) {
+          insertAt = at + 1;
+          break;
+        }
+      }
+      order.insert(insertAt, descriptor.key);
     }
     return order;
   }
@@ -4510,12 +4643,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     for (final key in _effectiveControlOrder(descriptors)) {
       final descriptor = byKey[key];
       if (descriptor == null) continue;
-      if (!descriptor.mandatory && widget.hiddenControlKeys.contains(key)) continue;
+      if (_descriptorHidden(descriptor)) continue;
       switch (key) {
         case 'time':
           specs.add(_timeControlSpec());
         case 'radio':
           specs.add(_radioControlSpec(theme));
+        case 'power':
+          specs.add(_powerControlSpec());
         case 'spotting':
           specs.add(_spottingControlSpec(theme, poloColors));
         case 'more':
@@ -5292,6 +5427,76 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// mode: tertiary is a light-ish amber, tertiaryLight a near-black brown)
   /// — so which color pair reads well flips with `selected`, not just with
   /// the theme.
+  /// The watts in the Power field, or null when it is empty (or holds
+  /// nothing parseable — a lone "." mid-typing).
+  num? get _powerWatts => num.tryParse(_powerController.text.trim());
+
+  String get _powerSummary {
+    final watts = _powerWatts;
+    return watts == null ? '—' : '$watts ${widget.powerUnitLabel ?? 'W'}';
+  }
+
+  /// Takes power back out of the entry: the field, and the record's own
+  /// value. Whatever the field holds belonged to the QSO just closed, and
+  /// [_seedFromRadioService] only refills it while power is in play.
+  void _clearPowerEntry() {
+    _powerOnRecord = false;
+    _powerController.clear();
+  }
+
+  /// Pushes the field to the VFO, which is where every power surface reads
+  /// it from and how a connected radio hears about it (CAT forwards it the
+  /// way it forwards a typed frequency). Never while editing an existing
+  /// QSO: that applies changes to the QSO, never the VFO — the same rule the
+  /// Radio control follows.
+  void _commitPower() {
+    if (widget.editingQso != null) return;
+    final watts = _powerWatts;
+    widget.radioService?.setVfo('vfoA', power: watts, clearPower: watts == null);
+  }
+
+  SecondaryControlSpec _powerControlSpec() => SecondaryControlSpec(
+        key: 'power',
+        icon: MdiIcons.flash,
+        summary: _powerSummary,
+        expandedBuilder: (context) => Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            SizedBox(
+              // Four digits is every legal amateur power, the same width the
+              // Station Configuration field is sized to.
+              width: 72,
+              child: TextField(
+                controller: _powerController,
+                focusNode: _powerFocus,
+                selectAllOnFocus: false,
+                style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
+                decoration: poloFieldDecoration(
+                  context,
+                  widget.powerLabel ?? 'Power',
+                  labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
+                ),
+                keyboardType: _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true),
+                autocorrect: false,
+                enableSuggestions: false,
+                smartDashesType: SmartDashesType.disabled,
+                smartQuotesType: SmartQuotesType.disabled,
+                // A decimal point earns its place at the QRPp end (0.5 W);
+                // everything else a keyboard can offer here is noise.
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+                onSubmitted: (_) => _commitPower(),
+              ),
+            ),
+            const SizedBox(width: Space.sm),
+            Text(
+              widget.powerUnitLabel ?? 'W',
+              style: TextStyle(color: Theme.of(context).colorScheme.onTertiaryContainer),
+            ),
+          ],
+        ),
+      );
+
   Color? _radioStatusColor(ThemeData theme, {required bool selected}) {
     if (!widget.hasConfiguredRadio) return null;
     final dark = theme.brightness == Brightness.dark;
@@ -6601,6 +6806,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       'freq': _freq,
       'band': _band,
       'mode': _mode,
+      // The field owns the QSO's power whenever power is part of the entry
+      // at all ([_powerShown]) — which is what keeps a record's own power
+      // from being dropped by a save that only corrected its RST. Written
+      // unconditionally then, INCLUDING null, exactly as refs/freq/band are
+      // above: this map is merged over the record, so an omitted key leaves
+      // the stored value standing and a wrong power could never be cleared.
+      if (_powerShown) 'power': _powerWatts,
       if (startAtMillis != null) 'startAtMillis': startAtMillis,
       ..._currentQsoExtra,
     };
@@ -6653,6 +6865,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           'label': widget.modeLabel ?? 'Mode',
           'options': [for (final m in modes) {'value': m, 'label': m}],
         },
+        // After the mode, with the rest of what describes the transmission
+        // rather than the station. Only when power is part of this entry:
+        // an operator who never states one has no use for the field.
+        if (_powerShown)
+          {'type': 'field', 'key': 'power', 'fieldType': 'number', 'label': widget.powerLabel ?? 'Power'},
         {'type': 'field', 'key': 'date', 'fieldType': 'text', 'label': widget.dateLabel ?? 'Date'},
         {'type': 'field', 'key': 'time', 'fieldType': 'text', 'label': widget.timeLabel ?? 'Time (UTC)'},
         // Who was at the key, and — only where the operation is run by
@@ -6724,6 +6941,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         'freq': _freq,
         'band': _band ?? '',
         'mode': _mode,
+        'power': _powerWatts,
         'date': _fmtDate(dt),
         'time': _fmtTime(dt),
         'notes': (_currentQsoExtra['notes'] as String?) ?? '',
@@ -6778,6 +6996,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
       _mode = (result['mode'] as String?) ?? _mode;
 
+      // Written even when the pane didn't offer the field: absent means the
+      // form dropped it, and `result` then carries a null this must not read
+      // as the operator clearing a value they were never shown.
+      if (result.containsKey('power')) {
+        final power = result['power'];
+        _powerController.text = power is num ? '$power' : '';
+      }
+
       final dateParts = ((result['date'] as String?) ?? '').split('-');
       final timeParts = ((result['time'] as String?) ?? '').split(':');
       final dateOrTimeEdited = result['date'] != dateBeforePane || result['time'] != timeBeforePane;
@@ -6822,7 +7048,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _seedTimeFields();
     });
     _populating = false;
-    if (widget.editingQso == null) _pushVfoToRadioService();
+    if (widget.editingQso == null) {
+      // Power first: the frequency push notifies, and the seed that follows
+      // rewrites the power field from the VFO — which would put the value
+      // the pane just returned back to whatever it was before the pane
+      // opened, and then commit THAT.
+      _commitPower();
+      _pushVfoToRadioService();
+    }
   }
 
   // ---- Secondary control settings (show/hide + reorder) ----
@@ -6831,7 +7064,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final descriptors = _controlDescriptors();
     final byKey = {for (final d in descriptors) d.key: d};
     var order = _effectiveControlOrder(descriptors);
-    var hidden = Set<String>.from(widget.hiddenControlKeys);
+    // The stored set FIRST, and kept whole: the descriptors are what this
+    // operation offers, so rebuilding the set from them alone would drop a
+    // control hidden while some other activity was running — saving the
+    // dialog here would then un-hide it everywhere. On top of that, the
+    // never-decided default-hidden controls, which must arrive unchecked;
+    // saving is what turns that into a recorded decision.
+    var hidden = {
+      ...widget.hiddenControlKeys,
+      for (final descriptor in descriptors)
+        if (_descriptorHidden(descriptor)) descriptor.key,
+    };
 
     final result = await showHaloDialog<(List<String>, Set<String>)>(
       context: context,
@@ -7332,6 +7575,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _ourExtra.clear();
     _manualStartAtMillis = null;
     _selectedControlKey = null;
+    _clearPowerEntry();
+    // The VFO's power is ambient, not composed — a wipe drops what the entry
+    // stated and goes back to mirroring it, the way the Radio control does.
+    _seedFromRadioService();
     if (focusCall) _callFocus.requestFocus();
     setState(() {
       _commandMessage = null;

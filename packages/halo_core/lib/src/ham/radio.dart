@@ -673,28 +673,38 @@ final RegExp _callsignRegex = RegExp(r'^([A-Z0-9]+/)?'
 /// parsing (prefixes, DXCC, modifiers) is plugin territory.
 bool looksLikeCallsign(String text) => _callsignRegex.hasMatch(text.trim().toUpperCase());
 
-/// A radio's tuned state — `freq`/`mode`/`band` for one of up to 4 VFOs
-/// (`vfoA`..`vfoD`, see `RadioService`). Device-global, not tied to any
+/// A radio's tuned state — `freq`/`mode`/`band`/`power` for one of up to 4
+/// VFOs (`vfoA`..`vfoD`, see `RadioService`). Device-global, not tied to any
 /// one operation: a physical radio is tuned to one frequency regardless of
 /// which operation you're logging into. `band` is only set when `freq` is
 /// null (a manually picked band with no specific frequency).
+///
+/// `power` is transmit power in watts. It rides here rather than in a
+/// concept of its own because it travels with the radio exactly as the
+/// other three do — the operator states it, CAT reports it, and every
+/// surface that shows or logs it (Station Configuration's Power field, the
+/// Power logging control, the power stamped on a QSO) has to agree on one
+/// value.
 class Vfo {
   final double? freq;
   final String? band;
   final String? mode;
+  final num? power;
 
-  const Vfo({this.freq, this.band, this.mode});
+  const Vfo({this.freq, this.band, this.mode, this.power});
 
   factory Vfo.fromJson(Map<String, dynamic> json) => Vfo(
         freq: (json['freq'] as num?)?.toDouble(),
         band: json['band'] as String?,
         mode: json['mode'] as String?,
+        power: json['power'] as num?,
       );
 
   Map<String, dynamic> toJson() => {
         if (freq != null) 'freq': freq,
         if (band != null) 'band': band,
         if (mode != null) 'mode': mode,
+        if (power != null) 'power': power,
       };
 
   /// Value equality so a store can tell a real change from a restatement.
@@ -703,13 +713,13 @@ class Vfo {
   /// change worth notifying every listener and rewriting the prefs for.
   @override
   bool operator ==(Object other) =>
-      other is Vfo && other.freq == freq && other.band == band && other.mode == mode;
+      other is Vfo && other.freq == freq && other.band == band && other.mode == mode && other.power == power;
 
   @override
-  int get hashCode => Object.hash(freq, band, mode);
+  int get hashCode => Object.hash(freq, band, mode, power);
 
   @override
-  String toString() => 'Vfo(freq: $freq, band: $band, mode: $mode)';
+  String toString() => 'Vfo(freq: $freq, band: $band, mode: $mode, power: $power)';
 }
 
 /// What `LoggingControls` (halo_widgets) needs for reading and writing the
@@ -718,9 +728,17 @@ class Vfo {
 /// doesn't need a dependency on the Flutter-only app package.
 abstract class VfoStore {
   Vfo get vfoA;
-  /// `freq`/`band`/`mode` omitted leave that part unchanged. `clearFreq`
-  /// explicitly clears the frequency (keeping the current band, or `band`
-  /// if also given) — distinct from simply omitting `freq`, which is a
-  /// no-op for it rather than a clear.
-  void setVfo(String key, {double? freq, String? band, String? mode, bool clearFreq = false});
+  /// `freq`/`band`/`mode`/`power` omitted leave that part unchanged.
+  /// `clearFreq` explicitly clears the frequency (keeping the current band,
+  /// or `band` if also given) — distinct from simply omitting `freq`, which
+  /// is a no-op for it rather than a clear. `clearPower` is the same
+  /// distinction for [Vfo.power]: an operator who empties the Power field is
+  /// saying they don't know it, which is not the same as not mentioning it.
+  void setVfo(String key,
+      {double? freq,
+      String? band,
+      String? mode,
+      num? power,
+      bool clearFreq = false,
+      bool clearPower = false});
 }

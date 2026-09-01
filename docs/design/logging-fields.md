@@ -28,6 +28,20 @@ act as mutually exclusive tabs. The strip scrolls horizontally, and can be
 expanded to show all controls in multiple rows or collapsed back to a single
 scrolling row to save screen space.
 
+Time and Radio can't be hidden; the rest the operator turns on and off in
+the row's own settings dialog. A control may also ship **off** — Power does,
+since most operators never state one per QSO — and stays out until the
+operator has been asked. Their saved order is what records that they were:
+the dialog writes every key it offered, so a default-hidden key missing from
+the order means "never decided", not "decided against", and no second stored
+set is needed to tell those apart. Power in particular changes what is
+logged: showing it is the operator asking for each QSO to carry the power it
+was worked at, and Station Configuration's "Track Station Info" asks for the
+same thing a different way (`trackingPower`). Either one puts a Power field
+in the More pane after Mode — as does a record that already carries a power,
+whether or not anything is tracking one now, because a value nothing
+displays is a value nothing can correct.
+
 **Information area.** Presents information to the user: details for the
 current callsign, or a summary of operation statistics when no callsign is
 entered. Content usually comes from extensions as markdown and can link to

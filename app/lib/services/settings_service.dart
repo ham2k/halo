@@ -1130,9 +1130,11 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   Future<void> setStationInfoTrackedFields(Set<String> fields) =>
       setSettingValue(stationInfoGroup, 'trackedFields', fields.toList());
 
-  /// The power the operator is currently running, in watts — set from the
-  /// Radio control's quick CAT dialog, since nothing in the app reads it off
-  /// the rig itself. Null means unset, not zero.
+  /// The power the operator was running, in watts, from before power moved
+  /// onto the VFO ([Vfo.power], persisted by `RadioService`). Read once, by
+  /// the migration in `HaLoServices._buildRadioService`, and never written
+  /// again — kept rather than deleted so an upgrade doesn't silently forget
+  /// a stated power. Null means unset, not zero.
   num? get currentPower => settingValue(stationInfoGroup, 'currentPower') as num?;
 
   Future<void> setCurrentPower(num? value) => setSettingValue(stationInfoGroup, 'currentPower', value);

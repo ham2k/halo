@@ -385,6 +385,9 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String deletedEventWarning({required Object kind}) => '${kind} eliminado';
 	@override String get timeControl => 'Hora';
 	@override String get radioControl => 'Radio';
+	@override String get powerControl => 'Potencia';
+	@override String get power => 'Potencia';
+	@override String get powerUnit => 'W';
 	@override String get controlSettings => 'Controles de registro';
 	@override String get expandControls => 'Expandir';
 	@override String get collapseControls => 'Contraer';
@@ -3176,6 +3179,9 @@ extension on TranslationsEs {
 			'loggingControls.deletedEventWarning' => ({required Object kind}) => '${kind} eliminado',
 			'loggingControls.timeControl' => 'Hora',
 			'loggingControls.radioControl' => 'Radio',
+			'loggingControls.powerControl' => 'Potencia',
+			'loggingControls.power' => 'Potencia',
+			'loggingControls.powerUnit' => 'W',
 			'loggingControls.controlSettings' => 'Controles de registro',
 			'loggingControls.expandControls' => 'Expandir',
 			'loggingControls.collapseControls' => 'Contraer',
@@ -3655,11 +3661,11 @@ extension on TranslationsEs {
 			'settings.station.civAddressTroubleshooting' => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio — o ponla en Auto, que simplemente sigue a la aplicación.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.',
 			'settings.station.ic7760PortNote' => '\n- El **IC-7760** usa CI-V en el **Puerto A** de los dos puertos serie USB que presenta.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.x6100PortNote' => '\n- El **X6100** usa CI-V en su puerto **DEV**, el segundo de los dos puertos serie que presenta.',
 			'settings.station.rigctldTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.rigctldTroubleshooting' => 'Esto conecta con un **daemon rigctld que tú mismo ejecutas**, no directamente con la radio — el backend de Hamlib es quien habla con la radio y soporta cientos de modelos.\n\n- **El daemon debe estar ya en ejecución**, p. ej. `rigctld -m 1035 -r /dev/ttyUSB0`. Encuentra el número de modelo de tu radio con `rigctl -l`.\n- **Desde otra máquina**, inícialo con `-T 0.0.0.0` — por defecto rigctld solo acepta conexiones desde la máquina donde corre.\n- **El puerto** es 4532 salvo que hayas iniciado el daemon con `-t`.\n- Una vez conectado, si falta la frecuencia normalmente es que el daemon mismo no puede comunicarse con la radio — pruébalo con `rigctl -m 2 f` en la máquina del daemon.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.flrigTroubleshootingTitle' => 'Si la app no puede conectar',
 			'settings.station.flrigTroubleshooting' => 'Esto se conecta a un **programa flrig que tú mismo ejecutas**, no directamente a la radio — flrig habla con la radio y soporta la mayoría de marcas y modelos.\n\n- **flrig ya debe estar corriendo**, con su transceptor configurado y conectado.\n- **El puerto** es 12345 salvo que lo hayas cambiado en la configuración de flrig (Config → Setup → Server).\n- **Desde otra máquina**, asegúrate de que el servidor de flrig sea alcanzable — escucha en todas las interfaces, pero tu firewall puede no estar de acuerdo.\n- Una vez conectado, si falta la frecuencia normalmente es que flrig no puede hablar con la radio — verifica que la pantalla de flrig siga el dial.',
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',

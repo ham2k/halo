@@ -209,6 +209,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         _onTrack = onTrack,
         _radio = radio {
     _load();
+    _lastSeenVfoPower = _radio?.vfoA.power;
     _radio?.addListener(_onVfoChanged);
   }
 
@@ -353,6 +354,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // outgoing radio stops being told anything, and a movement measured on
       // it says nothing about where the peer's rig is sitting.
       _runtimes[_radio1!]?.lastSent = null;
+      _runtimes[_radio1!]?.lastSentPower = null;
       _cancelSnap(null);
       _radio1 = null;
     }
@@ -374,7 +376,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // outgoing one stops being asked, so a stale value on either would
     // suppress the first tune to a frequency that radio happens to be on.
     for (final id in [_radio1, uuid]) {
-      if (id != null) _runtimes[id]?.lastSent = null;
+      if (id != null) {
+        _runtimes[id]?.lastSent = null;
+        _runtimes[id]?.lastSentPower = null;
+      }
     }
     // Same reasoning for the snapper: a movement measured on the outgoing
     // radio says nothing about where the incoming one is sitting.
@@ -464,34 +469,47 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   EquipmentState stateFor(String uuid) => _runtimes[uuid]?.state ?? const EquipmentState();
 
-  /// [radio1]'s own power reading, when its driver can report one —
-  /// [SettingsService.currentPower] otherwise, the manual fallback for a
-  /// radio that can't report power or isn't connected at all. The one rule
-  /// both power surfaces (Station Configuration's Power field, per-QSO
-  /// station-info capture) show/capture, kept in one place so it can't
-  /// drift between them.
+  /// [radio1]'s own power reading, when its driver can report one — the
+  /// operator's stated power ([Vfo.power]) otherwise, the manual fallback
+  /// for a radio that can't report power or isn't connected at all. The one
+  /// rule every power surface (Station Configuration's Power field, the
+  /// Power logging control, per-QSO station-info capture) shows and
+  /// captures, kept in one place so it can't drift between them.
+  ///
+  /// The pre-VFO home of the manual value, [SettingsService.currentPower],
+  /// is migrated into the VFO at startup (`HaLoServices._buildRadioService`)
+  /// rather than read as a fallback here — a fallback only this getter
+  /// consulted would leave the Power logging control and the More pane, which
+  /// read [Vfo.power] directly, showing nothing while this showed 100.
   num? get displayedPower {
     final uuid = _radio1;
     final live = uuid == null ? null : stateFor(uuid).power;
-    return live ?? _settings.currentPower;
+    return live ?? _radio?.vfoA.power;
   }
 
   /// Pushes [watts] to radio1's session, if it has one and is connected — a
-  /// no-op otherwise. Unlike frequency/mode, which flow through RadioService
-  /// because several surfaces read and write them, power has exactly one UI
-  /// surface today (Station Configuration's compact Power field), so it goes
-  /// straight through here instead of by way of a second app-wide concept.
+  /// no-op otherwise. Like frequency and mode, power reaches this through
+  /// [RadioService] ([_onVfoChanged]): several surfaces read and write it,
+  /// and one app-wide value is what keeps them agreeing.
   void setPower(num watts) {
     final uuid = _radio1;
     if (uuid == null) return;
-    final session = _runtimes[uuid]?.session;
+    final runtime = _runtimes[uuid];
+    final session = runtime?.session;
     // Only a transceiver has RF output to set. radio1 is always one today,
     // so this is a type narrowing rather than a reachable branch — but the
     // designation is a stored uuid, and nothing stops a record naming a
     // switch from being read back into it.
     if (session is! TransceiverSession) return;
+    // The same echo guard [tuneNode] applies, and needed for the same
+    // reason: every VFO notification — a typed frequency, a band pick —
+    // arrives here too, and without this each one re-sends a power command
+    // the radio already obeyed. Recorded only after the command lands, so a
+    // throw doesn't leave a value remembered as delivered.
+    if (runtime!.lastSentPower == watts) return;
     try {
       session.setPower(watts);
+      runtime.lastSentPower = watts;
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:set-power');
     }
@@ -1021,8 +1039,18 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       },
       onPower: (watts) {
         if (runtime.connection != connection) return;
-        if (stateFor(uuid).power == watts) return;
-        _setState(uuid, stateFor(uuid).copyWith(power: watts));
+        // What the radio just said is now what it has been told — the same
+        // echo discipline [_applyReading] keeps for freq/mode.
+        runtime.lastSentPower = watts;
+        if (stateFor(uuid).power != watts) _setState(uuid, stateFor(uuid).copyWith(power: watts));
+        // Only the designated radio drives the app's power, and tagged
+        // `radio` so [_onVfoChanged] doesn't send it straight back. The
+        // baseline moves with it: what the radio reports is where the app
+        // now is, so the next operator change is measured from there.
+        if (uuid == _radio1) {
+          _lastSeenVfoPower = watts;
+          _radio?.setVfo('vfoA', power: watts, origin: VfoOrigin.radio);
+        }
       },
       onProblem: (message) {
         if (runtime.connection != connection) return;
@@ -1480,6 +1508,14 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // the value the snapper already settled on.)
     _cancelSnap(radio.vfoA.freq);
 
+    // The baseline moves here, ahead of the returns below, so it tracks the
+    // app's power whether or not there is a radio to tell. A power stated
+    // while the rig is absent is lost exactly as a frequency typed then is —
+    // and on the next connect the radio's own reading is what both sides
+    // take, rather than a stale value being pushed at it.
+    final powerChanged = radio.vfoA.power != _lastSeenVfoPower;
+    _lastSeenVfoPower = radio.vfoA.power;
+
     final uuid = _radio1;
     if (uuid == null) return;
     if (_runtimes[uuid]?.session == null) {
@@ -1516,7 +1552,25 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
     final vfo = radio.vfoA;
     tuneNode(uuid, VfoReading(freqKHz: vfo.freq, mode: resolveSideband(vfo.mode, vfo.freq, band: vfo.band)));
+    // Only a CHANGE of the app's power is a command to the radio. Every VFO
+    // notification arrives here — a typed frequency, a band pick — and a
+    // remembered power sent on the first of them would re-assert a value
+    // nobody stated this session: on an IC-705 the last thing the app heard
+    // may be a battery-derated READING (`icom_civ_driver`), and pushing that
+    // back would turn a display cap into the rig's actual power. A cleared
+    // power is the operator saying they don't know it, not a command to run
+    // the radio at nothing.
+    if (powerChanged && vfo.power != null) setPower(vfo.power!);
   }
+
+  /// The app's power as this service last saw it — the baseline
+  /// [_onVfoChanged] measures a real change against. Seeded in the
+  /// constructor from what the VFO already holds (NOT lazily: a `late`
+  /// initializer would run on its first read, inside [_onVfoChanged], and
+  /// record the very value it is being asked to compare against), so a
+  /// restored session starts agreed with the VFO rather than treating a
+  /// remembered power as something to send.
+  num? _lastSeenVfoPower;
 
   /// Puts one node's radio on [wanted], echo discipline included.
   ///
@@ -1578,6 +1632,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // previous session happened to be on, leaving the app and a
     // freshly-reconnected radio silently disagreeing.
     runtime.lastSent = null;
+    runtime.lastSentPower = null;
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a
     // fresh resting point, not the continuation of a knob turn. Only for the
@@ -1656,6 +1711,10 @@ class _NodeRuntime {
   /// direction — the echo guard. Without it an app→radio tune and the
   /// radio's confirmation of it keep re-triggering each other.
   VfoReading? lastSent;
+
+  /// [lastSent]'s counterpart for transmit power, which travels on its own
+  /// commands rather than inside a [VfoReading].
+  num? lastSentPower;
 
   /// Per-node, deliberately: two overlapping connects to the SAME node race
   /// to own it, and the loser must not install its connection.

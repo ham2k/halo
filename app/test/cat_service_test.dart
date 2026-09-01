@@ -1320,24 +1320,28 @@ void main() {
       expect(node.uuid, isNotEmpty);
     });
 
-    test('displayedPower prefers the connected radio\'s live reading over the manual fallback', () async {
+    test('displayedPower prefers the connected radio\'s live reading over the stated power', () async {
       final node = await addRadio();
       await connectAndLand(node);
-      await settings.setCurrentPower(50);
+      radio.setVfo('vfoA', power: 50);
       driver.sessions.single.sink.reportPower(75);
 
       expect(cat.displayedPower, 75);
     });
 
-    test('displayedPower falls back to the manual setting with no live reading', () async {
-      await settings.setCurrentPower(50);
+    test('displayedPower falls back to the operator\'s stated power with no live reading', () async {
+      // Vfo.power, not SettingsService.currentPower: the pre-VFO key is
+      // migrated onto the VFO at startup and never read here, or the
+      // surfaces that read Vfo.power directly would show nothing while this
+      // showed 50.
+      radio.setVfo('vfoA', power: 50);
 
       expect(cat.displayedPower, 50);
     });
 
-    test('displayedPower falls back to the manual setting when radio1 is not connected', () async {
+    test('displayedPower falls back to the stated power when radio1 is not connected', () async {
       await addRadio();
-      await settings.setCurrentPower(50);
+      radio.setVfo('vfoA', power: 50);
       // Never connected — no reading has ever landed in stateFor.
 
       expect(cat.displayedPower, 50);

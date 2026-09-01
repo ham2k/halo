@@ -605,17 +605,34 @@ where it is regardless.
 
 ## Power
 
-Unlike frequency/mode, power has exactly one UI surface (Station Configuration's compact Power
-field), so it skips the whole `RadioService`/`VfoOrigin` dance the VFO needs to keep two directions
-from chasing each other. `EquipmentState.power` (a plain `num?` watts, parallel to `vfo`) is set by
-`EquipmentSink.reportPower`, merged into state the same way `_applyReading` merges a `VfoReading`;
-writing goes straight from the field to `CatService.setPower`, which pushes to `radio1`'s session if
-one is connected and no-ops otherwise. The field shows the live reading when there is one and
-`SettingsService.currentPower` — the manual fallback — when there isn't. A second way in: the POWER
-command (`extensions/core/radio-commands`'s `PowerCommand`, e.g. "5W" typed into the call field)
-dispatches the same pair of writes via `main.dart`'s `handleCommandAction` `setPower` case — it has
-no QSO-scoped widget state to touch, unlike BAND/MODE/frequency, so it's dispatched the same way as
-SET/SHOW rather than through the logging panel's local fields. Unlike its BAND/MODE/frequency
+Power travels with the radio exactly as frequency and mode do, and takes the same route:
+`Vfo.power` is the app's one value for it, every surface writes it through
+`RadioService.setVfo('vfoA', power:)`, and `CatService._onVfoChanged` forwards an operator's write to
+`radio1`'s session. There are four such surfaces — Station Configuration's compact Power field, the
+optional Power logging control, the More pane's Power field, and the POWER command (`extensions/core/radio-commands`'s
+`PowerCommand`, e.g. "5W" typed into the call field, dispatched through `main.dart`'s
+`handleCommandAction` `setPower` case because it has no QSO-scoped widget state to touch, unlike
+BAND/MODE/frequency) — and one value is what keeps them agreeing.
+
+Both directions therefore need the same echo discipline the VFO does. `EquipmentState.power` (a
+plain `num?` watts, parallel to `vfo`) is set by `EquipmentSink.reportPower`, which also writes the
+reading to the VFO as `VfoOrigin.radio` so it doesn't come straight back at the radio;
+`_NodeRuntime.lastSentPower` is `lastSent`'s counterpart for the other direction, without which
+every VFO notification — a typed frequency, a band pick — would re-send a power command the radio
+already obeyed. What is displayed is the live reading when there is one and `Vfo.power` when there
+isn't. `SettingsService.currentPower` is the pre-VFO home of the manual value: it is migrated into
+the VFO once, at startup (`HaLoServices._buildRadioService`), and never written again — a fallback
+read inside `displayedPower` instead would leave the surfaces that read `Vfo.power` directly (the
+logging control, the More pane) showing nothing while Station Configuration showed 100.
+
+Only a *change* of `Vfo.power` is a command to the radio (`_lastSeenVfoPower`). Every VFO
+notification reaches `_onVfoChanged`, so sending on each one would re-assert a remembered power
+nobody stated this session — and since a driver's reading rides into the VFO too, an IC-705's
+battery-derated *display* value (`icom_civ_driver`) would come back out as a real RF-power set.
+
+A cleared power (`clearPower: true`) is the operator saying they don't know it, not a command to run
+the radio at nothing: nothing is sent to the rig, and a QSO logged with the field empty carries no
+`power` at all. Unlike its BAND/MODE/frequency
 siblings in the same extension, PowerCommand checks `ctx.enabledExperiments` (docs/extensions/hooks.md)
 and stays invisible while `gato` is off — CAT power control has no surface anywhere else without it.
 

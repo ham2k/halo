@@ -1051,11 +1051,10 @@ class StationPanel extends StatelessWidget {
 
   /// Right after the current rig's row — the quick dialog's one write-in
   /// field among its pickers, though "write-in" undersells it once a rig is
-  /// connected: a commit goes both to [SettingsService.currentPower] (the
-  /// fallback for when nothing is) and straight to the radio via
-  /// [CatService.setPower]. The CAT reading, when there is one, still wins
-  /// on the next external update — this only ever pushes a value, same as
-  /// typing a frequency does.
+  /// connected: a commit goes to the app's VFO ([Vfo.power]), which CAT
+  /// forwards to radio1's session exactly as it forwards a typed frequency.
+  /// The CAT reading, when there is one, still wins on the next external
+  /// update — this only ever pushes a value.
   ///
   /// Sized to 4 digits (no legal amateur power runs to 5) rather than
   /// stretching the row, with "Watts" after it — baseline-aligned with the
@@ -1077,10 +1076,8 @@ class StationPanel extends StatelessWidget {
         wattsLabel: st.watts,
         width: fieldWidth,
         style: style,
-        onCommit: (watts) {
-          unawaited(services.settings.setCurrentPower(watts));
-          if (watts != null) _cat.setPower(watts);
-        },
+        onCommit: (watts) =>
+            services.radio.setVfo('vfoA', power: watts, clearPower: watts == null),
       ),
     );
   }

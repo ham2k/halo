@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The last mile of the POWER command (typing "5W" into the call field or a
-// quick-lookup bar) — the seam between `handleCommandAction` and the two
-// writes its `setPower` case makes, exercised the way
+// quick-lookup bar) — the seam between `handleCommandAction` and the VFO
+// write its `setPower` case makes, exercised the way
 // settings_command_dispatch_test.dart exercises SET/SHOW.
 
 import 'package:drift/native.dart';
@@ -58,9 +58,9 @@ void main() {
     return HaLoServices(db, settings, extensions: _PowerCommandExtensions());
   }
 
-  testWidgets('Enter on a wattage command writes the manual power setting', (tester) async {
+  testWidgets('Enter on a wattage command writes the power to the VFO', (tester) async {
     final services = await buildServices();
-    expect(services.settings.currentPower, isNull);
+    expect(services.radio.vfoA.power, isNull);
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -75,8 +75,14 @@ void main() {
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
 
-    expect(services.settings.currentPower, 5,
-        reason: 'no radio is connected in this test, so CatService.setPower is a no-op — '
-            'the manual fallback setting is the only observable write');
+    // The VFO's own persist debounce, which would otherwise outlive the
+    // widget tree and fail the test on a pending timer.
+    await tester.runAsync(services.radio.flushPendingWrites);
+
+    expect(services.radio.vfoA.power, 5,
+        reason: 'the VFO is where every power surface reads it from; a connected radio '
+            'hears about it from there, through CatService');
+    expect(services.cat.displayedPower, 5,
+        reason: 'no radio is connected in this test, so the VFO is what the app displays');
   });
 }

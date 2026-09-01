@@ -324,6 +324,44 @@ void main() {
       expect(session().commands, contains('mode:USB'));
     });
 
+    test('a power change reaches the radio', () async {
+      await connectedRadio();
+      radio.setVfo('vfoA', power: 25);
+      await pumpEventQueue();
+
+      expect(session().commands, contains('power:25'));
+    });
+
+    test('a remembered power is not re-asserted by an unrelated VFO change', () async {
+      // Every VFO notification reaches _onVfoChanged, so sending power on
+      // each one would push a value nobody stated this session at the rig —
+      // and on an IC-705 the app's remembered value may be a battery-DERATED
+      // reading, which would then become the radio's actual power.
+      radio.setVfo('vfoA', power: 5);
+      await connectedRadio();
+
+      radio.setVfo('vfoA', freq: 14074, mode: 'USB');
+      await pumpEventQueue();
+
+      expect(session().commands, contains('freq:14074.0'));
+      expect(session().commands.any((c) => c.startsWith('power:')), isFalse);
+    });
+
+    test("a radio's own power report is not sent back to it", () async {
+      await connectedRadio();
+      session().sink.reportPower(5);
+      await pumpEventQueue();
+
+      expect(radio.vfoA.power, 5, reason: "the app follows the radio's reading");
+      expect(session().commands.any((c) => c.startsWith('power:')), isFalse);
+
+      // ...and it becomes the baseline: the operator asking for that same
+      // power is not a change, while a different one still is.
+      radio.setVfo('vfoA', power: 100);
+      await pumpEventQueue();
+      expect(session().commands, contains('power:100'));
+    });
+
     test('SSB is resolved to a real sideband before the driver sees it', () async {
       await connectedRadio();
 

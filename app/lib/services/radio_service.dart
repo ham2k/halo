@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Keeps VFO state — freq/band/mode for up to 4 VFOs (`vfoA`..`vfoD`,
+// Keeps VFO state — freq/band/mode/power for up to 4 VFOs (`vfoA`..`vfoD`,
 // though only `vfoA` is wired up today). This tracks the radio(s) in use,
 // not any one operation: a physical radio is tuned to one frequency
 // regardless of which operation you're logging into, so this is device-
@@ -67,8 +67,8 @@ class RadioService extends ChangeNotifier implements VfoStore {
   /// Updates one VFO (`'vfoA'`..`'vfoD'`) and persists the change. Matches
   /// the `setVfo` command action's convention: passing `freq` replaces the
   /// band with the one derived from it; passing `band` without `freq`
-  /// clears the frequency (a manually picked band); `mode` is independent
-  /// of the two. Omitted parameters leave that part of the VFO unchanged —
+  /// clears the frequency (a manually picked band); `mode` and `power` are
+  /// independent of the two. Omitted parameters leave that part of the VFO unchanged —
   /// `clearFreq` is the explicit way to clear it without also implying a
   /// `band`.
   /// [origin] says who moved it — see [VfoOrigin]. It's an extra optional
@@ -80,16 +80,21 @@ class RadioService extends ChangeNotifier implements VfoStore {
       {double? freq,
       String? band,
       String? mode,
+      num? power,
       bool clearFreq = false,
+      bool clearPower = false,
       VfoOrigin origin = VfoOrigin.user}) {
     final current = _vfos[key] ?? const Vfo();
+    // Independent of the freq/band/mode arithmetic below, like `mode`: a
+    // power change says nothing about where the radio is tuned.
+    final newPower = clearPower ? null : (power ?? current.power);
     final Vfo updated;
     if (freq != null) {
-      updated = Vfo(freq: freq, band: bandForFrequency(freq), mode: mode ?? current.mode);
+      updated = Vfo(freq: freq, band: bandForFrequency(freq), mode: mode ?? current.mode, power: newPower);
     } else if (band != null || clearFreq) {
-      updated = Vfo(freq: null, band: band ?? current.band, mode: mode ?? current.mode);
+      updated = Vfo(freq: null, band: band ?? current.band, mode: mode ?? current.mode, power: newPower);
     } else {
-      updated = Vfo(freq: current.freq, band: current.band, mode: mode ?? current.mode);
+      updated = Vfo(freq: current.freq, band: current.band, mode: mode ?? current.mode, power: newPower);
     }
     // A radio restating what it already reported is not a change. Without
     // this, every status push and every periodic resync would notify every

@@ -1,9 +1,13 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -13,6 +17,48 @@ void main() {
   setUp(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
+  });
+
+  test('power carries the operator\'s stated watts, independent of the tuning', () {
+    final radio = RadioService(prefs);
+    radio.setVfo('vfoA', power: 5);
+    radio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+
+    expect(radio.vfoA.power, 5, reason: 'a retune says nothing about power');
+    radio.setVfo('vfoA', clearPower: true);
+    expect(radio.vfoA.power, isNull, reason: 'clearing is explicit — omitting means unchanged');
+    expect(radio.vfoA.freq, 14285, reason: 'and it says nothing about the tuning either');
+  });
+
+  group("the operator's pre-VFO power", () {
+    // Power used to live in SettingsService.currentPower. Dropping the key
+    // on upgrade would silently reset a stated power; reading it as a
+    // fallback in CatService.displayedPower would leave the surfaces that
+    // read Vfo.power directly (the logging control, the More pane) showing
+    // nothing while Station Configuration showed it. So it migrates once.
+    Future<HaLoServices> services() async {
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final db = HaLoDatabase(NativeDatabase.memory());
+      addTearDown(db.close);
+      return HaLoServices(db, settings);
+    }
+
+    test('moves onto the VFO at startup', () async {
+      await (await services()).settings.setCurrentPower(100);
+
+      final restarted = await services();
+      expect(restarted.radio.vfoA.power, 100);
+      expect(restarted.cat.displayedPower, 100, reason: 'and every surface reads it from there');
+    });
+
+    test('never overwrites a power the VFO already carries', () async {
+      final first = await services();
+      await first.settings.setCurrentPower(100);
+      first.radio.setVfo('vfoA', power: 5);
+      await first.radio.flushPendingWrites();
+
+      expect((await services()).radio.vfoA.power, 5);
+    });
   });
 
   test('vfoA is empty with nothing persisted yet', () {

@@ -28,6 +28,10 @@ void main() {
     services = HaLoServices(db, settings);
   });
 
+  // The VFO's persist debounce, which a Power commit arms and which would
+  // otherwise outlive the widget tree and fail the test on a pending timer.
+  Future<void> settleVfoWrite(WidgetTester tester) => tester.runAsync(services.radio.flushPendingWrites);
+
   Widget wrap(Widget child) => TranslationProvider(
         child: MaterialApp(home: Scaffold(body: child)),
       );
@@ -61,18 +65,19 @@ void main() {
     expect(find.text('No equipment configured'), findsNothing, reason: 'compact mode never shows this message');
   });
 
-  testWidgets('Power field persists to SettingsService.currentPower on submit', (tester) async {
+  testWidgets('Power field persists to the VFO on submit', (tester) async {
     await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
     await tester.pumpAndSettle();
 
-    expect(services.settings.currentPower, isNull);
+    expect(services.radio.vfoA.power, isNull);
     expect(find.text('Watts'), findsOneWidget, reason: 'unit label after the field');
     await tester.enterText(find.widgetWithText(TextFormField, 'Power'), '100');
-    expect(services.settings.currentPower, isNull, reason: 'not committed until submit');
+    expect(services.radio.vfoA.power, isNull, reason: 'not committed until submit');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
+    await settleVfoWrite(tester);
 
-    expect(services.settings.currentPower, 100);
+    expect(services.radio.vfoA.power, 100);
   });
 
   testWidgets('Power field commits on losing focus, not just on submit', (tester) async {
@@ -82,8 +87,9 @@ void main() {
     await tester.enterText(find.widgetWithText(TextFormField, 'Power'), '50');
     FocusManager.instance.primaryFocus?.unfocus();
     await tester.pumpAndSettle();
+    await settleVfoWrite(tester);
 
-    expect(services.settings.currentPower, 50);
+    expect(services.radio.vfoA.power, 50);
   });
 
   testWidgets('typing does not rebuild the field mid-entry (no per-keystroke remount)', (tester) async {
@@ -97,12 +103,13 @@ void main() {
     // pushed '1' to settings already and swapped in a fresh Element/
     // FocusNode — losing focus after the first digit. Still focused here
     // means the rest of a multi-digit value can land in the same field.
-    expect(services.settings.currentPower, isNull);
+    expect(services.radio.vfoA.power, isNull);
     await tester.enterText(field, '15');
     await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pumpAndSettle();
+    await settleVfoWrite(tester);
 
-    expect(services.settings.currentPower, 15);
+    expect(services.radio.vfoA.power, 15);
   });
 
   testWidgets('footer: More Settings fires the callback, Done pops the pane', (tester) async {

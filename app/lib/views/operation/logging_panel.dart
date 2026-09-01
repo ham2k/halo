@@ -202,6 +202,22 @@ class _LoggingPanelState extends State<LoggingPanel> {
   // band) don't flip this boolean.
   late bool _needsBandOrMode = _computeNeedsBandOrMode();
 
+  // Whether every saved QSO gets the current power stamped on it
+  // (_withStationInfo). The logging controls need this to know that power is
+  // being logged even with the Power control out of the row — and it can
+  // flip while this panel is alive, from the Radio control's own quick
+  // Station Configuration dialog.
+  late bool _trackingPower = _computeTrackingPower();
+
+  bool _computeTrackingPower() {
+    // The same gate _withStationInfo opens with: with the experiment off it
+    // captures nothing, so claiming power is tracked would put the field in
+    // front of the operator and stamp QSOs the capture path never runs for.
+    if (!_gatoEnabled) return false;
+    final settings = widget.services.settings;
+    return settings.trackStationInfo && settings.stationInfoTrackedFields.contains('power');
+  }
+
   bool _computeNeedsBandOrMode() {
     final vfo = widget.services.radio.vfoA;
     return (vfo.freq == null && vfo.band == null) || vfo.mode == null;
@@ -271,7 +287,12 @@ class _LoggingPanelState extends State<LoggingPanel> {
       final name = nameFor(cat.radio1);
       if (name != null) our['rig'] = name;
     }
-    if (tracked.contains('power')) {
+    // Never over a power the entry already states — the Power control's
+    // field, the More pane, or the record's own value. Ambient capture fills
+    // a gap; it does not correct the operator, and on a saved edit it would
+    // otherwise rewrite what a contact was actually worked at with whatever
+    // the rig is set to today.
+    if (tracked.contains('power') && qso['power'] == null) {
       power = cat.displayedPower;
     }
     if (tracked.contains('antenna')) {
@@ -596,6 +617,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
       setState(() => _gatoEnabled = gato);
       _onCatChanged();
     }
+    final trackingPower = _computeTrackingPower();
+    if (trackingPower != _trackingPower) setState(() => _trackingPower = trackingPower);
     if (s.showNumbersRow != _showNumbersRow ||
         s.showExtraInNumbersRow != _showExtraInNumbersRow ||
         s.vibrateNumbersRow != _vibrateNumbersRow ||
@@ -860,6 +883,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
             vibrateNumbersRow: _vibrateNumbersRow,
             timeControlLabel: context.t.loggingControls.timeControl,
             radioControlLabel: context.t.loggingControls.radioControl,
+            powerControlLabel: context.t.loggingControls.powerControl,
+            powerLabel: context.t.loggingControls.power,
+            powerUnitLabel: context.t.loggingControls.powerUnit,
+            trackingPower: _trackingPower,
             controlSettingsTitle: context.t.loggingControls.controlSettings,
             expandControlsLabel: context.t.loggingControls.expandControls,
             collapseControlsLabel: context.t.loggingControls.collapseControls,

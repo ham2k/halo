@@ -59,7 +59,9 @@ void main() {
     await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Test Radio');
     await services.cat.addNode(typeKey: antennaModel.variants.first.key, name: 'Dipole');
     await services.cat.addNode(typeKey: keyModel.variants.first.key, name: 'Bug');
-    await services.settings.setCurrentPower(100);
+    services.radio.setVfo('vfoA', power: 100);
+    // The VFO's persist debounce, which would otherwise outlive the tree.
+    await tester.runAsync(services.radio.flushPendingWrites);
     await services.settings.setTrackStationInfo(true);
     await services.settings.setStationInfoTrackedFields({'rig', 'antenna', 'power'});
 
@@ -77,6 +79,26 @@ void main() {
     expect(result['our']['call'], 'N0CALL', reason: 'existing our fields must survive the merge');
     expect(result['our'].containsKey('key'), isFalse, reason: 'key was not in stationInfoTrackedFields');
     expect(result['their']['call'], 'W1AW');
+  });
+
+  testWidgets('never captures over a power the QSO already states', (tester) async {
+    // The entry's own power — typed into the Power control, corrected in the
+    // More pane, or carried by the record being edited — is the operator
+    // speaking. Ambient capture fills a gap; without this guard, saving a
+    // correction to an old QSO would rewrite the power it was worked at with
+    // whatever the rig is set to today.
+    services.radio.setVfo('vfoA', power: 100);
+    // The VFO's persist debounce, which would otherwise outlive the tree.
+    await tester.runAsync(services.radio.flushPendingWrites);
+    await services.settings.setTrackStationInfo(true);
+    await services.settings.setStationInfoTrackedFields({'power'});
+
+    await tester.pumpWidget(wrap(panel()));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    final result = await decorate(tester, {'our': {}, 'power': 5});
+
+    expect(result['power'], 5);
   });
 
   testWidgets('does not capture power when unset, even if tracked', (tester) async {

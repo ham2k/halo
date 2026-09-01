@@ -1656,7 +1656,20 @@ class HaLoServices {
     }
     return (eligible: eligibleUuids.length, removed: removedCount);
   }
-  late final RadioService radio = RadioService(settings.prefs);
+  late final RadioService radio = _buildRadioService();
+
+  /// The VFO store, with the one-time migration of the operator's stated
+  /// power into it. Power used to live in `SettingsService.currentPower`
+  /// (Station Configuration's field wrote it); it now rides on the VFO with
+  /// frequency and mode, where every surface reads it. The old key is left
+  /// where it is rather than deleted — nothing writes it any more, and it is
+  /// the only record of the value for an operator who hasn't set one since.
+  RadioService _buildRadioService() {
+    final service = RadioService(settings.prefs);
+    final legacy = settings.currentPower;
+    if (service.vfoA.power == null && legacy != null) service.setVfo('vfoA', power: legacy);
+    return service;
+  }
   // Station equipment and CAT control, behind the `cat` experiment
   // (docs/design/cat.md). Lazy: nothing connects until the user asks it to
   // from Settings → Station Configuration, so this costs nothing while the
@@ -2815,15 +2828,15 @@ class HaLoServices {
       case 'updateOperation':
         return _updateOperation(params ?? const {});
       case 'setPower':
-        // POWER command (e.g. "5W" typed into the call field): same pair of
-        // writes as the Station Configuration Power field's own onCommit —
-        // the manual fallback setting, and radio1's session if one is
-        // connected. Returns null on success for the same reason as
-        // updateSetting: the hook's own confirm already told the operator.
+        // POWER command (e.g. "5W" typed into the call field): the same
+        // write the Station Configuration Power field and the Power logging
+        // control make — the app's VFO, which CAT forwards to radio1's
+        // session if one is connected. Returns null on success for the same
+        // reason as updateSetting: the hook's own confirm already told the
+        // operator.
         final watts = params?['watts'] as num?;
         if (watts == null) return null;
-        unawaited(settings.setCurrentPower(watts));
-        cat.setPower(watts);
+        radio.setVfo('vfoA', power: watts);
         return null;
       case 'openSettings':
         // The setting can't be typed on one line (multiselect, account,
