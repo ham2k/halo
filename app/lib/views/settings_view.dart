@@ -1340,8 +1340,11 @@ class _SyncPanelState extends State<_SyncPanel> {
   bool _loadingSyncAccount = false;
   int? _localOperationCount;
   int? _localQsoCount;
+  int? _pendingOperationCount;
+  int? _pendingQsoCount;
 
   Timer? _accountPollTimer;
+  Timer? _localCountsTimer;
   StreamSubscription<PusherEvent>? _accountEvents;
 
   /// The account's Pusher channel, known only once account data has landed
@@ -1382,6 +1385,20 @@ class _SyncPanelState extends State<_SyncPanel> {
         (Object error) => debugPrint('[sync-panel] background refresh failed: $error'),
       )),
     );
+    // On its own cadence, never the account poll's: these are three counts
+    // against the local database with no network in them, while that poll
+    // drops to a minute precisely to spare the server. Tying them together
+    // would leave "Waiting to upload" announcing a backlog for up to a
+    // minute after it finished draining — and a number that lags the thing
+    // it exists to track is worse than no number, because it is read as
+    // "still stuck".
+    _localCountsTimer?.cancel();
+    _localCountsTimer = Timer.periodic(
+      syncAccountPollWithoutRealtime,
+      (_) => unawaited(_refreshLocalCounts().catchError(
+        (Object error) => debugPrint('[sync-panel] local count refresh failed: $error'),
+      )),
+    );
     _accountEvents ??= widget.services.pusher?.events.listen((event) {
       // Anything the server says about THIS account: a device asking to
       // join, or the account itself changing (an email confirmed from the
@@ -1395,6 +1412,8 @@ class _SyncPanelState extends State<_SyncPanel> {
   void _stopWatchingAccount() {
     _accountPollTimer?.cancel();
     _accountPollTimer = null;
+    _localCountsTimer?.cancel();
+    _localCountsTimer = null;
     _accountEvents?.cancel();
     _accountEvents = null;
     final channel = _accountChannel;
@@ -1424,6 +1443,29 @@ class _SyncPanelState extends State<_SyncPanel> {
     if (_accountPollTimer != null) _startWatchingAccount();
   }
 
+  /// The four numbers that come from this device's own database — no network,
+  /// so this runs on its own short cadence rather than the account poll's.
+  Future<void> _refreshLocalCounts() async {
+    final operations = await widget.services.operations.syncCounts();
+    final qsos = await widget.services.qsos.syncCounts();
+    // NOT the `pending` either of those reports, which counts every dirty ROW
+    // — tombstones and event markers included — because it answers the sync
+    // loop's "anything to push?". The pending line sits directly under one
+    // counting what the device HOLDS, and two numbers on one row counting
+    // different things is how a panel teaches an operator to distrust it: a
+    // handful of offline deletions would put the pending figure above the
+    // total.
+    final pendingQsos = await widget.services.qsos.unsyncedContactCount();
+    final pendingOperations = await widget.services.operations.unsyncedOperationCount();
+    if (!mounted) return;
+    setState(() {
+      _localOperationCount = operations.total;
+      _localQsoCount = qsos.total;
+      _pendingOperationCount = pendingOperations;
+      _pendingQsoCount = pendingQsos;
+    });
+  }
+
   /// The local counts are two fast database queries and must not wait on the
   /// account fetch's network round-trip — offline, that request can take its
   /// full timeout to fail, and the operator's own numbers are knowable the
@@ -1439,13 +1481,8 @@ class _SyncPanelState extends State<_SyncPanel> {
   Future<void> _refreshSyncAccount({bool quiet = false}) async {
     if (!mounted) return;
     if (!quiet) setState(() => _loadingSyncAccount = true);
-    final operations = await widget.services.operations.syncCounts();
-    final qsos = await widget.services.qsos.syncCounts();
+    await _refreshLocalCounts();
     if (!mounted) return;
-    setState(() {
-      _localOperationCount = operations.total;
-      _localQsoCount = qsos.total;
-    });
     try {
       final account = await widget.services.extensions.syncAccountData();
       if (!mounted) return;
@@ -1680,6 +1717,25 @@ class _SyncPanelState extends State<_SyncPanel> {
     return _countsLine(t.settings.syncPanel.countsLocal, operations, qsos);
   }
 
+  /// What this device still owes the server, or null when it owes nothing —
+  /// the row above states two totals and nothing else, so a device holding a
+  /// large backlog (an ADIF import made while the app was not running long
+  /// enough to drain it) reads exactly like an idle one whose numbers happen
+  /// to differ. Only the sides with something waiting are named: "0
+  /// operations" is not news, and padding the line with it buries the half
+  /// that is.
+  String? get _pendingCountsLine {
+    final operations = _pendingOperationCount, qsos = _pendingQsoCount;
+    if (operations == null || qsos == null) return null;
+    if (operations == 0 && qsos == 0) return null;
+    final items = [
+      if (qsos > 0) t.settings.syncPanel.countQsos(count: qsos, n: formatNumber(qsos)),
+      if (operations > 0)
+        t.settings.syncPanel.countOperations(count: operations, n: formatNumber(operations)),
+    ];
+    return t.settings.syncPanel.countsPending(items: items.join(' · '));
+  }
+
   /// Null when the server did not report BOTH counts — no account payload
   /// yet, or one that predates these fields. Either alone is not enough:
   /// substituting 0 for the missing half would read as the account having
@@ -1779,6 +1835,7 @@ class _SyncPanelState extends State<_SyncPanel> {
                   children: [
                     Text(_localCountsLine ?? context.t.settings.syncPanel.countsLocalChecking),
                     Text(_serverCountsText),
+                    if (_pendingCountsLine case final pending?) Text(pending),
                   ],
                 ),
               ),

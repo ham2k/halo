@@ -841,7 +841,17 @@ class SyncEngine {
             {
               ...q.data,
               'uuid': q.uuid,
-              'operation': q.operationUuid,
+              // `null`, never the local `''`, for a contact that belongs to no
+              // operation (an ADIF import into the general log). Null is the
+              // server's own shape for one: it drops a null operation from a
+              // batch's lookup list, while `''` is taken for a uuid it has
+              // never seen and sends it down the create-the-missing-operation
+              // path — which then fails that operation's `uuid` presence
+              // validation. The contact still lands (the failed parent leaves
+              // the foreign key null rather than aborting the write), so this
+              // is contract rather than repair, but every batch of loose
+              // contacts otherwise costs a doomed write it never reports.
+              'operation': q.operationUuid.isEmpty ? null : q.operationUuid,
               if (q.deleted) 'deleted': true,
               if (q.purged) 'purged': true,
             },

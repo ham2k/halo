@@ -470,6 +470,23 @@ class OperationsRepository {
     );
   }
 
+  /// The operations side of `QsosRepository.unsyncedContactCount` — what this
+  /// device still owes the server, counting only operations it still HOLDS.
+  ///
+  /// Distinct from [syncCounts]'s `pending`, which counts every dirty row
+  /// including tombstones because it answers the sync loop's "anything to
+  /// push?". An operator reading "N operations waiting to upload" beside a
+  /// total that excludes deleted ones would see the pending figure overtake
+  /// the total after a few offline deletions, which is not a thing that can
+  /// be true.
+  Future<int> unsyncedOperationCount() async {
+    final count = db.operations.uuid.count();
+    final query = db.selectOnly(db.operations)
+      ..addColumns([count])
+      ..where(db.operations.synced.equals(false) & db.operations.deleted.equals(false));
+    return (await query.getSingle()).read(count) ?? 0;
+  }
+
   /// The revision stamp a repaired record goes back out under: this device's
   /// real clock, but never below the stamp it is rejecting. A sender whose
   /// clock runs ahead would otherwise get a repair that compares OLDER than
@@ -1359,8 +1376,8 @@ class QsosRepository {
   ///
   /// Filtered in Dart, not SQL: [isTestCall] matches `/`-separated SEGMENTS,
   /// which no LIKE pattern expresses, and the set being scanned is contacts
-  /// with no operation at all — bounded by what this device authored loose,
-  /// not by the size of the log.
+  /// with no operation at all — every loose contact on the account, since sync
+  /// carries them between devices, but still not the size of the log.
   Future<List<Qso>> testQsosWithoutOperation() async {
     final rows = await (db.select(db.qsos)
           ..where((q) => q.operation.equals('') & q.purged.equals(false)))
@@ -1810,7 +1827,19 @@ class QsosRepository {
 
       for (final incoming in qsos) {
         final uuid = asQsonString(incoming['uuid']);
-        final operationUuid = asQsonString(incoming['operation']);
+        // A null or absent operation is a contact that belongs to none — the
+        // server's own shape for one (`QSO#sync_data_attributes` writes
+        // `operation&.uuid`), and what it returns for every loose contact this
+        // device pushes. It maps onto the local `''`. Skipping those records
+        // makes the loose half of a log a one-way trip: it uploads, the server
+        // stores it, and no device ever gets it back.
+        //
+        // A PRESENT operation of the wrong type is a different thing and still
+        // fails closed: it names an operation whose uuid this cannot read, so
+        // filing the record as loose would silently detach a contact from the
+        // operation it belongs to.
+        final rawOperation = incoming['operation'];
+        final operationUuid = rawOperation == null ? '' : asQsonString(rawOperation);
         if (uuid == null || operationUuid == null) continue;
 
         final data = Map<String, dynamic>.from(incoming)..remove('operation');
@@ -1844,7 +1873,16 @@ class QsosRepository {
               _companionFor(qso, 'qsos:mergeFromSync')
                   .copyWith(synced: const Value(true), deleted: Value(deleted), purged: Value(purged)),
             );
-        affectedOperations.add(operationUuid);
+        // `''` names no operation, so there are no counters to refresh.
+        if (operationUuid.isNotEmpty) affectedOperations.add(operationUuid);
+        // The operation the record LEAVES, when the inbound copy moves it —
+        // into another operation, or (now that a null operation is honoured)
+        // out into the general log. Its cached `qsoCount` and start/end
+        // bounds are columns, recomputed only by an explicit refresh, so
+        // without this they keep counting a contact that is no longer there.
+        if (existing != null && existing.operation != operationUuid && existing.operation.isNotEmpty) {
+          affectedOperations.add(existing.operation);
+        }
       }
       for (final operationUuid in affectedOperations) {
         await refreshOperationCounters(operationUuid);
@@ -1874,6 +1912,11 @@ class QsosRepository {
 
       for (final incoming in qsos) {
         final uuid = asQsonString(incoming['uuid']);
+        // Deliberately NOT [mergeFromSync]'s mapping of a null operation onto
+        // the local `''`: peer sharing is scoped to one operation, and
+        // `PeerOutbox` only ever emits rows carrying that uuid — so a peer
+        // record naming no operation is a malformed frame, not a loose
+        // contact, and belongs on the floor.
         final operationUuid = asQsonString(incoming['operation']);
         if (uuid == null || operationUuid == null) continue;
 

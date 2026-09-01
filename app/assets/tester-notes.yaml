@@ -10,6 +10,7 @@ upcoming:
     - "Edit QSO can now set the operator, and the position at a multi-station"
     - "New optional Power control in the logging row: turn it on to log the watts of each QSO"
     - "Add a Generic Placeholder Radio to log with no rig connected"
+    - "Sync settings now names what is still waiting to upload, instead of only two totals"
 
 "158":
   changes:

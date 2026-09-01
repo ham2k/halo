@@ -1069,6 +1069,7 @@
       },
       "counts": "Datos Sincronizados",
       "countsLocal": "Este dispositivo: ${qsos} · ${operations}",
+      "countsPending": "Pendiente de subir: ${items}",
       "countsServer": "Servidor: ${qsos} · ${operations}",
       "countsLocalChecking": "Este dispositivo: comprobando…",
       "countsServerChecking": "Servidor: comprobando…",

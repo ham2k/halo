@@ -1069,6 +1069,7 @@
       },
       "counts": "Synced Data",
       "countsLocal": "This device: ${qsos} · ${operations}",
+      "countsPending": "Waiting to upload: ${items}",
       "countsServer": "Server: ${qsos} · ${operations}",
       "countsLocalChecking": "This device: checking…",
       "countsServerChecking": "Server: checking…",

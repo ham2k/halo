@@ -3315,6 +3315,9 @@ class Translations$settings$syncPanel$en {
 	/// en: 'This device: ${qsos} · ${operations}'
 	String countsLocal({required Object qsos, required Object operations}) => 'This device: ${qsos} · ${operations}';
 
+	/// en: 'Waiting to upload: ${items}'
+	String countsPending({required Object items}) => 'Waiting to upload: ${items}';
+
 	/// en: 'Server: ${qsos} · ${operations}'
 	String countsServer({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}';
 
@@ -6373,6 +6376,7 @@ extension on Translations {
 			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
 			'settings.syncPanel.counts' => 'Synced Data',
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'This device: ${qsos} · ${operations}',
+			'settings.syncPanel.countsPending' => ({required Object items}) => 'Waiting to upload: ${items}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}',
 			'settings.syncPanel.countsLocalChecking' => 'This device: checking…',
 			'settings.syncPanel.countsServerChecking' => 'Server: checking…',
@@ -6539,9 +6543,9 @@ extension on Translations {
 			'settings.station.keyInUse' => 'Key in Use',
 			'settings.station.noneSelected' => 'None',
 			'settings.station.moreSettings' => 'More Settings',
-			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
 			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.',
 			'settings.station.civAddressTroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.civAddressTroubleshooting' => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE — or set the radio to Auto, which simply follows this app.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',

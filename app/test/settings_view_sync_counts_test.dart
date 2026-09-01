@@ -122,6 +122,44 @@ void main() {
     expect(find.text('This device: 1 QSO · 1 operation'), findsOneWidget);
   });
 
+  testWidgets('a backlog waiting to upload is named, not left to be inferred from two totals', (tester) async {
+    // Two totals that differ is not a statement about pending work — a device
+    // holding a large import reads exactly like an idle one whose numbers
+    // happen to disagree, which is how a 20,000-QSO backlog goes unnoticed
+    // while the operator watches the row that should have shown it.
+    final services = await makeServices(null);
+    addTearDown(services.db.close);
+
+    await seed(services);
+    await openSyncPanel(tester, services);
+
+    // Contacts and held operations, not dirty rows. The seed leaves a QSO
+    // tombstone, a start marker and a deleted operation all pending a push,
+    // and counting any of them here would put this line above the totals it
+    // sits under — the seeded log HAS one operation and 2 QSOs, so "waiting"
+    // can never exceed that.
+    expect(find.text('Waiting to upload: 2 QSOs · 1 operation'), findsOneWidget);
+    expect(find.text('This device: 2 QSOs · 1 operation'), findsOneWidget);
+  });
+
+  testWidgets('nothing pending says nothing at all', (tester) async {
+    // The other half of the rule. A line reading "0 QSOs" on an idle device
+    // is a permanent fixture that means nothing, and a row that always says
+    // something stops being read at all.
+    final services = await makeServices(null);
+    addTearDown(services.db.close);
+
+    await seed(services);
+    final operations = OperationsRepository(services.db);
+    final qsos = QsosRepository(services.db);
+    await operations.markSynced(await operations.unsyncedBatch(1000));
+    await qsos.markSynced(await qsos.unsyncedBatch(1000));
+
+    await openSyncPanel(tester, services);
+
+    expect(find.textContaining('Waiting to upload'), findsNothing);
+  });
+
   testWidgets('the server count comes from the account payload', (tester) async {
     final services = await makeServices({
       'current_account': {'uuid': 'acct-1', 'email': 'me@example.com'},

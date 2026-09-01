@@ -512,6 +512,35 @@ void main() {
       expect(await qsos.hasUnsynced(), isFalse);
     });
 
+    test('a record moving out of an operation leaves no stale count behind', () async {
+      // `qsoCount` and the start/end bounds are cached COLUMNS, recomputed
+      // only by an explicit refresh — so refreshing just the operation a
+      // merged record arrives in leaves the one it left counting a contact
+      // that is no longer there. Reachable now that a null operation is
+      // honoured: an inbound copy can move a contact out into the general
+      // log, where there is no destination operation to refresh at all.
+      final op = await operations.create(stationCall: 'KI2D');
+      final staying = await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      final leaving = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}});
+      await qsos.refreshOperationCounters(op.uuid);
+      expect((await operations.byUuids([op.uuid])).single.qsoCount, 2);
+
+      await qsos.mergeFromSync([
+        {
+          'uuid': leaving.uuid,
+          'operation': null,
+          'their': {'call': 'K2ABC'},
+          'updatedAtMillis': leaving.updatedAtMillis! + 1000,
+          'syncedAtMillis': 1,
+        },
+      ]);
+
+      expect((await qsos.get(leaving.uuid))!.operationUuid, '');
+      expect((await operations.byUuids([op.uuid])).single.qsoCount, 1,
+          reason: 'the operation it left must stop counting it');
+      expect((await qsos.watchForOperation(op.uuid).first).map((q) => q.uuid), [staying.uuid]);
+    });
+
     test('a wrong-typed inbound record commits its round instead of retrying forever', () async {
       // The failure this exists to catch is NOT "one QSO renders wrong".
       // `mode` is an indexed column, so it is read by `_companionFor` INSIDE

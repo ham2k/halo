@@ -202,6 +202,61 @@ void main() {
     expect(merged.map((q) => q.theirCall), containsAll(['W1AW', 'N1MM']));
   });
 
+  test('a contact belonging to no operation pushes as a null operation and comes back', () async {
+    // The inbound half is what an ADIF import into the general log rests on:
+    // the server accepts a loose contact and hands it back with a null
+    // operation, so a merge that skips that shape keeps the contact off every
+    // device, the sender's own included, however well the upload worked. Both
+    // directions are asserted together because they are one contract: pushing
+    // null while refusing to merge null back makes the loose half of a log a
+    // one-way trip.
+    await qsos.writeBatch(operationUuid: '', inserts: [
+      {'their': {'call': 'W1AW'}, 'startAtMillis': 1000},
+    ]);
+
+    Map<String, dynamic>? sent;
+    transport.responder = (method, args) {
+      sent = ((args['qsos'] as List).cast<Map>().single).cast<String, dynamic>();
+      return {
+        'qsos': [
+          {'uuid': 'inbound-loose', 'operation': null, 'their': {'call': 'N1MM'}, 'startAtMillis': 2000},
+        ],
+        'account': {'uuid': 'acct-1'},
+      };
+    };
+
+    await engine.runOneRound();
+
+    expect(sent, isNotNull);
+    expect(sent!.containsKey('operation'), isTrue, reason: 'the key must be present, just null');
+    expect(sent!['operation'], isNull);
+    expect(await qsos.hasUnsynced(), isFalse);
+
+    final inbound = await qsos.get('inbound-loose');
+    expect(inbound, isNotNull, reason: 'a loose contact from the server must land, not be skipped');
+    expect(inbound!.operationUuid, '');
+  });
+
+  test('an operation that is present but not a string is refused, not filed as loose', () async {
+    // The other edge of the same rule. Absent and null both mean "belongs to
+    // no operation", but a wrong-typed value NAMES one — it just cannot be
+    // read — so treating it as loose would silently detach a contact from the
+    // operation it belongs to, with nothing to show it ever happened.
+    transport.responder = (method, args) => {
+          'qsos': [
+            {'uuid': 'inbound-typed', 'operation': 42, 'their': {'call': 'N1MM'}, 'startAtMillis': 2000},
+            {'uuid': 'inbound-absent', 'their': {'call': 'W1AW'}, 'startAtMillis': 3000},
+          ],
+          'account': {'uuid': 'acct-1'},
+        };
+
+    await engine.runOneRound();
+
+    expect(await qsos.get('inbound-typed'), isNull);
+    // An absent key is the same statement as an explicit null, and must land.
+    expect((await qsos.get('inbound-absent'))?.operationUuid, '');
+  });
+
   test('a failing round reports the error via onError, in addition to log', () async {
     final loggedLines = <String>[];
     final reported = <(Object, StackTrace?, String?)>[];
