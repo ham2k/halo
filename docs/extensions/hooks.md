@@ -443,8 +443,9 @@ an unrecognized name falls back to a placeholder glyph rather than erroring.
 
 `color` is an optional `'#RRGGBB'` accent (e.g. POTA's `'#068541'`) the core
 may use sparingly to highlight this control's icon — a tinted circle behind
-it in the Activities picker, or the icon itself once a reference is entered
-in the logging panel's secondary pills. Missing or unrecognized values just
+it in the Activities picker, the icon itself once a reference is entered
+in the logging panel's secondary pills, or the reference icon on a spot row
+whose ref is of this control's type. Missing or unrecognized values just
 mean no accent.
 
 `processQsoBeforeSave` is the last chance to shape a QSO before it is written,

@@ -2358,6 +2358,12 @@ class _SpotTile extends StatelessWidget {
     final refs = _refsOf(spot);
     final refType = refs.isEmpty ? null : asSpotString(refs.first['type']);
     final refIcon = iconForRefType(activityControls, refType) ?? _iconOf(spot) ?? 'radio-tower';
+    // The extension's declared accent tints its icon (the same tint the
+    // Activities picker and the logging pills use), so a POTA row reads as
+    // POTA at a glance. The notice accents stay on the label text: the icon
+    // says WHAT the ref is, the text says why this row matters.
+    final extensionColor = colorForRefType(activityControls, refType);
+    final refIconColor = extensionColor != null ? faded(extensionColor) : (refAccent ?? (isSelf ? baseColor : outlineColor));
 
     // Age sits at the top-right of the row, right-aligned, bold when it's the
     // sort key. Re-derived once a second (scoped to this label via the shared
@@ -2430,7 +2436,7 @@ class _SpotTile extends StatelessWidget {
               Icon(
                 resolveIconName(refIcon),
                 size: mono.fontSize,
-                color: refAccent ?? (isSelf ? baseColor : outlineColor),
+                color: refIconColor,
               ),
               const SizedBox(width: Space.xs),
               Expanded(

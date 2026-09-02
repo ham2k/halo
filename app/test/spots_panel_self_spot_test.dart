@@ -22,9 +22,10 @@ import 'package:ham2k_logger/views/operation/spots_panel.dart';
 /// Serves a fixed board instead of reaching for the extension runtime, same
 /// shape as spots_panel_reveal_test.dart's fake.
 class _FakeExtensions extends ExtensionService {
-  _FakeExtensions(this.board);
+  _FakeExtensions(this.board, {this.controls = const []});
 
   final List<Map<String, dynamic>> board;
+  final List<Map<String, dynamic>> controls;
 
   @override
   Future<({List<Map<String, dynamic>> items, List<String> succeeded, List<String> unreachable, List<String> failed})>
@@ -39,12 +40,17 @@ class _FakeExtensions extends ExtensionService {
   @override
   Future<Map<String, String>> getSpotSourceNames() async => const {'test': 'Test Source'};
 
+  // The panel awaits the runtime boot before asking for controls; the real
+  // one never resolves under test, so without this no row ever sees a control.
+  @override
+  Future<void> start() async {}
+
   @override
   Future<ControlsResult> loggingControls(
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
   }) async =>
-      (controls: const <Map<String, dynamic>>[], loadFailed: false);
+      (controls: controls, loadFailed: false);
 
   @override
   Future<Map<String, dynamic>?> lookupCall(
@@ -76,7 +82,10 @@ void main() {
   late SettingsService settings;
   late Operation operation;
 
-  Future<HaLoServices> servicesWith(List<Map<String, dynamic>> spots) async {
+  Future<HaLoServices> servicesWith(
+    List<Map<String, dynamic>> spots, {
+    List<Map<String, dynamic>> controls = const [],
+  }) async {
     // Pinned wide open so the board itself is never narrowed by the radio's
     // band or mode — which filters the self pin ignores is asserted per test
     // by narrowing them back down.
@@ -86,7 +95,7 @@ void main() {
       'sortBy': 'frequency',
       'groupByBand': true,
     });
-    return HaLoServices(db, settings, extensions: _FakeExtensions(spots));
+    return HaLoServices(db, settings, extensions: _FakeExtensions(spots, controls: controls));
   }
 
   setUp(() async {
@@ -253,5 +262,31 @@ void main() {
     // pinned self spot, which is drawn from before any narrowing.
     expect(find.text('N0CALL'), findsOneWidget);
     expect(find.text('K1ABC'), findsNothing);
+  });
+
+  testWidgets('a reference icon takes the accent color its extension declares', (tester) async {
+    final spot = _spot('K1ABC', freq: 14050.0);
+    spot['refs'] = [
+      // The HUNTING type, as the POTA spot source emits it — not the
+      // activation type an operation's own settings would carry.
+      {'type': 'pota', 'ref': 'US-0001'},
+    ];
+    (spot['spot'] as Map<String, dynamic>)['label'] = 'US-0001 Test Park';
+    final services = await servicesWith([spot], controls: [
+      {
+        'key': 'pota',
+        'label': 'POTA',
+        'icon': 'pine-tree',
+        'color': '#068541',
+        'input': {'kind': 'refList', 'refType': 'pota'},
+      },
+    ]);
+    await pumpPanel(tester, services: services);
+
+    // The icon takes the extension's color, not the row's outline grey.
+    // Finding it by the control's own glyph is what proves the control was
+    // loaded at all: a row that never saw it renders the generic marker.
+    final icon = tester.widget<Icon>(find.byIcon(resolveIconName('pine-tree')));
+    expect(icon.color, const Color(0xFF068541));
   });
 }
