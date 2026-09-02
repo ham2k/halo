@@ -4,6 +4,11 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Type a grid with no call and the logging panel shows the distance and bearing to it"
+    - "Show Bearing has a new option to also show the reverse bearing, as 45° / 225°"
+
 "160":
   changes:
     - "Support for contest serial number"

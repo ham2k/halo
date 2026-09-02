@@ -661,6 +661,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
         ourLocation: widget.operation.location,
         miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
         showBearing: widget.services.settings.showBearing,
+        showReverseBearing: widget.services.settings.showReverseBearing,
         ourEntityPrefix: widget.ourEntityPrefix,
       );
 

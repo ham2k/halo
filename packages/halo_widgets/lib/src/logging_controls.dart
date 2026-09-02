@@ -8987,6 +8987,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // callsign — the operation stats are the only sensible default here,
     // same as with nothing typed yet.
     if (_callInfoActive && !_editingEvent) return _buildCallInfo(theme);
+    if (_gridOnlyLine case final line?) return _buildGridOnlyInfo(theme, line);
     return _buildOperationStats(theme);
   }
 
@@ -9154,6 +9155,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // score results stream in as in-place updates (no switch), so the panel
     // fills smoothly instead of flashing empty between passes.
     if (_callInfoActive) return 'call:$_callAtCursor';
+    if (_gridOnlyLine case final line?) return 'grid:$line';
     return 'stats'; // stable across the ticker
   }
 
@@ -9251,6 +9253,50 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       onOpenLink: widget.onOpenLink,
     );
   }
+
+  /// A complete Maidenhead locator (4, 6 or 8 characters) — the shortest
+  /// form a distance can be taken from.
+  static final _completeGrid = RegExp(r'^[A-R]{2}[0-9]{2}([A-X]{2}([0-9]{2})?)?$', caseSensitive: false);
+
+  /// With no callsign in the field but a grid typed — a microwave operator
+  /// lining up a dish on a square before the other station is even named —
+  /// the grid alone is enough to show the distance and bearing to it. A
+  /// contest's own grid exchange (`field: 'grid'`) counts, and so does the
+  /// core Grid field. Null when there is nothing to point at, or nothing to
+  /// say about it: the app composes the line, and answers null when the
+  /// operation has no location of its own — then the stats stay, rather than
+  /// a person icon over a blank line hiding that "set our grid" is what's
+  /// missing.
+  String? get _gridOnlyLine {
+    final guess = _gridOnlyGuess;
+    if (guess == null) return null;
+    final line = widget.callLocationLine?.call(guess);
+    return (line == null || line.isEmpty) ? null : line;
+  }
+
+  Map<String, dynamic>? get _gridOnlyGuess {
+    if (_callInfoActive || _editingEvent) return null;
+    var grid = '';
+    for (final control in _textControls) {
+      if ((control['input'] as Map?)?['field'] != 'grid') continue;
+      grid = (_controlTextValues[control['key'] as String] ?? '').trim();
+      if (grid.isNotEmpty) break;
+    }
+    if (grid.isEmpty && widget.showGridField) grid = _gridController.text.trim();
+    if (!_completeGrid.hasMatch(grid)) return null;
+    // The fields uppercase as typed; the line reads better as FN20aa.
+    return {'grid': normalizeGrid(grid)};
+  }
+
+  /// The call-info panel for a grid with no call — the same shape as
+  /// [_buildCallInfo], minus everything that needs a callsign: no lookup, no
+  /// scoring pills, and nothing to open on tap.
+  Widget _buildGridOnlyInfo(ThemeData theme, String line) => CallInfoSummary(
+        data: const CallInfoData(call: ''),
+        locationLine: line,
+        foregroundColor: theme.colorScheme.onTertiaryContainer,
+        iconColor: theme.colorScheme.tertiary,
+      );
 
   /// The lookup entries backing the current call-info — live results when
   /// available, else the entries saved on the QSO being edited (`their.lookups`,

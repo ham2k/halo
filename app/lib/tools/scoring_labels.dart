@@ -48,6 +48,10 @@ String scoreNoticeLabel(BuildContext context, String key) {
     // The operation carries no grid yet — a distance-scoring contest
     // (arrl-vhf-tests) can't score anything until the operator sets one.
     'ourGrid' => t.noticeOurGrid,
+    // The grid is there but shorter than the event's exchange (a 4-character
+    // entry in a 6-character 10 GHz event): the distance still scores, the
+    // QSO points don't, and the operator can still ask for the rest.
+    'shortGrid' => t.noticeShortGrid,
     // The operation names an event this build doesn't know — a log from a newer
     // app, or next year's event added elsewhere first. Nothing scores, and the
     // operator has to be told why rather than reading a silent zero.

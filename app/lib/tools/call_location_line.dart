@@ -28,6 +28,7 @@ String? callLocationLine(
   required GridLocation? ourLocation,
   required bool miles,
   required bool showBearing,
+  bool showReverseBearing = false,
   String? ourEntityPrefix,
 }) {
   final t = context.t.loggingControls.info;
@@ -42,6 +43,7 @@ String? callLocationLine(
 
   String? distStr;
   int? bearingDeg;
+  int? reverseDeg;
   // Skip an entity-centroid distance for the largest countries — the country
   // center is a poor estimate; show a distance for them only once we know the
   // state (a state-centroid fix).
@@ -51,7 +53,11 @@ String? callLocationLine(
     final km = distanceOnEarthKm(resolved.location, ourLocation);
     distStr = fmtDistance(approximate ? approxRoundedKm(km, miles: miles) : km, miles: miles);
     if (approximate) distStr = '~$distStr'; // centroid-based, not a real fix
-    if (showBearing) bearingDeg = bearingOnEarthDeg(ourLocation, resolved.location).round();
+    if (showBearing) {
+      bearingDeg = bearingOnEarthDeg(ourLocation, resolved.location).round();
+      // The great-circle bearing back to us — not bearing + 180° on a long path.
+      if (showReverseBearing) reverseDeg = bearingOnEarthDeg(resolved.location, ourLocation).round();
+    }
   }
 
   final location = asQsonString(guess['location'])?.trim();
@@ -66,17 +72,21 @@ String? callLocationLine(
   if (distStr != null && label.isNotEmpty) {
     // The distance's "to" flows straight into the place — "2,605 km to
     // Santo Domingo, DN – Dominican Republic".
-    final phrase = bearingDeg != null
-        ? t.distanceBearingTo(distance: distStr, bearing: bearingDeg)
-        : t.distanceTo(distance: distStr);
+    final phrase = bearingDeg == null
+        ? t.distanceTo(distance: distStr)
+        : reverseDeg == null
+            ? t.distanceBearingTo(distance: distStr, bearing: bearingDeg)
+            : t.distanceBearingsTo(distance: distStr, bearing: bearingDeg, reverse: reverseDeg);
     return '$phrase $label';
   }
   if (label.isNotEmpty) return label;
   // No place to point "to" — say the distance "away" instead ("15 km away").
   if (distStr != null) {
-    return bearingDeg != null
-        ? t.distanceBearingAway(distance: distStr, bearing: bearingDeg)
-        : t.distanceAway(distance: distStr);
+    return bearingDeg == null
+        ? t.distanceAway(distance: distStr)
+        : reverseDeg == null
+            ? t.distanceBearingAway(distance: distStr, bearing: bearingDeg)
+            : t.distanceBearingsAway(distance: distStr, bearing: bearingDeg, reverse: reverseDeg);
   }
   return null;
 }

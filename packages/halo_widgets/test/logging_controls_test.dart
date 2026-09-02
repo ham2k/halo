@@ -1227,6 +1227,93 @@ void main() {
       expect(find.text('stats-line-should-be-hidden'), findsNothing);
     });
 
+    testWidgets('a grid typed with no call shows its distance line in place of the stats', (tester) async {
+      // A microwave operator lines a dish up on a square before the other
+      // station is named — polo shows the distance for a grid alone, and so
+      // must this. Nothing else of call-info applies: no lookup ran, so the
+      // line is all that appears, and it goes back to the stats the moment
+      // the grid stops being complete.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: operation,
+            qsosRepository: qsos,
+            showGridField: true,
+            callLocationLine: (guess) => '${guess['grid']} is 42 km away',
+            operationStatsLines: (_) => ['stats-line'],
+          ),
+        ),
+      ));
+      expect(find.text('stats-line'), findsOneWidget);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN20aa');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300)); // let the info-area cross-fade settle
+      expect(find.text('FN20aa is 42 km away'), findsOneWidget);
+      expect(find.text('stats-line'), findsNothing);
+
+      // Half a grid points nowhere.
+      await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN2');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.textContaining('km away'), findsNothing);
+      expect(find.text('stats-line'), findsOneWidget);
+    });
+
+    testWidgets('a grid with nothing to say about it keeps the stats, rather than a blank info line', (tester) async {
+      // The app answers null when the operation has no location of its own;
+      // swapping the stats for an empty line would hide that the operator's
+      // own grid is what's missing.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: operation,
+            qsosRepository: qsos,
+            showGridField: true,
+            callLocationLine: (guess) => null,
+            operationStatsLines: (_) => ['stats-line'],
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN20aa');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.text('stats-line'), findsOneWidget);
+    });
+
+    testWidgets("a contest's own grid exchange counts as the grid for the no-call distance line", (tester) async {
+      // The 10 GHz events take the grid on their exchange field, not the core
+      // Grid field — the descriptor names its ref field `grid`, and that is
+      // what marks it.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: running(['arrl-vhf-tests']),
+            qsosRepository: qsos,
+            activityControls: const [
+              {
+                'key': 'arrl-vhf-tests/grid',
+                'label': 'Grid',
+                'input': {'kind': 'text', 'refType': 'arrl-vhf-tests', 'field': 'grid', 'maxLength': 6},
+              },
+            ],
+            callLocationLine: (guess) => '${guess['grid']} is 42 km away',
+            operationStatsLines: (_) => ['stats-line'],
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN20aa');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300)); // let the info-area cross-fade settle
+      expect(find.text('FN20aa is 42 km away'), findsOneWidget);
+      expect(find.text('stats-line'), findsNothing);
+    });
+
     testWidgets('a lookup note takes line 2 over the name', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(

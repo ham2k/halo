@@ -1037,11 +1037,17 @@ class Translations$callInfo$en {
 	/// en: '${distance} (${bearing}°) to'
 	String distanceBearingTo({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to';
 
+	/// en: '${distance} (${bearing}° / ${reverse}°) to'
+	String distanceBearingsTo({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) to';
+
 	/// en: '${distance} away'
 	String distanceAway({required Object distance}) => '${distance} away';
 
 	/// en: '${distance} (${bearing}°) away'
 	String distanceBearingAway({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away';
+
+	/// en: '${distance} (${bearing}° / ${reverse}°) away'
+	String distanceBearingsAway({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) away';
 
 	/// en: '1 QSO in this operation'
 	String get thisOpCountOne => '1 QSO in this operation';
@@ -2693,11 +2699,17 @@ class Translations$loggingControls$info$en {
 	/// en: '${distance} (${bearing}°) to'
 	String distanceBearingTo({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to';
 
+	/// en: '${distance} (${bearing}° / ${reverse}°) to'
+	String distanceBearingsTo({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) to';
+
 	/// en: '${distance} away'
 	String distanceAway({required Object distance}) => '${distance} away';
 
 	/// en: '${distance} (${bearing}°) away'
 	String distanceBearingAway({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away';
+
+	/// en: '${distance} (${bearing}° / ${reverse}°) away'
+	String distanceBearingsAway({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) away';
 
 	/// en: 'Dupe!'
 	String get noticeDupe => 'Dupe!';
@@ -2761,6 +2773,9 @@ class Translations$loggingControls$info$en {
 
 	/// en: 'Set Our Grid'
 	String get noticeOurGrid => 'Set Our Grid';
+
+	/// en: 'Grid Too Short'
+	String get noticeShortGrid => 'Grid Too Short';
 }
 
 // Path: settings.theme
@@ -2913,6 +2928,7 @@ class Translations$settings$logging$en {
 	late final Translations$settings$logging$fieldsOnTop$en fieldsOnTop = Translations$settings$logging$fieldsOnTop$en.internal(_root);
 	late final Translations$settings$logging$countryFlags$en countryFlags = Translations$settings$logging$countryFlags$en.internal(_root);
 	late final Translations$settings$logging$showBearing$en showBearing = Translations$settings$logging$showBearing$en.internal(_root);
+	late final Translations$settings$logging$showReverseBearing$en showReverseBearing = Translations$settings$logging$showReverseBearing$en.internal(_root);
 	late final Translations$settings$logging$switchSentRcvd$en switchSentRcvd = Translations$settings$logging$switchSentRcvd$en.internal(_root);
 	late final Translations$settings$logging$jumpAfterRST$en jumpAfterRST = Translations$settings$logging$jumpAfterRST$en.internal(_root);
 	late final Translations$settings$logging$defaultReport$en defaultReport = Translations$settings$logging$defaultReport$en.internal(_root);
@@ -4939,6 +4955,24 @@ class Translations$settings$logging$showBearing$en {
 	String get descriptionOff => 'Don\'t show bearing information';
 }
 
+// Path: settings.logging.showReverseBearing
+class Translations$settings$logging$showReverseBearing$en {
+	Translations$settings$logging$showReverseBearing$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Also show reverse bearing'
+	String get title => 'Also show reverse bearing';
+
+	/// en: 'Show the bearing from the station too, as "45° / 225°"'
+	String get descriptionOn => 'Show the bearing from the station too, as "45° / 225°"';
+
+	/// en: 'Only show the bearing to the station'
+	String get descriptionOff => 'Only show the bearing to the station';
+}
+
 // Path: settings.logging.switchSentRcvd
 class Translations$settings$logging$switchSentRcvd$en {
 	Translations$settings$logging$switchSentRcvd$en.internal(this._root);
@@ -6109,8 +6143,10 @@ extension on Translations {
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} Q/h for last 100',
 			'loggingControls.info.distanceTo' => ({required Object distance}) => '${distance} to',
 			'loggingControls.info.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to',
+			'loggingControls.info.distanceBearingsTo' => ({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) to',
 			'loggingControls.info.distanceAway' => ({required Object distance}) => '${distance} away',
 			'loggingControls.info.distanceBearingAway' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away',
+			'loggingControls.info.distanceBearingsAway' => ({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) away',
 			'loggingControls.info.noticeDupe' => 'Dupe!',
 			'loggingControls.info.noticeNewBand' => 'New Band',
 			'loggingControls.info.noticeNewMode' => 'New Mode',
@@ -6132,6 +6168,7 @@ extension on Translations {
 			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'Unknown Event',
 			'loggingControls.info.noticeOurGrid' => 'Set Our Grid',
+			'loggingControls.info.noticeShortGrid' => 'Grid Too Short',
 			'formChrome.untitled' => '(untitled)',
 			'formChrome.showMore' => 'Show more',
 			'formChrome.showAll' => 'Show all',
@@ -6184,8 +6221,10 @@ extension on Translations {
 			'callInfo.notes' => 'Notes',
 			'callInfo.distanceTo' => ({required Object distance}) => '${distance} to',
 			'callInfo.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) to',
+			'callInfo.distanceBearingsTo' => ({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) to',
 			'callInfo.distanceAway' => ({required Object distance}) => '${distance} away',
 			'callInfo.distanceBearingAway' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) away',
+			'callInfo.distanceBearingsAway' => ({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) away',
 			'callInfo.thisOpCountOne' => '1 QSO in this operation',
 			'callInfo.thisOpCountOther' => ({required Object count}) => '${count} QSOs in this operation',
 			'callInfo.otherOpsCountOne' => '1 QSO in other operations',
@@ -6241,6 +6280,9 @@ extension on Translations {
 			'settings.logging.showBearing.title' => 'Show Bearing',
 			'settings.logging.showBearing.descriptionOn' => 'Show estimated bearing to station',
 			'settings.logging.showBearing.descriptionOff' => 'Don\'t show bearing information',
+			'settings.logging.showReverseBearing.title' => 'Also show reverse bearing',
+			'settings.logging.showReverseBearing.descriptionOn' => 'Show the bearing from the station too, as "45° / 225°"',
+			'settings.logging.showReverseBearing.descriptionOff' => 'Only show the bearing to the station',
 			'settings.logging.switchSentRcvd.title' => 'Switch signal report order',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Sent first, Rcvd second',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Rcvd first, Sent second',
@@ -6556,6 +6598,8 @@ extension on Translations {
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',
@@ -6564,8 +6608,6 @@ extension on Translations {
 			'settings.station.peerTransceiverUnavailable' => ({required Object radio, required Object device}) => '${radio} on ${device} (not available)',
 			'settings.station.antennaInUse' => 'Antenna in Use',
 			'settings.station.keyInUse' => 'Key in Use',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.noneSelected' => 'None',
 			'settings.station.moreSettings' => 'More Settings',
 			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',

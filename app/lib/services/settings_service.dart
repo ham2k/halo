@@ -1165,6 +1165,10 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   // Logging settings, defaults matching app-polo.
   bool get leftieMode => _loggingBool('leftieMode', false);
   bool get showBearing => _loggingBool('showBearing', false);
+  /// Renders a bearing as "45° / 225°" — the great-circle bearing back to
+  /// us, which is not simply +180° on a long path. Read only while
+  /// [showBearing] is on; the registry offers it only then.
+  bool get showReverseBearing => _loggingBool('showReverseBearing', false);
 
   /// Declared in the settings registry and persisted here, but NOT consumed
   /// anywhere — the panel puts the logging fields below the QSO list whichever

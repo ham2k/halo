@@ -2463,6 +2463,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             operation: operation,
             miles: widget.services.settings.distanceUnits == DistanceUnits.miles,
             showBearing: widget.services.settings.showBearing,
+            showReverseBearing: widget.services.settings.showReverseBearing,
             ourEntityPrefix: _ourEntityPrefix,
           ),
       },

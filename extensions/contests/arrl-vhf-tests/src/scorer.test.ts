@@ -127,11 +127,88 @@ test('a malformed operation grid scores zero rather than throwing (gridToLocatio
   assert.deepEqual(scores[0].alerts, ['invalidExchange'])
 })
 
-test('a band with no multiplier entry (a gap in the event data) scores zero with an alert, not a silent zero', () => {
-  const operation = { grid: 'FN31aa' }
-  const ref = { type: 'arrl-vhf-tests', ref: 'ARRL-10G-AUG' }
-  // submm is in ARRL-10G-AUG's band list but not its multipliers map.
-  const { scores } = run([qso('K1ABC', 'submm', 'FN20aa')], operation, ref)
-  assert.equal(scores[0].value, 0)
-  assert.deepEqual(scores[0].alerts, ['invalidBand'])
+// The 10 GHz rules (5.1–5.4): distance × band factor per contact, plus 100
+// QSO points once per unique callsign per band — never multiplied, and not
+// paid again when the same station is re-worked on that band from a new
+// location. Each test below is one way of over- or under-paying those 100.
+
+const TEN_GIG = { type: 'arrl-vhf-tests', ref: 'ARRL-10G-SEP' }
+
+test('10 GHz: QSO points ride on top of the distance unmultiplied, even on a factor-5 band', () => {
+  const { scores } = run([qso('KN2X', '2.5mm', 'FN20aa')], { grid: 'FN31aa' }, TEN_GIG)
+  assert.ok((scores[0].distance as number) > 0)
+  assert.equal(scores[0].value, (scores[0].distance as number) * 5 + 100)
+})
+
+test('10 GHz: submillimeter contacts take the top band factor rather than an invalidBand alert', () => {
+  const { scores } = run([qso('KN2X', 'submm', 'FN20aa')], { grid: 'FN31aa' }, TEN_GIG)
+  assert.equal(scores[0].alerts, undefined)
+  assert.equal(scores[0].value, (scores[0].distance as number) * 5 + 100)
+})
+
+test('10 GHz: a call re-worked on the same band from a NEW location earns distance only', () => {
+  // A rover's move makes a fresh contact (not a dupe), but the 100 went to
+  // the first one.
+  const { scores, sheet } = run(
+    [qso('KN2X', '3cm', 'FN20aa'), qso('KN2X', '3cm', 'FN21bb')],
+    { grid: 'FN31aa' },
+    TEN_GIG,
+  )
+  assert.equal(scores[1].dupe, undefined)
+  assert.equal(scores[1].alerts, undefined)
+  assert.equal(scores[1].value, scores[1].distance)
+  assert.equal(sheet.qsoPoints, 100)
+  assert.equal(sheet.distancePoints, (scores[0].distance as number) + (scores[1].distance as number))
+})
+
+test('10 GHz: the same call on a DIFFERENT band earns the QSO points again', () => {
+  const { scores } = run(
+    [qso('KN2X', '3cm', 'FN20aa'), qso('KN2X', '1.25cm', 'FN20aa')],
+    { grid: 'FN31aa' },
+    TEN_GIG,
+  )
+  assert.equal(scores[1].value, (scores[1].distance as number) * 2 + 100)
+})
+
+test('10 GHz: a grid shorter than the 6-character exchange is flagged, scores its distance, and neither takes nor uses up the QSO points', () => {
+  const { scores, sheet } = run(
+    [qso('KN2X', '3cm', 'FN20'), qso('KN2X', '3cm', 'FN20aa')],
+    { grid: 'FN31aa' },
+    TEN_GIG,
+  )
+  assert.deepEqual(scores[0].alerts, ['shortGrid'])
+  assert.equal(scores[0].value, scores[0].distance)
+  // The full-grid contact that follows is the one the 100 belongs to.
+  assert.equal(scores[1].alerts, undefined)
+  assert.equal(scores[1].value, (scores[1].distance as number) + 100)
+  assert.equal(sheet.qsoPoints, 100)
+})
+
+test('10 GHz: the summary reports the distance and QSO halves separately', () => {
+  const { sheet } = run(
+    [qso('KN2X', '3cm', 'FN20aa'), qso('KN2X', '3cm', 'FN21bb')],
+    { grid: 'FN31aa' },
+    TEN_GIG,
+  )
+  const tally = ARRLVHFScorer.summarizeScore({ scoresheet: sheet, operation: {}, ref: TEN_GIG, scope: 'operation' }, ctx)['arrl-vhf-tests']
+  assert.equal(tally.total, sheet.points)
+  assert.match(tally.summary!, /pts \(\d[\d,]* km total\)/)
+  assert.match(tally.longSummary!, new RegExp(`${sheet.distancePoints} distance points \\+ 100 QSO points`))
+})
+
+test('a 2-character grid is malformed, not short', () => {
+  const ref = { type: 'arrl-vhf-tests', ref: 'ARRL-222' }
+  const { scores } = run([qso('K1ABC', '1.25m', 'FN')], { grid: 'FN31aa' }, ref)
+  // A 2-character grid can't be placed at all, so `invalidExchange` wins over
+  // `shortGrid`: there is no distance to score.
+  assert.deepEqual(scores[0].alerts, ['invalidExchange'])
+})
+
+test('10 GHz: a scoresheet persisted before the QSO-points fields existed still scores', () => {
+  // The spots panel resumes from the cached end-of-log sheet; an older build's
+  // sheet has no `qsoPointsTaken`/`distancePoints`/`qsoPoints`.
+  const stale = { worked: {}, bands: {}, qsos: 0, points: 0, distanceTotal: 0, maxDistance: 0, maxDistancePerBand: {}, dupeCount: 0, dayQsos: 0, dayPoints: 0 } as never
+  const r = ARRLVHFScorer.scoreQso({ scoresheet: stale, qso: qso('KN2X', '3cm', 'FN20aa'), operation: { grid: 'FN31aa' }, ref: TEN_GIG, isNewDay: false }, ctx)
+  assert.equal(r.score.value, (r.score.distance as number) + 100)
+  assert.equal(r.scoresheet.qsoPoints, 100)
 })

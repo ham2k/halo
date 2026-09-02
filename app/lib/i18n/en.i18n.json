@@ -684,8 +684,10 @@
       "ratePer100": "${rate} Q/h for last 100",
       "distanceTo": "${distance} to",
       "distanceBearingTo": "${distance} (${bearing}°) to",
+      "distanceBearingsTo": "${distance} (${bearing}° / ${reverse}°) to",
       "distanceAway": "${distance} away",
       "distanceBearingAway": "${distance} (${bearing}°) away",
+      "distanceBearingsAway": "${distance} (${bearing}° / ${reverse}°) away",
       "noticeDupe": "Dupe!",
       "noticeNewBand": "New Band",
       "noticeNewMode": "New Mode",
@@ -706,7 +708,8 @@
       "noticeMissingExchange": "No Exchange",
       "noticeInvalidExchange": "Bad Exchange",
       "noticeUnknownEvent": "Unknown Event",
-      "noticeOurGrid": "Set Our Grid"
+      "noticeOurGrid": "Set Our Grid",
+      "noticeShortGrid": "Grid Too Short"
     }
   },
   "formChrome": {
@@ -770,8 +773,10 @@
     "notes": "Notes",
     "distanceTo": "${distance} to",
     "distanceBearingTo": "${distance} (${bearing}°) to",
+    "distanceBearingsTo": "${distance} (${bearing}° / ${reverse}°) to",
     "distanceAway": "${distance} away",
     "distanceBearingAway": "${distance} (${bearing}°) away",
+    "distanceBearingsAway": "${distance} (${bearing}° / ${reverse}°) away",
     "thisOpCountOne": "1 QSO in this operation",
     "thisOpCountOther": "${count} QSOs in this operation",
     "otherOpsCountOne": "1 QSO in other operations",
@@ -849,6 +854,11 @@
         "title": "Show Bearing",
         "descriptionOn": "Show estimated bearing to station",
         "descriptionOff": "Don't show bearing information"
+      },
+      "showReverseBearing": {
+        "title": "Also show reverse bearing",
+        "descriptionOn": "Show the bearing from the station too, as \"45° / 225°\"",
+        "descriptionOff": "Only show the bearing to the station"
       },
       "switchSentRcvd": {
         "title": "Switch signal report order",

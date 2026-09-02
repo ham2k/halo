@@ -102,7 +102,7 @@ const EVENTS: VhfEvent[] = [
     gridChars: 6,
     score: 'distanceAndPoints',
     points: { qso: 100 },
-    multipliers: { '3cm': 1, '1.25cm': 2, '6mm': 3, '4mm': 4, '2mm': 5, '2.5mm': 5, '1mm': 5 },
+    multipliers: { '3cm': 1, '1.25cm': 2, '6mm': 3, '4mm': 4, '2mm': 5, '2.5mm': 5, '1mm': 5, submm: 5 },
     rules: 'https://contests.arrl.org/ContestRules/10-GHz-Rules.pdf',
   },
   {
@@ -114,7 +114,7 @@ const EVENTS: VhfEvent[] = [
     gridChars: 6,
     score: 'distanceAndPoints',
     points: { qso: 100 },
-    multipliers: { '3cm': 1, '1.25cm': 2, '6mm': 3, '4mm': 4, '2mm': 5, '2.5mm': 5, '1mm': 5 },
+    multipliers: { '3cm': 1, '1.25cm': 2, '6mm': 3, '4mm': 4, '2mm': 5, '2.5mm': 5, '1mm': 5, submm: 5 },
     rules: 'https://contests.arrl.org/ContestRules/10-GHz-Rules.pdf',
   },
 ]

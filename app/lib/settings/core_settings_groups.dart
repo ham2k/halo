@@ -363,6 +363,15 @@ class LoggingSettingsGroup extends SettingsGroup {
         value: settings.showBearing,
         target: 'logging-extended',
       ),
+      if (settings.showBearing)
+        _toggle(
+          key: 'showReverseBearing',
+          label: s.showReverseBearing.title,
+          icon: 'compass-outline',
+          description: settings.showReverseBearing ? s.showReverseBearing.descriptionOn : s.showReverseBearing.descriptionOff,
+          value: settings.showReverseBearing,
+          target: 'logging-extended',
+        ),
       _toggle(
         key: 'switchSentRcvd',
         label: s.switchSentRcvd.title,

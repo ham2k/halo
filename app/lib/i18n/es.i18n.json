@@ -684,8 +684,10 @@
       "ratePer100": "${rate} Q/h en los últimos 100",
       "distanceTo": "${distance} a",
       "distanceBearingTo": "${distance} (${bearing}°) a",
+      "distanceBearingsTo": "${distance} (${bearing}° / ${reverse}°) a",
       "distanceAway": "a ${distance}",
       "distanceBearingAway": "a ${distance} (${bearing}°)",
+      "distanceBearingsAway": "a ${distance} (${bearing}° / ${reverse}°)",
       "noticeDupe": "¡Dupe!",
       "noticeNewBand": "Nueva Banda",
       "noticeNewMode": "Nuevo Modo",
@@ -706,7 +708,8 @@
       "noticeMissingExchange": "Sin Intercambio",
       "noticeInvalidExchange": "Intercambio Inválido",
       "noticeUnknownEvent": "Evento Desconocido",
-      "noticeOurGrid": "Configure Nuestro Grid"
+      "noticeOurGrid": "Configure Nuestro Grid",
+      "noticeShortGrid": "Grid Muy Corto"
     }
   },
   "formChrome": {
@@ -770,8 +773,10 @@
     "notes": "Notas",
     "distanceTo": "${distance} a",
     "distanceBearingTo": "${distance} (${bearing}°) a",
+    "distanceBearingsTo": "${distance} (${bearing}° / ${reverse}°) a",
     "distanceAway": "a ${distance}",
     "distanceBearingAway": "a ${distance} (${bearing}°)",
+    "distanceBearingsAway": "a ${distance} (${bearing}° / ${reverse}°)",
     "thisOpCountOne": "1 QSO en esta operación",
     "thisOpCountOther": "${count} QSOs en esta operación",
     "otherOpsCountOne": "1 QSO en otras operaciones",
@@ -849,6 +854,11 @@
         "title": "Mostrar Rumbo",
         "descriptionOn": "Mostrar rumbo estimado a la estación",
         "descriptionOff": "No mostrar información de rumbo"
+      },
+      "showReverseBearing": {
+        "title": "Mostrar también el rumbo inverso",
+        "descriptionOn": "Mostrar también el rumbo desde la estación, como \"45° / 225°\"",
+        "descriptionOff": "Mostrar solo el rumbo hacia la estación"
       },
       "switchSentRcvd": {
         "title": "Cambiar orden de reportes de señal",

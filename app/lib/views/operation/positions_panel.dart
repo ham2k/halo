@@ -25,6 +25,7 @@ class PositionsPanel extends StatefulWidget {
     required this.operation,
     required this.miles,
     required this.showBearing,
+    this.showReverseBearing = false,
     this.ourEntityPrefix,
   });
 
@@ -38,6 +39,7 @@ class PositionsPanel extends StatefulWidget {
   /// composed here precisely so a distance is to wherever this device is.
   final bool miles;
   final bool showBearing;
+  final bool showReverseBearing;
   final String? ourEntityPrefix;
 
   @override
@@ -94,6 +96,7 @@ class _PositionsPanelState extends State<PositionsPanel> {
         operation: widget.operation,
         miles: widget.miles,
         showBearing: widget.showBearing,
+        showReverseBearing: widget.showReverseBearing,
         ourEntityPrefix: widget.ourEntityPrefix,
       ),
     );
@@ -111,6 +114,7 @@ class PositionBlockView extends StatelessWidget {
     required this.operation,
     required this.miles,
     required this.showBearing,
+    this.showReverseBearing = false,
     this.ourEntityPrefix,
   });
 
@@ -118,6 +122,7 @@ class PositionBlockView extends StatelessWidget {
   final Operation operation;
   final bool miles;
   final bool showBearing;
+  final bool showReverseBearing;
   final String? ourEntityPrefix;
 
   @override
@@ -168,6 +173,7 @@ class PositionBlockView extends StatelessWidget {
       ourLocation: operation.location,
       miles: miles,
       showBearing: showBearing,
+      showReverseBearing: showReverseBearing,
       ourEntityPrefix: ourEntityPrefix,
     );
 

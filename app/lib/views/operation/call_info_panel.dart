@@ -170,6 +170,10 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     var distStr = fmtDistance(approximate ? approxRoundedKm(km, miles: miles) : km, miles: miles);
     if (approximate) distStr = '~$distStr';
     final bearing = widget.services.settings.showBearing ? bearingOnEarthDeg(ourLoc, resolved.location).round() : null;
+    // The great-circle bearing back to us — not bearing + 180° on a long path.
+    final reverse = bearing != null && widget.services.settings.showReverseBearing
+        ? bearingOnEarthDeg(resolved.location, ourLoc).round()
+        : null;
 
     // Point "to" the guess's location (city/state, or the more specific
     // portable location — e.g. a hunted POTA park — when there is one; see
@@ -179,12 +183,18 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     // back to "away" only when neither is known.
     final label = _s('location') ?? _s('entityName') ?? _s('country');
     if (label != null) {
-      final phrase = bearing != null
-          ? t.distanceBearingTo(distance: distStr, bearing: bearing)
-          : t.distanceTo(distance: distStr);
+      final phrase = bearing == null
+          ? t.distanceTo(distance: distStr)
+          : reverse == null
+              ? t.distanceBearingTo(distance: distStr, bearing: bearing)
+              : t.distanceBearingsTo(distance: distStr, bearing: bearing, reverse: reverse);
       return '$phrase $label';
     }
-    return bearing != null ? t.distanceBearingAway(distance: distStr, bearing: bearing) : t.distanceAway(distance: distStr);
+    return bearing == null
+        ? t.distanceAway(distance: distStr)
+        : reverse == null
+            ? t.distanceBearingAway(distance: distStr, bearing: bearing)
+            : t.distanceBearingsAway(distance: distStr, bearing: bearing, reverse: reverse);
   }
 
   String _fmtHistoryTime(int? millis) {

@@ -499,8 +499,10 @@ class _Translations$callInfo$es extends Translations$callInfo$en {
 	@override String get notes => 'Notas';
 	@override String distanceTo({required Object distance}) => '${distance} a';
 	@override String distanceBearingTo({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a';
+	@override String distanceBearingsTo({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) a';
 	@override String distanceAway({required Object distance}) => 'a ${distance}';
 	@override String distanceBearingAway({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)';
+	@override String distanceBearingsAway({required Object distance, required Object bearing, required Object reverse}) => 'a ${distance} (${bearing}° / ${reverse}°)';
 	@override String get thisOpCountOne => '1 QSO en esta operación';
 	@override String thisOpCountOther({required Object count}) => '${count} QSOs en esta operación';
 	@override String get otherOpsCountOne => '1 QSO en otras operaciones';
@@ -1297,8 +1299,10 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String ratePer100({required Object rate}) => '${rate} Q/h en los últimos 100';
 	@override String distanceTo({required Object distance}) => '${distance} a';
 	@override String distanceBearingTo({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a';
+	@override String distanceBearingsTo({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) a';
 	@override String distanceAway({required Object distance}) => 'a ${distance}';
 	@override String distanceBearingAway({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)';
+	@override String distanceBearingsAway({required Object distance, required Object bearing, required Object reverse}) => 'a ${distance} (${bearing}° / ${reverse}°)';
 	@override String get noticeDupe => '¡Dupe!';
 	@override String get noticeNewBand => 'Nueva Banda';
 	@override String get noticeNewMode => 'Nuevo Modo';
@@ -1320,6 +1324,7 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String get noticeInvalidExchange => 'Intercambio Inválido';
 	@override String get noticeUnknownEvent => 'Evento Desconocido';
 	@override String get noticeOurGrid => 'Configure Nuestro Grid';
+	@override String get noticeShortGrid => 'Grid Muy Corto';
 }
 
 // Path: settings.theme
@@ -1415,6 +1420,7 @@ class _Translations$settings$logging$es extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$fieldsOnTop$es fieldsOnTop = _Translations$settings$logging$fieldsOnTop$es._(_root);
 	@override late final _Translations$settings$logging$countryFlags$es countryFlags = _Translations$settings$logging$countryFlags$es._(_root);
 	@override late final _Translations$settings$logging$showBearing$es showBearing = _Translations$settings$logging$showBearing$es._(_root);
+	@override late final _Translations$settings$logging$showReverseBearing$es showReverseBearing = _Translations$settings$logging$showReverseBearing$es._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$es switchSentRcvd = _Translations$settings$logging$switchSentRcvd$es._(_root);
 	@override late final _Translations$settings$logging$jumpAfterRST$es jumpAfterRST = _Translations$settings$logging$jumpAfterRST$es._(_root);
 	@override late final _Translations$settings$logging$defaultReport$es defaultReport = _Translations$settings$logging$defaultReport$es._(_root);
@@ -2287,6 +2293,18 @@ class _Translations$settings$logging$showBearing$es extends Translations$setting
 	@override String get title => 'Mostrar Rumbo';
 	@override String get descriptionOn => 'Mostrar rumbo estimado a la estación';
 	@override String get descriptionOff => 'No mostrar información de rumbo';
+}
+
+// Path: settings.logging.showReverseBearing
+class _Translations$settings$logging$showReverseBearing$es extends Translations$settings$logging$showReverseBearing$en {
+	_Translations$settings$logging$showReverseBearing$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mostrar también el rumbo inverso';
+	@override String get descriptionOn => 'Mostrar también el rumbo desde la estación, como "45° / 225°"';
+	@override String get descriptionOff => 'Mostrar solo el rumbo hacia la estación';
 }
 
 // Path: settings.logging.switchSentRcvd
@@ -3214,8 +3232,10 @@ extension on TranslationsEs {
 			'loggingControls.info.ratePer100' => ({required Object rate}) => '${rate} Q/h en los últimos 100',
 			'loggingControls.info.distanceTo' => ({required Object distance}) => '${distance} a',
 			'loggingControls.info.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a',
+			'loggingControls.info.distanceBearingsTo' => ({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) a',
 			'loggingControls.info.distanceAway' => ({required Object distance}) => 'a ${distance}',
 			'loggingControls.info.distanceBearingAway' => ({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)',
+			'loggingControls.info.distanceBearingsAway' => ({required Object distance, required Object bearing, required Object reverse}) => 'a ${distance} (${bearing}° / ${reverse}°)',
 			'loggingControls.info.noticeDupe' => '¡Dupe!',
 			'loggingControls.info.noticeNewBand' => 'Nueva Banda',
 			'loggingControls.info.noticeNewMode' => 'Nuevo Modo',
@@ -3237,6 +3257,7 @@ extension on TranslationsEs {
 			'loggingControls.info.noticeInvalidExchange' => 'Intercambio Inválido',
 			'loggingControls.info.noticeUnknownEvent' => 'Evento Desconocido',
 			'loggingControls.info.noticeOurGrid' => 'Configure Nuestro Grid',
+			'loggingControls.info.noticeShortGrid' => 'Grid Muy Corto',
 			'formChrome.untitled' => '(sin título)',
 			'formChrome.showMore' => 'Mostrar más',
 			'formChrome.showAll' => 'Mostrar todo',
@@ -3289,8 +3310,10 @@ extension on TranslationsEs {
 			'callInfo.notes' => 'Notas',
 			'callInfo.distanceTo' => ({required Object distance}) => '${distance} a',
 			'callInfo.distanceBearingTo' => ({required Object distance, required Object bearing}) => '${distance} (${bearing}°) a',
+			'callInfo.distanceBearingsTo' => ({required Object distance, required Object bearing, required Object reverse}) => '${distance} (${bearing}° / ${reverse}°) a',
 			'callInfo.distanceAway' => ({required Object distance}) => 'a ${distance}',
 			'callInfo.distanceBearingAway' => ({required Object distance, required Object bearing}) => 'a ${distance} (${bearing}°)',
+			'callInfo.distanceBearingsAway' => ({required Object distance, required Object bearing, required Object reverse}) => 'a ${distance} (${bearing}° / ${reverse}°)',
 			'callInfo.thisOpCountOne' => '1 QSO en esta operación',
 			'callInfo.thisOpCountOther' => ({required Object count}) => '${count} QSOs en esta operación',
 			'callInfo.otherOpsCountOne' => '1 QSO en otras operaciones',
@@ -3346,6 +3369,9 @@ extension on TranslationsEs {
 			'settings.logging.showBearing.title' => 'Mostrar Rumbo',
 			'settings.logging.showBearing.descriptionOn' => 'Mostrar rumbo estimado a la estación',
 			'settings.logging.showBearing.descriptionOff' => 'No mostrar información de rumbo',
+			'settings.logging.showReverseBearing.title' => 'Mostrar también el rumbo inverso',
+			'settings.logging.showReverseBearing.descriptionOn' => 'Mostrar también el rumbo desde la estación, como "45° / 225°"',
+			'settings.logging.showReverseBearing.descriptionOff' => 'Mostrar solo el rumbo hacia la estación',
 			'settings.logging.switchSentRcvd.title' => 'Cambiar orden de reportes de señal',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Enviado primero, Recibido después',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Recibido primero, Enviado después',
@@ -3661,6 +3687,8 @@ extension on TranslationsEs {
 			'settings.station.kenwoodTroubleshooting' => 'Este controlador está probado con una QRP Labs QMX, pero ninguna radio de marca Kenwood le ha respondido nunca: el protocolo está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Elecraft (K3, KX2, KX3) y varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
 			'settings.station.statusConnected' => 'Conectado',
 			'settings.station.currentConfiguration' => 'Configuración actual',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			'settings.station.noTransceiver' => 'Ninguno',
@@ -3669,8 +3697,6 @@ extension on TranslationsEs {
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.civAddressTroubleshooting' => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio — o ponla en Auto, que simplemente sigue a la aplicación.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.',
 			'settings.station.ic7760PortNote' => '\n- El **IC-7760** usa CI-V en el **Puerto A** de los dos puertos serie USB que presenta.',
