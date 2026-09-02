@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"160":
   changes:
     - "Support for contest serial number"
     - "The spots mode filter has a combined Phone & CW option"
