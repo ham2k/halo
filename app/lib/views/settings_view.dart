@@ -1698,10 +1698,11 @@ class _SyncPanelState extends State<_SyncPanel> {
   }
 
   /// Both sides count the same thing — the log the operator still has, with
-  /// tombstones and the QSOs of deleted operations left out (see
-  /// `QsosRepository.syncCounts`, and LoFi's `Account#stats`). The two numbers
-  /// sit side by side precisely so a difference means work still in flight;
-  /// counting them by different rules would turn that signal into noise.
+  /// tombstones, event markers and the QSOs of deleted operations left out
+  /// (see `QsosRepository.syncCounts`, and LoFi's `QSO.contacts`). The two
+  /// numbers sit side by side precisely so a difference means work still in
+  /// flight; counting them by different rules would turn that signal into
+  /// noise.
   String _countsLine(String Function({required String operations, required String qsos}) line,
       int operationCount, int qsoCount) {
     return line(
@@ -1742,8 +1743,7 @@ class _SyncPanelState extends State<_SyncPanel> {
   /// lost everything on that side, which is precisely the alarm this row must
   /// not raise falsely.
   String? get _serverCountsLine {
-    final operations = ((_syncAccount?['operations'] as Map?)?['total'] as num?)?.toInt();
-    final qsos = ((_syncAccount?['qsos'] as Map?)?['total'] as num?)?.toInt();
+    final (:operations, :qsos) = syncAccountCounts(_syncAccount);
     if (operations == null || qsos == null) return null;
     return _countsLine(t.settings.syncPanel.countsServer, operations, qsos);
   }

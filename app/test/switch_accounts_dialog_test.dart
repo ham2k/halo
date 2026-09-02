@@ -25,9 +25,11 @@ import 'error_reporting_test.dart' show FakeErrorReportingBackend, withErrorHook
 Map<String, dynamic> accountData({String uuid = 'acct-1', List<Map<String, dynamic>> others = const []}) => {
       'current_account': {'uuid': uuid, 'call': 'N0CALL', 'email': 'me@example.com'},
       'accounts': others,
-      // The current account's counts arrive as top-level totals, not stats.
-      'operations': {'total': 3},
-      'qsos': {'total': 120},
+      // The current account's counts arrive top-level, not as stats — and on
+      // the device's rule (`active`/`contacts`), never the tombstone-counting
+      // `total`, which is the one the Sync panel must agree with.
+      'operations': {'total': 4, 'active': 3},
+      'qsos': {'total': 180, 'contacts': 120},
     };
 
 Future<void> pumpDialog(

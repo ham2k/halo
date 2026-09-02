@@ -1762,16 +1762,6 @@ class QsosRepository {
     });
   }
 
-  /// See `OperationsRepository.syncCounts`. `total` applies the same rule
-  /// `historyForCall` does — a QSO is gone when its own flag says so or when
-  /// its operation's does — so deleting an operation drops its contacts from
-  /// the count without touching a single QSO row.
-  ///
-  /// Event markers (start/break/end, `Qso.isEvent`) are not contacts and are
-  /// excluded, the same way [syncCountsForOperation] excludes them: anything
-  /// labelled "QSOs" to the operator must mean the number they logged. LoFi's
-  /// `Account#stats` applies the same filter so the two sides stay comparable
-  /// in the Sync panel's Synced Data row.
   /// A row of the qsos table that is a contact rather than a start/break/end
   /// marker. The ONE definition — every count the operator reads as "QSOs"
   /// uses it, and LoFi's `QSO.contacts` scope mirrors it so the Sync panel can
@@ -1782,6 +1772,16 @@ class QsosRepository {
   /// QSOs silently leave the count.
   Expression<bool> get _isContact => db.qsos.band.equals('event').not() | db.qsos.band.isNull();
 
+  /// See `OperationsRepository.syncCounts`. `total` applies the same rule
+  /// `historyForCall` does — a QSO is gone when its own flag says so or when
+  /// its operation's does — so deleting an operation drops its contacts from
+  /// the count without touching a single QSO row.
+  ///
+  /// Event markers (start/break/end, `Qso.isEvent`) are not contacts and are
+  /// excluded, the same way [syncCountsForOperation] excludes them: anything
+  /// labelled "QSOs" to the operator must mean the number they logged. LoFi's
+  /// `QSO.contacts` scope applies the same filter so the two sides stay comparable
+  /// in the Sync panel's Synced Data row.
   Future<({int total, int pending})> syncCounts() async {
     final count = db.qsos.uuid.count();
 

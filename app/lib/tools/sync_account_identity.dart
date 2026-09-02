@@ -79,3 +79,24 @@ String? _field(Map? account, String key) {
   final value = account?[key];
   return value is String && value.isNotEmpty ? value : null;
 }
+
+/// The server's counts for the current account, from a `getAccountData`
+/// payload, on this device's own rule: `operations.active` and
+/// `qsos.contacts` (LoFi's `QSO.contacts` — no tombstones, no event markers,
+/// nothing under a deleted operation; the rule `QsosRepository.syncCounts`
+/// applies locally). `total` is every row, tombstones included, and the only
+/// count a LoFi that predates the other two sends — so it stands in when they
+/// are absent. Null on a side the payload does not report at all.
+///
+/// The ONE reader for every surface that puts a server count beside a local
+/// one (the Sync panel's Synced Data row, the Switch Accounts dialog): two
+/// surfaces reading the payload by different keys would show one account
+/// with two sizes.
+({int? operations, int? qsos}) syncAccountCounts(Map? accountData) {
+  int? read(String side, String preferred) {
+    final counts = accountData?[side] as Map?;
+    return ((counts?[preferred] ?? counts?['total']) as num?)?.toInt();
+  }
+
+  return (operations: read('operations', 'active'), qsos: read('qsos', 'contacts'));
+}

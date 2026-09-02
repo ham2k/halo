@@ -5,7 +5,7 @@
 // device's. The pair is only readable if both sides count the same thing —
 // the log the operator still has — so a deleted operation, a deleted QSO, or
 // a QSO stranded inside a deleted operation must drop out of the local line
-// exactly as LoFi drops it from the server's (see Account#stats there).
+// exactly as LoFi drops it from the server's (see the `QSO.contacts` scope there).
 // A local number that counts tombstones would read as data the server lost.
 
 import 'dart:async';
@@ -163,6 +163,24 @@ void main() {
   testWidgets('the server count comes from the account payload', (tester) async {
     final services = await makeServices({
       'current_account': {'uuid': 'acct-1', 'email': 'me@example.com'},
+      'operations': {'total': 13, 'active': 12, 'syncable': 40},
+      'qsos': {'total': 1885, 'contacts': 1234, 'syncable': 90},
+    });
+    addTearDown(services.db.close);
+
+    await openSyncPanel(tester, services);
+
+    // `contacts`/`active` are the device's own rule; `total` and `syncable`
+    // count tombstones by design and must not be what's shown beside it.
+    expect(find.text('Server: 1,234 QSOs · 12 operations'), findsOneWidget);
+    expect(find.text('This device: 0 QSOs · 0 operations'), findsOneWidget);
+  });
+
+  testWidgets('a payload with only raw totals still shows them', (tester) async {
+    // A LoFi that predates `contacts`/`active`: the raw totals are the only
+    // server number there is, and "not available" would be a false claim.
+    final services = await makeServices({
+      'current_account': {'uuid': 'acct-1', 'email': 'me@example.com'},
       'operations': {'total': 12, 'syncable': 40},
       'qsos': {'total': 1234, 'syncable': 90},
     });
@@ -170,9 +188,7 @@ void main() {
 
     await openSyncPanel(tester, services);
 
-    // `syncable` counts tombstones by design and must not be what's shown.
     expect(find.text('Server: 1,234 QSOs · 12 operations'), findsOneWidget);
-    expect(find.text('This device: 0 QSOs · 0 operations'), findsOneWidget);
   });
 
   testWidgets('a payload without counts says so rather than claiming an empty server log', (tester) async {

@@ -656,6 +656,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   Widget _buildMenu(BuildContext context) {
     final theme = Theme.of(context);
     final current = (_accountData?['current_account'] as Map?)?.cast<String, dynamic>();
+    final currentCounts = syncAccountCounts(_accountData);
     final others = _otherAccounts;
 
     return Column(
@@ -674,9 +675,9 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
               account: current ?? const {},
               icon: MdiIcons.accountCheck,
               // The current account's counts come from the getAccountData
-              // response's top-level totals, not per-account stats.
-              qsoCount: ((_accountData?['qsos'] as Map?)?['total'] as num?)?.toInt(),
-              operationCount: ((_accountData?['operations'] as Map?)?['total'] as num?)?.toInt(),
+              // response's top-level counts, not per-account stats.
+              qsoCount: currentCounts.qsos,
+              operationCount: currentCounts.operations,
             ),
             if (others.isNotEmpty) ...[
               const SizedBox(height: Space.lg),
