@@ -91,7 +91,7 @@ Future<T?> showModalPane<T>(
   ),
 );
 
-class ModalPaneRoute<T> extends PopupRoute<T> {
+class ModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
   final WidgetBuilder builder;
   final String? title;
   final bool scrollable;
@@ -161,6 +161,13 @@ class ModalPaneRoute<T> extends PopupRoute<T> {
   /// a stray tap outside from discarding in-progress edits.
   @override
   bool get barrierDismissible => true;
+
+  /// The tap half of that split, for chrome that paints its own copy of this
+  /// route's barrier — see [TapDismissibleRoute]. Without it such a barrier
+  /// reads [barrierDismissible] above, and pops the pane on the one tap this
+  /// pane was written to refuse.
+  @override
+  bool get tapOutsideDismissible => _tapOutsideDismissible;
 
   @override
   String? get barrierLabel => 'Dismiss';
@@ -442,7 +449,7 @@ Future<T?> showTopModalPane<T>(
   return result;
 }
 
-class TopModalPaneRoute<T> extends PopupRoute<T> {
+class TopModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
   final WidgetBuilder builder;
   final Widget? title;
   final bool scrollable;
@@ -558,6 +565,11 @@ class TopModalPaneRoute<T> extends PopupRoute<T> {
 
   @override
   Color? get barrierColor => Colors.transparent;
+
+  /// The tap half of the split, for chrome that paints its own copy of this
+  /// route's barrier — see [TapDismissibleRoute].
+  @override
+  bool get tapOutsideDismissible => _tapOutsideDismissible;
 
   /// Always true — see [_tapOutsideDismissible]'s doc.
   @override

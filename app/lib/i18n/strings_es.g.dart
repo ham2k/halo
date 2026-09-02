@@ -946,11 +946,12 @@ class _Translations$offline$es extends Translations$offline$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Sin conexión';
-	@override String get iconLabel => 'Sin conexión a internet — toca para ver detalles';
-	@override String get noRoute => 'Este dispositivo no reporta ninguna conexión de red.';
-	@override String get unreachable => 'La red está activa, pero nada responde. Una página de acceso sin completar, o una conexión sin salida, se ven así.';
-	@override String get whatStops => 'Las búsquedas de indicativos, las actualizaciones de spots y las descargas de archivos de datos están en pausa. El registro de QSOs y la sincronización con dispositivos cercanos no se ven afectados.';
+	@override String get statusOffline => 'Internet: SIN CONEXIÓN';
+	@override String get statusOnline => 'Internet: conectado';
+	@override String get noRoute => 'No hay ninguna conexión de red.';
+	@override String get unreachable => 'La red está activa, pero nada responde — a menudo una página de acceso sin completar.';
+	@override String get reachable => 'Todos los servicios responden con normalidad.';
+	@override String get whatStops => 'Las búsquedas, los spots y los archivos de datos están en pausa. El registro y la sincronización cercana, no.';
 	@override String get servicesTitle => 'Servicios';
 	@override String get noServices => 'Todavía no ha respondido nada.';
 	@override String lastSuccess({required Object when}) => 'Respondió por última vez hace ${when}';
@@ -1780,6 +1781,10 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get ic705TroubleshootingTitle => 'Si la radio nunca responde';
 	@override String get ic705Troubleshooting => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.';
 	@override String get statusStale => 'Sin respuesta';
+	@override String get statusDisconnected => 'Sin conectar';
+	@override String get statusConnecting => 'Conectando…';
+	@override String get statusDisconnecting => 'Desconectando…';
+	@override String get statusError => 'Fallo de conexión';
 	@override String get currentRadioSettings => 'Ajustes de la radio actual';
 	@override String get placeholderConnectDelay => 'Retraso de conexión (ms)';
 	@override String get placeholderConnectDelayDescription => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.';
@@ -3673,6 +3678,10 @@ extension on TranslationsEs {
 			'settings.station.ic705TroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.ic705Troubleshooting' => 'La radio tiene una **única** sesión de control remoto. Cuando el inicio de sesión se ignora, casi siempre hay algo más usándola.\n\n- **Cierra cualquier otro cliente.** wfview o RS-BA1 conectado a la misma radio ocupa esa única sesión, y mientras tanto el inicio de sesión aquí simplemente se ignora.\n- **Revisa la configuración de red de la radio** — que la WLAN esté encendida, que esté en la misma red y que su función de control remoto (Network) esté activada.\n- **Reinicia la WLAN de la radio** si sigue atascada. Eso libera de forma fiable una sesión que la radio realmente esté reteniendo.\n\nUna **contraseña incorrecta se rechaza explícitamente**, no con silencio — así que si llegaste aquí en lugar de ver un mensaje de "rechazada", la contraseña no es el problema.',
 			'settings.station.statusStale' => 'Sin respuesta',
+			'settings.station.statusDisconnected' => 'Sin conectar',
+			'settings.station.statusConnecting' => 'Conectando…',
+			'settings.station.statusDisconnecting' => 'Desconectando…',
+			'settings.station.statusError' => 'Fallo de conexión',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
 			'settings.station.placeholderConnectDelay' => 'Retraso de conexión (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.',
@@ -4031,11 +4040,12 @@ extension on TranslationsEs {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.',
 			'adifImport.busy' => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.',
 			'adifImport.oneFileOnly' => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.',
-			'offline.title' => 'Sin conexión',
-			'offline.iconLabel' => 'Sin conexión a internet — toca para ver detalles',
-			'offline.noRoute' => 'Este dispositivo no reporta ninguna conexión de red.',
-			'offline.unreachable' => 'La red está activa, pero nada responde. Una página de acceso sin completar, o una conexión sin salida, se ven así.',
-			'offline.whatStops' => 'Las búsquedas de indicativos, las actualizaciones de spots y las descargas de archivos de datos están en pausa. El registro de QSOs y la sincronización con dispositivos cercanos no se ven afectados.',
+			'offline.statusOffline' => 'Internet: SIN CONEXIÓN',
+			'offline.statusOnline' => 'Internet: conectado',
+			'offline.noRoute' => 'No hay ninguna conexión de red.',
+			'offline.unreachable' => 'La red está activa, pero nada responde — a menudo una página de acceso sin completar.',
+			'offline.reachable' => 'Todos los servicios responden con normalidad.',
+			'offline.whatStops' => 'Las búsquedas, los spots y los archivos de datos están en pausa. El registro y la sincronización cercana, no.',
 			'offline.servicesTitle' => 'Servicios',
 			'offline.noServices' => 'Todavía no ha respondido nada.',
 			'offline.lastSuccess' => ({required Object when}) => 'Respondió por última vez hace ${when}',

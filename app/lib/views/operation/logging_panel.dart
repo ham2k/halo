@@ -22,8 +22,7 @@ import '../../tools/form_chrome_labels.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
-import '../settings_view.dart';
-import '../station_panel.dart';
+import '../station_config_dialog.dart';
 
 /// Builds the QSO list's day-header/event-row vocabulary for the active
 /// locale. Month/weekday abbreviations come from `intl`'s `DateFormat`
@@ -308,30 +307,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
     return {...qso, 'our': our, if (power != null) 'power': power};
   }
 
-  /// The Radio control's quick-access dialog: current configuration and the
-  /// current rig only, not the full Station Configuration page — that's one
-  /// tap away via the footer's More Settings.
-  Future<void> _openStationConfigDialog(BuildContext context) => showModalPane<void>(
-    context,
-    title: context.t.settings.station.title,
-    closeLabel: context.t.common.close,
-    // StationPanel is its own scrolling ListView — the pane must not also
-    // wrap it in a SingleChildScrollView.
-    scrollable: false,
-    // The compact panel ends in a footer band whose Done is the way out.
-    closeButton: false,
-    builder: (context) => StationPanel(
-      services: widget.services,
-      compact: true,
-      onMoreSettings: () {
-        final navigator = Navigator.of(context);
-        navigator.pop();
-        navigator.push(MaterialPageRoute(
-          builder: (_) => SettingsView(services: widget.services, initialPanel: 'station'),
-        ));
-      },
-    ),
-  );
+  Future<void> _openStationConfigDialog(BuildContext context) =>
+      showStationConfigDialog(context, widget.services);
 
   @override
   void didChangeDependencies() {

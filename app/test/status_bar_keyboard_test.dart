@@ -1,9 +1,11 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The status footer stays visible while the on-screen keyboard is up, riding
-// directly above it (docs/design/user-interface.md § "Footer & User Feedback").
-// It used to be hidden outright at that moment — which is exactly when a sync's
+// The status footer rides directly above the on-screen keyboard rather than
+// behind it (docs/design/user-interface.md § "Footer & User Feedback"). What it
+// shows there is transient — the band opens for a new message and slides away
+// again (see `_keyboardLinger`), which these tests stay inside by pumping well
+// under it. Being hidden outright at that moment is what this replaced — which is exactly when a sync's
 // progress or a command's output matters most, since the operator is typing.
 //
 // These pump the REAL `StatusBarOverlay`, not a copy of its layout. That is the
@@ -122,6 +124,56 @@ void main() {
         tester.getBottomLeft(footer).dy,
         moreOrLessEquals(windowHeight(tester) - keyboardHeight, epsilon: 1.0),
       );
+    });
+  });
+
+  testWidgets('over a keyboard the band shows a new message and then slides away', (tester) async {
+    // The band is borrowed space over a keyboard: it opens for what was just
+    // posted and goes again, handing the strip back to the field being typed
+    // into. Every other test in this file pumps well inside that window, so
+    // without this one the linger could be deleted outright and the suite
+    // would stay green.
+    await on(TargetPlatform.iOS, () async {
+      raiseKeyboard(tester);
+      await pumpOverlay(tester);
+      await postProgress(tester);
+      expect(find.text('Syncing'), findsOneWidget);
+
+      // Still up a moment before the linger is out...
+      await tester.pump(const Duration(seconds: 4));
+      expect(find.text('Syncing'), findsOneWidget);
+
+      // ...and gone a moment after, with the item itself untouched, so the
+      // band brings it back when the keyboard goes away.
+      await tester.pump(const Duration(seconds: 2));
+      await settle(tester);
+      expect(find.text('Syncing'), findsNothing);
+      expect(services.statusBar.items.map((item) => item.key), contains('sync'));
+
+      tester.view.resetViewInsets();
+      await settle(tester);
+      expect(find.text('Syncing'), findsOneWidget, reason: 'the message comes back with the keyboard gone');
+    });
+  });
+
+  testWidgets('a message that keeps refreshing holds the band up', (tester) async {
+    // A sync's progress bar posts under ONE key, several times a second: the
+    // linger restarts on each post because the ITEMS changed, not because
+    // there are more of them. Counting instead — `items.length`, or a bare
+    // notification — would let the band slide away over a download that is
+    // still running.
+    await on(TargetPlatform.iOS, () async {
+      raiseKeyboard(tester);
+      await pumpOverlay(tester);
+      await postProgress(tester);
+
+      for (var i = 0; i < 4; i++) {
+        await tester.pump(const Duration(seconds: 2));
+        services.statusBar.setProgress(key: 'sync', title: 'Syncing', value: 0.4 + i / 10);
+        await tester.pump();
+      }
+      await settle(tester);
+      expect(find.text('Syncing'), findsOneWidget, reason: '8 seconds of refreshes, none of them 5s apart');
     });
   });
 

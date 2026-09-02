@@ -4,10 +4,11 @@
 // The status bar's offline icon and the detail behind it.
 //
 // This is the operator's answer to "why is nothing updating?", which is why
-// it lives at the left of the status bar rather than in a notice: a notice is
-// an event and gets dismissed, and being offline is a state that lasts as
-// long as it lasts. Everything it reports is about the INTERNET — peer sync
-// over LAN and BLE keeps working while this icon is up, and says so.
+// it is a permanent status at the left of the status bar rather than a
+// notice: a notice is an event and gets dismissed, and connectivity is a
+// state that lasts as long as it lasts. Everything it reports is about the
+// INTERNET — peer sync over LAN and BLE keeps working while this icon says
+// offline, and the detail says so.
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -16,53 +17,29 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../i18n/strings.g.dart';
 import '../services/connectivity_service.dart';
 
-/// The icon itself — absent entirely while online, so `StatusBarFooter`'s
-/// `leading` is null and the bar goes back to collapsing on emptiness.
-class OfflineIndicator extends StatelessWidget {
-  /// Fires the sync probe immediately; the detail sheet's "retry now".
-  final Future<SyncRetryOutcome> Function() onRetry;
-
-  /// When the next scheduled probe is due, read at build time.
-  final DateTime? Function() nextAttemptAt;
-
-  /// The app's root navigator. Required, and not a convenience: the status
-  /// footer is drawn ABOVE the Navigator (it owns the bottom of the window,
-  /// outside every route), so this widget's own context has no Navigator
-  /// ancestor and `showDialog` on it throws. Same reason main.dart's other
-  /// chrome-level dialogs go through this key.
-  final GlobalKey<NavigatorState> navigatorKey;
-
-  final Color color;
-
-  const OfflineIndicator({
-    super.key,
-    required this.onRetry,
-    required this.nextAttemptAt,
-    required this.navigatorKey,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Semantics(
-      button: true,
-      label: context.t.offline.iconLabel,
-      child: InkResponse(
-        onTap: () {
-          final navigatorContext = navigatorKey.currentContext;
-          if (navigatorContext == null) return;
-          showHaloDialog<void>(
-            context: navigatorContext,
-            builder: (_) => _OfflineDetailDialog(onRetry: onRetry, nextAttemptAt: nextAttemptAt),
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Space.xs),
-          child: Icon(MdiIcons.cloudOff, size: 16, color: color),
-        ),
-      ),
-    );
+/// Opens the detail behind the connectivity status.
+///
+/// Takes the ROOT navigator's key rather than a context: the status footer is
+/// drawn ABOVE the Navigator (it owns the bottom of the window, outside every
+/// route), so the tapped row's own context has no Navigator ancestor and
+/// `showDialog` on it throws. Same reason main.dart's other chrome-level
+/// dialogs go through this key.
+void showOfflineDetail({
+  required GlobalKey<NavigatorState> navigatorKey,
+  required Future<SyncRetryOutcome> Function() onRetry,
+  required DateTime? Function() nextAttemptAt,
+}) {
+  final navigatorContext = navigatorKey.currentContext;
+  if (navigatorContext == null) {
+    // The operator opened a menu and chose this line; nothing happening at all
+    // is worse than an error, and it means the chrome outlived the navigator.
+    debugPrint('[status-bar] no navigator for the connectivity detail');
+    return;
   }
+  showHaloDialog<void>(
+    context: navigatorContext,
+    builder: (_) => _OfflineDetailDialog(onRetry: onRetry, nextAttemptAt: nextAttemptAt),
+  );
 }
 
 class _OfflineDetailDialog extends StatefulWidget {
@@ -89,23 +66,49 @@ class _OfflineDetailDialogState extends State<_OfflineDetailDialog> {
       _retrying = true;
       _outcome = null;
     });
-    final outcome = await widget.onRetry();
-    if (!mounted) return;
-    setState(() {
-      _retrying = false;
-      _outcome = outcome;
-    });
-    // A retry that worked has ended the thing this sheet is about, so there
-    // is nothing left to read here.
-    if (outcome == SyncRetryOutcome.reached) Navigator.of(context).pop();
+    SyncRetryOutcome? outcome;
+    try {
+      outcome = await widget.onRetry();
+    } finally {
+      // The sheet no longer closes itself, so a throw here would leave the
+      // button reading "Trying…" and disabled for as long as the operator
+      // keeps it open — the one control on the sheet, dead, with the reason
+      // somewhere in ErrorPolicy's hands rather than on screen.
+      if (mounted) {
+        setState(() {
+          _retrying = false;
+          _outcome = outcome;
+        });
+      }
+    }
+    // Deliberately does NOT close on success: the operator asked a question,
+    // and the answer is on this sheet — the outcome line, and the services
+    // list rewriting itself as they watch. A sheet that vanished on the good
+    // outcome would be the one case where pressing the button tells you
+    // nothing. Done is what closes it.
   }
 
   @override
   Widget build(BuildContext context) {
+    // Rebuilt on every connectivity edge, not just on a retry: the title now
+    // ASSERTS a live state ("Internet: connected") and the sheet deliberately
+    // stays open, so a probe that succeeds in the background while it is up
+    // would otherwise leave it saying OFFLINE above a services list that has
+    // rewritten itself to all-green.
+    return StreamBuilder<bool>(
+      stream: ConnectivityService.offlineChanges,
+      initialData: ConnectivityService.isOffline,
+      builder: (context, snapshot) => _dialog(context, snapshot.data ?? ConnectivityService.isOffline),
+    );
+  }
+
+  Widget _dialog(BuildContext context, bool offline) {
     final t = context.t.offline;
     final theme = Theme.of(context);
     return HaloDialog(
-      title: Text(t.title),
+      // The status bar's own line, verbatim: this sheet is what that line
+      // opens, and a title saying something else reads as a different subject.
+      title: Text(offline ? t.statusOffline : t.statusOnline),
       content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -114,9 +117,13 @@ class _OfflineDetailDialogState extends State<_OfflineDetailDialog> {
             // the two have different things to try: no route at all is a
             // radio or a coverage problem, while a route that answers nothing
             // is usually a sign-in page waiting in a browser.
-            Text(ConnectivityService.hasNoRoute ? t.noRoute : t.unreachable),
-            const SizedBox(height: Space.md),
-            Text(t.whatStops, style: theme.textTheme.bodySmall),
+            Text(offline ? (ConnectivityService.hasNoRoute ? t.noRoute : t.unreachable) : t.reachable),
+            // What stops is only true while it is stopped — the same lines
+            // read as a warning about nothing when everything is answering.
+            if (offline) ...[
+              const SizedBox(height: Space.md),
+              Text(t.whatStops, style: theme.textTheme.bodySmall),
+            ],
             const SizedBox(height: Space.lg),
             Text(t.servicesTitle, style: theme.textTheme.titleSmall),
             const SizedBox(height: Space.xs),
@@ -130,13 +137,22 @@ class _OfflineDetailDialogState extends State<_OfflineDetailDialog> {
             ],
           ],
         ),
-      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
-      actions: [
-        FilledButton(
-          onPressed: _retrying ? null : _retry,
-          child: Text(_retrying ? t.retrying : t.retry),
-        ),
-      ],
+      // Done is the emphasis AND the trailing button, and Retry is neither:
+      // the sheet is read far more often than it is acted on, and the retry it
+      // offers is one the app is already making on a schedule of its own (see
+      // the next-attempt line above).
+      //
+      // Retry goes in `secondary:` — "something else to DO", which is exactly
+      // what it is — rather than Done going in `actions:`: a way out of a
+      // dialog belongs in `cancel:` (docs/design/user-interface.md §Dialogs),
+      // and `dialog_footer_convention_test` fails the build on one passed
+      // through `actions:`. With `actions` empty the cancel slot IS the
+      // trailing edge, which is where the emphasis belongs.
+      secondary: TextButton(
+        onPressed: _retrying ? null : _retry,
+        child: Text(_retrying ? t.retrying : t.retry),
+      ),
+      cancel: FilledButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
     );
   }
 
@@ -165,11 +181,13 @@ class _OfflineDetailDialogState extends State<_OfflineDetailDialog> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(
-                  service.isFailing ? MdiIcons.alertCircleOutline : MdiIcons.checkCircleOutline,
-                  size: 16,
-                  color: service.isFailing ? theme.colorScheme.error : theme.colorScheme.primary,
-                ),
+                // Emoji rather than an MDI glyph for the good case, and so
+                // through [emojiStyle]: body text is Roboto, which resolves no
+                // emoji at all under CanvasKit — the glyph would simply be
+                // absent, with nothing in the log to say why.
+                service.isFailing
+                    ? Icon(MdiIcons.alertCircleOutline, size: 16, color: theme.colorScheme.error)
+                    : Text('✅', style: emojiStyle(fontSize: 14)),
                 const SizedBox(width: Space.sm),
                 Expanded(
                   child: Column(

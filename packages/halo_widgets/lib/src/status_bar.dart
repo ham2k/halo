@@ -46,6 +46,47 @@ class StatusBarItemData {
   bool get isProgress => isIndeterminateProgress || progressValue != null;
 }
 
+/// A PERMANENT status: a state that is true until it is not, rather than an
+/// event that happened.
+///
+/// It is not a [StatusBarItemData] and deliberately cannot become one: an
+/// item lives in the collapsed switcher, so it is shown only while it happens
+/// to be the most recent thing posted, it is pushed aside by the next sync's
+/// progress bar, and it is dismissible. None of that suits "we have no
+/// network" or "the rig is an IC-705" — those are the answer to a question
+/// the operator asks at a moment nothing else is being said.
+///
+/// So each one holds an icon at the trailing edge of the bar for as long as it
+/// is true, and the icons are the bar's handle: tapping any of them opens a
+/// menu listing every status in a line of its own. A MENU rather than the
+/// footer's own list, which is what the messages open: these are a short,
+/// fixed set of standing facts, and a surface anchored to the icons that asked
+/// for it says so — while the band stays what it is for, a message that needs
+/// the width (a progress bar) and a stack of them to scroll.
+class StatusBarPermaData {
+  final String key;
+
+  /// Required: this is what the operator sees in the collapsed bar, so a
+  /// status with no icon would be invisible until expanded.
+  ///
+  /// [IconData] rather than a name string (which is what [StatusBarItemData]
+  /// takes, because items come from extension JSON): every permanent status
+  /// is core Dart code, where a wrong icon should be an analyzer error and
+  /// not a puzzle piece at runtime — see `resolveIconName`.
+  final IconData icon;
+
+  /// The line shown when the bar is expanded, and the icon's accessible name.
+  final String text;
+
+  /// What the menu ENTRY does when chosen — a detail sheet, a settings screen.
+  /// The icon itself never runs this: its tap opens the menu, so that one
+  /// deliberate gesture (open it, read, then choose) never turns into a dialog
+  /// the operator did not ask for.
+  final VoidCallback? onTap;
+
+  const StatusBarPermaData({required this.key, required this.icon, required this.text, this.onTap});
+}
+
 class StatusBarActionData {
   final String label;
   final VoidCallback onTap;
@@ -92,8 +133,13 @@ const _progressTitleFlex = 1;
 /// The collapsed/expandable status bar. Shows the most-recently-updated
 /// [items] entry collapsed; tap to expand into a scrollable list, capped at
 /// [maxExpandedHeight] — or 40% of the screen when no caller sets one.
-/// Collapses to zero height on every platform when it has nothing to show —
-/// no [items] and no [leading].
+/// Collapses to zero height when it has nothing to show — no [items], no
+/// [perma] and no [showWhenEmpty].
+///
+/// Needs an [Overlay] ancestor whenever it carries [perma]: their menu is an
+/// `OverlayPortal`, and this widget is drawn ABOVE the Navigator in the app,
+/// where there is no route overlay to borrow. `HomeRailShell` provides one;
+/// a test harness that stands the footer up outside a Navigator has to.
 class StatusBarFooter extends StatefulWidget {
   /// The footer's height with its list collapsed — what it takes whenever
   /// there is anything to show at all. Public for the same reason as
@@ -104,20 +150,13 @@ class StatusBarFooter extends StatefulWidget {
   final List<StatusBarItemData> items;
   final void Function(String key) onDismiss;
 
-  /// A persistent indicator pinned to the LEFT of the bar, outside the item
-  /// list — the app's offline icon is the one that uses it.
+  /// The permanent statuses, pinned as icons to the TRAILING edge of the bar
+  /// and outside the item list — see [StatusBarPermaData]. In the order the
+  /// caller gives, which is the order they appear in.
   ///
-  /// Deliberately not an item. An item lives in the collapsed switcher, so it
-  /// is shown only while it happens to be the most recent thing posted, it is
-  /// pushed aside by the next sync's progress bar, and it is dismissible.
-  /// None of those suit a state: "we have no network" is true until it is
-  /// not, and it is the answer to "why is nothing updating?" precisely when
-  /// nothing else is being said.
-  ///
-  /// So it also opens the bar on its own — a caller that passes one gets a
-  /// visible footer with no items at all. It never expands the list (there is
-  /// nothing in it to expand) and its own taps are its own business.
-  final Widget? leading;
+  /// They also open the bar on their own: a caller that passes one gets a
+  /// visible footer with no items at all.
+  final List<StatusBarPermaData> perma;
 
   /// Accessible name for an item's dismiss button — it is icon-only, and the
   /// app has no hover tooltips (docs/design/user-interface.md). English
@@ -130,21 +169,58 @@ class StatusBarFooter extends StatefulWidget {
   /// holds when nothing else is competing for the bottom of it.
   final double? maxExpandedHeight;
 
+  /// Whether the message list is open, when the CALLER owns that state.
+  ///
+  /// Null leaves it to the widget, which is what a caller with nothing else to
+  /// coordinate wants. The app passes it because an open list is modal: it
+  /// puts a scrim over the window that has to appear and disappear with the
+  /// list, and a scrim answering to state locked inside here could only guess.
+  final bool? expanded;
+
+  /// Fires whenever a tap in here would open or close the list, with the state
+  /// it is asking for. Required reading only for a caller that also passes
+  /// [expanded]: otherwise the widget has already applied the change.
+  final ValueChanged<bool>? onExpandedChanged;
+
+  /// Keeps the bar on screen with nothing in it — a permanent footer band
+  /// rather than chrome that comes and goes.
+  ///
+  /// The band is the app's bottom edge wherever there is room for it, so that
+  /// a message arriving lands IN a bar the operator is already looking at
+  /// instead of pushing the whole window up by the bar's height. False only
+  /// where that room is borrowed from something more urgent — over a virtual
+  /// keyboard, where the caller collapses the bar once its message has been
+  /// read (see `StatusBarOverlay`).
+  final bool showWhenEmpty;
+
   const StatusBarFooter({
     super.key,
     required this.items,
     required this.onDismiss,
-    this.leading,
+    this.perma = const [],
     this.maxExpandedHeight,
     this.dismissLabel = 'Dismiss',
-  });
+    this.showWhenEmpty = false,
+    this.expanded,
+    this.onExpandedChanged,
+  }) : assert(expanded == null || onExpandedChanged != null,
+            'a controlled footer needs onExpandedChanged, or nothing can open or close it');
 
   @override
   State<StatusBarFooter> createState() => _StatusBarFooterState();
 }
 
 class _StatusBarFooterState extends State<StatusBarFooter> {
-  bool _expanded = false;
+  /// Only consulted while [StatusBarFooter.expanded] is null — see it.
+  bool _uncontrolledExpanded = false;
+
+  bool get _expanded => widget.expanded ?? _uncontrolledExpanded;
+
+  void _setExpanded(bool value) {
+    if (_expanded == value) return;
+    widget.onExpandedChanged?.call(value);
+    if (widget.expanded == null) setState(() => _uncontrolledExpanded = value);
+  }
 
   // AnimatedSwitcher requires each transition's key to be unique for as long
   // as the outgoing child is still animating out — reusing one throws a
@@ -168,10 +244,11 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
 
   @override
   Widget build(BuildContext context) {
-    final hasContent = widget.items.isNotEmpty || widget.leading != null;
+    final hasContent = widget.showWhenEmpty || widget.items.isNotEmpty || widget.perma.isNotEmpty;
     // A single item has nothing more to show expanded — the expanded list
-    // would just be that same one row in a taller box — so there's nothing
-    // to toggle.
+    // would just be that same one row in a taller box — so there is nothing
+    // to toggle. The permanent statuses are not in this list at all: their
+    // icons open a menu of their own (see [_PermaIcons]).
     final canExpand = widget.items.length > 1;
     final theme = Theme.of(context);
     final expanded = _expanded && canExpand;
@@ -263,12 +340,14 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                   child: SafeArea(
                     top: false,
                     child: InkWell(
-                      onTap: canExpand ? () => setState(() => _expanded = !_expanded) : null,
+                      // The BAR opens the messages; the icons riding on it
+                      // open their own menu, and take their taps first.
+                      onTap: canExpand ? () => _setExpanded(!_expanded) : null,
                       child: AnimatedSize(
                         duration: const Duration(milliseconds: 200),
                         curve: Curves.fastOutSlowIn,
                         alignment: Alignment.bottomCenter,
-                        child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor),
+                        child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor, backgroundColor),
                       ),
                     ),
                   ),
@@ -279,7 +358,7 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     );
   }
 
-  Widget _buildCollapsed(BuildContext context, Color foregroundColor) {
+  Widget _buildCollapsed(BuildContext context, Color foregroundColor, Color backgroundColor) {
     final theme = Theme.of(context);
     final last = widget.items.isNotEmpty ? widget.items.last : null;
     final showGroups = widget.items.length > 1;
@@ -297,16 +376,6 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // The indicator sits OUTSIDE the centered message column on
-            // purpose: it belongs to the bar, not to whatever is being said
-            // in it, so it stays put at the left edge while messages come
-            // and go. Only in the collapsed bar — expanding is a deliberate
-            // act of reading the list, and the icon would be floating beside
-            // a tall box.
-            if (widget.leading != null) ...[
-              Center(child: widget.leading),
-              const SizedBox(width: Space.sm),
-            ],
             Expanded(
               child: last == null
                   ? const SizedBox.shrink()
@@ -408,6 +477,21 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
                     ),
                   ),
             ),
+            // The icons sit OUTSIDE the centered message column on purpose:
+            // they belong to the bar, not to whatever is being said in it, so
+            // they stay put at the trailing edge while messages come and go.
+            // Only in the collapsed bar — the expanded list is the messages',
+            // and they would be floating beside a tall box.
+            if (widget.perma.isNotEmpty) ...[
+              const SizedBox(width: Space.sm),
+              Center(
+                child: _PermaIcons(
+                  perma: widget.perma,
+                  color: foregroundColor,
+                  background: backgroundColor,
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -425,20 +509,28 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     // nothing legible in it.
     final maxHeight = widget.maxExpandedHeight ?? MediaQuery.sizeOf(context).height * _windowFraction;
     final rowHeight = LayoutDensity.metricsOf(context).statusBarRow;
-    final contentHeight = rowHeight * list.length;
+    final rowCount = list.length;
+    // The separators are part of what has to fit: counted out, the list is
+    // laid out one divider short per row and the LAST row is the one clipped
+    // — it reads as a short row rather than as a list too small for its
+    // contents. No padding either, for the same arithmetic and because the
+    // top row's edge IS the bar's edge: a gap above it reads as the panel
+    // floating off whatever it is pinned to.
+    final contentHeight = rowHeight * rowCount + (rowCount > 1 ? rowCount - 1 : 0);
     final cap = maxHeight < rowHeight ? rowHeight : maxHeight;
     return SizedBox(
       // Snapped for the same reason as the collapsed bar: this height is what
       // positions the expanded panel's top edge against the content above it.
       height: PixelGrid.of(context).snap(contentHeight.clamp(rowHeight, cap).toDouble()),
       child: ListView.separated(
-        padding: const EdgeInsets.symmetric(vertical: Space.xs),
-        itemCount: list.length,
+        padding: EdgeInsets.zero,
+        itemCount: rowCount,
         separatorBuilder: (context, index) => Divider(height: 1, color: foregroundColor.withValues(alpha: 0.3)),
         itemBuilder: (context, index) => _StatusBarItemRow(
           item: list[index],
           color: foregroundColor,
           onDismiss: () => widget.onDismiss(list[index].key),
+          onToggle: () => _setExpanded(false),
           dismissLabel: widget.dismissLabel,
         ),
       ),
@@ -454,6 +546,267 @@ List<MapEntry<String?, int>> _groupByIcon(List<StatusBarItemData> items) {
     counts[item.icon] = (counts[item.icon] ?? 0) + 1;
   }
   return counts.entries.toList();
+}
+
+/// The glyph a permanent status shows in the collapsed bar — and, with the
+/// band's height, what places the menu clear of it.
+const double _permaIconSize = 16;
+
+/// The permanent statuses' icons at the trailing end of the collapsed bar,
+/// and the menu they open.
+///
+/// ONE menu for the whole group rather than one per icon: they are a single
+/// list of standing facts, and the operator who taps the cloud to ask about
+/// the network is not asking to be shown only the network. Every icon opens
+/// the same menu, which is also what makes it dismissible from the icon it
+/// came from.
+///
+/// A menu, not the footer's own expanded list, because the list is the
+/// MESSAGES' surface: those need the width (a progress bar splits its row) and
+/// the scroll, while these are a short fixed set that reads better anchored to
+/// the icons that asked for it. It also costs nothing to be modal — the menu
+/// route brings its own barrier, dismissal and focus handling.
+class _PermaIcons extends StatefulWidget {
+  final List<StatusBarPermaData> perma;
+  final Color color;
+
+  /// The bar's own fill, which the menu is tinted from — see [_menuFill].
+  final Color background;
+
+  const _PermaIcons({required this.perma, required this.color, required this.background});
+
+  @override
+  State<_PermaIcons> createState() => _PermaIconsState();
+}
+
+class _PermaIconsState extends State<_PermaIcons> {
+  final _menu = MenuController();
+
+  /// The menu's fill: the bar's own colour lifted a little, so it reads as the
+  /// same piece of chrome held up off the band rather than as a surface
+  /// borrowed from the page behind it. Toward white in both brightnesses —
+  /// "lighter" is what raises a surface either way.
+  Color _menuFill(BuildContext context) => Color.lerp(widget.background, Colors.white, 0.10)!;
+
+  @override
+  Widget build(BuildContext context) {
+    // The inset that keeps the menu off the window's edge, spent through the
+    // MediaQuery's PADDING rather than through `alignmentOffset`.
+    //
+    // The offset cannot do it: anchored to a glyph at the trailing edge, the
+    // menu's natural position overflows the window, and `_MenuLayout` clamps
+    // it flush to the edge — after the offset has been applied, which is why
+    // an x there moves nothing at all. What the layout does respect is the
+    // safe area it must not lay out into, so the margin is stated as one.
+    final padding = MediaQuery.paddingOf(context);
+    return MediaQuery(
+      data: MediaQuery.of(context).copyWith(padding: padding.copyWith(right: padding.right + Space.lg)),
+      child: MenuAnchor(
+      controller: _menu,
+      // Anchored above the bar and hard against its trailing edge, so the menu
+      // hangs off the icons rather than floating over the middle of the
+      // window: `alignmentOffset` is measured from the anchor's top-left, and
+      // the menu is placed by its own top-left, so the y is the menu's own
+      // height plus the bar — which it does not know here. `Alignment.topRight`
+      // with a zero offset is the closest the API gets, and it puts the menu's
+      // top-right corner on the anchor's, growing upward from the bar.
+      // Just clear of the band. The menu is placed against the ANCHOR's top
+      // edge, and the anchor is a 16pt glyph centred in a taller bar, so the
+      // lift is the half-band above the glyph plus the gap that keeps the two
+      // apart. Derived from the band's height rather than a constant, because
+      // density resolves that (see [StatusBarFooter.collapsedHeightOf]) — and
+      // a fixed number that clears the bar at one density buries the icons at
+      // another.
+      //
+      // POSITIVE, which moves it UP: there is never room below a menu anchored
+      // to the bottom of the window, so `MenuAnchor` flips it — and a flipped
+      // root menu has this offset's y NEGATED (`_MenuAnchorState`). A negative
+      // value here pushes it down over the band, which is why this reads
+      // backwards.
+      alignmentOffset: Offset(
+        0,
+        (StatusBarFooter.collapsedHeightOf(context) - _permaIconSize) / 2 + Space.sm,
+      ),
+      // The tap that dismisses the menu does nothing else. Without this it
+      // passes through as well, and the bar is what is under the menu — so
+      // putting the statuses away would open the message list in the same
+      // gesture.
+      consumeOutsideTap: true,
+      // The menu's own box is transparent and takes no room of its own; the
+      // panel below carries the fill, the elevation and the margin.
+      //
+      // It has to be done from the inside like this: anchored to a glyph at
+      // the trailing edge, the menu's natural position overflows the window
+      // and `_MenuLayout` clamps its box flush to the edge — after
+      // `alignmentOffset` is applied, and regardless of the safe area handed
+      // to the anchor. Whatever the box does, what the operator sees is this
+      // panel, and a margin it holds is a margin that survives the clamp.
+      style: const MenuStyle(
+        alignment: Alignment.topRight,
+        visualDensity: VisualDensity.compact,
+        backgroundColor: WidgetStatePropertyAll(Colors.transparent),
+        surfaceTintColor: WidgetStatePropertyAll(Colors.transparent),
+        shadowColor: WidgetStatePropertyAll(Colors.transparent),
+        elevation: WidgetStatePropertyAll(0),
+        padding: WidgetStatePropertyAll(EdgeInsets.zero),
+      ),
+      // Every status gets a line, whichever icon was tapped. The tap runs the
+      // status's own action; one with none simply closes, which is what a menu
+      // entry that reports rather than offers should do.
+      menuChildren: [
+        Padding(
+          padding: const EdgeInsetsDirectional.only(end: Space.lg),
+          child: Material(
+            color: _menuFill(context),
+            elevation: 3,
+            shadowColor: Colors.black.withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(Space.xs),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final status in widget.perma)
+                  MenuItemButton(
+                    leadingIcon: Icon(status.icon, size: 18, color: widget.color),
+                    style: MenuItemButton.styleFrom(foregroundColor: widget.color),
+                    // Straight through, null included: a status that only reports
+            // renders as a disabled entry, which is honest. A `?? () {}` would
+            // make an entry whose action went missing look live and do nothing.
+            onPressed: status.onTap,
+                    child: Text(status.text),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ],
+      builder: (context, controller, child) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final status in widget.perma)
+            Semantics(
+              container: true,
+              button: true,
+              label: status.text,
+              child: InkResponse(
+                onTap: () => controller.isOpen ? controller.close() : controller.open(),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: Space.xs),
+                  child: Icon(status.icon, size: _permaIconSize, color: widget.color),
+                ),
+              ),
+            ),
+        ],
+      ),
+      ),
+    );
+  }
+}
+
+/// How much room an expanded row's tap target keeps around the writing, on
+/// each side.
+const double _rowPadding = Space.md;
+
+/// The box every row of the EXPANDED list is drawn in: a full-height tap
+/// target, the width of the writing plus a little air, centered in the row.
+///
+/// It is the tap target rather than the row because the margins either side
+/// belong to the BAR — tapping them collapses the list, which is what a tap on
+/// anything that is not a message means down here. An InkWell around the
+/// full-width row would swallow those. What a tap INSIDE does is the caller's
+/// ([onTap]); a row with nothing of its own to do closes the list, so that
+/// every row lights up under the pointer and none of them looks dead.
+///
+/// `container: true` is what makes the narrower target true for assistive tech
+/// as well, and it is load-bearing rather than tidy: an InkWell's own
+/// `Semantics` merges UP, and the nearest node above it here is the list's own
+/// per-row one — which IS the full width. The merged node carries the tap
+/// action across the whole row, so wherever the platform routes a semantic tap
+/// (VoiceOver, TalkBack, or a browser with accessibility on, where Flutter web
+/// hangs a DOM element off every node and that element takes the click before
+/// the framework hit-tests anything) the margins run the action after all. A
+/// container of its own gives the action a node the size of the box that owns
+/// it.
+class _ExpandedRow extends StatelessWidget {
+  final Color color;
+  final VoidCallback onTap;
+  final Widget child;
+
+  const _ExpandedRow({required this.color, required this.onTap, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: LayoutDensity.metricsOf(context).statusBarRow,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: Space.lg),
+        // Same ideal-width, centered treatment as every other row.
+        child: Center(
+          child: ConstrainedBox(
+            // The writing still lines up at [idealPaneWidth]; the extra is the
+            // tap target's own padding, so the highlight has room around it
+            // instead of stopping at the first and last glyph.
+            constraints: const BoxConstraints(maxWidth: idealPaneWidth + _rowPadding * 3),
+            // Full height, so the highlight is the whole ROW and not just the
+            // line of text sitting in the middle of it.
+            child: SizedBox(
+              height: double.infinity,
+              child: _RowInk(
+                color: color,
+                onTap: onTap,
+                child: Padding(
+                  // Double at the leading edge: the icon there sits flush
+                  // against it, while the trailing slot is a button-sized
+                  // box that already carries its own air around a smaller
+                  // glyph. Even padding reads as lopsided because of it.
+                  padding: const EdgeInsetsDirectional.only(start: _rowPadding * 2, end: _rowPadding),
+                  child: child,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The tap target every row of the expanded list is made of — a container of
+/// its own for assistive tech, and ink loud enough to see on the bar.
+///
+/// `container: true` is load-bearing rather than tidy: an InkWell's own
+/// `Semantics` merges UP, and the nearest node above it in the list is the
+/// per-row one — which is the whole row. A merged action lands on the margins
+/// that are meant to close the list, and on whatever else shares the row,
+/// wherever the platform routes a semantic tap (VoiceOver, TalkBack, and
+/// Flutter web's DOM element per node, which takes the click before any hit
+/// test runs).
+class _RowInk extends StatelessWidget {
+  final Color color;
+  final VoidCallback? onTap;
+  final Widget child;
+
+  const _RowInk({required this.color, required this.onTap, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      child: InkWell(
+        onTap: onTap,
+        // The bar paints on the app-bar colour, which the default ink colours
+        // (black/white at a few percent) barely move — a row that responds to
+        // a tap has to look like it does. Derived from the FOREGROUND so it
+        // reads in both brightnesses, where a fixed black or white reads in
+        // one.
+        hoverColor: color.withValues(alpha: 0.14),
+        focusColor: color.withValues(alpha: 0.14),
+        highlightColor: color.withValues(alpha: 0.10),
+        splashColor: color.withValues(alpha: 0.22),
+        child: child,
+      ),
+    );
+  }
 }
 
 class _IconCountPill extends StatelessWidget {
@@ -540,75 +893,72 @@ class _StatusBarItemRow extends StatelessWidget {
   final VoidCallback onDismiss;
   final String dismissLabel;
 
+  /// Closes the list — an item's own line has nothing else to do when tapped,
+  /// and its dismiss button takes its own taps from inside this.
+  final VoidCallback onToggle;
+
   const _StatusBarItemRow({
     required this.item,
     required this.color,
     required this.onDismiss,
+    required this.onToggle,
     required this.dismissLabel,
   });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return SizedBox(
-      height: LayoutDensity.metricsOf(context).statusBarRow,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Space.lg),
-        // Same ideal-width, centered treatment as the collapsed row.
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: idealPaneWidth),
-            child: Row(
+    return _ExpandedRow(
+      color: color,
+      onTap: onToggle,
+      child: Row(
               children: [
-                if (item.icon != null) ...[
-                  Icon(resolveIconName(item.icon), size: 18, color: color),
-                  const SizedBox(width: Space.md),
-                ],
-                if (item.isProgress) ...[
-                  Expanded(
-                    flex: _progressTitleFlex,
-                    child: Text(
-                      item.title ?? item.text ?? '',
-                      textAlign: TextAlign.left,
+          if (item.icon != null) ...[
+            Icon(resolveIconName(item.icon), size: 18, color: color),
+            const SizedBox(width: Space.md),
+          ],
+          if (item.isProgress) ...[
+            Expanded(
+              flex: _progressTitleFlex,
+              child: Text(
+                item.title ?? item.text ?? '',
+                textAlign: TextAlign.left,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(color: color),
+              ),
+            ),
+            const SizedBox(width: Space.md),
+            Expanded(
+              flex: _progressBarFlex,
+              child: _StatusBarProgressIndicator(item: item, color: color),
+            ),
+          ] else
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (item.title != null)
+                    Text(
+                      item.title!,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(color: color),
                     ),
-                  ),
-                  const SizedBox(width: Space.md),
-                  Expanded(
-                    flex: _progressBarFlex,
-                    child: _StatusBarProgressIndicator(item: item, color: color),
-                  ),
-                ] else
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (item.title != null)
-                          Text(
-                            item.title!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(color: color),
-                          ),
-                        if (item.text != null)
-                          Text(
-                            item.text!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.85)),
-                          ),
-                      ],
+                  if (item.text != null)
+                    Text(
+                      item.text!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(color: color.withValues(alpha: 0.85)),
                     ),
-                  ),
-                const SizedBox(width: Space.xs),
-                _DismissButton(color: color, onPressed: onDismiss, label: dismissLabel),
-              ],
+                ],
+              ),
             ),
-          ),
-        ),
+          const SizedBox(width: Space.xs),
+          _DismissButton(color: color, onPressed: onDismiss, label: dismissLabel),
+        ],
       ),
     );
   }

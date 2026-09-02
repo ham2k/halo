@@ -721,6 +721,17 @@ class HomeRailLogo extends StatelessWidget {
 class HomeRailShell extends StatefulWidget {
   final HaLoServices services;
   final Widget routes;
+
+  /// A full-window layer over the routes AND the rail, below the chrome band —
+  /// what an open status list puts up so a tap anywhere else in the window
+  /// lands on it rather than on whatever it happens to cover. Null when
+  /// nothing is claiming the window.
+  ///
+  /// Inside the Stack rather than around it: the band below it stays live,
+  /// which is the whole point — the operator has to be able to reach the list
+  /// they just opened.
+  final Widget? scrim;
+
   final List<Widget> chrome;
 
   final List<Widget> keyboard;
@@ -730,6 +741,7 @@ class HomeRailShell extends StatefulWidget {
     super.key,
     required this.services,
     required this.routes,
+    this.scrim,
     this.chrome = const [],
     this.keyboard = const [],
   });
@@ -887,7 +899,10 @@ class _HomeRailShellState extends State<HomeRailShell> {
                 // in it) without covering the band's own controls.
                 Expanded(
                   child: Stack(
-                    children: homeRail.covered ? [...navigation, views] : [views, ...navigation],
+                    children: [
+                      ...homeRail.covered ? [...navigation, views] : [views, ...navigation],
+                      if (widget.scrim != null) Positioned.fill(key: const ValueKey('scrim'), child: widget.scrim!),
+                    ],
                   ),
                 ),
                 // Notices and the status footer, spanning the WINDOW and

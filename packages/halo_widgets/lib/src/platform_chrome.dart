@@ -9,7 +9,7 @@
 // any AppBar leading content needs left clearance to avoid sitting under
 // them.
 
-import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform, kIsWeb;
+import 'package:flutter/foundation.dart' show TargetPlatform, debugPrint, defaultTargetPlatform, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -252,6 +252,29 @@ Widget macOSAwareBackButton(BuildContext context, {VoidCallback? onPressed, bool
 /// in `MaterialApp.navigatorObservers` at the app root.
 final ValueNotifier<bool> modalBarrierIsVisible = ValueNotifier<bool>(false);
 
+/// A route whose barrier is dismissible by a TAP, as distinct from by Escape.
+///
+/// The two are one flag on a stock `ModalRoute`, and this app's modal panes
+/// split them deliberately (see `ModalPaneRoute`): a pane that must not lose
+/// in-progress edits to a stray tap still answers Escape, so it reports
+/// `barrierDismissible: true` and refuses the tap privately. Chrome that
+/// paints its own copy of a barrier has to ask for the tap half, or it
+/// dismisses panes that asked it not to.
+abstract interface class TapDismissibleRoute {
+  bool get tapOutsideDismissible;
+}
+
+/// Whether a tap on that barrier dismisses what it belongs to — the topmost
+/// dimming route's answer, via [TapDismissibleRoute] where it has one.
+///
+/// Chrome drawn OUTSIDE the navigator has to paint its own barrier (the
+/// route's stops at the routes), and a barrier that swallows the tap without
+/// dismissing is worse than none: the operator taps the dimmed strip, nothing
+/// happens, and the dialog they were trying to leave is still there. So the
+/// painted copy has to know what the real one would do. False whenever
+/// nothing is up, and false for a dialog that refuses barrier dismissal.
+final ValueNotifier<bool> modalBarrierIsDismissible = ValueNotifier<bool>(false);
+
 /// Keeps [modalBarrierIsVisible] in sync with the navigator's route stack.
 /// Counts live routes that actually dim the window (a non-transparent
 /// [ModalRoute.barrierColor]) so it stays correct across stacked dialogs;
@@ -259,37 +282,66 @@ final ValueNotifier<bool> modalBarrierIsVisible = ValueNotifier<bool>(false);
 /// menu overlays) are deliberately ignored — the mask only hides for the
 /// dimming dialogs and panes the design cares about.
 class ModalBarrierRouteObserver extends NavigatorObserver {
-  int _count = 0;
+  /// The live dimming routes, innermost last — a list rather than a count
+  /// because [modalBarrierIsDismissible] is a property of the TOP one, and
+  /// stacked dialogs need not agree about it.
+  final List<ModalRoute<dynamic>> _dimming = [];
 
-  bool _dims(Route<dynamic>? route) {
+  ModalRoute<dynamic>? _dims(Route<dynamic>? route) {
     final color = route is ModalRoute ? route.barrierColor : null;
-    return color != null && color.a > 0;
+    return color != null && color.a > 0 ? route as ModalRoute<dynamic> : null;
   }
 
-  void _bump(int delta) {
-    _count = (_count + delta).clamp(0, 1 << 30);
-    modalBarrierIsVisible.value = _count > 0;
+  void _publish() {
+    modalBarrierIsVisible.value = _dimming.isNotEmpty;
+    modalBarrierIsDismissible.value = _dimming.isNotEmpty && _tapDismissible(_dimming.last);
   }
+
+  /// [ModalRoute.barrierDismissible] is not the answer for this app's own
+  /// routes — see [TapDismissibleRoute].
+  bool _tapDismissible(ModalRoute<dynamic> route) =>
+      route is TapDismissibleRoute ? (route as TapDismissibleRoute).tapOutsideDismissible : route.barrierDismissible;
 
   @override
   void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (_dims(route)) _bump(1);
+    final dimming = _dims(route);
+    if (dimming == null) return;
+    _dimming.add(dimming);
+    _publish();
   }
 
   @override
-  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (_dims(route)) _bump(-1);
-  }
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) => _release(route);
 
   @override
-  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    if (_dims(route)) _bump(-1);
+  void didRemove(Route<dynamic> route, Route<dynamic>? previousRoute) => _release(route);
+
+  void _release(Route<dynamic> route) {
+    if (!_dimming.remove(route)) {
+      // A dimming route that leaves without ever having been counted in means
+      // this observer missed its push — and the list is identity-keyed, so
+      // unlike the count this replaced, nothing self-heals: the mask would
+      // stay up for the rest of the session over chrome nobody can reach.
+      if (_dims(route) != null) {
+        debugPrint('[modal-barrier] a dimming route left without being counted in: $route');
+      }
+      return;
+    }
+    _publish();
   }
 
   @override
   void didReplace({Route<dynamic>? newRoute, Route<dynamic>? oldRoute}) {
-    if (_dims(oldRoute)) _bump(-1);
-    if (_dims(newRoute)) _bump(1);
+    // In the replaced route's PLACE, not on the end: the list's order is the
+    // stack's, and [_publish] reads the last entry as the topmost one — a
+    // route swapped in below the top would otherwise start answering for it.
+    final at = oldRoute == null ? -1 : _dimming.indexOf(oldRoute as ModalRoute<dynamic>);
+    if (at >= 0) _dimming.removeAt(at);
+    final dimming = _dims(newRoute);
+    if (dimming != null) {
+      _dimming.insert(at >= 0 ? at : _dimming.length, dimming);
+    }
+    _publish();
   }
 }
 

@@ -306,11 +306,12 @@ void main() {
     },
   );
 
-  testWidgets('a leading indicator opens the bar on its own', (tester) async {
-    // The whole reason the indicator is a slot rather than an item: the bar
-    // collapses to nothing with no items, and "we have no network" is the
-    // answer to "why is nothing updating?" precisely when nothing else is
-    // being said. An item could not be on screen at that moment.
+  testWidgets('the icons open a menu of every status, and choosing one runs its action', (tester) async {
+    // The statuses are NOT in the footer's expandable list — that surface is
+    // the messages'. One menu for the whole group, whichever icon opened it:
+    // an operator who taps the cloud to ask about the network is not asking
+    // to be shown only the network.
+    var ran = 0;
     await tester.pumpWidget(
       MaterialApp(
         home: Column(
@@ -319,7 +320,158 @@ void main() {
             StatusBarFooter(
               items: const [],
               onDismiss: _noop,
-              leading: const Icon(Icons.cloud_off, key: ValueKey('offline-icon')),
+              perma: [
+                StatusBarPermaData(key: 'net', icon: Icons.cloud_off, text: 'Offline', onTap: () => ran++),
+                const StatusBarPermaData(key: 'radio', icon: Icons.radio, text: 'Fake Radio: Connected'),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Offline'), findsNothing, reason: 'the collapsed bar shows glyphs, not lines');
+
+    // The RADIO icon, and the menu still lists both.
+    await tester.tap(find.byIcon(Icons.radio));
+    await tester.pumpAndSettle();
+    expect(find.text('Offline'), findsOneWidget);
+    expect(find.text('Fake Radio: Connected'), findsOneWidget);
+
+    await tester.tap(find.text('Offline'));
+    await tester.pumpAndSettle();
+    expect(ran, 1);
+    expect(find.text('Offline'), findsNothing, reason: 'choosing an entry closes the menu');
+  });
+
+  testWidgets('the icons open the menu and the bar opens the message list, never each other', (tester) async {
+    // Two surfaces, two gestures. The bar must not open the statuses and the
+    // icons must not open the messages — and the icons ride ON the bar, so
+    // they have to take their taps before it does.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            StatusBarFooter(
+              items: const [
+                StatusBarItemData(key: 'a', title: 'Syncing'),
+                StatusBarItemData(key: 'b', title: 'Downloading'),
+              ],
+              onDismiss: _noop,
+              perma: const [StatusBarPermaData(key: 'net', icon: Icons.cloud_off, text: 'Offline')],
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(Icons.cloud_off));
+    await tester.pumpAndSettle();
+    expect(find.text('Offline'), findsOneWidget);
+    expect(find.text('Syncing'), findsNothing, reason: 'the menu carries no messages');
+
+    // Away from the icons: the bar itself, which opens the list. Two taps,
+    // because the first is eaten closing the menu (`consumeOutsideTap`) — so
+    // the assertion below that the menu is gone would pass on that alone, and
+    // the one that the list is open is what this is really checking.
+    await tester.tapAt(tester.getCenter(find.byType(StatusBarFooter)));
+    await tester.pumpAndSettle();
+    await tester.tapAt(tester.getCenter(find.byType(StatusBarFooter)));
+    await tester.pumpAndSettle();
+    expect(find.text('Syncing'), findsOneWidget);
+    expect(find.text('Offline'), findsNothing, reason: 'the list carries no statuses');
+  });
+
+  testWidgets('an expanded row takes taps only in the middle, and the margins collapse the bar', (tester) async {
+    // The window is wider than `idealPaneWidth`, so the rows run edge to edge
+    // while their writing sits in a 500pt column in the middle. An InkWell
+    // wrapped around the whole row would swallow the margins either side —
+    // and those belong to the bar: a tap on anything that is not a message
+    // means "put this list away", not "run whatever that line does".
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            StatusBarFooter(
+              items: const [
+                StatusBarItemData(key: 'a', title: 'Syncing'),
+                StatusBarItemData(key: 'b', title: 'Downloading'),
+              ],
+              onDismiss: _noop,
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tapAt(tester.getCenter(find.byType(StatusBarFooter)));
+    await tester.pumpAndSettle();
+    expect(find.text('Syncing'), findsOneWidget, reason: 'the bar opened the list');
+
+    final open = tester.getRect(find.byType(StatusBarFooter));
+    await tester.tapAt(Offset(open.left + Space.xs, open.center.dy));
+    await tester.pumpAndSettle();
+    expect(find.text('Syncing'), findsNothing, reason: 'the margin is the bar, not the row');
+  });
+
+  testWidgets('an expanded row\'s tap target is a semantics node of its own size', (tester) async {
+    // The same contract as the tap test above, on the path that does not hit
+    // test at all. An InkWell's `Semantics` merges UP, and the node above it
+    // in a list is the full-width per-row one — so without a container of its
+    // own, the row's action lands on a node spanning the whole row and every
+    // assistive activation of it (VoiceOver, TalkBack, and Flutter web's DOM
+    // element per node, which takes the click before the framework sees a
+    // pointer at all) runs it from the margins.
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            StatusBarFooter(
+              items: const [
+                StatusBarItemData(key: 'a', title: 'Syncing'),
+                StatusBarItemData(key: 'b', title: 'Downloading'),
+              ],
+              onDismiss: _noop,
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tapAt(tester.getCenter(find.byType(StatusBarFooter)));
+    await tester.pumpAndSettle();
+
+    final node = tester.getSemantics(find.text('Syncing'));
+    expect(node.getSemanticsData().hasAction(SemanticsAction.tap), isTrue);
+    expect(
+      node.rect.width,
+      lessThan(tester.getSize(find.byType(StatusBarFooter)).width),
+      reason: 'the tap action must not cover the margins that collapse the bar',
+    );
+
+    semantics.dispose();
+  });
+
+  testWidgets('a permanent status opens the bar on its own', (tester) async {
+    // The whole reason a permanent status is not an item: the bar collapses
+    // to nothing with no items, and "we have no network" is the answer to
+    // "why is nothing updating?" precisely when nothing else is being said.
+    // An item could not be on screen at that moment.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            StatusBarFooter(
+              items: const [],
+              onDismiss: _noop,
+              perma: const [StatusBarPermaData(key: 'offline', icon: Icons.cloud_off, text: 'Offline')],
             ),
           ],
         ),
@@ -328,11 +480,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.getSize(find.byType(StatusBarFooter)).height, greaterThan(0));
-    expect(find.byKey(const ValueKey('offline-icon')), findsOneWidget);
+    expect(find.byIcon(Icons.cloud_off), findsOneWidget);
   });
 
-  testWidgets('the indicator stays put while messages come and go', (tester) async {
-    // It belongs to the bar, not to whatever is being said in it. A slot
+  testWidgets('a permanent status stays put while messages come and go', (tester) async {
+    // It belongs to the bar, not to whatever is being said in it. An icon
     // inside the collapsed switcher would be rebuilt — and briefly duplicated
     // — on every message change.
     Widget withItems(List<StatusBarItemData> items) => MaterialApp(
@@ -342,7 +494,7 @@ void main() {
               StatusBarFooter(
                 items: items,
                 onDismiss: _noop,
-                leading: const Icon(Icons.cloud_off, key: ValueKey('offline-icon')),
+                perma: const [StatusBarPermaData(key: 'offline', icon: Icons.cloud_off, text: 'Offline')],
               ),
             ],
           ),
@@ -350,14 +502,14 @@ void main() {
 
     await tester.pumpWidget(withItems([StatusBarItemData(key: 'a', title: 'Syncing', text: 'Syncing')]));
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('offline-icon')), findsOneWidget);
+    expect(find.byIcon(Icons.cloud_off), findsOneWidget);
 
     await tester.pumpWidget(withItems([StatusBarItemData(key: 'b', title: 'Downloading', text: 'Downloading')]));
     await tester.pump(const Duration(milliseconds: 100));
     // Mid-transition, with both messages mounted: exactly one icon.
-    expect(find.byKey(const ValueKey('offline-icon')), findsOneWidget);
+    expect(find.byIcon(Icons.cloud_off), findsOneWidget);
     await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('offline-icon')), findsOneWidget);
+    expect(find.byIcon(Icons.cloud_off), findsOneWidget);
   });
 
   testWidgets(

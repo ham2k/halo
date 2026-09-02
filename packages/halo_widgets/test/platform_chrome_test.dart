@@ -367,6 +367,49 @@ void main() {
     }
   });
 
+  testWidgets('the dismissible signal follows the TOP dialog, not the first one up', (tester) async {
+    // Chrome outside the navigator paints its own copy of the barrier, and a
+    // copy that dismisses what the real one would not — or refuses what it
+    // would — is worse than none. Stacked dialogs are where a single flag
+    // set on the way in goes wrong: the second one's answer is the one that
+    // counts while it is up, and the first one's again once it is gone.
+    try {
+      await tester.pumpWidget(MaterialApp(
+        navigatorObservers: [ModalBarrierRouteObserver()],
+        home: const Scaffold(body: SizedBox()),
+      ));
+      final navigator = tester.state<NavigatorState>(find.byType(Navigator));
+      expect(modalBarrierIsDismissible.value, isFalse, reason: 'nothing is up');
+
+      showDialog<void>(
+        context: navigator.context,
+        builder: (_) => const AlertDialog(content: Text('first')),
+      );
+      await tester.pumpAndSettle();
+      expect(modalBarrierIsDismissible.value, isTrue);
+
+      showDialog<void>(
+        context: navigator.context,
+        barrierDismissible: false,
+        builder: (_) => const AlertDialog(content: Text('second')),
+      );
+      await tester.pumpAndSettle();
+      expect(modalBarrierIsDismissible.value, isFalse, reason: "the top dialog refuses barrier dismissal");
+
+      navigator.pop();
+      await tester.pumpAndSettle();
+      expect(modalBarrierIsDismissible.value, isTrue, reason: 'the first dialog is topmost again');
+
+      navigator.pop();
+      await tester.pumpAndSettle();
+      expect(modalBarrierIsVisible.value, isFalse);
+      expect(modalBarrierIsDismissible.value, isFalse);
+    } finally {
+      modalBarrierIsVisible.value = false;
+      modalBarrierIsDismissible.value = false;
+    }
+  });
+
   group('shrinkToFit', () {
     // A header title that overflows must still read the full text (issue
     // #182) — the old `overflow: TextOverflow.ellipsis` truncated it

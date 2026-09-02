@@ -18,7 +18,7 @@ import 'package:halo_extension_host/halo_extension_host.dart' show ExtensionHost
 import 'package:http/http.dart' show ClientException;
 
 import 'package:halo_core/halo_core.dart';
-import 'package:halo_widgets/halo_widgets.dart' show HaloDialog;
+import 'package:halo_widgets/halo_widgets.dart' show HaloDialog, MdiIcons, StatusBarFooter, StatusBarPermaData;
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/services/connectivity_service.dart';
@@ -338,14 +338,20 @@ void main() {
 }
 
 
-/// The indicator is drawn by `StatusBarOverlay`, which wraps the Navigator
-/// rather than living inside it — it owns the bottom of the window across
-/// every route. So its own `BuildContext` has no Navigator ancestor, and the
-/// obvious `showDialog(context: context, ...)` throws at the tap. Nothing in
-/// the widget's own shape says so, which is why this is a test and not a
-/// comment.
+/// The connectivity status is drawn by `StatusBarOverlay`, which wraps the
+/// Navigator rather than living inside it — it owns the bottom of the window
+/// across every route. So its own `BuildContext` has no Navigator ancestor,
+/// and the obvious `showDialog(context: context, ...)` throws at the tap.
+/// Nothing in the widget's own shape says so, which is why this is a test and
+/// not a comment.
+///
+/// The gesture it walks is the whole permanent-status contract: the icon in
+/// the collapsed bar opens the MENU (it must not open the dialog — that would
+/// make reading the statuses impossible without answering one), and the entry
+/// it reveals is what opens the detail.
 void _indicatorTests() {
-  testWidgets('tapping the indicator opens the detail dialog from outside the Navigator', (tester) async {
+  testWidgets('the connectivity status opens a menu, then the detail dialog from outside the Navigator',
+      (tester) async {
     final navigatorKey = GlobalKey<NavigatorState>();
     await tester.pumpWidget(
       TranslationProvider(
@@ -355,15 +361,34 @@ void _indicatorTests() {
           // The overlay's own shape: chrome BELOW the navigator in the tree,
           // so `builder`'s context is a sibling of every route rather than a
           // descendant of one.
-          builder: (context, child) => Column(
-            children: [
-              Expanded(child: child!),
-              Material(
-                child: OfflineIndicator(
-                  onRetry: () async => SyncRetryOutcome.unreachable,
-                  nextAttemptAt: () => null,
-                  navigatorKey: navigatorKey,
-                  color: const Color(0xFFFFFFFF),
+          // In an Overlay, as the app's own shell puts it (HomeRailShell): the
+          // statuses' menu is an OverlayPortal and there is no Navigator up
+          // here to borrow one from.
+          builder: (context, child) => Overlay(
+            initialEntries: [
+              OverlayEntry(
+                builder: (context) => Column(
+                  children: [
+                    Expanded(child: child!),
+                    Material(
+                      child: StatusBarFooter(
+                        items: const [],
+                        onDismiss: (_) {},
+                        perma: [
+                          StatusBarPermaData(
+                            key: 'connectivity',
+                            icon: MdiIcons.cloudOff,
+                            text: 'No internet connection',
+                            onTap: () => showOfflineDetail(
+                              navigatorKey: navigatorKey,
+                              onRetry: () async => SyncRetryOutcome.unreachable,
+                              nextAttemptAt: () => null,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
@@ -372,7 +397,11 @@ void _indicatorTests() {
       ),
     );
 
-    await tester.tap(find.byType(OfflineIndicator));
+    await tester.tap(find.byIcon(MdiIcons.cloudOff));
+    await tester.pumpAndSettle();
+    expect(find.byType(HaloDialog), findsNothing, reason: 'the icon opens the menu, not the detail');
+
+    await tester.tap(find.text('No internet connection'));
     await tester.pumpAndSettle();
 
     expect(find.byType(HaloDialog), findsOneWidget);

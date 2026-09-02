@@ -63,6 +63,8 @@ import 'services/export_service.dart';
 import 'services/build_freshness_service.dart';
 import 'services/connectivity_service.dart';
 import 'views/offline_indicator.dart';
+import 'views/station_config_dialog.dart';
+import 'views/station_panel.dart' show equipmentStatusLabel;
 import 'services/error_reporting_backend.dart';
 import 'services/bottom_chrome_squeezed.dart';
 import 'services/error_policy.dart';
@@ -4181,7 +4183,8 @@ class BottomChromeBudget {
     double noticeFloor = 0,
   }) {
     // Only what is actually on screen is charged: the footer collapses to
-    // nothing without items, exactly as the row is absent without a spec.
+    // nothing when the caller says it has no band to draw (over a keyboard,
+    // with nothing to say), exactly as the row is absent without a spec.
     // [homeChromeHeight] is what the home layer needs for chrome of its OWN —
     // Quick Lookup, which Home draws inside itself — and zero when a view that
     // owns the window has replaced it. It is not part of this band, but it
@@ -4403,6 +4406,69 @@ class HomeRailRouteObserver extends NavigatorObserver {
 
 final homeRailRouteObserver = HomeRailRouteObserver();
 
+/// Paints the modal barrier over one piece of bottom chrome, and takes its
+/// pointers, while a dimming route is up.
+///
+/// The chrome is drawn OUTSIDE the Navigator — it owns the bottom of the
+/// window across every route — so a dialog's own barrier stops at the routes
+/// and leaves a lit, pressable footer beside a dimmed window, where a tap
+/// opens a second dialog behind the first. Modal means modal.
+///
+/// [modalBarrierIsVisible] is the app's existing answer to "is something
+/// dimming the window?" (it also drives the macOS traffic-light mask), so this
+/// and the window chrome cannot disagree about it, and
+/// [modalBarrierIsDismissible] carries the top route's own answer, so a dialog
+/// that refuses barrier dismissal is not dismissed from down here either. The
+/// pop goes through [navigatorKey] because this is drawn above the Navigator
+/// and has no Navigator of its own to ask.
+///
+/// **Never a [ModalBarrier] here**, tempting as it is — the widget whose job
+/// this is brings a [BlockSemantics], which drops everything painted BEFORE
+/// it, and [HomeRailShell] draws the chrome after the routes. Measured: with
+/// one in this slot, opening a dialog left the window with two semantics nodes
+/// and none of the dialog's own. So the barrier is hand-rolled, and it takes
+/// the chrome out of the semantics tree by covering ITSELF ([ExcludeSemantics]
+/// around the child) rather than by blocking what it does not own. That
+/// exclusion is not tidiness: with accessibility on, Flutter web hangs a DOM
+/// element off every node and that element takes the click before any hit test
+/// runs, so a scrim that only absorbed pointers would be clicked through into
+/// the bar underneath.
+class _ChromeScrim extends StatelessWidget {
+  final Widget child;
+
+  const _ChromeScrim({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([modalBarrierIsVisible, modalBarrierIsDismissible]),
+      builder: (context, child) {
+        final scrimmed = modalBarrierIsVisible.value;
+        return Stack(
+          children: [
+            ExcludeSemantics(excluding: scrimmed, child: child!),
+            if (scrimmed)
+              Positioned.fill(
+                child: ExcludeSemantics(
+                  child: GestureDetector(
+                    // Opaque with no callback still absorbs, which is what a
+                    // non-dismissible barrier has to do: the chrome under it
+                    // must not take the tap either way.
+                    behavior: HitTestBehavior.opaque,
+                    onTap: modalBarrierIsDismissible.value ? () => navigatorKey.currentState?.maybePop() : null,
+                    child: ColoredBox(color: haloBarrierColor(context)),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+
 @visibleForTesting
 class StatusBarOverlay extends StatefulWidget {
   final HaLoServices services;
@@ -4419,6 +4485,155 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
   /// per transition rather than one per frame — this rebuilds on every
   /// progress tick of a sync.
   String? _lastSqueeze;
+
+  /// How long a message stays up over a virtual keyboard before the footer
+  /// slides away again.
+  ///
+  /// The band is permanent everywhere else, but over a keyboard it is taking
+  /// its height from the field being typed into, so there it earns its place
+  /// only while it has something new to say. The item is NOT cleared — it is
+  /// still in `StatusBarService` and comes straight back with the keyboard,
+  /// so nothing is lost by having read it late.
+  static const _keyboardLinger = Duration(seconds: 5);
+
+  Timer? _lingerTimer;
+  bool _lingering = false;
+
+  /// Whether the footer's message list is open. Held HERE rather than inside
+  /// [StatusBarFooter] because an open list is modal: it puts a scrim over the
+  /// rest of the window, and the widget that draws that scrim is a sibling of
+  /// the footer, not a descendant of it. (The permanent statuses open a menu
+  /// of their own, which brings its own modality and needs none of this.)
+  bool _footerExpanded = false;
+
+  /// The item list as it was when the linger last restarted. Compared rather
+  /// than counted: a progress bar refreshing on one key is activity that
+  /// should hold the bar up, and so is a message replaced in place, neither
+  /// of which changes the count.
+  String? _itemSignature;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.services.statusBar.addListener(_onStatusBarChanged);
+    _itemSignature = _signatureOf(widget.services.statusBar);
+  }
+
+  @override
+  void dispose() {
+    widget.services.statusBar.removeListener(_onStatusBarChanged);
+    _lingerTimer?.cancel();
+    super.dispose();
+  }
+
+  late final bool _gatoEnabled =
+      widget.services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */;
+
+  /// The permanent statuses, in the order they take the trailing edge of the
+  /// bar.
+  ///
+  /// Built here rather than posted by whoever owns each state: this is the
+  /// only place that can see them all, and their ORDER is a property of the
+  /// bar. Connectivity comes first because it is the one that answers "why is
+  /// nothing updating?".
+  List<StatusBarPermaData> _permaStatuses(BuildContext context, bool offline) {
+    return [
+      StatusBarPermaData(
+        key: 'connectivity',
+        icon: offline ? MdiIcons.cloudOff : MdiIcons.cloudCheck,
+        text: offline ? context.t.offline.statusOffline : context.t.offline.statusOnline,
+        onTap: () => showOfflineDetail(
+          navigatorKey: navigatorKey,
+          onRetry: widget.services.syncEngine.retryNow,
+          nextAttemptAt: () => widget.services.syncEngine.nextAttemptAt,
+        ),
+      ),
+      if (_gatoEnabled) ...[
+        for (final uuid in [widget.services.cat.radio1])
+          if (uuid != null)
+            for (final node in [widget.services.cat.nodeFor(uuid)])
+              if (node != null)
+                StatusBarPermaData(
+                  key: 'radio1',
+                  icon: MdiIcons.cat,
+                  // Name AND state, in the Station panel's own words
+                  // ([equipmentStatusLabel]): the name alone answers "which
+                  // rig", which is the question the operator already knows the
+                  // answer to — "is it talking to me" is the one they open the
+                  // bar for.
+                  text: '${widget.services.cat.displayNameFor(node)}: '
+                      '${equipmentStatusLabel(context, widget.services.cat.stateFor(uuid))}',
+                  // The Radio control's own quick-access pane, not the full
+                  // Station Configuration page — the same one tapping the
+                  // logging row's Radio chip opens, so the two ways in do not
+                  // land somewhere different.
+                  onTap: () {
+                    final navigatorContext = navigatorKey.currentContext;
+                    if (navigatorContext == null) {
+                      // Two gestures deep — the menu opened, an entry chosen —
+                      // so a silent no-op here is the operator's action
+                      // disappearing. It means the chrome outlived the
+                      // navigator, which is worth knowing about.
+                      debugPrint('[status-bar] no navigator for the radio status');
+                      return;
+                    }
+                    showStationConfigDialog(navigatorContext, widget.services);
+                  },
+                ),
+      ],
+    ];
+  }
+
+  String _signatureOf(StatusBarService statusBar) =>
+      statusBar.items.map((item) => '${item.key}@${item.updatedAt.microsecondsSinceEpoch}').join(',');
+
+  /// Restarts the linger whenever the ITEMS changed. The service also
+  /// notifies for notices, which have their own stack and must not hold the
+  /// footer up.
+  void _onStatusBarChanged() {
+    final signature = _signatureOf(widget.services.statusBar);
+    if (signature == _itemSignature) return;
+    _itemSignature = signature;
+    _lingerTimer?.cancel();
+    _lingerTimer = Timer(_keyboardLinger, () {
+      if (mounted) setState(() => _lingering = false);
+    });
+    if (_lingering) return;
+    _lingering = true;
+    // Marking this element dirty during a build is refused by the framework —
+    // and the service DOES notify during one (see `DockHost`'s notice
+    // plumbing). Deferring a frame there rather than relying on the
+    // `ListenableBuilder` below to rebuild for us: it listens to the same
+    // service, but only a notification that reaches it AFTER this one shows
+    // the flag, and a message posted from inside a build that has already
+    // passed this element would simply never appear. Same shape as
+    // `HomeRailState._set`.
+    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return;
+    }
+    setState(() {});
+  }
+
+  /// Puts the message list away when this frame cannot show it — the band
+  /// gone under a keyboard, the window too short to seat a footer, or the
+  /// items down to the one that shows in full collapsed anyway.
+  ///
+  /// CLEARED, not masked. A flag left set behind a band that has gone away
+  /// re-opens the list the moment the band returns — a scrim over the window
+  /// the operator did not ask for and has no memory of asking for — and no
+  /// gesture can correct it in the meantime, because the widget that would
+  /// report the change is not on screen to be tapped.
+  ///
+  /// Deferred a frame because this is decided inside `build`.
+  void _closeListIfUnopenable(bool listOpen, bool showFooter) {
+    if (!_footerExpanded || (listOpen && showFooter)) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && _footerExpanded) setState(() => _footerExpanded = false);
+    });
+  }
 
   /// Says out loud that the window could not seat all of the bottom chrome.
   ///
@@ -4446,7 +4661,6 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
     });
   }
 
-
   @override
   Widget build(BuildContext context) {
     // The offline state is a Stream rather than a Listenable, and it belongs
@@ -4467,7 +4681,18 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
       // home layer: whether a row is published and whether Quick Lookup is on
       // screen both change how much room the notice and the footer get, and
       // listening only to the status bar would leave that stale.
-      listenable: Listenable.merge([widget.services.statusBar, widget.services.keyboardAccessory, homeRail]),
+      // `cat` only when Station Configuration is on: it is a `late final` that
+      // builds a whole CatService the first time it is touched, and an
+      // operator without the experiment must not pay for one just so this can
+      // ask it for a radio it cannot have.
+      listenable: Listenable.merge([
+        widget.services.statusBar,
+        widget.services.keyboardAccessory,
+        homeRail,
+        // The open list's scrim stands down while a dialog is up — see it.
+        modalBarrierIsVisible,
+        if (_gatoEnabled) widget.services.cat,
+      ]),
       builder: (context, _) {
         final statusBar = widget.services.statusBar;
         final items = [
@@ -4541,12 +4766,35 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
         // one piece just moves the overflow to the next; the
         // sum is the thing that has to be bounded, so it is worked out once,
         // here, by the only widget that can see all of them.
+        // Over a virtual keyboard the footer is transient: it opens for a new
+        // message and slides away once it has been read (see
+        // [_keyboardLinger]). Everywhere else — every desktop window, and a
+        // phone with the keyboard down — the band is permanent, so the bottom
+        // edge of the app does not move as messages come and go.
+        //
+        // Hiding it is done by handing the widget an EMPTY list rather than by
+        // dropping the widget: the footer animates its own collapse, and a
+        // removed widget would just vanish.
+        final keyboardUp = keyboardInset > 0;
+        final footerHidden = keyboardUp && !_lingering;
+        // The footer refuses to expand a list of one — a single message shows
+        // in full collapsed — so the scrim has to answer to the same rule or
+        // it outlives what it covers: dismiss one of two open messages and the
+        // band snaps shut while a full-window barrier stays painted over a
+        // window with nothing modal in it.
+        final listOpen = _footerExpanded && !footerHidden && items.length > 1;
+        final footerItems = footerHidden ? const <StatusBarItemData>[] : items;
+        // The perma icons go with the items: over a keyboard the whole band
+        // is borrowed space, and a row of icons is no more entitled to it
+        // than a message is.
+        final perma = footerHidden ? const <StatusBarPermaData>[] : _permaStatuses(context, offline);
+
         final accessory = widget.services.keyboardAccessory.value;
         final bottom = BottomChromeBudget.of(
           windowHeight: MediaQuery.sizeOf(context).height,
           keyboardInset: keyboardInset,
           hasNumbersRow: accessory != null,
-          hasStatusItems: items.isNotEmpty || offline,
+          hasStatusItems: !keyboardUp || footerItems.isNotEmpty || perma.isNotEmpty,
           numbersRowHeight: NumberKeys.heightOf(context),
           footerHeight: StatusBarFooter.collapsedHeightOf(context),
           // Quick Lookup is chrome for the home layer and nothing else, so it
@@ -4571,6 +4819,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
           noticeFloor: NoticeStack.minHeightOf(context),
         );
         _reportSqueeze(bottom);
+        _closeListIfUnopenable(listOpen, bottom.showFooter);
 
         // The rail runs the full height beside this whole strip, so a status
         // item shortens the views and never the navigation.
@@ -4580,7 +4829,34 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
           child: HomeRailShell(
             services: widget.services,
             routes: widget.child,
+            // An open list is modal: the operator opened it to read it, and a
+            // tap anywhere else means "put it away" rather than whatever that
+            // spot would otherwise do. Painted, not invisible — a window that
+            // silently eats one tap is worse than one that says why.
+            // Nothing while a dialog is up. This layer is drawn ABOVE the
+            // routes — dialogs included — so a list left holding it would
+            // paint over the very dialog its own row just opened. The dialog
+            // is the modal thing at that point, its own barrier covers the
+            // window, and `_ChromeScrim` covers the bar; the list's scrim
+            // comes back when it closes.
+            scrim: listOpen && bottom.showFooter && !modalBarrierIsVisible.value
+                // A real [ModalBarrier], and here it is the right widget where
+                // in the chrome band it is the wrong one: the BlockSemantics
+                // it brings drops what was painted BEFORE it, which inside
+                // this Stack is the routes and the rail — exactly what it
+                // covers — and leaves the band below untouched. That block is
+                // load-bearing: with accessibility on, Flutter web hangs a DOM
+                // element off every node and that element takes the click
+                // before any hit test runs, so a scrim that only absorbed
+                // POINTERS would be clicked straight through.
+                ? ModalBarrier(
+                    color: haloBarrierColor(context),
+                    dismissible: true,
+                    onDismiss: () => setState(() => _footerExpanded = false),
+                  )
+                : null,
             chrome: [
+              for (final piece in [
               if (notices.isNotEmpty)
                 NoticeStack(
                   notices: notices,
@@ -4590,20 +4866,26 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                 ),
               if (bottom.showFooter)
                 StatusBarFooter(
-                  items: items,
+                  items: footerItems,
+                  perma: perma,
+                  showWhenEmpty: !keyboardUp,
+                  // See [_closeListIfUnopenable]: the flag behind this is
+                  // cleared rather than masked, so a list the band took away
+                  // does not come back by itself when the band does.
+                  expanded: listOpen,
+                  onExpandedChanged: (expanded) => setState(() => _footerExpanded = expanded),
                   onDismiss: statusBar.clear,
-                  leading: offline
-                      ? OfflineIndicator(
-                          onRetry: widget.services.syncEngine.retryNow,
-                          nextAttemptAt: () => widget.services.syncEngine.nextAttemptAt,
-                          navigatorKey: navigatorKey,
-                          color: Theme.of(context).appBarTheme.foregroundColor ??
-                              Theme.of(context).colorScheme.onPrimary,
-                        )
-                      : null,
                   maxExpandedHeight: bottom.footerMax,
                   dismissLabel: context.t.common.dismiss,
                 ),
+              ])
+                // Modal means modal. The chrome is drawn OUTSIDE the
+                // Navigator (it owns the bottom of the window across every
+                // route), so a dialog's own barrier stops at the routes and
+                // leaves a lit, pressable footer beside a dimmed window —
+                // where a tap opens a second dialog behind the first, or
+                // dismisses a notice the operator cannot see.
+                _ChromeScrim(child: piece),
             ],
             keyboard: [
               // The mobile numbers row, published by whichever field has focus

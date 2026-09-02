@@ -15,6 +15,7 @@ upcoming:
     - "New optional Power control in the logging row: turn it on to log the watts of each QSO"
     - "Add a Generic Placeholder Radio to log with no rig connected"
     - "Sync settings now names what is still waiting to upload, instead of only two totals"
+    - "The status bar is always there: tap the icons at its right to see what each reports"
 
 "158":
   changes:

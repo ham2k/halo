@@ -57,6 +57,23 @@ EdgeInsets _rowInset(BuildContext context) =>
     (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xl))
         .resolve(Directionality.of(context));
 
+/// What a piece of equipment is doing, in the panel's own vocabulary — shared
+/// so the status bar's line and the panel's pill cannot come to word the same
+/// state differently.
+String equipmentStatusLabel(BuildContext context, EquipmentState state) {
+  final st = context.t.settings.station;
+  return switch (state.status) {
+    // Connected but silent is not the same as connected: the reading on
+    // screen may be minutes old, which is the whole point of the panel's
+    // own two-colour pill.
+    EquipmentStatus.connected => state.stale ? st.statusStale : st.statusConnected,
+    EquipmentStatus.connecting => st.statusConnecting,
+    EquipmentStatus.disconnecting => st.statusDisconnecting,
+    EquipmentStatus.error => st.statusError,
+    EquipmentStatus.disconnected => st.statusDisconnected,
+  };
+}
+
 class StationPanel extends StatelessWidget {
   final HaLoServices services;
 
@@ -1983,7 +2000,7 @@ class _EquipmentTile extends StatelessWidget {
                       // A link that is up but silent must not wear the same
                       // confident green as one that is working: the
                       // frequency shown may be minutes old.
-                      label: state.stale ? st.statusStale : st.statusConnected,
+                      label: equipmentStatusLabel(context, state),
                       background: state.stale ? theme.colorScheme.error : _connectedGreen(theme),
                       foreground: Colors.white,
                     ),

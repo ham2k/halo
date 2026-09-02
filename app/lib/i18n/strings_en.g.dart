@@ -1935,20 +1935,23 @@ class Translations$offline$en {
 
 	// Translations
 
-	/// en: 'Offline'
-	String get title => 'Offline';
+	/// en: 'Internet: OFFLINE'
+	String get statusOffline => 'Internet: OFFLINE';
 
-	/// en: 'No internet connection — tap for detail'
-	String get iconLabel => 'No internet connection — tap for detail';
+	/// en: 'Internet: connected'
+	String get statusOnline => 'Internet: connected';
 
-	/// en: 'This device reports no network connection at all.'
-	String get noRoute => 'This device reports no network connection at all.';
+	/// en: 'No network connection at all.'
+	String get noRoute => 'No network connection at all.';
 
-	/// en: 'The network is up, but nothing is answering. A sign-in page you have not completed, or a connection with no route beyond it, both look like this.'
-	String get unreachable => 'The network is up, but nothing is answering. A sign-in page you have not completed, or a connection with no route beyond it, both look like this.';
+	/// en: 'The network is up, but nothing is answering — often a sign-in page waiting in a browser.'
+	String get unreachable => 'The network is up, but nothing is answering — often a sign-in page waiting in a browser.';
 
-	/// en: 'Callsign lookups, spot updates and data-file refreshes are paused. Logging, and syncing with nearby devices, are not affected.'
-	String get whatStops => 'Callsign lookups, spot updates and data-file refreshes are paused. Logging, and syncing with nearby devices, are not affected.';
+	/// en: 'All services responding as expected.'
+	String get reachable => 'All services responding as expected.';
+
+	/// en: 'Lookups, spots and data files are paused. Logging and nearby sync are not.'
+	String get whatStops => 'Lookups, spots and data files are paused. Logging and nearby sync are not.';
 
 	/// en: 'Services'
 	String get servicesTitle => 'Services';
@@ -3800,6 +3803,18 @@ class Translations$settings$station$en {
 
 	/// en: 'Not responding'
 	String get statusStale => 'Not responding';
+
+	/// en: 'Not connected'
+	String get statusDisconnected => 'Not connected';
+
+	/// en: 'Connecting…'
+	String get statusConnecting => 'Connecting…';
+
+	/// en: 'Disconnecting…'
+	String get statusDisconnecting => 'Disconnecting…';
+
+	/// en: 'Connection failed'
+	String get statusError => 'Connection failed';
 
 	/// en: 'Current radio settings'
 	String get currentRadioSettings => 'Current radio settings';
@@ -6559,6 +6574,10 @@ extension on Translations {
 			'settings.station.ic705TroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.ic705Troubleshooting' => 'The radio has a **single** remote-control session. When the login is ignored, something else is almost always using it.\n\n- **Close any other client.** wfview or RS-BA1 connected to the same radio holds that one session, and the login here is simply ignored while it does.\n- **Check the radio\'s network settings** — that WLAN is on, it is on the same network, and its remote-control (Network) function is enabled.\n- **Power-cycle the radio\'s WLAN** if it stays stuck. That reliably clears a session the radio is genuinely holding.\n\nA **wrong password is refused explicitly**, not met with silence — so if you got here rather than a "rejected" message, the password is not the problem.',
 			'settings.station.statusStale' => 'Not responding',
+			'settings.station.statusDisconnected' => 'Not connected',
+			'settings.station.statusConnecting' => 'Connecting…',
+			'settings.station.statusDisconnecting' => 'Disconnecting…',
+			'settings.station.statusError' => 'Connection failed',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
@@ -6923,11 +6942,12 @@ extension on Translations {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
 			'adifImport.oneFileOnly' => 'Drop one ADIF file at a time — the order files are imported in decides which data wins.',
-			'offline.title' => 'Offline',
-			'offline.iconLabel' => 'No internet connection — tap for detail',
-			'offline.noRoute' => 'This device reports no network connection at all.',
-			'offline.unreachable' => 'The network is up, but nothing is answering. A sign-in page you have not completed, or a connection with no route beyond it, both look like this.',
-			'offline.whatStops' => 'Callsign lookups, spot updates and data-file refreshes are paused. Logging, and syncing with nearby devices, are not affected.',
+			'offline.statusOffline' => 'Internet: OFFLINE',
+			'offline.statusOnline' => 'Internet: connected',
+			'offline.noRoute' => 'No network connection at all.',
+			'offline.unreachable' => 'The network is up, but nothing is answering — often a sign-in page waiting in a browser.',
+			'offline.reachable' => 'All services responding as expected.',
+			'offline.whatStops' => 'Lookups, spots and data files are paused. Logging and nearby sync are not.',
 			'offline.servicesTitle' => 'Services',
 			'offline.noServices' => 'Nothing has reported in yet.',
 			'offline.lastSuccess' => ({required Object when}) => 'Last answered ${when} ago',
