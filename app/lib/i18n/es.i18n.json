@@ -474,10 +474,12 @@
       "error": "No se pudieron cargar los spots: ${error}",
       "unknownBand": "Otras",
       "auto": "Auto",
-      "autoValue": "Auto (${value})",
+      "autoValue": "Auto (Actualmente ${value})",
+      "valueAuto": "${value} (Auto)",
       "any": "Cualquiera",
       "allBands": "Todas las bandas",
       "allModes": "Todos los modos",
+      "phoneAndCw": "Phone y CW",
       "spotsCount": {
         "one": "${count} spot",
         "other": "${count} spots"

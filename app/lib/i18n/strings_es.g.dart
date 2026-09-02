@@ -1212,10 +1212,12 @@ class _Translations$operation$spots$es extends Translations$operation$spots$en {
 	@override String error({required Object error}) => 'No se pudieron cargar los spots: ${error}';
 	@override String get unknownBand => 'Otras';
 	@override String get auto => 'Auto';
-	@override String autoValue({required Object value}) => 'Auto (${value})';
+	@override String autoValue({required Object value}) => 'Auto (Actualmente ${value})';
+	@override String valueAuto({required Object value}) => '${value} (Auto)';
 	@override String get any => 'Cualquiera';
 	@override String get allBands => 'Todas las bandas';
 	@override String get allModes => 'Todos los modos';
+	@override String get phoneAndCw => 'Phone y CW';
 	@override String spotsCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
 		one: '${count} spot',
 		other: '${count} spots',
@@ -3019,10 +3021,12 @@ extension on TranslationsEs {
 			'operation.spots.error' => ({required Object error}) => 'No se pudieron cargar los spots: ${error}',
 			'operation.spots.unknownBand' => 'Otras',
 			'operation.spots.auto' => 'Auto',
-			'operation.spots.autoValue' => ({required Object value}) => 'Auto (${value})',
+			'operation.spots.autoValue' => ({required Object value}) => 'Auto (Actualmente ${value})',
+			'operation.spots.valueAuto' => ({required Object value}) => '${value} (Auto)',
 			'operation.spots.any' => 'Cualquiera',
 			'operation.spots.allBands' => 'Todas las bandas',
 			'operation.spots.allModes' => 'Todos los modos',
+			'operation.spots.phoneAndCw' => 'Phone y CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Mostrando ${count} de ${total} spots',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutos',
@@ -3151,10 +3155,10 @@ extension on TranslationsEs {
 			'activitiesView.retiredReference' => 'Retirada',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
-			'activitiesView.setupUnavailable' => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar',
-			'activitiesView.controlsUnavailableTitle' => 'Controles de actividad no disponibles',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.setupUnavailable' => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar',
+			'activitiesView.controlsUnavailableTitle' => 'Controles de actividad no disponibles',
 			'activitiesView.controlsUnavailableReason' => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.',
 			'activitiesView.controlsUnavailableRetry' => 'Reintentar',
 			'activitiesView.onlyDisabledMatches' => 'Sin coincidencias\nAlgunas extensiones disponibles podrían tener resultados.\nActívalas en Tipos de actividad, más abajo.',
@@ -3665,10 +3669,10 @@ extension on TranslationsEs {
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
-			'settings.station.civAddressTroubleshooting' => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio — o ponla en Auto, que simplemente sigue a la aplicación.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
-			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.civAddressTroubleshooting' => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio — o ponla en Auto, que simplemente sigue a la aplicación.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
+			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.',
 			'settings.station.ic7760PortNote' => '\n- El **IC-7760** usa CI-V en el **Puerto A** de los dos puertos serie USB que presenta.',
 			'settings.station.x6100PortNote' => '\n- El **X6100** usa CI-V en su puerto **DEV**, el segundo de los dos puertos serie que presenta.',
 			'settings.station.rigctldTroubleshootingTitle' => 'Si la app no puede conectar',

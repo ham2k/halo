@@ -498,9 +498,9 @@ void main() {
   group('filter pill labels', () {
     final t = AppLocale.en.buildSync();
 
-    test('auto shows only the resolved band/mode, never "Auto"', () {
-      expect(spotsFilterBandPillLabel(t, 'auto', '20m'), '20m');
-      expect(spotsFilterModePillLabel(t, 'auto', 'SSB'), 'SSB');
+    test('auto leads with the resolved band/mode and tags it, so "20m (Auto)" not "Auto (20m)"', () {
+      expect(spotsFilterBandPillLabel(t, 'auto', '20m'), '20m (Auto)');
+      expect(spotsFilterModePillLabel(t, 'auto', 'Phone'), 'Phone (Auto)');
     });
 
     test('auto with no resolved band/mode falls back to all-bands/modes, not "Auto"', () {
@@ -517,11 +517,15 @@ void main() {
       expect(spotsFilterBandPillLabel(t, 'any', '20m'), t.operation.spots.allBands);
       expect(spotsFilterModePillLabel(t, 'any', 'Phone'), t.operation.spots.allModes);
     });
+
+    test('the Phone & CW option shows its own label, not the raw filter value', () {
+      expect(spotsFilterModePillLabel(t, phoneCwModeFilter, 'Phone'), t.operation.spots.phoneAndCw);
+    });
   });
 
   group('normalizeModeFilter', () {
     test('super-mode and auto/any values pass through', () {
-      for (final v in ['auto', 'any', 'Phone', 'CW', 'Digital']) {
+      for (final v in ['auto', 'any', 'Phone', 'CW', 'Digital', phoneCwModeFilter]) {
         expect(normalizeModeFilter(v), v);
       }
     });
@@ -531,8 +535,26 @@ void main() {
       expect(normalizeModeFilter('FT8'), 'Digital');
     });
 
-    test('the retired "notDigital" resets to auto (it spanned two super modes)', () {
-      expect(normalizeModeFilter('notDigital'), 'auto');
+    test('the retired "notDigital" becomes the Phone & CW option, which means the same thing', () {
+      expect(normalizeModeFilter('notDigital'), phoneCwModeFilter);
+    });
+  });
+
+  group('superModesForModeFilter', () {
+    test('Phone & CW admits both and nothing else, so a Digital spot is out', () {
+      final admitted = superModesForModeFilter(phoneCwModeFilter, 'FT8')!;
+      expect(admitted, containsAll(['Phone', 'CW']));
+      expect(admitted, isNot(contains('Digital')));
+    });
+
+    test('auto follows the VFO super mode, and stops narrowing when the VFO has none', () {
+      expect(superModesForModeFilter('auto', 'USB'), {'Phone'});
+      expect(superModesForModeFilter('auto', null), isNull);
+    });
+
+    test('any never narrows; a super mode admits only itself', () {
+      expect(superModesForModeFilter('any', 'CW'), isNull);
+      expect(superModesForModeFilter('CW', 'USB'), {'CW'});
     });
   });
 

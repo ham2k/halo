@@ -2484,8 +2484,11 @@ class Translations$operation$spots$en {
 	/// en: 'Automatic'
 	String get auto => 'Automatic';
 
-	/// en: 'Auto (${value})'
-	String autoValue({required Object value}) => 'Auto (${value})';
+	/// en: 'Automatic (Currently ${value})'
+	String autoValue({required Object value}) => 'Automatic (Currently ${value})';
+
+	/// en: '${value} (Auto)'
+	String valueAuto({required Object value}) => '${value} (Auto)';
 
 	/// en: 'Any'
 	String get any => 'Any';
@@ -2495,6 +2498,9 @@ class Translations$operation$spots$en {
 
 	/// en: 'All Modes'
 	String get allModes => 'All Modes';
+
+	/// en: 'Phone & CW'
+	String get phoneAndCw => 'Phone & CW';
 
 	/// en: '(one) {${count} spot} (other) {${count} spots}'
 	String spotsCount({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
@@ -5911,10 +5917,12 @@ extension on Translations {
 			'operation.spots.error' => ({required Object error}) => 'Failed to load spots: ${error}',
 			'operation.spots.unknownBand' => 'Other',
 			'operation.spots.auto' => 'Automatic',
-			'operation.spots.autoValue' => ({required Object value}) => 'Auto (${value})',
+			'operation.spots.autoValue' => ({required Object value}) => 'Automatic (Currently ${value})',
+			'operation.spots.valueAuto' => ({required Object value}) => '${value} (Auto)',
 			'operation.spots.any' => 'Any',
 			'operation.spots.allBands' => 'All Bands',
 			'operation.spots.allModes' => 'All Modes',
+			'operation.spots.phoneAndCw' => 'Phone & CW',
 			'operation.spots.spotsCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} spot', other: '${count} spots', ), 
 			'operation.spots.spotsCountFiltered' => ({required Object count, required Object total}) => 'Showing ${count} of ${total} spots',
 			'operation.spots.ageMinutes' => ({required Object minutes}) => '${minutes} minutes',
@@ -6042,10 +6050,10 @@ extension on Translations {
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
 			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
 			'activitiesView.setupUnavailable' => 'Could not load this activity\'s setup — try again from Manage',
-			'activitiesView.controlsUnavailableTitle' => 'Activity controls unavailable',
-			'activitiesView.controlsUnavailableReason' => 'Your references are safe, but editing them is unavailable right now.',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.controlsUnavailableTitle' => 'Activity controls unavailable',
+			'activitiesView.controlsUnavailableReason' => 'Your references are safe, but editing them is unavailable right now.',
 			'activitiesView.controlsUnavailableRetry' => 'Retry',
 			'activitiesView.onlyDisabledMatches' => 'No matches\nSome available extensions might have results.\nEnable them in Activity Types below.',
 			'activitiesView.showResultsMap' => 'Show results on a map',
@@ -6556,10 +6564,10 @@ extension on Translations {
 			'settings.station.peerTransceiverUnavailable' => ({required Object radio, required Object device}) => '${radio} on ${device} (not available)',
 			'settings.station.antennaInUse' => 'Antenna in Use',
 			'settings.station.keyInUse' => 'Key in Use',
-			'settings.station.noneSelected' => 'None',
-			'settings.station.moreSettings' => 'More Settings',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.noneSelected' => 'None',
+			'settings.station.moreSettings' => 'More Settings',
 			'settings.station.icomCivTroubleshootingTitle' => 'If two serial ports show up for the same radio',
 			'settings.station.icomCivTroubleshooting' => 'Several Icom radios — the IC-705 among them — present **two** USB serial ports at once (Icom calls them Port A and Port B), both set to CI-V by default. Neither this app nor your OS can tell them apart beyond that — the same USB vendor/product ID just shows up twice, sometimes marked with a `#2` suffix here. **Port A is usually the right one** — normally the first one your OS or browser lists. If commands go out and the radio never answers, try the other port next.',
 			'settings.station.civAddressTroubleshootingTitle' => 'If the radio never answers',

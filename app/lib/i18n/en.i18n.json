@@ -475,10 +475,12 @@
       "error": "Failed to load spots: ${error}",
       "unknownBand": "Other",
       "auto": "Automatic",
-      "autoValue": "Auto (${value})",
+      "autoValue": "Automatic (Currently ${value})",
+      "valueAuto": "${value} (Auto)",
       "any": "Any",
       "allBands": "All Bands",
       "allModes": "All Modes",
+      "phoneAndCw": "Phone & CW",
       "spotsCount": {
         "one": "${count} spot",
         "other": "${count} spots"

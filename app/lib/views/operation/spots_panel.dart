@@ -70,16 +70,37 @@ bool _isDigital(String? mode) => mode != null && _digitalModes.contains(mode.toU
 /// by, in the order the dropdown offers them.
 const _superModes = ['Phone', 'CW', 'Digital'];
 
+/// The combined "Phone & CW" filter option: everything but Digital. A filter
+/// value, not a super mode — [superModeForMode] never returns it, so it
+/// needs its own branch wherever a filter value is resolved or counted.
+const phoneCwModeFilter = 'phoneCw';
+
+/// The super modes [phoneCwModeFilter] admits.
+const _phoneCwSuperModes = {'Phone', 'CW'};
+
 /// Migrates a persisted mode filter from the retired per-mode/`notDigital`
-/// scheme to the super-mode scheme: 'auto'/'any' and the super modes pass
-/// through, an old individual mode ('SSB', 'FT8', …) maps to its super mode,
-/// and anything else — notably the retired 'notDigital', which spanned two
-/// super modes — resets to 'auto'. Public for unit testing.
+/// scheme to the super-mode scheme: 'auto'/'any', the super modes and
+/// [phoneCwModeFilter] pass through, the retired 'notDigital' becomes
+/// [phoneCwModeFilter] (the same intent), and anything else is read as an
+/// individual mode ('SSB', 'FT8', …) and maps to its super mode — which,
+/// as [superModeForMode] works, makes any unrecognised string 'Digital'.
+/// Public for unit testing.
 String normalizeModeFilter(String value) {
-  if (value == 'auto' || value == 'any' || _superModes.contains(value)) return value;
-  if (value == 'notDigital') return 'auto';
+  if (value == 'auto' || value == 'any' || value == phoneCwModeFilter || _superModes.contains(value)) return value;
+  if (value == 'notDigital') return phoneCwModeFilter;
   return superModeForMode(value) ?? 'auto';
 }
+
+/// The super modes a mode filter admits, or null for no narrowing: 'auto'
+/// follows the VFO's current super mode (no narrowing while the VFO has no
+/// mode), 'any' never narrows, [phoneCwModeFilter] admits Phone and CW,
+/// and a super mode admits itself. Public for unit testing.
+Set<String>? superModesForModeFilter(String filter, String? vfoMode) => switch (filter) {
+      'auto' => switch (superModeForMode(vfoMode)) { final m? => {m}, null => null },
+      'any' => null,
+      phoneCwModeFilter => _phoneCwSuperModes,
+      final m => {m},
+    };
 
 /// The `groupByBand` value to assume for a persisted filter map that
 /// predates that setting — from when time-sorting alone implied a flat
@@ -1284,12 +1305,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
       get _filteredSpotsSummary {
     final vfo = widget.services.radio.vfoA;
     final band = _bandFilter == 'auto' ? vfo.band : _bandFilter;
-    // The mode filter narrows by super mode (Phone/CW/Digital): 'auto' follows
-    // the VFO's current super mode, 'any' doesn't narrow, otherwise it's the
-    // chosen super mode itself.
-    final superMode = _modeFilter == 'auto'
-        ? superModeForMode(vfo.mode)
-        : (_modeFilter == 'any' ? null : _modeFilter);
+    final superModes = superModesForModeFilter(_modeFilter, vfo.mode);
 
     final merged = _mergedRawSpots;
     final selfSpots = sortSpots(
@@ -1304,8 +1320,8 @@ class _SpotsPanelState extends State<SpotsPanel> {
     if (singleBand) {
       spots = spots.where((s) => _bandOf(s) == band).toList();
     }
-    if (superMode != null) {
-      spots = spots.where((s) => superModeForMode(_modeOf(s)) == superMode).toList();
+    if (superModes != null) {
+      spots = spots.where((s) => superModes.contains(superModeForMode(_modeOf(s)))).toList();
     }
     final cutoff = nowMillis() - _ageMinutes * 60000;
     spots = spots.where((s) => _timeOf(s) >= cutoff).toList();
@@ -1365,6 +1381,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
       final superMode = superModeForMode(_modeOf(spot));
       if (superMode == null) continue;
       counts.update(superMode, (c) => c + 1, ifAbsent: () => 1);
+      if (_phoneCwSuperModes.contains(superMode)) counts.update(phoneCwModeFilter, (c) => c + 1, ifAbsent: () => 1);
     }
     return counts;
   }
@@ -3231,24 +3248,26 @@ String _bandOptionLabel(Translations t, String option, String? autoBand) => swit
 String _modeOptionLabel(Translations t, String option, String? autoMode) => switch (option) {
       'auto' => autoMode != null ? t.operation.spots.autoValue(value: autoMode) : t.operation.spots.auto,
       'any' => t.operation.spots.allModes,
+      phoneCwModeFilter => t.operation.spots.phoneAndCw,
       _ => option,
     };
 
 /// The band/mode summary for the collapsed filter pill: the RESOLVED value
-/// only (e.g. "20m", "SSB"), never "Auto (20m)" — on the compact status pill
-/// the "Auto" prefix is just noise. (The filter dialog's dropdowns keep the
-/// "Auto (…)" wording via [_bandOptionLabel]/[_modeOptionLabel], where it's
-/// meaningful.) 'auto' with no resolved band/mode falls back to the all-bands/
-/// all-modes label rather than reintroducing "Auto". Public for unit testing.
+/// first, tagged as followed (e.g. "20m (Auto)", "Phone (Auto)") — the
+/// value is what the operator scans for, the tag says it will move with the
+/// VFO. (The filter dialog's dropdowns spell it out the other way round via
+/// [_bandOptionLabel]/[_modeOptionLabel].) 'auto' with no resolved band/mode
+/// falls back to the all-bands/all-modes label. Public for unit testing.
 String spotsFilterBandPillLabel(Translations t, String option, String? autoBand) => switch (option) {
-      'auto' => autoBand ?? t.operation.spots.allBands,
+      'auto' => autoBand != null ? t.operation.spots.valueAuto(value: autoBand) : t.operation.spots.allBands,
       'any' => t.operation.spots.allBands,
       _ => option,
     };
 
 String spotsFilterModePillLabel(Translations t, String option, String? autoMode) => switch (option) {
-      'auto' => autoMode ?? t.operation.spots.allModes,
+      'auto' => autoMode != null ? t.operation.spots.valueAuto(value: autoMode) : t.operation.spots.allModes,
       'any' => t.operation.spots.allModes,
+      phoneCwModeFilter => t.operation.spots.phoneAndCw,
       _ => option,
     };
 
@@ -3379,7 +3398,7 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
         selected: _bandFilter,
       ),
     ];
-    final modeOptions = ['auto', 'any', ..._superModes];
+    final modeOptions = ['auto', 'any', phoneCwModeFilter, ..._superModes];
 
     return HaloDialog(
       wide: true,
