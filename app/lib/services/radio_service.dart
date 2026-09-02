@@ -88,14 +88,49 @@ class RadioService extends ChangeNotifier implements VfoStore {
     // Independent of the freq/band/mode arithmetic below, like `mode`: a
     // power change says nothing about where the radio is tuned.
     final newPower = clearPower ? null : (power ?? current.power);
-    final Vfo updated;
+    final double? newFreq;
+    final String? newBand;
     if (freq != null) {
-      updated = Vfo(freq: freq, band: bandForFrequency(freq), mode: mode ?? current.mode, power: newPower);
+      newFreq = freq;
+      newBand = bandForFrequency(freq);
     } else if (band != null || clearFreq) {
-      updated = Vfo(freq: null, band: band ?? current.band, mode: mode ?? current.mode, power: newPower);
+      newFreq = null;
+      newBand = band ?? current.band;
     } else {
-      updated = Vfo(freq: current.freq, band: current.band, mode: mode ?? current.mode, power: newPower);
+      newFreq = current.freq;
+      newBand = current.band;
     }
+    // `SSB` is what a spot, the setVfo command and the mode picker say; it is
+    // not a sideband, and which one an operator is actually running is a
+    // property of the band, not a second choice to make. Resolving it HERE —
+    // where a mode is requested, rather than only at the CAT boundary — is
+    // what makes the panel, the logged QSO and the rig name the same mode; a
+    // shack with no radio attached resolved nothing at all before.
+    //
+    // Always against the band this write settles on, not the one being left.
+    final String? newMode;
+    if (newFreq == null && newBand == null) {
+      // Nothing to resolve against. The generic mode stands until there is —
+      // picking a sideband here would be a coin flip.
+      newMode = mode ?? current.mode;
+    } else if (mode != null) {
+      // Stated in this write, so it is taken as stated: an operator
+      // deliberately on the far sideband keeps it, and a rig reporting its
+      // own mode is never second-guessed.
+      newMode = resolveSideband(mode, newFreq, band: newBand);
+    } else if (newBand != current.band && isSidebandMode(current.mode)) {
+      // Crossing a band under a mode nobody restated — a band pick carries no
+      // mode at all. The sideband already in the VFO was DERIVED from the
+      // band being left, so it is re-derived rather than carried: without
+      // this, picking 40m while on 20m SSB leaves the app logging USB, and
+      // telling the rig to transmit there.
+      newMode = resolveSideband('SSB', newFreq, band: newBand);
+    } else {
+      // Same band, or a mode with nothing to derive — a power-only write must
+      // not rewrite the mode at all.
+      newMode = current.mode;
+    }
+    final updated = Vfo(freq: newFreq, band: newBand, mode: newMode, power: newPower);
     // A radio restating what it already reported is not a change. Without
     // this, every status push and every periodic resync would notify every
     // listener and schedule another write.

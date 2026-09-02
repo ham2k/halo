@@ -53,6 +53,39 @@ String? bandForFrequency(double khz) {
   return null;
 }
 
+/// Bands where SSB voice conventionally sits on the lower sideband.
+/// Everything else is upper — including 60 m, which is channelized USB by
+/// international agreement despite being below 10 MHz.
+const _lsbBands = {'2190m', '630m', '560m', '160m', '80m', '40m'};
+
+/// [mode] with a generic `SSB` turned into the sideband that band actually
+/// uses. Anything else — including a mode already naming its sideband — is
+/// returned untouched.
+///
+/// "SSB" is what a spot, a command or a mode picker says; it is not a mode a
+/// radio can be put in, and it is not what an operator on 40 m is running. The
+/// resolution happens where a mode is REQUESTED (`RadioService.setVfo`), so the
+/// panel, the log and the rig all name the same sideband, and again at the CAT
+/// boundary for the modes that reach a driver without passing through the VFO —
+/// a peer driving a rig this device offers.
+///
+/// [band] is the fallback when there is no frequency to derive one from —
+/// which is exactly what a manual band pick leaves behind. Without it a
+/// picked 40m plus SSB resolved to USB.
+/// Whether [mode] is voice SSB — the generic mode or either sideband.
+///
+/// What it is for: a sideband already resolved is still a DERIVED value, and
+/// moving band has to re-derive it (`RadioService.setVfo`). Which sideband a
+/// band runs is a property of the band, not a preference to carry across one.
+bool isSidebandMode(String? mode) =>
+    mode != null && const {'SSB', 'USB', 'LSB'}.contains(mode.toUpperCase());
+
+String? resolveSideband(String? mode, double? freqKHz, {String? band}) {
+  if (mode == null || mode.toUpperCase() != 'SSB') return mode;
+  final resolved = freqKHz != null ? bandForFrequency(freqKHz) : band;
+  return _lsbBands.contains(resolved) ? 'LSB' : 'USB';
+}
+
 typedef _BandPlanSegment = ({
   double loKHz,
   double hiKHz,

@@ -205,9 +205,11 @@ what the user configured; everything about a connection is rebuilt at runtime.
 
 - **Frequency is kHz with decimals**, matching `Vfo.freq`. Polo shipped a driver reporting Hz and
   got frequencies 1000× too large; it also learned not to round to whole kHz.
-- **`SSB` is resolved to `USB`/`LSB` before a driver ever sees it.** No CAT protocol has an "SSB"
-  mode. The convention: 160/80/40 m are LSB, everything else USB (including 60 m, which is
-  channelized USB by international agreement despite being below 10 MHz).
+- **`SSB` is resolved to `USB`/`LSB` before a driver ever sees it** — at the VFO for anything this
+  device tunes, and again at the manager boundary for anything that reaches a driver without passing
+  through it. No CAT protocol has an "SSB" mode. The convention: 160/80/40 m are LSB, everything else
+  USB (including 60 m, which is channelized USB by international agreement despite being below
+  10 MHz).
 
 ## Testing a radio with no radio
 
@@ -414,7 +416,25 @@ The two directions have to not chase each other, and three things make that work
   caused: forwarding one would tell the radio to go where it already is, and the radio's
   confirmation of that would arrive as another notification.
 - **A per-node record of what was last exchanged**, compared per field. Without it, a mode-only
-  change re-sends the frequency to a radio that hasn't confirmed the previous one.
+  change re-sends the frequency to a radio that hasn't confirmed the previous one. It is also what
+  completes a partial reading: a rig echoing a mode with no frequency in it is answered with the
+  frequency it was last TOLD, not the one it last said, so the panel doesn't bounce back to where
+  the rig came from between the two halves of a tune. The two agree except while a tune is
+  unconfirmed — and a tune the rig REFUSED (out of range, VFO locked) is indistinguishable from one
+  it has not answered yet, so for that window the app shows where it asked the rig to be. The rig's
+  next frequency report settles it either way.
+- **An order for the two commands**, because rigs disagree about what a tune means. Within a band
+  the mode leads and the frequency follows: some radios read an incoming frequency against the mode
+  in force — a per-mode offset or band edge — so tuning first and switching mode after lands
+  off-target. Crossing a band it is **frequency, mode, frequency again**, with the mode sent even
+  when it hasn't changed: a rig that recalls a per-band mode would overwrite a mode stated before
+  the frequency, and the app would then follow the rig into a mode nobody asked for, so the mode is
+  stated once the rig is on the new band and the frequency restated in case setting the mode moved
+  it. The band is measured against what was last sent, and with nothing to compare against it counts
+  as changed — a freshly connected rig is wherever its operator left it, which is exactly when the
+  recall bites, as is a frequency outside every band plan. A **band pick** has no frequency to send
+  at all, so only the mode goes out; what protects it is `RadioService.setVfo` re-deriving the
+  sideband against the band being picked, so the mode the rig is told is already the right one.
 - **Dropping no-op writes at the store.** `Vfo` gained value equality, so a radio restating what it
   already reported — every status push, every 60 s resync — is not a change and notifies nobody.
   This has to live *at the store*, and only there. `CatService` deduping against its own cache as
@@ -422,11 +442,26 @@ The two directions have to not chase each other, and three things make that work
   field) and the radio has not moved, so every later report matches CAT's cache and is swallowed —
   permanently, until the operator turns the knob.
 
-`SSB` is resolved to `USB`/`LSB` at the manager boundary, before any driver sees it. No CAT protocol
-has an "SSB" mode. 160/80/40 m are lower sideband; everything else is upper, including 60 m, which
-is channelized USB by international agreement despite being below 10 MHz. The band comes from the
-frequency when there is one and from `vfoA.band` when there isn't — a manual band pick leaves exactly
-that state behind, and resolving it without the fallback answered USB on 40 m.
+`SSB` is resolved to `USB`/`LSB` where a mode is **requested** — `RadioService.setVfo`, which every
+writer of the VFO goes through: a tapped spot, the `setVfo` command, the mode picker. A sideband
+already stored is still a derived value, so **moving band re-derives it** unless the write states a
+mode of its own: a band pick carries no mode at all, and carrying USB from 20 m onto 40 m would log
+and transmit the wrong sideband. A mode named in the write is taken as stated — an operator
+deliberately on the far sideband keeps it, and a rig reporting its own mode is never second-guessed. `SSB` is what
+those say; it is not a mode a radio can be put in, and it is not what an operator on 40 m is running,
+so the panel, the logged QSO and the rig all name the same sideband. Resolving it only at the CAT
+boundary left a shack with no radio attached resolving nothing at all, and logging "SSB" for a spot
+that named a band. `halo_core`'s `resolveSideband` is the one implementation.
+
+`CatService` still calls it on the way to a driver — no CAT protocol has an "SSB" mode, and a mode
+can reach one without passing through this device's VFO (a peer driving a rig we offer). It is
+idempotent, so the second call is a guard, not a decision.
+
+160/80/40 m are lower sideband; everything else is upper, including 60 m, which is channelized USB by
+international agreement despite being below 10 MHz. The band comes from the frequency when there is
+one and from the band when there isn't — a manual band pick leaves exactly that state behind, and
+resolving it without the fallback answered USB on 40 m. With neither, the generic mode stands: there
+is nothing to resolve against, and picking a sideband would be a coin flip.
 
 ### A paired device's panel, over the peer link
 

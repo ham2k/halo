@@ -74,7 +74,7 @@ void main() {
 
     expect(radio.vfoA.freq, 14285);
     expect(radio.vfoA.band, '20m');
-    expect(radio.vfoA.mode, 'SSB');
+    expect(radio.vfoA.mode, 'USB', reason: 'SSB is resolved against the band it lands on');
   });
 
   test('setVfo with band clears freq (manually picked band, no exact frequency)', () {
@@ -96,6 +96,127 @@ void main() {
     expect(radio.vfoA.mode, 'CW');
   });
 
+  group('SSB is resolved to a sideband, at the request', () {
+    // The generic mode is what a spot, the setVfo command and the mode
+    // picker all say. Which sideband that IS follows from the band, so it is
+    // settled once, here, rather than by each reader — and a shack with no
+    // radio attached (nothing to resolve it at the CAT boundary) logs the
+    // sideband it worked, not "SSB".
+
+    test('a band that runs lower sideband gets LSB', () {
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', freq: 7180, mode: 'SSB');
+      expect(radio.vfoA.mode, 'LSB');
+    });
+
+    test('a band that runs upper sideband gets USB', () {
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', freq: 14250, mode: 'SSB');
+      expect(radio.vfoA.mode, 'USB');
+    });
+
+    test('60m is upper despite sitting below 10 MHz', () {
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', freq: 5357, mode: 'SSB');
+      expect(radio.vfoA.mode, 'USB', reason: '60m is channelized USB by international agreement');
+    });
+
+    test('a picked band with no frequency still resolves', () {
+      // What a manual band pick leaves behind. Deriving from the frequency
+      // alone would fall through to USB on 40m.
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', band: '40m', mode: 'SSB');
+      expect(radio.vfoA.mode, 'LSB');
+    });
+
+    test('with neither a frequency nor a band, the generic mode stands', () {
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', mode: 'SSB');
+      expect(radio.vfoA.mode, 'SSB', reason: 'nothing to resolve against — guessing USB would be a coin flip');
+    });
+
+    test('a mode that already names its sideband is left alone', () {
+      final radio = RadioService(prefs);
+      // An operator on 40m deliberately working the wrong sideband, or a rig
+      // reporting one — neither is a request to re-derive anything.
+      radio.setVfo('vfoA', freq: 7180, mode: 'USB');
+      expect(radio.vfoA.mode, 'USB');
+    });
+
+    test('moving band re-resolves a generic mode that is still sitting in the VFO', () {
+      // A VFO stored by an older build (or handed over by a peer) holds
+      // 'SSB'. Tuning it to a lower-sideband band settles it.
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', mode: 'SSB');
+      radio.setVfo('vfoA', freq: 7180);
+      expect(radio.vfoA.mode, 'LSB');
+    });
+
+    test('picking a new band re-derives the sideband nobody restated', () {
+      // The band dropdown sends a band and NO mode. The sideband sitting in
+      // the VFO was derived from the band being left, so carrying it across
+      // would log — and transmit — USB on 40m.
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', freq: 14250, mode: 'SSB');
+      expect(radio.vfoA.mode, 'USB');
+
+      radio.setVfo('vfoA', band: '40m');
+      expect(radio.vfoA.mode, 'LSB');
+
+      radio.setVfo('vfoA', band: '20m');
+      expect(radio.vfoA.mode, 'USB', reason: 'and back again — it follows the band, both ways');
+    });
+
+    test('typing a frequency on another band re-derives it too', () {
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', freq: 7180, mode: 'SSB');
+      expect(radio.vfoA.mode, 'LSB');
+
+      radio.setVfo('vfoA', freq: 14250);
+      expect(radio.vfoA.mode, 'USB');
+    });
+
+    test('a mode stated in the same write is taken as stated', () {
+      // The operator deliberately on the far sideband, or a rig reporting
+      // its own mode: re-deriving either would be the app arguing with it.
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', freq: 7180, mode: 'USB');
+      expect(radio.vfoA.mode, 'USB');
+
+      // And it survives until something moves band without restating it.
+      radio.setVfo('vfoA', freq: 7185);
+      expect(radio.vfoA.mode, 'USB', reason: 'same band, so nothing is re-derived');
+    });
+
+    test('moving band leaves a non-sideband mode alone', () {
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', freq: 14030, mode: 'CW');
+      radio.setVfo('vfoA', band: '40m');
+      expect(radio.vfoA.mode, 'CW');
+    });
+
+    test('a power-only write does not touch the mode', () {
+      // The Station panel and the legacy-power migration both call setVfo
+      // with nothing but a power. A mode rewritten there would notify every
+      // listener and schedule a prefs write for what is not a tuning change.
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', mode: 'SSB');
+      expect(radio.vfoA.mode, 'SSB', reason: 'no band, nothing to resolve against');
+
+      var notifications = 0;
+      radio.addListener(() => notifications++);
+      radio.setVfo('vfoA', power: 100);
+      expect(radio.vfoA.mode, 'SSB');
+      expect(notifications, 1, reason: 'the power change, and nothing else');
+    });
+
+    test('a non-phone mode is untouched', () {
+      final radio = RadioService(prefs);
+      radio.setVfo('vfoA', freq: 7025, mode: 'CW');
+      expect(radio.vfoA.mode, 'CW');
+    });
+  });
+
   test('persists across instances — a fresh RadioService picks up the last saved state', () async {
     final radio = RadioService(prefs);
     radio.setVfo('vfoA', freq: 14285, mode: 'SSB');
@@ -106,7 +227,7 @@ void main() {
     final freshRadio = RadioService(prefs);
     expect(freshRadio.vfoA.freq, 14285);
     expect(freshRadio.vfoA.band, '20m');
-    expect(freshRadio.vfoA.mode, 'SSB');
+    expect(freshRadio.vfoA.mode, 'USB');
   });
 
   test('is not scoped to any operation — the same vfoA is shared everywhere', () async {

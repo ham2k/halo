@@ -35,11 +35,6 @@ const _uuidGenerator = Uuid();
 /// Bump when the stored shape changes in a way a reader has to know about.
 const _storageVersion = 1;
 
-/// Bands where SSB voice conventionally sits on the lower sideband.
-/// Everything else is upper — including 60 m, which is channelized USB by
-/// international agreement despite being below 10 MHz.
-const _lsbBands = {'2190m', '630m', '560m', '160m', '80m', '40m'};
-
 /// How long a connected radio may say NOTHING before the row stops
 /// presenting its last reading as current.
 ///
@@ -87,18 +82,6 @@ enum _ConnectOutcome {
   /// Something else took the node over — a manual Connect, or a
   /// Disconnect. Not a failure, and not ours to retry.
   superseded,
-}
-
-/// No CAT protocol has an "SSB" mode — only the concrete sideband — so the
-/// app's generic mode is resolved here, once, before any driver sees it.
-///
-/// [band] is the fallback when there is no frequency to derive one from —
-/// which is exactly what a manual band pick leaves behind. Without it a
-/// picked 40m plus SSB resolved to USB.
-String? resolveSideband(String? mode, double? freqKHz, {String? band}) {
-  if (mode == null || mode.toUpperCase() != 'SSB') return mode;
-  final resolved = freqKHz != null ? bandForFrequency(freqKHz) : band;
-  return _lsbBands.contains(resolved) ? 'LSB' : 'USB';
 }
 
 /// [base], or the first `base N` nobody is using yet.
@@ -1394,13 +1377,23 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     final runtime = _runtimeFor(uuid);
     // The radio said something, so it is not silent — whatever it said.
     _noteAlive(uuid, runtime);
+    // A partial reading is completed from what the radio was last TOLD
+    // before what it last SAID. The two agree except in one window: a tune
+    // carrying both fields sends them as two commands, and the rig echoes
+    // the first before the second has landed. Filling from the rig's own
+    // last word there would answer a mode echo with the PRE-tune frequency
+    // and push that back to the panel — a spot tap would visibly bounce the
+    // frequency and band back to where the rig came from. `lastSent` falls
+    // back per field, so a deliberately cleared frequency (a band pick)
+    // still reads through to the radio's value rather than resurrecting one.
+    final sent = runtime.lastSent;
     final merged = VfoReading(
-      freqKHz: reading.freqKHz ?? runtime.state.vfo.freqKHz,
+      freqKHz: reading.freqKHz ?? sent?.freqKHz ?? runtime.state.vfo.freqKHz,
       // CW-R is reverse-sideband CW, not a mode of its own to the rest of the
       // app — every driver's own vocabulary keeps it (a radio must still be
       // told to flip sideband), but nothing past this point should learn a
       // mode ADIF and the log don't have.
-      mode: (reading.mode == 'CW-R' ? 'CW' : reading.mode) ?? runtime.state.vfo.mode,
+      mode: (reading.mode == 'CW-R' ? 'CW' : reading.mode) ?? sent?.mode ?? runtime.state.vfo.mode,
     );
     // A radio echoing back what it already reported shouldn't churn this
     // service's own listeners — but it must still reach RadioService.
@@ -1605,11 +1598,38 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // Per field, and against what was last SENT rather than what the
       // radio last reported: a radio that hasn't confirmed yet would
       // otherwise get the frequency re-sent every time the mode changed.
-      if (wanted.freqKHz != null && wanted.freqKHz != previous?.freqKHz) {
-        session.setFrequency(wanted.freqKHz!);
-      }
-      if (wanted.mode != null && wanted.mode != previous?.mode) {
-        session.setMode(wanted.mode!);
+      final freqKHz = wanted.freqKHz;
+      final mode = wanted.mode;
+      final freqChanged = freqKHz != null && freqKHz != previous?.freqKHz;
+      final modeChanged = mode != null && mode != previous?.mode;
+      // Measured against what was last sent, and any UNKNOWN counts as
+      // changed: a freshly connected rig is wherever its operator left it,
+      // and a frequency outside every band plan has no band to compare —
+      // two of those are not "the same band" just because both are null.
+      // Both are exactly when the recall below bites.
+      final previousFreqKHz = previous?.freqKHz;
+      final previousBand = previousFreqKHz == null ? null : bandForFrequency(previousFreqKHz);
+      final newBand = freqChanged ? bandForFrequency(freqKHz) : null;
+      final bandChanged = freqChanged && (previousBand == null || newBand == null || newBand != previousBand);
+
+      if (bandChanged && mode != null) {
+        // Crossing a band, the order is frequency, mode, FREQUENCY AGAIN,
+        // and the mode goes out EVEN WHEN IT HASN'T CHANGED. Two rig
+        // behaviours have to be survived at once and each defeats the
+        // other's remedy: a rig that recalls a per-band mode overwrites a
+        // mode sent before the frequency, and a rig that reads a frequency
+        // against the mode in force (a per-mode offset or band edge) lands
+        // off-target when the mode arrives after. So: get onto the band,
+        // state the mode there — after any recall has had its say — and
+        // re-state the frequency in case setting the mode moved it.
+        session.setFrequency(freqKHz);
+        session.setMode(mode);
+        session.setFrequency(freqKHz);
+      } else {
+        // Within a band nothing recalls anything, so the mode leads and the
+        // frequency lands in the mode it belongs to.
+        if (modeChanged) session.setMode(mode);
+        if (freqChanged) session.setFrequency(freqKHz);
       }
       // Only once both landed. Recording it up front would remember a
       // command that threw as delivered, and every later attempt at the

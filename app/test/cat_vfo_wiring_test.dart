@@ -101,8 +101,9 @@ class _FakeSession implements TransceiverSession {
   final List<String> commands = [];
   var throwOnSet = false;
 
-  /// Fails only `setMode`, so a partial delivery can be staged: the
-  /// frequency reaches the radio and the mode does not.
+  /// Fails only `setMode`, so a partial delivery can be staged: on a
+  /// cross-band tune the first frequency reaches the radio and nothing after
+  /// it does.
   var throwOnSetMode = false;
 
   _FakeSession(this.sink);
@@ -668,7 +669,7 @@ void main() {
       // no longer checking.
       radio.setVfo('vfoA', mode: 'CW');
       await pumpEventQueue();
-      expect(session().commands, ['freq:14074.0', 'mode:CW']);
+      expect(session().commands, ['freq:14074.0', 'mode:CW', 'freq:14074.0']);
     });
 
     test('disposing mid-reconnect does not notify a dead notifier', () async {
@@ -717,14 +718,69 @@ void main() {
 
       radio.setVfo('vfoA', freq: 14074, mode: 'USB');
       await pumpEventQueue();
-      expect(session().commands, ['freq:14074.0', 'mode:USB']);
+      // Nothing was sent before, so the rig's band is unknown and the
+      // cross-band sequence applies.
+      expect(session().commands, ['freq:14074.0', 'mode:USB', 'freq:14074.0']);
 
       // The radio does as it's told and says so, as a real one would.
       session().radioReports(freqKHz: 14074, mode: 'USB');
       await pumpEventQueue();
 
-      expect(session().commands, ['freq:14074.0', 'mode:USB'], reason: 'the confirmation is not a new command');
+      expect(session().commands, ['freq:14074.0', 'mode:USB', 'freq:14074.0'],
+          reason: 'the confirmation is not a new command');
       expect(radio.vfoA.freq, 14074);
+    });
+
+    test('crossing a band re-states the mode and re-asserts the frequency', () async {
+      await connectedRadio();
+      // A concrete sideband, the way a rig actually reports one — and the
+      // same one the tune below resolves to, so `modeChanged` is FALSE and
+      // the restatement is the only thing that can put a mode on the wire.
+      session().radioReports(freqKHz: 7290, mode: 'USB');
+      await pumpEventQueue();
+      session().commands.clear();
+
+      // A rig that recalls 20m as CW would land there and the app would
+      // follow it, so the mode is stated on the new band even though nothing
+      // about it changed, and the frequency restated in case setting the
+      // mode moved it.
+      radio.setVfo('vfoA', freq: 14074, mode: 'SSB');
+      await pumpEventQueue();
+      expect(session().commands, ['freq:14074.0', 'mode:USB', 'freq:14074.0']);
+    });
+
+    test('moving within a band leads with the mode and tunes once', () async {
+      await connectedRadio();
+      session().radioReports(freqKHz: 14074, mode: 'USB');
+      await pumpEventQueue();
+      session().commands.clear();
+
+      // No band boundary crossed, so nothing recalls anything: the mode
+      // leads so the frequency lands in it, and goes out once.
+      radio.setVfo('vfoA', freq: 14030, mode: 'CW');
+      await pumpEventQueue();
+      expect(session().commands, ['mode:CW', 'freq:14030.0']);
+    });
+
+    test('a mode echo arriving before the frequency does not bounce the panel back', () async {
+      await connectedRadio();
+      // Where the rig already is. The tune below crosses bands, so a
+      // reverted frequency is a reverted BAND — the visible failure.
+      session().radioReports(freqKHz: 7100, mode: 'CW');
+      await pumpEventQueue();
+
+      radio.setVfo('vfoA', freq: 14074, mode: 'USB');
+      await pumpEventQueue();
+
+      // The rig answers the mode with no frequency in it, the way every
+      // driver reports a mode change, and can do so before it has confirmed
+      // the frequency. Completing that from what the rig last SAID would
+      // answer with 7100.
+      session().radioReports(mode: 'USB');
+      await pumpEventQueue();
+
+      expect(radio.vfoA.freq, 14074, reason: 'the frequency just commanded, not the one being left');
+      expect(radio.vfoA.mode, 'USB');
     });
 
     test('restating the same VFO sends nothing', () async {

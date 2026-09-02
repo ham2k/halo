@@ -155,7 +155,9 @@ void main() {
     await tester.pump();
     expect(suggested, isEmpty);
     expect(services.radio.vfoA.freq, 14285.0);
-    expect(services.radio.vfoA.mode, 'SSB');
+    // The spot says 'SSB'; 20m runs upper. Nothing downstream of the VFO
+    // should have to work that out a second time.
+    expect(services.radio.vfoA.mode, 'USB');
 
     // Any other spot still suggests a QSO and leaves the VFO alone — the
     // mutation this guards is the isSelf branch leaking onto every row.
@@ -164,7 +166,7 @@ void main() {
     expect(suggested, hasLength(1));
     expect((suggested.single['their'] as Map)['call'], 'K1ABC');
     expect(services.radio.vfoA.freq, 14285.0);
-    expect(services.radio.vfoA.mode, 'SSB');
+    expect(services.radio.vfoA.mode, 'USB');
 
     // The re-tune schedules a debounced prefs write; flush it so no timer
     // outlives the test.
