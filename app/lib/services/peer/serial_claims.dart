@@ -79,7 +79,9 @@ class SerialClaims extends ChangeNotifier implements SerialNumberSource {
   /// claim starts from and the peers' holds move past.
   final Future<int> Function(String operationUuid, SequenceRequest request) peek;
 
-  /// The peers a claim is announced to — established LAN sessions. Which of
+  /// The peers a claim is announced to — every established session, on any
+  /// transport. A peer on Bluetooth is in the round like any other: leaving
+  /// it out saves a wait and costs a duplicate number on the air. Which of
   /// them a claim then WAITS on is narrower: see [_quiet].
   final Iterable<String> Function() livePeers;
   final SerialClaimSend send;

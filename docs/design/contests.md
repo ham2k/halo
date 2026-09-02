@@ -1426,9 +1426,9 @@ state). A table also gives an atomic `nextValue + 1` inside the QSO transaction.
 
 **How multi-client sync slots in later, without touching the API.** v1 keeps
 sequences local and, after inbound sync, raises each label to
-`max(stored, max(inbound serial))`. That is correct for the common case (one
-operator, several of their own devices) and, for genuinely concurrent multi-op,
-**detects rather than prevents** collisions — which is the **decided** v1
+`max(stored, max(inbound serial))`. That is correct for one operator on several
+of their own devices and, for genuinely concurrent multi-op (in scope — see
+§5.8.1), **detects rather than prevents** collisions — which is the **decided** v1
 behaviour: a duplicate serial arriving from another client raises an alert on the
 affected QSOs rather than being silently reconciled or renumbered. Note this path
 *can* fire in v1 (two devices logging the same operation, then syncing), so it
@@ -1533,6 +1533,20 @@ detect-after-sync cannot help there: LoFi latency is seconds to minutes, and the
 number is needed in under one. The peer link (HALO-310/395) already carries
 every position's draft between devices in real time, and that is the channel.
 
+**Multi-op contests are in scope.** The peer link started as one operator's
+own devices, but the coordination here is built for several operators on
+several devices sharing one operation — a Multi-Single, a Multi-Two, a Field
+Day site — with the positions on a LAN, on Bluetooth, or a mix of the two.
+Anything a position needs in order not to collide with another position must
+therefore cross **every** transport a session can run on. The claims below do;
+drafts and screen sharing stay LAN-only because they are streams, and a
+position that cannot see the others' drafts is a nuisance where a position
+that cannot see their claims is a duplicate serial on the air. What the peer
+link does NOT yet do for a team of that size — pairing is confirmed per pair
+of devices, every device re-serves what it receives to every other, and every
+session is a direct link with no relay — is a scaling limit to lift, not a
+scope boundary.
+
 **The rule that keeps this simple: a number the operator has been shown is
 never changed.** Everything below is arranged so that any negotiation happens
 before display, and anything that arrives after display is recorded, not acted
@@ -1595,12 +1609,21 @@ the only thing the pre-display wait is for.
   the call, and nobody reads the number aloud before finishing the call and
   reaching for the exchange. On a LAN the acks arrive in tens of milliseconds
   and the blank is never seen.
-- **Live** means an established LAN session that has been answering. A peer
-  that lets one round run to the cap — a phone asleep in a pocket behind a
-  session TCP has not yet closed, or a build predating the message, which
-  never answers — is **quiet**: still told every claim, so it skips them on
-  waking, but not waited on again until it next says anything. Otherwise a
-  dead device would cost the cap on every QSO.
+- **Live** means an established session on any transport that has been
+  answering — a position on Bluetooth is in the round like one on the LAN. A
+  peer that lets one round run to the cap — a phone asleep in a pocket behind
+  a session TCP has not yet closed, a build predating the message, which never
+  answers, or a BLE link whose credit window is momentarily full of a sync
+  batch — is **quiet**: still told every claim, so it skips them on waking,
+  but not waited on again until it next says anything. Otherwise a dead device
+  would cost the cap on every QSO. The BLE case is transient by nature: an
+  idle link acks in well under the cap, and once the batch has drained the
+  peer's late ack — "anything" — un-quiets it for the next round. While the
+  batch is still draining, that means the cap on every claim and the
+  collision, if any, surfacing as the conflict mark rather than being
+  prevented. A peer whose acks are *always* late would cost the cap on every
+  round; nothing on Bluetooth is expected to be that slow, and if one turns
+  out to be, the fix is to stop letting a late ack un-quiet.
 - **Every peer sharing the operation competes.** Should peers ever carry a
   role — a position that logs, against a bridge or a spectator that never
   will — only the logging ones need consulting, and the roster a claim is
@@ -1636,7 +1659,8 @@ which is the test §5.8 set for any v2.
 **As built.** `SerialNumberSource` (halo_core, beside `SequencesRepository`)
 is the panel's seam: `claim`, `release(committed:)`, `isConflicted`. The app's
 `SerialClaims` (`app/lib/services/peer/serial_claims.dart`) implements it over
-`PeerService.sendEphemeralTo`, and `LocalSerialNumberSource` is the fallback
+`PeerService.sendEphemeralTo` with `allowBle` — the one ephemeral sender that
+crosses Bluetooth links — and `LocalSerialNumberSource` is the fallback
 when nothing is wired (tests, tooling) — `peek`, straight away. `LoggingControls`
 takes the number from the source once the draft has content (a call, or a
 touched exchange field), releases it on wipe, and hands the committed numbers

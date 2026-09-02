@@ -15,6 +15,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/peer/ble/peer_ble_gateway.dart';
 import 'package:ham2k_logger/services/peer/ble/peer_ble_transport.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
+import 'package:ham2k_logger/services/peer/serial_claims.dart';
 
 import 'peer_ble_fakes.dart';
 import 'peer_network_fakes.dart';
@@ -169,6 +170,76 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 300));
     expect(deviceB.gateway.connectCalls, 0,
         reason: 'the connected-peer hint exists so the pair does not chew the radio with duplicate dials');
+  });
+
+  test('a serial claim crosses a BLE link, where a stream still does not', () async {
+    // A position on Bluetooth left out of the claim round shows the same
+    // number as one on the LAN — a duplicate serial on the air. So the
+    // claims' send opts into BLE, while the default keeps refusing it: the
+    // drafts and screen frames it guards would park every claim behind the
+    // credit window.
+    await deviceA.service.trust.trust(deviceB.deviceId, name: 'Phone');
+    await deviceB.service.trust.trust(deviceA.deviceId, name: 'Laptop');
+    await bleOn(deviceA);
+    await bleOn(deviceB);
+    await waitFor('the BLE session to establish', () => deviceA.service.hasSession(deviceB.deviceId));
+    expect(deviceA.service.hasLanSession(deviceB.deviceId), isFalse);
+
+    final received = <PeerMessage>[];
+    deviceB.service.onEphemeral = (_, message) => received.add(message);
+    final claim = PeerMessage.serialClaims(
+      operationUuid: 'op-1',
+      seq: 1,
+      claims: const [PeerSerialClaim(label: 'serial', number: 7)],
+    );
+
+    expect(deviceA.service.sendEphemeralTo(deviceB.deviceId, claim), isFalse,
+        reason: 'the default send is the LAN-only guard for streams');
+    expect(deviceA.service.sendEphemeralTo(deviceB.deviceId, claim, allowBle: true), isTrue);
+    await waitFor('the claim to arrive over BLE',
+        () => received.any((m) => m.serialClaimsOrNull?.claims.single.number == 7));
+  });
+
+  test('a claim round runs across a BLE link, wired the way the app wires it', () async {
+    // The test above proves the transport gate; this one proves the WIRING.
+    // Rewire either side to the LAN-only roster or the LAN-only send and
+    // the phone never hears the laptop's claim, so it claims 1 as well.
+    await deviceA.service.trust.trust(deviceB.deviceId, name: 'Phone');
+    await deviceB.service.trust.trust(deviceA.deviceId, name: 'Laptop');
+    SerialClaims claimsFor(_Device device) => SerialClaims(
+          localDeviceId: device.deviceId,
+          peek: (_, __) async => 1,
+          livePeers: () => [
+            for (final id in device.service.peers.keys)
+              if (device.service.hasSession(id)) id,
+          ],
+          send: (id, message) => device.service.sendEphemeralTo(id, message, allowBle: true),
+        );
+    final claimsA = claimsFor(deviceA);
+    final claimsB = claimsFor(deviceB);
+    addTearDown(claimsA.dispose);
+    addTearDown(claimsB.dispose);
+    // What `PeerChannels` does for the `serialClaims` type, and nothing else.
+    deviceA.service.onEphemeral = (id, message) {
+      if (message.serialClaimsOrNull case final payload?) claimsA.onPeerClaims(id, payload);
+    };
+    deviceB.service.onEphemeral = (id, message) {
+      if (message.serialClaimsOrNull case final payload?) claimsB.onPeerClaims(id, payload);
+    };
+
+    await bleOn(deviceA);
+    await bleOn(deviceB);
+    await waitFor('both sides to hold the BLE session',
+        () => deviceA.service.hasSession(deviceB.deviceId) && deviceB.service.hasSession(deviceA.deviceId));
+
+    const descriptor = SequenceDescriptor(refType: 'cqwpx', field: 'ourSerial', key: 'cqwpx/serial');
+    final request = descriptor.requestFor(Qso(uuid: '', operationUuid: 'op-1', data: const {'band': '20m'}));
+    expect(await claimsA.claim('op-1', request), 1);
+    // Settled on the phone's ack, not on the cap: an idle BLE link answers
+    // well inside it, and a link that carried the claim but not the ack
+    // would leave the phone quiet.
+    expect(claimsA.isQuiet(deviceB.deviceId), isFalse);
+    expect(await claimsB.claim('op-1', request), 2);
   });
 
   test('the sub-switch alone turns the radio off and drops the BLE session', () async {

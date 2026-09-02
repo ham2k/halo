@@ -194,8 +194,8 @@ class _Device {
     claims = SerialClaims(
       localDeviceId: deviceId,
       peek: (_, __) async => 1,
-      livePeers: () => [for (final id in service.peers.keys) if (service.hasLanSession(id)) id],
-      send: service.sendEphemeralTo,
+      livePeers: () => [for (final id in service.peers.keys) if (service.hasSession(id)) id],
+      send: (id, message) => service.sendEphemeralTo(id, message, allowBle: true),
     );
     channels = PeerChannels(
       peers: service,

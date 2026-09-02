@@ -1583,17 +1583,20 @@ class HaLoServices {
 
   /// The contest serial numbers this device holds while composing, against
   /// its peers' (HALO-476). Lazy like the rest: the panel only asks for it
-  /// while sharing drafts, and falls back to `peek` otherwise. LAN-only like
-  /// the drafts, for the same reason — a claim round on Bluetooth would sit
-  /// behind the credit window.
+  /// while sharing drafts, and falls back to `peek` otherwise. Unlike the
+  /// drafts it crosses Bluetooth links too: a claim is a few hundred bytes,
+  /// and a position on BLE left out of the round could only ever learn of a
+  /// collision from the log. In the round, an idle link acks well inside
+  /// the cap; one congested by a sync batch lets the claimant show at the
+  /// cap and turns the collision, if there is one, into the conflict mark.
   late final SerialClaims serialClaims = SerialClaims(
     localDeviceId: peerService.localDeviceId,
     peek: sequences.peek,
     livePeers: () => [
       for (final deviceId in peerService.peers.keys)
-        if (peerService.hasLanSession(deviceId)) deviceId,
+        if (peerService.hasSession(deviceId)) deviceId,
     ],
-    send: peerService.sendEphemeralTo,
+    send: (deviceId, message) => peerService.sendEphemeralTo(deviceId, message, allowBle: true),
     onCommittedConflict: (operationUuid, request, number) =>
         unawaited(qsos.markSerialConflict(operationUuid, request, number)),
   );

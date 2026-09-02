@@ -211,21 +211,25 @@ class PeerService extends ChangeNotifier {
     }
   }
 
-  /// Sends [message] to one peer, and only over a LAN link.
+  /// Sends [message] to one peer — over a LAN link only, unless [allowBle].
   ///
-  /// The BLE exclusion is the point. [broadcastEphemeral] fans out to every
-  /// session, and the BLE conduit chunks at a few hundred bytes behind a
-  /// 32 KiB credit window — a stream of anything sizeable there is tens of
-  /// seconds of head-of-line blocking with every GPS fix and tune request
-  /// stuck behind it. Screen sharing is LAN-only for that reason, and this
-  /// is where it is enforced rather than at each call site.
+  /// The BLE exclusion is the default on purpose. [broadcastEphemeral] fans
+  /// out to every session, and the BLE conduit chunks at a few hundred bytes
+  /// behind a 32 KiB credit window — a stream of anything sizeable there is
+  /// tens of seconds of head-of-line blocking with every GPS fix and tune
+  /// request stuck behind it. Screen sharing and drafts are LAN-only for
+  /// that reason, and this is where it is enforced rather than at each call
+  /// site. [allowBle] is for a message that is small AND that a peer on
+  /// Bluetooth must not miss — a contest serial claim, where a position left
+  /// out of the round is a duplicate number on the air.
   ///
   /// Returns whether it went anywhere. Lossy like the broadcast: a peer
-  /// mid-handshake, on Bluetooth, or gone simply does not receive it.
-  bool sendEphemeralTo(String peerDeviceId, PeerMessage message) {
+  /// mid-handshake, on Bluetooth without [allowBle], or gone simply does not
+  /// receive it.
+  bool sendEphemeralTo(String peerDeviceId, PeerMessage message, {bool allowBle = false}) {
     final session = _peers[peerDeviceId]?.session;
     if (session == null || !session.established) return false;
-    if (session.link is PeerBleLink) return false;
+    if (!allowBle && session.link is PeerBleLink) return false;
     session.sendEphemeral(message);
     return true;
   }
@@ -235,6 +239,13 @@ class PeerService extends ChangeNotifier {
   bool hasLanSession(String peerDeviceId) {
     final session = _peers[peerDeviceId]?.session;
     return session != null && session.established && session.link is! PeerBleLink;
+  }
+
+  /// Whether [peerDeviceId] has an established session on any transport —
+  /// the roster for traffic that goes wherever [allowBle] lets it.
+  bool hasSession(String peerDeviceId) {
+    final session = _peers[peerDeviceId]?.session;
+    return session != null && session.established;
   }
 
   /// The port this device is listening on, or null while it is not.

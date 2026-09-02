@@ -14,8 +14,8 @@
 // trivial. The stakes are physical, not only data: a trusted peer can tune
 // the addressee's rig ([catSet]), so a device that spoofs a confirmed id on
 // the segment can move a real transmitter's VFO. That is an accepted v1 limit
-// for a LAN of the operator's own devices, NOT a design to extend to the
-// server relay or to an untrusted network. Binding trust to a key the peer
+// for a LAN of trusted devices — the operator's own, or a multi-op team's —
+// NOT a design to extend to the server relay or to an untrusted network. Binding trust to a key the peer
 // must prove it holds is what [peerProtocolVersion] exists to be bumped for.
 
 import 'dart:convert';
