@@ -85,6 +85,67 @@ void main() {
     }, timeout: const Timeout(Duration(seconds: 60)));
   }
 
+  group('the serial we sent reaches our.exchange', () {
+    // The QSO row shows the number that went out next to the one that came
+    // back. Two traps: a serial is dropped from the ref when cleared (never
+    // kept as ''), and an edited QSO's `our.exchange` rides onto calls added
+    // to it while the serial is stripped for re-issue — so a hook that only
+    // projects when the field is present leaves a number this QSO never sent.
+    Future<Map?> patchFor(String key, Map<String, Object> opRef, Map<String, Object> qsoRef) async {
+      final host = await sharedHost([key]);
+      final entries = await host.invokeHookAll(
+        'activity',
+        method: 'processQsoBeforeSave',
+        args: {
+          'operation': {
+            'stationCall': 'N0DEV',
+            'grid': 'IO91wo',
+            'refs': [
+              {'type': key, ...opRef},
+            ],
+          },
+          'qso': {
+            'band': '2m',
+            'mode': 'CW',
+            'our': {'exchange': '41'},
+            'their': {'call': 'W1AW'},
+            'refs': [
+              {'type': key, ...qsoRef},
+            ],
+          },
+        },
+      );
+      final entry = entries.firstWhere((e) => e['ok'] == true, orElse: () => {});
+      return entry['value'] as Map?;
+    }
+
+    test('cqwpx: the number on the ref, as digits', () async {
+      final patch = await patchFor('cqwpx', {'mode': 'CW'}, {'ourSerial': 42, 'theirSerial': '117'});
+      expect((patch!['our'] as Map)['exchange'], '42');
+      expect((patch['their'] as Map)['exchange'], '117');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('cqwpx: no number on the ref clears the stale one, theirs left alone', () async {
+      final patch = await patchFor('cqwpx', {'mode': 'CW'}, {});
+      expect((patch!['our'] as Map)['exchange'], '');
+      expect(patch.containsKey('their'), isFalse, reason: 'an untouched received serial is not their decision');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    for (final key in ['r1-vhf-tests', 'rsgb-vhf-tests']) {
+      test('$key: the serial alone, our grid is not repeated on every row', () async {
+        final patch = await patchFor(key, {'ref': key == 'r1-vhf-tests' ? 'R1-VHF-SUB1-MARCH' : 'RSGB-BACKPACKERS-1'},
+            {'ourSerial': 42, 'theirSerial': '117', 'grid': 'JO01ab'});
+        expect((patch!['our'] as Map)['exchange'], '42');
+        expect((patch['their'] as Map)['exchange'], '117 JO01AB');
+      }, timeout: const Timeout(Duration(seconds: 60)));
+
+      test('$key: nothing of theirs to write still clears a stale sent serial', () async {
+        final patch = await patchFor(key, {'ref': key == 'r1-vhf-tests' ? 'R1-VHF-SUB1-MARCH' : 'RSGB-BACKPACKERS-1'}, {});
+        expect((patch!['our'] as Map)['exchange'], '');
+      }, timeout: const Timeout(Duration(seconds: 60)));
+    }
+  });
+
   test('an operation not running the contest is left alone', () async {
     final host = await sharedHost(['cqww']);
     final entries = await host.invokeHookAll(

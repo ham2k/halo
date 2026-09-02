@@ -133,27 +133,35 @@ const ActivityHook = {
     ]
   },
 
-  /// Mirrors the exchange this contest keeps on its own ref into the generic
-  /// `their.exchange`. Nothing outside this extension knows to look inside a
-  /// contest ref, so without this the QSO row's exchange column and a plain
-  /// (non-contest) ADIF export both come up empty on a contest log.
+  /// Mirrors the serials this contest keeps on its own ref into the generic
+  /// `our.exchange`/`their.exchange`. Nothing outside this extension knows to
+  /// look inside a contest ref, so without this the QSO row's exchange column
+  /// and a plain (non-contest) ADIF export both come up empty on a contest log.
   ///
-  /// Only ever a projection: the ref stays the source of truth, and the patch
-  /// touches exactly one field.
+  /// Only ever a projection: the ref stays the source of truth.
+  ///
+  /// Theirs follows the deliberate-blank convention: a field the operator
+  /// EMPTIED is present-but-blank rather than absent (see `_refsWithTextValues`),
+  /// and leaving it out of the patch would keep the previous save's value
+  /// showing in the QSO row, so a cleared serial projects a blank.
+  ///
+  /// Ours is projected on EVERY save, blank when the ref holds no number.
+  /// Serials are exempt from that convention — a cleared one is dropped from
+  /// the ref, never kept as '' — and an edited QSO's `our.exchange` rides
+  /// along onto calls added to it while the serial itself is stripped to be
+  /// re-issued; omitting the field in either case would leave the row showing
+  /// a number this QSO never sent. The second and later calls of a call list
+  /// get their number from the core after this hook (see the SDK's note on
+  /// `processQsoBeforeSave`), so those rows show only the received serial.
   async processQsoBeforeSave(
     args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
     _ctx: HookContext,
   ): Promise<Record<string, JSONValue> | null> {
     if (!refOfType(args.operation, TYPE)) return null
-    // the serial they sent
     const qsoRef = refOfType(args.qso, TYPE)
-    const exchange = serial(args.qso, 'theirSerial')
-    // A field the operator EMPTIED is present-but-blank rather than absent (see
-    // `_refsWithTextValues`). Returning null there would leave the previous
-    // save's `their.exchange` showing in the QSO row and in a plain ADIF export,
-    // so a cleared exchange has to project the blank.
-    if (!exchange) return qsoRef && 'theirSerial' in qsoRef ? { their: { exchange: '' } } : null
-    return { their: { exchange } }
+    const patch: Record<string, JSONValue> = { our: { exchange: serial(args.qso, 'ourSerial') } }
+    if (qsoRef && 'theirSerial' in qsoRef) patch.their = { exchange: serial(args.qso, 'theirSerial') }
+    return patch
   },
 }
 

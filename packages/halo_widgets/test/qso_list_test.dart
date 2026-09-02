@@ -1572,6 +1572,66 @@ void main() {
   );
 
   testWidgets(
+    'a serial contest shows the number we sent ahead of the one received',
+    (tester) async {
+      // Without `our.exchange` in the cell, a serial contest's row shows only
+      // what came back, and the operator has nothing to check their own
+      // number against. Same sent-then-received order as the RST cell.
+      final qso = Qso(
+        uuid: 'q1',
+        operationUuid: 'op-1',
+        data: {
+          'our': {'sent': '599', 'exchange': '042'},
+          'their': {'call': 'W1AW', 'sent': '599', 'exchange': '117'},
+          'mode': 'CW',
+          'startAtMillis': 1000,
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}),
+          ),
+        ),
+      );
+
+      expect(find.text('042 117'), findsOneWidget);
+      expect(find.text('117'), findsNothing, reason: 'the received serial never stands alone');
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}, switchSentRcvd: true),
+          ),
+        ),
+      );
+      expect(find.text('117 042'), findsOneWidget, reason: 'the switched row order flips the pair too');
+
+      // Only ours so far (theirs not yet typed, or a call-list entry whose
+      // number the core issues after the hook): no stray space either side.
+      final oursOnly = Qso(
+        uuid: 'q2',
+        operationUuid: 'op-1',
+        data: {
+          'our': {'sent': '599', 'exchange': '043'},
+          'their': {'call': 'W1AW', 'sent': '599', 'exchange': ''},
+          'mode': 'CW',
+          'startAtMillis': 2000,
+        },
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [oursOnly], onSelect: (_) {}),
+          ),
+        ),
+      );
+      expect(find.text('043'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'the RST cell is wide enough to fit "599 599" without clipping',
     (tester) async {
       final qso = Qso(

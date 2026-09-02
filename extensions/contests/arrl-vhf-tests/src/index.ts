@@ -147,8 +147,8 @@ const ActivityHook = {
     ]
   },
 
-  /// Mirrors the grid into `their.exchange`/`our.exchange`, the columns the QSO
-  /// list and generic exports read, and folds a full 6-character lookup grid
+  /// Mirrors the grid into `their.exchange`, the column the QSO list and
+  /// generic exports read, and folds a full 6-character lookup grid
   /// down to what this event's exchange actually asks for.
   async processQsoBeforeSave(
     { qso, operation }: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
@@ -166,19 +166,14 @@ const ActivityHook = {
       ? trimmedGrid(str(qsoRef.grid), event)
       : guessedGrid((qso.their as Record<string, JSONValue>) ?? {}, event)
 
-    // Our sent exchange comes from `operation.grid`, independent of whether
-    // the operator has typed theirs yet — clearing what THEY sent must not
-    // blank what WE sent.
-    if (!grid) {
-      return decided
-        ? { their: { exchange: '' }, our: { exchange: trimmedGrid(str(operation.grid), event) } }
-        : null
-    }
+    // Our sent exchange is the operation's grid, the same on every QSO, so
+    // it is not projected into `our.exchange` — the QSO row would repeat it
+    // on every line; the exports read `operation.grid` directly.
+    if (!grid) return decided ? { their: { exchange: '' } } : null
 
     return {
       refs: [{ type: TYPE, grid }],
       their: { exchange: grid },
-      our: { exchange: trimmedGrid(str(operation.grid), event) },
     }
   },
 }

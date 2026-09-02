@@ -165,7 +165,8 @@ const ActivityHook = {
   },
 
   /// Composes the exchange ("042 IO91wo" or, with a district, "042 IO91wo
-  /// AB") into `their.exchange`/`our.exchange` — same as r1-vhf-tests.
+  /// AB") into `their.exchange`, and our serial alone into `our.exchange` —
+  /// same as r1-vhf-tests.
   async processQsoBeforeSave(
     { qso, operation }: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
     _ctx: HookContext,
@@ -178,15 +179,16 @@ const ActivityHook = {
     const theirGrid = gridDecided
       ? trimmedGrid(str(qsoRef.grid))
       : guessedGrid((qso.their as Record<string, JSONValue>) ?? {})
-    const ourGrid = trimmedGrid(str(operation.grid))
     const theirSerial = serial(qso, 'theirSerial')
     const ourSerial = serial(qso, 'ourSerial')
     const district = hasDistrictExchange(event) ? str(qsoRef?.location).toUpperCase() : ''
 
     const theirExchange = [theirSerial, theirGrid, district].filter((x) => x).join(' ')
-    const ourExchange = [ourSerial, ourGrid].filter((x) => x).join(' ')
 
-    if (!theirExchange && !gridDecided) return null
+    // Nothing of theirs to write, but ours still is: an edited QSO's stale
+    // `our.exchange` would otherwise outlive a changed serial, and ride along
+    // onto calls added to it.
+    if (!theirExchange && !gridDecided) return { our: { exchange: ourSerial } }
 
     // Written whenever there's a grid to write, decided or guessed — a
     // guessed grid the operator never touched must still reach the ref, or
@@ -195,7 +197,9 @@ const ActivityHook = {
     return {
       refs: theirGrid ? [{ type: TYPE, grid: theirGrid, ...(district ? { location: district } : {}) }] : [],
       their: { exchange: theirExchange },
-      our: { exchange: ourExchange },
+      // Serial only: our grid never changes, and the QSO row shows this next to
+      // their exchange, where repeating it on every line only costs width.
+      our: { exchange: ourSerial },
     }
   },
 }
@@ -238,7 +242,8 @@ const AdifFieldsHook = {
     if (!event) return []
 
     const fields: { name: string; value: string }[] = [{ name: 'CONTEST_ID', value: event.key }]
-    const our = str(((qso.our as Record<string, JSONValue>) ?? {}).exchange)
+    // The full sent exchange, grid included — `our.exchange` carries only the serial.
+    const our = [serial(qso, 'ourSerial'), trimmedGrid(str(operation.grid))].filter((x) => x).join(' ')
     const their = str(((qso.their as Record<string, JSONValue>) ?? {}).exchange)
     if (our) fields.push({ name: 'STX_STRING', value: our })
     if (their) fields.push({ name: 'SRX_STRING', value: their })

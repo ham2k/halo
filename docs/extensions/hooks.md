@@ -453,7 +453,10 @@ for projecting data the extension owns into the generic QSON fields the rest of
 the app reads. A contest keeps its exchange on its own ref (`theirZone`,
 `theirSerial`, …), which nothing generic knows how to read — mirroring it into
 `their.exchange` is what fills the QSO row's exchange column and a plain ADIF
-export. Return a PATCH, not a mutated QSO: it merges shallowly except `our` and
+export. A contest whose sent exchange changes per QSO (a serial) mirrors that
+into `our.exchange` too, and the column shows it ahead of theirs, in the RST
+cell's order — keep it to the part that varies, since it repeats on every row.
+Return a PATCH, not a mutated QSO: it merges shallowly except `our` and
 `their`, which merge one level deep, so `{their: {exchange: 'ZN5'}}` sets that
 field and leaves the callsign alone. `refs` and `uuid` in a patch are ignored —
 refs are shared with the core and with other activities. Return null to do

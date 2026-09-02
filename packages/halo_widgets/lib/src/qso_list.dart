@@ -1112,9 +1112,11 @@ class _QsoListState extends State<QsoList> {
                         textAlign: TextAlign.right,
                       ),
                     ),
-                  // Their exchange, after the signal reports (#354). Reserved
-                  // list-wide only when some QSO carries one, so it costs no
-                  // space in the common (RST-only) case.
+                  // The exchange, after the signal reports (#354): ours then
+                  // theirs in the RST cell's order, so a serial contest shows
+                  // the number that went out next to the one that came back.
+                  // Reserved list-wide only when some QSO carries one, so it
+                  // costs no space in the common (RST-only) case.
                   if (plan.showExchange) ...[
                     const SizedBox(width: _columnGap),
                     SizedBox(
@@ -1122,7 +1124,7 @@ class _QsoListState extends State<QsoList> {
                       child: Opacity(
                         opacity: qso.theirFieldIsGuessed('exchange') ? 0.8 : 1.0,
                         child: Text(
-                          qso.theirExchange ?? '',
+                          _exchangePair(qso, switchSentRcvd: widget.switchSentRcvd),
                           style: rowMonoDim,
                           textAlign: TextAlign.right,
                         ),
@@ -1304,6 +1306,19 @@ class _QsoListState extends State<QsoList> {
   }
 }
 
+/// The exchange column's text: what we sent, then what they sent — or just
+/// theirs, for a contest whose sent exchange is fixed and so lives on the
+/// operation rather than on each QSO. Ours-then-theirs unless the row order
+/// is switched, exactly as the RST cell does.
+String _exchangePair(Qso qso, {required bool switchSentRcvd}) {
+  final ours = qso.ourExchange ?? '';
+  final theirs = qso.theirExchange ?? '';
+  // Joined, not interpolated: a lone half must not carry a stray space that
+  // would misalign the right-aligned cell and be measured into the column.
+  final parts = switchSentRcvd ? [theirs, ours] : [ours, theirs];
+  return parts.where((p) => p.isNotEmpty).join(' ');
+}
+
 /// The O(qsos) numbering/column-width/day-grouping pass — real text-layout
 /// measurements, expensive enough on a long log to stutter if redone on
 /// every rebuild. Called only on a cache miss; see `_QsoListState.build`'s
@@ -1342,7 +1357,7 @@ _QsoListMetrics _computeMetrics({
   final freqsInKHz = <double?>[];
   final modesUsed = <String>{};
   // Widest band shown in the freq/band column (only null-freq rows fall back
-  // to the band) and widest their-exchange, so both columns reserve a
+  // to the band) and widest exchange pair, so both columns reserve a
   // list-wide width and stay aligned even on rows that lack them (#354).
   var longestBand = '';
   var longestExchange = '';
@@ -1379,8 +1394,8 @@ _QsoListMetrics _computeMetrics({
       final label = q.band ?? _noBandLabel;
       if (label.length > longestBand.length) longestBand = label;
     }
-    final exchange = q.theirExchange;
-    if (exchange != null && exchange.length > longestExchange.length) longestExchange = exchange;
+    final exchange = _exchangePair(q, switchSentRcvd: false);
+    if (exchange.length > longestExchange.length) longestExchange = exchange;
     final rstPair = '${q.sentRST ?? ''} ${q.receivedRST ?? ''}';
     if (rstPair.length > longestRst.length) longestRst = rstPair;
     final mode = q.mode;
@@ -1444,7 +1459,7 @@ _QsoListMetrics _computeMetrics({
   }
   final freqWidth = longestFreqOrBand.isEmpty ? 0.0 : textWidth(context, longestFreqOrBand, mono);
   final rstWidth = textWidth(context, longestRst, monoDim);
-  // The their-exchange column (after the signal reports) reserves width only
+  // The exchange column (after the signal reports) reserves width only
   // when some QSO actually carries an exchange, like DX/State above (#354).
   final exchangeWidth = longestExchange.isEmpty ? 0.0 : textWidth(context, longestExchange, monoDim);
   // Measured from the largest count actually present, so a three-figure

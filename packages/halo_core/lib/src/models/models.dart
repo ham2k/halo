@@ -277,6 +277,12 @@ class Qso {
   /// or a lookup guess; the QSO row shows it after the signal reports.
   String? get theirExchange => asQsonString(_their['exchange']) ?? asQsonString(_theirGuess['exchange']);
 
+  /// The exchange we sent (QSON `our.exchange`) — a contest's serial number,
+  /// or a serial-plus-grid. Only a contest whose exchange varies per QSO
+  /// projects one here (a fixed exchange lives on the operation, not the
+  /// QSO); the QSO row shows it ahead of [theirExchange] when present.
+  String? get ourExchange => asQsonString(_our['exchange']);
+
   /// The other station's transmit power in watts — nested under `their`
   /// (unlike [power], which is ours and lives top-level), matching how
   /// `sentRST`/`receivedRST` split. Nothing in HaLo captures this at log
