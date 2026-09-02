@@ -258,7 +258,18 @@ class SyncEngine {
   static const defaultLargeBatchSize = 100; // matches sync.js
   static const debounceDelay = Duration(milliseconds: 500);
   static const debounceMaxWait = Duration(seconds: 3);
+  /// The wait after a full page while paging through a large set — the
+  /// server's `suggested_sync_loop_delay`, which api-lofi clamps to clear its
+  /// own per-client cooldown (`Client#meta_for_client`), so a round that waits
+  /// exactly this long is never gated. Also the base of the error backoff.
   static const defaultLoopDelay = Duration(seconds: 20);
+
+  /// The wait between pulls once caught up — the server's
+  /// `suggested_sync_check_period`, a different knob from [defaultLoopDelay]
+  /// and the only one that sets the idle request rate: a plan whose cooldown
+  /// is a second would otherwise have every linked device polling once a
+  /// second all day.
+  static const defaultCheckPeriod = Duration(seconds: 20);
   static const maxErrorBackoffShift = 8; // caps the exponential backoff at 2^8s; the loop itself never gives up
 
   /// The ceiling on the backoff while the failures are transport-shaped —
@@ -340,6 +351,7 @@ class SyncEngine {
   /// would not help.
   static const _maxQuarantined = 400;
   Duration _loopDelay = defaultLoopDelay;
+  Duration _checkPeriod = defaultCheckPeriod;
   int _errorCount = 0;
   int _authErrorStreak = 0;
   bool _running = false;
@@ -362,10 +374,6 @@ class SyncEngine {
   /// that sweep is not run on every round.
   bool _sweptPurgedOrphans = false;
 
-  /// True once the boost has hit its cap without the cursor moving: the
-  /// loop then falls back to the ordinary delay instead of hammering the
-  /// server with an identical full-page request at zero delay.
-  bool _backfillStuckAtCap = false;
 
   /// When the loop timer will next fire, on the REAL clock — a scheduled
   /// wall-clock instant whose remainder becomes a `Timer` duration, so it
@@ -656,9 +664,11 @@ class SyncEngine {
   /// full history has been fetched) or, once caught up, a forward page of
   /// anything new since the last watermark — so a device with nothing new
   /// to log still learns about QSOs logged elsewhere. It reschedules
-  /// itself — sooner, with no delay, if there's more to catch up on (a
-  /// local backlog, or a full page implying more is waiting server-side) —
-  /// after [defaultLoopDelay] otherwise. If the account turns out to have
+  /// itself: with no delay while there's a local backlog to push, after the
+  /// loop delay when a full page implies more is waiting server-side (the
+  /// server sets that delay to clear its cooldown, so asking sooner only
+  /// buys a gated, empty answer), and after the check period once caught
+  /// up. If the account turns out to have
   /// changed mid-stream, that response is discarded and the pending-account
   /// flow starts over, the same as a fresh link.
   Future<void> runOneRound({bool smallBatch = false}) async {
@@ -678,7 +688,7 @@ class SyncEngine {
       final state = settings.state;
 
       if (state['pendingAccountUUID'] != null) {
-        if (!smallBatch) _scheduleLoop(_loopDelay);
+        if (!smallBatch) _scheduleLoop(_checkPeriod);
         return;
       }
 
@@ -705,7 +715,7 @@ class SyncEngine {
             return;
           }
         }
-        if (!smallBatch) _scheduleLoop(_loopDelay);
+        if (!smallBatch) _scheduleLoop(_checkPeriod);
         return;
       }
 
@@ -749,7 +759,7 @@ class SyncEngine {
           // nothing to warn about — stay fully silent, not even counted
           // toward the streak, rather than nagging someone who hasn't
           // started using the app yet.
-          if (!smallBatch) _scheduleLoop(_loopDelay);
+          if (!smallBatch) _scheduleLoop(_checkPeriod);
           return;
         }
         _authErrorStreak++;
@@ -888,7 +898,20 @@ class SyncEngine {
         final morePending =
             pushProgressed && (await operations.hasUnsynced() || await qsos.hasUnsynced());
         final fullPage = inboundOperations.length >= pullLimit || inboundQsos.length >= pullLimit;
-        _scheduleLoop((morePending || (fullPage && !_backfillStuckAtCap)) ? Duration.zero : _loopDelay);
+        // Three different waits. A push backlog goes straight back out:
+        // pushes are not cooldown-gated. A full page waits the loop delay,
+        // never less — a sooner request lands inside the server's cooldown
+        // and buys an empty, gated answer that costs the server two counts
+        // over the account's whole QSO table — and that includes a page the
+        // server keeps re-serving on a stuck cursor: the loop delay is the
+        // fastest the cooldown allows, and there is no slower rate to fall
+        // back to that is not the idle one. Caught up, the check period sets
+        // the idle rate.
+        _scheduleLoop(morePending
+            ? Duration.zero
+            : fullPage
+                ? _loopDelay
+                : _checkPeriod);
       }
     } on SyncTransportNotReady catch (e) {
       // Not a failure: the extension host simply has not finished loading. Do
@@ -1192,10 +1215,22 @@ class SyncEngine {
     // snake_case (api-lofi's Client#meta_for_client); accept app-polo's
     // full fallback chain — top-level camelCase, top-level snake_case, then
     // flags. Reading only top-level camelCase would silently ignore every
-    // real server response, so the loop keeps its 20s default delay and each
-    // post-page follow-up request lands inside the server's sync cooldown.
+    // real server response, so the loop keeps its 20s defaults: idle polling
+    // at whatever the plan's check period should have said, and paging that
+    // never learns the cooldown it could have kept pace with.
     final flags = (meta['flags'] as Map?)?.cast<String, dynamic>() ?? const {};
-    int? knob(String camel, String snake) => ((meta[camel] ?? meta[snake] ?? flags[snake]) as num?)?.toInt();
+    // Type-tolerant, like `_cursorFrom`, and for the same reason: these flags are a hand-edited
+    // jsonb column on the server (`plans.flags`), and a throw here lands after the merge but
+    // before the state write below — the cursor and watermark are lost and the identical page is
+    // re-pulled every round, with nothing naming the flag. A value that is not a number is
+    // ignored and said so.
+    int? knob(String camel, String snake) {
+      final value = meta[camel] ?? meta[snake] ?? flags[snake];
+      if (value == null) return null;
+      final parsed = value is num ? value.toInt() : (value is String ? int.tryParse(value) : null);
+      if (parsed == null) log?.call('[sync] ignoring unreadable server flag $snake=$value');
+      return parsed;
+    }
 
     final suggestedBatchSize = knob('suggestedSyncBatchSize', 'suggested_sync_batch_size');
     if (suggestedBatchSize != null && suggestedBatchSize > 0) _largeBatchSize = suggestedBatchSize;
@@ -1203,6 +1238,11 @@ class SyncEngine {
     final suggestedLoopDelayMillis = knob('suggestedSyncLoopDelay', 'suggested_sync_loop_delay');
     if (suggestedLoopDelayMillis != null && suggestedLoopDelayMillis > 0) {
       _loopDelay = Duration(milliseconds: suggestedLoopDelayMillis);
+    }
+
+    final suggestedCheckPeriodMillis = knob('suggestedSyncCheckPeriod', 'suggested_sync_check_period');
+    if (suggestedCheckPeriodMillis != null && suggestedCheckPeriodMillis > 0) {
+      _checkPeriod = Duration(milliseconds: suggestedCheckPeriodMillis);
     }
 
     // A small-batch round never requested a `meta.sync` page, so there's
@@ -1293,10 +1333,9 @@ class SyncEngine {
           updates[cursorKey] = serverCursor;
           if (serverCursor == sentCursors[side] && inboundCount >= limit) {
             // The server handed back the very cursor we sent, on a full page: the next round
-            // would re-request this same page. Nothing else bounds that — `timestampTieStuck`
-            // cannot fire while a cursor exists, and `_scheduleLoop` runs a full page at zero
-            // delay — so say so here, or a server echoing a stuck cursor spins the loop as fast
-            // as its own cooldown allows.
+            // will re-request this same page, every loop delay, for as long as the server keeps
+            // echoing it. Named so the boost logic below does not read it as a timestamp tie and
+            // grow the limit for a page whose size is not the problem.
             cursorStuck = true;
           } else {
             cursorAdvanced = true;
@@ -1351,23 +1390,19 @@ class SyncEngine {
           updates[key] = null;
         }
         _backfillLimitBoost = 1;
-        _backfillStuckAtCap = false;
       } else if (cursorStuck) {
         // A cursor that will not move is not a page-size problem, so growing the limit is not the
-        // answer — only backing off is.
-        _backfillStuckAtCap = true;
+        // answer; the full page it came on is already scheduled at the loop delay.
         log?.call('[sync] backfill cursor came back unchanged; retrying at the loop delay');
       } else if (timestampTieStuck) {
         if (_backfillLimitBoost < maxBackfillLimitBoost) {
           _backfillLimitBoost *= 2;
           log?.call('[sync] backfill cursor stuck on a timestamp tie; growing pull limit to ${_backfillLimitBoost}x');
         } else if (!cursorAdvanced) {
-          _backfillStuckAtCap = true;
           log?.call('[sync] backfill cursor still stuck at the maximum pull limit; retrying at the loop delay');
         }
       } else {
         _backfillLimitBoost = 1;
-        _backfillStuckAtCap = false;
       }
 
       _reportProgress(meta, completed: updates['completedFullSync'] == true);

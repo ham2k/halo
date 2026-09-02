@@ -730,34 +730,61 @@ void main() {
     expect(settings.state['latestQSOSyncedAtMillis'], 5000);
   });
 
-  test('a full page of inbound records reschedules the loop immediately', () async {
+  // The server's two timing flags are two different waits, and the engine
+  // must keep them apart: the loop delay is what api-lofi clamps to clear its
+  // per-client cooldown, so a full page followed by anything shorter is a
+  // request that comes back gated and empty; the check period is the idle
+  // rate, and paging at it would make a 300-page backfill take hours.
+  // Distinct values, so using either one for both jobs fails here.
+  Map<String, dynamic> pagedResponse(List<Map<String, dynamic>> page) => {
+        'qsos': page,
+        'meta': {
+          'flags': {'suggested_sync_loop_delay': 5500, 'suggested_sync_check_period': 60000},
+        },
+      };
+
+  List<Map<String, dynamic>> inboundFrom(Map<String, dynamic> args, {required int totalAvailable}) {
+    final since = (((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['syncedSinceMillis'] as int;
+    return [
+      for (var i = since; i < totalAvailable; i++)
+        {
+          'uuid': 'inbound-$i',
+          'operation': 'op1',
+          'their': {'call': 'W1AW$i'},
+          'startAtMillis': i,
+          'syncedAtMillis': i + 1,
+        },
+    ];
+  }
+
+  test('a full page of inbound records reschedules after the loop delay, not sooner', () async {
     // A server with 150 pending QSOs to hand back: a full page (100) the
-    // first call, a partial page (50) once the client's advancing
-    // syncedSinceMillis catches up — the same "keep looping until caught
+    // first call, the rest on the next — the same "keep looping until caught
     // up" shape as app-polo's `receivedAllUpdates`.
-    const totalAvailable = 150;
-    transport.responder = (method, args) {
-      final since = (((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['syncedSinceMillis'] as int;
-      final remaining = [
-        for (var i = since; i < totalAvailable; i++)
-          {
-            'uuid': 'inbound-$i',
-            'operation': 'op1',
-            'their': {'call': 'W1AW$i'},
-            'startAtMillis': i,
-            'syncedAtMillis': i + 1,
-          },
-      ];
-      return {'qsos': remaining.take(SyncEngine.defaultLargeBatchSize).toList()};
-    };
+    transport.responder = (method, args) =>
+        pagedResponse(inboundFrom(args, totalAvailable: 150).take(SyncEngine.defaultLargeBatchSize).toList());
 
     await engine.runOneRound();
     expect(transport.calls, hasLength(1)); // first page: 100 records, a full page
 
-    // A full page implies more is waiting server-side, so the loop
-    // reschedules with no delay rather than waiting defaultLoopDelay (20s).
+    final wait = engine.nextAttemptAt!.difference(realNowUtc());
+    expect(wait, greaterThan(const Duration(seconds: 4)));
+    expect(wait, lessThanOrEqualTo(const Duration(milliseconds: 5500)));
+    // Not the immediate follow-up: that request always landed inside the
+    // server's cooldown and came back with no page.
     await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(transport.calls, hasLength(2)); // second page: the remaining 50, not a full page — loop settles
+    expect(transport.calls, hasLength(1));
+  });
+
+  test('a partial page means caught up, and the loop idles at the check period', () async {
+    transport.responder = (method, args) => pagedResponse(inboundFrom(args, totalAvailable: 50));
+
+    await engine.runOneRound();
+    expect(transport.calls, hasLength(1));
+
+    final wait = engine.nextAttemptAt!.difference(realNowUtc());
+    expect(wait, greaterThan(const Duration(seconds: 59)));
+    expect(wait, lessThanOrEqualTo(const Duration(seconds: 60)));
   });
 
   test('notifyChanged debounces into a small-batch round', () async {
@@ -1403,9 +1430,11 @@ void main() {
       expect(settings.state['backfillQSOCursor'], 'row:1');
     });
 
-    // Nothing else bounds a cursor that will not move: `timestampTieStuck` cannot fire while a
-    // cursor exists, and a full page is otherwise rescheduled at zero delay.
-    test('a server echoing back the cursor it was sent stops the zero-delay rescheduling', () async {
+    // A cursor that will not move comes back on a full page, and a full page is rescheduled at
+    // the loop delay — which is the right rate for it (the fastest the server's cooldown allows,
+    // and the log says so), as long as nothing reads the stall as a timestamp tie and grows the
+    // limit, or drops it to the idle rate.
+    test('a server echoing back the cursor it was sent retries at the loop delay', () async {
       final logs = <String>[];
       engine.dispose();
       engine = SyncEngine(
@@ -1431,14 +1460,53 @@ void main() {
               // The same cursor back, on a full page: the next round would re-request this page.
               'qsos': {'next_cursor': 'row:7', 'records_left': 99},
               'operations': {'records_left': 0},
+              'flags': {'suggested_sync_loop_delay': 5500, 'suggested_sync_check_period': 60000},
             },
           };
 
       await engine.runOneRound();
 
       expect(logs.where((l) => l.contains('came back unchanged')), isNotEmpty,
-          reason: 'an unmoving cursor has to back off to the loop delay, or the round repeats as '
-              'fast as the server cooldown allows');
+          reason: 'an unmoving cursor is named, or the boost logic reads it as a timestamp tie');
+      final wait = engine.nextAttemptAt!.difference(realNowUtc());
+      expect(wait, lessThanOrEqualTo(const Duration(milliseconds: 5500)),
+          reason: 'the log promises the loop delay; idling at the check period would make a stuck '
+              'backfill recover at the idle rate');
+      expect(wait, greaterThan(const Duration(seconds: 4)));
+    });
+
+    test('a server flag that is not a number is ignored and named, and the round still lands', () async {
+      final logs = <String>[];
+      engine.dispose();
+      engine = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        settings: settings,
+        transport: transport.call,
+        log: logs.add,
+      );
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
+      transport.responder = (method, args) => {
+            'qsos': [
+              for (var i = 0; i < 100; i++)
+                {'uuid': 'q$i', 'operation': 'op1', 'their': {'call': 'W1AW$i'}, 'startAtMillis': i, 'syncedAtMillis': 400 - i},
+            ],
+            'meta': {
+              'qsos': {'next_cursor': 'row:8', 'records_left': 5},
+              'operations': {'records_left': 0},
+              // A hand-edited plans.flags row: a throw on it would land after the merge and before
+              // the state write, so the cursor never advances and this page is re-pulled forever.
+              'flags': {'suggested_sync_check_period': 'a minute', 'suggested_sync_loop_delay': '5500'},
+            },
+          };
+
+      await engine.runOneRound();
+
+      expect(settings.state['backfillQSOCursor'], 'row:8');
+      expect(logs.where((l) => l.contains('suggested_sync_check_period=a minute')), isNotEmpty);
+      // A numeric string is a number: a full page waits the 5.5 s loop delay it carried, not the
+      // 20 s default.
+      expect(engine.nextAttemptAt!.difference(realNowUtc()), lessThanOrEqualTo(const Duration(milliseconds: 5500)));
     });
 
     // The ascending mirror of the backfill fallback: a forward cursor page also stops at the
