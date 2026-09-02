@@ -33,6 +33,7 @@ import 'package:halo_build_tools/halo_build_tools.dart' show extensionMaySeeSecr
 
 import '../config/secrets.dart';
 import '../config/dev_flags.dart';
+import '../config/experiments.dart';
 import '../config/dev_fixture.dart';
 import '../config/user_agent.dart';
 import '../config/version.dart';
@@ -1883,6 +1884,10 @@ class ExtensionService implements PanelExtensionSource {
   Future<void> applyExtensionAvailability() async {
     final currentSettings = settings;
     if (currentSettings == null) return;
+    // Every experiment flip lands here, and HookContext carries the enabled
+    // set: without this, an EXP preview within the kernel cache's TTL of a
+    // flip still offers the direction the flip just took.
+    invalidateHookContext();
     await _updateDisabledSince(currentSettings);
     final desired = {
       for (final info in availableExtensions)
@@ -2099,6 +2104,13 @@ class ExtensionService implements PanelExtensionSource {
           'enabledExperiments': [
             for (final entry in (settings?.experimentStates ?? const {}).entries)
               if (entry.value is Map && (entry.value as Map)['enabled'] == true) entry.key,
+          ],
+          // The catalog itself, so a hook can resolve a typed key-or-alias
+          // to one of those keys (the EXP preview says "Enable"/"Disable"
+          // rather than "Toggle"). Private entries included: EXP accepts them.
+          'experiments': [
+            for (final experiment in await loadExperiments())
+              {'key': experiment.key, 'name': experiment.name, 'aliases': experiment.aliases},
           ],
           // Machine-facing: extensions put this in ADIF PROGRAMID, a spot's
           // source, etc. — so the fixed, platform-agnostic "Ham2K Logger", not

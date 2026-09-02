@@ -135,17 +135,27 @@ class CollapseWhitespaceFormatter extends TextInputFormatter {
 /// the rule these fields exist to keep. Everything past the first space is a
 /// parameter: command patterns match case-insensitively, and a hook that
 /// needs its token uppercase uppercases it itself (radio-commands does).
+///
+/// [upcaseParams] lists the commands whose parameter is uppercased along
+/// with the word: those whose parameter is a name the field shows as an
+/// uppercase token everywhere else (an experiment key), never one that could
+/// be prose. Static because a rule here cannot consult the catalog either —
+/// the Home bar never loads it.
 class CommandWordCaseFormatter extends TextInputFormatter {
   const CommandWordCaseFormatter();
 
   static final _whitespace = RegExp(r'\s');
+
+  static const upcaseParams = {'EXP'};
 
   @override
   TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
     final text = newValue.text;
     final end = text.indexOf(_whitespace);
     if (end < 0) return newValue.copyWith(text: text.toUpperCase());
-    return newValue.copyWith(text: text.substring(0, end).toUpperCase() + text.substring(end));
+    final word = text.substring(0, end).toUpperCase();
+    if (upcaseParams.contains(word)) return newValue.copyWith(text: text.toUpperCase());
+    return newValue.copyWith(text: word + text.substring(end));
   }
 }
 

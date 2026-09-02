@@ -48,6 +48,11 @@ export interface HookContext {
   /// rather than at the whole-extension `manifest.experiments` grain, which
   /// would also hide unrelated hooks the same extension registers).
   enabledExperiments?: string[]
+  /// The experiment catalog (app/experiments.yaml): every experiment's key,
+  /// display name and the aliases the EXP command accepts for it, on or
+  /// off. Lets a hook resolve a typed token to the key `enabledExperiments`
+  /// lists — the app remains the authority when it flips the state.
+  experiments?: { key: string; name: string; aliases: string[] }[]
   /// Fetches one operation's QSON by uuid, with `uuid` folded in — the same
   /// shape hooks receive as an `operation` argument (see `qsonPayloadFor`
   /// on the Dart side). Resolves null when the uuid is unknown. For hooks

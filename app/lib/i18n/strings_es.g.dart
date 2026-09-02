@@ -1912,7 +1912,6 @@ class _Translations$settings$developer$es extends Translations$settings$develope
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get options => 'Opciones de desarrollador';
 	@override String get developerModeDescription => 'Habilita avisos de desarrollador, registros de depuración y herramientas.';
 	@override String get experiments => 'Experimentos';
 	@override String experimentsEnabled({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
@@ -1930,13 +1929,10 @@ class _Translations$settings$developer$es extends Translations$settings$develope
 	@override String get noPatchInstalled => 'No hay code push instalado — ejecutando el binario de la versión.';
 	@override String runningPatch({required Object patch}) => 'Ejecutando el code push #${patch}.';
 	@override String get systemInformation => 'Información del sistema';
-	@override String get activeExtensions => 'Extensiones activas';
 	@override String get appVersion => 'Versión de la app';
 	@override String get dataFolder => 'Carpeta de datos';
 	@override String get loading => '(cargando…)';
-	@override String get runtimeNotAvailable => 'El motor de extensiones no está disponible.';
 	@override String get panelLoadFailed => 'No se pudo cargar este panel de configuración.';
-	@override String get categoryCore => 'Núcleo y motor';
 	@override String get extDevServer => 'Servidor de desarrollo de extensiones';
 	@override String get extDevServerDescription => 'Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.';
 	@override String get extDevServerAddress => 'Dirección del servidor';
@@ -3807,7 +3803,6 @@ extension on TranslationsEs {
 			'settings.profiles.section' => 'Sección',
 			'settings.search.clear' => 'Borrar',
 			'settings.search.hint' => 'Buscar en la configuración',
-			'settings.developer.options' => 'Opciones de desarrollador',
 			'settings.developer.developerModeDescription' => 'Habilita avisos de desarrollador, registros de depuración y herramientas.',
 			'settings.developer.experiments' => 'Experimentos',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} habilitado', other: '${count} habilitados', ), 
@@ -3822,13 +3817,10 @@ extension on TranslationsEs {
 			'settings.developer.noPatchInstalled' => 'No hay code push instalado — ejecutando el binario de la versión.',
 			'settings.developer.runningPatch' => ({required Object patch}) => 'Ejecutando el code push #${patch}.',
 			'settings.developer.systemInformation' => 'Información del sistema',
-			'settings.developer.activeExtensions' => 'Extensiones activas',
 			'settings.developer.appVersion' => 'Versión de la app',
 			'settings.developer.dataFolder' => 'Carpeta de datos',
 			'settings.developer.loading' => '(cargando…)',
-			'settings.developer.runtimeNotAvailable' => 'El motor de extensiones no está disponible.',
 			'settings.developer.panelLoadFailed' => 'No se pudo cargar este panel de configuración.',
-			'settings.developer.categoryCore' => 'Núcleo y motor',
 			'settings.developer.extDevServer' => 'Servidor de desarrollo de extensiones',
 			'settings.developer.extDevServerDescription' => 'Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.',
 			'settings.developer.extDevServerAddress' => 'Dirección del servidor',

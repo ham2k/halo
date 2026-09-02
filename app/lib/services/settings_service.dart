@@ -738,6 +738,14 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     return state is Map && state['enabled'] == true;
   }
 
+  /// Whether [key] has been enabled at some point, on or off now — what
+  /// admits a private experiment to the Experiments list: EXP revealed it
+  /// once, so the switch to turn it back on stays reachable.
+  bool experimentEverEnabled(String key) {
+    final state = experimentStates[key];
+    return state is Map && state['firstEnabledAtMillis'] != null;
+  }
+
   /// The number of [keys] currently enabled — the Developer menu's count,
   /// computed against the CURRENT catalog so stale state for removed
   /// experiments doesn't inflate it. One state read, not one per key.

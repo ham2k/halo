@@ -19,16 +19,18 @@ class ExperimentDefinition {
   final String? description;
   final List<String> aliases;
 
-  /// Hidden experiments still toggle via EXP but are not listed in the
-  /// Experiments screen (half-baked or internal-only switches).
-  final bool hidden;
+  /// Private experiments still toggle via EXP but are not listed in the
+  /// Experiments screen (half-baked or internal-only switches) — until
+  /// enabled once, after which they stay listed (see
+  /// SettingsService.experimentEverEnabled).
+  final bool private;
 
   const ExperimentDefinition({
     required this.key,
     required this.name,
     this.description,
     this.aliases = const [],
-    this.hidden = false,
+    this.private = false,
   });
 
   /// Whether [token] names this experiment — its key or any alias.
@@ -71,7 +73,7 @@ List<ExperimentDefinition> parseExperimentsYaml(String yamlSource) {
         name: (entry['name'] as String?) ?? key,
         description: entry['description'] as String?,
         aliases: [for (final alias in (entry['aliases'] as YamlList?) ?? YamlList()) alias as String],
-        hidden: (entry['hidden'] as bool?) ?? false,
+        private: (entry['private'] as bool?) ?? false,
       ));
     } catch (_) {
       continue;
@@ -95,7 +97,14 @@ Future<List<ExperimentDefinition>>? _experimentsFuture;
 /// Cached across calls, like [loadReleaseNotes] — consumers read this from
 /// FutureBuilders that rebuild often.
 Future<List<ExperimentDefinition>> loadExperiments() {
-  return _experimentsFuture ??= rootBundle.loadString('experiments.yaml').then(parseExperimentsYaml);
+  // A failed asset read resolves empty rather than rejecting, for the same
+  // reason a parse error does: the future is cached, and the extension host's
+  // getSettings awaits it for EVERY hook context — a cached rejection would
+  // strip every hook of its settings for the rest of the session.
+  return _experimentsFuture ??= rootBundle
+      .loadString('experiments.yaml')
+      .then(parseExperimentsYaml)
+      .catchError((Object _) => const <ExperimentDefinition>[]);
 }
 
 /// Resolves [loadExperiments] synchronously to [definitions] from then on

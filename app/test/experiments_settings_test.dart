@@ -42,6 +42,16 @@ void main() {
     expect(reenabled['firstEnabledAtMillis'], firstEnabled);
   });
 
+  test('a private experiment counts as ever-enabled after its first enable, even once off again', () async {
+    // The list admits a private experiment on this, so disabling it must
+    // not drop it back off the list — the operator would lose the switch.
+    expect(settings.experimentEverEnabled('remote'), isFalse);
+    await settings.setExperimentEnabled('remote', true);
+    await settings.setExperimentEnabled('remote', false);
+    expect(settings.experimentEnabled('remote'), isFalse);
+    expect(settings.experimentEverEnabled('remote'), isTrue);
+  });
+
   test('state persists for experiments no longer in the catalog', () async {
     await settings.setExperimentEnabled('retired', true);
     await settings.setExperimentEnabled('layouts', true);

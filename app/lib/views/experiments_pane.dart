@@ -2,11 +2,11 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The Experiments list (Settings → Developer → Experiments), shown as a
-// Modal Pane: every non-hidden experiment from experiments.yaml with an
-// on/off switch. Hidden experiments still toggle via the EXP command;
-// they're just not listed here. Loads the catalog itself (rather than
-// taking it from the opener) so a pane opened before the catalog finished
-// loading still fills in.
+// Modal Pane: every non-private experiment from experiments.yaml with an
+// on/off switch. Private experiments still toggle via the EXP command and
+// join the list once that has enabled them. Loads the catalog itself
+// (rather than taking it from the opener) so a pane opened before the
+// catalog finished loading still fills in.
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -31,10 +31,14 @@ class ExperimentsPane extends StatelessWidget {
             child: Center(child: CircularProgressIndicator()),
           );
         }
-        final visible = [for (final d in snapshot.data!) if (!d.hidden) d];
         return ListenableBuilder(
           listenable: settings,
           builder: (context, _) {
+            // Inside the listenable: an EXP flip of a private one adds it.
+            final visible = [
+              for (final d in snapshot.data!)
+                if (!d.private || settings.experimentEverEnabled(d.key)) d,
+            ];
             if (visible.isEmpty) {
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: Space.xxl),

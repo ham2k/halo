@@ -4130,9 +4130,6 @@ class Translations$settings$developer$en {
 
 	// Translations
 
-	/// en: 'Developer Options'
-	String get options => 'Developer Options';
-
 	/// en: 'Enable developer warnings, debug logs, and tools.'
 	String get developerModeDescription => 'Enable developer warnings, debug logs, and tools.';
 
@@ -4178,9 +4175,6 @@ class Translations$settings$developer$en {
 	/// en: 'System Information'
 	String get systemInformation => 'System Information';
 
-	/// en: 'Active Extensions'
-	String get activeExtensions => 'Active Extensions';
-
 	/// en: 'App Version'
 	String get appVersion => 'App Version';
 
@@ -4190,14 +4184,8 @@ class Translations$settings$developer$en {
 	/// en: '(loading…)'
 	String get loading => '(loading…)';
 
-	/// en: 'Extension runtime not available.'
-	String get runtimeNotAvailable => 'Extension runtime not available.';
-
 	/// en: 'Could not load this settings panel.'
 	String get panelLoadFailed => 'Could not load this settings panel.';
-
-	/// en: 'Core & Runtime'
-	String get categoryCore => 'Core & Runtime';
 
 	/// en: 'Extension Dev Server'
 	String get extDevServer => 'Extension Dev Server';
@@ -6726,7 +6714,6 @@ extension on Translations {
 			'settings.profiles.section' => 'Section',
 			'settings.search.clear' => 'Clear',
 			'settings.search.hint' => 'Search settings',
-			'settings.developer.options' => 'Developer Options',
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} enabled', other: '${count} enabled', ), 
@@ -6741,13 +6728,10 @@ extension on Translations {
 			'settings.developer.noPatchInstalled' => 'No code push installed — running the release binary.',
 			'settings.developer.runningPatch' => ({required Object patch}) => 'Running code push #${patch}.',
 			'settings.developer.systemInformation' => 'System Information',
-			'settings.developer.activeExtensions' => 'Active Extensions',
 			'settings.developer.appVersion' => 'App Version',
 			'settings.developer.dataFolder' => 'Data Folder',
 			'settings.developer.loading' => '(loading…)',
-			'settings.developer.runtimeNotAvailable' => 'Extension runtime not available.',
 			'settings.developer.panelLoadFailed' => 'Could not load this settings panel.',
-			'settings.developer.categoryCore' => 'Core & Runtime',
 			'settings.developer.extDevServer' => 'Extension Dev Server',
 			'settings.developer.extDevServerDescription' => 'Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.',
 			'settings.developer.extDevServerAddress' => 'Server address',

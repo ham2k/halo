@@ -29,6 +29,10 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   whole-extension `manifest.experiments` grain would also hide any other
   hook the same extension registers (e.g. `radio-commands`' POWER command
   checks `gato` here; its BAND/MODE/frequency siblings don't).
+* `experiments?: { key, name, aliases }[]` — The experiment catalog itself,
+  on or off, so a hook can resolve a typed key-or-alias to one of the keys
+  `enabledExperiments` lists (the EXP preview says "Enable"/"Disable" rather
+  than "Toggle"). The app remains the authority when it flips the state.
 * `getOperation?(uuid)` / `getQsos?(operationUuid)` — log-data reads, for
   hooks that only receive part of the picture as arguments (e.g. a `command`
   hook handed the operation it's typed into, needing the existing QSOs —
@@ -832,9 +836,10 @@ the lookup service's offline `their.guess` decoration. The placement rule
 needs the existing log: SEED reads it through `ctx.getQsos`, using the
 `uuid` the logging panel folds into the `operation` map it passes to
 `interpret`; EXP toggles an experimental feature via the `toggleExperiment`
-action field — the hook only parses "EXP <key-or-alias>", and the app
-resolves the token against `app/experiments.yaml` and reports the outcome,
-since the catalog and the stored per-experiment state both live app-side;
+action field — the hook parses "EXP <key-or-alias>" and resolves the token
+against `ctx.experiments` only for its preview ("Enable"/"Disable"); the app
+resolves it again when it flips the state and reports the outcome, since the
+stored per-experiment state lives app-side;
 DEVTT/DEVTIMETRAVEL move the app clock via the `devTimeTravel` action field —
 "DEVTT +3h", "DEVTT -1d", "DEVTT 2x", bare "DEVTT" to return to real time — so
 anything that turns on the date or on elapsed time can be tested without

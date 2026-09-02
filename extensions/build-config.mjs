@@ -159,12 +159,13 @@ export async function loadKnownExperiments() {
   // somebody added a gate — and then fail in whichever direction it broke.
   // An over-matching regex is the dangerous one, because it validates a typo'd
   // key, which hides the extension from every user with no runtime signal.
-  // `experiments` is the meta-experiment gating the Experiments list, the one
-  // key the catalog cannot lose.
-  if (!knownExperiments.has('experiments')) {
+  // `gato` is the one key the catalog cannot lose: it gates the Station
+  // Configuration section (docs/design/cat.md) and its entry says why the
+  // key itself must not be renamed.
+  if (!knownExperiments.has('gato')) {
     throw new Error(
-      `app/experiments.yaml parsed to ${knownExperiments.size} key(s), none of them 'experiments' — ` +
-        'the extraction regex no longer matches the catalog')
+      `app/experiments.yaml parsed to ${knownExperiments.size} key(s), none of them 'gato' — ` +
+        "either the extraction regex no longer matches the catalog, or the 'gato' entry was renamed or removed")
   }
   return knownExperiments
 }

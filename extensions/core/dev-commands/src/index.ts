@@ -450,13 +450,15 @@ async function lookupGuessFor(
 }
 
 // EXP <key-or-alias> toggles an experimental feature. The catalog
-// (app/experiments.yaml) and the stored state both live app-side, so this
-// hook only parses; the app resolves the token and reports the outcome
-// (enabled/disabled/unknown) itself — hence no `confirm` here.
+// (app/experiments.yaml) and the stored state both live app-side; the app
+// resolves the token again when it flips the state and reports the outcome
+// (enabled/disabled/unknown) itself — hence no `confirm` here. The catalog
+// in ctx serves only the preview, so the describe can say which way the
+// toggle will go instead of a bare "toggle".
 const EXP_MATCH = /^EXP(?:\s+(.+))?$/i
 
 const ExpCommand = {
-  async interpret({ input }: { input: string }, _ctx: HookContext): Promise<CommandInterpretation | null> {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
     const match = EXP_MATCH.exec(input.trim())
     if (!match) return null
     const token = match[1]?.trim()
@@ -466,9 +468,18 @@ const ExpCommand = {
     // invited free text via expectsParams, so Enter must not log it).
     if (/\s/.test(token)) return { error: 'EXP takes a single experiment name' }
 
+    // Case-insensitive like the app's own resolution: the call field
+    // uppercases everything typed into it.
+    const lower = token.toLowerCase()
+    const experiment = ctx.experiments?.find(
+      (e) => e.key.toLowerCase() === lower || e.aliases.some((a) => a.toLowerCase() === lower),
+    )
+    const commands = [{ toggleExperiment: { token } }]
+    if (!experiment) return { describe: `Toggle experiment ${token.toUpperCase()}?`, commands }
+    const enabled = ctx.enabledExperiments?.includes(experiment.key) ?? false
     return {
-      describe: `Toggle experiment ${token.toUpperCase()}?`,
-      commands: [{ toggleExperiment: { token } }],
+      describe: `${enabled ? 'Disable' : 'Enable'} experiment ${experiment.name.toUpperCase()}?`,
+      commands,
     }
   },
 

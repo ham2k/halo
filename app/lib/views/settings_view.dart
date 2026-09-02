@@ -2639,49 +2639,44 @@ class _DeveloperPanel extends StatelessWidget {
           // stopped their backgrounds short of the pane's edges.
           padding: const EdgeInsets.only(bottom: Space.xl),
           children: [
-            SectionHeader(context.t.settings.developer.options),
             SwitchListTile(
               title: Text(context.t.settings.developerMode),
               subtitle: Text(context.t.settings.developer.developerModeDescription),
               value: settings.developerMode,
               onChanged: (enabled) => settings.setDeveloperMode(enabled),
             ),
-            // Gated by the 'experiments' meta-experiment (EXP EXPERIMENTS /
-            // EXP EXP): the tile only appears once someone opted in via the
-            // command. Reads live — the whole panel rebuilds under the
-            // ListenableBuilder(settings) above, so toggling it (either
-            // way, including from inside the pane itself) shows/hides the
-            // tile immediately.
-            if (settings.experimentEnabled('experiments'))
-              FutureBuilder<List<ExperimentDefinition>>(
-                future: loadExperiments(),
-                builder: (context, snapshot) {
-                  final definitions = snapshot.data ?? const <ExperimentDefinition>[];
-                  // Counted against the CURRENT catalog's LISTED entries: state
-                  // for removed experiments doesn't inflate it, and hidden ones
-                  // are excluded so the count can't disagree with the pane
-                  // (which doesn't list them).
-                  final enabledCount = settings.enabledExperimentCount([
-                    for (final d in definitions)
-                      if (!d.hidden) d.key,
-                  ]);
-                  return ListTile(
-                    leading: const Icon(MdiIcons.flaskOutline),
-                    title: Text(context.t.settings.developer.experiments),
-                    subtitle: Text(context.t.settings.developer.experimentsEnabled(count: enabledCount)),
-                    mouseCursor: SystemMouseCursors.click,
-                    // The pane loads the catalog itself — capturing this
-                    // builder's `definitions` would freeze a still-loading
-                    // (empty) snapshot into the pane for its whole lifetime.
-                    onTap: () => showModalPane<void>(
-                      context,
-                      title: context.t.settings.developer.experiments,
-                      closeLabel: context.t.common.close,
-                      builder: (_) => ExperimentsPane(services: services),
-                    ),
-                  );
-                },
-              ),
+            // Reads live — the whole panel rebuilds under the
+            // ListenableBuilder(settings) above, so a flip inside the pane
+            // updates the count immediately.
+            FutureBuilder<List<ExperimentDefinition>>(
+              future: loadExperiments(),
+              builder: (context, snapshot) {
+                final definitions = snapshot.data ?? const <ExperimentDefinition>[];
+                // Counted against the CURRENT catalog's LISTED entries: state
+                // for removed experiments doesn't inflate it, and never-enabled
+                // private ones are excluded so the count can't disagree with
+                // the pane (which doesn't list them).
+                final enabledCount = settings.enabledExperimentCount([
+                  for (final d in definitions)
+                    if (!d.private || settings.experimentEverEnabled(d.key)) d.key,
+                ]);
+                return ListTile(
+                  leading: const Icon(MdiIcons.flaskOutline),
+                  title: Text(context.t.settings.developer.experiments),
+                  subtitle: Text(context.t.settings.developer.experimentsEnabled(count: enabledCount)),
+                  mouseCursor: SystemMouseCursors.click,
+                  // The pane loads the catalog itself — capturing this
+                  // builder's `definitions` would freeze a still-loading
+                  // (empty) snapshot into the pane for its whole lifetime.
+                  onTap: () => showModalPane<void>(
+                    context,
+                    title: context.t.settings.developer.experiments,
+                    closeLabel: context.t.common.close,
+                    builder: (_) => ExperimentsPane(services: services),
+                  ),
+                );
+              },
+            ),
             // The extension dev loop (docs/extensions/development.md). Below
             // the developer-mode switch because it is meaningless without it,
             // and above the patch track because an author reaches for it far
@@ -2692,212 +2687,67 @@ class _DeveloperPanel extends StatelessWidget {
             // `shorebird release` build, not a local/debug/web one — so it's
             // invisible and inert everywhere it can't do anything.
             if (services.updates.isAvailable) ...[
-              const SizedBox(height: Space.xl),
-              Text(
+              SectionHeader(
                 context.t.settings.developer.patchTrack,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: HaLoColors.of(context).onSurfaceAccent,
-                  fontWeight: FontWeight.bold,
-                ),
+                subtitle: Text(context.t.settings.developer.patchTrackDescription),
               ),
-              Padding(
-                padding: const EdgeInsets.only(top: Space.xs, bottom: Space.md),
-                child: Text(
-                  context.t.settings.developer.patchTrackDescription,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
-              SegmentedButton<String>(
-                showSelectedIcon: false,
-                segments: [
-                  ButtonSegment(value: 'stable', label: Text(context.t.settings.developer.trackStable)),
-                  ButtonSegment(value: 'unstable', label: Text(context.t.settings.developer.trackUnstable)),
-                  ButtonSegment(value: 'bleeding-edge', label: Text(context.t.settings.developer.trackBleeding)),
-                ],
-                selected: {settings.shorebirdTrack},
-                onSelectionChanged: (selected) async {
-                  final track = selected.first;
-                  await settings.setShorebirdTrack(track);
-                  services.statusBar
-                      .setMessage(key: 'shorebird:check', text: t.settings.developer.checkingTrack(track: track));
-                  final applied = await services.updates.checkAndApply();
-                  if (!context.mounted) return;
-                  services.statusBar.setMessage(
-                    key: 'shorebird:check',
-                    text: applied
-                        ? t.settings.developer.patchDownloaded
-                        : t.settings.developer.noNewPatch(track: track),
-                  );
-                },
-              ),
-              Padding(
-                padding: const EdgeInsets.only(top: Space.md),
-                child: FutureBuilder<({bool resolved, int? number})>(
-                  future: services.updates.currentPatchNumber(),
-                  builder: (context, snapshot) {
-                    final patch = snapshot.data?.number;
-                    return Text(
-                      patch == null
-                          ? context.t.settings.developer.noPatchInstalled
-                          : context.t.settings.developer.runningPatch(patch: patch),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+              _sectionBody(context, [
+                SegmentedButton<String>(
+                  showSelectedIcon: false,
+                  segments: [
+                    ButtonSegment(value: 'stable', label: Text(context.t.settings.developer.trackStable)),
+                    ButtonSegment(value: 'unstable', label: Text(context.t.settings.developer.trackUnstable)),
+                    ButtonSegment(value: 'bleeding-edge', label: Text(context.t.settings.developer.trackBleeding)),
+                  ],
+                  selected: {settings.shorebirdTrack},
+                  onSelectionChanged: (selected) async {
+                    final track = selected.first;
+                    await settings.setShorebirdTrack(track);
+                    services.statusBar
+                        .setMessage(key: 'shorebird:check', text: t.settings.developer.checkingTrack(track: track));
+                    final applied = await services.updates.checkAndApply();
+                    if (!context.mounted) return;
+                    services.statusBar.setMessage(
+                      key: 'shorebird:check',
+                      text: applied
+                          ? t.settings.developer.patchDownloaded
+                          : t.settings.developer.noNewPatch(track: track),
                     );
                   },
                 ),
-              ),
+                Padding(
+                  padding: const EdgeInsets.only(top: Space.md),
+                  child: FutureBuilder<({bool resolved, int? number})>(
+                    future: services.updates.currentPatchNumber(),
+                    builder: (context, snapshot) {
+                      final patch = snapshot.data?.number;
+                      return Text(
+                        patch == null
+                            ? context.t.settings.developer.noPatchInstalled
+                            : context.t.settings.developer.runningPatch(patch: patch),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ]),
             ],
-            const SizedBox(height: Space.xl),
-            ElevatedButton(
-              onPressed: () async {
-                final formDefinition = {
-                  'title': 'Developer Form Demo',
-                  'subtitle': 'Verify all form element types and features',
-                  'elements': [
-                    {
-                      'type': 'header',
-                      'title': 'General Information',
-                      'subtitle': 'These elements describe basic section settings',
-                    },
-                    {
-                      'type': 'field',
-                      'fieldType': 'text',
-                      'key': 'name',
-                      'label': 'Name',
-                      'placeholder': 'Enter your full name',
-                    },
-                    {
-                      'type': 'field',
-                      'fieldType': 'multiline',
-                      'key': 'bio',
-                      'label': 'Biography',
-                      'placeholder': 'Tell us about yourself...',
-                    },
-                    {'type': 'divider', 'title': 'Contact Details'},
-                    {
-                      'type': 'field',
-                      'fieldType': 'email',
-                      'key': 'email',
-                      'label': 'Email Address',
-                      'placeholder': 'email@example.com',
-                    },
-                    {
-                      'type': 'field',
-                      'fieldType': 'callsign',
-                      'key': 'callsign',
-                      'label': 'Operator Callsign',
-                      'placeholder': 'W1AW',
-                    },
-                    {
-                      'type': 'field',
-                      'fieldType': 'number',
-                      'key': 'power',
-                      'label': 'Power Output (Watts)',
-                      'placeholder': '100',
-                    },
-                    {'type': 'markdown', 'text': 'Please make sure to **validate** the information before saving.'},
-                    {'type': 'divider', 'title': 'Preferences'},
-                    {
-                      'type': 'field',
-                      'fieldType': 'select',
-                      'key': 'license',
-                      'label': 'License Class',
-                      'options': [
-                        {'label': 'Technician', 'value': 'tech'},
-                        {'label': 'General', 'value': 'general'},
-                        {'label': 'Extra', 'value': 'extra'},
-                      ],
-                    },
-                    {
-                      'type': 'field',
-                      'fieldType': 'radio',
-                      'key': 'mode_pref',
-                      'label': 'Preferred Mode',
-                      'options': [
-                        {'label': 'SSB / Phone', 'value': 'ssb'},
-                        {'label': 'CW / Morse', 'value': 'cw'},
-                        {'label': 'Digital (FT8, RTTY)', 'value': 'digital'},
-                      ],
-                    },
-                    {'type': 'field', 'fieldType': 'checkbox', 'key': 'subscribe', 'label': 'Subscribe to newsletter'},
-                  ],
-                };
-
-                final initialState = {'name': 'Sebastian Delmont', 'license': 'extra', 'subscribe': true};
-
-                final result = await showFormDialog(
-                  context,
-                  formDefinition: formDefinition,
-                  initialState: initialState,
-                  labels: formRendererLabelsFor(context.t),
-                  validator: (fieldKey, value, state) async {
-                    await Future<void>.delayed(const Duration(milliseconds: 200));
-
-                    if (fieldKey == 'email') {
-                      final str = value?.toString() ?? '';
-                      if (str.isNotEmpty && !str.contains('@')) {
-                        return 'Invalid email address format';
-                      }
-                    }
-                    if (fieldKey == 'callsign') {
-                      final str = value?.toString() ?? '';
-                      if (str.isNotEmpty && str.length < 3) {
-                        return 'Callsign is too short (min 3 chars)';
-                      }
-                    }
-                    if (fieldKey == 'power') {
-                      final numVal = value as num?;
-                      if (numVal != null && (numVal < 0 || numVal > 1500)) {
-                        return 'Power must be between 0 and 1500 Watts';
-                      }
-                    }
-                    return null;
-                  },
-                  transformer: (fieldKey, value, state) async {
-                    if (fieldKey == 'callsign') {
-                      return value?.toString().toUpperCase();
-                    }
-                    return value;
-                  },
-                );
-
-                if (context.mounted && result != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Saved: ${result.toString()}')));
-                }
-              },
-              child: const Text('Test Custom Form Dialog'),
-            ),
-            const SizedBox(height: Space.xl),
-            const Divider(),
-            const SizedBox(height: Space.xl),
-            Text(
-              context.t.settings.developer.systemInformation,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: Space.md),
-            _infoRow(context, context.t.settings.sync.deviceKey, settings.syncDeviceKey ?? context.t.settings.developer.loading),
-            _infoRowWidget(
-              context,
-              context.t.settings.developer.appVersion,
-              const VersionLabel(style: TextStyle(fontFamily: 'monospace', fontSize: 13)),
-            ),
-            // Where the log database and the data-file cache live. Platform-
-            // dependent, and relocated out of Documents on Windows and Linux
-            // (see app_storage.dart), so it's worth being able to read it back
-            // from a running build rather than guessing.
-            if (!kIsWeb) _infoRowWidget(context, context.t.settings.developer.dataFolder, const _DataFolderValue()),
-            const SizedBox(height: Space.xl),
-            const Divider(),
-            const SizedBox(height: Space.xl),
-            Text(
-              context.t.settings.developer.activeExtensions,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: Space.md),
-            _ActiveExtensionsList(services: services),
+            SectionHeader(context.t.settings.developer.systemInformation),
+            _sectionBody(context, [
+              _infoRow(context, context.t.settings.sync.deviceKey, settings.syncDeviceKey ?? context.t.settings.developer.loading),
+              _infoRowWidget(
+                context,
+                context.t.settings.developer.appVersion,
+                const VersionLabel(style: TextStyle(fontFamily: 'monospace', fontSize: 13)),
+              ),
+              // Where the log database and the data-file cache live. Platform-
+              // dependent, and relocated out of Documents on Windows and Linux
+              // (see app_storage.dart), so it's worth being able to read it back
+              // from a running build rather than guessing.
+              if (!kIsWeb) _infoRowWidget(context, context.t.settings.developer.dataFolder, const _DataFolderValue()),
+            ]),
           ],
         );
       },
@@ -2938,6 +2788,16 @@ class _DeveloperPanel extends StatelessWidget {
   }
 }
 
+/// A section's hand-built contents, under its [SectionHeader], at the rows'
+/// own inset — the ambient ListTileTheme's, which carries the pane's
+/// centring to the ideal width, so a field or button here lines up with the
+/// ListTile rows above it instead of running to the pane's edges.
+Widget _sectionBody(BuildContext context, List<Widget> children) => Padding(
+      padding: (ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero)
+          .add(const EdgeInsets.symmetric(vertical: Space.md)),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+    );
+
 /// Where the log database and the data-file cache live. Platform-dependent,
 /// and relocated out of Documents on Windows and Linux (see app_storage.dart),
 /// so it's worth being able to read it back from a running build rather than
@@ -2964,113 +2824,6 @@ class _DataFolderValueState extends State<_DataFolderValue> {
         snapshot.data?.path ?? context.t.settings.developer.loading,
         style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
       ),
-    );
-  }
-}
-
-/// The Developer panel's live listing of activated extensions with their
-/// versions — served by the kernel's own `kernel-info` extension, the one
-/// place versions exist (they're deliberately absent from the build index).
-/// Refreshes on runtime restarts (extension toggles).
-class _ActiveExtensionsList extends StatefulWidget {
-  final HaLoServices services;
-
-  const _ActiveExtensionsList({required this.services});
-
-  @override
-  State<_ActiveExtensionsList> createState() => _ActiveExtensionsListState();
-}
-
-class _ActiveExtensionsListState extends State<_ActiveExtensionsList> {
-  List<Map<String, dynamic>>? _extensions;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-    widget.services.extensions.runtimeGeneration.addListener(_load);
-  }
-
-  @override
-  void dispose() {
-    widget.services.extensions.runtimeGeneration.removeListener(_load);
-    super.dispose();
-  }
-
-  Future<void> _load() async {
-    await widget.services.extensions.start();
-    final extensions = await widget.services.extensions.listActiveExtensions();
-    if (mounted) {
-      setState(() => _extensions = extensions..sort((a, b) => (a['key'] as String).compareTo(b['key'] as String)));
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final extensions = _extensions;
-    if (extensions == null) return Text(context.t.settings.developer.loading);
-    if (extensions.isEmpty) return Text(context.t.settings.developer.runtimeNotAvailable);
-
-    // Category comes from the build index (the runtime listing carries only
-    // key/name/version); anything the index doesn't categorize — core
-    // extensions and the kernel's own built-ins — lands under Core.
-    final categoryByKey = {
-      for (final info in widget.services.extensions.availableExtensions)
-        if (info.category != null) info.key: info.category!,
-    };
-    final categoryTitles = {
-      'activity': context.t.extensionsPanel.categoryActivity,
-      'lookup': context.t.extensionsPanel.categoryLookup,
-      'spots': context.t.extensionsPanel.categorySpots,
-      'dashboard': context.t.extensionsPanel.categoryDashboard,
-      'core': context.t.settings.developer.categoryCore,
-    };
-    final grouped = <String, List<Map<String, dynamic>>>{};
-    for (final ext in extensions) {
-      grouped.putIfAbsent(categoryByKey[ext['key']] ?? 'core', () => []).add(ext);
-    }
-    final categories = [
-      ...['activity', 'lookup'].where(grouped.containsKey),
-      ...grouped.keys.where((c) => c != 'activity' && c != 'lookup'),
-    ];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (final category in categories) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: Space.md, bottom: Space.xxs),
-            child: Text(
-              categoryTitles[category] ?? category,
-              style: Theme.of(context).textTheme.labelMedium?.copyWith(color: HaLoColors.of(context).onSurfaceAccent),
-            ),
-          ),
-          for (final ext in grouped[category]!)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: Space.sm),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      (ext['name'] as String?) ?? (ext['key'] as String? ?? '?'),
-                      style:
-                          TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant, fontWeight: FontWeight.w500),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: SelectableText(
-                      '${ext['key']}@${ext['version']}',
-                      style: const TextStyle(fontFamily: 'monospace', fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ],
     );
   }
 }
@@ -4050,60 +3803,55 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: Space.xl),
-            Text(
-              t.extDevServer,
-              style: theme.textTheme.titleMedium?.copyWith(
-                color: HaLoColors.of(context).onSurfaceAccent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: Space.xs, bottom: Space.md),
-              child: Text(
-                t.extDevServerDescription,
-                style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-              ),
-            ),
-            TextField(
-              controller: _url,
-              enabled: !connected && !busy,
-              autocorrect: false,
-              keyboardType: TextInputType.url,
-              decoration: InputDecoration(
-                labelText: t.extDevServerAddress,
-                hintText: t.extDevServerHint,
-                // Hand-built decorations render their hint at full opacity
-                // without this, which reads as a filled-in value.
-                hintStyle: theme.textTheme.bodyLarge?.copyWith(
-                  color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
-                ),
-                border: const OutlineInputBorder(),
-                isDense: true,
-              ),
-              onSubmitted: busy || connected ? null : (_) => _connect(),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: Space.md),
-              child: Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: busy ? null : (connected ? _disconnect : _connect),
-                    child: Text(connected ? t.extDevServerDisconnect : t.extDevServerConnect),
-                  ),
-                  const SizedBox(width: Space.md),
-                  Expanded(child: _status(context, client)),
-                ],
-              ),
-            ),
-            if (connected)
+            SectionHeader(t.extDevServer),
+            _sectionBody(context, [
               Padding(
-                padding: const EdgeInsets.only(top: Space.sm),
+                padding: const EdgeInsets.only(bottom: Space.md),
                 child: Text(
-                  t.extDevServerNoSecrets,
+                  t.extDevServerDescription,
                   style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                 ),
               ),
+              TextField(
+                controller: _url,
+                enabled: !connected && !busy,
+                autocorrect: false,
+                keyboardType: TextInputType.url,
+                decoration: InputDecoration(
+                  labelText: t.extDevServerAddress,
+                  hintText: t.extDevServerHint,
+                  // Hand-built decorations render their hint at full opacity
+                  // without this, which reads as a filled-in value.
+                  hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+                  ),
+                  border: const OutlineInputBorder(),
+                  isDense: true,
+                ),
+                onSubmitted: busy || connected ? null : (_) => _connect(),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: Space.md),
+                child: Row(
+                  children: [
+                    ElevatedButton(
+                      onPressed: busy ? null : (connected ? _disconnect : _connect),
+                      child: Text(connected ? t.extDevServerDisconnect : t.extDevServerConnect),
+                    ),
+                    const SizedBox(width: Space.md),
+                    Expanded(child: _status(context, client)),
+                  ],
+                ),
+              ),
+              if (connected)
+                Padding(
+                  padding: const EdgeInsets.only(top: Space.sm),
+                  child: Text(
+                    t.extDevServerNoSecrets,
+                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+                  ),
+                ),
+            ]),
           ],
         );
       },

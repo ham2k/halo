@@ -1376,7 +1376,6 @@
       "hint": "Buscar en la configuración"
     },
     "developer": {
-      "options": "Opciones de desarrollador",
       "developerModeDescription": "Habilita avisos de desarrollador, registros de depuración y herramientas.",
       "experiments": "Experimentos",
       "experimentsEnabled": {
@@ -1394,13 +1393,10 @@
       "noPatchInstalled": "No hay code push instalado — ejecutando el binario de la versión.",
       "runningPatch": "Ejecutando el code push #${patch}.",
       "systemInformation": "Información del sistema",
-      "activeExtensions": "Extensiones activas",
       "appVersion": "Versión de la app",
       "dataFolder": "Carpeta de datos",
       "loading": "(cargando…)",
-      "runtimeNotAvailable": "El motor de extensiones no está disponible.",
       "panelLoadFailed": "No se pudo cargar este panel de configuración.",
-      "categoryCore": "Núcleo y motor",
       "extDevServer": "Servidor de desarrollo de extensiones",
       "extDevServerDescription": "Carga extensiones desde un servidor de desarrollo en tu red en lugar de las incluidas en la app, y las recarga al guardar.",
       "extDevServerAddress": "Dirección del servidor",

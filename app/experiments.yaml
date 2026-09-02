@@ -5,7 +5,7 @@
 #     name: Spotlight
 #     description: Optional one-liner shown in the Experiments screen.
 #     aliases: [spot, light]  # extra words the EXP command accepts
-#     hidden: true            # optional — EXP still works, but the entry is
+#     private: true           # optional — EXP still works, but the entry is
 #                             # not listed in the Experiments screen
 #
 # Removing an entry here does NOT delete its persisted state — a user who
@@ -18,14 +18,6 @@
 # experiment and a setting is worth more confusion than it saves typing.
 
 experiments:
-  # Meta-experiment: gates the Experiments list itself in Developer
-  # Settings. Off by default, so the list only appears once someone has
-  # typed EXP EXPERIMENTS (or EXP EXP) — and since it's listed (not
-  # hidden), it can be switched back off from the very list it reveals.
-  - key: experiments
-    name: Experiments
-    description: Show the Experiments list in Developer Settings.
-    aliases: [exp]
   # Station equipment and CAT control (docs/design/cat.md). Reveals the
   # Station Configuration settings section, on every platform including web
   # (HALO-64: the serial transport works there via the Web Serial API).
@@ -79,3 +71,4 @@ experiments:
     name: Remote Screens
     description: Show a screen or window from one of your other devices in a panel.
     aliases: [screens, screenshare]
+    private: true

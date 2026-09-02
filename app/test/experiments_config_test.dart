@@ -14,13 +14,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/config/experiments.dart';
 
 void main() {
-  test('the SHIPPED catalog parses and defines the experiments gate', () {
-    // The real file, not a fixture: a hand-edit that breaks parsing (or
-    // renames the 'experiments' meta-experiment the Developer panel gates
-    // the Experiments tile on) should fail here, not silently hide the UI.
+  test('the SHIPPED catalog parses and keeps Remote Screens private', () {
+    // The real file, not a fixture: a hand-edit that breaks parsing should
+    // fail here, not silently empty the Experiments list.
     final definitions = parseExperimentsYaml(File('experiments.yaml').readAsStringSync());
-    expect(findExperiment(definitions, 'EXPERIMENTS')?.key, 'experiments');
-    expect(findExperiment(definitions, 'EXP')?.key, 'experiments');
+    expect(definitions, isNotEmpty);
+    // Remote Screens is not ready for the list: reachable by EXP only.
+    expect(findExperiment(definitions, 'REMOTE')?.private, isTrue);
     // CAT gates the Station Configuration section (docs/design/cat.md);
     // losing the entry would leave no way to turn the section on at all.
     expect(findExperiment(definitions, 'GATO')?.key, 'gato');
@@ -34,7 +34,7 @@ experiments:
     name: Customizable Layouts
     description: Drag panes around.
     aliases: [layout, dock]
-    hidden: false
+    private: false
   - key: bare
 ''');
     expect(definitions, hasLength(2));
@@ -43,12 +43,12 @@ experiments:
     expect(layouts.name, 'Customizable Layouts');
     expect(layouts.description, 'Drag panes around.');
     expect(layouts.aliases, ['layout', 'dock']);
-    expect(layouts.hidden, isFalse);
+    expect(layouts.private, isFalse);
     final bare = definitions[1];
     expect(bare.name, 'bare', reason: 'name falls back to the key');
     expect(bare.description, isNull);
     expect(bare.aliases, isEmpty);
-    expect(bare.hidden, isFalse);
+    expect(bare.private, isFalse);
   });
 
   test('skips malformed entries without losing the rest', () {

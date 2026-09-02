@@ -1384,7 +1384,6 @@
       "hint": "Search settings"
     },
     "developer": {
-      "options": "Developer Options",
       "developerModeDescription": "Enable developer warnings, debug logs, and tools.",
       "experiments": "Experiments",
       "experimentsEnabled": {
@@ -1402,13 +1401,10 @@
       "noPatchInstalled": "No code push installed — running the release binary.",
       "runningPatch": "Running code push #${patch}.",
       "systemInformation": "System Information",
-      "activeExtensions": "Active Extensions",
       "appVersion": "App Version",
       "dataFolder": "Data Folder",
       "loading": "(loading…)",
-      "runtimeNotAvailable": "Extension runtime not available.",
       "panelLoadFailed": "Could not load this settings panel.",
-      "categoryCore": "Core & Runtime",
       "extDevServer": "Extension Dev Server",
       "extDevServerDescription": "Load extensions from a dev server on your network instead of the ones built into the app, and reload them as you save.",
       "extDevServerAddress": "Server address",

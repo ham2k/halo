@@ -578,6 +578,9 @@ void main() {
       expect(runThrough(' report crash'), 'REPORT crash');
       expect(runThrough('report crashes\r\n\twhen I save'), 'REPORT crashes when I save');
       expect(runThrough('note\thi'), 'NOTE hi');
+      // EXP's parameter is an experiment key, shown uppercase everywhere
+      // else, so it is the one parameter the field uppercases as typed.
+      expect(runThrough('exp layouts'), 'EXP LAYOUTS');
     });
 
     testWidgets("on mobile, a full stop in a command's parameter stays a full stop", (tester) async {
