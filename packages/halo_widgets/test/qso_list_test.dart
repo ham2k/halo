@@ -1156,6 +1156,75 @@ void main() {
       expect(find.text('🇺🇸'), findsNothing);
     });
 
+    // The setting is the ONLY thing that distinguishes these two from the
+    // pair above: the same-entity QSO must flag under `all` and the DX one
+    // must not under `none`, or the column has quietly hardcoded `dx`.
+    testWidgets('DxFlags.all flags a same-entity contact too', (tester) async {
+      final qso = Qso(
+        uuid: 'q',
+        operationUuid: 'op-1',
+        data: {
+          'their': {
+            'call': 'K2HAM',
+            'entityPrefix': 'K',
+            'flag': '🇺🇸',
+            'state': 'NY',
+          },
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(
+              qsos: [qso],
+              onSelect: (_) {},
+              ourEntityPrefix: 'K',
+              dxFlags: DxFlags.all,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('🇺🇸'), findsOneWidget);
+      expect(find.text('NY'), findsNothing);
+    });
+
+    testWidgets('DxFlags.none shows the state even for a DX contact', (tester) async {
+      final qso = Qso(
+        uuid: 'q',
+        operationUuid: 'op-1',
+        data: {
+          'their': {
+            'call': 'G0ABC',
+            'entityPrefix': 'G',
+            'flag': '🇬🇧',
+            'state': 'Kent',
+          },
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(
+              qsos: [qso],
+              onSelect: (_) {},
+              ourEntityPrefix: 'K',
+              dxFlags: DxFlags.none,
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('Kent'), findsOneWidget);
+      expect(find.text('🇬🇧'), findsNothing);
+    });
+
     testWidgets(
       'falls back to the state, not a flag, while our own entity is still unresolved',
       (tester) async {

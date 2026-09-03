@@ -10,6 +10,7 @@ upcoming:
     - "Show Bearing has a new option to also show the reverse bearing, as 45° / 225°"
     - "The call info area shows how many times you have worked the station before"
     - "START, BREAK, STOP and ROVERQTH commands mark the segments of an operation from the call field"
+    - "Country Flags in Logging settings: flags for all contacts, DX only, or none"
 
 "160":
   changes:

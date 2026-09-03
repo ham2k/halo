@@ -168,6 +168,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   late String _defaultReportFT8 = widget.services.settings.defaultReportFT8;
   late bool _switchSentRcvd = widget.services.settings.switchSentRcvd;
   late bool _jumpAfterRST = widget.services.settings.jumpAfterRST;
+  late DxFlags _dxFlags = widget.services.settings.dxFlags;
 
   /// Gate for the drag-and-drop dock layout (DESIGN.md §7), replacing the
   /// wide arrangement's fixed split-plus-tabs with a user-arrangeable
@@ -692,7 +693,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         s.defaultReportCW != _defaultReportCW ||
         s.defaultReportFT8 != _defaultReportFT8 ||
         s.switchSentRcvd != _switchSentRcvd ||
-        s.jumpAfterRST != _jumpAfterRST;
+        s.jumpAfterRST != _jumpAfterRST ||
+        s.dxFlags != _dxFlags;
     if (changed && mounted) {
       setState(() {
         _customLayout = enabled;
@@ -706,6 +708,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         _defaultReportFT8 = s.defaultReportFT8;
         _switchSentRcvd = s.switchSentRcvd;
         _jumpAfterRST = s.jumpAfterRST;
+        _dxFlags = s.dxFlags;
       });
     }
   }
@@ -2765,6 +2768,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             defaultReportFT8: _defaultReportFT8,
             switchSentRcvd: _switchSentRcvd,
             jumpAfterRST: _jumpAfterRST,
+            dxFlags: _dxFlags,
             ourEntityPrefix: _ourEntityPrefix,
             ourItuRegion: _ourItuRegion,
             ourCountryCode: _ourCountryCode,

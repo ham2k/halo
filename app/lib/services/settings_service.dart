@@ -1345,9 +1345,6 @@ enum DistanceUnits { kilometers, miles }
 /// Dark Matter); every other value pins one style regardless of theme.
 enum MapStyle { automatic, liberty, bright, positron, voyager, darkMatter }
 
-/// Country flags on contacts: DX only (app-polo's default), everyone, or off.
-enum DxFlags { dx, all, none }
-
 /// Declared in ascending scale order — [SettingsService.increaseFontScale] and
 /// [SettingsService.decreaseFontScale] step by `index`, so the order IS the
 /// ordering.

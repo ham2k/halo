@@ -73,6 +73,9 @@ class LoggingPanel extends StatefulWidget {
   final bool switchSentRcvd;
   final bool jumpAfterRST;
 
+  /// Which contacts get a country flag in the QSO list (Logging settings).
+  final DxFlags dxFlags;
+
   final String? ourEntityPrefix;
 
   /// The operator's own ITU region (1/2/3) and lowercase ISO country code
@@ -152,6 +155,7 @@ class LoggingPanel extends StatefulWidget {
     this.defaultReportFT8 = '',
     this.switchSentRcvd = false,
     this.jumpAfterRST = false,
+    this.dxFlags = DxFlags.dx,
     this.ourEntityPrefix,
     this.ourItuRegion,
     this.ourCountryCode,
@@ -714,6 +718,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       showQsoNumbers: widget.showQsoNumbers,
       activityControls: widget.loggingControls,
       ourEntityPrefix: widget.ourEntityPrefix,
+      dxFlags: widget.dxFlags,
       daySections: daySections,
       labels: _qsoListLabelsFor(context),
     );

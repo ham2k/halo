@@ -121,22 +121,39 @@ class _ColumnPlan {
   bool get showExchange => _shown.contains(_Column.exchange);
 }
 
-/// The DX/State column's content for [qso], if any: a flag when we have
-/// positive evidence of a DX contact (both sides resolved and different),
-/// falling back to the contact's state whenever there's no flag to show —
-/// not just when `!isDX` — so a DX contact whose entity resolved but whose
-/// flag lookup came up empty (e.g. a DXCC entity present in
-/// lib-country-files but missing from lib-dxcc-data's table) still shows
-/// its state instead of going blank. Null when neither is available. Shared
-/// by the list-wide column-width precompute and the per-row builder in
-/// `_QsoListState.build`, so they can never disagree about what a QSO shows
-/// there (ham2k/halo-dist#186).
-({String text, bool isFlag, bool guessed})? _dxStateContentFor(Qso qso, String? ourEntityPrefix) {
+/// Country flags on contacts: [dx] only (app-polo's default), [all]
+/// contacts, or [none] at all. Stored by `SettingsService.dxFlags`; the rule
+/// for what it *means* lives in [_dxStateContentFor], the one surface that
+/// honours it (app-polo scopes it to the log row the same way — the call
+/// info and information panels always show the entity's flag beside its
+/// name).
+enum DxFlags { dx, all, none }
+
+/// The DX/State column's content for [qso], if any: a flag when
+/// [dxFlags] calls for one — for [DxFlags.dx] that means positive evidence
+/// of a DX contact (both sides resolved and different) — falling back to the
+/// contact's state whenever there's no flag to show — not just when `!isDX`
+/// — so a DX contact whose entity resolved but whose flag lookup came up
+/// empty (e.g. a DXCC entity present in lib-country-files but missing from
+/// lib-dxcc-data's table) still shows its state instead of going blank. Null
+/// when neither is available. Shared by the list-wide column-width
+/// precompute and the per-row builder in `_QsoListState.build`, so they can
+/// never disagree about what a QSO shows there (ham2k/halo-dist#186).
+({String text, bool isFlag, bool guessed})? _dxStateContentFor(
+  Qso qso,
+  String? ourEntityPrefix,
+  DxFlags dxFlags,
+) {
   final theirEntityPrefix = qso.theirEntityPrefix;
   final isDX = theirEntityPrefix != null && ourEntityPrefix != null && theirEntityPrefix != ourEntityPrefix;
+  final wantsFlag = switch (dxFlags) {
+    DxFlags.all => true,
+    DxFlags.dx => isDX,
+    DxFlags.none => false,
+  };
   final flag = qso.theirFlag;
   final state = qso.theirState;
-  if (isDX && flag != null && flag.isNotEmpty) {
+  if (wantsFlag && flag != null && flag.isNotEmpty) {
     return (text: flag, isFlag: true, guessed: qso.theirFieldIsGuessed('flag'));
   } else if (state != null && state.isNotEmpty) {
     return (text: state, isFlag: false, guessed: qso.theirFieldIsGuessed('state'));
@@ -270,6 +287,7 @@ class _QsoListMetricsKey {
   final List<Qso> qsos;
   final List<Map<String, dynamic>> activityControls;
   final String? ourEntityPrefix;
+  final DxFlags dxFlags;
   final bool showQsoNumbers;
   final ThemeData theme;
   final TextScaler textScaler;
@@ -278,6 +296,7 @@ class _QsoListMetricsKey {
     required this.qsos,
     required this.activityControls,
     required this.ourEntityPrefix,
+    required this.dxFlags,
     required this.showQsoNumbers,
     required this.theme,
     required this.textScaler,
@@ -287,6 +306,7 @@ class _QsoListMetricsKey {
       identical(qsos, other.qsos) &&
       identical(activityControls, other.activityControls) &&
       ourEntityPrefix == other.ourEntityPrefix &&
+      dxFlags == other.dxFlags &&
       showQsoNumbers == other.showQsoNumbers &&
       identical(theme, other.theme) &&
       textScaler == other.textScaler;
@@ -368,6 +388,10 @@ class QsoList extends StatefulWidget {
   /// lookup lands.
   final String? ourEntityPrefix;
 
+  /// Which contacts get a country flag in the DX/State column
+  /// (`SettingsService.dxFlags`) — see [DxFlags] and [_dxStateContentFor].
+  final DxFlags dxFlags;
+
   /// Raw `daySections` from the scoring hook's last run (see
   /// `ScoringHook.scoreQsos`/`ScoringService.rescoreOperation`), cached in
   /// `Operation.localData['scoring']['daySections']` — each entry is
@@ -396,6 +420,7 @@ class QsoList extends StatefulWidget {
     this.showQsoNumbers = true,
     this.activityControls = const [],
     this.ourEntityPrefix,
+    this.dxFlags = DxFlags.dx,
     this.daySections = const [],
     this.labels = QsoListLabels.english,
   });
@@ -698,6 +723,7 @@ class _QsoListState extends State<QsoList> {
     final showQsoNumbers = widget.showQsoNumbers;
     final activityControls = widget.activityControls;
     final ourEntityPrefix = widget.ourEntityPrefix;
+    final dxFlags = widget.dxFlags;
 
     // Cleared here and set again by `buildRow` if — and only if — the selected
     // row is among the ones layout actually builds this frame.
@@ -749,6 +775,7 @@ class _QsoListState extends State<QsoList> {
       qsos: qsos,
       activityControls: activityControls,
       ourEntityPrefix: ourEntityPrefix,
+      dxFlags: dxFlags,
       showQsoNumbers: showQsoNumbers,
       theme: theme,
       textScaler: MediaQuery.textScalerOf(context),
@@ -761,6 +788,7 @@ class _QsoListState extends State<QsoList> {
             qsos: qsos,
             activityControls: activityControls,
             ourEntityPrefix: ourEntityPrefix,
+            dxFlags: dxFlags,
             showQsoNumbers: showQsoNumbers,
             mono: mono,
             monoDim: monoDim,
@@ -866,7 +894,7 @@ class _QsoListState extends State<QsoList> {
       // proportional font"), so this deliberately doesn't use
       // rowMono/rowMonoDim for the flag case — see theme.dart's emojiStyle
       // for why it also needs an explicit fontFamily.
-      final dxState = _dxStateContentFor(qso, ourEntityPrefix);
+      final dxState = _dxStateContentFor(qso, ourEntityPrefix, dxFlags);
       Widget? dxStateField;
       if (dxState != null) {
         dxStateField = dxState.isFlag ? flagGlyph(dxState.text) : Text(dxState.text, style: rowMonoDim);
@@ -1316,6 +1344,7 @@ _QsoListMetrics _computeMetrics({
   required List<Qso> qsos,
   required List<Map<String, dynamic>> activityControls,
   required String? ourEntityPrefix,
+  required DxFlags dxFlags,
   required bool showQsoNumbers,
   required TextStyle mono,
   required TextStyle monoDim,
@@ -1388,7 +1417,7 @@ _QsoListMetrics _computeMetrics({
     if (rstPair.length > longestRst.length) longestRst = rstPair;
     final mode = q.mode;
     if (mode != null) modesUsed.add(mode);
-    final dxState = _dxStateContentFor(q, ourEntityPrefix);
+    final dxState = _dxStateContentFor(q, ourEntityPrefix, dxFlags);
     if (dxState == null) {
       // no-op — nothing to measure for this row
     } else if (dxState.isFlag) {
