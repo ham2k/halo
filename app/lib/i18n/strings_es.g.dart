@@ -68,6 +68,7 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$versionLabel$es versionLabel = _Translations$versionLabel$es._(_root);
 	@override late final _Translations$notices$es notices = _Translations$notices$es._(_root);
 	@override late final _Translations$syncAccount$es syncAccount = _Translations$syncAccount$es._(_root);
+	@override late final _Translations$deepLink$es deepLink = _Translations$deepLink$es._(_root);
 	@override late final _Translations$confirmDevice$es confirmDevice = _Translations$confirmDevice$es._(_root);
 	@override late final _Translations$switchAccounts$es switchAccounts = _Translations$switchAccounts$es._(_root);
 	@override late final _Translations$adifImport$es adifImport = _Translations$adifImport$es._(_root);
@@ -812,6 +813,19 @@ class _Translations$syncAccount$es extends Translations$syncAccount$en {
 	@override String anonymous({required Object id}) => 'Cuenta anónima (#${id})';
 	@override String pendingConfirmation({required Object email}) => '${email} (pendiente de confirmación)';
 	@override String pendingConfirmationWithId({required Object email, required Object id}) => '${email} (pendiente de confirmación - #${id})';
+}
+
+// Path: deepLink
+class _Translations$deepLink$es extends Translations$deepLink$en {
+	_Translations$deepLink$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get needsAnOperation => 'Inicia una operación primero, y vuelve a enviar ese contacto';
+	@override String get waitingInOperation => 'Ese contacto está esperando en la operación detrás de esta pantalla';
+	@override String unknownActivities({required Object refs}) => 'Este dispositivo no tiene la actividad ${refs}, así que esas referencias quedaron fuera';
+	@override String activitiesUnavailable({required Object refs}) => 'No se pudo consultar tus actividades, así que ${refs} quedó fuera — reintenta ese enlace';
 }
 
 // Path: confirmDevice
@@ -4120,6 +4134,10 @@ extension on TranslationsEs {
 			'syncAccount.anonymous' => ({required Object id}) => 'Cuenta anónima (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pendiente de confirmación)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pendiente de confirmación - #${id})',
+			'deepLink.needsAnOperation' => 'Inicia una operación primero, y vuelve a enviar ese contacto',
+			'deepLink.waitingInOperation' => 'Ese contacto está esperando en la operación detrás de esta pantalla',
+			'deepLink.unknownActivities' => ({required Object refs}) => 'Este dispositivo no tiene la actividad ${refs}, así que esas referencias quedaron fuera',
+			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'No se pudo consultar tus actividades, así que ${refs} quedó fuera — reintenta ese enlace',
 			'confirmDevice.title' => 'Confirmar un dispositivo',
 			'confirmDevice.codePrompt' => 'Introduce el código que muestra el dispositivo que quiere unirse a esta cuenta.',
 			'confirmDevice.code' => 'Código',

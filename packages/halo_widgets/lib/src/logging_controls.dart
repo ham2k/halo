@@ -2794,12 +2794,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// A suggestion that carries no RST (spots never do today) leaves the
   /// fields blank, which is the composing default — `_rstPlaceholder` shows
   /// through it. One that DOES carry RST (`our.sent`/`their.sent` — e.g. a
-  /// future deeplink) keeps it, matching `_applyFieldsFromData`'s own
-  /// behavior for editingQso.
+  /// deeplink) keeps it, matching `_applyFieldsFromData`'s own behavior for
+  /// editingQso.
+  ///
+  /// A `startAtMillis` on the suggestion becomes the MANUAL time, exactly as
+  /// if the operator had typed it: a `/qso` deep link reports when a contact
+  /// actually happened (a WSJT-X bridge hands over a QSO already made), and
+  /// composing it at "now" would file it minutes late. A suggestion without
+  /// one still clears the manual time — a spot says nothing about when, and
+  /// must not inherit the last link's timestamp.
   void _applySuggestedQso(Map<String, dynamic> data) {
     _populating = true;
     _applyFieldsFromData(data);
-    _manualStartAtMillis = null;
+    // Read from `data`, since `_applyFieldsFromData` strips the key rather
+    // than carrying it into `_currentQsoExtra`.
+    final suggestedStart = data['startAtMillis'];
+    _manualStartAtMillis = suggestedStart is int ? suggestedStart : null;
     setState(() {});
     _populating = false;
     // A tapped spot starts a contact as surely as a typed call does, and it

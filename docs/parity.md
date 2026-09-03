@@ -2,73 +2,90 @@
 
 A working inventory of what Ham2K Portable Logger (app-polo, RN) has that
 HaLo doesn't yet. First full sweep 2026-07-24 (PoLo 26.7.2); re-swept
-2026-07-28 (PoLo 26.7.2, HaLo `92ad710`) and 2026-08-04 (PoLo **26.7.3**
-`7acb7198`, HaLo main **`73bcd5e2`**). Update as gaps close; this is a
+2026-07-28 (PoLo 26.7.2, HaLo `92ad710`), 2026-08-04 (PoLo 26.7.3
+`7acb7198`, HaLo main `73bcd5e2`) and 2026-09-03 (PoLo **26.7.7**
+`98b045b0`, HaLo main **`de4e6341`**). Update as gaps close; this is a
 tracking document, not a roadmap — see DESIGN.md §10 for sequencing intent.
 
 Legend: ⛔ missing entirely · 🟡 partial · 🧭 prerequisite work needed first
 
-## 0. Closed since the previous sweep (2026-07-28 → 2026-08-04)
+## 0. Closed since the previous sweep (2026-08-04 → 2026-09-03)
 
-- **Field Day + Winter Field Day** — contests M11 (#435). `fd` and `wfd`
-  ship as contest extensions with the ARRL/RAC section table, power
-  multiplier and bonuses. HaLo now carries 9 of PoLo's 15 contest-shaped
-  extensions.
-- **Call-notes custom files** — the whole PoLo "name + URL management
-  screen" equivalent (HALO-53): enable/disable builtin sources, add custom
-  note files by URL with reorder/delete, gist/Dropbox/Drive share-link
-  resolution, and a Manage link from the Data Files screen.
-- **Activity refs from recent spots** (HALO-80) — the spot-history lookup
-  now feeds `their.refs`, not just a callsign hit.
-- **Leftie mode** is consumed (#524, `logging_panel.dart`); **country
-  flags** became tri-state (`dxFlags`: none/DX/all), matching PoLo's shape
-  — though it is still not consumed (§2).
-- **Default reports** — configurable per phone/CW/FT8, rendered as a
-  placeholder rather than a pre-filled value, with shorthand completion
-  (HALO-83). Closes most of the RST auto-expansion gap; the USB/LSB
-  misclassification is gone.
-- **Multiple references per QSO** for ZLOTA, WWBOTA, WCA, TOTA, SiOTA,
-  MOTA, LLOTA, ELA, ECA, BLHA, BCA (HALO-138).
-- **Band/mode integrity** — every contact requires a band or frequency and
-  is asked for it up front (HALO-24); mode is guessed from the band plan
-  using the operator's real ITU region/country (HALO-32, HALO-52).
-- **Spots** — sort-by-time flat list + Group by Band toggle (HALO-16), and
-  the band filter honours the operator's enabled bands (HALO-57).
-- **Sync settings** — server-side counts shown next to this device's
-  (HALO-92); the account is described by email, not callsign (HALO-81).
-- **Data files** — Update All button (#459), fetch timeouts, reconnect
-  resync, web conditional-GET retry (HALO-74, HALO-30).
-- **ParksnPeaks** (HALO-19) — the VK/ZL spot source, reading and posting,
-  narrowed to WWFF and SiOTA. Brings spot sources to 15.
-- **Report order and jump-after-RST** (HALO-143) — both were stored and
-  shown but read by nothing; now wired, leaving two dead settings (§2).
-- **US states and Canadian provinces** scored by the core scorer, and
-  band/mode newness notifications aligned with PoLo's (HALO-42).
+PoLo moved 67 commits (26.7.3 → 26.7.7), HaLo 376. Almost all of PoLo's are
+fixes to ground HaLo already covers; the sweep's movement is on the HaLo side.
+
+- **ARRL VHF (M7)** and **R1/RSGB VHF (M8)** contests (HALO-295, HALO-296),
+  the latter bringing a **REG1TEST/EDI export writer**. Contest extensions
+  are now 13 to PoLo's 15.
+- **ARRL 10 GHz and Up** scored on both sides in the same week (HaLo
+  `e5399e5b`, PoLo `98b045b0`) — grid-only distance and reverse bearings.
+- **CWops CWT** — a contest HaLo has and PoLo does not (§4).
+- **Templating** (HALO-201) — one Handlebars-shaped renderer behind a
+  `template` hook, used for panels, export filenames and ADIF text. The
+  export row's "no user-editable templates" is now only about the
+  per-export-type override UI.
+- **APP_HAM2K_* ADIF fields** are emitted (`APP_HAM2K_POSITION`), matching
+  PoLo's 26.7.2 rename away from `X_`.
+- **Country flags** (`dxFlags`) is consumed (`de4e6341`), leaving
+  **fields-on-top** as the last stored-but-dead logging setting.
+- **Power** as a secondary control, and power on the VFO (HALO-198);
+  **per-QSO station info** — rig, antenna, key, power (HALO-263).
+- **`SET`/`SHOW`/`HIDE`** commands (HALO-151) and **`OPER`** (operator
+  change, PoLo's `OP.`); operator and operating **position** travel with the
+  operation and its QSOs.
+- **Multi-station identifier** per device, appended to self-spots
+  (`b83dbeb6`) — matching PoLo's `/OP{n}` (`bf0c090c`), landed the same week.
+- **Quick Lookup** shows the logging panel's full call info, and Enter opens
+  the panel (HALO-408) — closes the Home-screen call-info gap.
+- **Log-event editing** — a NOTE/TODO/BREAK row is edited in place
+  (`528c39eb`), not through a time-only dialog.
+- **Per-day/operation scoring summaries** matched to PoLo's info panel
+  (`8855d622`).
+- **Segment commands** `START`/`BREAK`/`STOP`/`ROVERQTH` (HALO-108).
+- **Call History** lookup as a last-resort fallback (HALO-304, HALO-453) and
+  a worked-before count in Call Info (`17538454`).
+- **Ham2K Lookup Service** replaces HamDB on both sides the same week
+  (HaLo `06a3d837`/`5eace64b`, PoLo `12f6f8c2`).
+- **Sync device linking**: the approving side is a real UI (Confirm a
+  device, HALO-9) and `com.ham2k:///link_client` is implemented — the doc's
+  claim that it was only a reserved comment was stale.
+- **Coordinates, not just grids**, captured everywhere (HALO-349).
+- **Cross-operation Logs view** by station callsign (HALO-273), with ADIF
+  import, and a **hunter/chaser export** (HALO-274).
+- **Inbound QSO capture from N1MM+ and WSJT-X** (HALO-306) — not PoLo's
+  deep-link bridge, but it serves the same WSJT-X case by another route.
+
+New on PoLo's side since 26.7.3, and open here: **Ham2K File Stash export**
+(`c4838811`, `fd657e23`), **QSO Party scoring** work (still M10), and two
+more locales (Italian, Korean).
 
 ## 1. Structural gaps (biggest leverage)
 
 | Gap | PoLo has | HaLo status |
 | --- | --- | --- |
 | **Import** | Per-operation "Add QSOs from ADIF" + global "Import History from ADIF" feeding worked-before detection; QSON import with merge/dedup (`mergeQSOs`) | 🟡 **Per-operation import landed** (HALO-173) and **PoLo's separate "history-only" import isn't needed** — the Logs view's own ADIF import (`logs_view.dart`, `AdifImportService`) writes real QSOs into an operation, same as the per-operation path, so any worked-before detection (Call History, HALO-304) already sees them; there is no reason to duplicate that as a second, history-only store. The parser (HALO-166) turns ADIF into QSON against a ten-logger corpus, with same-band/supermode/5-minute merging, station-call rewriting and activation hoisting. `adifImport` recovers references for every activity except `custom` — see hooks.md for why it has none. Missing: QSON import |
-| **Contest breadth** | 12 contest extensions + Field Day + Winter Field Day + 13 Colonies (15 total) | 🟡 **9 ported** (+FD/WFD since the last sweep). Missing: ARRL VHF (M7), R1/RSGB VHF (M8), GAPOTA (M9), full QSO Parties (M10), 13 Colonies (M12). Next per RFC §7: **M7** — great-circle distance scoring + `grid` input + rover our-grid from segments |
-| **Export breadth** | 29 ADIF variants, 11 Cabrillo, QSON, REG1TEST/EDI; user-editable Handlebars templates for filename **and title and ADIF notes/comments/QSL message**, per-export-type overrides; "ignore lookup data" toggle; Wavelog upload with station selection; **Ham2K File Stash export** (new in 26.7.3) | 🟡 whole-log + per-activity + per-contest ADIF, Cabrillo, private-data switch, QSON dump (dev-mode only, `export_service.dart`). No REG1TEST/EDI, no Wavelog, no File Stash, no user-editable templates (deliberately dropped — `exportNames.ts`), no ignore-lookup-data. Also: PoLo emits `APP_HAM2K_*` app fields (renamed from `X_` in 26.7.2+); HaLo emits none — decide compatibility when import lands |
+| **Contest breadth** | 12 contest extensions + Field Day + Winter Field Day + 13 Colonies (15 total) | 🟡 **12 of the 15 ported** (+M7 ARRL VHF and M8 R1/RSGB VHF since the last sweep, with ARRL 10 GHz scored inside `arrl-vhf-tests`), plus **CWT**, a 13th extension PoLo lacks. Missing: **GAPOTA (M9)**, **full QSO Parties (M10)** — PoLo kept fixing its county/state scoring through 26.7.6 — and **13 Colonies (M12)**. Next per RFC §7: **M9/M10** |
+| **Export breadth** | 29 ADIF variants, 11 Cabrillo, QSON, REG1TEST/EDI; user-editable Handlebars templates for filename **and title and ADIF notes/comments/QSL message**, per-export-type overrides; "ignore lookup data" toggle; Wavelog upload with station selection; **Ham2K File Stash export** (new in 26.7.3) | 🟡 whole-log + per-activity + per-contest ADIF, **Cabrillo**, **REG1TEST/EDI** (HALO-296), a **hunter/chaser export** (HALO-274) PoLo has no equivalent of, segment-sliced exports, private-data switch, QSON dump (dev-mode only, `export_service.dart`). HaLo now emits `APP_HAM2K_*` fields (`APP_HAM2K_POSITION`) and **templating exists** (HALO-201: one renderer behind the `template` hook, driving filenames, panels and ADIF text). Missing: **Wavelog**, **Ham2K File Stash** (new in 26.7.3), per-export-type template overrides in the UI, ignore-lookup-data, user-facing QSON |
 | **Activity catalog** | 21 activity dirs + WAB (under `other/`) | 🟡 **18 ported — the catalog is effectively closed.** `fd`/`wfd` shipped as contests; only **13 Colonies** (contest thread, M12) and **WAB squares** remain |
-| **Lookup providers** | QRZ, HamQTH, QRZCALL.EU, HamDB, **Call History** (worked-before from own log + imported ADIF history), Spot History; call-notes with user-added custom note files | 🟡 QRZ + call-notes (**custom files now done**, HALO-53) + spot-history (now also yielding activity refs; 30-min window vs PoLo's 10) + **Call History** (HALO-304, HALO-453 — identity/location fields, dropping a portable/prefixed location; registered last of every lookup source, so the log fills only what nothing live answered, a manually-typed field included; "imported ADIF history" needs no separate mechanism — see the Import row above, an ADIF import from the Logs view is already ordinary QSOs) + **Ham2K Lookup Service** (HaLo-only, not in PoLo — free, US/Canada/Germany, `services.ham2k.net`). HamDB was ported then removed in favor of Ham2K Lookup Service, which covers the same 3 countries and, like HamDB, answers a US or Canadian record with a grid; the residual gap is the lat/lon pair, which HamDB supplied and Ham2K Lookup Service does not return for any record (nor a grid for a German one). Missing providers: HamQTH, QRZCALL.EU. Lookup caching explicitly deferred (`lookup_queue_service.dart`) |
+| **Lookup providers** | QRZ, HamQTH, QRZCALL.EU, HamDB, **Call History** (worked-before from own log + imported ADIF history), Spot History; call-notes with user-added custom note files | 🟡 QRZ + call-notes (**custom files now done**, HALO-53) + spot-history (now also yielding activity refs; 30-min window vs PoLo's 10) + **Call History** (HALO-304, HALO-453 — identity/location fields, dropping a portable/prefixed location; registered last of every lookup source, so the log fills only what nothing live answered, a manually-typed field included; "imported ADIF history" needs no separate mechanism — see the Import row above, an ADIF import from the Logs view is already ordinary QSOs) + **Ham2K Lookup Service** (HaLo-only, not in PoLo — free, US/Canada/Germany, `services.ham2k.net`). HamDB was ported then removed in favor of Ham2K Lookup Service, which covers the same 3 countries and, like HamDB, answers a US or Canadian record with a grid; the residual gap is the lat/lon pair, which HamDB supplied and Ham2K Lookup Service does not return for any record (nor a grid for a German one). Missing providers: HamQTH (a sample extension only, `extensions/samples/k2hrc-hamqth`), QRZCALL.EU. Lookup caching explicitly deferred (`lookup_queue_service.dart`) |
 
 ## 2. Gaps within existing surfaces
 
 ### Logging
-- Secondary controls: **Notes**, **TxPower**, **CW Key** chips still
-  missing. HaLo's descriptor set is `time`, `radio`, `spotting`, the
-  activity `refList` controls, and `more` (`logging_controls.dart`
-  `_controlDescriptors`); Notes is reachable only inside the "more" pane's
-  form. The control-set manager (add/remove/reorder) and the Spotter
-  control are DONE.
-- Commands: **power** (`5W`), **time/date set** (`+1h`, `NOW`, `TODAY`,
-  `YESTERDAY`, explicit dates), **`SET`**, **operator change** (`OP.`),
-  **`CHAT`**, **`RTFM`**, **`EXCUSE`**. (Note/todo/solar/weather, the
-  SPOT/QRV/QRT/QSY family, band/mode/freq are done. `LANG`/`CROWDIN` and
-  the debug commands are tracked under Developer tooling in §3.)
+- Secondary controls: **Notes** and **CW Key** chips still missing.
+  HaLo's descriptor set is `time`, `radio`, **`power`** (HALO-198),
+  `spotting`, the activity `refList` controls, and `more`
+  (`logging_controls.dart`); Notes is reachable only inside the "more"
+  pane's form, and the key is captured per-QSO as station info (HALO-263)
+  rather than from a chip. The control-set manager (add/remove/reorder) and
+  the Spotter control are DONE.
+- Commands still missing: **time/date set** (`+1h`, `NOW`, `TODAY`,
+  `YESTERDAY`, explicit dates), **`CHAT`**, **`RTFM`**, **`EXCUSE`** (PoLo
+  `225189b8`). Done since the last sweep: **power** (`5W`), **`SET`** with
+  `SHOW`/`HIDE` (HALO-151), **operator change** (`OPER`, PoLo's `OP.`).
+  (Note/todo/solar/weather, the SPOT/QRV/QRT/QSY family, band/mode/freq,
+  `POSITION`, `WPM`/`KEYER` are done. `LANG`/`CROWDIN` and the debug
+  commands are tracked under Developer tooling in §3.)
 - **Segment creation** ✅ (HALO-108): `START`/`BREAK`/`STOP`(`END`) and
   `ROVERQTH` (operation-commands → `HaLoServices._markSegment`) write the
   same rows PoLo's commands do, with two deliberate differences: the
@@ -79,23 +96,23 @@ Legend: ⛔ missing entirely · 🟡 partial · 🧭 prerequisite work needed fi
   segment.
 - RST auto-expansion ✅ — closed by HALO-83 (per-mode configurable default,
   shown as a placeholder, shorthand completion).
-- **Log events** 🟡: note/todo/solar/weather rows are stored and rendered,
-  but there's no dedicated editor (taps fall into the generic QSO form),
-  no todo done-toggle in the UI, and no "pending to-dos" warning on export
+- **Log events** 🟡: note/todo/solar/weather rows are stored, rendered and
+  **edited in place** when tapped (`528c39eb`). Still missing: a todo
+  done-toggle in the UI, and the "pending to-dos" warning on export
   (PoLo warns).
-- HaLo-internal ⚠️: **fields-on-top** and **country flags** (`dxFlags`) are
-  still stored, shown in Settings and published to the extension host
-  (`extension_service.dart`) but **not consumed by any view**. Leftie mode,
-  bearing, report order and jump-after-RST have all left this list —
-  the last two via HALO-143.
+- HaLo-internal ⚠️: **fields-on-top** is the last setting still stored and
+  shown in Settings but **not consumed by any view** — `dxFlags` left this
+  list in `de4e6341`, joining leftie mode, bearing, report order and
+  jump-after-RST.
 
 ### Station & operator model
 - `/P`-style suffixes as first-class, club / multi-operator handling with
   QSO-migration prompts, "suggest default operator", multi-profile actually
   in use (HaLo: profiles scaffolded, single profile active).
-- **Multi-station flag + station identifier** (free-text) on an
-  operation. ⛔ PoLo 26.7.3 also now spots multi-station operations as
-  `/OP{n}` — same thread.
+- **Multi-station identifier** ✅ (`b83dbeb6`): a per-device free-text
+  identifier, appended to self-spots and exported as
+  `APP_HAM2K_POSITION` — PoLo landed the same `/OP{n}` spotting in
+  `bf0c090c`. What remains is the club / multi-operator model above it.
 
 ### Operations
 - **Operation templates** ("use as template" + suggestions on create). ⛔
@@ -104,8 +121,9 @@ Legend: ⛔ missing entirely · 🟡 partial · 🧭 prerequisite work needed fi
 - **Operation badge** screen (full-screen map/stats badge, reached from
   the map tab; user screenshots it manually — no share code). ⛔
 - Keep-device-awake while logging. ⛔ (no wakelock dependency at all)
-- Op info stats: HaLo has counts, rates (last 10/100), dupes, score
-  summaries (#409); missing per-day breakdown in the info panel.
+- Op info stats ✅ — counts, rates (last 10/100), dupes, score summaries
+  and the per-day/operation breakdown now match PoLo's info panel
+  (`8855d622`).
 
 ### Spots
 - **Global Spots screen** reachable from Home (outside any operation). ⛔
@@ -120,16 +138,28 @@ Legend: ⛔ missing entirely · 🟡 partial · 🧭 prerequisite work needed fi
   chosen.)
 
 ### Integration
-- Deep links: **`/qso`** (with multi-call `their.call=A,B` and
-  `their.refs=`), **`/vfo`**, and **`/operation`** (`our.refs=` →
-  find-or-create-and-open, PoLo #235) — the de-facto WSJT-X bridge. HaLo's
-  `DeepLinkService` handles auth callbacks only; `/qso` and `/link_client`
-  are reserved in a comment, unimplemented. ⛔
+- Deep links ✅ — **`/qso`** (multi-call `their.call=A,B`, `their.refs=`),
+  **`/vfo`** and **`/operation`** (`our.refs=` → find-or-create-and-open,
+  PoLo #235) all land, alongside the auth callbacks, **`/link_client`** and
+  **`/install_extension`** (HALO-422) that came before them. A link's
+  frequency is authoritative where a spot's is not, so `/qso` writes the VFO
+  and skips Avoid Zero-Beating; `/operation` reuses an operation only on an
+  exact activation-ref set match within 48 hours, as PoLo does.
+  - Registered on macOS, iOS, Android and **Windows** (HALO-178 — schemes in
+    the installer, plus single-instance forwarding, since Windows answers a
+    scheme by launching a second copy rather than delivering to the running
+    one). Remaining ⛔: **Linux registers no URL protocol** (HALO-121), so no
+    deep link of any kind reaches the app there, `link_client` included.
+  - HaLo also reaches the WSJT-X case from the other end: **HALO-306 listens
+    for N1MM+ and WSJT-X broadcasts** and captures those QSOs directly.
 
 ### Sync
 - Guided linking scenarios (HaLo: bare Combine/Replace banner — backlog). 🟡
-- Linked-devices list + connection-request approval UI. ⛔ (HaLo links via
-  QR/email; the accounts dialog lists accounts, not devices.)
+- Linked-devices list. 🟡 The **connection-request approval UI is done**
+  (HALO-9's "Confirm a device", by code or `/link_client` QR link, with a
+  waiting-devices count); what's missing is the standing list of devices
+  already on the account. (HaLo's separate Peer Devices panel is its own
+  LAN/BLE peer sync, not LoFi's device roster.)
 - LoFi **plan/subscription display**. ⛔ (Server picker and
   reset-sync-status are devMode-only in PoLo — tracked under Developer
   tooling in §3.)
@@ -156,8 +186,9 @@ Legend: ⛔ missing entirely · 🟡 partial · 🧭 prerequisite work needed fi
 
 ## 3. Platform & polish
 
-- **i18n**: PoLo ships ~14 Crowdin locales + tone variants (cw/qrp/qro);
-  HaLo has en + es (unchanged).
+- **i18n**: PoLo ships 15 Crowdin locales (Italian bundled and Korean added
+  since the last sweep) + tone variants (cw/qrp/qro); HaLo has en + es, with
+  es brought back to full parity with en (HALO-421). The gap widens.
 - Settings PoLo has: keep-awake, 8- vs 6-digit grid precision,
   smart-keyboard toggles, comma **and period/slash** keys on numbers row
   (HaLo shows one contextual extra key). (Haptics is NOT a gap — PoLo also
@@ -214,8 +245,18 @@ HaLo has, PoLo lacks: `DEVSTATUS`/`DEVPROGRESS` (status-bar exercisers),
 - Consent-gated telemetry with a vendor-free public app; server-driven
   notices with an ErrorPolicy that decides notice-vs-silent in one place.
 - **Per-build tester-notes overlay** for the Dev/Next editions (HALO-132).
-- Spot continent filter; segment-sliced exports; secondary-control
-  **reorder** (PoLo's manager only shows/hides, order is fixed).
+- Spot continent filter; segment-sliced exports; a **hunter/chaser export**;
+  secondary-control **reorder** (PoLo's manager only shows/hides, order is
+  fixed).
+- **Peer device sync** over LAN and BLE (HALO-310/342) — paired devices
+  share the log, GPS, the radio's VFO and contest serial numbers, with a
+  Positions panel and remote screen sharing. PoLo syncs only through LoFi.
+- **CW keying from CAT** — F1–F8 messages, a keyer area, `WPM`/`KEYER`
+  (behind `EXP KEYER`).
+- **Inbound QSO capture** from N1MM+ and WSJT-X broadcasts (HALO-306).
+- **CWops CWT** contest, offered only around a session — PoLo has no CWT.
+- **Extension distribution**: `.h2kext` bundles installed from a file, a
+  drop or a link (HALO-422), a published SDK, and a rebuild-on-save dev loop.
 - Per-edition private storage folder (HALO-100) and a Windows uninstall
   data prompt (HALO-99).
 
@@ -228,13 +269,18 @@ HaLo has, PoLo lacks: `DEVSTATUS`/`DEVPROGRESS` (status-bar exercisers),
    it's not structural.
 2. ~~**Call History lookup**~~ — done (HALO-304); no imported-ADIF-history
    half needed, per item 1.
-3. Deep links `/qso`, `/vfo`, `/operation` (WSJT-X bridge).
+3. ~~Deep links `/qso`, `/vfo`, `/operation`~~ — done, and ~~Windows scheme
+   registration~~ with them (HALO-178). What is left is Linux (HALO-121),
+   where no deep link reaches the app at all today.
 4. ~~Segment-creation commands (`START`/`BREAK`/`STOP`)~~ — done (HALO-108).
-5. Consume the two remaining dead logging settings (fields-on-top, country
-   flags) — they are already stored, surfaced and published; only the views
-   are missing.
-6. Remaining contests M7–M10 + 13 Colonies (M12); WAB.
-7. Export templates + REG1TEST/Wavelog (+ user-facing QSON).
+5. Consume **fields-on-top**, the last dead logging setting — already
+   stored, surfaced and published; only the view is missing. (Country flags
+   is done.)
+6. Remaining contests **M9 (GAPOTA)**, **M10 (QSO Parties)** and 13 Colonies
+   (M12); WAB. (M7 and M8 are done.)
+7. Per-export-type template overrides + Wavelog + File Stash (+ user-facing
+   QSON). REG1TEST/EDI is done.
 8. Multi-station / operator model.
-9. Long tail (remaining lookup providers, log-event editors, global Spots
-   screen, credits/community links, polish).
+9. Long tail (HamQTH/QRZCALL.EU, todo done-toggle and the pending-to-dos
+   export warning, global Spots screen, operation templates/undelete/badge,
+   keep-awake, credits/community links, dev-mode database surgery, polish).

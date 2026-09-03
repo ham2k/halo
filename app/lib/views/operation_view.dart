@@ -72,7 +72,22 @@ class OperationView extends StatefulWidget {
   /// [_OperationViewState._promptForCallsign]).
   final bool openActivities;
 
-  const OperationView({super.key, required this.services, required this.operationUuid, this.openActivities = false});
+  /// A QSON-shaped suggestion to put into the logging fields as this view
+  /// opens — a `/qso` deep link that had to push the view to land anywhere.
+  ///
+  /// A constructor argument rather than a call on the command context,
+  /// because the context of a view being pushed has no `suggestQso` yet: the
+  /// caller would have to poll for the state to mount (which is what app-polo
+  /// does, with a 2s retry loop). Applied once, in `initState`.
+  final Map<String, dynamic>? initialSuggestedQso;
+
+  const OperationView({
+    super.key,
+    required this.services,
+    required this.operationUuid,
+    this.openActivities = false,
+    this.initialSuggestedQso,
+  });
 
   @override
   State<OperationView> createState() => _OperationViewState();
@@ -538,9 +553,19 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// worked in that gesture, and on a narrow window surfacing the logging
   /// panel would take it away mid-slide. A row TAP still reveals: there the
   /// operator has chosen the station and wants the fields.
-  void _suggestQso(Map<String, dynamic> qso, {bool reveal = true}) {
+  ///
+  /// [measured] marks a suggestion that reports where this operator's own
+  /// radio IS, rather than where someone else heard a station — a `/qso` deep
+  /// link from a companion app. Avoid Zero-Beating exists to move off a
+  /// SPOT's frequency, so applying it to a measured one would mistune the rig
+  /// the link is describing, and would disagree with the VFO write the same
+  /// link already made. Both entry points must pass the same value: the
+  /// offset is a property of where the suggestion came from, never of whether
+  /// the operation happened to be open when it arrived.
+  void _suggestQso(Map<String, dynamic> qso, {bool reveal = true, bool measured = false}) {
     setState(() {
-      _suggestedQso = zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat);
+      _suggestedQso =
+          measured ? qso : zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat);
       // A slide peek is the one suggestion the operator has not committed to.
       _suggestedQsoIsTentative = !reveal;
     });
@@ -746,6 +771,21 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // rather than leaving the palette context-less — see
     // HaLoServices.openOperationContext.
     _commandContext = widget.services.openOperationContext(widget.operationUuid);
+    // Lets a `/qso` deep link prefill THIS operation while it is the
+    // front-most one, without pushing a second copy of the view over it.
+    // `measured` because only a deep link reaches this callback.
+    _commandContext.suggestQso = (qso) => _suggestQso(qso, measured: true);
+    // Whether the operator can actually SEE this operation — false with
+    // Settings, or another operation, pushed over it. A suggestion delivered
+    // to a view nobody is looking at is not lost, but it is invisible, and
+    // the caller says so rather than leaving the link looking dead.
+    _commandContext.isVisible = () => mounted && (ModalRoute.of(context)?.isCurrent ?? false);
+    // The link that pushed this view. Set directly rather than through
+    // `_suggestQso`: that one calls setState and reveals the logging panel,
+    // neither of which is legal before the first build, and the panel it
+    // would reveal is the one about to be built anyway. No zero-beat offset
+    // here for the same reason `measured` skips it above.
+    _suggestedQso = widget.initialSuggestedQso;
     // F1-F8 key CW messages while this operation is in front — see
     // [_onCwKeyEvent]. A HardwareKeyboard handler rather than a Shortcuts
     // widget, because the keys must work whichever field has focus, and the

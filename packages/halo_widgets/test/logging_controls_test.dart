@@ -8671,6 +8671,55 @@ void main() {
     expect(find.text('20m'), findsWidgets);
   });
 
+  testWidgets('a suggestedQso carrying startAtMillis logs at that time, not at now', (tester) async {
+    // A `/qso` deep link reports when a contact ACTUALLY happened — a WSJT-X
+    // bridge hands over a QSO already made — so composing it at "now" files
+    // it minutes late. The suggestion's time has to become the manual time,
+    // exactly as if the operator had typed it.
+    const madeAt = 1750000000000;
+    await tester.pumpWidget(host(suggestedQso: {
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0,
+      'mode': 'FT8',
+      'startAtMillis': madeAt,
+    }));
+    await tester.pump();
+    // The suggestion fills the field without focusing it, and Enter is
+    // delivered to whatever has focus.
+    await tester.tap(find.widgetWithText(TextField, 'Their call'));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.startAtMillis, madeAt);
+  });
+
+  testWidgets('a suggestedQso with no startAtMillis does not inherit the last one', (tester) async {
+    // A spot says nothing about when a contact happens. Without the explicit
+    // clear, a spot tapped after a deep link would log at the LINK's time.
+    const madeAt = 1750000000000;
+    await tester.pumpWidget(host(suggestedQso: {
+      'their': {'call': 'W1AW'},
+      'freq': 14074.0,
+      'mode': 'FT8',
+      'startAtMillis': madeAt,
+    }));
+    await tester.pump();
+    await tester.pumpWidget(host(suggestedQso: {
+      'their': {'call': 'K1ABC'},
+      'freq': 14074.0,
+      'mode': 'FT8',
+    }));
+    await tester.pump();
+    await tester.tap(find.widgetWithText(TextField, 'Their call'));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.theirCall, 'K1ABC');
+    expect(logged.single.startAtMillis, isNot(madeAt));
+  });
+
   testWidgets('HALO-32: applying a suggestedQso with no mode of its own never runs the band-plan guess',
       (tester) async {
     // tunedRadio (host()'s default) seeds Mode as SSB; 14074 kHz is FT8

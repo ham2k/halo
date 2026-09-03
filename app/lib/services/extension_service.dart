@@ -3190,6 +3190,77 @@ class ExtensionService implements PanelExtensionSource {
   Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) =>
       _collectControls('operationControls', operationData, qso: qso);
 
+  /// The activity reference TYPES each installed extension registers, keyed by
+  /// extension key: `pota` -> `(activationType: 'potaActivation',
+  /// huntingType: 'pota')`. A deep link, and anything else naming an activity
+  /// by its key, needs this to turn `pota:US-1234` into a real ref.
+  ///
+  /// Read off the `refList` control descriptors an activity ALREADY publishes
+  /// rather than from a hook of its own: those descriptors are where an
+  /// activity names its types, the control key is already namespaced by
+  /// extension key (which is what makes `sota:` scoping work in the activity
+  /// search), and a second declaration would be a second thing to keep in
+  /// step. An operation control is an activation, a logging control is a hunt.
+  ///
+  /// Only extensions that are switched ON answer, because only they publish
+  /// controls — matching app-polo, whose `findHooks('activity', {key})` sees
+  /// registered hooks alone. A key nobody claims is absent here, and a caller
+  /// skips that reference rather than inventing a type for it.
+  ///
+  /// [operationData] is passed through to the hooks, which may key a
+  /// descriptor's placeholder off it; the ref TYPES never vary with it, so an
+  /// empty map is a fine argument when there is no operation yet.
+  ///
+  /// `loadFailed` carries [ControlsResult]'s own distinction and MUST be
+  /// honoured: an empty `byKey` with `loadFailed` set means "could not ask",
+  /// not "nobody claims that key". Telling an operator their installed
+  /// activity is unknown, because the runtime had not finished booting, is a
+  /// confident false statement about their own setup.
+  ///
+  /// Awaits [start] first for exactly that reason. It memoizes the in-flight
+  /// future, so a caller arriving mid-boot waits for the same start everyone
+  /// else is waiting for rather than triggering a second one — and a deep
+  /// link that cold-launches the app arrives before boot has finished.
+  Future<({Map<String, ({String? activationType, String? huntingType})> byKey, bool loadFailed})>
+      activityRefTypes({Map<String, dynamic> operationData = const {}}) async {
+    await start();
+    final results = await Future.wait([
+      operationControls(operationData),
+      loggingControls(operationData),
+    ]);
+    final activation = _refTypesByExtensionKey(results[0].controls);
+    final hunting = _refTypesByExtensionKey(results[1].controls);
+    return (
+      byKey: {
+        for (final key in {...activation.keys, ...hunting.keys})
+          key: (activationType: activation[key], huntingType: hunting[key]),
+      },
+      loadFailed: results[0].loadFailed || results[1].loadFailed,
+    );
+  }
+
+  /// The `refList` ref type each control descriptor carries, keyed by the
+  /// extension key its control key is namespaced with (`pota/activation` ->
+  /// `pota`). Controls that are not reference lists carry no type and are
+  /// skipped.
+  ///
+  /// The first descriptor for a key wins. Every activity publishes exactly one
+  /// `refList` per surface, so which one that is never comes up — if that ever
+  /// stops being true, the tie needs a real rule rather than fan-out order.
+  static Map<String, String> _refTypesByExtensionKey(List<Map<String, dynamic>> controls) {
+    final types = <String, String>{};
+    for (final control in controls) {
+      final controlKey = (control['key'] as String?) ?? '';
+      final extensionKey = controlKey.split('/').first;
+      if (extensionKey.isEmpty || types.containsKey(extensionKey)) continue;
+      final input = control['input'];
+      if (input is! Map) continue;
+      final refType = input['refType'];
+      if (refType is String && refType.isNotEmpty) types[extensionKey] = refType;
+    }
+    return types;
+  }
+
   /// Lets activities project data they own into generic QSON fields just
   /// before a QSO is written — a contest mirroring the exchange it keeps on
   /// its own ref into `their.exchange`, which is what the QSO row's exchange

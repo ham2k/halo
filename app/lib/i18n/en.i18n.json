@@ -1689,6 +1689,12 @@
     "pendingConfirmation": "${email} (pending confirmation)",
     "pendingConfirmationWithId": "${email} (pending confirmation - #${id})"
   },
+  "deepLink": {
+    "needsAnOperation": "Start an operation first, then send that contact again",
+    "waitingInOperation": "That contact is waiting in the operation behind this screen",
+    "unknownActivities": "This device has no activity for $refs, so those references were left off",
+    "activitiesUnavailable": "Could not reach your activities, so $refs was left off — try that link again"
+  },
   "confirmDevice": {
     "title": "Confirm a Device",
     "codePrompt": "Enter the code shown on the device that wants to join this account.",

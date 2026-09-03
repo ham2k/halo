@@ -348,7 +348,7 @@ void _mainBody({
       automaticChecks: services.settings.automaticUpdateChecks,
     ));
 
-    _listenForLinkClientDeepLinks(services);
+    _listenForDeepLinks(services);
     _listenForOpenedExtensionFiles(services);
     // Windows and Linux deliver an opened document as an argument to a FRESH
     // process, so there is no callback to wait for — it is simply already
@@ -423,11 +423,32 @@ void _listenForOpenedExtensionFiles(HaLoServices services) {
   }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'open-file'));
 }
 
-void _listenForLinkClientDeepLinks(HaLoServices services) {
+/// Every incoming `com.ham2k*://` link, dispatched in one place — see
+/// [DeepLinkService] for the catalog. The order below is "during an
+/// activation" before "during setup", which is also roughly how often each
+/// arrives.
+void _listenForDeepLinks(HaLoServices services) {
   services.deepLinks.links.listen((uri) {
     final install = DeepLinkService.installExtensionRequest(uri);
     if (install != null) {
       _openInstallExtension(services, install);
+      return;
+    }
+    // The companion-app bridge, ahead of link_client only because these are
+    // the links that arrive during an activation rather than during setup.
+    final vfo = DeepLinkService.vfoRequest(uri);
+    if (vfo != null) {
+      _applyVfoDeepLink(services, vfo);
+      return;
+    }
+    final linkedQso = DeepLinkService.qsoRequest(uri);
+    if (linkedQso != null) {
+      unawaited(_presentDeepLinkedQso(services, linkedQso));
+      return;
+    }
+    final ourRefs = DeepLinkService.operationRequest(uri);
+    if (ourRefs != null) {
+      unawaited(_openDeepLinkedOperation(services, ourRefs));
       return;
     }
     final request = DeepLinkService.linkClientRequest(uri);
@@ -454,7 +475,293 @@ void _listenForLinkClientDeepLinks(HaLoServices services) {
       return;
     }
     _openConfirmDevicePane(services, request);
-  }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'deep-link:link-client'));
+  }, onError: (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'deep-link'));
+}
+
+/// How recent an operation has to be for an `/operation` link to reuse it
+/// rather than start a new one. Matches app-polo's `RECENT_WINDOW_MS`: an
+/// activation interrupted overnight is the same activation, and one from last
+/// month is not.
+const _deepLinkRecentWindow = Duration(hours: 48);
+
+/// Puts the radio state a `/vfo` link reports into the app's own VFO.
+///
+/// Needs no navigator, and so is the one deep link that works during a cold
+/// launch: it writes a service, not a screen.
+void _applyVfoDeepLink(HaLoServices services, ({double? freqKHz, String? band, String? mode}) vfo) {
+  services.radio.setVfo('vfoA', freq: vfo.freqKHz, band: vfo.band, mode: vfo.mode);
+  services.track('deep_link_vfo', {});
+}
+
+/// Presents the QSO a `/qso` link proposes in the front-most operation — or,
+/// with none open, in the most recent one.
+///
+/// The radio state travels with it, unlike a spot tap: a companion app sending
+/// a QSO is reporting where this operator's radio IS (app-polo's
+/// `_updatesVFO`), so the fields and the VFO must agree afterwards.
+Future<void> _presentDeepLinkedQso(
+  HaLoServices services,
+  ({
+    List<String> calls,
+    double? freqKHz,
+    String? band,
+    String? mode,
+    int? startAtMillis,
+    List<({String key, String ref})> theirRefs,
+  }) link,
+) async {
+  final resolved = await _deepLinkRefs(services, link.theirRefs, (types) => types.huntingType);
+  if (link.freqKHz != null || link.band != null || link.mode != null) {
+    services.radio.setVfo('vfoA', freq: link.freqKHz, band: link.band, mode: link.mode);
+  }
+  final outcome = await _deliverDeepLinkedQso(services, {
+    // Comma-joined, which is HaLo's "one QSO per call" syntax — see
+    // `DeepLinkService.qsoRequest`.
+    'their': {'call': link.calls.join(',')},
+    if (link.freqKHz != null) 'freq': link.freqKHz,
+    if (link.band != null) 'band': link.band,
+    if (link.mode != null) 'mode': link.mode,
+    if (link.startAtMillis != null) 'startAtMillis': link.startAtMillis,
+    'refs': resolved.refs,
+  });
+  // The contact landed, but not everything the link asked for came with it —
+  // the operator is about to log a hunt that records fewer programs than the
+  // sender named, and only they can tell the companion-app author.
+  if (outcome == _DeepLinkOutcome.delivered && resolved.dropped.isNotEmpty) {
+    _reportDroppedRefs(services, resolved);
+  }
+  services.track('deep_link_qso', {
+    'outcome': outcome.name,
+    'refsDropped': resolved.dropped.length,
+  });
+}
+
+/// What became of a `/qso` link, so telemetry counts deliveries rather than
+/// attempts and the caller knows whether to bother reporting anything else.
+enum _DeepLinkOutcome { delivered, noOperation, noNavigator }
+
+/// Tells the operator which references a link named that this device could
+/// not place, and why.
+///
+/// A load failure and an unknown key are different sentences on purpose:
+/// "your activity is unknown" is a confident claim about their setup, and
+/// saying it because the runtime had not booted sends them hunting through
+/// Manage Extensions for a problem that is not there.
+void _reportDroppedRefs(HaLoServices services, ({List<Map<String, dynamic>> refs, List<String> dropped, bool loadFailed}) resolved) {
+  final names = resolved.dropped.join(', ');
+  services.statusBar.setMessage(
+    key: 'deep-link:dropped-refs',
+    text: resolved.loadFailed
+        ? t.deepLink.activitiesUnavailable(refs: names)
+        : t.deepLink.unknownActivities(refs: names),
+  );
+}
+
+/// Hands [suggestion] to an operation's logging fields.
+///
+/// Prefers the operation already in front — pushing a second copy of a view
+/// the operator is already looking at would bury their work under it. Only
+/// with nothing open does this fall back to the most recent operation, which
+/// is what a companion app assumes "the log" means.
+///
+/// The retry mirrors [_openInstallExtension]'s: a link that cold-launches the
+/// app arrives before the first frame, and dropping it silently leaves
+/// whoever sent it with nothing at all.
+Future<_DeepLinkOutcome> _deliverDeepLinkedQso(
+  HaLoServices services,
+  Map<String, dynamic> suggestion, {
+  int attemptsLeft = 20,
+}) async {
+  final front = services.frontOperationContext;
+  final suggest = front?.suggestQso;
+  if (suggest != null) {
+    suggest(suggestion);
+    // The fields are filled, but behind Settings or a nested operation there
+    // is nothing on screen to show for it — so the link looks dead unless we
+    // say where the contact went. Not popped: whatever is on top may hold an
+    // edit in progress, and a link is not permission to discard it.
+    if (front?.isVisible?.call() == false) {
+      services.statusBar.setMessage(key: 'deep-link:delivered-behind', text: t.deepLink.waitingInOperation);
+    }
+    return _DeepLinkOutcome.delivered;
+  }
+  final navigator = navigatorKey.currentState;
+  if (navigator == null) {
+    if (attemptsLeft <= 0) {
+      // A navigator still absent five seconds after launch is our bug, not a
+      // state to wait out — and the operator is owed an answer either way.
+      ErrorReportingService.report(
+        StateError('deep link dropped: no navigator after 5s'),
+        StackTrace.current,
+        context: 'deep-link',
+      );
+      return _DeepLinkOutcome.noNavigator;
+    }
+    Timer(const Duration(milliseconds: 250),
+        () => unawaited(_deliverDeepLinkedQso(services, suggestion, attemptsLeft: attemptsLeft - 1)));
+    // Not an outcome yet — the retry reports its own. Counting this as a
+    // delivery is what would make the metric read 100% success forever.
+    return _DeepLinkOutcome.noNavigator;
+  }
+  final operations = await services.operations.watchAll().first;
+  if (operations.isEmpty) {
+    // Nowhere to put it, and no operation to invent on a link's say-so: a
+    // contact belongs to an activation the operator started. app-polo returns
+    // silently here; saying so is the difference between a broken link and a
+    // link that needs one thing first.
+    services.statusBar.setMessage(key: 'deep-link:no-operation', text: t.deepLink.needsAnOperation);
+    return _DeepLinkOutcome.noOperation;
+  }
+  // Re-read rather than reusing the one checked above: the database await
+  // between them is long enough for a hot restart or a root rebuild to
+  // deactivate that state, and pushing onto a dead navigator throws out of an
+  // unawaited future.
+  final target = navigatorKey.currentState;
+  if (target == null) return _DeepLinkOutcome.noNavigator;
+  target.push(MaterialPageRoute(
+    builder: (_) => OperationView(
+      services: services,
+      operationUuid: operations.first.uuid,
+      initialSuggestedQso: suggestion,
+    ),
+  ));
+  return _DeepLinkOutcome.delivered;
+}
+
+/// Finds the recent operation activating exactly the references an
+/// `/operation` link names, or creates one, and opens it.
+///
+/// Exact set matching, as in app-polo: a park-only request must not latch onto
+/// a park-and-summit operation, and vice versa — those are distinct
+/// activations, and reusing one for the other silently files the contacts
+/// under the wrong award.
+Future<void> _openDeepLinkedOperation(
+  HaLoServices services,
+  List<({String key, String ref})> pairs, {
+  int attemptsLeft = 20,
+}) async {
+  if (navigatorKey.currentState == null) {
+    if (attemptsLeft <= 0) {
+      ErrorReportingService.report(
+        StateError('deep link dropped: no navigator after 5s'),
+        StackTrace.current,
+        context: 'deep-link',
+      );
+      return;
+    }
+    Timer(const Duration(milliseconds: 250),
+        () => unawaited(_openDeepLinkedOperation(services, pairs, attemptsLeft: attemptsLeft - 1)));
+    return;
+  }
+  final resolved = await _deepLinkRefs(services, pairs, (types) => types.activationType);
+  if (resolved.refs.isEmpty) {
+    _reportDroppedRefs(services, resolved);
+    return;
+  }
+  // Some resolved, some did not — and this is the dangerous half. `wanted`
+  // below is built from what SURVIVED, so a truncated request would be
+  // matched, and created, as a smaller activation than the one asked for:
+  // exactly the cross-award filing `activationRefsMatch` exists to prevent.
+  // Proceeding is the operator's call to undo; saying nothing is not.
+  if (resolved.dropped.isNotEmpty) _reportDroppedRefs(services, resolved);
+
+  final wanted = {for (final ref in resolved.refs) '${ref['type']}:${ref['ref']}'};
+  final cutoff = nowMillis() - _deepLinkRecentWindow.inMilliseconds;
+  final operations = await services.operations.watchAll().first;
+  Operation? existing;
+  for (final operation in operations) {
+    final lastActive = operation.startAtMillisMax ?? operation.createdAtMillis ?? 0;
+    if (lastActive < cutoff) continue;
+    if (DeepLinkService.activationRefsMatch(operation.data['refs'], wanted)) {
+      existing = operation;
+      break;
+    }
+  }
+
+  final uuid = existing?.uuid ?? await _createDeepLinkedOperation(services, resolved.refs);
+  // Re-read: `_deepLinkRefs`, the operation query and `decorateRef`'s network
+  // round trips are tens of seconds during which the state read at entry can
+  // be deactivated.
+  final navigator = navigatorKey.currentState;
+  if (navigator == null) return;
+  navigator.push(MaterialPageRoute(builder: (_) => OperationView(services: services, operationUuid: uuid)));
+  services.track('deep_link_operation', {
+    'created': existing == null,
+    'refsDropped': resolved.dropped.length,
+  });
+}
+
+/// Creates the operation an `/operation` link asked for, with its references
+/// already decorated.
+///
+/// Decorating BEFORE the view mounts, rather than letting it fill in
+/// afterwards: the view titles itself from the refs it finds
+/// (`OperationTitleService`), so mounting on bare codes titles the operation
+/// from them and only re-titles if something writes the names later.
+Future<String> _createDeepLinkedOperation(HaLoServices services, List<Map<String, dynamic>> refs) async {
+  final decorated = <Map<String, dynamic>>[];
+  for (final ref in refs) {
+    // An unnamed park is better than no operation, so a decoration that fails
+    // costs that reference its name and nothing more.
+    //
+    // `decorateRef` already swallows ExtensionHostException itself and hands
+    // the ref back unchanged, so a program that cannot reach its API never
+    // arrives here. What does is the residue — a wrong-typed hook result, a
+    // kernel ArgumentError — and those are OUR bugs, which a bare catch would
+    // bury for good. Same split as activities_view.dart's.
+    try {
+      decorated.add(await services.extensions.decorateRef(ref));
+    } catch (e, stack) {
+      ErrorReportingService.report(e, stack, context: 'deep-link:decorate-ref');
+      decorated.add(ref);
+    }
+  }
+  final operation = await services.operations.create(
+    stationCall: services.settings.activeProfile.operatorCall,
+  );
+  await services.operations
+      .saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'refs': decorated}));
+  return operation.uuid;
+}
+
+/// A deep link's `key:ref` pairs as QSON refs, with [typeFor] choosing which
+/// of the extension's two reference types applies — an operation ACTIVATES,
+/// a QSO HUNTS.
+///
+/// A key no installed activity claims is skipped rather than guessed at (as
+/// in app-polo): inventing `${key}Activation` would write a reference type
+/// nothing scores, exports or recognizes.
+///
+/// `dropped` names the keys that got no type, and `loadFailed` says WHY they
+/// did — the runtime could not be asked, versus nothing claims them. The two
+/// are different sentences to the operator, and the caller must not report an
+/// empty result as "you don't have that activity" when it never got to ask.
+///
+/// A non-empty `dropped` alongside a non-empty `refs` is a PARTIAL result,
+/// which is the case worth care: the request has been silently narrowed, and
+/// downstream set matching will honour the narrowed version.
+Future<({List<Map<String, dynamic>> refs, List<String> dropped, bool loadFailed})> _deepLinkRefs(
+  HaLoServices services,
+  List<({String key, String ref})> pairs,
+  String? Function(({String? activationType, String? huntingType}) types) typeFor,
+) async {
+  if (pairs.isEmpty) return (refs: const <Map<String, dynamic>>[], dropped: const <String>[], loadFailed: false);
+  final types = await services.extensions.activityRefTypes();
+  final refs = <Map<String, dynamic>>[];
+  final dropped = <String>[];
+  for (final pair in pairs) {
+    final known = types.byKey[pair.key];
+    final type = known == null ? null : typeFor(known);
+    if (type == null) {
+      dropped.add(pair.key);
+      continue;
+    }
+    refs.add({'type': type, 'ref': pair.ref});
+  }
+  if (dropped.isNotEmpty) {
+    debugPrint('[deep-link] no reference type for ${dropped.join(', ')} (loadFailed=${types.loadFailed})');
+  }
+  return (refs: refs, dropped: dropped, loadFailed: types.loadFailed);
 }
 
 /// Downloads the bundle a link named and offers to install it, once there is
@@ -1332,6 +1639,21 @@ class OperationCommandContext {
 
   /// This operation's logging panel dispatcher, while one is mounted.
   CommandActionsDispatcher? dispatch;
+
+  /// Puts a QSON-shaped suggestion into this operation's logging fields — the
+  /// same prefill a tapped spot performs (`OperationView`'s `_suggestQso`).
+  ///
+  /// Here rather than as a [CommandActionsDispatcher] action because a
+  /// suggestion is not a command: it arrives from outside the operation
+  /// entirely (a `/qso` deep link), carries refs and radio state together, and
+  /// must reach the view even when no logging panel is mounted to dispatch
+  /// through — which is exactly when [dispatch] is null.
+  void Function(Map<String, dynamic> qso)? suggestQso;
+
+  /// Whether this operation is the route the operator is actually looking at.
+  /// False with Settings, or a nested operation, pushed over it — where a
+  /// suggestion still lands correctly but nothing on screen shows it.
+  bool Function()? isVisible;
 }
 
 /// Kept alive for the process lifetime — an [AppLifecycleListener] stops
@@ -1937,6 +2259,16 @@ class HaLoServices {
   /// field — `LoggingControls`' dispatcher handles the app-scoped actions too.
   CommandActionsDispatcher? get currentCommandDispatch =>
       _operationStack.isEmpty ? null : _operationStack.last.dispatch;
+
+  /// The front-most open operation's stack entry, or null when none is open.
+  ///
+  /// How a `/qso` deep link reaches the operation the operator is already in
+  /// rather than pushing a second copy of it. The whole entry, not just its
+  /// `suggestQso`, because the caller also has to ask whether that operation
+  /// is the visible route before deciding what to tell the operator. Same
+  /// stack, same reasoning as [currentCommandDispatch].
+  OperationCommandContext? get frontOperationContext =>
+      _operationStack.isEmpty ? null : _operationStack.last;
 
   /// Where a command action's message goes: the command bar that is running a
   /// command right now, on its own response line, rather than the status bar

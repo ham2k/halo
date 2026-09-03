@@ -16,6 +16,7 @@ upcoming:
     - "Windows: com.ham2k links now open the app, so QR device linking works there"
     - "The antenna and key in use are remembered per radio, and follow the one you pick"
     - "Add an Elecraft by name: KX2, KX3 or a generic Elecraft, prefilled to match"
+    - "Companion apps can now set your VFO, suggest a contact, or open an operation"
 
 "160":
   changes:

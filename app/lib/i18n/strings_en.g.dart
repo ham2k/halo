@@ -69,6 +69,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$versionLabel$en versionLabel = Translations$versionLabel$en.internal(_root);
 	late final Translations$notices$en notices = Translations$notices$en.internal(_root);
 	late final Translations$syncAccount$en syncAccount = Translations$syncAccount$en.internal(_root);
+	late final Translations$deepLink$en deepLink = Translations$deepLink$en.internal(_root);
 	late final Translations$confirmDevice$en confirmDevice = Translations$confirmDevice$en.internal(_root);
 	late final Translations$switchAccounts$en switchAccounts = Translations$switchAccounts$en.internal(_root);
 	late final Translations$adifImport$en adifImport = Translations$adifImport$en.internal(_root);
@@ -1681,6 +1682,27 @@ class Translations$syncAccount$en {
 
 	/// en: '${email} (pending confirmation - #${id})'
 	String pendingConfirmationWithId({required Object email, required Object id}) => '${email} (pending confirmation - #${id})';
+}
+
+// Path: deepLink
+class Translations$deepLink$en {
+	Translations$deepLink$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Start an operation first, then send that contact again'
+	String get needsAnOperation => 'Start an operation first, then send that contact again';
+
+	/// en: 'That contact is waiting in the operation behind this screen'
+	String get waitingInOperation => 'That contact is waiting in the operation behind this screen';
+
+	/// en: 'This device has no activity for $refs, so those references were left off'
+	String unknownActivities({required Object refs}) => 'This device has no activity for ${refs}, so those references were left off';
+
+	/// en: 'Could not reach your activities, so $refs was left off — try that link again'
+	String activitiesUnavailable({required Object refs}) => 'Could not reach your activities, so ${refs} was left off — try that link again';
 }
 
 // Path: confirmDevice
@@ -7130,6 +7152,10 @@ extension on Translations {
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
+			'deepLink.needsAnOperation' => 'Start an operation first, then send that contact again',
+			'deepLink.waitingInOperation' => 'That contact is waiting in the operation behind this screen',
+			'deepLink.unknownActivities' => ({required Object refs}) => 'This device has no activity for ${refs}, so those references were left off',
+			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'Could not reach your activities, so ${refs} was left off — try that link again',
 			'confirmDevice.title' => 'Confirm a Device',
 			'confirmDevice.codePrompt' => 'Enter the code shown on the device that wants to join this account.',
 			'confirmDevice.code' => 'Code',
