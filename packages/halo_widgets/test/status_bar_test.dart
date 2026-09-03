@@ -344,6 +344,50 @@ void main() {
     expect(find.text('Offline'), findsNothing, reason: 'choosing an entry closes the menu');
   });
 
+  testWidgets('a badge rides beside the icon in the collapsed bar, dimmed when the status is muted', (tester) async {
+    // The count is what the collapsed bar is FOR here: the line behind it
+    // ("3 of 5 connected") only exists in the menu, so a badge that failed to
+    // render would leave the operator a glyph that answers nothing, with the
+    // menu still passing every other test in this file.
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            const Expanded(child: SizedBox.shrink()),
+            StatusBarFooter(
+              items: const [],
+              onDismiss: _noop,
+              perma: const [
+                StatusBarPermaData(key: 'peers', icon: Icons.lan, text: '2 of 5 connected', badge: '2'),
+                StatusBarPermaData(
+                  key: 'quiet',
+                  icon: Icons.cloud_off,
+                  text: '0 of 3 connected',
+                  badge: '0',
+                  muted: true,
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('2'), findsOneWidget);
+    expect(find.text('0'), findsOneWidget);
+    expect(find.text('2 of 5 connected'), findsNothing, reason: 'the line stays in the menu');
+
+    // The mute has to reach the glyph AND its badge: dimming one of the two
+    // reads as a rendering fault rather than as a status standing down.
+    Color colorOf(Finder icon) => tester.widget<Icon>(icon).color!;
+    final live = colorOf(find.byIcon(Icons.lan));
+    final quiet = colorOf(find.byIcon(Icons.cloud_off));
+    expect(quiet.a, lessThan(live.a), reason: 'a muted status is held back, not hidden');
+    expect(tester.widget<Text>(find.text('0')).style!.color!.a, quiet.a);
+    expect(tester.widget<Text>(find.text('2')).style!.color!.a, live.a);
+  });
+
   testWidgets('the icons open the menu and the bar opens the message list, never each other', (tester) async {
     // Two surfaces, two gestures. The bar must not open the statuses and the
     // icons must not open the messages — and the icons ride ON the bar, so

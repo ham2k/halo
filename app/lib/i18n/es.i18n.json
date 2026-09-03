@@ -1029,6 +1029,7 @@
       "bleProblem": "Bluetooth: ${error}",
       "statusConnected": "Conectado a ${device}",
       "statusLost": "Se perdió la conexión con ${device}",
+      "statusPerma": "Dispositivos: ${connected} de ${linked} conectados",
       "screenEnable": "Compartir pantallas y ventanas",
       "screenDescription": "Permite que otros dispositivos muestren pantallas o ventanas de este ordenador",
       "screenSources": "Pantallas y ventanas",

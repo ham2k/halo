@@ -78,13 +78,34 @@ class StatusBarPermaData {
   /// The line shown when the bar is expanded, and the icon's accessible name.
   final String text;
 
+  /// A short string drawn beside the icon in the collapsed bar — a count, and
+  /// nothing longer: the bar shares its row with the messages, and anything
+  /// that reads as a sentence belongs in [text] where there is room for it.
+  ///
+  /// The number alone, never the whole line: what the collapsed bar answers
+  /// is "how many", and the menu is one tap away for what they are.
+  final String? badge;
+
+  /// Draws the icon and its badge dimmed, for a status that is true but
+  /// currently amounts to nothing — a count of zero. Dimmed rather than
+  /// absent: the status disappearing is how the operator would read "this
+  /// device does not do that at all", which is a different claim.
+  final bool muted;
+
   /// What the menu ENTRY does when chosen — a detail sheet, a settings screen.
   /// The icon itself never runs this: its tap opens the menu, so that one
   /// deliberate gesture (open it, read, then choose) never turns into a dialog
   /// the operator did not ask for.
   final VoidCallback? onTap;
 
-  const StatusBarPermaData({required this.key, required this.icon, required this.text, this.onTap});
+  const StatusBarPermaData({
+    required this.key,
+    required this.icon,
+    required this.text,
+    this.badge,
+    this.muted = false,
+    this.onTap,
+  });
 }
 
 class StatusBarActionData {
@@ -599,6 +620,11 @@ class _PermaIconsState extends State<_PermaIcons> {
   /// "lighter" is what raises a surface either way.
   Color _menuFill(BuildContext context) => Color.lerp(widget.background, Colors.white, 0.10)!;
 
+  /// A muted status's glyph and badge, held back from the bar's own colour
+  /// without being lost against it.
+  Color _permaColor(StatusBarPermaData status) =>
+      status.muted ? widget.color.withValues(alpha: 0.5) : widget.color;
+
   @override
   Widget build(BuildContext context) {
     // The inset that keeps the menu off the window's edge, spent through the
@@ -678,7 +704,7 @@ class _PermaIconsState extends State<_PermaIcons> {
               children: [
                 for (final status in widget.perma)
                   MenuItemButton(
-                    leadingIcon: Icon(status.icon, size: 18, color: widget.color),
+                    leadingIcon: Icon(status.icon, size: 18, color: _permaColor(status)),
                     style: MenuItemButton.styleFrom(foregroundColor: widget.color),
                     // Straight through, null included: a status that only reports
             // renders as a disabled entry, which is honest. A `?? () {}` would
@@ -703,7 +729,33 @@ class _PermaIconsState extends State<_PermaIcons> {
                 onTap: () => controller.isOpen ? controller.close() : controller.open(),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: Space.xs),
-                  child: Icon(status.icon, size: _permaIconSize, color: widget.color),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(status.icon, size: _permaIconSize, color: _permaColor(status)),
+                      if (status.badge case final badge?) ...[
+                        const SizedBox(width: Space.xxs),
+                        // The count is already in [status.text], which is this
+                        // button's accessible name — left in, a screen reader
+                        // reads the whole line and then a bare "0".
+                        ExcludeSemantics(
+                          child: Text(
+                            badge,
+                            // Sized against the glyph rather than off a text
+                            // style: this reads as part of the icon, and a
+                            // body style set by the theme would tower over a
+                            // 16pt one at some densities and vanish at
+                            // others.
+                            style: TextStyle(
+                              fontSize: _permaIconSize * 0.8,
+                              height: 1,
+                              color: _permaColor(status),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),

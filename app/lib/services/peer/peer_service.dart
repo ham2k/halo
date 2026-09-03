@@ -99,6 +99,10 @@ class PeerService extends ChangeNotifier {
     // and the reconnect's catch-up happens to pick it up.
     outbox.onScanned = () => unawaited(_pushToPeers());
     outbox.log = (message) => debugPrint('[peer] $message');
+    // The linked devices are shown (in the status bar) whether or not peer
+    // sync is ever switched on, so this is read at construction rather than
+    // at [_start].
+    unawaited(refreshLinkedDevices());
   }
 
   final HaLoDatabase db;
@@ -162,6 +166,47 @@ class PeerService extends ChangeNotifier {
   /// holds them — see [_stop].
   final Set<PeerSession> _unidentifiedSessions = {};
   Map<String, PeerRuntime> get peers => Map.unmodifiable(_peers);
+
+  /// The devices this operator has linked (the trust store's rows), cached so
+  /// chrome can ask for them synchronously and refresh on this service's own
+  /// notification.
+  ///
+  /// A cache rather than a watch on the store: the one surface that needs
+  /// this live is the status bar, which is mounted for the app's whole life,
+  /// and a drift subscription there leaves a pending timer behind at every
+  /// widget teardown. Kept true by refreshing wherever trust is written —
+  /// this service's [acceptPairing] and [revokeTrust], which are the only
+  /// paths that write it ([PeerSession] writes only through the first).
+  Set<String> get linkedDeviceIds => _linkedDeviceIds;
+  Set<String> _linkedDeviceIds = const {};
+
+  /// Re-reads the trust store into [linkedDeviceIds], notifying only when the
+  /// set actually changed: this is called from paths that notify anyway, and
+  /// an unconditional notification from an async continuation would rebuild
+  /// the chrome a frame after every pairing decision for nothing.
+  ///
+  /// Never throws. It is called from a fire-and-forget at construction and
+  /// from the middle of [revokeTrust]'s teardown, where an escaping read
+  /// error would leave a device the operator just forgot still connected and
+  /// syncing. The read failing costs the count, which is reported here rather
+  /// than left to a caller that has more urgent work to finish.
+  Future<void> refreshLinkedDevices() async {
+    final Set<String> ids;
+    try {
+      ids = {for (final row in await trust.all()) row.peerDeviceId};
+    } catch (e, st) {
+      // The status bar's own way of saying this is to show nothing at all,
+      // which reads as "no devices linked" — a positive claim this cannot
+      // make on a read that failed. The Peers panel says so on screen
+      // (`_listProblem`); down here the report is what there is.
+      debugPrint('[peer] could not read the linked devices: $e');
+      ErrorReportingService.report(e, st, context: 'PeerService:refreshLinkedDevices');
+      return;
+    }
+    if (_disposed || setEquals(ids, _linkedDeviceIds)) return;
+    _linkedDeviceIds = ids;
+    notifyListeners();
+  }
 
   /// Whether discovery/announcement is up — the applied form of the master
   /// switch, distinct from [_enabled] (the intent) only while [_apply] is in
@@ -512,6 +557,7 @@ class PeerService extends ChangeNotifier {
     if (runtime?.session == null) return;
     runtime!.promptDismissed = false;
     await runtime.session!.acceptPairing();
+    await refreshLinkedDevices();
     notifyListeners();
   }
 
@@ -556,6 +602,9 @@ class PeerService extends ChangeNotifier {
       runtime.session = null;
       runtime.promptDismissed = true;
     }
+    // After the teardown: dropping the link is what this method is FOR, and
+    // the count is a label on the chrome.
+    await refreshLinkedDevices();
     notifyListeners();
   }
 

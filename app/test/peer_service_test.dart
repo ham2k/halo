@@ -196,6 +196,41 @@ void main() {
     expect(deviceB.service.pendingPairing, isNull);
   });
 
+  test('accepting a pairing puts the device in the linked set, and forgetting takes it out', () async {
+    // The status bar counts [linkedDeviceIds], a cache this service keeps
+    // rather than a live query — so what it shows is only ever as true as the
+    // refreshes on the two paths that write trust. Drop either refresh and the
+    // operator pairs a device and is told nothing is linked, or forgets one
+    // and is told it still is, with the store itself perfectly correct.
+    final op = await sharedOperation();
+    await deviceA.service.setOpenOperation(op);
+    await deviceB.service.setOpenOperation(op);
+    await waitFor('pairing prompts',
+        () => deviceA.service.pendingPairing != null && deviceB.service.pendingPairing != null);
+    expect(deviceA.service.linkedDeviceIds, isEmpty);
+
+    await deviceA.service.acceptPairing('device-b');
+    await deviceB.service.acceptPairing('device-a');
+    expect(deviceA.service.linkedDeviceIds, {'device-b'});
+
+    await deviceA.service.revokeTrust('device-b');
+    expect(deviceA.service.linkedDeviceIds, isEmpty);
+  });
+
+  test('a trust-store read that fails leaves the count alone instead of escaping', () async {
+    // [refreshLinkedDevices] runs from a fire-and-forget at construction and
+    // from the middle of [revokeTrust]'s teardown — an error thrown out of
+    // there would abort the teardown, leaving a device the operator just
+    // forgot connected and syncing.
+    await deviceA.service.trust.trust('device-b', name: 'Phone');
+    await deviceA.service.refreshLinkedDevices();
+    expect(deviceA.service.linkedDeviceIds, {'device-b'});
+
+    await deviceA.db.close();
+    await expectLater(deviceA.service.refreshLinkedDevices(), completes);
+    expect(deviceA.service.linkedDeviceIds, {'device-b'}, reason: 'a failed read reports nothing new, it does not empty the set');
+  });
+
   test('devices on DIFFERENT operations each receive the other\'s, kept apart', () async {
     // Sessions bind to the paired device, and each side receives whatever
     // the other has open — so the operation B has never seen arrives whole,

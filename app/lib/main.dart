@@ -65,6 +65,7 @@ import 'services/export_service.dart';
 import 'services/build_freshness_service.dart';
 import 'services/connectivity_service.dart';
 import 'views/offline_indicator.dart';
+import 'views/peers_dialog.dart';
 import 'views/station_config_dialog.dart';
 import 'views/station_panel.dart' show equipmentStatusLabel;
 import 'services/error_reporting_backend.dart';
@@ -4703,6 +4704,38 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
           nextAttemptAt: () => widget.services.syncEngine.nextAttemptAt,
         ),
       ),
+      // Only once there is something to count, and only under the experiment
+      // that publishes the Peers panel this opens: an operator who has never
+      // linked a device is not told "0 devices" — the feature is one they do
+      // not use — and a status whose action lands on a panel Settings is
+      // hiding is worse than no status.
+      if (widget.services.settings.experimentEnabled('p2p') /* stored key, see experiments.yaml */)
+        for (final linked in [widget.services.peerService.linkedDeviceIds])
+          if (linked.isNotEmpty)
+            for (final connected in [linked.where(widget.services.peerService.hasSession).length])
+              StatusBarPermaData(
+                key: 'peers',
+                icon: MdiIcons.lanConnect,
+                // The badge is the LIVE count and the line is both numbers: at a
+                // glance the question is "is my other device reachable right
+                // now", and the total is what makes a 0 mean something.
+                badge: '$connected',
+                // Nothing reaching anything is a true state worth showing — a
+                // peer dropping off is exactly when the operator looks — but it
+                // is not one to draw at full strength beside a live one.
+                muted: connected == 0,
+                text: context.t.settings.peers.statusPerma(connected: connected, linked: linked.length),
+                onTap: () {
+                  final navigatorContext = navigatorKey.currentContext;
+                  if (navigatorContext == null) {
+                    // Two gestures deep — the menu opened, an entry chosen — so
+                    // a silent no-op is the operator's action disappearing.
+                    debugPrint('[status-bar] no navigator for the peers status');
+                    return;
+                  }
+                  showPeersDialog(navigatorContext, widget.services);
+                },
+              ),
       if (_gatoEnabled) ...[
         for (final uuid in [widget.services.cat.radio1])
           if (uuid != null)
@@ -4846,6 +4879,10 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
         homeRail,
         // The open list's scrim stands down while a dialog is up — see it.
         modalBarrierIsVisible,
+        // Both halves of the peer status: the linked devices it counts against
+        // (this service caches them) and the live sessions the badge counts,
+        // which change on their own as a link comes up or drops.
+        widget.services.peerService,
         if (_gatoEnabled) widget.services.cat,
       ]),
       builder: (context, _) {

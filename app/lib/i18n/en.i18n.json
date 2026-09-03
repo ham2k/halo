@@ -1029,6 +1029,7 @@
       "bleProblem": "Bluetooth: ${error}",
       "statusConnected": "Connected to ${device}",
       "statusLost": "Lost connection to ${device}",
+      "statusPerma": "Peer Devices: ${connected} of ${linked} connected",
       "screenEnable": "Share screens and windows",
       "screenDescription": "Allow other devices to show screens or windows from this computer",
       "screenSources": "Screens and Windows",

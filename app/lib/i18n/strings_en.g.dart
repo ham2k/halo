@@ -3210,6 +3210,9 @@ class Translations$settings$peers$en {
 	/// en: 'Lost connection to ${device}'
 	String statusLost({required Object device}) => 'Lost connection to ${device}';
 
+	/// en: 'Peer Devices: ${connected} of ${linked} connected'
+	String statusPerma({required Object connected, required Object linked}) => 'Peer Devices: ${connected} of ${linked} connected';
+
 	/// en: 'Share screens and windows'
 	String get screenEnable => 'Share screens and windows';
 
@@ -6409,6 +6412,7 @@ extension on Translations {
 			'settings.peers.bleProblem' => ({required Object error}) => 'Bluetooth: ${error}',
 			'settings.peers.statusConnected' => ({required Object device}) => 'Connected to ${device}',
 			'settings.peers.statusLost' => ({required Object device}) => 'Lost connection to ${device}',
+			'settings.peers.statusPerma' => ({required Object connected, required Object linked}) => 'Peer Devices: ${connected} of ${linked} connected',
 			'settings.peers.screenEnable' => 'Share screens and windows',
 			'settings.peers.screenDescription' => 'Allow other devices to show screens or windows from this computer',
 			'settings.peers.screenSources' => 'Screens and Windows',
@@ -6611,9 +6615,9 @@ extension on Translations {
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
