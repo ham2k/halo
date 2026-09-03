@@ -58,6 +58,25 @@ add_subdirectory("runner")
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# A Release crash inside a plugin resolves in Sentry to the nearest exported
+# symbol unless that plugin ships a PDB, and MSVC emits the linked PDB only
+# when the LINKER gets /DEBUG -- /Zi alone leaves compiler-side PDBs that the
+# Windows release pipeline never finds. Without both, a frame in a plugin DLL
+# reads as <unknown>, and a native crash there can only be attributed by
+# elimination.
+#
+# Applied here rather than per plugin because most of them are pub-cache
+# packages we do not vendor, and generated_plugins.cmake is regenerated on
+# every build. FLUTTER_PLUGIN_LIST is what that file defines, so this covers
+# whatever the current plugin set happens to be.
+#
+# The release pipeline sweeps build/windows/x64 recursively for symbols, so
+# the PDBs upload with no pipeline change.
+foreach(plugin ${FLUTTER_PLUGIN_LIST})
+  target_compile_options(${plugin}_plugin PRIVATE $<$<CONFIG:Release>:/Zi>)
+  target_link_options(${plugin}_plugin PRIVATE $<$<CONFIG:Release>:/DEBUG>)
+endforeach(plugin)
+
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can
