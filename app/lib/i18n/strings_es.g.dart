@@ -1962,6 +1962,11 @@ class _Translations$settings$developer$es extends Translations$settings$develope
 	@override String noNewPatch({required Object track}) => 'No hay code push nuevo en «${track}».';
 	@override String get noPatchInstalled => 'No hay code push instalado — ejecutando el binario de la versión.';
 	@override String runningPatch({required Object patch}) => 'Ejecutando el code push #${patch}.';
+	@override String get deepLinks => 'Enlaces profundos';
+	@override String get registerUrlSchemes => 'Registrar esquemas de URL';
+	@override String get registerUrlSchemesDescription => 'Permite que los enlaces com.ham2k:// abran esta copia de la app';
+	@override String get registerUrlSchemesDone => 'Esta copia ahora responde a los enlaces com.ham2k://';
+	@override String registerUrlSchemesFailed({required Object error}) => 'No se pudo registrar: ${error}';
 	@override String get systemInformation => 'Información del sistema';
 	@override String get appVersion => 'Versión de la app';
 	@override String get dataFolder => 'Carpeta de datos';
@@ -3912,6 +3917,11 @@ extension on TranslationsEs {
 			'settings.developer.noNewPatch' => ({required Object track}) => 'No hay code push nuevo en «${track}».',
 			'settings.developer.noPatchInstalled' => 'No hay code push instalado — ejecutando el binario de la versión.',
 			'settings.developer.runningPatch' => ({required Object patch}) => 'Ejecutando el code push #${patch}.',
+			'settings.developer.deepLinks' => 'Enlaces profundos',
+			'settings.developer.registerUrlSchemes' => 'Registrar esquemas de URL',
+			'settings.developer.registerUrlSchemesDescription' => 'Permite que los enlaces com.ham2k:// abran esta copia de la app',
+			'settings.developer.registerUrlSchemesDone' => 'Esta copia ahora responde a los enlaces com.ham2k://',
+			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'No se pudo registrar: ${error}',
 			'settings.developer.systemInformation' => 'Información del sistema',
 			'settings.developer.appVersion' => 'Versión de la app',
 			'settings.developer.dataFolder' => 'Carpeta de datos',

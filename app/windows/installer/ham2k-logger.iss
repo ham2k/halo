@@ -157,6 +157,62 @@ Root: HKA; Subkey: "Software\Classes\{#ProgId}\DefaultIcon"; ValueType: string; 
 ; app as two arguments, neither of them a file.
 Root: HKA; Subkey: "Software\Classes\{#ProgId}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
 
+; --- URL schemes (HALO-178) ------------------------------------------------
+; The `com.ham2k*://` catalog `deep_link_service.dart` documents, and the same
+; list macOS registers in Info.plist's CFBundleURLTypes. Without these, Windows
+; hands a deep link to nobody: `app_links` needs an OS registration, and the
+; runner's own single-instance forwarding never gets the chance to run.
+;
+; A scheme has exactly ONE owner per user, so the SHARED ones (com.ham2k,
+; com.ham2k.logger, com.ham2k.polo and the two bare .auth spellings) go to
+; whichever edition installed last — the same "last one wins" the ProgID above
+; already lives with. The EDITION-SPECIFIC ones are unambiguous and stay with
+; their own install forever.
+;
+; The two are also uninstalled differently, which is the point of the split:
+; the edition-specific keys carry uninsdeletekey, while the shared ones are
+; removed in [Code] and ONLY when they still point at this install. Deleting
+; them unconditionally would mean uninstalling Dev silently unregisters every
+; deep link for a Prod install that is still sitting there working.
+; Shared — no uninsdeletekey; see UnregisterSharedSchemes in [Code].
+Root: HKA; Subkey: "Software\Classes\com.ham2k"; ValueType: string; ValueName: ""; ValueData: "URL:Ham2K"
+Root: HKA; Subkey: "Software\Classes\com.ham2k"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\com.ham2k\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\com.ham2k\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger"; ValueType: string; ValueName: ""; ValueData: "URL:Ham2K Logger"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.auth"; ValueType: string; ValueName: ""; ValueData: "URL:Ham2K Logger Sign-in"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.auth"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.auth\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.auth\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+
+; PoLo's own schemes, registered here for the same reason macOS does: HaLo
+; will eventually replace it, and a link written for PoLo should still land.
+Root: HKA; Subkey: "Software\Classes\com.ham2k.polo"; ValueType: string; ValueName: ""; ValueData: "URL:Ham2K Portable Logger"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.polo"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\com.ham2k.polo\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.polo\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+
+Root: HKA; Subkey: "Software\Classes\com.ham2k.polo.auth"; ValueType: string; ValueName: ""; ValueData: "URL:Ham2K Portable Logger Sign-in"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.polo.auth"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\com.ham2k.polo.auth\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.polo.auth\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+
+; Edition-specific — nobody else ever claims these, so they uninstall cleanly.
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}"; ValueType: string; ValueName: ""; ValueData: "URL:{#AppName}"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}.auth"; ValueType: string; ValueName: ""; ValueData: "URL:{#AppName} Sign-in"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}.auth"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}.auth\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}.auth\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+
 [Run]
 ; Offered at the end of the wizard — including the updater's run, which is an
 ; ordinary interactive install, so this is how the app comes back after an
@@ -169,10 +225,67 @@ Filename: "{app}\{#ExeName}"; Description: "{cm:LaunchProgram,{#AppName}}"; Flag
 // it. Skipped for a silent uninstall — the updater only ever INSTALLS over the
 // existing files, never uninstalls, so this only fires for an interactive
 // Settings > Apps run.
+// Removes a SHARED URL scheme, but only while it still points at this
+// install's exe (HALO-178).
+//
+// Shared schemes go to whichever edition installed last, so at uninstall time
+// this one may no longer be the owner: a machine with Dev and Prod where Prod
+// installed second has Prod holding com.ham2k://. Deleting it with Dev would
+// unregister every deep link for an install that is still there and working,
+// and nothing would report it — the links would simply stop opening anything.
+//
+// Comparing the command string is what makes that decidable: it names the
+// exe path, and {app} is per-edition.
+procedure UnregisterSharedSchemeIn(RootKey: Integer; Scheme: String);
+var
+  Key, Command, Ours: String;
+begin
+  Key := 'Software\Classes\' + Scheme;
+  Ours := ExpandConstant('"{app}\{#ExeName}" "%1"');
+  if RegQueryStringValue(RootKey, Key + '\shell\open\command', '', Command) then
+  begin
+    if CompareText(Command, Ours) = 0 then
+      RegDeleteKeyIncludingSubkeys(RootKey, Key);
+  end;
+end;
+
+// BOTH roots, every time, and neither is redundant.
+//
+// [Registry] writes under HKA, which is HKCU for the ordinary per-user install
+// and HKLM when the operator takes the all-users option that
+// PrivilegesRequiredOverridesAllowed leaves open — so cleaning only HKCU would
+// leave an all-users install's schemes pointing at a deleted exe.
+//
+// HKCU is then still worth checking on an all-users uninstall, because the
+// in-app "Register URL schemes" button always writes HKCU: a copy that used it
+// leaves per-user keys SHADOWING the machine ones, which outlive an uninstall
+// that only knew about HKLM.
+procedure UnregisterSharedScheme(Scheme: String);
+begin
+  UnregisterSharedSchemeIn(HKCU, Scheme);
+  if IsAdminInstallMode() then
+    UnregisterSharedSchemeIn(HKLM, Scheme);
+end;
+
+procedure UnregisterSharedSchemes();
+begin
+  UnregisterSharedScheme('com.ham2k');
+  UnregisterSharedScheme('com.ham2k.logger');
+  UnregisterSharedScheme('com.ham2k.logger.auth');
+  UnregisterSharedScheme('com.ham2k.polo');
+  UnregisterSharedScheme('com.ham2k.polo.auth');
+end;
+
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 var
   DataDir, SecureStorageDir: String;
 begin
+  // Unconditionally, and before the data prompt: a handler pointing at a
+  // deleted exe is a link that fails with nothing to explain it, whatever the
+  // operator decides about their logs. Silent uninstalls included.
+  if CurUninstallStep = usPostUninstall then
+    UnregisterSharedSchemes();
+
   if (CurUninstallStep = usPostUninstall) and not UninstallSilent then
   begin
     if MsgBox('Also delete your {#AppName} data - logged QSOs, settings, and your saved QRZ.com login? This cannot be undone.',

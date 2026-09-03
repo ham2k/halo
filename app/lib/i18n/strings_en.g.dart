@@ -4246,6 +4246,21 @@ class Translations$settings$developer$en {
 	/// en: 'Running code push #${patch}.'
 	String runningPatch({required Object patch}) => 'Running code push #${patch}.';
 
+	/// en: 'Deep links'
+	String get deepLinks => 'Deep links';
+
+	/// en: 'Register URL schemes'
+	String get registerUrlSchemes => 'Register URL schemes';
+
+	/// en: 'Let com.ham2k:// links open this copy of the app'
+	String get registerUrlSchemesDescription => 'Let com.ham2k:// links open this copy of the app';
+
+	/// en: 'This copy now answers com.ham2k:// links'
+	String get registerUrlSchemesDone => 'This copy now answers com.ham2k:// links';
+
+	/// en: 'Could not register: $error'
+	String registerUrlSchemesFailed({required Object error}) => 'Could not register: ${error}';
+
 	/// en: 'System Information'
 	String get systemInformation => 'System Information';
 
@@ -6897,6 +6912,11 @@ extension on Translations {
 			'settings.developer.noNewPatch' => ({required Object track}) => 'No new code push on "${track}".',
 			'settings.developer.noPatchInstalled' => 'No code push installed — running the release binary.',
 			'settings.developer.runningPatch' => ({required Object patch}) => 'Running code push #${patch}.',
+			'settings.developer.deepLinks' => 'Deep links',
+			'settings.developer.registerUrlSchemes' => 'Register URL schemes',
+			'settings.developer.registerUrlSchemesDescription' => 'Let com.ham2k:// links open this copy of the app',
+			'settings.developer.registerUrlSchemesDone' => 'This copy now answers com.ham2k:// links',
+			'settings.developer.registerUrlSchemesFailed' => ({required Object error}) => 'Could not register: ${error}',
 			'settings.developer.systemInformation' => 'System Information',
 			'settings.developer.appVersion' => 'App Version',
 			'settings.developer.dataFolder' => 'Data Folder',

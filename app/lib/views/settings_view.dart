@@ -7,6 +7,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 import 'dart:math';
 
 import 'package:crypto/crypto.dart';
@@ -27,6 +28,7 @@ import '../i18n/strings.g.dart';
 import '../main.dart';
 import 'panel_use_tracker.dart';
 import '../services/app_storage.dart';
+import '../services/windows_url_schemes.dart';
 import '../services/data_file_manager.dart';
 import '../services/deep_link_service.dart';
 import '../services/error_reporting_service.dart';
@@ -2734,6 +2736,27 @@ class _DeveloperPanel extends StatelessWidget {
                 ),
               ]),
             ],
+            // Portable and locally-built copies have no installer to write
+            // the URL-scheme keys, so deep links reach them only if the
+            // operator asks (HALO-178).
+            //
+            // Offered on every Windows build, installed ones included: there
+            // is no reliable way to tell a portable copy from an installed
+            // one, and the button is safe on both — it writes the same keys
+            // the installer would, and the uninstaller reclaims per-user
+            // keys even for an all-users install (see the .iss `[Code]`).
+            if (!kIsWeb && Platform.isWindows) ...[
+              SectionHeader(context.t.settings.developer.deepLinks),
+              _sectionBody(context, [
+                ListTile(
+                  leading: const Icon(MdiIcons.linkVariant),
+                  title: Text(context.t.settings.developer.registerUrlSchemes),
+                  subtitle: Text(context.t.settings.developer.registerUrlSchemesDescription),
+                  onTap: () => _registerWindowsUrlSchemes(context),
+                  mouseCursor: SystemMouseCursors.click,
+                ),
+              ]),
+            ],
             SectionHeader(context.t.settings.developer.systemInformation),
             _sectionBody(context, [
               _infoRow(context, context.t.settings.sync.deviceKey, settings.syncDeviceKey ?? context.t.settings.developer.loading),
@@ -2751,6 +2774,23 @@ class _DeveloperPanel extends StatelessWidget {
           ],
         );
       },
+    );
+  }
+
+  /// Points this build's URL schemes at itself, and says which way it went.
+  ///
+  /// The result is REPORTED rather than assumed: reg.exe is the one part of
+  /// this that can fail on a real machine (a locked-down policy, a redirected
+  /// hive), and a button that silently did nothing would leave the operator
+  /// clicking it again.
+  Future<void> _registerWindowsUrlSchemes(BuildContext context) async {
+    final error = await registerWindowsUrlSchemes(edition: kEdition.name);
+    if (!context.mounted) return;
+    services.statusBar.setMessage(
+      key: 'deep-link:register-schemes',
+      text: error == null
+          ? context.t.settings.developer.registerUrlSchemesDone
+          : context.t.settings.developer.registerUrlSchemesFailed(error: error),
     );
   }
 
