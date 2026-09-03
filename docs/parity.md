@@ -69,12 +69,14 @@ Legend: ⛔ missing entirely · 🟡 partial · 🧭 prerequisite work needed fi
   **`CHAT`**, **`RTFM`**, **`EXCUSE`**. (Note/todo/solar/weather, the
   SPOT/QRV/QRT/QSY family, band/mode/freq are done. `LANG`/`CROWDIN` and
   the debug commands are tracked under Developer tooling in §3.)
-- **Segment creation** ⛔ (unchanged): PoLo's `START`/`BREAK`/`STOP`/`END`
-  commands insert segment markers. HaLo's read path is complete — segment
-  rows render, `SegmentedOperation` scores, and `QsosRepository.addEvent`
-  exists — but `addEvent` still has **zero production callers** (tests
-  only): nothing in HaLo can create a segment; they arrive only from synced
-  PoLo logs.
+- **Segment creation** ✅ (HALO-108): `START`/`BREAK`/`STOP`(`END`) and
+  `ROVERQTH` (operation-commands → `HaLoServices._markSegment`) write the
+  same rows PoLo's commands do, with two deliberate differences: the
+  override REPLACES rather than accumulates (contests.md §5.1.3), and a local
+  edit of the operation's refs or location restamps the latest segment
+  (`OperationsRepository.onLocalSave`) instead of waiting for the next
+  BREAK to fix the previous one up. No UI yet for editing or deleting a
+  segment.
 - RST auto-expansion ✅ — closed by HALO-83 (per-mode configurable default,
   shown as a placeholder, shorthand completion).
 - **Log events** 🟡: note/todo/solar/weather rows are stored and rendered,
@@ -227,9 +229,7 @@ HaLo has, PoLo lacks: `DEVSTATUS`/`DEVPROGRESS` (status-bar exercisers),
 2. ~~**Call History lookup**~~ — done (HALO-304); no imported-ADIF-history
    half needed, per item 1.
 3. Deep links `/qso`, `/vfo`, `/operation` (WSJT-X bridge).
-4. Segment-creation commands (`START`/`BREAK`/`STOP`) — the scoring and
-   rendering halves already exist; this is the cheapest remaining ⛔ on the
-   list.
+4. ~~Segment-creation commands (`START`/`BREAK`/`STOP`)~~ — done (HALO-108).
 5. Consume the two remaining dead logging settings (fields-on-top, country
    flags) — they are already stored, surfaced and published; only the views
    are missing.

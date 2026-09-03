@@ -73,8 +73,22 @@ void main() {
     }
   });
 
-  test('with no operation open both say so rather than silently doing nothing', () async {
-    for (final input in ['OPER KI2D', 'POSITION 2']) {
+  test('START, BREAK, STOP and END answer with a markSegment action of their kind', () async {
+    Future<Map<String, dynamic>> segmentOf(String input) async =>
+        ((((await interpret(input))!['commands'] as List).single as Map)['markSegment'] as Map).cast<String, dynamic>();
+    expect(await segmentOf('START'), {'kind': 'start'});
+    expect(await segmentOf('BREAK'), {'kind': 'break'});
+    expect(await segmentOf('STOP'), {'kind': 'stop'});
+    // END is polo's alias, and writes the same `stop` row.
+    expect(await segmentOf('end'), {'kind': 'stop'});
+    // ROVERQTH is a break that goes on to ask for the new location.
+    expect(await segmentOf('ROVERQTH'), {'kind': 'break', 'setLocation': true});
+    // A longer word is a callsign.
+    expect(await interpret('STOPX'), isNull);
+  });
+
+  test('with no operation open every one of them says so rather than silently doing nothing', () async {
+    for (final input in ['OPER KI2D', 'POSITION 2', 'START', 'BREAK', 'STOP', 'ROVERQTH']) {
       final result = await interpret(input, withOperation: false);
       expect(result!['error'], isA<String>(), reason: input);
     }

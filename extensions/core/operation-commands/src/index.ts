@@ -6,14 +6,16 @@
 //   POSITION <n>            — this device's multi-station position, the `n`
 //                             in the `/OP<n>` its self-spots go out under
 //                             ("POSITION 2"); POSITION 0 clears it
-// Neither hook writes anything: they parse text into an `updateOperation`
-// action, and the app resolves which operation is open and sends the
-// operator callsign to the operation's shared data and the position to this
-// device's local data.
+//   START / BREAK / STOP    — segment markers on the log (END = STOP)
+//   ROVERQTH                — a rover moving: a break, then the operation's
+//                             Location screen, in one step
+// None of the hooks writes anything: they parse text into an
+// `updateOperation` or `markSegment` action, and the app resolves which
+// operation is open and does the writing.
 
 import { defineExtension } from "@ham2k/extension-sdk"
 import type { CommandCatalogEntry, CommandInterpretation, HookContext, JSONValue } from "@ham2k/extension-sdk"
-import { parseOperatorCommand, parsePositionCommand, positionValueFor } from "./operationCommandParsing.ts"
+import { parseOperatorCommand, parsePositionCommand, parseSegmentCommand, positionValueFor } from "./operationCommandParsing.ts"
 import { tFor } from "./i18n.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
@@ -85,10 +87,40 @@ const PositionCommand = {
   },
 }
 
+const SegmentCommand = {
+  async interpret(
+    { input, operation }: { input: string; operation?: Record<string, JSONValue> },
+    ctx: HookContext,
+  ): Promise<CommandInterpretation | null> {
+    const parsed = parseSegmentCommand(input)
+    if (!parsed) return null
+    const t = tFor(ctx)
+    if (!operation) return { error: t('needsOperation') }
+    const key = parsed.setLocation ? 'roverQth' : parsed.kind
+    return {
+      describe: t(`${key}`),
+      confirm: t(`${key}Confirm`),
+      commands: [{ markSegment: { kind: parsed.kind, ...(parsed.setLocation ? { setLocation: true } : {}) } }],
+    }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    const category = t('catalogCategory')
+    return [
+      { command: 'START', describe: t('catalogStart'), category, needsOperation: true },
+      { command: 'BREAK', describe: t('catalogBreak'), category, needsOperation: true },
+      { command: 'STOP', describe: t('catalogStop'), category, needsOperation: true },
+      { command: 'ROVERQTH', describe: t('catalogRoverQth'), category, needsOperation: true },
+    ]
+  },
+}
+
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
     registerHook('command', { key: 'operation-commands-operator', hook: OperatorCommand, priority: 100 })
     registerHook('command', { key: 'operation-commands-position', hook: PositionCommand, priority: 100 })
+    registerHook('command', { key: 'operation-commands-segment', hook: SegmentCommand, priority: 100 })
   },
 })

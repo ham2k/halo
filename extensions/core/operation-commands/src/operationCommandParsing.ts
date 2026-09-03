@@ -11,6 +11,22 @@
 
 const OPERATOR_MATCH = /^(OPER|OPERATOR)(?:[ /](.*))?$/i
 const POSITION_MATCH = /^POSITION(?:[ /](.*))?$/i
+const SEGMENT_MATCH = /^(START|BREAK|STOP|END|ROVERQTH)$/i
+
+export type SegmentKind = 'start' | 'break' | 'stop'
+
+/// The segment command the input names, or `null`. The whole word and nothing
+/// else, so a callsign that happens to start with one still logs normally.
+/// STOP and END are the same command; ROVERQTH is a break that goes on to
+/// ask for the new location.
+export function parseSegmentCommand(input: string): { kind: SegmentKind; setLocation: boolean } | null {
+  const match = SEGMENT_MATCH.exec(input.trim())
+  if (!match) return null
+  const word = match[1].toUpperCase()
+  if (word === 'ROVERQTH') return { kind: 'break', setLocation: true }
+  if (word === 'END') return { kind: 'stop', setLocation: false }
+  return { kind: word.toLowerCase() as SegmentKind, setLocation: false }
+}
 
 /// `null` when the input is not an OPER command at all; `{ call: '' }` when
 /// the word was typed with nothing after it — a recognized command that

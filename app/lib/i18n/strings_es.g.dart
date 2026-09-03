@@ -465,9 +465,6 @@ class _Translations$qsoList$es extends Translations$qsoList$en {
 	@override String get today => 'Hoy';
 	@override String get yesterday => 'Ayer';
 	@override String get tomorrow => 'Mañana';
-	@override String get eventStarted => 'Operación iniciada';
-	@override String get eventBreak => 'Descanso';
-	@override String get eventEnded => 'Operación finalizada';
 }
 
 // Path: loggingPanel
@@ -568,6 +565,9 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String get fullResyncStarted => 'Resincronización completa iniciada — los datos locales se respaldaron primero.';
 	@override String noDataFilesMatched({required Object target}) => 'Ningún archivo de datos coincide con «${target}».';
 	@override String get noOperationOpen => 'Ese comando necesita una operación abierta';
+	@override String unknownSegmentKind({required Object kind}) => 'No sé cómo marcar un \'${kind}\'';
+	@override String get operationAlreadyStarted => 'Esta operación ya tiene una marca de inicio';
+	@override String get couldNotOpenLocation => 'Se agregó la pausa, pero no se pudo abrir la pantalla de ubicación';
 	@override String reloadFailed({required Object error}) => 'Error al recargar: ${error}';
 	@override String get reloadingAll => 'Recargando todos los archivos de datos…';
 	@override String reloadingTarget({required Object target}) => 'Recargando archivos de datos de ${target}…';
@@ -3307,9 +3307,6 @@ extension on TranslationsEs {
 			'qsoList.today' => 'Hoy',
 			'qsoList.yesterday' => 'Ayer',
 			'qsoList.tomorrow' => 'Mañana',
-			'qsoList.eventStarted' => 'Operación iniciada',
-			'qsoList.eventBreak' => 'Descanso',
-			'qsoList.eventEnded' => 'Operación finalizada',
 			'loggingPanel.stats' => 'Estadísticas de la Operación',
 			'loggingPanel.scoring' => 'Puntuación',
 			'loggingPanel.dxccEntities' => 'Entidades DXCC',
@@ -3700,11 +3697,11 @@ extension on TranslationsEs {
 			'settings.station.ft891Troubleshooting' => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.yaesuTroubleshooting' => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.kenwoodTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.kenwoodTroubleshooting' => 'Este controlador está probado con una QRP Labs QMX, pero ninguna radio de marca Kenwood le ha respondido nunca: el protocolo está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Elecraft (K3, KX2, KX3) y varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
 			'settings.station.statusConnected' => 'Conectado',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.currentConfiguration' => 'Configuración actual',
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
@@ -3890,6 +3887,9 @@ extension on TranslationsEs {
 			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'Ningún archivo de datos coincide con «${target}».',
 			'commands.noOperationOpen' => 'Ese comando necesita una operación abierta',
+			'commands.unknownSegmentKind' => ({required Object kind}) => 'No sé cómo marcar un \'${kind}\'',
+			'commands.operationAlreadyStarted' => 'Esta operación ya tiene una marca de inicio',
+			'commands.couldNotOpenLocation' => 'Se agregó la pausa, pero no se pudo abrir la pantalla de ubicación',
 			'commands.reloadFailed' => ({required Object error}) => 'Error al recargar: ${error}',
 			'commands.reloadingAll' => 'Recargando todos los archivos de datos…',
 			'commands.reloadingTarget' => ({required Object target}) => 'Recargando archivos de datos de ${target}…',

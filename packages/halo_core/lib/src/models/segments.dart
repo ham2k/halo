@@ -21,7 +21,35 @@
 // 5000-QSO log — so this stays a short list and a binary search rather than
 // 5000 copies of an operation.
 
+import 'dart:convert';
+
 import 'models.dart';
+
+/// What a `start`/`break` row restates about the operation — polo's
+/// `captureOperationParameters`, plus the location keys HaLo carries
+/// (docs/design/locations.md: a grid without a coordinate must clear the
+/// pair, so `lat`/`lon` travel with `grid`).
+const segmentOverrideKeys = ['refs', 'grid', 'gridSource', 'lat', 'lon', 'state', 'county'];
+
+/// The override a new segment row carries for [operationData]. Every key is
+/// present, absent ones as explicit nulls: a segment is a complete statement
+/// of what was true, and an omitted key would fall back to the base
+/// operation — which is exactly what a stretch "with a grid but no exact
+/// fix" must not do.
+Map<String, dynamic> segmentOverrideOf(Map<String, dynamic> operationData) => {
+      for (final key in segmentOverrideKeys) key: operationData[key],
+    };
+
+/// Whether an edit from [before] to [after] changes anything a segment
+/// restates — the test for whether the latest segment has to follow it.
+bool segmentOverrideDiffers(Map<String, dynamic> before, Map<String, dynamic> after) =>
+    jsonEncode(segmentOverrideOf(before)) != jsonEncode(segmentOverrideOf(after));
+
+/// Whether an event row of [kind] opens a segment. `stop` (polo's kind for
+/// the operation's end; `end` in older rows) closes the operation, so any
+/// override it carries is ignored here — treating a stop as a boundary would
+/// strand every QSO logged after it with no refs at all.
+bool eventKindOpensSegment(String? kind) => kind == 'break' || kind == 'start';
 
 /// One stretch of a log, and the operation that was true for it.
 class OperationSegment {
@@ -65,7 +93,7 @@ class SegmentedOperation {
   }) {
     final overrides = [
       for (final qso in qsos)
-        if (qso.isEvent && !qso.deleted && _definesSegment(qso.eventKind))
+        if (qso.isEvent && !qso.deleted && eventKindOpensSegment(qso.eventKind))
           if (qso.event?['operation'] case final Map<String, dynamic> override)
             (at: qso.startAtMillis ?? 0, override: override),
     ]..sort((a, b) => a.at.compareTo(b.at));
@@ -86,11 +114,6 @@ class SegmentedOperation {
     }
     return SegmentedOperation._(segments);
   }
-
-  /// `break` and `start` open a segment. `end` closes the operation and
-  /// carries no override — treating it as a boundary would strand any QSO
-  /// logged after it with no refs at all.
-  static bool _definesSegment(String? kind) => kind == 'break' || kind == 'start';
 
   /// Whether this operation has any segment overrides at all. Callers use it
   /// to skip segment-aware work entirely on the common single-segment log.

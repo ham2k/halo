@@ -6896,6 +6896,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           ...(map['updateOperation'] as Map).cast<String, dynamic>(),
           'uuid': widget.operation.uuid,
         });
+      } else if (map['markSegment'] is Map) {
+        // Same shape as updateOperation: this widget names the open
+        // operation, the app writes the event rows (and opens the location
+        // screen for ROVERQTH).
+        await widget.onCommandAction?.call('markSegment', {
+          ...(map['markSegment'] as Map).cast<String, dynamic>(),
+          'uuid': widget.operation.uuid,
+        });
       } else if (map['setPower'] is Map) {
         // No QSO-scoped widget state of its own — same dispatch shape as
         // updateSetting/openSettings above, straight through to the app layer.

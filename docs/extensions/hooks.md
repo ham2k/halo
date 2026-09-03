@@ -722,7 +722,7 @@ interface CommandHook {
 // CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, expectsParams?, suggest?}
 // CommandAction (closed set): {setVfo?, setPower?, updateQso?, addQso?,
 //   sendSpots?, syncAll?, updateSettings?, updateSetting?, openSettings?,
-//   updateOperation?, setCallField?, reloadDataFiles?, devNotice?, devStatus?,
+//   updateOperation?, markSegment?, setCallField?, reloadDataFiles?, devNotice?, devStatus?,
 //   devProgress?, devHammer?, devSplash?, devOnboard?, devTester?, devPopup?,
 //   devTimeTravel?, toggleExperiment?}
 ```

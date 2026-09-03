@@ -752,10 +752,7 @@
     "bandOrModeWarning": "Verifica que tu banda y modo sean correctos",
     "today": "Hoy",
     "yesterday": "Ayer",
-    "tomorrow": "Mañana",
-    "eventStarted": "Operación iniciada",
-    "eventBreak": "Descanso",
-    "eventEnded": "Operación finalizada"
+    "tomorrow": "Mañana"
   },
   "loggingPanel": {
     "stats": "Estadísticas de la Operación",
@@ -1469,6 +1466,9 @@
     "fullResyncStarted": "Resincronización completa iniciada — los datos locales se respaldaron primero.",
     "noDataFilesMatched": "Ningún archivo de datos coincide con «${target}».",
     "noOperationOpen": "Ese comando necesita una operación abierta",
+    "unknownSegmentKind": "No sé cómo marcar un '${kind}'",
+    "operationAlreadyStarted": "Esta operación ya tiene una marca de inicio",
+    "couldNotOpenLocation": "Se agregó la pausa, pero no se pudo abrir la pantalla de ubicación",
     "reloadFailed": "Error al recargar: ${error}",
     "reloadingAll": "Recargando todos los archivos de datos…",
     "reloadingTarget": "Recargando archivos de datos de ${target}…",

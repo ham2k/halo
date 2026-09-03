@@ -62,11 +62,31 @@ class OperationTitleService {
   /// user picks activities and only reach the database on Save. `null` when
   /// the extension runtime isn't up (nothing could be suggested).
   Future<OperationTitleFragments?> suggestFragments(Operation operation) async {
+    final result = await suggestForRefs(operation);
+    if (result == null) return null;
+    return mergeOperationTitleSuggestions(result.suggestions);
+  }
+
+  /// One suggestion per ref that answered, in ref order — the unmerged form
+  /// a segment row's description is composed from (polo's
+  /// `describeOperation` phrases each ref separately). `null` when the
+  /// extension runtime isn't up at all.
+  ///
+  /// [RefTitleSuggestions.complete] separates a ref that answered with
+  /// NOTHING from one that could not be asked. Plenty of ref types
+  /// legitimately offer no title (`ref:satellite` registers no
+  /// `suggestOperationTitle`, and the SDK's own handler declines a
+  /// half-entered reference), so counting those as failures would keep a
+  /// caller that persists what it composed — a segment row's description —
+  /// from ever writing one. Only a hook that THREW or timed out clears the
+  /// flag: that phrase is missing from an otherwise complete sentence, and
+  /// nothing recomposes it later.
+  Future<RefTitleSuggestions?> suggestForRefs(Operation operation) async {
     final host = extensions.host;
     if (host == null) return null;
 
     final refs = operation.refs;
-    if (refs.isEmpty) return const OperationTitleFragments();
+    if (refs.isEmpty) return const RefTitleSuggestions(suggestions: [], complete: true);
 
     final operationPayload = {...operation.data, 'uuid': operation.uuid};
 
@@ -74,6 +94,7 @@ class OperationTitleService {
     // multi-ref operation shouldn't pay the SUM of each ref's hook latency
     // when the MAX is all that's needed (each ref's suggestion is
     // independent of the others).
+    var complete = true;
     final results = await Future.wait(refs.map((ref) async {
       final type = ref['type'] as String?;
       if (type == null) return null;
@@ -94,10 +115,26 @@ class OperationTitleService {
         );
       } catch (e) {
         debugPrint('[operationTitle] suggestOperationTitle failed for ref:$type: $e');
+        complete = false;
         return null;
       }
     }));
 
-    return mergeOperationTitleSuggestions(results.whereType<OperationTitleSuggestion>());
+    return RefTitleSuggestions(
+      suggestions: results.whereType<OperationTitleSuggestion>().toList(),
+      complete: complete,
+    );
   }
+}
+
+/// What every ref that HAS a title to offer said, and whether each ref was
+/// actually reached — see [OperationTitleService.suggestForRefs].
+class RefTitleSuggestions {
+  final List<OperationTitleSuggestion> suggestions;
+
+  /// False when a `suggestOperationTitle` hook threw or timed out, so a
+  /// phrase is missing rather than absent by choice.
+  final bool complete;
+
+  const RefTitleSuggestions({required this.suggestions, required this.complete});
 }

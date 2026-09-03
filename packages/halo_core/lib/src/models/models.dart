@@ -346,6 +346,7 @@ class Qso {
 
   Map<String, dynamic>? get event => asQsonMap(data['event']);
 
-  /// The event's kind, e.g. `'start'`, `'break'`, `'end'`. Null for real QSOs.
+  /// The event's kind, e.g. `'start'`, `'break'`, `'stop'` (`'end'` in older
+  /// rows). Null for real QSOs.
   String? get eventKind => asQsonString(event?['event']);
 }

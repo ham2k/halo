@@ -752,10 +752,7 @@
     "bandOrModeWarning": "Please make sure your band and mode are correct",
     "today": "Today",
     "yesterday": "Yesterday",
-    "tomorrow": "Tomorrow",
-    "eventStarted": "Operation started",
-    "eventBreak": "Break",
-    "eventEnded": "Operation ended"
+    "tomorrow": "Tomorrow"
   },
   "loggingPanel": {
     "stats": "Operation Stats",
@@ -1485,6 +1482,9 @@
     "sentryTestSent": "Test error report sent to Sentry",
     "sentryTestLocalOnly": "Sentry is disabled in this build — test error logged locally only",
     "noOperationOpen": "That command needs an open operation",
+    "unknownSegmentKind": "Don't know how to mark a '${kind}'",
+    "operationAlreadyStarted": "This operation already has a start marker",
+    "couldNotOpenLocation": "Added the break, but could not open the location screen",
     "noTestOperations": "No Test Operations to purge",
     "purgeTestsUnavailable": "PURGETESTS needs to show a confirmation dialog, which isn't available here",
     "syncAllUnavailable": "SYNCALL needs to show a confirmation dialog, which isn't available here",

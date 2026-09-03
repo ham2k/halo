@@ -10,7 +10,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { parseOperatorCommand, parsePositionCommand, positionValueFor } from "./operationCommandParsing.ts"
+import { parseOperatorCommand, parsePositionCommand, parseSegmentCommand, positionValueFor } from "./operationCommandParsing.ts"
 
 test("parseOperatorCommand: OPER and the longer OPERATOR both take a callsign", () => {
   assert.deepEqual(parseOperatorCommand("OPER KI2D"), { call: "KI2D" })
@@ -64,6 +64,23 @@ test("parsePositionCommand: a number too long to be a position is refused, not c
 test("parsePositionCommand: unrelated input doesn't match", () => {
   assert.equal(parsePositionCommand("POS 2"), null)
   assert.equal(parsePositionCommand("K1ABC"), null)
+})
+
+test("parseSegmentCommand: each word names its segment kind", () => {
+  assert.deepEqual(parseSegmentCommand("START"), { kind: 'start', setLocation: false })
+  assert.deepEqual(parseSegmentCommand("BREAK"), { kind: 'break', setLocation: false })
+  assert.deepEqual(parseSegmentCommand("STOP"), { kind: 'stop', setLocation: false })
+  // END is polo's alias for STOP, and writes the same `stop` row.
+  assert.deepEqual(parseSegmentCommand("END"), { kind: 'stop', setLocation: false })
+  assert.deepEqual(parseSegmentCommand("roverqth"), { kind: 'break', setLocation: true })
+})
+
+test("parseSegmentCommand: the whole word and nothing longer", () => {
+  // A prefix match would swallow a callsign that starts with the word.
+  assert.equal(parseSegmentCommand("ROVERQTH1"), null)
+  assert.equal(parseSegmentCommand("STOPX"), null)
+  assert.equal(parseSegmentCommand("ROVER"), null)
+  assert.equal(parseSegmentCommand(""), null)
 })
 
 test("positionValueFor: 0 means no position, which is how a typed command undoes one", () => {

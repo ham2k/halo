@@ -21,6 +21,7 @@ import '../dev_log.dart';
 import '../models/models.dart';
 import '../models/operation_operator.dart';
 import '../models/qso_merge.dart';
+import '../models/segments.dart';
 import '../models/qson_values.dart';
 import 'write_policy.dart';
 
@@ -120,7 +121,16 @@ class OperationsRepository {
   /// engine's type.
   final void Function()? onChange;
 
-  OperationsRepository(this.db, {this.onChange});
+  /// Runs after every LOCAL data write ([saveData]) with the stored row as
+  /// it was and the operation as saved. The segments model needs it: a
+  /// `break`/`start` override replaces the base rather than tracking it, so
+  /// an edit to what the latest segment restates (refs, location) has to be
+  /// written onto that segment too, or the current stretch keeps the values
+  /// from before the edit. Sync-received revisions go through
+  /// `mergeFromSync` and never reach this — they carry their own event rows.
+  final Future<void> Function(Operation? before, Operation after)? onLocalSave;
+
+  OperationsRepository(this.db, {this.onChange, this.onLocalSave});
 
   /// Creating is never refused while the clock is travelled — the station call
   /// is marked instead, by [markedForTravel]. A refusal here would be
@@ -229,7 +239,15 @@ class OperationsRepository {
       );
     }
     await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(companion);
-    onChange?.call();
+    // The row is already committed, so the change HAS to be announced —
+    // without this, a throw out of the callback leaves the edit saved and
+    // both the sync engine and the peer outbox unaware of it until some
+    // later, unrelated write happens to wake them.
+    try {
+      await onLocalSave?.call(existing, Operation(uuid: operation.uuid, data: data));
+    } finally {
+      onChange?.call();
+    }
   }
 
   Future<void> softDelete(String uuid) => _writeDeleted(uuid, purged: false);
@@ -1068,16 +1086,28 @@ class QsosRepository {
   /// §5.1.3). It is a complete statement, not a diff: attributes it omits fall
   /// back to the base operation, never to the previous segment, so whatever
   /// calls this is responsible for restating anything meant to persist.
+  /// [description] is what the row shows in the list ("for ARRL 10G Sep •
+  /// at FN20rm"), composed by the caller from the override. Stored rather
+  /// than composed at render — a deliberate divergence from polo, whose
+  /// `EventSegmentItem` recomposes per frame: naming a reference here means
+  /// an async hook call per ref, which a list row cannot make. Null when the
+  /// caller could not compose one; the row then renders what it can from
+  /// the override itself.
   Future<Qso> addEvent(
     String operationUuid, {
     required String kind,
     required int atMillis,
     Map<String, dynamic>? operation,
+    String? description,
   }) {
     return add(operationUuid, {
       'band': 'event',
       'startAtMillis': atMillis,
-      'event': {'event': kind, if (operation != null) 'operation': operation},
+      'event': {
+        'event': kind,
+        if (operation != null) 'operation': operation,
+        if (description != null) 'description': description,
+      },
     });
   }
 
@@ -1573,12 +1603,92 @@ class QsosRepository {
   }
 
   Stream<List<Qso>> watchForOperation(String operationUuid, {bool includeDeleted = false}) {
-    final query = (db.select(db.qsos)
+    return _forOperationQuery(operationUuid, includeDeleted: includeDeleted).watch().asyncMap(_qsosFromRows);
+  }
+
+  /// The same rows as [watchForOperation], read once. For a one-off read
+  /// (a command that needs the log as it stands), not `watchForOperation(...)
+  /// .first`: a drift stream's first value never arrives inside a widget
+  /// test's fake-async zone, so a caller awaiting it there hangs.
+  Future<List<Qso>> forOperation(String operationUuid, {bool includeDeleted = false}) async {
+    return _qsosFromRows(await _forOperationQuery(operationUuid, includeDeleted: includeDeleted).get());
+  }
+
+  /// Rewrites the override on the operation's latest `start`/`break` row to
+  /// [override], so the current stretch follows an edit to the operation
+  /// (see `OperationsRepository.onLocalSave`). No segment, or one already
+  /// stating this: no write — a restamp is a revision every other device
+  /// receives, and a no-op one is churn on the sync. Returns whether a row
+  /// was written.
+  ///
+  /// [describe] is called ONLY once a row is going to be written: composing
+  /// a description is an extension fan-out, too expensive to pay on an
+  /// unsegmented log's every save.
+  ///
+  /// A null result CLEARS the stored description rather than keeping it.
+  /// Reaching here means the override is changing, so the old line describes
+  /// a location or a reference set the row no longer states — keeping it
+  /// would leave the row reading "at FN20rm" beside an override that says
+  /// FN31, and sync that contradiction to every device. Cleared, the row
+  /// falls back to what its own override can say (`EventRow`).
+  Future<bool> restampLatestSegment(
+    String operationUuid,
+    Map<String, dynamic> override, {
+    Future<String?> Function()? describe,
+  }) async {
+    Qso? latest;
+    for (final row in await eventsForOperation(operationUuid)) {
+      if (eventKindOpensSegment(row.eventKind)) latest = row;
+    }
+    if (latest == null) return false;
+    final event = latest.event ?? const <String, dynamic>{};
+    if (jsonEncode(event['operation']) == jsonEncode(override)) return false;
+    final description = await describe?.call();
+    await update(Qso(
+      uuid: latest.uuid,
+      operationUuid: latest.operationUuid,
+      data: {
+        ...latest.data,
+        'event': {
+          ...event,
+          'operation': override,
+          'description': description,
+        }..removeWhere((key, value) => key == 'description' && value == null),
+      },
+    ));
+    return true;
+  }
+
+  /// Just the operation's event rows (`band = 'event'` — see [Qso.isEvent]),
+  /// oldest first. What the segment writers and [restampLatestSegment] read:
+  /// decoding a whole 5000-QSO log to find a handful of markers is a cost
+  /// paid on every local operation save.
+  Future<List<Qso>> eventsForOperation(String operationUuid) async {
+    final query = db.select(db.qsos)
+      ..where((q) => q.operation.equals(operationUuid) & q.deleted.equals(false) & q.band.equals('event'))
+      ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]);
+    return _qsosFromRows(await query.get());
+  }
+
+  /// When the operation's earliest real contact was, or null for a log with
+  /// none — where a `start` marker goes (just before it). In SQL rather than
+  /// over a decoded list, for the same reason as [eventsForOperation].
+  Future<int?> firstContactMillis(String operationUuid) async {
+    final min = db.qsos.startAtMillis.min();
+    final query = db.selectOnly(db.qsos)
+      ..addColumns([min])
+      ..where(db.qsos.operation.equals(operationUuid) &
+          db.qsos.deleted.equals(false) &
+          db.qsos.band.equals('event').not());
+    return (await query.getSingleOrNull())?.read(min);
+  }
+
+  SimpleSelectStatement<$QsosTable, QsoRow> _forOperationQuery(String operationUuid, {required bool includeDeleted}) {
+    return db.select(db.qsos)
       ..where((q) => includeDeleted
           ? q.operation.equals(operationUuid)
           : q.operation.equals(operationUuid) & q.deleted.equals(false))
-      ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]));
-    return query.watch().asyncMap(_qsosFromRows);
+      ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]);
   }
 
   /// Every non-deleted, non-event QSO with [call] across every operation, most

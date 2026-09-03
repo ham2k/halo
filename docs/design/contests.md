@@ -466,10 +466,39 @@ into each of them by whatever creates them, which is a UI concern.
 This is a deliberate divergence from app-polo, which accumulates
 (`operation = {...operation, ...qso.event.operation}`, `qsonToADIF.js:89-99`).
 
-**Deliberately not in this milestone:** any UI for creating or editing a
-segment. The data path and `addEvent` make one reachable and testable, but
-choosing where that lives in the operation sheet is a separate design question,
-and bundling it would make this milestone unreviewable.
+**Creating one.** The `START`/`BREAK`/`STOP`/`ROVERQTH` commands
+(operation-commands → `HaLoServices._markSegment`) are the writers. A row's
+override is `segmentOverrideOf` (halo_core `segments.dart`): refs plus the
+location keys (`grid`, `gridSource`, `lat`, `lon`, `state`, `county`), absent
+ones as explicit nulls, so it is the complete statement the paragraph above
+requires. A log getting its first `break` also gets a `start` at its top
+holding what the contacts so far were made under — otherwise, the moment the
+base moves, they would all silently move with it. `stop` (polo's kind, and
+`end` in older rows) closes the operation and opens nothing.
+
+A row also carries `event.description` — what the QSO list shows for it, one
+phrase per reference and then the square ("for ARRL 10G Sep • at US-1000 • at
+FN20rm", `app/lib/tools/operation_title.dart`'s `segmentDescriptionFor`).
+**Stored on the row, a deliberate divergence from polo**, whose
+`EventSegmentItem` recomposes the line every frame: naming a reference means
+an async `suggestOperationTitle` call per ref here, which a list row cannot
+make. Two rules follow from persisting it. A description that could not be
+composed IN FULL — the extension runtime down, a hook that threw or timed out
+— is never written, or a restamp would replace a good line with a truncated
+one and nothing would ever recompose it. And a row without one falls back to
+its override's own square, which is on the row and needs no hook; a segment
+with neither shows its mark alone, since the list has no wording of its own.
+
+**And the latest segment follows the operation.** Because overrides replace
+rather than track, an edit to the operation's refs or location after a break
+would leave the current stretch on the break's old values. So every local
+`saveData` that changes what a segment restates rewrites the latest
+`start`/`break` override to match (`OperationsRepository.onLocalSave` →
+`QsosRepository.restampLatestSegment`). That is the mechanism ROVERQTH rides
+on: it writes the break, opens the Location screen, and saves what comes back
+onto the operation; the restamp carries it onto the break. Sync-received
+revisions never restamp — they arrive with their own event rows. There is no
+UI for editing or deleting a segment yet.
 
 ### 5.1.4 Segments and exports — one export per REFERENCE
 

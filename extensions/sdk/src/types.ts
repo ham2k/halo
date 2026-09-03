@@ -1140,6 +1140,16 @@ export interface CommandAction {
   /// `operation.local.operatorCall`); the app resolves it for this device's
   /// position first, so a hook never has to know which seat it is in.
   updateOperation?: { operatorCall?: string; multiIdentifier?: string }
+  /// START / BREAK / STOP / ROVERQTH (`operation-commands`): marks a segment
+  /// boundary on the OPEN operation (docs/design/contests.md §5.1.3). `start`
+  /// is REFUSED when the log already has one, rather than moving it; `break`
+  /// first adds the missing
+  /// `start` at the top of the log, so the contacts already made keep what
+  /// was true for them; `stop` moves an existing stop row to now rather than
+  /// adding a second. `setLocation` (ROVERQTH) then opens the operation's
+  /// Location screen, and what it returns becomes the operation's and the
+  /// new segment's. The app supplies the operation's `uuid`.
+  markSegment?: { kind: 'start' | 'break' | 'stop'; setLocation?: boolean }
   /// Replaces the call field's entire text, cursor at the end — the
   /// call-notes extension's `//KEY` note expansion. The new text runs
   /// through the same change path as typing, so lookups, dupe checks and

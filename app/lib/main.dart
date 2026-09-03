@@ -31,9 +31,11 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 
+import 'tools/operation_title.dart';
 import 'views/command_dialog.dart';
 import 'views/confirm_device_dialog.dart';
 import 'views/operation_dialogs.dart';
+import 'views/operation/operation_location_screen.dart';
 import 'views/operation_view.dart';
 import 'views/home_navigation_rail.dart';
 import 'views/home_view.dart';
@@ -1506,7 +1508,25 @@ class HaLoServices {
     peerOutbox.notifyChanged();
   }
 
-  late final OperationsRepository operations = OperationsRepository(db, onChange: _onLocalWrite);
+  late final OperationsRepository operations = OperationsRepository(
+    db,
+    onChange: _onLocalWrite,
+    // The latest segment follows a local edit to what it restates: a rover
+    // who sets a new square through the Location screen after a BREAK would
+    // otherwise keep scoring from the break's old one (contests.md §5.1.3).
+    onLocalSave: (before, after) async {
+      if (before != null && !segmentOverrideDiffers(before.data, after.data)) return;
+      final override = segmentOverrideOf(after.data);
+      // The description is composed only once a row is actually going to be
+      // written: it fans out to an extension hook per ref, and an
+      // unsegmented log (the common case) must not pay that on every save.
+      await qsos.restampLatestSegment(
+        after.uuid,
+        override,
+        describe: () => segmentDescription(after, override),
+      );
+    },
+  );
   late final SequencesRepository sequences = SequencesRepository(db);
   late final QsosRepository qsos = QsosRepository(db, onChange: _onLocalWrite, sequences: sequences);
 
@@ -2855,6 +2875,8 @@ class HaLoServices {
         return rejected == null ? null : (text: rejected, failed: true);
       case 'updateOperation':
         return _updateOperation(params ?? const {});
+      case 'markSegment':
+        return _markSegment(params ?? const {});
       case 'setPower':
         // POWER command (e.g. "5W" typed into the call field): the same
         // write the Station Configuration Power field and the Power logging
@@ -2924,6 +2946,136 @@ class HaLoServices {
         await operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, key: operatorCall}));
       }
     }
+    return null;
+  }
+
+  /// What a segment row says in the list — polo's `describeOperation`: each
+  /// ref's title fragments, then "at <grid>", joined with " • " ("for ARRL
+  /// 10G Sep • POTA: US-1000 • at FN21rm"). Stored on the row rather than
+  /// composed at render, so a synced row reads the same on a device without
+  /// the extension that named the ref.
+  /// Null when the references could not all be asked — the runtime is down,
+  /// or a hook threw. A truncated phrase must not be PERSISTED as though it
+  /// were the whole truth: it would replace a good description on a restamp,
+  /// and no later pass recomposes it. The row falls back to what it can
+  /// render from its own override instead (`EventRow`).
+  Future<String?> segmentDescription(Operation operation, Map<String, dynamic> override) async {
+    final resolved = Operation(uuid: operation.uuid, data: {...operation.data, ...override});
+    final result = await operationTitles.suggestForRefs(resolved);
+    if (result == null || !result.complete) return null;
+    return segmentDescriptionFor(t, result.suggestions, resolved.displayGrid);
+  }
+
+  /// START / BREAK / STOP / ROVERQTH: writes the segment boundary the scoring
+  /// model reads (docs/design/contests.md §5.1.3). A `break` row states what
+  /// is true for the stretch that FOLLOWS it, and the base operation is only
+  /// a default under the segments, not an accumulator — so a log getting its
+  /// first break also gets a `start` at its top holding what the contacts so
+  /// far were made under; otherwise, the moment the base moves, they would
+  /// all silently move with it. `stop` moves an existing stop row to now
+  /// rather than stacking a second one, as polo does.
+  ///
+  /// With `setLocation` (ROVERQTH) the Location screen opens afterwards, and
+  /// what it returns is saved onto the operation; `onLocalSave` then restamps
+  /// the break just written, which is how the new stretch resolves to the
+  /// new square. A cancelled screen leaves a break restating the old
+  /// location, which scores exactly as before.
+  ///
+  /// Returns null on success — the hook's own `confirm` already told the
+  /// operator what is happening, as `updateOperation` does.
+  Future<CommandActionOutcome?> _markSegment(Map<String, dynamic> params) async {
+    final kind = asQsonString(params['kind']);
+    if (kind != 'start' && kind != 'break' && kind != 'stop') {
+      // Only a malformed extension action reaches this, so it must name the
+      // real fault rather than borrow the no-operation message.
+      return (text: t.commands.unknownSegmentKind(kind: kind ?? ''), failed: true);
+    }
+    final uuid = asQsonString(params['uuid']) ?? '';
+    final operation = uuid.isEmpty ? null : await operations.get(uuid);
+    if (operation == null) return (text: t.commands.noOperationOpen, failed: true);
+
+    // Event rows only: the whole log would be decoded to read a handful of
+    // them, and the one thing needed from the contacts is the earliest time.
+    final events = await qsos.eventsForOperation(operation.uuid);
+    final override = segmentOverrideOf(operation.data);
+    final description = await segmentDescription(operation, override);
+    final hasStart = events.any((q) => q.eventKind == 'start');
+    final hasSegment = events.any((q) => eventKindOpensSegment(q.eventKind));
+
+    Future<void> addStart() async {
+      final firstAt = await qsos.firstContactMillis(operation.uuid);
+      await qsos.addEvent(
+        operation.uuid,
+        kind: 'start',
+        atMillis: firstAt == null ? nowMillis() : firstAt - 1000,
+        operation: override,
+        description: description,
+      );
+    }
+
+    switch (kind) {
+      case 'start':
+        // Reported, not silent: the operator asked to mark the start NOW,
+        // and the row that exists sits at the top of the log with an older
+        // timestamp. A bare success would read as though it had moved.
+        if (hasStart) return (text: t.commands.operationAlreadyStarted, failed: true);
+        await addStart();
+      case 'break':
+        if (!hasSegment) await addStart();
+        await qsos.addEvent(operation.uuid, kind: 'break', atMillis: nowMillis(), operation: override, description: description);
+      case 'stop':
+        Qso? previous;
+        for (final q in events) {
+          if (q.eventKind == 'stop') previous = q;
+        }
+        if (previous == null) {
+          await qsos.addEvent(operation.uuid, kind: 'stop', atMillis: nowMillis(), operation: override, description: description);
+        } else {
+          await qsos.update(Qso(
+            uuid: previous.uuid,
+            operationUuid: previous.operationUuid,
+            data: {
+              ...previous.data,
+              'startAtMillis': nowMillis(),
+              // The override is being restated, so a description that
+              // could not be composed in full is CLEARED rather than kept:
+              // the old line would describe the stretch this row no longer
+              // states (see [segmentDescription]).
+              'event': {
+                ...?previous.event,
+                'operation': override,
+                'description': description,
+              }..removeWhere((key, value) => key == 'description' && value == null),
+            },
+          ));
+        }
+    }
+
+    if (params['setLocation'] != true) return null;
+    final context = navigatorKey.currentContext;
+    // The hook's confirm already said "now set your new location". Going
+    // quiet here would leave the operator holding that promise while the
+    // next stretch scores from the old square.
+    if (context == null) return (text: t.commands.couldNotOpenLocation, failed: true);
+    final patch = await showHaloDialog<Map<String, dynamic>>(
+      context: context,
+      builder: (_) => OperationLocationScreen(services: this, operation: operation),
+    );
+    if (patch == null) return null;
+    // The counters and local data ride along: `rescoreOperation` reads
+    // `localData['huntedRefTypes']` to decide whether to write, and an
+    // operation rebuilt without it looks uncached every time — a local_data
+    // write, and the Operation View rebuild behind it, on every ROVERQTH.
+    final updated = Operation(
+      uuid: operation.uuid,
+      data: {...operation.data, ...patch},
+      qsoCount: operation.qsoCount,
+      startAtMillisMin: operation.startAtMillisMin,
+      startAtMillisMax: operation.startAtMillisMax,
+      localData: operation.localData,
+    );
+    await operations.saveData(updated);
+    unawaited(scoring.rescoreOperation(updated));
     return null;
   }
 

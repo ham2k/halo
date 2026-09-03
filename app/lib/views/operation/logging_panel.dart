@@ -43,7 +43,6 @@ QsoListLabels _qsoListLabelsFor(BuildContext context) {
     today: t.today,
     yesterday: t.yesterday,
     tomorrow: t.tomorrow,
-    eventLabels: {'start': t.eventStarted, 'break': t.eventBreak, 'end': t.eventEnded},
     // Same "1 QSO"/"N QSOs" vocabulary the info area's stats line uses.
     qsoCount: (count) => count == 1 ? info.qsoCountOne : info.qsoCountOther(count: count),
   );

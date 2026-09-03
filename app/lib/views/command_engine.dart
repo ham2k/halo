@@ -899,6 +899,13 @@ class CommandEngine extends ChangeNotifier {
           ...(map['updateOperation'] as Map).cast<String, dynamic>(),
           if (services.currentOperationContext?['uuid'] case final String uuid) 'uuid': uuid,
         });
+      } else if (map['markSegment'] is Map) {
+        // Operation-scoped like updateOperation above: the uuid is the open
+        // operation's, and the app owns the event rows and the location screen.
+        await runAction('markSegment', {
+          ...(map['markSegment'] as Map).cast<String, dynamic>(),
+          if (services.currentOperationContext?['uuid'] case final String uuid) 'uuid': uuid,
+        });
       } else if (map['setPower'] is Map) {
         // Not QSO-scoped, unlike the actions this fallback path can't serve
         // (addQso, updateQso, setCallField — see the comment below) — so,

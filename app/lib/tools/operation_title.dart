@@ -27,6 +27,28 @@ String buildGeneratedTitle(Translations t, OperationTitleFragments fragments) {
   ].join(' ');
 }
 
+/// What a segment row says about its stretch of the log — polo's
+/// `describeOperation`: one phrase per ref, the most specific fragment it
+/// offered ("at US-1000", "for ARRL 10G Sep", a plain title), then "at
+/// <grid>", joined with " • ". Per ref rather than merged by kind, so a
+/// two-ref segment keeps each ref's own phrase.
+String segmentDescriptionFor(Translations t, Iterable<OperationTitleSuggestion> suggestions, String? grid) {
+  final op = t.operation;
+  String? phraseOf(OperationTitleSuggestion s) {
+    if (s.atText case final at? when at.isNotEmpty) return op.titleAt(value: at);
+    if (s.forText case final f? when f.isNotEmpty) return op.titleFor(value: f);
+    if (s.title case final title? when title.isNotEmpty) return title;
+    if (s.subtitle case final subtitle? when subtitle.isNotEmpty) return subtitle;
+    return null;
+  }
+
+  return [
+    for (final s in suggestions)
+      if (phraseOf(s) case final phrase?) phrase,
+    if (grid != null && grid.isNotEmpty) op.titleAt(value: grid),
+  ].join(' • ');
+}
+
 /// The ref-derived part of [operation]'s title: the live preview from this
 /// device's cached [Operation.titleFragments] when it has one, otherwise the
 /// synced [Operation.title] persisted by an earlier save (on this or another

@@ -622,6 +622,81 @@ void main() {
     },
   );
 
+  testWidgets("a segment row shows its stored description, the way polo's rows read", (tester) async {
+    // "for ARRL 10G Sep • at FN20rm" is what the row carries from the app
+    // that wrote it — the list has no wording of its own to fall back on, so
+    // a row that lost its description would go silently blank.
+    final operation = await operations.create(stationCall: 'KI2D');
+    final brk = await qsos.addEvent(
+      operation.uuid,
+      kind: 'break',
+      atMillis: 1500,
+      operation: {'grid': 'FN20rm'},
+      description: 'for ARRL 10G Sep • at FN20rm',
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: Scaffold(body: QsoList(qsos: [brk], onSelect: (_) {}))),
+    );
+
+    expect(find.text('for ARRL 10G Sep • at FN20rm'), findsOneWidget);
+  });
+
+  testWidgets("a row with no description falls back to its override's square, and one with neither shows its mark alone", (tester) async {
+    // A row written while the extension host was down carries no
+    // description, and the list has no wording of its own — without this
+    // fallback the operator gets an unexplained blank line in the log.
+    final operation = await operations.create(stationCall: 'KI2D');
+    final withGrid = await qsos.addEvent(
+      operation.uuid,
+      kind: 'break',
+      atMillis: 1000,
+      operation: {'grid': 'FN20rm', 'refs': null},
+    );
+    final withNothing = await qsos.addEvent(
+      operation.uuid,
+      kind: 'break',
+      atMillis: 2000,
+      operation: {'grid': null, 'refs': null},
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(home: Scaffold(body: QsoList(qsos: [withGrid, withNothing], onSelect: (_) {}))),
+    );
+
+    expect(find.text('FN20rm'), findsOneWidget);
+    expect(find.byType(EventRow), findsNWidgets(2));
+    // No invented wording for the one that has nothing to say.
+    expect(find.textContaining('Break'), findsNothing);
+  });
+
+  testWidgets('a stop row renders as the operation-ended marker, like end', (tester) async {
+    // `stop` is the kind polo's STOP command writes (and HaLo's now does);
+    // `end` is what the list was built for. A `stop` falling through to the
+    // annotation row would show a synced polo log's end as a yellow note.
+    final operation = await operations.create(stationCall: 'KI2D');
+    final first = await qsos.add(operation.uuid, {
+      'their': {'call': 'W1AW'},
+      'band': '20m',
+      'mode': 'SSB',
+      'startAtMillis': 1000,
+    });
+    final stop = await qsos.addEvent(operation.uuid, kind: 'stop', atMillis: 1500, description: 'at FN31pr');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: QsoList(qsos: [first, stop], onSelect: (_) {}),
+        ),
+      ),
+    );
+
+    expect(find.byType(EventRow), findsOneWidget);
+    expect(find.byWidgetPredicate((w) => w is Icon && w.icon == MdiIcons.stopCircle), findsOneWidget);
+    expect(find.text('at FN31pr'), findsOneWidget);
+    expect(find.byType(AnnotationRow), findsNothing);
+  });
+
   testWidgets(
     'event markers render distinctly and are excluded from QSO numbering',
     (tester) async {
@@ -630,6 +705,7 @@ void main() {
         operation.uuid,
         kind: 'start',
         atMillis: 500,
+        description: 'at FN31pr',
       );
       final first = await qsos.add(operation.uuid, {
         'their': {'call': 'W1AW'},
@@ -641,6 +717,7 @@ void main() {
         operation.uuid,
         kind: 'break',
         atMillis: 1500,
+        description: 'at FN20aa',
       );
       final second = await qsos.add(operation.uuid, {
         'their': {'call': 'K2HAM'},
@@ -662,13 +739,13 @@ void main() {
         ),
       );
 
-      expect(find.text('Operation started'), findsOneWidget);
-      expect(find.text('Break'), findsOneWidget);
+      expect(find.text('at FN31pr'), findsOneWidget);
+      expect(find.text('at FN20aa'), findsOneWidget);
       // Real QSOs still number 1 and 2 — events don't consume a number.
       expect(find.text('1'), findsOneWidget);
       expect(find.text('2'), findsOneWidget);
 
-      await tester.tap(find.text('Break'));
+      await tester.tap(find.text('at FN20aa'));
       expect(tapped?.uuid, brk.uuid);
     },
   );
@@ -2075,7 +2152,6 @@ void main() {
           today: 'Hoy',
           yesterday: 'Ayer',
           tomorrow: 'Mañana',
-          eventLabels: {'start': 'Operación iniciada', 'break': 'Descanso', 'end': 'Operación finalizada'},
         );
         await tester.pumpWidget(MaterialApp(
           home: Scaffold(body: DayHeaderRow(dayMillis: dayOf(now), count: 1, now: now, labels: es)),

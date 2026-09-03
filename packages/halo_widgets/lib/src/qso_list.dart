@@ -52,10 +52,6 @@ const _timeLabelSample = '00:00z';
 /// can't silently drift from what the row it's sizing actually paints at.
 const _rowMonoFontSize = 14.0;
 
-/// [EventRow]'s own (smaller) mono time-label size — see [_rowMonoFontSize]'s
-/// doc for why this is named rather than a second bare literal.
-const _eventTimeFontSize = 12.0;
-
 /// A hair of headroom in the row's width budget, absorbing the difference
 /// between what `textWidth` measures and what layout then rounds to. One
 /// logical pixel: far more than the fractions actually observed, and not
@@ -173,9 +169,6 @@ class QsoListLabels {
   final String yesterday;
   final String tomorrow;
 
-  /// Keyed by `Qso.eventKind` (`start`/`break`/`end`).
-  final Map<String, String> eventLabels;
-
   /// The day header's QSO count ("1 QSO" / "12 QSOs"). Nullable function
   /// (same convention as LoggingControls' parameterized labels) so the
   /// class stays const-constructible — null falls back to the English
@@ -188,7 +181,6 @@ class QsoListLabels {
     required this.today,
     required this.yesterday,
     required this.tomorrow,
-    required this.eventLabels,
     this.qsoCount,
   });
 
@@ -200,7 +192,6 @@ class QsoListLabels {
     today: 'Today',
     yesterday: 'Yesterday',
     tomorrow: 'Tomorrow',
-    eventLabels: {'start': 'Operation started', 'break': 'Break', 'end': 'Operation ended'},
   );
 }
 
@@ -478,14 +469,13 @@ class _QsoListState extends State<QsoList> {
     // `bodyMedium` carries Material 3's 1.43×, meant for prose; the plain
     // row's `haloMonoStyle` sets none) cancels out of this ratio — scaling
     // is a function of font SIZE, not of what multiplies it afterward. What
-    // actually varies across the row kinds sharing one slot is size: 14px
-    // (the plain row, `AnnotationRow`'s time label and description) and
-    // [_eventTimeFontSize]/`labelMedium`'s 12px (`EventRow`'s time label and
-    // its own label). The worst case of the two is what the ONE shared slot
-    // has to fit, and what the pinned header (closer to the row's own
-    // convention, but not proven identical under every curve) gets sized
-    // against too, rather than risk being the one under-provisioned box left
-    // after guarding the rest.
+    // actually varies across the row kinds sharing one slot is size, and
+    // every row kind now sets 14px (the plain row's mono, and the
+    // `bodyMedium` `AnnotationRow` and `EventRow` share). The worst case is
+    // what the ONE shared slot has to fit, and what the pinned header
+    // (closer to the row's own convention, but not proven identical under
+    // every curve) gets sized against too, rather than risk being the one
+    // under-provisioned box left after guarding the rest.
     final theme = Theme.of(context);
     double growthOf(TextStyle? style) {
       // Not a "nothing to measure" skip: [_layoutSpans] resolves a null
@@ -506,8 +496,6 @@ class _QsoListState extends State<QsoList> {
     _rowHeightScale = [
       growthOf(haloMonoStyle(context, fontSize: _rowMonoFontSize)),
       growthOf(theme.textTheme.bodyMedium),
-      growthOf(haloMonoStyle(context, fontSize: _eventTimeFontSize)),
-      growthOf(theme.textTheme.labelMedium),
     ].reduce((a, b) => a > b ? a : b);
   }
 
@@ -818,12 +806,12 @@ class _QsoListState extends State<QsoList> {
         // commands, ham2k/halo-dist#64) renders as a yellow annotation
         // row in the timeline, following app-polo's QSOList dispatch.
         final kind = qso.eventKind;
-        if (kind == 'start' || kind == 'break' || kind == 'end') {
+        if (kind == 'start' || kind == 'break' || kind == 'end' || kind == 'stop') {
           return EventRow(
             qso: qso,
             selected: qso.uuid == selectedUuid,
             onTap: () => (onSelectEvent ?? onSelect)(qso),
-            labels: widget.labels,
+            leadingWidth: plan.showNumbers ? numberWidth + _columnGap : 0,
           );
         }
         return AnnotationRow(
@@ -1789,78 +1777,102 @@ class EventRow extends StatelessWidget {
   final Qso qso;
   final bool selected;
   final VoidCallback onTap;
-  final QsoListLabels labels;
+
+  /// Width of the (optional) QSO-number column plus its gap, so the time
+  /// column lines up with the QSO rows around it — same as [AnnotationRow].
+  final double leadingWidth;
 
   const EventRow({
     super.key,
     required this.qso,
     required this.onTap,
     this.selected = false,
-    this.labels = QsoListLabels.english,
+    this.leadingWidth = 0,
   });
 
   static const _icons = {
-    'start': MdiIcons.flag,
-    'break': MdiIcons.pauseCircle,
-    'end': MdiIcons.flag,
+    'start': MdiIcons.playBox,
+    'break': MdiIcons.slashForwardBox,
+    'end': MdiIcons.stopCircle,
+    'stop': MdiIcons.stopCircle,
   };
+
+  /// The rule the top border takes out of the row's vertical padding, so the
+  /// row keeps [QsoList]'s fixed per-row height (HALO-258).
+  static const _topBorder = 2.0;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final kind = qso.eventKind;
     final timeLabel = _utcTimeLabel(qso.startAt);
+    // The row reads as a timeline entry, like polo's: the time in the QSO
+    // rows' column, the segment's mark, then what the segment says about
+    // the operation ("for ARRL 10G Sep • at FN20rm"), stored on the row by
+    // whatever wrote it (naming a reference needs an async extension hook,
+    // which a list row can't make — polo recomposes per frame instead).
+    //
+    // Without one — an older row, or one written while the extension host
+    // was down — the override's own square is still on the row and says
+    // more than nothing. Bare, since this package has no locale to put an
+    // "at" in. A segment with neither shows its mark alone: naming the kind
+    // ("Break") would say nothing the icon doesn't.
+    final stored = (qso.event?['description'] as String?)?.trim() ?? '';
+    final override = qso.event?['operation'];
+    final description = stored.isNotEmpty
+        ? stored
+        : (override is Map ? (override['grid'] as String?)?.trim() ?? '' : '');
+    final ink = selected ? theme.colorScheme.onSecondaryContainer : theme.colorScheme.onSurfaceVariant;
+    // polo's `primaryLighter` segment row: a wash of the primary over the
+    // surface, so a blue theme reads blue-gray, and the dark theme gets the
+    // same wash rather than a full-strength container. The rule along the
+    // top is the same wash, deeper.
+    final isDark = theme.brightness == Brightness.dark;
+    Color wash(double alpha) => Color.alphaBlend(theme.colorScheme.primary.withValues(alpha: alpha), theme.colorScheme.surface);
+    final background = selected ? theme.colorScheme.secondaryContainer : wash(isDark ? 0.22 : 0.14);
+    final rule = wash(isDark ? 0.5 : 0.35);
+    // Matches the ordinary QSO row's own padding exactly (not a hardcoded
+    // value) — [QsoList] forces every row into the same fixed
+    // [LayoutMetrics.qsoRowHeight] box (HALO-258, avoids a per-row layout
+    // walk on `jumpTo`), so a row whose natural height doesn't match that
+    // box overflows or leaves a gap. The border comes out of the top
+    // padding for the same reason.
+    final padding = PaneSafeArea.symmetricOf(
+      context,
+      horizontal: 12,
+      vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
+    );
 
+    // The border is part of the row's height, so it comes OUT of the
+    // padding — off the top first, and off the bottom for whatever the top
+    // couldn't give. At the densest layout the vertical padding is 1px
+    // against a 2px rule, and a bare clamp at the top would leave the row a
+    // pixel taller than the box [QsoList] forces it into.
+    final borderTop = padding.top.clamp(0.0, _topBorder);
     return Material(
-      color: selected
-          ? theme.colorScheme.secondaryContainer
-          : theme.colorScheme.surfaceContainerHigh,
+      color: background,
       child: InkWell(
         onTap: onTap,
         mouseCursor: SystemMouseCursors.click,
-        child: Padding(
-          // Matches the ordinary QSO row's own padding exactly (not a
-          // hardcoded value) — [QsoList] forces every row into the same
-          // fixed [LayoutMetrics.qsoRowHeight] box (HALO-258, avoids a
-          // per-row layout walk on `jumpTo`), so a row whose natural height
-          // doesn't match that box overflows or leaves a gap.
-          padding: PaneSafeArea.symmetricOf(
-            context,
-            horizontal: 12,
-            vertical: LayoutDensity.metricsOf(context).qsoRowPaddingV,
+        child: Container(
+          decoration: BoxDecoration(border: Border(top: BorderSide(color: rule, width: _topBorder))),
+          padding: padding.copyWith(
+            top: padding.top - borderTop,
+            bottom: (padding.bottom - (_topBorder - borderTop)).clamp(0.0, double.infinity),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                _icons[kind] ?? MdiIcons.timelapse,
-                size: 16,
-                color: theme.colorScheme.outline,
-              ),
-              const SizedBox(width: Space.md),
-              // The only thing in this row that can give: the icon and the
-              // time are fixed, and the label ("Operation started") is long
-              // enough to overflow the list's minimum width on its own. One
-              // Flexible among non-flex children takes what is left after
-              // them, so it only shortens once there is nothing else.
-              Flexible(
+              SizedBox(width: leadingWidth),
+              Text(timeLabel, style: haloMonoStyle(context, fontSize: _rowMonoFontSize, color: ink)),
+              const SizedBox(width: _columnGap),
+              Icon(_icons[kind] ?? MdiIcons.timelapse, size: 16, color: ink),
+              const SizedBox(width: _columnGap),
+              Expanded(
                 child: Text(
-                  (kind == null ? null : labels.eventLabels[kind]) ?? kind ?? 'Event',
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    color: theme.colorScheme.outline,
-                    fontWeight: FontWeight.w600,
-                  ),
+                  description,
+                  style: theme.textTheme.bodyMedium?.copyWith(color: ink),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: Space.md),
-              Text(
-                timeLabel,
-                style: haloMonoStyle(
-                  context,
-                  fontSize: _eventTimeFontSize,
-                  color: theme.colorScheme.outline,
                 ),
               ),
             ],
