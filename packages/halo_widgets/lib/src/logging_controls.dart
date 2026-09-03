@@ -8911,8 +8911,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // See `_syncNumbersRow` / KeyboardAccessoryController.
               // Reserve the home indicator at the bottom so the fields (and
               // numbers row) clear it — the Scaffold doesn't resize, it
-              // extends full height so each pane fills behind it, and the
-              // status footer doesn't reserve the indicator globally. The
+              // extends full height so each pane fills behind it. Zero
+              // wherever the host's own bottom chrome already holds that
+              // strip, which the MediaQuery in [_bottomReserve] answers. The
               // keyboard is NOT reserved here: `_StatusBarOverlay` does that
               // for the whole app so the footer can ride above it, so the space
               // this panel is handed already ends above the keyboard. The
@@ -8962,13 +8963,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ///
   /// And nothing at all while the keyboard is up — the keyboard covers the home
   /// indicator, so the strip the overlay is already holding back IS that space.
-  /// `viewPadding`, not `MediaQuery.padding`, because the latter zeroes out
-  /// under the keyboard and would make the two branches indistinguishable.
+  /// The keyboard question goes to the raw view because the overlay consumes
+  /// that inset on the way down, leaving MediaQuery unable to tell the two
+  /// states apart.
+  ///
+  /// The strip itself comes from MediaQuery, which is what a host that draws
+  /// its own chrome over the bottom edge — the app's status footer, holding
+  /// the safe area with a `SafeArea` of its own — takes it out of, so this
+  /// panel does not reserve the same space a second time.
   double get _bottomReserve {
     if (!isMobilePlatform) return 0;
-    final view = View.of(context);
-    if (view.viewInsets.bottom > 0) return 0;
-    return view.viewPadding.bottom / view.devicePixelRatio;
+    if (View.of(context).viewInsets.bottom > 0) return 0;
+    return MediaQuery.paddingOf(context).bottom;
   }
 
   /// Whether to show the mobile numbers row right now — the setting is on,

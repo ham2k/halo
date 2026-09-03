@@ -736,6 +736,16 @@ class HomeRailShell extends StatefulWidget {
 
   final List<Widget> keyboard;
 
+  /// Whether the [chrome] band below already holds the window's bottom safe
+  /// area — the status footer does, with a `SafeArea` of its own, whenever it
+  /// is drawn.
+  ///
+  /// True takes that inset out of the MediaQuery the routes and the rail see,
+  /// so nothing up there reserves the same strip twice: Quick Lookup, the
+  /// rail's Settings cap, Home's action button and every `PaneSafeArea`
+  /// consumer inside a view read it from there.
+  final bool bottomInsetHeldByChrome;
+
 
   const HomeRailShell({
     super.key,
@@ -744,6 +754,7 @@ class HomeRailShell extends StatefulWidget {
     this.scrim,
     this.chrome = const [],
     this.keyboard = const [],
+    this.bottomInsetHeldByChrome = false,
   });
 
   @override
@@ -898,11 +909,18 @@ class _HomeRailShellState extends State<HomeRailShell> {
                 // the overlay a route lives in takes every pointer that lands
                 // in it) without covering the band's own controls.
                 Expanded(
-                  child: Stack(
-                    children: [
-                      ...homeRail.covered ? [...navigation, views] : [views, ...navigation],
-                      if (widget.scrim != null) Positioned.fill(key: const ValueKey('scrim'), child: widget.scrim!),
-                    ],
+                  // See [bottomInsetHeldByChrome]: the removal covers the rail
+                  // as well as the routes, and stops at this Stack so the band
+                  // below still sees the inset it is the one holding.
+                  child: MediaQuery.removePadding(
+                    context: context,
+                    removeBottom: widget.bottomInsetHeldByChrome,
+                    child: Stack(
+                      children: [
+                        ...homeRail.covered ? [...navigation, views] : [views, ...navigation],
+                        if (widget.scrim != null) Positioned.fill(key: const ValueKey('scrim'), child: widget.scrim!),
+                      ],
+                    ),
                   ),
                 ),
                 // Notices and the status footer, spanning the WINDOW and

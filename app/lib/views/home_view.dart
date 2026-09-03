@@ -1539,22 +1539,28 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
 
     // The Home Scaffold doesn't resize for the keyboard, so this bar
     // reserves the bottom safe area itself below the field (and the numbers
-    // row, when shown), and its Material fills that strip so the teal forms the
-    // home-indicator strip. NOT the keyboard: `StatusBarOverlay` reserves that
-    // for the whole app so the status footer rides above it instead of hiding,
-    // which means the space this bar is given already ends above the keyboard.
-    // And nothing at all while the keyboard is up, since it covers the home
-    // indicator: the strip the overlay is already holding back IS that space.
+    // row, when shown), and its Material fills that strip so the teal forms
+    // the home-indicator strip. NOT the keyboard: `StatusBarOverlay` reserves
+    // that for the whole app so the status footer rides above it instead of
+    // hiding, which means the space this bar is given already ends above the
+    // keyboard. And nothing at all while the keyboard is up, since it covers
+    // the home indicator: the strip the overlay is already holding back IS
+    // that space.
+    //
+    // Nothing either while the status footer is drawn: it paints over that
+    // same strip and holds it with a `SafeArea` of its own. The shell takes
+    // the inset out of the MediaQuery this reads whenever that is so (see
+    // `HomeRailShell.bottomInsetHeldByChrome`), so this follows it from there
+    // rather than deciding for itself.
     //
     // The keyboard question goes to the raw view, not MediaQuery — the overlay
     // consumes that inset on the way down precisely so no route reserves it
     // twice, which also means MediaQuery reports 0 here in both states and
-    // could not tell them apart. `viewPadding`, not `padding`, for the safe
-    // area, since the latter zeroes out under the keyboard.
+    // could not tell them apart.
     final mq = MediaQuery.of(context);
     final view = View.of(context);
     final keyboardUp = view.viewInsets.bottom > 0;
-    final bottomReserve = keyboardUp ? 0.0 : mq.viewPadding.bottom;
+    final bottomReserve = keyboardUp ? 0.0 : mq.padding.bottom;
     _syncNumbersRow(context, theme);
 
     return CallbackShortcuts(

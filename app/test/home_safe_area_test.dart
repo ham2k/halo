@@ -8,6 +8,12 @@
 // established, not below it. Reading PaneSafeArea.xxxOf(context) with that
 // stale context silently resolves to 0 instead of throwing, so a regression
 // here has no compile-time or crash signal — only this test would catch it.
+//
+// Home ALONE, with no status footer below it: assembled, the footer holds the
+// bottom safe area for the whole window and the shell takes it out of what the
+// routes see, so the FAB there clears 16 and nothing more (see
+// home_bottom_inset_test.dart). What this pins is the plumbing — that the FAB
+// reads a real inset where there is one to read.
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';

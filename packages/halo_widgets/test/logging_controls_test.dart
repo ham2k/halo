@@ -603,7 +603,7 @@ void main() {
         tester.getBottomLeft(find.byType(LoggingControls)).dy -
         tester.getBottomLeft(find.widgetWithText(TextField, 'Their call')).dy;
 
-    Future<double> gapWith(WidgetTester tester, {required bool keyboardUp}) async {
+    Future<double> gapWith(WidgetTester tester, {required bool keyboardUp, bool hostHoldsStrip = false}) async {
       final dpr = tester.view.devicePixelRatio;
       tester.view.viewPadding = FakeViewPadding(bottom: 34 * dpr); // a home indicator
       // Set BOTH branches, never just one: leaving `viewInsets` alone on the
@@ -611,11 +611,29 @@ void main() {
       // happened to run in — reversing them measured "keyboard down" under a
       // raised keyboard and reported a difference of 0.
       tester.view.viewInsets = keyboardUp ? FakeViewPadding(bottom: 300 * dpr) : FakeViewPadding.zero;
+      // `padding` too, and by hand: the real engine derives it (viewPadding
+      // less whatever the keyboard covers), but a TestFlutterView holds the
+      // two independently, so a fake that sets only `viewPadding` leaves
+      // MediaQuery — which is where the panel reads the strip from — saying
+      // there is no home indicator at all.
+      tester.view.padding = keyboardUp ? FakeViewPadding.zero : FakeViewPadding(bottom: 34 * dpr);
       addTearDown(() {
         tester.view.resetViewPadding();
         tester.view.resetViewInsets();
+        tester.view.resetPadding();
       });
-      await tester.pumpWidget(host());
+      // A host that draws its own chrome over the bottom edge — the app's
+      // status footer — takes the strip out of the MediaQuery it hands down,
+      // which is exactly how this panel is told not to hold it twice.
+      await tester.pumpWidget(hostHoldsStrip
+          ? Builder(
+              builder: (context) => MediaQuery.removePadding(
+                context: context,
+                removeBottom: true,
+                child: host(),
+              ),
+            )
+          : host());
       await tester.pump(const Duration(milliseconds: 100));
       return gapBelowFields(tester);
     }
@@ -630,6 +648,23 @@ void main() {
         final down = await gapWith(tester, keyboardUp: false);
         // The indicator's 34pt is held back only when it is actually exposed.
         expect(down - up, moreOrLessEquals(34, epsilon: 1.0));
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+
+    testWidgets('reserves nothing when the host already holds the strip', (tester) async {
+      // The app's status footer spans the window below every route and covers
+      // the indicator itself, so the panel reserving it as well opens a band
+      // of panel background between the fields and the footer. The host says
+      // so by taking the inset out of the MediaQuery — nothing tells this
+      // panel directly, which is why reading the strip from the raw
+      // `FlutterView` instead would be undetectable here and wrong there.
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      try {
+        final held = await gapWith(tester, keyboardUp: false, hostHoldsStrip: true);
+        final unheld = await gapWith(tester, keyboardUp: false);
+        expect(unheld - held, moreOrLessEquals(34, epsilon: 1.0));
       } finally {
         debugDefaultTargetPlatformOverride = null;
       }

@@ -311,48 +311,59 @@ class _StatusBarFooterState extends State<StatusBarFooter> {
     Color backgroundColor,
     Color foregroundColor,
   ) {
-    return ClipRect(
-      child: AnimatedSize(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.fastOutSlowIn,
-        alignment: Alignment.bottomCenter,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 200),
-          reverseDuration: const Duration(milliseconds: 200),
-          switchInCurve: Curves.fastOutSlowIn,
-          switchOutCurve: Curves.fastOutSlowIn,
-          transitionBuilder: (child, animation) {
-            final offsetAnimation = Tween<Offset>(
-              begin: const Offset(0, 1.0),
-              end: Offset.zero,
-            ).animate(animation);
-            return SlideTransition(
-              position: offsetAnimation,
-              child: child,
-            );
-          },
-          child: !hasContent
-              ? const SizedBox(key: ValueKey('footer_empty'), width: double.infinity, height: 0)
-              : ChromeTopEdge(
-                  key: const ValueKey('footer_active'),
-                  child: Material(
-                  color: backgroundColor,
-                  child: SafeArea(
-                    top: false,
-                    child: InkWell(
-                      // The BAR opens the messages; the icons riding on it
-                      // open their own menu, and take their taps first.
-                      onTap: canExpand ? () => _setExpanded(!_expanded) : null,
-                      child: AnimatedSize(
-                        duration: const Duration(milliseconds: 200),
-                        curve: Curves.fastOutSlowIn,
-                        alignment: Alignment.bottomCenter,
-                        child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor, backgroundColor),
+    // The bottom safe area is held OUT here, outside everything that animates,
+    // and painted whether or not there is a band to draw. This widget spans
+    // the window below every route, so it is the one that covers the home
+    // indicator — and whoever is above it is told to stop reserving that strip
+    // (`HomeRailShell.bottomInsetHeldByChrome` in the app). Held inside the
+    // band instead, the strip would come and go with the switcher below: the
+    // frame a keyboard finishes leaving, the band starts sliding in from zero
+    // and the indicator's strip belongs to nobody until it lands.
+    return Material(
+      color: backgroundColor,
+      child: SafeArea(
+        top: false,
+        child: ClipRect(
+          child: AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.fastOutSlowIn,
+            alignment: Alignment.bottomCenter,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              reverseDuration: const Duration(milliseconds: 200),
+              switchInCurve: Curves.fastOutSlowIn,
+              switchOutCurve: Curves.fastOutSlowIn,
+              transitionBuilder: (child, animation) {
+                final offsetAnimation = Tween<Offset>(
+                  begin: const Offset(0, 1.0),
+                  end: Offset.zero,
+                ).animate(animation);
+                return SlideTransition(
+                  position: offsetAnimation,
+                  child: child,
+                );
+              },
+              child: !hasContent
+                  ? const SizedBox(key: ValueKey('footer_empty'), width: double.infinity, height: 0)
+                  : ChromeTopEdge(
+                      key: const ValueKey('footer_active'),
+                      child: Material(
+                        color: backgroundColor,
+                        child: InkWell(
+                          // The BAR opens the messages; the icons riding on it
+                          // open their own menu, and take their taps first.
+                          onTap: canExpand ? () => _setExpanded(!_expanded) : null,
+                          child: AnimatedSize(
+                            duration: const Duration(milliseconds: 200),
+                            curve: Curves.fastOutSlowIn,
+                            alignment: Alignment.bottomCenter,
+                            child: expanded ? _buildExpanded(context, foregroundColor) : _buildCollapsed(context, foregroundColor, backgroundColor),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  ),
-                ),
+            ),
+          ),
         ),
       ),
     );

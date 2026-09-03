@@ -4945,28 +4945,32 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
         final perma = footerHidden ? const <StatusBarPermaData>[] : _permaStatuses(context, offline);
 
         final accessory = widget.services.keyboardAccessory.value;
+        final hasStatusItems = !keyboardUp || footerItems.isNotEmpty || perma.isNotEmpty;
         final bottom = BottomChromeBudget.of(
           windowHeight: MediaQuery.sizeOf(context).height,
           keyboardInset: keyboardInset,
           hasNumbersRow: accessory != null,
-          hasStatusItems: !keyboardUp || footerItems.isNotEmpty || perma.isNotEmpty,
+          hasStatusItems: hasStatusItems,
           numbersRowHeight: NumberKeys.heightOf(context),
-          footerHeight: StatusBarFooter.collapsedHeightOf(context),
+          // The band's own safe area is part of what a drawn footer takes:
+          // it holds the home indicator for the whole window (see
+          // [footerHoldsBottomInset]), so a charge of the bar alone leaves
+          // the notice and the expanded list a strip of an iPhone that is
+          // already spent. Zero with the keyboard up, which is the only state
+          // where this term decides whether the footer is drawn at all.
+          footerHeight: StatusBarFooter.collapsedHeightOf(context) + MediaQuery.paddingOf(context).bottom,
           // Quick Lookup is chrome for the home layer and nothing else, so it
           // is charged exactly while that layer is showing — a view that owns
           // the window replaces it, and charging for it there would take the
           // room from the notice for a bar that is not on screen. Home draws
           // it itself; what is reserved here is the room it needs.
           //
-          // Its safe area is part of that room: the bar holds the home
-          // indicator's height below the field (and the rail's Settings cap
-          // does the same), so a charge of the bar alone hands the band ~34pt
-          // of an iPhone that Home has already spent. Zero with the keyboard
-          // up, which is when the bar drops the reserve — the strip below it
-          // is the keyboard's by then.
-          homeChromeHeight: homeRail.homeChromeShowing
-              ? HomeQuickLookup.heightOf(context) + (keyboardInset > 0 ? 0 : MediaQuery.viewPaddingOf(context).bottom)
-              : 0,
+          // The bar alone, with no safe area added: the home indicator's strip
+          // belongs to whoever is drawn over it, and that is the footer
+          // whenever there IS a strip to hold (see [footerHoldsBottomInset] —
+          // it is the keyboard that takes the strip otherwise, and then the
+          // safe area is zero anyway).
+          homeChromeHeight: homeRail.homeChromeShowing ? HomeQuickLookup.heightOf(context) : 0,
           // One readable notice, floored the way the footer floors its own
           // expanded cap: the notice is the surface ErrorPolicy raises to, and
           // a share-of-what-is-left that works out to a few points renders the
@@ -4976,6 +4980,18 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
         _reportSqueeze(bottom);
         _closeListIfUnopenable(listOpen, bottom.showFooter);
 
+        // A drawn footer paints over the bottom safe area and holds it with a
+        // `SafeArea` of its own, so nothing ABOVE it may reserve that strip a
+        // second time — a view that does leaves a band of its own background
+        // between its last row and the footer. Whether the footer is DRAWN is
+        // the whole condition: the widget holds the strip from outside its own
+        // switcher, so an empty band still covers it and the two cannot
+        // disagree for a frame. Passed to the shell rather than applied here
+        // because the rail is the shell's child, not the routes': Quick Lookup
+        // and the rail's Settings cap sit side by side across the foot of the
+        // home layer and have to answer to this together.
+        final footerHoldsBottomInset = bottom.showFooter;
+
         // The rail runs the full height beside this whole strip, so a status
         // item shortens the views and never the navigation.
         return MediaQuery.removeViewInsets(
@@ -4984,6 +5000,7 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
           child: HomeRailShell(
             services: widget.services,
             routes: widget.child,
+            bottomInsetHeldByChrome: footerHoldsBottomInset,
             // An open list is modal: the operator opened it to read it, and a
             // tap anywhere else means "put it away" rather than whatever that
             // spot would otherwise do. Painted, not invisible — a window that
