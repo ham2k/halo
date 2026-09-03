@@ -11,6 +11,8 @@ upcoming:
     - "The call info area shows how many times you have worked the station before"
     - "START, BREAK, STOP and ROVERQTH commands mark the segments of an operation from the call field"
     - "Country Flags in Logging settings: flags for all contacts, DX only, or none"
+    - "New IARU Region 1 Field Day extension, ready for the September SSB weekend"
+    - "New NRRL Nasjonal Field Day extension, for Norway's national field day"
 
 "160":
   changes:

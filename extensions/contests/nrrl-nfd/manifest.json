@@ -1,0 +1,29 @@
+{
+  "key": "nrrl-nfd",
+  "name": "NRRL Nasjonal Field Day",
+  "shortName": "NFD",
+  "version": "0.0.1",
+  "description": "Norway's national field day — all three modes at once, country-per-band-and-mode multipliers, and large bonuses",
+  "category": "contest",
+  "enabledByDefault": false,
+  "icon": "pine-tree",
+  "accentColor": "#BA0C2F",
+  "keywords": [
+    "field day",
+    "fieldday",
+    "nasjonal",
+    "norway",
+    "norge",
+    "nrrl",
+    "nfd",
+    "contest",
+    "cabrillo"
+  ],
+  "hooks": ["activity", "adifFields", "export", "ref:nrrl-nfd", "scoring"],
+  "translations": {
+    "es": {
+      "description": "El field day nacional de Noruega — los tres modos a la vez, multiplicadores por país, banda y modo, y bonificaciones grandes",
+      "keywords": ["field day", "noruega", "nrrl", "concurso"]
+    }
+  }
+}

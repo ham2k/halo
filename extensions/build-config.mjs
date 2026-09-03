@@ -141,6 +141,8 @@ export const bundles = [
   { key: 'arrl-vhf-tests', entry: 'contests/arrl-vhf-tests/src/index.ts', kind: 'extension' },
   { key: 'r1-vhf-tests', entry: 'contests/r1-vhf-tests/src/index.ts', kind: 'extension' },
   { key: 'rsgb-vhf-tests', entry: 'contests/rsgb-vhf-tests/src/index.ts', kind: 'extension' },
+  { key: 'r1-fd', entry: 'contests/r1-fd/src/index.ts', kind: 'extension' },
+  { key: 'nrrl-nfd', entry: 'contests/nrrl-nfd/src/index.ts', kind: 'extension' },
   { key: 'cwt', entry: 'contests/cwt/src/index.ts', kind: 'extension' },
   { key: 'parksnpeaks', entry: 'spots/parksnpeaks/src/index.ts', kind: 'extension' },
   { key: 'custom-text', entry: 'dashboard/custom-text/src/index.ts', kind: 'extension' },

@@ -25,8 +25,13 @@ useBuiltinCountryFile()
 
 /// Parses and resolves a callsign's DXCC entity against the bundled country
 /// file. No network access.
-export function annotateCallAgainstCountryFile(call: string): AnnotatedCallInfo {
-  return annotateFromCountryFile(parseCallsign(call))
+///
+/// `wae: true` resolves against the WAE country list instead: the extra
+/// entities carry starred prefixes (`*IT9`, `*TA1`, `*4U1V`) and their WAE
+/// continent — European Turkey is EU there, not AS — which is what a
+/// WAE-multiplier contest scores by.
+export function annotateCallAgainstCountryFile(call: string, options?: { wae?: boolean }): AnnotatedCallInfo {
+  return annotateFromCountryFile(parseCallsign(call), options)
 }
 
 export function entityPrefixForCall(call: string | undefined): string | undefined {
