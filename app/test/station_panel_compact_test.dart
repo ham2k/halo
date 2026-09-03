@@ -13,6 +13,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
 
@@ -63,6 +64,53 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No equipment configured'), findsNothing, reason: 'compact mode never shows this message');
+  });
+
+  group('CW keyer row', () {
+    testWidgets('with no radio that can key, the speed pick is disabled and the messages are still reachable', (tester) async {
+      await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+
+      final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
+      expect(pick.onChanged, isNull, reason: 'the speed is the radio\'s; nothing connected can take one');
+      expect(find.text('Connect a radio that can key CW to send messages from here.'), findsOneWidget);
+      expect(find.widgetWithText(TextButton, 'Messages'), findsOneWidget, reason: 'the messages are settings, editable without a radio');
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Show')).onPressed, isNull,
+          reason: 'nothing to show a keyer area for');
+    });
+
+    testWidgets('a connected keyer-capable radio enables the pick at the speed the radio reported', (tester) async {
+      // The placeholder rig keys nothing but reports a speed like a real
+      // one — the same path an IC-7300's 0x14 0x0C answer takes.
+      final node = await services.cat.addNode(
+        typeKey: 'placeholder-radio',
+        name: 'Bench Rig',
+        // The Add dialog prefills these; a bare node fails its own validators.
+        config: placeholderRadioModel.variants.single.defaultConfig,
+      );
+      await tester.runAsync(() => services.cat.connect(node.uuid));
+      expect(services.cat.canKeyCw, isTrue, reason: 'sanity: the placeholder rig is a CwKeyerSession');
+
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+
+      final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
+      expect(pick.onChanged, isNotNull);
+      expect(find.text('22 WPM'), findsOneWidget, reason: 'the placeholder rig comes up at 22 WPM');
+      expect(find.text('Connect a radio that can key CW to send messages from here.'), findsNothing);
+
+      // Picking a speed is a set on the radio, and what shows is what the
+      // radio says back — not the picked value assumed.
+      await tester.tap(find.byType(DropdownButtonFormField<int>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('25 WPM').last);
+      await tester.pumpAndSettle();
+      expect(services.cat.keyerSpeed, 25);
+      expect(find.text('25 WPM'), findsOneWidget);
+
+      await tester.runAsync(() => services.cat.disconnect(node.uuid));
+    });
   });
 
   testWidgets('Power field persists to the VFO on submit', (tester) async {

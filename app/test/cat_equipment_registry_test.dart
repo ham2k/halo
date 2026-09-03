@@ -13,6 +13,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
@@ -421,6 +422,11 @@ class _SilentSink implements EquipmentSink {
   void report(VfoReading reading) {}
   @override
   void reportPower(num watts) {}
+
+  @override
+  void reportKeyerSpeed(int wpm) {}
+  @override
+  void reportCwProgress(CwSendProgress? progress) {}
   @override
   void reportDiagnostic(String? note) {}
   @override

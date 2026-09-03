@@ -1,0 +1,406 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// Against a real CatService with the placeholder radio (which keys nothing,
+// but runs the real send queue and reports a speed like a real rig), so
+// what the strip shows is what the queue reports, not a hand-built stand-in.
+
+import 'package:drift/native.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/operation/extension_panel.dart';
+import 'package:ham2k_logger/views/keyer_area.dart';
+
+/// Stands in for the `template` hook without booting a JS engine: only
+/// `{{ qso.call }}` is filled, which is all a label test needs.
+class _TemplateExtensions extends ExtensionService {
+  @override
+  bool get ready => true;
+
+  @override
+  Future<void> start() async {}
+
+  @override
+  Future<String?> renderTemplate(String template, {Map<String, dynamic>? operation, Map<String, dynamic>? qso, int? qsoCount}) async =>
+      template.replaceAll('{{ qso.call }}', ((qso?['their'] as Map?)?['call'] as String?) ?? '');
+
+  /// How many times the labels crossed the bridge — the batching is the point.
+  int batches = 0;
+
+  @override
+  Future<List<({String? text, String? error})>?> renderTemplates(List<String> templates,
+      {Map<String, dynamic>? operation, Map<String, dynamic>? qso, int? qsoCount}) async {
+    batches++;
+    return [for (final t in templates) (text: await renderTemplate(t, qso: qso), error: null)];
+  }
+}
+
+PanelRenderContext contextFor(String call) => PanelRenderContext(
+      operation: null,
+      qso: {
+        'their': {'call': call},
+      },
+      qsoCount: 0,
+      spotsRevision: 0,
+      lookupRevision: 0,
+    );
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late HaLoServices services;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    services = HaLoServices(db, settings, extensions: _TemplateExtensions());
+  });
+
+  Future<void> connectPlaceholder(WidgetTester tester) async {
+    final node = await services.cat.addNode(
+      typeKey: 'placeholder-radio',
+      name: 'Bench Rig',
+      config: placeholderRadioModel.variants.single.defaultConfig,
+    );
+    await tester.runAsync(() => services.cat.connect(node.uuid));
+    addTearDown(() => services.cat.disconnect(node.uuid));
+    expect(services.cat.canKeyCw, isTrue, reason: 'sanity');
+  }
+
+  final sent = <int>[];
+  Widget host({bool suppressed = false, PanelRenderContext? templateContext}) => TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: Column(children: [
+              KeyerArea(
+                cat: services.cat,
+                services: services,
+                onSendMessage: sent.add,
+                suppressed: suppressed,
+                templateContext: templateContext,
+              ),
+            ]),
+          ),
+        ),
+      );
+
+  final messageText = find.byWidgetPredicate((w) => w is Text && w.textSpan != null);
+
+  /// The rendered message's spans: (sent, pending).
+  (String, String) spansOf(WidgetTester tester) {
+    final rich = tester.widget<Text>(messageText);
+    final spans = (rich.textSpan as TextSpan).children!.cast<TextSpan>();
+    return (spans[0].text!, spans[1].text!);
+  }
+
+  double stripHeight(WidgetTester tester) => tester.getSize(find.byType(KeyerArea)).height;
+
+  testWidgets('takes no room while nothing has been keyed', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    expect(find.text('22 wpm'), findsNothing);
+    expect(stripHeight(tester), 0);
+  });
+
+  testWidgets('slides down with a message: the speed pill, then the message with sent characters set apart', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('ET'); // at 22 WPM: E ends at 55 ms, T at 382 ms
+    await tester.pump();
+    final atStart = stripHeight(tester);
+    await tester.pump(const Duration(milliseconds: 100));
+    // The trap: showing the strip at full size at once — the point of the
+    // slide is that the fields move down rather than jump.
+    expect(stripHeight(tester), greaterThan(atStart));
+    expect(find.text('22 wpm'), findsOneWidget, reason: 'the placeholder rig comes up at 22 WPM');
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(spansOf(tester), ('E', 'T'));
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(spansOf(tester), ('ET', ''));
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('a finished message leaves the strip; the pill lingers a minute, then the strip slides away', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('ET');
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(seconds: 1));
+    final full = stripHeight(tester);
+    expect(messageText, findsNothing, reason: 'the queue drained (ET plus the trailing gap is under a second)');
+    expect(find.text('22 wpm'), findsOneWidget);
+    expect(stripHeight(tester), full);
+
+    await tester.pump(const Duration(seconds: 58));
+    expect(find.text('22 wpm'), findsOneWidget, reason: 'still lingering');
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(stripHeight(tester), lessThan(full), reason: 'sliding up');
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('22 wpm'), findsNothing);
+    expect(stripHeight(tester), 0);
+  });
+
+  testWidgets('a message during the linger cancels the hide', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('E');
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump(const Duration(seconds: 58));
+
+    services.cat.sendCw('ET');
+    await tester.pump();
+    expect(spansOf(tester), ('', 'ET'));
+    await tester.pump(const Duration(seconds: 5));
+    expect(find.text('22 wpm'), findsOneWidget, reason: 'the old hide timer must not fire on the new message');
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('a message stopped short leaves the strip too', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(messageText, findsOneWidget);
+    services.cat.stopCw(); // Esc
+    await tester.pump();
+    expect(messageText, findsNothing, reason: 'what did not go out is not shown as if it had');
+    expect(find.text('22 wpm'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('messages pressed while one is keying show behind it, without restarting it', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('ET');
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(spansOf(tester), ('E', 'T'));
+
+    // The trap: re-keying on the report object, which restarts the bar
+    // from zero every time another key is pressed.
+    services.cat.sendCw('5NN');
+    services.cat.sendCw('TU');
+    await tester.pump();
+    expect(spansOf(tester), ('E', 'T'), reason: 'the same message keeps its place');
+    expect(find.text(' · 5NN'), findsOneWidget);
+    expect(find.text(' · TU'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('tapping the pill opens the speed dialog, and Enter sets the radio', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('E');
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(seconds: 1));
+
+    await tester.tap(find.text('22 wpm'));
+    await tester.pumpAndSettle();
+    expect(find.text('CW Keying'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextField, 'WPM'), '25');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+
+    expect(services.cat.keyerSpeed, 25, reason: 'the placeholder reported the set back, like a real rig');
+    expect(find.text('25 wpm'), findsOneWidget);
+    expect(find.text('CW Keying'), findsNothing, reason: 'the dialog closed on Enter');
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('the dialog\'s custom message goes to the queue on Enter or Send, and the dialog closes', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('E');
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('22 wpm'));
+    await tester.pumpAndSettle();
+
+    expect(find.bySemanticsLabel('CW Messages'), findsOneWidget, reason: 'the way to the message editor sits by the speed');
+    expect(find.text('Custom Message'), findsOneWidget, reason: 'its own section');
+    await tester.enterText(find.widgetWithText(TextField, 'Message'), 'hello there');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Message')).controller!.text, 'HELLO THERE',
+        reason: 'uppercased as typed, on a hardware keyboard too');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(services.cat.cwProgress.value?.text, 'HELLO THERE', reason: 'as typed, sanitized by the queue — no template');
+    expect(find.text('CW Keying'), findsNothing, reason: 'closes: the keyer area is where the message is watched');
+
+    // The Send button reads the field without it having to lose focus.
+    await tester.tap(find.text('22 wpm'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Message'), 'tu');
+    await tester.tap(find.text('Send'));
+    await tester.pump();
+    final progress = services.cat.cwProgress.value!;
+    expect([progress.text, ...progress.pending], contains('TU'), reason: 'queued behind, or already going out');
+    await tester.pumpAndSettle();
+    expect(find.text('CW Keying'), findsNothing);
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('tapping the message keying stops it and the queue; tapping a queued one drops only it', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+    services.cat.sendCw('5NN');
+    services.cat.sendCw('TU');
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text(' · 5NN'), findsOneWidget);
+    expect(find.text(' · TU'), findsOneWidget);
+
+    await tester.tap(find.text(' · 5NN'));
+    await tester.pump();
+    expect(find.text(' · 5NN'), findsNothing, reason: 'only that one');
+    expect(find.text(' · TU'), findsOneWidget);
+    expect(messageText, findsOneWidget, reason: 'the message keying is untouched');
+
+    await tester.tap(messageText);
+    await tester.pump();
+    expect(messageText, findsNothing);
+    expect(find.text(' · TU'), findsNothing, reason: 'everything behind it goes too');
+    expect(services.cat.cwSending, isFalse);
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('KEYER brings the area up idle: a button per message with text, sending through the host', (tester) async {
+    await connectPlaceholder(tester);
+    await services.settings.setCwMessage(1, 'CQ CQ DE {{ op.call }} K');
+    await services.settings.setCwMessageLabel(1, 'CQ');
+    await services.settings.setCwMessage(3, '{{ qso.call }} 5NN TU');
+    await tester.pumpWidget(host());
+    expect(stripHeight(tester), 0);
+
+    services.cat.showKeyerArea();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('22 wpm'), findsOneWidget);
+    expect(find.widgetWithText(InkWell, 'CQ'), findsOneWidget, reason: 'labelled by its label');
+    expect(find.widgetWithText(InkWell, 'F3'), findsOneWidget, reason: 'or by its key');
+    expect(find.widgetWithText(InkWell, 'F2'), findsNothing, reason: 'only messages with text');
+
+    sent.clear();
+    await tester.tap(find.widgetWithText(InkWell, 'F3'));
+    expect(sent, [3]);
+
+    // Opened on purpose, it stays until sent from or closed — no linger.
+    await tester.pump(const Duration(seconds: 90));
+    expect(find.text('22 wpm'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Close the keyer area'));
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(stripHeight(tester), 0);
+  });
+
+  testWidgets('a label written as a template renders against the draft, debounced, and follows it', (tester) async {
+    await connectPlaceholder(tester);
+    await services.settings.setCwMessage(1, '{{ qso.call }} 5NN TU');
+    await services.settings.setCwMessageLabel(1, '{{ qso.call }} 5NN');
+    await services.settings.setCwMessage(2, 'TU');
+    await services.settings.setCwMessageLabel(2, 'Thanks');
+    await services.settings.setCwMessage(4, '{{ qso.call }} TU');
+    await services.settings.setCwMessageLabel(4, 'TU {{ qso.call }}');
+    await tester.pumpWidget(host(templateContext: contextFor('K1ABC')));
+    services.cat.showKeyerArea();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    expect(find.text('{{ qso.call }} 5NN'), findsOneWidget, reason: 'as written until the render lands');
+    await tester.pump(cwLabelRenderDelay);
+    await tester.pump();
+    expect(find.text('K1ABC 5NN'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Thanks'), findsOneWidget, reason: 'a plain label never goes to the bridge');
+
+    // The draft moves: the label follows, after the delay, not per letter.
+    await tester.pumpWidget(host(templateContext: contextFor('W2XYZ')));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('K1ABC 5NN'), findsOneWidget, reason: 'the old text holds while the debounce runs');
+    await tester.pump(cwLabelRenderDelay);
+    await tester.pump();
+    expect(find.text('W2XYZ 5NN'), findsOneWidget);
+    expect((services.extensions as _TemplateExtensions).batches, 2, reason: 'one crossing per render, whatever the label count');
+    await tester.tap(find.bySemanticsLabel('Close the keyer area'));
+    await tester.pump(const Duration(seconds: 1));
+  });
+
+  testWidgets('editing a logged QSO hides the area, and it comes back once editing ends', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(seconds: 1));
+    final full = stripHeight(tester);
+    expect(full, greaterThan(0));
+
+    await tester.pumpWidget(host(suppressed: true));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+    expect(stripHeight(tester), 0, reason: 'a message being corrected is not one to key at');
+    services.cat.showKeyerArea();
+    await tester.pump(const Duration(seconds: 1));
+    expect(stripHeight(tester), 0, reason: 'nor does KEYER bring it up meanwhile');
+
+    await tester.pumpWidget(host());
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(stripHeight(tester), full, reason: 'still keying, so it returns');
+    services.cat.stopCw();
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('the X slides the area away before the linger is up; the next message brings it back', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('E');
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(seconds: 1));
+    final full = stripHeight(tester);
+
+    await tester.tap(find.bySemanticsLabel('Close the keyer area'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(stripHeight(tester), lessThan(full), reason: 'sliding up');
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('22 wpm'), findsNothing);
+    expect(stripHeight(tester), 0);
+
+    services.cat.sendCw('ET');
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('22 wpm'), findsOneWidget);
+    expect(stripHeight(tester), full);
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('a speed outside the keyer\'s range is clamped, not sent as typed', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.sendCw('E');
+    await tester.pump(); // the first frame starts the tickers; time passes from here
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('22 wpm'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'WPM'), '99');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+    expect(services.cat.keyerSpeed, 50, reason: 'the placeholder keyer tops out at 50');
+    await tester.pump(const Duration(seconds: 62));
+  });
+}

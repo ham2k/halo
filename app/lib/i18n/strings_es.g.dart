@@ -586,6 +586,11 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String settingExpectsOneOf({required Object choices}) => 'uno de: ${choices}';
 	@override String get settingExpectsNumber => 'un número';
 	@override String settingVanished({required Object label}) => '«${label}» ya no está disponible';
+	@override String get noCwKeyer => 'Ninguna radio conectada puede manipular CW';
+	@override String get keyerNeedsOperation => 'Abre una operación para usar el manipulador de CW';
+	@override String cwSending({required Object text}) => 'Enviando CW: ${text}';
+	@override String cwMessageError({required Object n, required Object error}) => 'Mensaje de CW F${n}: ${error}';
+	@override String cwMessageNotRendered({required Object n}) => 'El mensaje de CW F${n} no se envió: las extensiones no están listas';
 	@override String settingNotStored({required Object label}) => '«${label}» no aceptó ese valor';
 	@override String get syncAllUnavailable => 'SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí';
 	@override String get noTestOperations => 'No hay operaciones de prueba que purgar';
@@ -1464,6 +1469,9 @@ class _Translations$settings$radio$es extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$snapLongMove$es snapLongMove = _Translations$settings$radio$snapLongMove$es._(_root);
 	@override late final _Translations$settings$radio$snapMinMove$es snapMinMove = _Translations$settings$radio$snapMinMove$es._(_root);
 	@override late final _Translations$settings$radio$snapMinSpeed$es snapMinSpeed = _Translations$settings$radio$snapMinSpeed$es._(_root);
+	@override String get cwKeying => 'Manipulación de CW';
+	@override late final _Translations$settings$radio$keyerSpeed$es keyerSpeed = _Translations$settings$radio$keyerSpeed$es._(_root);
+	@override late final _Translations$settings$radio$cwMessages$es cwMessages = _Translations$settings$radio$cwMessages$es._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$es avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$es._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$es zeroBeatRange = _Translations$settings$radio$zeroBeatRange$es._(_root);
 }
@@ -1812,6 +1820,9 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get statusDisconnecting => 'Desconectando…';
 	@override String get statusError => 'Fallo de conexión';
 	@override String get currentRadioSettings => 'Ajustes de la radio actual';
+	@override String get cwKeyerNotAvailable => 'Conecta una radio que pueda manipular CW para enviar mensajes desde aquí.';
+	@override String get cwMessagesButton => 'Mensajes';
+	@override String get cwKeyerShow => 'Mostrar';
 	@override String get placeholderConnectDelay => 'Retraso de conexión (ms)';
 	@override String get placeholderConnectDelayDescription => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.';
 	@override String get placeholderDropAfter => 'Desconectar tras (segundos)';
@@ -2478,6 +2489,40 @@ class _Translations$settings$radio$snapMinSpeed$es extends Translations$settings
 	// Translations
 	@override String get title => 'Ajuste inteligente: velocidad mínima';
 	@override String get description => 'Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo.';
+}
+
+// Path: settings.radio.keyerSpeed
+class _Translations$settings$radio$keyerSpeed$es extends Translations$settings$radio$keyerSpeed$en {
+	_Translations$settings$radio$keyerSpeed$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Velocidad del manipulador';
+	@override String get unit => 'PPM';
+	@override String pill({required Object wpm}) => '${wpm} ppm';
+	@override String get pillUnknown => '– ppm';
+}
+
+// Path: settings.radio.cwMessages
+class _Translations$settings$radio$cwMessages$es extends Translations$settings$radio$cwMessages$en {
+	_Translations$settings$radio$cwMessages$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mensajes de CW';
+	@override String get description => 'Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rstSent }}` el reporte enviado, `{{ qso.their.name }}` su nombre.';
+	@override String key({required Object n}) => 'F${n}';
+	@override String messageTitle({required Object n}) => 'Mensaje (${n})';
+	@override String get labelField => 'Etiqueta';
+	@override String labelKey({required Object n}) => 'Etiqueta de F${n}';
+	@override String get details => 'Detalles';
+	@override String get empty => '(vacío)';
+	@override String get custom => 'Mensaje libre';
+	@override String get customField => 'Mensaje';
+	@override String get send => 'Enviar';
+	@override String get closeArea => 'Cerrar el área del manipulador';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -3423,6 +3468,23 @@ extension on TranslationsEs {
 			'settings.radio.snapMinMove.description' => 'Si te mueves menos que esto no se redondea nada — el ajuste fino se respeta.',
 			'settings.radio.snapMinSpeed.title' => 'Ajuste inteligente: velocidad mínima',
 			'settings.radio.snapMinSpeed.description' => 'Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo.',
+			'settings.radio.cwKeying' => 'Manipulación de CW',
+			'settings.radio.keyerSpeed.title' => 'Velocidad del manipulador',
+			'settings.radio.keyerSpeed.unit' => 'PPM',
+			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} ppm',
+			'settings.radio.keyerSpeed.pillUnknown' => '– ppm',
+			'settings.radio.cwMessages.title' => 'Mensajes de CW',
+			'settings.radio.cwMessages.description' => 'Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rstSent }}` el reporte enviado, `{{ qso.their.name }}` su nombre.',
+			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Mensaje (${n})',
+			'settings.radio.cwMessages.labelField' => 'Etiqueta',
+			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'Etiqueta de F${n}',
+			'settings.radio.cwMessages.details' => 'Detalles',
+			'settings.radio.cwMessages.empty' => '(vacío)',
+			'settings.radio.cwMessages.custom' => 'Mensaje libre',
+			'settings.radio.cwMessages.customField' => 'Mensaje',
+			'settings.radio.cwMessages.send' => 'Enviar',
+			'settings.radio.cwMessages.closeArea' => 'Cerrar el área del manipulador',
 			'settings.radio.avoidZeroBeat.title' => 'Evitar batido cero en los spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'Con una radio conectada, sintoniza unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Sintoniza exactamente la frecuencia del spot.',
@@ -3684,6 +3746,8 @@ extension on TranslationsEs {
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.x6100' => 'X6100',
 			'settings.station.models.rigctld' => 'Radio genérica vía rigctld',
 			'settings.station.models.flrig' => 'Radio genérica vía flrig',
@@ -3701,8 +3765,6 @@ extension on TranslationsEs {
 			'settings.station.yaesuTroubleshooting' => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.kenwoodTroubleshooting' => 'Este controlador está probado con una QRP Labs QMX, pero ninguna radio de marca Kenwood le ha respondido nunca: el protocolo está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Elecraft (K3, KX2, KX3) y varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.statusConnected' => 'Conectado',
 			'settings.station.currentConfiguration' => 'Configuración actual',
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
@@ -3729,6 +3791,9 @@ extension on TranslationsEs {
 			'settings.station.statusDisconnecting' => 'Desconectando…',
 			'settings.station.statusError' => 'Fallo de conexión',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
+			'settings.station.cwKeyerNotAvailable' => 'Conecta una radio que pueda manipular CW para enviar mensajes desde aquí.',
+			'settings.station.cwMessagesButton' => 'Mensajes',
+			'settings.station.cwKeyerShow' => 'Mostrar',
 			'settings.station.placeholderConnectDelay' => 'Retraso de conexión (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.',
 			'settings.station.placeholderDropAfter' => 'Desconectar tras (segundos)',
@@ -3910,6 +3975,11 @@ extension on TranslationsEs {
 			'commands.settingExpectsOneOf' => ({required Object choices}) => 'uno de: ${choices}',
 			'commands.settingExpectsNumber' => 'un número',
 			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
+			'commands.noCwKeyer' => 'Ninguna radio conectada puede manipular CW',
+			'commands.keyerNeedsOperation' => 'Abre una operación para usar el manipulador de CW',
+			'commands.cwSending' => ({required Object text}) => 'Enviando CW: ${text}',
+			'commands.cwMessageError' => ({required Object n, required Object error}) => 'Mensaje de CW F${n}: ${error}',
+			'commands.cwMessageNotRendered' => ({required Object n}) => 'El mensaje de CW F${n} no se envió: las extensiones no están listas',
 			'commands.settingNotStored' => ({required Object label}) => '«${label}» no aceptó ese valor',
 			'commands.syncAllUnavailable' => 'SYNCALL necesita mostrar un diálogo de confirmación, que no está disponible aquí',
 			'commands.noTestOperations' => 'No hay operaciones de prueba que purgar',

@@ -24,7 +24,8 @@
 //
 // Also not exercised: `PC` (RF power). Documented in the CAT manual, but
 // added after the bench session above and never sent to or read from the
-// radio it describes.
+// radio it describes. The same goes for CW keying (`KM`/`KY`) and the keyer
+// speed (`KS`) — from the FTDX10 CAT manual, not from a radio.
 
 import 'dart:convert';
 import 'dart:typed_data';
@@ -32,6 +33,7 @@ import 'dart:typed_data';
 import '../adaptive_poller.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import 'cw_send_queue.dart';
 import 'yaesu_cat_codec.dart';
 
 /// Belt-and-suspenders resync, same reasoning as the FlexRadio driver's:
@@ -80,7 +82,7 @@ class Ft891Driver extends EquipmentDriver {
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => Ft891Session(sink);
 }
 
-class Ft891Session implements TransceiverSession {
+class Ft891Session implements CwKeyerSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
 
@@ -92,6 +94,22 @@ class Ft891Session implements TransceiverSession {
 
   /// What was last reported upward, so a repeat can be told from a move.
   VfoReading? _lastReported;
+
+  /// What the radio last said its keyer runs at — the pace [_cwQueue]
+  /// spaces chunks by.
+  int? _keyerSpeed;
+
+  /// Write-then-play through [yaesuAppKeyerMemory] — see yaesu_cat_codec.dart
+  /// on why there is no plainer way.
+  late final _cwQueue = CwSendQueue(
+    maxChunkLength: yaesuKeyerMemoryMaxChars,
+    send: (chunk) {
+      _send(buildWriteKeyerMemoryCommand(yaesuAppKeyerMemory, chunk));
+      _send(buildPlayKeyerMemoryCommand(yaesuAppKeyerMemory));
+    },
+    speedWpm: () => _keyerSpeed,
+    onProgress: _sink.reportCwProgress,
+  );
 
   Ft891Session(this._sink);
 
@@ -156,6 +174,13 @@ class Ft891Session implements TransceiverSession {
         final watts = parsePowerParams(command.params);
         if (watts != null) _sink.reportPower(watts);
 
+      case 'KS':
+        final wpm = parseKeyerSpeedParams(command.params);
+        if (wpm != null) {
+          _keyerSpeed = wpm;
+          _sink.reportKeyerSpeed(wpm);
+        }
+
       // What Auto-Information actually pushes. One packet carries both the
       // frequency and the mode, so a dial turn reaches the app immediately
       // instead of waiting out the poll.
@@ -188,12 +213,45 @@ class Ft891Session implements TransceiverSession {
   void setPower(num watts) => _send(buildSetPowerCommand(watts));
 
   @override
+  void sendCw(String text) => _cwQueue.enqueue(text);
+
+  /// Only stops QUEUING: the chunk the radio is playing back plays out, since
+  /// the CAT manual offers nothing to interrupt `KY` — so the report keeps
+  /// showing it to its estimated end rather than claiming it stopped.
+  @override
+  void stopCw() => _cwQueue.dropAllPending();
+
+  @override
+  bool get cwSending => _cwQueue.sending;
+
+  @override
+  void dropQueuedCw(int id) => _cwQueue.dropPending(id);
+
+  @override
+  ({int min, int max}) get keyerSpeedRange => (min: yaesuKeyerSpeedMin, max: yaesuKeyerSpeedMax);
+
+  /// Sets, then reads back, so the value shown is what the radio took.
+  @override
+  void setKeyerSpeed(int wpm) {
+    _send(buildSetKeyerSpeedCommand(wpm));
+    _send(buildReadKeyerSpeedCommand());
+  }
+
+  @override
   void startUpdates() {
     _framer.reset();
     _send(buildAutoInformationCommand(true));
     _requestFrequencyAndMode();
+    // Once, not per poll — the same reasoning as the Icom driver's: the
+    // speed changes only when someone turns the knob, and the dialog that
+    // shows it re-reads it when it opens.
+    _send(buildReadKeyerSpeedCommand());
     _poller.start();
   }
+
+  /// Asks the radio for its keyer speed again — see [startUpdates].
+  @override
+  void refreshKeyerSpeed() => _send(buildReadKeyerSpeedCommand());
 
   @override
   void stopUpdates() {
@@ -213,6 +271,7 @@ class Ft891Session implements TransceiverSession {
 
   @override
   void teardown() {
+    _cwQueue.clear();
     // Via stopUpdates, so "stop talking to the radio" is written once.
     stopUpdates();
   }

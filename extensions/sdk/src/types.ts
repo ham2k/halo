@@ -1099,6 +1099,15 @@ export interface CommandAction {
   /// of its own to update, so the app dispatches it the same way as
   /// `updateSetting` rather than through the logging panel's local fields.
   setPower?: { watts: number }
+  /// Sets radio1's CW keyer speed through `CatService.setKeyerSpeed`. The
+  /// app answers with an error when no connected radio can key CW, so the
+  /// hook's own `confirm` is only shown for a speed that actually left the
+  /// app. Dispatched like `setPower`.
+  setKeyerSpeed?: { wpm: number }
+  /// KEYER / MACROS: brings up the logging panel's keyer area (its message
+  /// buttons, speed pill and queue). Dispatched like `setPower`; the app
+  /// answers with an error when no connected radio can key CW.
+  showKeyer?: Record<string, never>
   updateQso?: Record<string, JSONValue>
   addQso?: Record<string, JSONValue>
   /// `target` picks what gets spotted: `'self'` (default) spots the

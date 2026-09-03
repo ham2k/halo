@@ -13,6 +13,7 @@ import 'dart:typed_data';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/civ_codec.dart';
 import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
@@ -25,6 +26,7 @@ class _FakeSink implements EquipmentSink {
   final sent = <List<int>>[];
   final readings = <VfoReading>[];
   final powers = <num>[];
+  final keyerSpeeds = <int>[];
   final diagnostics = <String?>[];
 
   @override
@@ -35,6 +37,11 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => powers.add(watts);
+
+  @override
+  void reportKeyerSpeed(int wpm) => keyerSpeeds.add(wpm);
+  @override
+  void reportCwProgress(CwSendProgress? progress) {}
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -273,6 +280,71 @@ void main() {
       expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x14, 0x0A, 0x02, 0x55, 0xFD]);
     });
 
+    group('CW keying', () {
+      test('the keyer speed level is linear over 6-48 WPM, within a step of the radio\'s own table', () {
+        expect(civLevelForKeyerSpeed(6), 0);
+        expect(civLevelForKeyerSpeed(48), 255);
+        // hamlib's table says 84; one step off is a rounding difference the
+        // radio cannot display.
+        expect(civLevelForKeyerSpeed(20), 85);
+        expect(civKeyerSpeedForLevel(84), 20);
+        expect(civKeyerSpeedForLevel(255), 48);
+        expect(civLevelForKeyerSpeed(100), 255, reason: 'clamped, not sent out of range');
+      });
+
+      test('a 0x14 0x0C reply reports the keyer speed, and is not mistaken for power', () {
+        feed([0xFE, 0xFE, us, ic705, 0x14, 0x0C, 0x00, 0x85, 0xFD]);
+        expect(sink.keyerSpeeds, [20]);
+        expect(sink.powers, isEmpty);
+        expect(session.keyerSpeedRange, (min: 6, max: 48));
+      });
+
+      test('setting the speed sets the level and reads it back', () {
+        session.setKeyerSpeed(20);
+        expect(sink.sent, [
+          [0xFE, 0xFE, ic705, us, 0x14, 0x0C, 0x00, 0x85, 0xFD],
+          [0xFE, 0xFE, ic705, us, 0x14, 0x0C, 0xFD],
+        ]);
+      });
+
+      test('a message is keyed with 0x17 as ASCII, and stopped with 0x17 0xFF', () {
+        session.sendCw('cq k');
+        expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x17, 0x43, 0x51, 0x20, 0x4B, 0xFD]);
+        session.stopCw();
+        expect(sink.sent.last, [0xFE, 0xFE, ic705, us, 0x17, 0xFF, 0xFD]);
+      });
+
+      test('a message over 30 characters goes in paced pieces the radio will not NAK', () {
+        fakeAsync((async) {
+          feed([0xFE, 0xFE, us, ic705, 0x14, 0x0C, 0x00, 0x85, 0xFD]); // 20 WPM
+          sink.sent.clear();
+
+          session.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+          expect(sink.sent, hasLength(1));
+          expect(sink.sent.single.length - 6, 29, reason: 'the first 29 characters end on a word boundary');
+          expect(session.cwSending, isTrue);
+
+          async.elapse(const Duration(seconds: 5));
+          expect(sink.sent, hasLength(1), reason: 'the second 0x17 waits for the first to key');
+          async.elapse(const Duration(seconds: 20));
+          expect(sink.sent, hasLength(2));
+          expect(sink.sent.last, [0xFE, 0xFE, ic705, us, 0x17, 0x4B, 0xFD]);
+
+          async.flushTimers();
+          expect(session.cwSending, isFalse);
+        });
+      });
+
+      test('teardown drops a message still going out', () {
+        fakeAsync((async) {
+          session.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+          session.teardown();
+          async.elapse(const Duration(minutes: 1));
+          expect(sink.sent, hasLength(1));
+        });
+      });
+    });
+
     test('a power outside 0-100W is clamped to the level range, not sent malformed', () {
       session.setPower(1000);
       expect(sink.sent.single, [0xFE, 0xFE, ic705, us, 0x14, 0x0A, 0x02, 0x55, 0xFD], reason: 'clamped to level 255');
@@ -281,11 +353,11 @@ void main() {
     test('polls for frequency and mode, and stops when told', () {
       fakeAsync((async) {
         session.startUpdates();
-        expect(sink.sent, hasLength(4), reason: 'asks once immediately');
+        expect(sink.sent, hasLength(5), reason: 'asks once immediately, the keyer speed included');
         sink.sent.clear();
 
         async.elapse(const Duration(seconds: 5));
-        expect(sink.sent, hasLength(4));
+        expect(sink.sent, hasLength(4), reason: 'the keyer speed is not polled');
 
         sink.sent.clear();
         session.stopUpdates();

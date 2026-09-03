@@ -342,6 +342,16 @@ String _spotCallForTestOperation(String stationCall) => stationCall
     })
     .join(',');
 
+/// A template the renderer refused — see [ExtensionService.renderTemplate].
+/// The message is the renderer's own, written for the operator who typed
+/// the template.
+class TemplateError implements Exception {
+  final String message;
+  const TemplateError(this.message);
+  @override
+  String toString() => message;
+}
+
 class ExtensionService implements PanelExtensionSource {
   ExtensionHost? _host;
   Future<void>? _starting;
@@ -1090,6 +1100,68 @@ class ExtensionService implements PanelExtensionSource {
       debugPrint('[extensions] renderPanel($hookKey/$panelKey) failed: $e');
       rethrow;
     }
+  }
+
+  /// [template] rendered by the core `templates` extension's `template` hook
+  /// (docs/extensions/templates.md), against [operation] and [qso] in the
+  /// same shape the panels get — so `{{ qso.call }}` in a CW message means
+  /// what it means in a pane. Returns the text, or throws a [TemplateError]
+  /// carrying the renderer's own words for a template that does not parse.
+  /// Null with no runtime, which callers treat as "nothing to send".
+  Future<String?> renderTemplate(
+    String template, {
+    Map<String, dynamic>? operation,
+    Map<String, dynamic>? qso,
+    int? qsoCount,
+  }) async {
+    final host = this.host;
+    if (host == null) return null;
+    final result = await host.invokeHook(
+      'template',
+      key: 'templates',
+      method: 'render',
+      args: {
+        'template': template,
+        if (operation != null) 'operation': operation,
+        if (qso != null) 'qso': qso,
+        if (qsoCount != null) 'qsoCount': qsoCount,
+      },
+      timeout: const Duration(seconds: 2),
+    );
+    if (result is! Map) return null;
+    if (result['error'] case final String error) throw TemplateError(error);
+    return result['text'] as String?;
+  }
+
+  /// [templates] rendered together against one context, in one crossing —
+  /// `renderTemplate` for a list. One entry per template, in order: its
+  /// text, or the renderer's own words for one that does not parse (the
+  /// others still render). Null with no runtime.
+  Future<List<({String? text, String? error})>?> renderTemplates(
+    List<String> templates, {
+    Map<String, dynamic>? operation,
+    Map<String, dynamic>? qso,
+    int? qsoCount,
+  }) async {
+    final host = this.host;
+    if (host == null) return null;
+    final result = await host.invokeHook(
+      'template',
+      key: 'templates',
+      method: 'renderMany',
+      args: {
+        'templates': templates,
+        if (operation != null) 'operation': operation,
+        if (qso != null) 'qso': qso,
+        if (qsoCount != null) 'qsoCount': qsoCount,
+      },
+      timeout: const Duration(seconds: 2),
+    );
+    if (result is! Map || result['results'] is! List) return null;
+    return [
+      for (final entry in result['results'] as List)
+        entry is Map ? (text: entry['text'] as String?, error: entry['error'] as String?) : (text: null, error: null),
+    ];
   }
 
   /// A panel's own config values, keyed by field — the same declarative

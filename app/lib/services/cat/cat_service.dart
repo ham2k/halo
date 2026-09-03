@@ -25,6 +25,7 @@ import '../radio_service.dart';
 import '../settings_service.dart';
 import 'discovery.dart';
 import 'driver.dart';
+import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
 import 'equipment_registry.dart';
 import 'transport.dart';
@@ -338,6 +339,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // it says nothing about where the peer's rig is sitting.
       _runtimes[_radio1!]?.lastSent = null;
       _runtimes[_radio1!]?.lastSentPower = null;
+      cwProgress.value = null;
       _cancelSnap(null);
       _radio1 = null;
     }
@@ -362,6 +364,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       if (id != null) {
         _runtimes[id]?.lastSent = null;
         _runtimes[id]?.lastSentPower = null;
+        cwProgress.value = null;
       }
     }
     // Same reasoning for the snapper: a movement measured on the outgoing
@@ -495,6 +498,123 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       runtime.lastSentPower = watts;
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:set-power');
+    }
+  }
+
+  /// radio1's session, when it is connected and its protocol can key CW —
+  /// null otherwise. Every keying surface (the keyer row in the Station
+  /// dialog, F1-F8, the WPM command) exists only while this is non-null.
+  CwKeyerSession? get _cwKeyer {
+    final uuid = _radio1;
+    if (uuid == null) return null;
+    final runtime = _runtimes[uuid];
+    if (runtime?.state.status != EquipmentStatus.connected) return null;
+    final session = runtime!.session;
+    return session is CwKeyerSession ? session : null;
+  }
+
+  /// Whether radio1 is connected through a protocol that can key CW.
+  bool get canKeyCw => _cwKeyer != null;
+
+  /// radio1's keyer speed as the radio reported it, or null while unknown —
+  /// also null when nothing can key.
+  int? get keyerSpeed {
+    if (_cwKeyer == null) return null;
+    return stateFor(_radio1!).keyerSpeed;
+  }
+
+  /// The speeds radio1's keyer accepts — for a picker to offer exactly
+  /// those. Null when nothing can key.
+  ({int min, int max})? get keyerSpeedRange => _cwKeyer?.keyerSpeedRange;
+
+  /// Whether radio1 is still keying something [sendCw] gave it.
+  bool get cwSending => _cwKeyer?.cwSending ?? false;
+
+  /// What radio1's keyer is sending for the app right now, or null — for
+  /// the status bar's indicator. Its own notifier rather than a field on
+  /// [EquipmentState]: it changes with every message and clears seconds
+  /// later, and a state change rebuilds every equipment row for a value only
+  /// one small widget reads.
+  final cwProgress = ValueNotifier<CwSendProgress?>(null);
+
+  /// Bumped by [showKeyerArea]; the keyer area listens and slides in. A
+  /// counter rather than a flag: showing what is already shown must still
+  /// be an event (the area may be mid-slide out), and the area owns the
+  /// hiding.
+  final keyerAreaRequests = ValueNotifier<int>(0);
+
+  /// Asks the keyer area to show — the KEYER command and the Station
+  /// dialog's Show button.
+  void showKeyerArea() => keyerAreaRequests.value++;
+
+  /// Keys [text] on radio1 — a no-op, not an error, when nothing can key:
+  /// the surfaces that call this only exist while [canKeyCw], so reaching
+  /// here without a keyer is the radio dropping between the check and the
+  /// keypress.
+  void sendCw(String text) {
+    final session = _cwKeyer;
+    if (session == null) return;
+    try {
+      session.sendCw(text);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:send-cw');
+    }
+  }
+
+  /// Stops whatever [sendCw] still has to send — see [CwKeyerSession.stopCw]
+  /// for how much of what is already on the radio this can reach.
+  void stopCw() {
+    final session = _cwKeyer;
+    if (session == null) return;
+    try {
+      session.stopCw();
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:stop-cw');
+    }
+  }
+
+  /// Drops one message waiting behind the one radio1 is keying — see
+  /// [CwKeyerSession.dropQueuedCw].
+  void dropQueuedCw(int id) {
+    final session = _cwKeyer;
+    if (session == null) return;
+    try {
+      session.dropQueuedCw(id);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:drop-queued-cw');
+    }
+  }
+
+  /// Sets radio1's keyer speed. Returns false when nothing can key, or the
+  /// send threw, so the WPM command can say so rather than confirm a change
+  /// that never left the app.
+  ///
+  /// No echo guard, unlike [setPower]: power is re-sent on every VFO
+  /// notification and needs one, while this is only ever an operator's
+  /// explicit ask — and neither radio announces a front-panel knob turn,
+  /// so the last value the app saw is not the value the radio is on.
+  bool setKeyerSpeed(int wpm) {
+    final session = _cwKeyer;
+    if (session == null) return false;
+    try {
+      session.setKeyerSpeed(wpm);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:set-keyer-speed');
+      return false;
+    }
+    return true;
+  }
+
+  /// Asks radio1 for its keyer speed again — for a surface about to show it,
+  /// since sessions read it once at connect and the radio never volunteers a
+  /// knob turn.
+  void refreshKeyerSpeed() {
+    final session = _cwKeyer;
+    if (session == null) return;
+    try {
+      session.refreshKeyerSpeed();
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:refresh-keyer-speed');
     }
   }
 
@@ -1045,6 +1165,15 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
           _lastSeenVfoPower = watts;
           _radio?.setVfo('vfoA', power: watts, origin: VfoOrigin.radio);
         }
+      },
+      onCwProgress: (progress) {
+        if (runtime.connection != connection) return;
+        // Only the designated radio keys for the app, so only it is shown.
+        if (uuid == _radio1) cwProgress.value = progress;
+      },
+      onKeyerSpeed: (wpm) {
+        if (runtime.connection != connection) return;
+        if (stateFor(uuid).keyerSpeed != wpm) _setState(uuid, stateFor(uuid).copyWith(keyerSpeed: wpm));
       },
       onProblem: (message) {
         if (runtime.connection != connection) return;
@@ -1664,6 +1793,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // freshly-reconnected radio silently disagreeing.
     runtime.lastSent = null;
     runtime.lastSentPower = null;
+    if (_radio1 != null && identical(_runtimes[_radio1], runtime)) cwProgress.value = null;
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a
     // fresh resting point, not the continuation of a knob turn. Only for the
@@ -1714,6 +1844,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       runtime.cancel?.cancel();
       unawaited(_teardown(runtime));
     }
+    // After the teardowns, whose synchronous prefix clears cwProgress for
+    // the designated radio — a notifier disposed first would be notified.
+    cwProgress.dispose();
+    keyerAreaRequests.dispose();
     _runtimes.clear();
     super.dispose();
   }
@@ -1768,6 +1902,8 @@ class _NodeSink implements EquipmentSink {
   final EquipmentConnection connection;
   final void Function(VfoReading) onReading;
   final void Function(num) onPower;
+  final void Function(int) onKeyerSpeed;
+  final void Function(CwSendProgress?) onCwProgress;
   final void Function(String?) onDiagnostic;
   final void Function(String?) onProblem;
   final void Function(List<EquipmentChannel>) onChannels;
@@ -1777,6 +1913,8 @@ class _NodeSink implements EquipmentSink {
     required this.connection,
     required this.onReading,
     required this.onPower,
+    required this.onKeyerSpeed,
+    required this.onCwProgress,
     required this.onDiagnostic,
     required this.onProblem,
     required this.onChannels,
@@ -1791,6 +1929,12 @@ class _NodeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => onPower(watts);
+
+  @override
+  void reportKeyerSpeed(int wpm) => onKeyerSpeed(wpm);
+
+  @override
+  void reportCwProgress(CwSendProgress? progress) => onCwProgress(progress);
 
   @override
   void reportDiagnostic(String? note) => onDiagnostic(note);

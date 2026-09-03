@@ -17,6 +17,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/adaptive_poller.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
@@ -27,6 +28,7 @@ class _FakeSink implements EquipmentSink {
   final sent = <String>[];
   final readings = <VfoReading>[];
   final powers = <num>[];
+  final keyerSpeeds = <int>[];
   final diagnostics = <String?>[];
 
   @override
@@ -37,6 +39,11 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => powers.add(watts);
+
+  @override
+  void reportKeyerSpeed(int wpm) => keyerSpeeds.add(wpm);
+  @override
+  void reportCwProgress(CwSendProgress? progress) {}
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -216,10 +223,81 @@ void main() {
       expect(sink.sent, ['PC075;']);
     });
 
+    group('CW keying', () {
+      test('KS is a 3-digit WPM, clamped to the manual\'s 4-60', () {
+        expect(buildSetKeyerSpeedCommand(25), 'KS025;');
+        expect(buildSetKeyerSpeedCommand(2), 'KS004;');
+        expect(buildSetKeyerSpeedCommand(99), 'KS060;');
+        expect(parseKeyerSpeedParams('025'), 25);
+        expect(parseKeyerSpeedParams('25'), isNull, reason: 'KS is always 3 digits');
+      });
+
+      test('reports a KS reply as the keyer speed', () {
+        session.feed('KS022;');
+        expect(sink.keyerSpeeds, [22]);
+        expect(session.keyerSpeedRange, (min: 4, max: 60));
+      });
+
+      test('setting the speed reads it back, so what shows is what the radio took', () {
+        session.setKeyerSpeed(25);
+        expect(sink.sent, ['KS025;', 'KS;']);
+      });
+
+      test('a message is written into text memory 5 and played back from it', () {
+        // Yaesu has no "key this text" command — see yaesu_cat_codec.dart.
+        // Memory 5 by choice, `KYA;` because the TEXT memories play from 6-A.
+        session.sendCw('cq test de n0dev');
+        expect(sink.sent, ['KM5CQ TEST DE N0DEV;', 'KYA;']);
+      });
+
+      test('a message longer than the memory goes in paced pieces', () {
+        fakeAsync((async) {
+          session.feed('KS020;');
+          sink.sent.clear();
+          final long = 'CQ CQ CQ DE N0DEV N0DEV N0DEV K CQ CQ CQ DE N0DEV N0DEV N0DEV K';
+          expect(long.length, greaterThan(50));
+
+          session.sendCw(long);
+          expect(sink.sent, hasLength(2), reason: 'one write and one play, nothing else yet');
+          expect(sink.sent.first.length, lessThanOrEqualTo('KM5'.length + 50 + 1));
+          expect(session.cwSending, isTrue);
+
+          // Rewriting the memory while it is playing would clobber the
+          // message mid-air, so the second piece waits out the first.
+          async.elapse(const Duration(seconds: 5));
+          expect(sink.sent, hasLength(2));
+          async.elapse(const Duration(seconds: 30));
+          expect(sink.sent, hasLength(4));
+          expect(sink.sent[2], startsWith('KM5'));
+          expect(sink.sent[3], 'KYA;');
+
+          async.flushTimers();
+          expect(session.cwSending, isFalse);
+          session.teardown();
+        });
+      });
+
+      test('stopCw only stops queuing — the manual has no way to interrupt playback', () {
+        fakeAsync((async) {
+          session.sendCw('EEE EEE EEE EEE EEE EEE EEE EEE EEE EEE EEE EEE EEE EEE EEE EEE');
+          expect(sink.sent, hasLength(2));
+          session.stopCw();
+          // Honest about the radio: the memory it is playing plays out, so
+          // the session still counts as sending until that chunk's end.
+          expect(session.cwSending, isTrue);
+          async.elapse(const Duration(minutes: 1));
+          expect(session.cwSending, isFalse);
+          expect(sink.sent, hasLength(2), reason: 'nothing more is written or played');
+        });
+      });
+    });
+
     test('starting updates enables auto-information and asks once immediately', () {
       fakeAsync((async) {
         session.startUpdates();
-        expect(sink.sent, ['AI1;', 'FA;', 'MD0;', 'PC;']);
+        // `KS;` once here and never in the poll below: the keyer speed
+        // only moves when someone turns the knob.
+        expect(sink.sent, ['AI1;', 'FA;', 'MD0;', 'PC;', 'KS;']);
         session.teardown();
         async.flushTimers();
       });

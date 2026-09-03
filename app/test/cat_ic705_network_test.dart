@@ -13,6 +13,7 @@
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
@@ -763,6 +764,11 @@ class _CountingSink implements EquipmentSink {
   void report(VfoReading reading) {}
   @override
   void reportPower(num watts) {}
+
+  @override
+  void reportKeyerSpeed(int wpm) {}
+  @override
+  void reportCwProgress(CwSendProgress? progress) {}
   @override
   void reportDiagnostic(String? note) {}
   @override

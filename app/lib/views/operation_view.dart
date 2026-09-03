@@ -12,13 +12,16 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HardwareKeyboard, KeyDownEvent, KeyEvent, LogicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/dev_bridge.dart';
 import '../main.dart';
 import '../services/cat/equipment.dart';
+import '../services/error_reporting_service.dart';
 import '../services/cat/zero_beat.dart';
+import '../services/extension_service.dart' show TemplateError;
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../settings/settings_target_dialog.dart';
@@ -28,6 +31,7 @@ import 'panel_use_tracker.dart';
 import 'operation/adif_import_flow.dart';
 import 'operation/activities_view.dart';
 import 'operation/call_info_panel.dart';
+import 'operation/cw_function_keys.dart';
 import 'operation/extension_panel.dart';
 import 'operation/information_panel.dart';
 import 'operation/logging_panel.dart';
@@ -35,6 +39,7 @@ import 'operation/map_panel.dart';
 import 'operation/operation_export_panel.dart';
 import 'operation/operation_import_panel.dart';
 import 'operation/spots_panel.dart';
+import 'tester_overlay.dart' show testerOverlayCovering;
 import 'operation/positions_panel.dart';
 import 'peers_panel.dart';
 import '../tools/operation_title.dart';
@@ -738,6 +743,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // rather than leaving the palette context-less — see
     // HaLoServices.openOperationContext.
     _commandContext = widget.services.openOperationContext(widget.operationUuid);
+    // F1-F8 key CW messages while this operation is in front — see
+    // [_onCwKeyEvent]. A HardwareKeyboard handler rather than a Shortcuts
+    // widget, because the keys must work whichever field has focus, and the
+    // main key handler (main.dart) only looks at modified chords.
+    HardwareKeyboard.instance.addHandler(_onCwKeyEvent);
     // Keeps spots flowing for as long as an operation is open, not just
     // while the Spots Panel is on screen: the `spot-history` lookup reads
     // that cache to pull a hunted park/summit into the QSO as the callsign
@@ -759,6 +769,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// exists only to fire an extension panel's `spots` trigger, and the
   /// panels that care read the cache themselves.
   int _spotsRevision = 0;
+
+  /// Whether a function key would key anything — the draft is worth
+  /// tracking for the messages only once one exists. Read at build, so a
+  /// message typed mid-operation takes effect on the next rebuild.
+  bool get _cwMessagesConfigured {
+    final settings = widget.services.settings;
+    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
+    for (var n = 1; n <= SettingsService.cwMessageCount; n++) {
+      if (settings.cwMessage(n).trim().isNotEmpty) return true;
+    }
+    return false;
+  }
 
   /// Whether a panel in the CURRENT arrangement declared [trigger]. Every
   /// signal an extension panel can be woken by costs this view something to
@@ -858,6 +880,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   Map<String, dynamic>? _draftQso;
   Timer? _draftQsoDebounce;
 
+  /// The draft as of the last keystroke — [_draftQso] before the debounce
+  /// has let it through. Read by [_sendCwMessage] only.
+  Map<String, dynamic>? _latestDraftQso;
+
   /// Coalesces the keystroke burst of typing a callsign into one rebuild.
   ///
   /// The panel's own [panelRenderThrottle] already bounds how often it may
@@ -866,6 +892,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// map panes alongside the panel that asked. Debounced on the same window,
   /// so a panel sees one draft per pause rather than one per letter.
   void _onQsoDraftChanged(Map<String, dynamic> qso) {
+    // Kept as it arrives, ahead of the debounce below: a CW message keyed
+    // in the pause the debounce is waiting out must carry the call as typed,
+    // not the last draft that settled.
+    _latestDraftQso = qso;
     _draftQsoDebounce?.cancel();
     // The FIRST draft, carrying a call that resolved before anyone asked for
     // it — a `lookup` panel added to the layout while a callsign is already
@@ -894,6 +924,101 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       if (!mounted) return;
       setState(() => _draftQso = qso);
     });
+  }
+
+  /// F1-F8 key the matching CW message through radio1; Escape stops one
+  /// that is still going out. Only while this view is the front-most route
+  /// — a dialog over it (the CW Messages editor included) owns the keyboard
+  /// — and only with a radio that can key, so on a station without one the
+  /// keys stay free for whatever else wants them.
+  bool _onCwKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (testerOverlayCovering.value) return false;
+    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
+    final services = widget.services;
+    if (!services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
+    final cat = services.cat;
+    if (!cat.canKeyCw) return false;
+    final keyboard = HardwareKeyboard.instance;
+    if (keyboard.isMetaPressed || keyboard.isControlPressed || keyboard.isAltPressed) return false;
+
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      // Stops a message from wherever focus is. NOT what keeps the logging
+      // fields from also wiping on the same keystroke — a handler's answer
+      // here never stops the focus tree's dispatch — that is
+      // LoggingControls.escapeClaimed, wired in logging_panel.dart. With
+      // nothing to stop, Escape keeps its usual meaning.
+      if (!cat.cwSending) return false;
+      cat.stopCw();
+      return true;
+    }
+
+    final n = cwMessageIndexForKey(event.logicalKey);
+    if (n == null) return false;
+    final template = services.settings.cwMessage(n);
+    if (template.trim().isEmpty) return false;
+    unawaited(_sendCwMessage(n, template));
+    return true;
+  }
+
+  /// The keyer area's message buttons: the same send the function keys make.
+  void _sendCwMessageNumber(int n) {
+    final template = widget.services.settings.cwMessage(n);
+    if (template.trim().isEmpty) return;
+    unawaited(_sendCwMessage(n, template));
+  }
+
+  /// Renders message [n]'s template against the operation and the draft
+  /// contact (the same context a panel gets — docs/extensions/templates.md),
+  /// then hands the text to the radio. A template that does not parse is
+  /// the operator's own typo, shown where they will see it rather than sent
+  /// as-is with the braces keyed out in Morse.
+  Future<void> _sendCwMessage(int n, String template) async {
+    final services = widget.services;
+    final ctx = panelRenderContext;
+    String? text;
+    String? failure;
+    try {
+      text = await services.extensions.renderTemplate(
+        template,
+        operation: ctx.operation == null ? null : operationHookArgs(ctx.operation!),
+        qso: _latestDraftQso ?? ctx.qso,
+        qsoCount: ctx.qsoCount,
+      );
+    } on TemplateError catch (e) {
+      failure = e.message;
+    } catch (e, st) {
+      // A hook timeout or a dead runtime — reported, and ALSO said here:
+      // the operator pressed a key and nothing keyed, which the console
+      // alone would leave them to discover on the air.
+      ErrorReportingService.report(e, st, context: 'cw:render-message');
+      failure = '$e';
+    }
+    // Leaving the operation while the render was in flight is leaving the
+    // message behind too — nothing goes on the air from a view that is gone.
+    if (!mounted) return;
+    if (failure != null) {
+      services.statusBar.showNotice(
+        key: 'cw-message-$n',
+        icon: 'alert-circle-outline',
+        text: context.t.commands.cwMessageError(n: n, error: failure),
+        persist: false,
+      );
+      return;
+    }
+    if (text == null) {
+      // No runtime to render with (restarting, or failed to load): a key
+      // that keys nothing must not look like a key that worked.
+      services.statusBar.showNotice(
+        key: 'cw-message-$n',
+        icon: 'alert-circle-outline',
+        text: context.t.commands.cwMessageNotRendered(n: n),
+        persist: false,
+      );
+      return;
+    }
+    if (text.trim().isEmpty) return;
+    services.cat.sendCw(text);
   }
 
   /// Set when a lookup resolves, so the draft carrying its guess skips the
@@ -934,6 +1059,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
 
   @override
   void dispose() {
+    HardwareKeyboard.instance.removeHandler(_onCwKeyEvent);
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.extensions.runtimeGeneration.removeListener(_onRuntimeGenerationChanged);
     // Only clear if it's still ours — a newer OperationView may have taken over.
@@ -2623,6 +2749,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             child: LoggingPanel(
             operation: operation,
             services: widget.services,
+            onSendCwMessage: _sendCwMessageNumber,
+            cwTemplateContext: panelRenderContext,
             qsos: qsos,
             loggingControls: _loggingControls,
             onCommandAction: _handleCommandAction,
@@ -2695,8 +2823,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             // declaring only `lookup` would otherwise be woken with no
             // callsign at all, forever. What `lookup` buys over `qso` is
             // renders, not this.
-            onQsoChanged:
-                _anyPanelWants('qso') || _anyPanelWants('lookup') ? _onQsoDraftChanged : null,
+            //
+            // A CW message counts too: `{{ qso.call }}` in one is rendered
+            // against this draft (`_sendCwMessage`), and with nothing else
+            // asking for it F1 would key the message with the call blank.
+            onQsoChanged: _anyPanelWants('qso') || _anyPanelWants('lookup') || _cwMessagesConfigured
+                ? _onQsoDraftChanged
+                : null,
             // Peer sharing is its own reason to publish, independent of the
             // layout: the panel that reads this lives on ANOTHER device, so
             // gating it on what a panel here declares would leave a position

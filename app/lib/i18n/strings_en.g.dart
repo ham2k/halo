@@ -1268,6 +1268,21 @@ class Translations$commands$en {
 	/// en: '“${label}” is no longer available'
 	String settingVanished({required Object label}) => '“${label}” is no longer available';
 
+	/// en: 'No connected radio can key CW'
+	String get noCwKeyer => 'No connected radio can key CW';
+
+	/// en: 'Open an operation to use the CW keyer'
+	String get keyerNeedsOperation => 'Open an operation to use the CW keyer';
+
+	/// en: 'Sending CW: $text'
+	String cwSending({required Object text}) => 'Sending CW: ${text}';
+
+	/// en: 'CW message F$n: $error'
+	String cwMessageError({required Object n, required Object error}) => 'CW message F${n}: ${error}';
+
+	/// en: 'CW message F$n was not sent: the extensions are not ready'
+	String cwMessageNotRendered({required Object n}) => 'CW message F${n} was not sent: the extensions are not ready';
+
 	/// en: '“${label}” did not accept that value'
 	String settingNotStored({required Object label}) => '“${label}” did not accept that value';
 }
@@ -2988,6 +3003,12 @@ class Translations$settings$radio$en {
 	late final Translations$settings$radio$snapLongMove$en snapLongMove = Translations$settings$radio$snapLongMove$en.internal(_root);
 	late final Translations$settings$radio$snapMinMove$en snapMinMove = Translations$settings$radio$snapMinMove$en.internal(_root);
 	late final Translations$settings$radio$snapMinSpeed$en snapMinSpeed = Translations$settings$radio$snapMinSpeed$en.internal(_root);
+
+	/// en: 'CW Keying'
+	String get cwKeying => 'CW Keying';
+
+	late final Translations$settings$radio$keyerSpeed$en keyerSpeed = Translations$settings$radio$keyerSpeed$en.internal(_root);
+	late final Translations$settings$radio$cwMessages$en cwMessages = Translations$settings$radio$cwMessages$en.internal(_root);
 	late final Translations$settings$radio$avoidZeroBeat$en avoidZeroBeat = Translations$settings$radio$avoidZeroBeat$en.internal(_root);
 	late final Translations$settings$radio$zeroBeatRange$en zeroBeatRange = Translations$settings$radio$zeroBeatRange$en.internal(_root);
 }
@@ -3869,6 +3890,15 @@ class Translations$settings$station$en {
 
 	/// en: 'Current radio settings'
 	String get currentRadioSettings => 'Current radio settings';
+
+	/// en: 'Connect a radio that can key CW to send messages from here.'
+	String get cwKeyerNotAvailable => 'Connect a radio that can key CW to send messages from here.';
+
+	/// en: 'Messages'
+	String get cwMessagesButton => 'Messages';
+
+	/// en: 'Show'
+	String get cwKeyerShow => 'Show';
 
 	/// en: 'Bands'
 	String get antennaBands => 'Bands';
@@ -5215,6 +5245,72 @@ class Translations$settings$radio$snapMinSpeed$en {
 	String get description => 'Turn the dial slower than this and nothing is rounded, unless it was a long move.';
 }
 
+// Path: settings.radio.keyerSpeed
+class Translations$settings$radio$keyerSpeed$en {
+	Translations$settings$radio$keyerSpeed$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Keyer speed'
+	String get title => 'Keyer speed';
+
+	/// en: 'WPM'
+	String get unit => 'WPM';
+
+	/// en: '$wpm wpm'
+	String pill({required Object wpm}) => '${wpm} wpm';
+
+	/// en: '– wpm'
+	String get pillUnknown => '– wpm';
+}
+
+// Path: settings.radio.cwMessages
+class Translations$settings$radio$cwMessages$en {
+	Translations$settings$radio$cwMessages$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'CW Messages'
+	String get title => 'CW Messages';
+
+	/// en: 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rstSent }}` for the report you sent, `{{ qso.their.name }}` for their name.'
+	String get description => 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rstSent }}` for the report you sent, `{{ qso.their.name }}` for their name.';
+
+	/// en: 'F$n'
+	String key({required Object n}) => 'F${n}';
+
+	/// en: 'Message ($n)'
+	String messageTitle({required Object n}) => 'Message (${n})';
+
+	/// en: 'Label'
+	String get labelField => 'Label';
+
+	/// en: 'F$n label'
+	String labelKey({required Object n}) => 'F${n} label';
+
+	/// en: 'Details'
+	String get details => 'Details';
+
+	/// en: '(empty)'
+	String get empty => '(empty)';
+
+	/// en: 'Custom Message'
+	String get custom => 'Custom Message';
+
+	/// en: 'Message'
+	String get customField => 'Message';
+
+	/// en: 'Send'
+	String get send => 'Send';
+
+	/// en: 'Close the keyer area'
+	String get closeArea => 'Close the keyer area';
+}
+
 // Path: settings.radio.avoidZeroBeat
 class Translations$settings$radio$avoidZeroBeat$en {
 	Translations$settings$radio$avoidZeroBeat$en.internal(this._root);
@@ -6337,6 +6433,23 @@ extension on Translations {
 			'settings.radio.snapMinMove.description' => 'Move less than this and nothing is rounded — fine tuning is left alone.',
 			'settings.radio.snapMinSpeed.title' => 'Smart Snap: Slowest move',
 			'settings.radio.snapMinSpeed.description' => 'Turn the dial slower than this and nothing is rounded, unless it was a long move.',
+			'settings.radio.cwKeying' => 'CW Keying',
+			'settings.radio.keyerSpeed.title' => 'Keyer speed',
+			'settings.radio.keyerSpeed.unit' => 'WPM',
+			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} wpm',
+			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
+			'settings.radio.cwMessages.title' => 'CW Messages',
+			'settings.radio.cwMessages.description' => 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rstSent }}` for the report you sent, `{{ qso.their.name }}` for their name.',
+			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
+			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Message (${n})',
+			'settings.radio.cwMessages.labelField' => 'Label',
+			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'F${n} label',
+			'settings.radio.cwMessages.details' => 'Details',
+			'settings.radio.cwMessages.empty' => '(empty)',
+			'settings.radio.cwMessages.custom' => 'Custom Message',
+			'settings.radio.cwMessages.customField' => 'Message',
+			'settings.radio.cwMessages.send' => 'Send',
+			'settings.radio.cwMessages.closeArea' => 'Close the keyer area',
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tune a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tune exactly to the spotted frequency.',
@@ -6598,6 +6711,8 @@ extension on Translations {
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.x6100' => 'X6100',
 			'settings.station.models.rigctld' => 'Generic Radio via rigctld',
 			'settings.station.models.flrig' => 'Generic Radio via flrig',
@@ -6615,8 +6730,6 @@ extension on Translations {
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
 			'settings.station.currentConfiguration' => 'Current Configuration',
@@ -6648,6 +6761,9 @@ extension on Translations {
 			'settings.station.statusDisconnecting' => 'Disconnecting…',
 			'settings.station.statusError' => 'Connection failed',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
+			'settings.station.cwKeyerNotAvailable' => 'Connect a radio that can key CW to send messages from here.',
+			'settings.station.cwMessagesButton' => 'Messages',
+			'settings.station.cwKeyerShow' => 'Show',
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
 			'settings.station.antennaTypeRequired' => 'Choose an antenna type',
@@ -6844,6 +6960,11 @@ extension on Translations {
 			'commands.settingExpectsOneOf' => ({required Object choices}) => 'one of: ${choices}',
 			'commands.settingExpectsNumber' => 'a number',
 			'commands.settingVanished' => ({required Object label}) => '“${label}” is no longer available',
+			'commands.noCwKeyer' => 'No connected radio can key CW',
+			'commands.keyerNeedsOperation' => 'Open an operation to use the CW keyer',
+			'commands.cwSending' => ({required Object text}) => 'Sending CW: ${text}',
+			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW message F${n}: ${error}',
+			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW message F${n} was not sent: the extensions are not ready',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',

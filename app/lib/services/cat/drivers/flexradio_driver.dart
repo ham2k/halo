@@ -22,6 +22,7 @@ import '../discovery.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import '../transports/udp_broadcast.dart';
+import 'cw_send_queue.dart';
 import 'line_framer.dart';
 
 /// Belt-and-suspenders against a subscription silently going stale — a
@@ -225,7 +226,15 @@ FlexDiscovery? parseFlexDiscovery(List<int> datagram) {
 
 String? _nonEmpty(String? value) => (value == null || value.isEmpty) ? null : value;
 
-class FlexRadioSession implements TransceiverSession {
+/// SmartSDR's CWX buffer takes a whole message at once, so a chunk here is
+/// only what keeps one `cwx send` line a sane length — not a radio limit.
+const _cwxChunkLength = 128;
+
+/// `cw wpm` per the SmartSDR API.
+const _flexKeyerSpeedMin = 5;
+const _flexKeyerSpeedMax = 100;
+
+class FlexRadioSession implements CwKeyerSession {
   final EquipmentSink _sink;
 
   /// Which slice this node reads from and tunes. Symmetric on purpose: a
@@ -257,6 +266,22 @@ class FlexRadioSession implements TransceiverSession {
 
   final _framer = LineFramer();
 
+  /// What the radio last said its keyer runs at — `cwx wpm=` on the CWX
+  /// status, or `speed=` on the transmit one.
+  int? _keyerSpeed;
+
+  /// CWX buffers text on the radio, so a message goes over in one `cwx
+  /// send`; the queue still paces one MESSAGE behind another, which keeps
+  /// the app's picture of what is keying honest (the indicator shows what
+  /// the radio is on, not what it has been handed). Spaces travel as 0x7F —
+  /// the API's own rule, since a space ends the command's argument.
+  late final _cwQueue = CwSendQueue(
+    maxChunkLength: _cwxChunkLength,
+    send: (chunk) => _sendCommand('cwx send "${chunk.replaceAll(' ', '\x7F')}"'),
+    speedWpm: () => _keyerSpeed,
+    onProgress: _sink.reportCwProgress,
+  );
+
   void _sendCommand(String command) => _sink.send(utf8.encode('C${_seq++}|$command\n'));
 
   void _subscribe() {
@@ -270,12 +295,16 @@ class FlexRadioSession implements TransceiverSession {
     // so this is the only way to answer "who else is on slice B" with a
     // program and a station name rather than a hex handle.
     _sendCommand('sub client all');
+    // The keyer speed: `cwx wpm=` arrives on this subscription, with the
+    // refresh, so the speed is known without asking for it.
+    _sendCommand('sub cwx all');
   }
 
   void _unsubscribe() {
     _sendCommand('unsub slice all');
     _sendCommand('unsub tx all');
     _sendCommand('unsub client all');
+    _sendCommand('unsub cwx all');
   }
 
   void _armSettleTimer() {
@@ -317,6 +346,7 @@ class FlexRadioSession implements TransceiverSession {
   static final _handshakePattern = RegExp(r'^H[0-9a-fA-F]+$');
   static final _slicePattern = RegExp(r'^S[0-9a-fA-F]+\|slice (\d+) (.+)$');
   static final _transmitPattern = RegExp(r'^S[0-9a-fA-F]+\|transmit (.+)$');
+  static final _cwxPattern = RegExp(r'^S[0-9a-fA-F]+\|cwx (.+)$');
   static final _clientPattern = RegExp(r'^S[0-9a-fA-F]+\|client (0x[0-9a-fA-F]+) (.+)$');
 
   void _handleHandshakeLine(String line) {
@@ -338,6 +368,22 @@ class FlexRadioSession implements TransceiverSession {
     }
     final transmitMatch = _transmitPattern.firstMatch(line);
     if (transmitMatch != null) _handleTransmitLine(transmitMatch);
+    final cwxMatch = _cwxPattern.firstMatch(line);
+    if (cwxMatch != null) _handleCwxLine(cwxMatch);
+  }
+
+  /// `cwx wpm=25 break_in_delay=…`, on the CWX subscription — the speed
+  /// `cw wpm` sets and the front panel's knob turns. `sent=` and the erase
+  /// fields arrive here too and are not read: the indicator estimates its
+  /// progress the same way for every radio (cw_send_queue.dart).
+  void _handleCwxLine(RegExpMatch match) {
+    final wpm = int.tryParse(_parseFields(match.group(1)!)['wpm'] ?? '');
+    if (wpm != null) _reportKeyerSpeed(wpm);
+  }
+
+  void _reportKeyerSpeed(int wpm) {
+    _keyerSpeed = wpm;
+    _sink.reportKeyerSpeed(wpm);
   }
 
   void _handleSliceLine(RegExpMatch match) {
@@ -472,6 +518,10 @@ class FlexRadioSession implements TransceiverSession {
   /// FT-891 drivers, where the rated maximum varies by model.
   void _handleTransmitLine(RegExpMatch match) {
     final fields = _parseFields(match.group(1)!);
+    // The transmit object carries the keyer speed as `speed=` alongside
+    // the CWX subscription's `wpm=`; either is the same knob.
+    final speed = int.tryParse(fields['speed'] ?? '');
+    if (speed != null) _reportKeyerSpeed(speed);
     final rfpower = fields['rfpower'];
     if (rfpower == null) return;
     final watts = num.tryParse(rfpower);
@@ -497,6 +547,38 @@ class FlexRadioSession implements TransceiverSession {
 
   @override
   void setPower(num watts) => _sendCommand('transmit set rfpower=${watts.round().clamp(0, 100)}');
+
+  @override
+  void sendCw(String text) => _cwQueue.enqueue(text);
+
+  /// A real stop, unlike Yaesu's: `cwx clear` empties the radio's buffer,
+  /// so only the character in flight completes.
+  @override
+  void stopCw() {
+    _cwQueue.clear();
+    _sendCommand('cwx clear');
+  }
+
+  @override
+  bool get cwSending => _cwQueue.sending;
+
+  @override
+  void dropQueuedCw(int id) => _cwQueue.dropPending(id);
+
+  @override
+  ({int min, int max}) get keyerSpeedRange => (min: _flexKeyerSpeedMin, max: _flexKeyerSpeedMax);
+
+  /// The radio answers a `cw wpm` with a `cwx wpm=` status push, which is
+  /// the read-back the other drivers have to ask for.
+  @override
+  void setKeyerSpeed(int wpm) => _sendCommand('cw wpm ${wpm.clamp(_flexKeyerSpeedMin, _flexKeyerSpeedMax)}');
+
+  /// Nothing to ask: the speed is pushed. Re-subscribing answers with a
+  /// full refresh, which carries it.
+  @override
+  void refreshKeyerSpeed() {
+    if (_handshakeDone && _wantUpdates) _sendCommand('sub cwx all');
+  }
 
   /// FlexRadio pushes status on its own — "starting updates" just means
   /// subscribing.
@@ -531,6 +613,7 @@ class FlexRadioSession implements TransceiverSession {
 
   @override
   void teardown() {
+    _cwQueue.clear();
     _stopResyncTimer();
     if (_wantUpdates && _handshakeDone) _unsubscribe();
     _wantUpdates = false;

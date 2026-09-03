@@ -24,7 +24,12 @@ import '../main.dart';
 import 'settings_view.dart';
 import 'station_panel.dart';
 
-Future<void> showStationConfigDialog(BuildContext context, HaLoServices services) => showModalPane<void>(
+Future<void> showStationConfigDialog(BuildContext context, HaLoServices services) {
+  // The keyer row shows a value the radio never volunteers — see
+  // CatService.refreshKeyerSpeed. Asked as the dialog opens, so the answer
+  // is on screen by the time the operator reads the row.
+  services.cat.refreshKeyerSpeed();
+  return showModalPane<void>(
   context,
   title: context.t.settings.station.title,
   closeLabel: context.t.common.close,
@@ -45,3 +50,4 @@ Future<void> showStationConfigDialog(BuildContext context, HaLoServices services
     },
   ),
 );
+}

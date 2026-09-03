@@ -7,9 +7,15 @@
   "modeConfirm": "Modo cambiado a **{{mode}}**",
   "powerDescribe": "¿Cambiar la potencia a **{{watts}}W**?",
   "powerConfirm": "Potencia cambiada a **{{watts}}W**",
+  "wpmDescribe": "¿Cambiar la velocidad del manipulador a **{{wpm}} PPM**?",
+  "wpmConfirm": "Velocidad del manipulador cambiada a **{{wpm}} PPM**",
   "catalogBand": "Cambiar de banda",
   "catalogFreq": "Cambiar de frecuencia",
   "catalogMode": "Cambiar de modo",
   "catalogPower": "Cambiar la potencia",
-  "catalogCategory": "Radio"
+  "catalogWpm": "Cambiar la velocidad del manipulador de CW",
+  "catalogCategory": "Radio",
+  "keyerDescribe": "¿Mostrar el manipulador de CW?",
+  "keyerConfirm": "Manipulador de CW mostrado",
+  "catalogKeyer": "Mostrar el manipulador de CW y sus mensajes"
 }

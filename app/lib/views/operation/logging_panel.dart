@@ -24,6 +24,8 @@ import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
 import '../../tools/worked_before_label.dart';
 import '../station_config_dialog.dart';
+import '../keyer_area.dart';
+import 'extension_panel.dart' show PanelRenderContext;
 
 /// Builds the QSO list's day-header/event-row vocabulary for the active
 /// locale. Month/weekday abbreviations come from `intl`'s `DateFormat`
@@ -120,6 +122,16 @@ class LoggingPanel extends StatefulWidget {
   /// the detail (modal on narrow, focuses the Info tab on wide).
   final VoidCallback? onCallInfoTap;
 
+  /// Keys CW message [n] (1-based) — the keyer area's message buttons, the
+  /// same path as F1-F8 (OperationView renders the template against the
+  /// draft contact, which only it holds).
+  final void Function(int n)? onSendCwMessage;
+
+  /// What the keyer area's button labels render against — the operation
+  /// and the draft contact, the same context the messages themselves get.
+  /// A new one arrives with each draft change (debounced upstream).
+  final PanelRenderContext? cwTemplateContext;
+
   /// Fires when a day header in the QSO list is tapped — the operation view
   /// opens the operation's own info the same two ways.
   final VoidCallback? onOperationInfoTap;
@@ -155,6 +167,8 @@ class LoggingPanel extends StatefulWidget {
     this.onQsoChanged,
     this.onPeerDraftChanged,
     this.onCallInfoTap,
+    this.onSendCwMessage,
+    this.cwTemplateContext,
     this.onOperationInfoTap,
   });
 
@@ -752,6 +766,27 @@ class _LoggingPanelState extends State<LoggingPanel> {
             onOpenStationConfig: _gatoEnabled ? () => _openStationConfigDialog(context) : null,
             stationConfigLabel: context.t.settings.station.title,
             radioName: _radioName,
+            // Only with CAT: the strip reads CatService.cwProgress, which
+            // nothing writes without a keyer-capable radio.
+            // Escape stops a CW message before it wipes anything — see
+            // LoggingControls.escapeClaimed.
+            escapeClaimed: _gatoEnabled
+                ? () {
+                    final cat = widget.services.cat;
+                    if (!cat.cwSending) return false;
+                    cat.stopCw();
+                    return true;
+                  }
+                : null,
+            aboveEntryRow: _gatoEnabled
+                ? KeyerArea(
+                    cat: widget.services.cat,
+                    services: widget.services,
+                    onSendMessage: widget.onSendCwMessage,
+                    templateContext: widget.cwTemplateContext,
+                    suppressed: _selectedQso != null,
+                  )
+                : null,
             ourItuRegion: widget.ourItuRegion,
             ourCountryCode: widget.ourCountryCode,
             lookup: widget.services.extensions.lookupCall,

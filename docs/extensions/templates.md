@@ -38,14 +38,14 @@ the namespaces are deliberately polo's. The syntax around them does not:
 
 ## What a template can name
 
-| namespace | panel `render` | export filename | ADIF fields |
-|---|---|---|---|
-| `app` | ✓ | — | ✓ |
-| `now` | ✓ | ✓ | ✓ |
-| `op` | ✓ | dates only | ✓ |
-| `qso` | when the placement's triggers ask for it | — | ✓ |
-| `config` | ✓ | — | — |
-| `log` | — | ✓ | ✓ |
+| namespace | panel `render` | export filename | ADIF fields | CW message |
+|---|---|---|---|---|
+| `app` | ✓ | — | ✓ | ✓ |
+| `now` | ✓ | ✓ | ✓ | ✓ |
+| `op` | ✓ | dates only | ✓ | ✓ |
+| `qso` | when the placement's triggers ask for it | — | ✓ | the draft contact, as far as it is typed |
+| `config` | ✓ | — | — | — |
+| `log` | — | ✓ | ✓ | — |
 
 A namespace a surface has nothing for is **absent**, not blank — which is
 what makes `{% if qso %}` an honest question. Filenames get only the date
@@ -61,7 +61,8 @@ An ISO-8601 UTC string, for the `date` filter: `{{ now | date: '%H:%M' }}`.
 
 ### `op` — the operation
 `station` (the field as typed, which may hold several comma-separated
-callsigns), `stations` (that list, uppercased and deduped), `operator`,
+callsigns; `call` is the same value, the name `qso.call` has), `stations`
+(that list, uppercased and deduped), `operator`,
 `title` (the generated, ref-derived one), `userTitle` (the operator's own
 words), `grid`, `refs`, `uuid`, `qsoCount`, `date`, `dateCompact`, `time`,
 `at`, `startDate`, `startTime`, `startAt`, `endDate`, `endTime`, `endAt`.
@@ -192,6 +193,7 @@ will jump rather than count. Show HH:MM.
 | Panel documents | `custom-text`'s content and tab name | by the operator, in the panel's config form |
 | Export filenames | `sdk/src/exportNames.ts` `NAME_TEMPLATES` | not yet |
 | ADIF NOTES / COMMENT / QSLMSG | `core/adif`'s `TEXT_FIELD_TEMPLATES` | not yet |
+| CW messages | Radio settings `cwMessage1..8`, keyed on F1-F8 through the radio (docs/design/cat.md § CW keying) — rendered by the `template` hook (hooks.md) | by the operator, in the Station dialog's Messages… dialog |
 
 COMMENT and QSLMSG are empty, so nothing is written for them. app-polo
 defaults COMMENT to the QSO's notes and QSLMSG to the operation's

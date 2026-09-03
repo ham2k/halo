@@ -22,6 +22,7 @@ import 'dart:typed_data';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/line_framer.dart';
 import 'package:ham2k_logger/services/cat/drivers/sierra_coax_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/sierra_dcn_codec.dart';
@@ -56,6 +57,11 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => fail('a switch has no power to report');
+
+  @override
+  void reportKeyerSpeed(int wpm) => fail('a switch has no keyer');
+  @override
+  void reportCwProgress(CwSendProgress? progress) {}
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);

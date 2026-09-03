@@ -2889,6 +2889,23 @@ class HaLoServices {
         if (watts == null) return null;
         radio.setVfo('vfoA', power: watts);
         return null;
+      case 'setKeyerSpeed':
+        // WPM command ("20WPM"): straight to radio1's keyer. Unlike power
+        // there is no app-side value to fall back on — the speed is the
+        // radio's — so with nothing connected that can key, the command
+        // fails out loud rather than confirming a change nothing heard.
+        final wpm = params?['wpm'];
+        if (wpm is! num) return null;
+        return cat.setKeyerSpeed(wpm.round()) ? null : (text: t.commands.noCwKeyer, failed: true);
+      case 'showKeyer':
+        // KEYER / MACROS: the keyer area listens for this. With nothing that
+        // can key there is nothing for the area to do, so say so instead.
+        if (!cat.canKeyCw) return (text: t.commands.noCwKeyer, failed: true);
+        // The area lives in an operation's logging panel; from Home there is
+        // nothing to show, and confirming would be a lie.
+        if (currentOperationContext == null) return (text: t.commands.keyerNeedsOperation, failed: true);
+        cat.showKeyerArea();
+        return null;
       case 'openSettings':
         // The setting can't be typed on one line (multiselect, account,
         // secret), the operator named it without a value, or the query

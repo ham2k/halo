@@ -32,6 +32,20 @@ import '../../services/error_reporting_service.dart';
 import '../../services/panel_service.dart';
 import 'panel_content_view.dart';
 
+/// An operation as a hook sees it — what a panel's `render` and the
+/// `template` hook (a CW message about to be keyed) are handed, so
+/// `{{ op.station }}` means the same on both.
+Map<String, dynamic> operationHookArgs(Operation operation) => {
+      ...operation.data,
+      'uuid': operation.uuid,
+      // Row COLUMNS, not QSON — `qsonPayloadFor`'s shape carries neither,
+      // and a panel is the surface that most wants to say when the
+      // operation ran. Without them a template naming the operation's
+      // date has nothing to name (see the SDK's `opValues`).
+      if (operation.startAtMillisMin != null) 'startAtMillisMin': operation.startAtMillisMin,
+      if (operation.startAtMillisMax != null) 'startAtMillisMax': operation.startAtMillisMax,
+    };
+
 /// What a panel renders against, gathered by the view. Compared field by
 /// field to decide whether a rebuild is worth a render — the view rebuilds
 /// for reasons no panel cares about.
@@ -419,17 +433,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         // would answer a template's `op.call` with the empty string, which
         // reads as "this operation has no callsign" rather than "there is no
         // operation". The SDK's `opValues` treats a missing key as the latter.
-        if (operation != null)
-          'operation': {
-            ...operation.data,
-            'uuid': operation.uuid,
-            // Row COLUMNS, not QSON — `qsonPayloadFor`'s shape carries neither,
-            // and a panel is the surface that most wants to say when the
-            // operation ran. Without them a template naming the operation's
-            // date has nothing to name (see the SDK's `opValues`).
-            if (operation.startAtMillisMin != null) 'startAtMillisMin': operation.startAtMillisMin,
-            if (operation.startAtMillisMax != null) 'startAtMillisMax': operation.startAtMillisMax,
-          },
+        if (operation != null) 'operation': operationHookArgs(operation),
         if (ctx.qso != null) 'qso': ctx.qso,
         'qsoCount': ctx.qsoCount,
         'config': config,

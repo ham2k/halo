@@ -22,6 +22,7 @@ import '../../../i18n/strings.g.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import '../transports/config_field_helpers.dart';
+import 'cw_send_queue.dart';
 
 /// Where a new placeholder rig comes up, so it lands somewhere plausible
 /// rather than reporting nothing at all — 40m phone, at a typical barefoot
@@ -29,6 +30,7 @@ import '../transports/config_field_helpers.dart';
 const placeholderRadioDefaultFreqKHz = 7200.0;
 const placeholderRadioDefaultMode = 'LSB';
 const placeholderRadioDefaultWatts = 75;
+const placeholderRadioDefaultKeyerSpeed = 22;
 
 /// Null for a value no parse accepts, rather than the default: the caller
 /// that READS applies the default, the caller that VALIDATES rejects the
@@ -144,7 +146,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   }
 }
 
-class PlaceholderRadioSession implements TransceiverSession {
+class PlaceholderRadioSession implements CwKeyerSession {
   final EquipmentSink _sink;
 
   /// How long a set takes to come back as a reading. Zero reports
@@ -171,6 +173,20 @@ class PlaceholderRadioSession implements TransceiverSession {
   Timer? _heartbeat;
 
   static const _heartbeatInterval = Duration(seconds: 10);
+
+  /// A keyer that keys nothing, at a speed it simply remembers — so the
+  /// keying surfaces (the Station dialog's keyer row, F1-F8, WPM) can be
+  /// driven on a web build with no radio. The queue still paces chunks by
+  /// their Morse duration, which is what makes [cwSending] honest for the
+  /// seconds a message would take.
+  int _keyerSpeed = placeholderRadioDefaultKeyerSpeed;
+
+  late final _cwQueue = CwSendQueue(
+    maxChunkLength: 30,
+    send: (_) {},
+    speedWpm: () => _keyerSpeed,
+    onProgress: _sink.reportCwProgress,
+  );
 
   PlaceholderRadioSession(this._sink, Map<String, dynamic> config)
       : _replyDelay = Duration(milliseconds: numberFromConfig(config, 'placeholderReplyDelay', 0)),
@@ -208,6 +224,7 @@ class PlaceholderRadioSession implements TransceiverSession {
     _sink.reportDiagnostic(t.settings.station.placeholderDiagnostic);
     _reportVfo();
     _afterDelay(() => _sink.reportPower(_watts));
+    _afterDelay(() => _sink.reportKeyerSpeed(_keyerSpeed));
     _heartbeat?.cancel();
     _heartbeat = Timer.periodic(_heartbeatInterval, (_) => _reportVfo());
   }
@@ -243,11 +260,38 @@ class PlaceholderRadioSession implements TransceiverSession {
     _afterDelay(() => _sink.reportPower(_watts));
   }
 
+  @override
+  void sendCw(String text) => _cwQueue.enqueue(text);
+
+  @override
+  void stopCw() => _cwQueue.clear();
+
+  @override
+  bool get cwSending => _cwQueue.sending;
+
+  @override
+  void dropQueuedCw(int id) => _cwQueue.dropPending(id);
+
+  @override
+  ({int min, int max}) get keyerSpeedRange => (min: 5, max: 50);
+
+  @override
+  void setKeyerSpeed(int wpm) {
+    _keyerSpeed = wpm.clamp(keyerSpeedRange.min, keyerSpeedRange.max);
+    _afterDelay(() => _sink.reportKeyerSpeed(_keyerSpeed));
+  }
+
+  @override
+  void refreshKeyerSpeed() => _afterDelay(() => _sink.reportKeyerSpeed(_keyerSpeed));
+
   /// Null, not a short interval: this session reports a change as it
   /// happens, so a quiet VFO is a settled one.
   @override
   Duration? get expectedUpdateInterval => null;
 
   @override
-  void teardown() => stopUpdates();
+  void teardown() {
+    _cwQueue.clear();
+    stopUpdates();
+  }
 }

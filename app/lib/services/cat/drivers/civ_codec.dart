@@ -65,6 +65,12 @@ class CivCommand {
   /// no matching "set".
   static const readMeter = 0x15;
 
+  /// Keys the ASCII text that follows through the radio's keyer — up to 30
+  /// characters, and a lone 0xFF instead of text aborts what is keying.
+  /// The radio NAKs a second message while the first is still going out,
+  /// which is why a session paces them (cw_send_queue.dart).
+  static const sendCw = 0x17;
+
   /// The radio accepted the command.
   static const ack = 0xFB;
 
@@ -128,6 +134,25 @@ int? decodeBcdFrequency(List<int> bytes) {
 /// The sub-command selecting RF power within a 0x14 read/set-level frame.
 /// Same sub-id across the line this driver targets (IC-705/7300/9700/7610).
 const civLevelRfPower = 0x0A;
+
+/// The keyer speed sub-command of [CivCommand.readSetLevel]: 0-255 standing
+/// for 6-48 WPM, the range every current Icom keyer shares.
+const civLevelKeyerSpeed = 0x0C;
+
+/// The keyer's own limits, from the IC-7300/IC-705 CI-V guides.
+const civKeyerSpeedMin = 6;
+const civKeyerSpeedMax = 48;
+
+/// The 0x14 0x0C level for [wpm]: linear over the keyer's range, which is
+/// within one step of the radio's own table at every speed (hamlib's
+/// `cw_lookup` for the same command lists 84 for 20 WPM against 85 here).
+int civLevelForKeyerSpeed(int wpm) =>
+    ((wpm.clamp(civKeyerSpeedMin, civKeyerSpeedMax) - civKeyerSpeedMin) * 255 / (civKeyerSpeedMax - civKeyerSpeedMin))
+        .round();
+
+/// The inverse of [civLevelForKeyerSpeed], rounded to a whole WPM.
+int civKeyerSpeedForLevel(int level) =>
+    civKeyerSpeedMin + (level.clamp(0, 255) * (civKeyerSpeedMax - civKeyerSpeedMin) / 255).round();
 
 /// A 0x14-family level: two BCD bytes, MOST-significant pair first (the
 /// opposite byte order from [encodeBcdFrequency]) — 0000-0255 standing for
@@ -254,6 +279,33 @@ List<int> buildSetPowerLevelFrame({
 /// power sub-command — null for a reply too short to hold the 2-byte level,
 /// or one that fails BCD decoding.
 int? parsePowerLevelData(List<int> data) => data.length < 3 ? null : decodeCivLevel(data.sublist(1, 3));
+
+List<int> buildReadKeyerSpeedFrame({required int to, int from = civDefaultControllerAddress}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.readSetLevel, data: [civLevelKeyerSpeed]);
+
+List<int> buildSetKeyerSpeedFrame({
+  required int to,
+  int from = civDefaultControllerAddress,
+  required int level,
+}) =>
+    buildCivFrame(
+        to: to, from: from, command: CivCommand.readSetLevel, data: [civLevelKeyerSpeed, ...encodeCivLevel(level)]);
+
+/// `frame.data` from a 0x14 reply already confirmed to be the keyer-speed
+/// sub-command — the same two BCD bytes as [parsePowerLevelData].
+int? parseKeyerSpeedLevelData(List<int> data) => parsePowerLevelData(data);
+
+/// [text] must already be sanitized (cw_send_queue.dart) and at most
+/// [civCwMaxChars] long — the codec sends what it is given.
+List<int> buildSendCwFrame({required int to, int from = civDefaultControllerAddress, required String text}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.sendCw, data: text.codeUnits);
+
+/// Aborts the message being keyed.
+List<int> buildStopCwFrame({required int to, int from = civDefaultControllerAddress}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.sendCw, data: const [0xFF]);
+
+/// What one [CivCommand.sendCw] may carry, per the CI-V guides.
+const civCwMaxChars = 30;
 
 /// DC input to the radio, in tenths of a volt (e.g. level 115 means
 /// 11.5V) — distinguishes external DC from internal battery on a radio

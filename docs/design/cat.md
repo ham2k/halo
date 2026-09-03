@@ -699,6 +699,86 @@ writing it:
   `ic705Model`'s override) whenever that reading is below `_batteryDeciVoltsCeiling`. The threshold
   and both wattage figures come from one bench session each, not a published spec.
 
+## CW keying
+
+A radio whose CAT protocol can key CW from text keys the app's messages: F1-F8 in the operation
+view send the eight templates under Radio settings (`cwMessage1..8`), the Station dialog's keyer row
+picks the speed and opens the editor, and `20WPM` typed into the call field sets the speed the way
+`5W` sets power. Everything here is behind `gato`, with CAT.
+
+It is a **capability, not a transceiver method**: `CwKeyerSession` (driver.dart) sits beside
+`AntennaSwitchSession` rather than adding three methods to `TransceiverSession`, because most
+protocols in this layer (FlexRadio, flrig, rigctld, Kenwood) have no such command, and "this radio
+ignores sendCw" must never look like "the text was empty". `CatService.canKeyCw` is `radio1`'s
+session being one, and connected — the keyer row, the function keys and the WPM command all exist
+only while it is true; `setKeyerSpeed` returns whether anything could take the value, so the WPM
+command fails out loud ("No connected radio can key CW") instead of confirming a change nothing
+heard. Three sessions implement it today — the Icom CI-V driver, the Yaesu one and FlexRadio's — so the
+IC-7300 and IC-705, the FT-891, FT-710 and FTDX10, and the FLEX-6000 line — plus the placeholder radio, which
+keys nothing but remembers a speed, so the surfaces can be driven on a web build with no rig.
+
+**The speed is the radio's.** `EquipmentState.keyerSpeed` is set only by `EquipmentSink.reportKeyerSpeed`,
+sessions read it once at connect and never poll it (neither protocol announces a knob turn, and a
+question the radio almost never has a new answer to does not belong in the poll), and every set is
+followed by a read-back so what shows is what the radio took — the CI-V level rounds to a WPM and
+both radios clamp. The one moment a fresh value matters is the dialog opening, so
+`showStationConfigDialog` calls `refreshKeyerSpeed` first. The same echo guard as power
+(`_NodeRuntime.lastSentKeyerSpeed`) keeps a reported value from being sent straight back.
+
+**Messages are templates.** Liquid (docs/extensions/templates.md), rendered on each keypress through
+the core `templates` extension's `template` hook against the operation and the DRAFT contact — the
+same `templateContext` a panel gets, so `{{ qso.call }}` means the same thing in a message as in a
+pane. The renderer lives in the extension runtime and nowhere else, which is why a hook exists for
+it. A template that does not parse is shown as a notice, not keyed with its braces in Morse. The
+handler is a `HardwareKeyboard` handler in `OperationView` (which owns the draft QSO), claimed only
+while that route is front-most — a dialog over it, the message editor included, keeps the keyboard —
+and only for a bare function key with a message behind it; Escape is claimed only while a message is
+still going out, and stops it.
+
+**Neither protocol says when its keyer is free**, and both hold less than a CQ. CI-V's `0x17` takes
+30 characters and NAKs a second command while the first is still keying; a Yaesu memory takes 50.
+`CwSendQueue` (cw_send_queue.dart) sanitizes to the characters both keyers document, splits on word
+boundaries to what fits, and sends the next piece only after the previous one's Morse duration at the
+current speed (PARIS timing, the default 20 WPM until the radio has said) — a chunk boundary falling
+on a word gap is what makes the wait invisible on the air.
+
+The two dialects differ in a way that shapes what the app can promise:
+
+- **Icom CI-V** has the plain command: `0x17 <text>` keys it, `0x17 0xFF` aborts what is keying,
+  `0x14 0x0C` reads and sets the speed (0-255 over 6-48 WPM; the linear conversion is within one
+  step of hamlib's table for the same command).
+- **FlexRadio SmartSDR** has CWX, a text buffer on the radio: `cwx send "<text>"` (spaces as
+  0x7F, the API's rule) queues a whole message, `cwx clear` empties it — a real stop — and `cw wpm`
+  sets the speed the `cwx wpm=` status (`sub cwx all`) reports back on its own. The queue still
+  paces one message behind another so the indicator tracks what is keying, not what was handed over;
+  CWX's own `sent=` progress is not read yet.
+- **Yaesu CAT has no "key this text" command at all.** What it has is five text memories the
+  operator can also fill from the front panel: `KM<n><text>;` writes one, `KY6;`-`KYA;` play them
+  back. Keying from the app is therefore WRITE-THEN-PLAY through memory 5 (`yaesuAppKeyerMemory` —
+  the last, so the four most people fill first survive), and whatever the operator had there is
+  gone. There is no stop: `Ft891Session.stopCw` only empties the queue, and the piece already
+  playing plays out — reported to its estimated end, so the keyer area does not claim it stopped. `KS;` is the speed, 4-60.
+
+**What is going out is shown** in a strip between the logging panel's call-info area and its entry
+row — the keyer area (`KeyerArea`, through `LoggingControls.aboveEntryRow`): the message with its sent characters
+set apart, a bar pacing through it, and what waits behind it, behind a pill with the keyer speed
+that opens a quick speed dialog. The strip slides down with the first message; a message leaves it
+the moment it ends (or is stopped), the pill lingers a minute after the last one, then the strip
+slides back up (or sooner, from the X at its end). The pill's dialog also takes a free-text message.
+While nothing is keying the area offers a button per message — the function keys for a mouse — and
+`KEYER` (or `MACROS`) in the call field, like the Station dialog's Show, brings the area up without
+sending anything. The queue reports each message as it starts (`EquipmentSink.reportCwProgress`,
+`CatService.cwProgress`) with a per-character timeline from the same PARIS arithmetic the pacing
+uses — the radio reports nothing about its progress, so the indicator is an estimate that is right
+to the extent the pacing is, and a paddle-stop at the rig is invisible to it.
+
+Whether either radio actually TRANSMITS is its own break-in setting; with break-in off both key only
+the sidetone. Deliberately not touched from here — an app that flips break-in on so its message goes
+out has put RF on the air from a radio the operator set up not to.
+
+None of this has met hardware yet; both drivers say so in their headers, and `hardwareVerified`
+still reflects only the frequency/mode path.
+
 ## Smart VFO Snap
 
 Off by default, and it is the only thing in the app that moves the operator's radio without being

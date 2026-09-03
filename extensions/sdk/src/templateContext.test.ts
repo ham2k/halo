@@ -37,6 +37,13 @@ test("the At fields are ISO UTC, ready for the date filter", () => {
 // app-polo (halo_core's Operation.stationCalls splits the same way). A
 // template that names one station and one that fans out over all of them both
 // have to work.
+test("op.call is op.station under the name qso.call has", () => {
+  // The trap: an alias that is only in the docs. It has to be in the object.
+  const op = opValues({ stationCall: "N0CALL" })
+  assert.equal(op.call, "N0CALL")
+  assert.equal(op.call, op.station)
+})
+
 test("several station callsigns are offered as a list as well as the raw field", () => {
   const op = opValues({ stationCall: "N0CALL, n0dev , N0CALL" })
   assert.equal(op.station, "N0CALL, n0dev , N0CALL")

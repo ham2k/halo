@@ -87,6 +87,41 @@ String buildReadPowerCommand() => 'PC;';
 int? parsePowerParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
 
 
+/// `KS;` reads the keyer speed; the answer is `KSnnn;`, 004-060 WPM on the
+/// FTDX10 and FT-891 alike.
+String buildReadKeyerSpeedCommand() => 'KS;';
+
+const yaesuKeyerSpeedMin = 4;
+const yaesuKeyerSpeedMax = 60;
+
+String buildSetKeyerSpeedCommand(int wpm) =>
+    'KS${wpm.clamp(yaesuKeyerSpeedMin, yaesuKeyerSpeedMax).toString().padLeft(3, '0')};';
+
+/// `KS020;` → 20. Null unless it's exactly three digits.
+int? parseKeyerSpeedParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
+
+/// Yaesu CAT has no "key this text" command. What it has is five text
+/// memories the operator can also fill from the front panel — `KM` writes
+/// one (up to [yaesuKeyerMemoryMaxChars]) and `KY` plays one back. Keying
+/// a message from the app is therefore WRITE-THEN-PLAY through one memory
+/// the app takes over, and the operator's own text in that slot is gone;
+/// [yaesuAppKeyerMemory] is the last of the five so the four most people
+/// fill first are left alone.
+///
+/// Playback has no stop command in the manual, which is why
+/// [Ft891Session.stopCw] can only stop QUEUING.
+const yaesuAppKeyerMemory = 5;
+const yaesuKeyerMemoryMaxChars = 50;
+
+/// [text] must already be sanitized (cw_send_queue.dart) and no longer than
+/// [yaesuKeyerMemoryMaxChars].
+String buildWriteKeyerMemoryCommand(int memory, String text) => 'KM$memory$text;';
+
+/// `KY6;`-`KYA;` play the TEXT memories 1-5 ("Message Keyer" in the manual's
+/// words); `KY1;`-`KY5;` play the recorded-from-paddle ones, which are not
+/// what `KM` writes.
+String buildPlayKeyerMemoryCommand(int memory) => 'KY${(5 + memory).toRadixString(16).toUpperCase()};';
+
 /// `FA014250000;` → 14250000 Hz. Null unless it's exactly nine digits —
 /// a truncated or over-long response is not a frequency.
 int? parseFrequencyParams(String params) {

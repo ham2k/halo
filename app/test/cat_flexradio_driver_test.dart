@@ -16,6 +16,7 @@ import 'dart:typed_data';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 
@@ -50,6 +51,12 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => powers.add(watts);
+
+  final keyerSpeeds = <int>[];
+  @override
+  void reportKeyerSpeed(int wpm) => keyerSpeeds.add(wpm);
+  @override
+  void reportCwProgress(CwSendProgress? progress) {}
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -197,6 +204,62 @@ void main() {
       // name on the wrong status object must not be read as one.
       session.feed('S5AC2F980|slice 0 in_use=1 mode=USB\n');
       expect(sink.powers, isEmpty);
+    });
+  });
+
+  group('CW keying', () {
+    test('subscribes to cwx with the rest, and lets go of it with the rest', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        expect(sentAny('sub cwx all'), isTrue);
+        session.teardown();
+        expect(sentAny('unsub cwx all'), isTrue);
+        async.flushTimers();
+      });
+    });
+
+    test('a cwx status reports the keyer speed; so does speed= on the transmit object', () {
+      session.feed('S5AC2F980|cwx wpm=25 break_in_delay=100 qsk_enabled=1\n');
+      expect(sink.keyerSpeeds, [25]);
+      session.feed('S5AC2F980|transmit speed=22 pitch=600\n');
+      expect(sink.keyerSpeeds, [25, 22]);
+      expect(sink.powers, isEmpty, reason: 'a transmit line without rfpower reports no power');
+      expect(session.keyerSpeedRange, (min: 5, max: 100));
+    });
+
+    test('a cwx line whose fields carry no wpm reports nothing', () {
+      // `sent=` progress and erase notices come on the same subscription.
+      session.feed('S5AC2F980|cwx sent=12\n');
+      expect(sink.keyerSpeeds, isEmpty);
+    });
+
+    test('sets the speed with cw wpm, clamped to 5-100', () {
+      session.setKeyerSpeed(25);
+      expect(sentAny('cw wpm 25'), isTrue);
+      session.setKeyerSpeed(200);
+      expect(sentAny('cw wpm 100'), isTrue);
+    });
+
+    test('keys a message through cwx send, spaces as 0x7F, and stops with cwx clear', () {
+      fakeAsync((async) {
+        session.sendCw('cq test');
+        // The API's own rule: a space ends the argument, 0x7F is keyed as one.
+        expect(sentAny('cwx send "CQ\x7FTEST"'), isTrue);
+        expect(session.cwSending, isTrue);
+        session.stopCw();
+        expect(sentAny('cwx clear'), isTrue);
+        expect(session.cwSending, isFalse);
+        async.flushTimers();
+      });
+    });
+
+    test('a whole message goes in one cwx send; the radio buffers it', () {
+      fakeAsync((async) {
+        session.sendCw('CQ CQ CQ DE N0DEV N0DEV N0DEV K CQ CQ CQ DE N0DEV N0DEV N0DEV K');
+        expect(sink.sent.where((l) => l.contains('cwx send')), hasLength(1));
+        async.flushTimers();
+      });
     });
   });
 

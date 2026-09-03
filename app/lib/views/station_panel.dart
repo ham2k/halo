@@ -31,6 +31,7 @@ import '../services/peer/peer_remote_radios.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
 import '../tools/form_chrome_labels.dart';
+import 'cw_messages_dialog.dart';
 import 'equipment_report.dart';
 
 /// Shown as the HINT of a secret field whose value is already in the keychain,
@@ -996,6 +997,12 @@ class StationPanel extends StatelessWidget {
                 ),
               ),
 
+            // The CAT keyer: speed on the radio, messages in the app. Compact
+            // only, like the Power field — this is the dialog the operator
+            // reaches from the logging panel mid-QSO, which is where a speed
+            // change happens; the full page is configuration.
+            if (compact) _cwKeyerRow(context, inset: rowInset),
+
             // What the station is made OF. Compact shows only the rig
             // driving the main VFO — a quick-glance connect/status row, not
             // the whole catalogue Add Equipment and the other radios imply.
@@ -1094,6 +1101,72 @@ class StationPanel extends StatelessWidget {
         style: style,
         onCommit: (watts) =>
             services.radio.setVfo('vfoA', power: watts, clearPower: watts == null),
+      ),
+    );
+  }
+
+  /// The keyer speed as a pick over the radio's own range, and the way to
+  /// the CW Messages dialog. The messages are editable with no radio at all
+  /// — they are settings — but the speed is the radio's, so without one
+  /// that can key the pick is disabled under a line saying why.
+  Widget _cwKeyerRow(BuildContext context, {required EdgeInsets inset}) {
+    final st = context.t.settings.station;
+    final canKey = _cat.canKeyCw;
+    final range = _cat.keyerSpeedRange;
+    final speed = _cat.keyerSpeed;
+    final inRange = speed != null && range != null && speed >= range.min && speed <= range.max;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<int>(
+                  // Keyed on the value for the same reason the main VFO
+                  // dropdown is: FormFieldState reads initialValue once, and
+                  // the radio's answer arrives after the first build.
+                  key: ValueKey('keyerSpeed:${inRange ? speed : null}:$canKey'),
+                  isExpanded: true,
+                  initialValue: inRange ? speed : null,
+                  icon: dropdownTrailingIcon,
+                  decoration: poloFieldDecoration(context, context.t.settings.radio.keyerSpeed.title),
+                  menuMaxHeight: dropdownMenuMaxHeight(context),
+                  items: [
+                    if (range != null)
+                      for (var wpm = range.min; wpm <= range.max; wpm++)
+                        DropdownMenuItem<int>(value: wpm, child: Text('$wpm ${context.t.settings.radio.keyerSpeed.unit}')),
+                  ],
+                  onChanged: canKey ? (wpm) => wpm == null ? null : _cat.setKeyerSpeed(wpm) : null,
+                ),
+              ),
+              const SizedBox(width: Space.md),
+              TextButton.icon(
+                icon: const Icon(MdiIcons.messageBulleted),
+                label: Text(st.cwMessagesButton),
+                onPressed: () => showCwMessagesDialog(context, services),
+              ),
+              // Brings up the keyer area behind this dialog, which closes so
+              // the area is what the operator sees.
+              TextButton.icon(
+                icon: const Icon(MdiIcons.dotsHorizontal),
+                label: Text(st.cwKeyerShow),
+                onPressed: canKey
+                    ? () {
+                        Navigator.of(context).maybePop();
+                        _cat.showKeyerArea();
+                      }
+                    : null,
+              ),
+            ],
+          ),
+          if (!canKey)
+            Padding(
+              padding: const EdgeInsets.only(top: Space.xs),
+              child: Text(st.cwKeyerNotAvailable, style: Theme.of(context).textTheme.bodySmall),
+            ),
+        ],
       ),
     );
   }

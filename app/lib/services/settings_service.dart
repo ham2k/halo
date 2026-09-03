@@ -1032,6 +1032,29 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setSmartVfoSnap(bool value) => setSettingValue(radioGroup, 'smartVfoSnap', value);
 
+  /// How many CW messages there are: one per function key F1-F8.
+  static const cwMessageCount = 8;
+
+  /// The stored key of message [n] (1-based) — also its settings field key.
+  static String cwMessageKey(int n) => 'cwMessage$n';
+
+  /// Liquid templates (docs/extensions/templates.md), one per function
+  /// key, keyed through the radio's CAT keyer. Empty means the key does
+  /// nothing. One set for the app rather than per operation: the
+  /// placeholders are what make the same eight messages serve a POTA
+  /// activation and a contest alike.
+  String cwMessage(int n) => (settingValue(radioGroup, cwMessageKey(n)) as String?) ?? '';
+
+  Future<void> setCwMessage(int n, String value) => setSettingValue(radioGroup, cwMessageKey(n), value);
+
+  /// An optional name for message [n] — what the editor's row shows beside
+  /// the key, since a template is not always readable at a glance.
+  static String cwMessageLabelKey(int n) => 'cwMessageLabel$n';
+
+  String cwMessageLabel(int n) => (settingValue(radioGroup, cwMessageLabelKey(n)) as String?) ?? '';
+
+  Future<void> setCwMessageLabel(int n, String value) => setSettingValue(radioGroup, cwMessageLabelKey(n), value);
+
   /// Smart VFO Snap's feel, as four numbers the operator can turn.
   ///
   /// The option lists live HERE rather than beside the settings fields, and

@@ -573,6 +573,21 @@ class LoggingControls extends StatefulWidget {
   /// [onOpenStationConfig] is null (nothing for tapping it to do).
   final String? radioName;
 
+  /// Asked before Escape does anything here. True means the app has just
+  /// used the key for something that outranks a wipe — stopping a CW
+  /// message going out — and the fields are left alone. A HardwareKeyboard
+  /// handler's own "handled" answer cannot do this: the focus tree is
+  /// dispatched to regardless, so the app's Escape and this widget's would
+  /// otherwise both fire on one keystroke.
+  final bool Function()? escapeClaimed;
+
+  /// Laid between the info area and the entry row — the app's keyer
+  /// area (docs/design/cat.md § CW keying), which halo_widgets has no CAT
+  /// types to build itself. The widget owns its own size and animation, and
+  /// takes no room at all while it has nothing to show, so the row above and
+  /// below sit exactly as they do with it null.
+  final Widget? aboveEntryRow;
+
   /// The operator's own ITU region (1/2/3) and lowercase ISO country code
   /// (HALO-52), from the callsign-annotation guess — see
   /// `operation_view.dart`'s `_resolveOurEntityPrefix`, which resolves both
@@ -888,6 +903,8 @@ class LoggingControls extends StatefulWidget {
     this.onOpenStationConfig,
     this.stationConfigLabel,
     this.radioName,
+    this.aboveEntryRow,
+    this.escapeClaimed,
     this.leftieMode = false,
     this.ourItuRegion,
     this.ourCountryCode,
@@ -6908,6 +6925,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // No QSO-scoped widget state of its own — same dispatch shape as
         // updateSetting/openSettings above, straight through to the app layer.
         await widget.onCommandAction?.call('setPower', (map['setPower'] as Map).cast<String, dynamic>());
+      } else if (map['setKeyerSpeed'] is Map) {
+        // Same as setPower: radio1's keyer, nothing of this widget's.
+        await widget.onCommandAction?.call('setKeyerSpeed', (map['setKeyerSpeed'] as Map).cast<String, dynamic>());
+      } else if (map['showKeyer'] is Map) {
+        await widget.onCommandAction?.call('showKeyer', null);
       } else {
         // Nothing above recognized this action's key(s) — most likely a new
         // CommandAction field was added to the SDK (extensions/sdk/src/types.ts)
@@ -7736,6 +7758,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// button's path, so the 5-second undo offer applies to Esc too.
   void _handleEscape() {
     if (_fieldsLocked) return;
+    if (widget.escapeClaimed?.call() ?? false) return;
     // An open exchange menu takes the first Escape, and takes it whether or not
     // the operator has touched the highlight: with a menu up, Escape means "not
     // that" — and everything else Escape does here throws away work (a wipe, a
@@ -8618,6 +8641,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
                           ConstrainedBox(
                             constraints: BoxConstraints(minHeight: _editButtonDiameter ?? 44),
                             child: SizedBox(
@@ -8666,6 +8692,26 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               ),
                             ),
                             ),
+                          ),
+                          // In the same stack as the info area, under it, so
+                          // the wipe/undo button below pins to the bottom of
+                          // BOTH — directly over the log button — rather than
+                          // floating above the strip. Kept off the log button's
+                          // column: the strip ends over the rightmost field
+                          // (its close button sits there). Same reserve the
+                          // entry row makes — the button's diameter plus gap.
+                          if (widget.aboveEntryRow case final strip?)
+                            Padding(
+                              // No top inset of its own: the strip pads itself
+                              // inside its slide, so nothing is spent while it
+                              // is not showing.
+                              padding: EdgeInsets.only(
+                                right: widget.leftieMode ? 0 : (_editButtonDiameter ?? 44) + _logButtonGap,
+                                left: widget.leftieMode ? (_editButtonDiameter ?? 44) + _logButtonGap : 0,
+                              ),
+                              child: strip,
+                            ),
+                            ],
                           ),
                           Positioned(
                             left: widget.leftieMode ? 0 : null,

@@ -84,6 +84,10 @@ export function opValues(
   return {
     ...(atMillis > 0 ? dateValues(atMillis) : { date: "", dateCompact: "", time: "", at: "" }),
     station,
+    // `call` says the same thing, for symmetry with `qso.call` — the name an
+    // operator writing a CW message reaches for first; without it,
+    // `{{ op.call }}` renders empty with nothing to say why.
+    call: station,
     // Deduped, like halo_core's `Operation.stationCalls`: "N0DEV, N0DEV" is a
     // typo, and a template fanning out over this would otherwise repeat
     // itself once per typo.

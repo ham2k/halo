@@ -721,7 +721,7 @@ interface CommandHook {
 // CommandInterpretation: {expectsParams?, mixedCase?, error?, describe?, confirm?, commands?: CommandAction[]}
 // CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, expectsParams?, suggest?}
 // CommandAction (closed set): {setVfo?, setPower?, updateQso?, addQso?,
-//   sendSpots?, syncAll?, updateSettings?, updateSetting?, openSettings?,
+//   setKeyerSpeed?, showKeyer?, sendSpots?, syncAll?, updateSettings?, updateSetting?, openSettings?,
 //   updateOperation?, markSegment?, setCallField?, reloadDataFiles?, devNotice?, devStatus?,
 //   devProgress?, devHammer?, devSplash?, devOnboard?, devTester?, devPopup?,
 //   devTimeTravel?, toggleExperiment?}
@@ -942,6 +942,36 @@ literal character once a command is *already complete* — `expectsParams`
 can't, since it also blocks execution — which is why SEED returns it on
 every result despite its parameters not being prose: bare "SEED" must be
 executable (default count) yet still extendable to "SEED 15 3H".
+
+## ✅ `template` — rendering on the app's behalf
+
+The Liquid renderer (templates.md) lives in the SDK and runs only inside the
+extension runtime. A Dart-side surface that wants a template filled in — a
+CW message about to be keyed (docs/design/cat.md § CW keying) — reaches it
+through this hook, registered once by the core `templates` extension under
+the key `templates`:
+
+```ts
+interface TemplateHook {
+  render(
+    args: { template: string; operation?; qso?; qsoCount?: number },
+    ctx,
+  ): Promise<{ text: string } | { error: string }>
+  // Several templates against one context in one crossing (the keyer
+  // area's button labels): one result per template, in order.
+  renderMany(
+    args: { templates: string[]; operation?; qso?; qsoCount?: number },
+    ctx,
+  ): Promise<{ results: ({ text: string } | { error: string })[] }>
+}
+```
+
+`operation` and `qso` are the same objects a `panel` hook's `render` gets,
+and the result is built with the same `templateContext`, so a placeholder
+means the same thing wherever the app renders it. A template that does not
+parse comes back as `error` carrying the renderer's own message — a typo in
+a message the operator typed, to show them, not a bridge failure to report.
+The app calls them as `ExtensionService.renderTemplate` and `renderTemplates`.
 
 ## ✅ `scoring` — per-operation score batches
 

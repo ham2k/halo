@@ -7,9 +7,15 @@
   "modeConfirm": "Mode set to **{{mode}}**",
   "powerDescribe": "Change power to **{{watts}}W**?",
   "powerConfirm": "Power set to **{{watts}}W**",
+  "wpmDescribe": "Change keyer speed to **{{wpm}} WPM**?",
+  "wpmConfirm": "Keyer speed set to **{{wpm}} WPM**",
   "catalogBand": "Set the band",
   "catalogFreq": "Set the frequency",
   "catalogMode": "Set the mode",
   "catalogPower": "Set the power",
-  "catalogCategory": "Radio"
+  "catalogWpm": "Set the CW keyer speed",
+  "catalogCategory": "Radio",
+  "keyerDescribe": "Show the CW keyer?",
+  "keyerConfirm": "CW keyer shown",
+  "catalogKeyer": "Show the CW keyer and its messages"
 }

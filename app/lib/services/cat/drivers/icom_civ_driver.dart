@@ -21,6 +21,7 @@ import '../../../i18n/strings.g.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import 'civ_codec.dart';
+import 'cw_send_queue.dart';
 
 /// Transceive makes the radio announce changes on its own, but it is a
 /// setting on the radio that may simply be off, and nothing in CI-V lets us
@@ -161,7 +162,7 @@ class IcomCivDriver extends EquipmentDriver {
   static int _addressOrFallback(dynamic raw, int fallback) => _parseAddress(raw) ?? fallback;
 }
 
-class IcomCivSession implements TransceiverSession {
+class IcomCivSession implements CwKeyerSession {
   final EquipmentSink _sink;
 
   /// The radio's CI-V bus address (IC-705 ships as 0xA4).
@@ -184,6 +185,18 @@ class IcomCivSession implements TransceiverSession {
 
   final _framer = CivFramer();
   Timer? _pollTimer;
+
+  /// What the radio last said its keyer runs at — the pace [_cwQueue]
+  /// spaces chunks by, so it is read once at startUpdates rather than only
+  /// when the operator opens the dialog that shows it.
+  int? _keyerSpeed;
+
+  late final _cwQueue = CwSendQueue(
+    maxChunkLength: civCwMaxChars,
+    send: (chunk) => _send(buildSendCwFrame(to: radioAddress, from: controllerAddress, text: chunk)),
+    speedWpm: () => _keyerSpeed,
+    onProgress: _sink.reportCwProgress,
+  );
 
   IcomCivSession(
     this._sink, {
@@ -281,12 +294,20 @@ class IcomCivSession implements TransceiverSession {
 
       case CivCommand.readSetLevel:
         // 0x14 covers several levels (AF, RF gain, squelch…) sharing one
-        // command number — only react to the RF power sub-command.
-        if (frame.data.isEmpty || frame.data[0] != civLevelRfPower) return;
-        final level = parsePowerLevelData(frame.data);
-        if (level != null) {
-          _lastLevel = level;
-          _reportPower();
+        // command number — only react to the sub-commands we track.
+        if (frame.data.isEmpty) return;
+        if (frame.data[0] == civLevelRfPower) {
+          final level = parsePowerLevelData(frame.data);
+          if (level != null) {
+            _lastLevel = level;
+            _reportPower();
+          }
+        } else if (frame.data[0] == civLevelKeyerSpeed) {
+          final level = parseKeyerSpeedLevelData(frame.data);
+          if (level != null) {
+            _keyerSpeed = civKeyerSpeedForLevel(level);
+            _sink.reportKeyerSpeed(_keyerSpeed!);
+          }
         }
 
       case CivCommand.readMeter:
@@ -321,11 +342,48 @@ class IcomCivSession implements TransceiverSession {
       ));
 
   @override
+  void sendCw(String text) => _cwQueue.enqueue(text);
+
+  @override
+  void stopCw() {
+    _cwQueue.clear();
+    _send(buildStopCwFrame(to: radioAddress, from: controllerAddress));
+  }
+
+  @override
+  bool get cwSending => _cwQueue.sending;
+
+  @override
+  void dropQueuedCw(int id) => _cwQueue.dropPending(id);
+
+  @override
+  ({int min, int max}) get keyerSpeedRange => (min: civKeyerSpeedMin, max: civKeyerSpeedMax);
+
+  /// Sets, then reads back: a 0x14 set is answered with a bare ACK, so the
+  /// value shown is what the radio actually took (the level rounds to a
+  /// WPM, and the radio clamps) rather than what was asked for.
+  @override
+  void setKeyerSpeed(int wpm) {
+    _send(buildSetKeyerSpeedFrame(to: radioAddress, from: controllerAddress, level: civLevelForKeyerSpeed(wpm)));
+    _send(buildReadKeyerSpeedFrame(to: radioAddress, from: controllerAddress));
+  }
+
+  @override
   void startUpdates() {
     _framer.reset();
     _requestFrequencyAndMode();
+    // Once, not per poll: the keyer speed changes only when someone turns
+    // the knob, and the CI-V guides say nothing about 0x14 0x0C being
+    // announced on transceive — so the dialog that shows it re-reads it
+    // when it opens (CatService.refreshKeyerSpeed) rather than the poll
+    // carrying a question the radio almost never has a new answer to.
+    _send(buildReadKeyerSpeedFrame(to: radioAddress, from: controllerAddress));
     _pollTimer ??= Timer.periodic(_pollInterval, (_) => _requestFrequencyAndMode());
   }
+
+  /// Asks the radio for its keyer speed again — see [startUpdates].
+  @override
+  void refreshKeyerSpeed() => _send(buildReadKeyerSpeedFrame(to: radioAddress, from: controllerAddress));
 
   @override
   void stopUpdates() => _stopPolling();
@@ -348,7 +406,10 @@ class IcomCivSession implements TransceiverSession {
   Duration? get expectedUpdateInterval => _sawTransceive ? null : _pollInterval;
 
   @override
-  void teardown() => _stopPolling();
+  void teardown() {
+    _cwQueue.clear();
+    _stopPolling();
+  }
 
   void _stopPolling() {
     _pollTimer?.cancel();

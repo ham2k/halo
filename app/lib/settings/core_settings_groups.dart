@@ -662,6 +662,28 @@ class RadioSettingsGroup extends SettingsGroup {
           options: SettingsService.zeroBeatRangeOptions,
           unit: s.units.hz,
         ),
+      // The CW messages, under a target of their own: the Station dialog's
+      // keyer row opens `cw-messages` as its own dialog (station_panel.dart),
+      // and eight text fields among the radio's behaviour toggles would bury
+      // both. Declared here rather than in a widget so SET/SHOW find them
+      // and All Settings lists them like any other setting.
+      {'type': 'markdown', 'text': s.cwMessages.description, 'target': 'cw-messages'},
+      for (var n = 1; n <= SettingsService.cwMessageCount; n++) ...[
+        _text(
+          key: SettingsService.cwMessageKey(n),
+          label: s.cwMessages.key(n: n),
+          icon: 'numeric-$n-circle',
+          value: settings.cwMessage(n),
+          target: 'cw-messages',
+        ),
+        _text(
+          key: SettingsService.cwMessageLabelKey(n),
+          label: s.cwMessages.labelKey(n: n),
+          icon: 'numeric-$n-circle-outline',
+          value: settings.cwMessageLabel(n),
+          target: 'cw-messages',
+        ),
+      ],
     ];
   }
 

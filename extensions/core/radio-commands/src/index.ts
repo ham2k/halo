@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Core radio commands: band, frequency, and mode shortcuts typed into the
+// Core radio commands: band, frequency, mode, power and keyer-speed shortcuts typed into the
 // call field and triggered on space, ported from app-polo's RadioCommands
 // extension (src/extensions/commands/RadioCommands.js) — this is the
 // reference implementation of the `command` hook category (DESIGN.md §4,
@@ -20,6 +20,8 @@ import { defineExtension } from "@ham2k/extension-sdk"
 import type { CommandCatalogEntry, CommandInterpretation, HookContext } from "@ham2k/extension-sdk"
 import { tFor } from "./i18n.ts"
 import { parsePowerCommand } from "./parsePowerCommand.ts"
+import { parseWpmCommand } from "./parseWpmCommand.ts"
+import { parseKeyerCommand } from "./parseKeyerCommand.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -174,6 +176,67 @@ const PowerCommand = {
   },
 }
 
+// Same gate as POWER, for the same reason: the keyer is a CAT feature, and
+// the app reports "no CW-capable radio connected" on dispatch rather than
+// this hook guessing at the radio's state.
+const WpmCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return null
+    const wpm = parseWpmCommand(input)
+    if (wpm == null) return null
+    const t = tFor(ctx)
+    return {
+      describe: t('wpmDescribe', { wpm }),
+      confirm: t('wpmConfirm', { wpm }),
+      commands: [{ setKeyerSpeed: { wpm } }],
+    }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return []
+    const t = tFor(ctx)
+    return [
+      {
+        command: '20WPM',
+        params: '(18WPM, 25WPM…)',
+        describe: t('catalogWpm'),
+        category: t('catalogCategory'),
+        expectsParams: true,
+        suggest: true,
+      },
+    ]
+  },
+}
+
+// KEYER / MACROS: brings up the keyer area with its message buttons. Same
+// gate as POWER and WPM; the app says when nothing connected can key.
+const KeyerCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return null
+    if (!parseKeyerCommand(input)) return null
+    const t = tFor(ctx)
+    return {
+      describe: t('keyerDescribe'),
+      confirm: t('keyerConfirm'),
+      commands: [{ showKeyer: {} }],
+    }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return []
+    const t = tFor(ctx)
+    return [
+      {
+        command: 'KEYER',
+        params: '(MACROS)',
+        describe: t('catalogKeyer'),
+        category: t('catalogCategory'),
+        suggest: true,
+      },
+    ]
+  },
+}
+
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
@@ -181,5 +244,7 @@ defineExtension({
     registerHook('command', { key: 'radio-commands-mode', hook: ModeCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-frequency', hook: FrequencyCommand, priority: 99 })
     registerHook('command', { key: 'radio-commands-power', hook: PowerCommand, priority: 100 })
+    registerHook('command', { key: 'radio-commands-wpm', hook: WpmCommand, priority: 100 })
+    registerHook('command', { key: 'radio-commands-keyer', hook: KeyerCommand, priority: 100 })
   },
 })

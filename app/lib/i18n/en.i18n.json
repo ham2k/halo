@@ -932,6 +932,27 @@
         "title": "Smart Snap: Slowest move",
         "description": "Turn the dial slower than this and nothing is rounded, unless it was a long move."
       },
+      "cwKeying": "CW Keying",
+      "keyerSpeed": {
+        "title": "Keyer speed",
+        "unit": "WPM",
+        "pill": "$wpm wpm",
+        "pillUnknown": "– wpm"
+      },
+      "cwMessages": {
+        "title": "CW Messages",
+        "description": "One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rstSent }}` for the report you sent, `{{ qso.their.name }}` for their name.",
+        "key": "F$n",
+        "messageTitle": "Message ($n)",
+        "labelField": "Label",
+        "labelKey": "F$n label",
+        "details": "Details",
+        "empty": "(empty)",
+        "custom": "Custom Message",
+        "customField": "Message",
+        "send": "Send",
+        "closeArea": "Close the keyer area"
+      },
       "avoidZeroBeat": {
         "title": "Avoid Zero-Beating on Spots",
         "descriptionOn": "With a radio connected, tune a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.",
@@ -1282,6 +1303,9 @@
       "statusDisconnecting": "Disconnecting…",
       "statusError": "Connection failed",
       "currentRadioSettings": "Current radio settings",
+      "cwKeyerNotAvailable": "Connect a radio that can key CW to send messages from here.",
+      "cwMessagesButton": "Messages",
+      "cwKeyerShow": "Show",
       "antennaBands": "Bands",
       "antennaType": "Antenna type",
       "antennaTypeRequired": "Choose an antenna type",
@@ -1517,6 +1541,11 @@
     "settingExpectsOneOf": "one of: ${choices}",
     "settingExpectsNumber": "a number",
     "settingVanished": "“${label}” is no longer available",
+    "noCwKeyer": "No connected radio can key CW",
+    "keyerNeedsOperation": "Open an operation to use the CW keyer",
+    "cwSending": "Sending CW: $text",
+    "cwMessageError": "CW message F$n: $error",
+    "cwMessageNotRendered": "CW message F$n was not sent: the extensions are not ready",
     "settingNotStored": "“${label}” did not accept that value"
   },
   "commandDialog": {

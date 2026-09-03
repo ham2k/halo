@@ -21,6 +21,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
@@ -134,7 +135,7 @@ class _FakeTransport extends EquipmentTransport {
   }
 }
 
-class _FakeSession implements TransceiverSession {
+class _FakeSession implements CwKeyerSession {
   final EquipmentSink sink;
   final List<String> log;
   var updatesStarted = false;
@@ -186,6 +187,27 @@ class _FakeSession implements TransceiverSession {
   @override
   void setPower(num watts) => log.add('setPower:$watts');
 
+  @override
+  void sendCw(String text) => log.add('sendCw:$text');
+
+  @override
+  void stopCw() => log.add('stopCw');
+
+  @override
+  bool get cwSending => false;
+
+  @override
+  void dropQueuedCw(int index) => log.add('dropQueuedCw:$index');
+
+  @override
+  ({int min, int max}) get keyerSpeedRange => (min: 5, max: 50);
+
+  @override
+  void setKeyerSpeed(int wpm) => log.add('setKeyerSpeed:$wpm');
+
+  @override
+  void refreshKeyerSpeed() => log.add('refreshKeyerSpeed');
+
   /// Pushes, like the FlexRadio this fake stands in for — so nothing
   /// here has to reason about a poll cadence.
   @override
@@ -221,6 +243,47 @@ class _FakeDriver extends EquipmentDriver {
     return session;
   }
 }
+
+/// A transceiver whose protocol has no keyer at all — what most drivers are.
+class _PlainSession implements TransceiverSession {
+  @override
+  void handleData(Uint8List chunk) {}
+  @override
+  void startUpdates() {}
+  @override
+  void stopUpdates() {}
+  @override
+  void setFrequency(double freqKHz) {}
+  @override
+  void setMode(String mode) {}
+  @override
+  void setPower(num watts) {}
+  @override
+  Duration? get expectedUpdateInterval => null;
+  @override
+  void teardown() {}
+}
+
+class _PlainDriver extends EquipmentDriver {
+  const _PlainDriver();
+  @override
+  String get key => 'plain';
+  @override
+  String get name => 'Plain Radio';
+  @override
+  bool get hardwareVerified => false;
+  @override
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => _PlainSession();
+}
+
+EquipmentModel _plainModel(EquipmentTransport transport) => EquipmentModel(
+      key: 'plain',
+      category: kCategoryTransceiver,
+      name: () => 'Plain Radio',
+      variants: [
+        EquipmentVariant(key: 'plain-type', driver: const _PlainDriver(), transport: transport, defaultConfig: const {'host': ''}),
+      ],
+    );
 
 EquipmentModel _fakeModel(EquipmentDriver driver, EquipmentTransport transport) => EquipmentModel(
       key: 'fake',
@@ -271,7 +334,7 @@ void main() {
       radio: radio,
       onTrack: onTrack,
       registry: EquipmentRegistry(
-        models: [_fakeModel(driver, transport), antennaModel, keyModel],
+        models: [_fakeModel(driver, transport), _plainModel(transport), antennaModel, keyModel],
         transports: {'fake': transport, 'none': const NoneTransport()},
       ),
       reconnectDelay: Duration.zero,
@@ -1280,6 +1343,118 @@ void main() {
       final reloaded = await makeService();
       addTearDown(reloaded.dispose);
       expect(reloaded.designatedFor(kCategoryKey), key.uuid);
+    });
+  });
+
+  group('CW keying', () {
+    test('nothing can key until radio1 is connected through a keyer-capable session', () async {
+      expect(cat.canKeyCw, isFalse);
+      expect(cat.keyerSpeed, isNull);
+      final node = await addRadio();
+      expect(cat.canKeyCw, isFalse, reason: 'designated but not connected');
+      await connectAndLand(node);
+      expect(cat.canKeyCw, isTrue);
+      expect(cat.keyerSpeedRange, (min: 5, max: 50));
+    });
+
+    test('a connected radio whose protocol has no keyer keys nothing, and says so through canKeyCw', () async {
+      // The trap: an `is` check turned into a cast — every keyer surface
+      // would crash for the Kenwood/flrig/rigctld operator.
+      final node = await cat.addNode(typeKey: 'plain-type', name: 'Plain', config: {'host': 'p.local'});
+      await cat.setRadio1(node.uuid);
+      await connectAndLand(node);
+      expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected, reason: 'sanity');
+
+      expect(cat.canKeyCw, isFalse);
+      expect(cat.keyerSpeed, isNull);
+      expect(cat.keyerSpeedRange, isNull);
+      expect(cat.cwSending, isFalse);
+      expect(() => cat.sendCw('CQ'), returnsNormally);
+      expect(() => cat.stopCw(), returnsNormally);
+      expect(() => cat.dropQueuedCw(1), returnsNormally);
+      expect(cat.setKeyerSpeed(20), isFalse);
+      expect(cat.cwProgress.value, isNull);
+    });
+
+    test('a driver reporting the keyer speed lands in stateFor and keyerSpeed', () async {
+      final node = await addRadio();
+      await connectAndLand(node);
+
+      driver.sessions.single.sink.reportKeyerSpeed(22);
+
+      expect(cat.stateFor(node.uuid).keyerSpeed, 22);
+      expect(cat.keyerSpeed, 22);
+    });
+
+    test('sendCw and stopCw reach radio1\'s session, and are no-ops without one', () async {
+      expect(() => cat.sendCw('CQ'), returnsNormally);
+      expect(() => cat.stopCw(), returnsNormally);
+      final node = await addRadio();
+      await connectAndLand(node);
+      log.clear();
+
+      cat.sendCw('CQ CQ');
+      cat.stopCw();
+
+      expect(log, ['sendCw:CQ CQ', 'stopCw']);
+    });
+
+    test('dropQueuedCw reaches radio1\'s session, and is a no-op without one', () async {
+      expect(() => cat.dropQueuedCw(0), returnsNormally);
+      final node = await addRadio();
+      await connectAndLand(node);
+      log.clear();
+      cat.dropQueuedCw(7);
+      expect(log, ['dropQueuedCw:7']);
+    });
+
+    test('setKeyerSpeed says whether anything could take it', () async {
+      expect(cat.setKeyerSpeed(20), isFalse, reason: 'the WPM command must report this, not confirm');
+      final node = await addRadio();
+      await connectAndLand(node);
+      log.clear();
+
+      expect(cat.setKeyerSpeed(20), isTrue);
+      expect(log, ['setKeyerSpeed:20']);
+    });
+
+    test('setKeyerSpeed sends every time, unlike power: the radio never announces a knob turn', () async {
+      final node = await addRadio();
+      await connectAndLand(node);
+      log.clear();
+
+      cat.setKeyerSpeed(20);
+      driver.sessions.single.sink.reportKeyerSpeed(20);
+      // The operator turned the knob to 30 meanwhile, unseen; asking for 20
+      // again must reach the radio rather than be dropped as a repeat.
+      cat.setKeyerSpeed(20);
+      expect(log, ['setKeyerSpeed:20', 'setKeyerSpeed:20']);
+    });
+
+    test('what radio1 is keying reaches cwProgress; another node\'s keying does not', () async {
+      final radio1 = await addRadio(host: 'a.local');
+      final other = await cat.addNode(typeKey: 'fake-type', name: 'Other', config: {'host': 'b.local'});
+      await cat.setRadio1(radio1.uuid);
+      await connectAndLand(radio1);
+      await connectAndLand(other);
+      final progress = CwSendProgress(id: 1, text: 'CQ', characterEnds: cwCharacterEnds('CQ', 20));
+
+      driver.sessions.last.sink.reportCwProgress(progress);
+      expect(cat.cwProgress.value, isNull, reason: 'only the designated radio keys for the app');
+
+      driver.sessions.first.sink.reportCwProgress(progress);
+      expect(cat.cwProgress.value, same(progress));
+
+      await cat.disconnect(radio1.uuid);
+      expect(cat.cwProgress.value, isNull, reason: 'a message cannot outlive the connection keying it');
+    });
+
+    test('refreshKeyerSpeed asks the session again', () async {
+      final node = await addRadio();
+      await connectAndLand(node);
+      log.clear();
+      cat.refreshKeyerSpeed();
+      expect(log, ['refreshKeyerSpeed']);
     });
   });
 

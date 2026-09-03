@@ -365,6 +365,10 @@ class EquipmentState {
   /// reporting zero.
   final num? power;
 
+  /// The transceiver's keyer speed in WPM, when its driver can report one —
+  /// see [EquipmentSink.reportKeyerSpeed]. Null on a driver that never asks.
+  final int? keyerSpeed;
+
   /// Connected, but the radio has stopped saying anything.
   ///
   /// NOT the same as disconnected, and that distinction is the point: a
@@ -414,6 +418,7 @@ class EquipmentState {
     this.errorDetail,
     this.vfo = const VfoReading(),
     this.power,
+    this.keyerSpeed,
     this.stale = false,
     this.diagnostic,
     this.problem,
@@ -428,6 +433,7 @@ class EquipmentState {
     String? errorDetail,
     VfoReading? vfo,
     num? power,
+    int? keyerSpeed,
     bool? stale,
     String? diagnostic,
     bool clearDiagnostic = false,
@@ -445,6 +451,7 @@ class EquipmentState {
         errorDetail: status == null || status == EquipmentStatus.error ? (errorDetail ?? this.errorDetail) : null,
         vfo: vfo ?? this.vfo,
         power: power ?? this.power,
+        keyerSpeed: keyerSpeed ?? this.keyerSpeed,
         stale: stale ?? this.stale,
         // Needs its own flag rather than a null argument: a driver saying
         // "nothing to report any more" and a caller not mentioning it at all

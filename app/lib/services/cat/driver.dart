@@ -13,6 +13,7 @@
 
 import 'dart:typed_data';
 
+import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
 
 /// What a session is allowed to do: write bytes, and report what it read.
@@ -28,6 +29,17 @@ abstract class EquipmentSink {
   /// never calls this, which is how [EquipmentState.power] tells "unknown"
   /// apart from "the radio said zero".
   void reportPower(num watts);
+
+  /// The radio's keyer speed, in WPM, as the radio reports it — only from a
+  /// [CwKeyerSession], and only after asking or being told. Like
+  /// [reportPower], never called by a driver whose protocol has no keyer,
+  /// which is how [EquipmentState.keyerSpeed] tells "unknown" from a value.
+  void reportKeyerSpeed(int wpm);
+
+  /// What the keyer is sending on the app's behalf — as each message starts,
+  /// and null when it stops. Only from a [CwKeyerSession]; the status bar
+  /// shows it (docs/design/cat.md § CW keying).
+  void reportCwProgress(CwSendProgress? progress);
 
   /// Something a DEVELOPER would want to know about this session — what a
   /// protocol negotiated, what a driver had to work out for itself. Not an
@@ -156,6 +168,58 @@ abstract class AntennaSwitchSession implements EquipmentSession {
   /// queueing it: switching a relay under RF is what destroys one, and a
   /// selection the operator made a moment ago is not worth honouring late.
   void selectAntenna(String portKey, String antennaKey);
+}
+
+/// A session for a transceiver whose CAT protocol can key CW from text and
+/// set its internal keyer's speed — the IC-7300 family's `0x17`, the Yaesu
+/// keyer-memory playback.
+///
+/// A capability of its own rather than three more methods on
+/// [TransceiverSession], for the same reason [AntennaSwitchSession] is:
+/// most radio protocols here (FlexRadio, flrig, rigctld…) have no such
+/// command, and "this radio ignores sendCw" must not look like "this radio
+/// keyed nothing because the text was empty". [CatService] asks with `is`
+/// and offers the keying surfaces only when the answer is yes.
+///
+/// Whether the radio actually TRANSMITS is the radio's own break-in setting;
+/// with break-in off both families key only the sidetone. Deliberately not
+/// touched here: an app that flips break-in on so its message goes out has
+/// put RF on the air from a radio the operator set up not to.
+abstract class CwKeyerSession implements TransceiverSession {
+  /// Keys [text] through the radio's keyer, in the order given, after
+  /// whatever is already queued. Longer than the radio's own command
+  /// buffer is fine — the session splits and paces it (see
+  /// cw_send_queue.dart). Characters the keyer has no code for are dropped
+  /// rather than sent, since a radio's reaction to one is undocumented.
+  void sendCw(String text);
+
+  /// Abandons whatever [sendCw] still has to send. Also aborts the message
+  /// the radio is keying right now on a protocol that can (CI-V); a
+  /// protocol that cannot finishes the current chunk and stops there.
+  void stopCw();
+
+  /// Whether a message is still going out — queued here, or estimated to
+  /// still be keying on the radio.
+  bool get cwSending;
+
+  /// Drops one message waiting behind the current one, by the [id] the last
+  /// report's `pendingIds` gave it — an id rather than a position, so a tap
+  /// that lands after the queue moved on drops nothing rather than the
+  /// wrong one. The rest, and what is keying, are left alone.
+  void dropQueuedCw(int id);
+
+  /// Sets the radio's keyer speed, in WPM, clamped to [keyerSpeedRange].
+  /// The radio's reply — or the session's own read-back — comes up through
+  /// [EquipmentSink.reportKeyerSpeed], never assumed from the set.
+  void setKeyerSpeed(int wpm);
+
+  /// The speeds the radio's keyer accepts, inclusive, from its CAT manual.
+  ({int min, int max}) get keyerSpeedRange;
+
+  /// Asks the radio for its keyer speed again. Sessions read it once on
+  /// connect and never poll it — neither protocol announces a knob turn —
+  /// so a surface about to show the value asks first.
+  void refreshKeyerSpeed();
 }
 
 abstract class EquipmentDriver {

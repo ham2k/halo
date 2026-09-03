@@ -18,6 +18,7 @@ import 'dart:typed_data';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_cat_codec.dart';
@@ -39,6 +40,11 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => powers.add(watts);
+
+  @override
+  void reportKeyerSpeed(int wpm) {}
+  @override
+  void reportCwProgress(CwSendProgress? progress) {}
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);

@@ -2,13 +2,15 @@
   "key": "radio-commands",
   "name": "Radio Commands",
   "version": "0.0.1",
-  "description": "Frequency, band, mode, and power shortcuts typed into the call field",
+  "description": "Frequency, band, mode, power and CW keyer speed shortcuts typed into the call field",
   "keywords": [
     "band",
     "frequency",
     "mode",
     "power",
-    "vfo"
+    "vfo",
+    "keyer",
+    "wpm"
   ],
   "hooks": [
     "command"

@@ -1,0 +1,13 @@
+{
+  "key": "templates",
+  "name": "Templates",
+  "version": "0.0.1",
+  "description": "Renders the app's Liquid templates — CW messages, for one — on the app's behalf",
+  "keywords": [
+    "template",
+    "liquid"
+  ],
+  "hooks": [
+    "template"
+  ]
+}

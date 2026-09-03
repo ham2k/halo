@@ -118,13 +118,23 @@ void main() {
     /// stay out of the way until someone goes looking for them.
     const toggles = {'smartVfoSnap', 'avoidZeroBeat'};
 
-    Future<Set<String>> keysFor(SettingsService settings) async =>
-        {for (final el in await RadioSettingsGroup(settings).buildElements()) el['key'] as String};
+    /// The CW messages live in this group too, but under their own dialog
+    /// (`cw-messages`) — they are not tuning knobs, and the note above them
+    /// has no key at all. Kept out of the knob tests, and tested on their own.
+    bool isCwMessageElement(Map<String, dynamic> el) =>
+        el['key'] == null || (el['key'] as String).startsWith('cwMessage');
+
+    Future<Set<String>> keysFor(SettingsService settings) async => {
+          for (final el in await RadioSettingsGroup(settings).buildElements())
+            if (!isCwMessageElement(el)) el['key'] as String,
+        };
 
     test('contributes nothing at all until the CAT experiment is on', () async {
       // An empty group renders nothing; a group with only a header renders a
       // section title over no rows, on everyone's All Settings screen.
-      expect(await keysFor(await settingsWith(cat: false)), isEmpty);
+      // Raw, not through keysFor — that helper filters the CW messages out,
+      // and they are exactly what a guard left off would leak.
+      expect(await RadioSettingsGroup(await settingsWith(cat: false)).buildElements(), isEmpty);
     });
 
     test("Smart VFO Snap's knobs are emitted, not merely flagged, only in developer mode", () async {
@@ -170,7 +180,7 @@ void main() {
       final group = RadioSettingsGroup(settings);
       final knobs = [
         for (final el in await group.buildElements())
-          if (!toggles.contains(el['key'])) el,
+          if (!toggles.contains(el['key']) && !isCwMessageElement(el)) el,
       ];
       expect(knobs, hasLength(5));
       for (final el in knobs) {
@@ -190,6 +200,31 @@ void main() {
       expect(settings.smartVfoSnapDebounce, const Duration(milliseconds: 750));
       await group.commit('smartVfoSnapMinMoveKHz', '0.5');
       expect(settings.smartVfoSnapMinMoveKHz, 0.5);
+    });
+
+    test('the CW messages sit under their own target, never the tune dialog, and commit as text', () async {
+      final settings = await settingsWith(developer: false, snap: false, zeroBeat: false);
+      final group = RadioSettingsGroup(settings);
+      final messages = [
+        for (final el in await group.buildElements())
+          if (isCwMessageElement(el)) el,
+      ];
+      // Eight messages, their eight labels, and the note explaining the placeholders.
+      expect(messages.where((el) => el['type'] == 'field'), hasLength(SettingsService.cwMessageCount * 2));
+      expect(messages.where((el) => el['type'] == 'markdown'), hasLength(1));
+      for (final el in messages) {
+        expect(elementMatchesTarget(el, 'cw-messages'), isTrue, reason: '${el['key']} belongs to the messages dialog');
+        // Eight text rows in the tune dialog would bury the toggles it exists for.
+        expect(elementMatchesTarget(el, 'current-radio'), isFalse);
+        expect(elementMatchesTarget(el, 'current-radio-extended'), isFalse);
+      }
+      // A template is text; a commit path narrowed to bools and option
+      // strings would drop it silently.
+      await group.commit('cwMessage1', 'CQ CQ DE {{ op.call }} K');
+      expect(settings.cwMessage(1), 'CQ CQ DE {{ op.call }} K');
+      expect(settings.cwMessage(2), '', reason: 'an unset message is empty, which the keys read as nothing to send');
+      expect(await RadioSettingsGroup(await settingsWith(cat: false)).buildElements(), isEmpty,
+          reason: 'sanity: still nothing without CAT, messages included');
     });
 
     test('a stored value this build no longer offers falls back in the ENGINE, not just the picker', () async {
