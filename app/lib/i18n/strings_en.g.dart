@@ -3573,8 +3573,8 @@ class Translations$settings$station$en {
 	/// en: 'No equipment matches'
 	String get noMatches => 'No equipment matches';
 
-	/// en: 'Looking for new equipment…'
-	String get lookingForEquipment => 'Looking for new equipment…';
+	/// en: 'Detected Equipment'
+	String get detectedEquipment => 'Detected Equipment';
 
 	/// en: 'Can't listen for radios: ${error}'
 	String discoveryUnavailable({required Object error}) => 'Can\'t listen for radios: ${error}';
@@ -5520,6 +5520,9 @@ class Translations$settings$station$models$en {
 	/// en: 'Generic Placeholder Radio (no control)'
 	String get placeholderRadio => 'Generic Placeholder Radio (no control)';
 
+	/// en: 'My Radio'
+	String get placeholderRadioNodeName => 'My Radio';
+
 	/// en: '4O3A Antenna Genius'
 	String get antennaGenius => '4O3A Antenna Genius';
 
@@ -6660,7 +6663,7 @@ extension on Translations {
 			'settings.station.addTitle' => 'Add equipment',
 			'settings.station.searchHint' => 'Search equipment',
 			'settings.station.noMatches' => 'No equipment matches',
-			'settings.station.lookingForEquipment' => 'Looking for new equipment…',
+			'settings.station.detectedEquipment' => 'Detected Equipment',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'Can\'t listen for radios: ${error}',
 			'settings.station.edit' => 'Edit equipment',
 			'settings.station.name' => 'Name',
@@ -6755,6 +6758,7 @@ extension on Translations {
 			'settings.station.models.key' => 'CW Key',
 			'settings.station.models.winkeyer' => 'WinKeyer',
 			'settings.station.models.placeholderRadio' => 'Generic Placeholder Radio (no control)',
+			'settings.station.models.placeholderRadioNodeName' => 'My Radio',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
 			'settings.station.transports.network' => 'Network',

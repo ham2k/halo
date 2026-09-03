@@ -14,6 +14,7 @@ upcoming:
     - "New IARU Region 1 Field Day extension, ready for the September SSB weekend"
     - "New NRRL Nasjonal Field Day extension, for Norway's national field day"
     - "Windows: com.ham2k links now open the app, so QR device linking works there"
+    - "The antenna and key in use are remembered per radio, and follow the one you pick"
 
 "160":
   changes:

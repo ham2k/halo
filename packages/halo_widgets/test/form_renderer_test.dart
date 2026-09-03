@@ -1249,7 +1249,7 @@ void main() {
                   ],
                 },
                 initialState: const {'name': 'Left Radio'},
-                destructiveAction: (label: 'Remove', color: const Color(0xFFB3261E), onPressed: () {}),
+                destructiveAction: (label: 'Remove', color: const Color(0xFFB3261E), onPressed: () {}, icon: null),
                 secondaryAction: (label: 'Report', onPressed: () => secondaryRan++),
                 // submit() awaits the validator per field, so holding it here
                 // holds the form in its submitting state.
@@ -1311,6 +1311,7 @@ void main() {
                     label: 'Remove',
                     color: const Color(0xFFB3261E),
                     onPressed: () => destructiveRan++,
+                    icon: null,
                   ),
                   secondaryAction: (label: 'Report', onPressed: () => secondaryRan++),
                 );
@@ -1369,7 +1370,7 @@ void main() {
                   },
                   initialState: const {'name': 'Left Radio'},
                   labels: const FormRendererLabels(cancel: 'Cancelar', save: 'Guardar'),
-                  destructiveAction: (label: 'Eliminar', color: const Color(0xFFB3261E), onPressed: () {}),
+                  destructiveAction: (label: 'Eliminar', color: const Color(0xFFB3261E), onPressed: () {}, icon: null),
                   secondaryAction: (label: 'Informar', onPressed: () {}),
                 ),
                 child: const Text('Open'),

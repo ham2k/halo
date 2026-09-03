@@ -176,16 +176,30 @@ class EquipmentModel {
   /// other radio, so it leaves this false.
   final bool hiddenFromCatalog;
 
+  /// What to call a NEW node of this model, when that is not the model's own
+  /// name. Only for a model whose catalogue name is a description rather
+  /// than something an operator would call their rig: the placeholder's
+  /// name has to carry "(no control)" in the picker, and nobody wants that
+  /// spelled across their station panel afterwards. A closure for the same
+  /// live-locale reason as [_nameBuilder].
+  final String Function()? _suggestedNameBuilder;
+
   const EquipmentModel({
     required this.key,
     required this.category,
     required String Function() name,
     required this.variants,
+    String Function()? suggestedName,
     this.manufacturer,
     this.hiddenFromCatalog = false,
-  }) : _nameBuilder = name;
+  })  : _nameBuilder = name,
+        _suggestedNameBuilder = suggestedName;
 
   String get name => _nameBuilder();
+
+  /// The name a new node of this model starts with — [name] unless the model
+  /// says otherwise.
+  String get suggestedName => (_suggestedNameBuilder ?? _nameBuilder)();
 
   EquipmentVariant? variantForTransport(String? transportKey) {
     for (final variant in variants) {
@@ -953,6 +967,7 @@ const placeholderRadioModel = EquipmentModel(
   key: 'placeholder-radio',
   category: kCategoryTransceiver,
   name: _placeholderRadioName,
+  suggestedName: _placeholderRadioNodeName,
   variants: [
     EquipmentVariant(
       key: _placeholderRadioKey,
@@ -975,6 +990,8 @@ const placeholderRadioModel = EquipmentModel(
 );
 
 String _placeholderRadioName() => t.settings.station.models.placeholderRadio;
+
+String _placeholderRadioNodeName() => t.settings.station.models.placeholderRadioNodeName;
 
 /// A 4O3A Antenna Genius, over the TCP protocol its Genius series shares.
 ///

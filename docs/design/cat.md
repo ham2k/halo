@@ -408,6 +408,34 @@ The radio designated **`radio1`** — data-model.md's term for the transceiver p
 drives the logging panel, and the logging panel drives it back. It's auto-assigned to the first
 transceiver added, so a one-radio shack never has to think about it.
 
+### The picks belong to the radio
+
+An antenna and a key are attached to a rig, not to a station, so
+`CatService.designatedFor`/`setDesignated` answer for whatever is driving
+`vfoA` right now: the store is `radio → category → uuid`, keyed by the same
+value the main-VFO picker carries (a local node's uuid, `peer:‹device›:‹radio›`
+for a peer's radio, `none` for None). A shack whose second rig runs a different
+wire and its own paddle states that once; switching `radio1` restores what that
+radio was last set to, and switching back restores the first one's.
+
+Three states, not two. An **absent** category is "never decided" and falls to
+`_defaultDesignation` — which for a key is the radio itself, when its own CAT
+can key, so a keying rig needs no pick at all; nothing about a radio implies an
+antenna, so there is no equivalent there. A category stored as **null** is the
+operator having answered None, and outranks the default. Anything else is their
+pick. Collapsing absent and null would make "None" un-storable on a keying
+radio.
+
+Because the effective key changes when `radio1` does, every writer of `_radio1`
+owes the outgoing keyer exactly what an explicit pick owes it — stop its
+message, clear `cwProgress`, re-read the new one's speed — or a radio the
+operator has stepped off goes on keying with nothing showing it and the Stop
+control pointing somewhere else. Four paths move it (`setRadio1`,
+`setRemoteRadio1`, `addNode` taking the VFO for the newest transceiver,
+`removeNode` clearing it), and only one of them is about keys at all, so the
+debt is paid by a wrapper — `_withKeyInUseTidied` — rather than by a line each
+of them has to remember.
+
 The two directions have to not chase each other, and three things make that work:
 
 - **An origin tag.** `RadioService.setVfo` takes a `VfoOrigin` (`user` or `radio`) as an extra
@@ -717,8 +745,8 @@ must never look like "the text was empty" — and a keyer of its own (a K1EL Win
 keyers, and — as "via ‹radio›" — every radio whose driver says `canKeyCw`; `CatService.canKeyCw` is
 that designated node's session being a `CwKeyerSession`, and connected. A station with a WinKeyer
 and a keying radio therefore says which one the messages go through in the place a key is already
-chosen, and a radio that could key does nothing until picked (it is auto-designated only when it is
-added with no key in use at all — the shack's first keyer keys). The keyer row, the function keys and
+chosen, and a radio whose CAT keys is its OWN key until something else is picked (§ The picks belong
+to the radio). The keyer row, the function keys and
 the WPM command all exist only while `canKeyCw` holds; `setKeyerSpeed` returns whether anything could
 take the value, so the WPM command fails out loud ("No connected radio can key CW") instead of
 confirming a change nothing heard. Four sessions implement it — the Icom CI-V driver, the Yaesu one,
@@ -1150,7 +1178,8 @@ with `AG ` is ignored — 9007 is a port number, not a protocol.
 
 **Not wired to anything yet.** The switch knows which antenna is live and the
 app knows which of its antenna nodes that is, but nothing reads it —
-`designatedFor(kCategoryAntenna)` is still the operator's own pick. That
+`designatedFor(kCategoryAntenna)` is still the operator's own pick, per radio
+(§ The picks belong to the radio). That
 join, and a transceiver's own antenna ports (a Flex has two, most rigs one),
 are the next step and are what § Where this is going means by "ports,
 port-to-port connections".

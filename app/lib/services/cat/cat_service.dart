@@ -34,7 +34,10 @@ import 'vfo_snap.dart';
 const _uuidGenerator = Uuid();
 
 /// Bump when the stored shape changes in a way a reader has to know about.
-const _storageVersion = 1;
+///
+/// 2 — `designated` became per radio (radio → category → uuid). Version 1's
+/// blob is one flat category → uuid map, and [CatService._load] migrates it.
+const _storageVersion = 2;
 
 /// How long a connected radio may say NOTHING before the row stops
 /// presenting its last reading as current.
@@ -333,17 +336,20 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// [remoteRadio1] for why the two cannot both be set.
   Future<void> setRemoteRadio1(PeerRadioSelection? selection) async {
     if (_remoteRadio1 == selection && (selection == null || _radio1 == null)) return;
-    _remoteRadio1 = selection;
-    if (selection != null && _radio1 != null) {
-      // The same two clears [setRadio1] does, and for the same reasons: the
-      // outgoing radio stops being told anything, and a movement measured on
-      // it says nothing about where the peer's rig is sitting.
-      _runtimes[_radio1!]?.lastSent = null;
-      _runtimes[_radio1!]?.lastSentPower = null;
-      cwProgress.value = null;
-      _cancelSnap(null);
-      _radio1 = null;
-    }
+    // The picks are per radio, so moving `vfoA` moves the key in use with it.
+    _withKeyInUseTidied(() {
+      _remoteRadio1 = selection;
+      if (selection != null && _radio1 != null) {
+        // The same two clears [setRadio1] does, and for the same reasons: the
+        // outgoing radio stops being told anything, and a movement measured on
+        // it says nothing about where the peer's rig is sitting.
+        _runtimes[_radio1!]?.lastSent = null;
+        _runtimes[_radio1!]?.lastSentPower = null;
+        cwProgress.value = null;
+        _cancelSnap(null);
+        _radio1 = null;
+      }
+    });
     await _save();
     notifyListeners();
   }
@@ -355,23 +361,26 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // null, which is what this has to be checked ahead of the early return.
     final clearingRemote = _remoteRadio1 != null;
     if (_radio1 == uuid && !clearingRemote) return;
-    _remoteRadio1 = null;
-    // The echo guard is per-node but only meaningful for whichever node is
-    // radio1 — the same reason [_closeSession] clears it. The incoming
-    // radio was told nothing while it wasn't driving the panel, and the
-    // outgoing one stops being asked, so a stale value on either would
-    // suppress the first tune to a frequency that radio happens to be on.
-    for (final id in [_radio1, uuid]) {
-      if (id != null) {
-        _runtimes[id]?.lastSent = null;
-        _runtimes[id]?.lastSentPower = null;
-        cwProgress.value = null;
+    // See [setRemoteRadio1]: the key in use belongs to the radio.
+    _withKeyInUseTidied(() {
+      _remoteRadio1 = null;
+      // The echo guard is per-node but only meaningful for whichever node is
+      // radio1 — the same reason [_closeSession] clears it. The incoming
+      // radio was told nothing while it wasn't driving the panel, and the
+      // outgoing one stops being asked, so a stale value on either would
+      // suppress the first tune to a frequency that radio happens to be on.
+      for (final id in [_radio1, uuid]) {
+        if (id != null) {
+          _runtimes[id]?.lastSent = null;
+          _runtimes[id]?.lastSentPower = null;
+          cwProgress.value = null;
+        }
       }
-    }
-    // Same reasoning for the snapper: a movement measured on the outgoing
-    // radio says nothing about where the incoming one is sitting.
-    _cancelSnap(null);
-    _radio1 = uuid;
+      // Same reasoning for the snapper: a movement measured on the outgoing
+      // radio says nothing about where the incoming one is sitting.
+      _cancelSnap(null);
+      _radio1 = uuid;
+    });
     await _save();
     notifyListeners();
   }
@@ -434,40 +443,104 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   // ------------------------------------------------------ antenna1 / key1
 
-  /// Which antenna/key node is "in use" — the same plain-stored,
-  /// operator-or-auto-designated pointer as [radio1], for the categories
-  /// that only ever have one thing connected at a time and never a
-  /// session to disrupt. Keyed by category ([kCategoryAntenna]/
-  /// [kCategoryKey]) rather than given their own fields, since both follow
-  /// [radio1]'s three rules identically and neither carries radio1's
-  /// connect/session bookkeeping.
-  final Map<String, String?> _designated = {};
+  /// Which antenna/key node is "in use", PER RADIO — keyed by the radio the
+  /// picks belong to and then by category ([kCategoryAntenna]/
+  /// [kCategoryKey]). The outer key is the same value the main-VFO picker
+  /// carries: a local node's uuid, `peer:…` for a peer's radio,
+  /// [_noRadioKey] for None.
+  ///
+  /// Per radio because that is what an antenna and a key are physically
+  /// attached to. A shack whose second rig runs a different wire and its own
+  /// paddle states that once; switching radio1 restores what that radio was
+  /// last set to, and switching back restores the first one's.
+  ///
+  /// An ABSENT category means never decided, and [designatedFor] answers it
+  /// with [_defaultDesignation]. A category stored as null is the operator
+  /// having answered None, and stays None. The two are not the same, which
+  /// is why the inner map holds explicit nulls rather than dropping them.
+  final Map<String, Map<String, String?>> _designated = {};
 
-  String? designatedFor(String category) => _designated[category];
+  /// Stands in for "no radio selected" — a real key, since None is a state
+  /// an operator can sit in and configure a station from.
+  static const _noRadioKey = 'none';
 
-  bool isDesignated(String category, String uuid) => _designated[category] == uuid;
+  /// Whose picks [designatedFor] and [setDesignated] are talking about:
+  /// whatever is driving `vfoA` right now.
+  String _designationKey() {
+    if (_radio1 case final uuid?) return uuid;
+    if (_remoteRadio1 case final selection?) return peerRadioValue(selection);
+    return _noRadioKey;
+  }
+
+  String? designatedFor(String category) {
+    final picks = _designated[_designationKey()];
+    if (picks != null && picks.containsKey(category)) return picks[category];
+    return _defaultDesignation(category);
+  }
+
+  /// What a radio that has never been asked keys through: itself, when its
+  /// own CAT can key. Computed rather than written, so it follows the radio
+  /// without an operator ever confirming it — and only a default, which is
+  /// what [setDesignated]'s stored entry then outranks, None included.
+  ///
+  /// Antennas have no equivalent: nothing about a radio says which wire is
+  /// on it. Nor do peer radios, whose keying is the other device's business.
+  String? _defaultDesignation(String category) {
+    if (category != kCategoryKey) return null;
+    if (!_settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return null;
+    final uuid = _radio1;
+    if (uuid == null) return null;
+    final node = _nodes[uuid];
+    if (node == null) return null;
+    return (registry.typeFor(node.typeKey)?.driver.canKeyCw ?? false) ? uuid : null;
+  }
+
+  bool isDesignated(String category, String uuid) => designatedFor(category) == uuid;
+
+  /// Writes a pick for the radio in use without saving or notifying — the
+  /// shared half of [setDesignated] and the rules [addNode] applies.
+  void _designateNow(String category, String? uuid) =>
+      (_designated[_designationKey()] ??= {})[category] = uuid;
 
   Future<void> setDesignated(String category, String? uuid) async {
-    if (_designated[category] == uuid) return;
-    final previousUuid = _designated[category];
-    _designated[category] = uuid;
-    if (category == kCategoryKey) {
-      // The old keyer's message would otherwise finish with nothing showing
-      // it and nothing to stop it; the new one's speed is read so the row is
-      // not left on the old one's.
-      final previous = _runtimes[previousUuid]?.session;
-      if (previous is CwKeyerSession && previous.cwSending) {
-        try {
-          previous.stopCw();
-        } catch (e, st) {
-          ErrorReportingService.report(e, st, context: 'cat:stop-cw');
-        }
-      }
-      cwProgress.value = null;
-      refreshKeyerSpeed();
-    }
+    final previousUuid = designatedFor(category);
+    if (previousUuid == uuid) return;
+    _designateNow(category, uuid);
+    if (category == kCategoryKey) _onKeyInUseChanged(previousUuid);
     await _save();
     notifyListeners();
+  }
+
+  /// Runs [mutate], then pays the outgoing key whatever a change owes it.
+  ///
+  /// EVERY path that moves the key in use goes through this, and most of them
+  /// never name a key at all: picking a radio, adding a transceiver (the
+  /// newest takes the VFO), removing one. The picks belong to the radio, so
+  /// a writer of `_radio1` is a writer of the key in use whether it meant to
+  /// be or not — which is why this is a wrapper rather than a line each of
+  /// them has to remember.
+  void _withKeyInUseTidied(void Function() mutate) {
+    final previous = designatedFor(kCategoryKey);
+    mutate();
+    if (designatedFor(kCategoryKey) != previous) _onKeyInUseChanged(previous);
+  }
+
+  /// What a change of key in use owes the outgoing one — whether the
+  /// operator picked a different key or moved to a radio that keys through
+  /// something else. The old keyer's message would otherwise finish with
+  /// nothing showing it and nothing to stop it; the new one's speed is read
+  /// so the row is not left on the old one's.
+  void _onKeyInUseChanged(String? previousUuid) {
+    final previous = _runtimes[previousUuid]?.session;
+    if (previous is CwKeyerSession && previous.cwSending) {
+      try {
+        previous.stopCw();
+      } catch (e, st) {
+        ErrorReportingService.report(e, st, context: 'cat:stop-cw');
+      }
+    }
+    cwProgress.value = null;
+    refreshKeyerSpeed();
   }
 
   EquipmentState stateFor(String uuid) => _runtimes[uuid]?.state ?? const EquipmentState();
@@ -518,17 +591,6 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     }
   }
 
-  /// Makes [uuid] the key in use when it can key and nothing is — the rule
-  /// [addNode] applies, and what [_load] applies once for a station whose
-  /// radio keyed before the key in use decided that.
-  void _designateFirstKeyingRadio(String uuid) {
-    if (_designated[kCategoryKey] != null) return;
-    if (!_settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return;
-    final node = _nodes[uuid];
-    if (node == null || !(registry.typeFor(node.typeKey)?.driver.canKeyCw ?? false)) return;
-    _designated[kCategoryKey] = uuid;
-  }
-
   /// The node keying for the app: the designated key ([kCategoryKey]'s
   /// designation), when it is connected through a [CwKeyerSession] — a
   /// Winkeyer, or a radio whose CAT can key and was picked as the key in
@@ -539,7 +601,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// keying radio has to say which one the messages go through, and the
   /// "key in use" pick is where a key is already chosen.
   String? get _cwKeyerUuid {
-    final uuid = _designated[kCategoryKey];
+    final uuid = designatedFor(kCategoryKey);
     if (uuid == null) return null;
     final runtime = _runtimes[uuid];
     if (runtime?.state.status != EquipmentStatus.connected) return null;
@@ -560,7 +622,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// the Station dialog shows the keyer row at all: a disconnected Winkeyer
   /// still wants its connect button and its messages reachable.
   bool get designatedKeyIsKeyer {
-    final uuid = _designated[kCategoryKey];
+    final uuid = designatedFor(kCategoryKey);
     if (uuid == null) return false;
     final node = nodeFor(uuid);
     if (node == null) return false;
@@ -570,7 +632,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// The designated key's node, when [designatedKeyIsKeyer].
   EquipmentNode? get designatedKeyerNode {
     if (!designatedKeyIsKeyer) return null;
-    return nodeFor(_designated[kCategoryKey]!);
+    return nodeFor(designatedFor(kCategoryKey)!);
   }
 
   /// Every node the "key in use" pick may offer as a keying source: keyers,
@@ -750,17 +812,35 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     if (_radio1 == null) _remoteRadio1 = PeerRadioSelection.from(stored['remoteRadio1']);
     final designated = stored['designated'];
     if (designated is Map) {
-      for (final entry in designated.entries) {
-        final uuid = entry.value;
-        if (uuid is String && _nodes.containsKey(uuid)) _designated['${entry.key}'] = uuid;
+      // Two shapes, told apart by the version the blob was written under
+      // rather than by the shape of its values — a probe would have to
+      // assume no category value is ever a Map, which is an invariant
+      // nothing enforces, and would read a half-migrated blob as whichever
+      // branch its first Map happened to select.
+      //
+      // Version 1 is one flat category → uuid map, and it belongs to
+      // whatever was selected when it was written — which is what is being
+      // loaded here, a few lines up.
+      //
+      // A blob with no key entry at all needs no special case either way: an
+      // absent category is "never decided", which is exactly what
+      // [_defaultDesignation] answers, so a station that keyed through
+      // radio1 goes on doing so.
+      final version = stored['version'];
+      final perRadio = version is int && version >= 2;
+      final byRadio = perRadio ? designated : {_designationKey(): designated};
+      for (final entry in byRadio.entries) {
+        final picks = entry.value;
+        if (picks is! Map) continue;
+        for (final pick in picks.entries) {
+          final uuid = pick.value;
+          // A pick whose node did not load is dropped, for [_radio1]'s
+          // reason. An explicit null is kept: that is the operator having
+          // answered None, not a missing node.
+          if (uuid != null && !(uuid is String && _nodes.containsKey(uuid))) continue;
+          (_designated['${entry.key}'] ??= {})['${pick.key}'] = uuid as String?;
+        }
       }
-    }
-    // No key entry at all means the key in use has never been decided, and
-    // a station that keyed through radio1 until then would lose keying with
-    // nothing to say why. An explicit None is stored as null and kept.
-    final keyDecided = designated is Map && designated.containsKey(kCategoryKey);
-    if (!keyDecided) {
-      if (_radio1 case final uuid?) _designateFirstKeyingRadio(uuid);
     }
   }
 
@@ -787,8 +867,11 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// transport icon and its address, so spelling it into the name too would
   /// say the same thing three times — and the name outlives the choice,
   /// since the transport can be changed in the editor afterwards.
+  ///
+  /// [EquipmentModel.suggestedName], not [EquipmentModel.name]: a model whose
+  /// catalogue entry is a description says separately what to call the rig.
   String suggestedNameFor(String typeKey) => uniqueEquipmentName(
-        registry.typeFor(typeKey)?.model.name ?? typeKey,
+        registry.typeFor(typeKey)?.model.suggestedName ?? typeKey,
         _nodes.values.map((node) => node.name),
       );
 
@@ -813,29 +896,36 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       config: config,
     );
     final stored = await _stashSecrets(node);
-    _nodes[stored.uuid] = stored;
-    // The newest transceiver takes the VFO. Only transceivers: radio1 is the
-    // rig whose VFO is vfoA, and the category system exists so a rotator or a
-    // relay board added later cannot take it.
     final category = registry.typeFor(stored.typeKey)?.category;
-    // Never over a peer's radio, though: that pick was the operator saying
-    // where `vfoA` comes from, and configuring a rig — which is not the same
-    // as reaching for it — must not silently take the panel back off the
-    // radio they are working through.
-    if (category == kCategoryTransceiver && _remoteRadio1 == null) _radio1 = stored.uuid;
-    // Same rule as radio1, for antenna/key: the newest one designated, so
-    // adding the shack's only antenna or key needs no separate picker visit.
-    if (category == kCategoryAntenna) _designated[kCategoryAntenna] = stored.uuid;
-    // The key in use is also what keys, so what a new node does to it
-    // depends on what it displaces: a keyer takes over (the newest keyer
-    // keys), a plain paddle takes over only from a paddle or nothing —
-    // recording a Bencher for the log must not silently stop the radio's
-    // keying — and a radio that can key is picked only when nothing was,
-    // and only with the keyer experiment on (without it the pick never
-    // shows radios, so the designation would be one nobody could see).
-    if (category == kCategoryKeyer) _designated[kCategoryKey] = stored.uuid;
-    if (category == kCategoryKey && !designatedKeyIsKeyer) _designated[kCategoryKey] = stored.uuid;
-    if (category == kCategoryTransceiver) _designateFirstKeyingRadio(stored.uuid);
+    // Taking the VFO moves the key in use with it, so the whole block is
+    // wrapped: a rig added mid-message would otherwise leave the outgoing
+    // one sending with nothing showing it.
+    _withKeyInUseTidied(() {
+      _nodes[stored.uuid] = stored;
+      // The newest transceiver takes the VFO. Only transceivers: radio1 is the
+      // rig whose VFO is vfoA, and the category system exists so a rotator or a
+      // relay board added later cannot take it.
+      //
+      // Never over a peer's radio, though: that pick was the operator saying
+      // where `vfoA` comes from, and configuring a rig — which is not the same
+      // as reaching for it — must not silently take the panel back off the
+      // radio they are working through.
+      if (category == kCategoryTransceiver && _remoteRadio1 == null) _radio1 = stored.uuid;
+      // Same rule as radio1, for antenna/key, and for the radio in use: the
+      // newest one designated, so adding the antenna this rig runs needs no
+      // separate picker visit. Only this rig's, since the picks are per
+      // radio — another radio's antenna is not decided by what was plugged
+      // into this one.
+      if (category == kCategoryAntenna) _designateNow(kCategoryAntenna, stored.uuid);
+      // The key in use is also what keys, so what a new node does to it
+      // depends on what it displaces: a keyer takes over (the newest keyer
+      // keys), and a plain paddle takes over only from a paddle or nothing —
+      // recording a Bencher for the log must not silently stop the radio's
+      // keying. Nothing to do for a transceiver that keys: a radio is its own
+      // default key ([_defaultDesignation]), computed rather than written.
+      if (category == kCategoryKeyer) _designateNow(kCategoryKey, stored.uuid);
+      if (category == kCategoryKey && !designatedKeyIsKeyer) _designateNow(kCategoryKey, stored.uuid);
+    });
     await _save();
     _trackRadio('radio_added', stored, extra: {'via': via});
     notifyListeners();
@@ -949,14 +1039,25 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     for (final field in registry.allSecretFields) {
       await _settings.setEquipmentSecret(uuid, field, null);
     }
-    _nodes.remove(uuid);
-    _runtimes.remove(uuid);
-    // Removing the designated radio clears the choice rather than quietly
-    // moving the logging panel onto a different rig immediately after a
-    // destructive action. The dropdown is right there.
-    if (_radio1 == uuid) _radio1 = null;
-    // Same rule for antenna/key designations.
-    _designated.removeWhere((_, designatedUuid) => designatedUuid == uuid);
+    // Both clears below can move the key in use — off the removed node, or
+    // off a radio that is going with it — and a keyer that is NOT the node
+    // being removed goes on sending regardless.
+    _withKeyInUseTidied(() {
+      _nodes.remove(uuid);
+      _runtimes.remove(uuid);
+      // Removing the designated radio clears the choice rather than quietly
+      // moving the logging panel onto a different rig immediately after a
+      // destructive action. The dropdown is right there.
+      if (_radio1 == uuid) _radio1 = null;
+      // Same rule for antenna/key designations — across EVERY radio's picks,
+      // not just the selected one's, and the removed radio's own set of picks
+      // goes with it. A pick that disappears this way is "never decided"
+      // again, so a radio that keys goes back to keying for itself.
+      _designated.remove(uuid);
+      for (final picks in _designated.values) {
+        picks.removeWhere((_, designatedUuid) => designatedUuid == uuid);
+      }
+    });
     await _save();
     notifyListeners();
   }
@@ -1401,7 +1502,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       if (_disposed) return;
       // radio1, and the key in use when it is a device of its own: the two
       // nodes the app depends on, so the two this loop brings back.
-      final keyer = _designated[kCategoryKey];
+      final keyer = designatedFor(kCategoryKey);
       final wanted = <String>{
         if (_radio1 case final uuid?) uuid,
         if (keyer != null && _isDesignatedKeyerDevice(keyer)) keyer,
@@ -1464,7 +1565,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// not a radio doubling as one) — what the app's keying depends on, so it
   /// is brought back the way radio1 is.
   bool _isDesignatedKeyerDevice(String uuid) {
-    if (_designated[kCategoryKey] != uuid) return false;
+    if (designatedFor(kCategoryKey) != uuid) return false;
     final node = _nodes[uuid];
     return node != null && typeFor(node)?.category == kCategoryKeyer;
   }
@@ -1510,7 +1611,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// radio1, and the key in use when it is a device of its own: both are
   /// what the app depends on, and neither should wait for a button.
   Future<void> reconnectDesignatedRadio() async {
-    final keyer = _designated[kCategoryKey];
+    final keyer = designatedFor(kCategoryKey);
     await Future.wait([
       _reconnectWithRetries(_radio1),
       if (keyer != null && keyer != _radio1 && _isDesignatedKeyerDevice(keyer)) _reconnectWithRetries(keyer),
@@ -1916,7 +2017,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // freshly-reconnected radio silently disagreeing.
     runtime.lastSent = null;
     runtime.lastSentPower = null;
-    if (identical(_runtimes[_designated[kCategoryKey]], runtime)) cwProgress.value = null;
+    if (identical(_runtimes[designatedFor(kCategoryKey)], runtime)) cwProgress.value = null;
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a
     // fresh resting point, not the continuation of a knob turn. Only for the

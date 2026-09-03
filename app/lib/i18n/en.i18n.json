@@ -1167,7 +1167,7 @@
       "addTitle": "Add equipment",
       "searchHint": "Search equipment",
       "noMatches": "No equipment matches",
-      "lookingForEquipment": "Looking for new equipment…",
+      "detectedEquipment": "Detected Equipment",
       "discoveryUnavailable": "Can't listen for radios: ${error}",
       "edit": "Edit equipment",
       "name": "Name",
@@ -1261,6 +1261,7 @@
         "key": "CW Key",
         "winkeyer": "WinKeyer",
         "placeholderRadio": "Generic Placeholder Radio (no control)",
+        "placeholderRadioNodeName": "My Radio",
         "antennaGenius": "4O3A Antenna Genius",
         "sierraCoax": "Sierra Radio CX-1 Coax Switch"
       },

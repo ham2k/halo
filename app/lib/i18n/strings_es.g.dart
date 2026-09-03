@@ -1717,7 +1717,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get addTitle => 'Agregar equipo';
 	@override String get searchHint => 'Buscar equipos';
 	@override String get noMatches => 'Ningún equipo coincide';
-	@override String get lookingForEquipment => 'Buscando equipos nuevos…';
+	@override String get detectedEquipment => 'Equipos detectados';
 	@override String discoveryUnavailable({required Object error}) => 'No se puede buscar radios: ${error}';
 	@override String get edit => 'Editar equipo';
 	@override String get name => 'Nombre';
@@ -2632,6 +2632,7 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get rigctld => 'Radio genérica vía rigctld';
 	@override String get flrig => 'Radio genérica vía flrig';
 	@override String get placeholderRadio => 'Radio genérica simulada (sin control)';
+	@override String get placeholderRadioNodeName => 'Mi radio';
 	@override String get antenna => 'Antena';
 	@override String get key => 'Manipulador';
 	@override String get winkeyer => 'WinKeyer';
@@ -3673,7 +3674,7 @@ extension on TranslationsEs {
 			'settings.station.addTitle' => 'Agregar equipo',
 			'settings.station.searchHint' => 'Buscar equipos',
 			'settings.station.noMatches' => 'Ningún equipo coincide',
-			'settings.station.lookingForEquipment' => 'Buscando equipos nuevos…',
+			'settings.station.detectedEquipment' => 'Equipos detectados',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'No se puede buscar radios: ${error}',
 			'settings.station.edit' => 'Editar equipo',
 			'settings.station.name' => 'Nombre',
@@ -3765,6 +3766,7 @@ extension on TranslationsEs {
 			'settings.station.models.rigctld' => 'Radio genérica vía rigctld',
 			'settings.station.models.flrig' => 'Radio genérica vía flrig',
 			'settings.station.models.placeholderRadio' => 'Radio genérica simulada (sin control)',
+			'settings.station.models.placeholderRadioNodeName' => 'Mi radio',
 			'settings.station.models.antenna' => 'Antena',
 			'settings.station.models.key' => 'Manipulador',
 			'settings.station.models.winkeyer' => 'WinKeyer',

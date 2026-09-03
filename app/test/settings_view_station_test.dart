@@ -178,10 +178,11 @@ void main() {
     expect(find.text('Icom IC-705'), findsOneWidget);
     expect(find.text('Icom IC-7300'), findsOneWidget);
 
-    // Permanent, not a state readout: discovery runs for as long as this
-    // dialog is open, so a heading that flipped between "searching" and
-    // "found" would be naming one unfinished activity twice.
-    expect(find.text('Looking for new equipment…'), findsOneWidget);
+    // The section names itself and stays named: discovery runs for as long
+    // as this dialog is open, so a heading that flipped between "searching"
+    // and "found" would be naming one unfinished activity twice — the
+    // spinner beside it is what says the search is still going.
+    expect(find.text('Detected Equipment'), findsOneWidget);
 
     // Every pairing in the catalogue has now met a radio, so nothing carries
     // the caveat — neither the whole-model one nor the per-transport marker
@@ -305,7 +306,7 @@ void main() {
 
     // The title and its spinner are permanent — discovery is still running,
     // and the fold is about the found-devices body below them.
-    expect(find.text('Looking for new equipment…'), findsOneWidget);
+    expect(find.text('Detected Equipment'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
     expect(discoveryBody, findsOneWidget);
 
@@ -318,7 +319,7 @@ void main() {
     // The title and its spinner stay: they are what tell the operator
     // discovery is still running, and losing them would read as it having
     // stopped.
-    expect(find.text('Looking for new equipment…'), findsOneWidget);
+    expect(find.text('Detected Equipment'), findsOneWidget);
     expect(find.byType(CircularProgressIndicator), findsOneWidget);
 
     await tester.drag(list, const Offset(0, 400));
@@ -389,10 +390,10 @@ void main() {
     await pumpSettings(tester, catEnabled: true, viewSize: const Size(900, 420));
     await openAddDialog(tester);
 
-    expect(find.text('Looking for new equipment…'), findsOneWidget);
+    expect(find.text('Detected Equipment'), findsOneWidget);
     expect(tester.takeException(), isNull);
 
-    expect(find.text('Looking for new equipment…'), findsOneWidget);
+    expect(find.text('Detected Equipment'), findsOneWidget);
   });
 
   testWidgets('a new radio is named after the model, numbered once that name is taken', (tester) async {

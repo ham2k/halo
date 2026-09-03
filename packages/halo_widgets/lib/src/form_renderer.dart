@@ -187,7 +187,7 @@ Widget _formActionsRow({
   required VoidCallback? onCancel,
   required VoidCallback? onSave,
   required FormRendererLabels labels,
-  ({String label, VoidCallback onPressed, Color color})? destructive,
+  ({String label, VoidCallback onPressed, Color color, IconData? icon})? destructive,
   ({String label, VoidCallback onPressed})? secondary,
 }) {
   // Every label ellipsizes because this footer can carry four verbs at once
@@ -212,11 +212,18 @@ Widget _formActionsRow({
     // other would get a Remove button indistinguishable from Cancel.
     destructive: destructive == null
         ? null
-        : TextButton(
-            style: TextButton.styleFrom(foregroundColor: destructive.color),
-            onPressed: isSubmitting ? null : destructive.onPressed,
-            child: label(destructive.label),
-          ),
+        : destructive.icon == null
+            ? TextButton(
+                style: TextButton.styleFrom(foregroundColor: destructive.color),
+                onPressed: isSubmitting ? null : destructive.onPressed,
+                child: label(destructive.label),
+              )
+            : TextButton.icon(
+                style: TextButton.styleFrom(foregroundColor: destructive.color),
+                onPressed: isSubmitting ? null : destructive.onPressed,
+                icon: Icon(destructive.icon),
+                label: label(destructive.label),
+              ),
     secondary: secondary == null
         ? null
         // Disabled while submitting, like every other control on the form: it
@@ -2360,7 +2367,7 @@ Future<Map<String, dynamic>?> showFormPane(
   /// through that removes whatever route is topmost — a menu overlay from
   /// one of the form's own select fields, say — leaving the editor open
   /// over equipment that is being deleted underneath it.
-  ({String label, VoidCallback onPressed, Color color})? destructiveAction,
+  ({String label, VoidCallback onPressed, Color color, IconData? icon})? destructiveAction,
 
   /// A second thing the operator can do with what they are editing, sitting
   /// beside Save — the equipment editor's "Report this radio".
@@ -2453,6 +2460,7 @@ Future<Map<String, dynamic>?> showFormPane(
                     : (
                         label: destructiveAction.label,
                         color: destructiveAction.color,
+                        icon: destructiveAction.icon,
                         // This context is INSIDE the pane, so the pop is
                         // the pane's own, not whatever happens to be on top
                         // of the caller's navigator.

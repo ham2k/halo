@@ -193,8 +193,11 @@ class _FakeSession implements TransceiverSession, CwKeyerSession {
   @override
   void stopCw() => log.add('stopCw');
 
+  /// Settable, unlike the rest of this fake: whether the key was mid-message
+  /// is the whole question for the tidy-up a change of key in use owes the
+  /// outgoing one, and a hardcoded false makes that branch unreachable.
   @override
-  bool get cwSending => false;
+  bool cwSending = false;
 
   @override
   void dropQueuedCw(int index) => log.add('dropQueuedCw:$index');
@@ -1296,6 +1299,87 @@ void main() {
       expect(loaded.radio1, isNull);
     });
 
+    test('a version 1 blob\'s flat picks land on the radio that was selected', () async {
+      // The branch every existing install runs exactly once, and the only
+      // place an operator's picks can silently vanish. Version 1 stored ONE
+      // flat category → uuid map — it belonged to whatever was selected when
+      // it was written, which is radio1 here.
+      SharedPreferences.setMockInitialValues({
+        'stationEquipment': jsonEncode({
+          'version': 1,
+          'radio1': 'radio-uuid',
+          'designated': {'antenna': 'ant-uuid', 'key': null},
+          'nodes': {
+            'radio-uuid': {'typeKey': 'fake-type', 'name': 'Radio', 'config': {'host': 'a.local'}},
+            'ant-uuid': {'typeKey': 'antenna', 'name': 'Dipole', 'config': {}},
+          },
+        }),
+      });
+      final loaded = await makeService();
+      addTearDown(loaded.dispose);
+
+      expect(loaded.designatedFor(kCategoryAntenna), 'ant-uuid');
+      // A stored null is the operator's None and outranks the radio's own
+      // default — the collapse that would silently start a keying radio
+      // keying again for someone who had switched it off.
+      expect(loaded.designatedFor(kCategoryKey), isNull);
+      // ...and it belonged to that radio, not to the station.
+      await loaded.setRadio1(null);
+      expect(loaded.designatedFor(kCategoryAntenna), isNull);
+    });
+
+    test('a version 1 blob whose radio1 did not load keeps its picks reachable under None', () async {
+      // radio1 is deliberately left None when its node is corrupt, and
+      // [_designationKey] answers for whatever is selected — so the picks
+      // file under None. Stated as a test because the alternative (filing
+      // them under a radio that does not exist) would put them somewhere
+      // nothing can ever read them back.
+      SharedPreferences.setMockInitialValues({
+        'stationEquipment': jsonEncode({
+          'version': 1,
+          'radio1': 'a-uuid-that-is-not-here',
+          'designated': {'antenna': 'ant-uuid'},
+          'nodes': {
+            'ant-uuid': {'typeKey': 'antenna', 'name': 'Dipole', 'config': {}},
+          },
+        }),
+      });
+      final loaded = await makeService();
+      addTearDown(loaded.dispose);
+
+      expect(loaded.radio1, isNull);
+      expect(loaded.designatedFor(kCategoryAntenna), 'ant-uuid');
+    });
+
+    test('the version, not the shape of the values, says which layout a blob is in', () async {
+      // A version 2 blob is read as per-radio even though nothing about its
+      // values forces that reading. Sniffing for a Map value would get this
+      // right only until some category value legitimately became one, and
+      // would read a half-migrated blob as whichever branch its first Map
+      // selected — dropping the other half without a word.
+      SharedPreferences.setMockInitialValues({
+        'stationEquipment': jsonEncode({
+          'version': 2,
+          'radio1': 'radio-uuid',
+          'designated': {
+            'radio-uuid': {'antenna': 'ant-uuid'},
+            'other-radio': {'antenna': null},
+          },
+          'nodes': {
+            'radio-uuid': {'typeKey': 'fake-type', 'name': 'Radio', 'config': {'host': 'a.local'}},
+            'other-radio': {'typeKey': 'fake-type', 'name': 'Other', 'config': {'host': 'b.local'}},
+            'ant-uuid': {'typeKey': 'antenna', 'name': 'Dipole', 'config': {}},
+          },
+        }),
+      });
+      final loaded = await makeService();
+      addTearDown(loaded.dispose);
+
+      expect(loaded.designatedFor(kCategoryAntenna), 'ant-uuid');
+      await loaded.setRadio1('other-radio');
+      expect(loaded.designatedFor(kCategoryAntenna), isNull, reason: 'the other radio\'s own None');
+    });
+
     test('a station stored with a valid radio1 keeps it', () async {
       // The migration case: every existing configuration has a radio1 key,
       // because the old code persisted auto-designated values too.
@@ -1460,24 +1544,79 @@ void main() {
       expect(cat.cwProgress.value, isNull);
     });
 
-    test('the key in use decides what keys: a second keying radio takes over only when designated', () async {
+    test('the key in use is the radio\'s: it follows radio1, and a pick is stored against one radio', () async {
       final first = await addRadio(host: 'a.local');
+      expect(cat.designatedFor(kCategoryKey), first.uuid, reason: 'a radio whose CAT keys is its own key');
+      // Adding a transceiver makes it radio1, and the key belongs to the
+      // radio rather than to the station — so it moves with it. Catches a
+      // designation left global: the old rule kept the FIRST keying radio.
       final second = await cat.addNode(typeKey: 'fake-type', name: 'Second', config: {'host': 'b.local'});
-      expect(cat.designatedFor(kCategoryKey), first.uuid, reason: 'the first keying radio is the key in use');
+      expect(cat.designatedFor(kCategoryKey), second.uuid, reason: 'the key in use is the selected radio\'s');
       await connectAndLand(first);
       await connectAndLand(second);
       log.clear();
       cat.sendCw('CQ');
       expect(log, ['sendCw:CQ']);
 
-      await cat.setDesignated(kCategoryKey, second.uuid);
-      driver.sessions.first.sink.reportCwProgress(CwSendProgress(id: 1, text: 'CQ', characterEnds: const []));
-      expect(cat.cwProgress.value, isNull, reason: 'the old keyer\'s message is not the designated keyer\'s');
-      driver.sessions.last.sink.reportKeyerSpeed(30);
-      expect(cat.keyerSpeed, 30, reason: 'the speed shown is the designated keyer\'s');
+      // An explicit pick outranks the radio's own default, and belongs to
+      // the radio it was made under — not to the station, and not to the
+      // node that was picked.
+      await cat.setDesignated(kCategoryKey, first.uuid);
+      await cat.setRadio1(first.uuid);
+      expect(cat.designatedFor(kCategoryKey), first.uuid, reason: 'first\'s own default');
+      await cat.setRadio1(second.uuid);
+      expect(cat.designatedFor(kCategoryKey), first.uuid, reason: 'second\'s stored pick, not its default');
 
+      // None is an answer, so it outranks the default too — and it is one
+      // radio's answer, not the station's.
       await cat.setDesignated(kCategoryKey, null);
       expect(cat.canKeyCw, isFalse, reason: 'no key in use, nothing keys — even with two radios that could');
+      await cat.setRadio1(first.uuid);
+      expect(cat.canKeyCw, isTrue, reason: 'None was second\'s answer; first still keys for itself');
+    });
+
+    test('switching radio1 stops the outgoing key mid-message', () async {
+      final first = await addRadio(host: 'a.local');
+      final second = await cat.addNode(typeKey: 'fake-type', name: 'Second', config: {'host': 'b.local'});
+      await connectAndLand(first);
+      await connectAndLand(second);
+      // radio1 — and so the key in use — is `second`, and it is sending.
+      // Nothing else on this path stops it: the operator's Stop control
+      // reaches for the key in use, which by then is the OTHER radio, so a
+      // rig left keying here has no control pointing at it at all.
+      driver.sessions.last.cwSending = true;
+      log.clear();
+      await cat.setRadio1(first.uuid);
+      expect(log, contains('stopCw'), reason: 'the radio being stepped off is told to stop');
+      driver.sessions.first.sink.reportKeyerSpeed(30);
+      expect(cat.keyerSpeed, 30, reason: 'the speed shown is the new key in use\'s');
+    });
+
+    test('adding a rig that takes the VFO stops the one it takes it from', () async {
+      // The same debt on a path that never names a key: the newest
+      // transceiver takes the VFO, and the picks belong to the radio, so
+      // adding a rig mid-message moves the key in use out from under a
+      // session that is still sending.
+      final first = await addRadio(host: 'a.local');
+      await connectAndLand(first);
+      driver.sessions.single.cwSending = true;
+      log.clear();
+      await cat.addNode(typeKey: 'fake-type', name: 'Second', config: {'host': 'b.local'});
+      expect(log, contains('stopCw'), reason: 'the rig that just lost the VFO is told to stop');
+    });
+
+    test('removing the radio stops a separate keyer that is still sending', () async {
+      // The keyer is not the node being removed, so `disconnect` does not
+      // reach it — but losing radio1 drops the pick that named it, and a
+      // WinKeyer left playing out a message has nothing showing it.
+      final radio = await addRadio(host: 'a.local');
+      final keyer = await cat.addNode(typeKey: 'keyer-type', name: 'WK', config: {'host': 'wk.local'});
+      await connectAndLand(keyer);
+      await cat.setDesignated(kCategoryKey, keyer.uuid);
+      driver.sessions.single.cwSending = true;
+      log.clear();
+      await cat.removeNode(radio.uuid);
+      expect(log, contains('stopCw'), reason: 'the keyer left behind is told to stop');
     });
 
     test('a paddle added for the log does not take keying away from a keyer; a keyer added takes over', () async {

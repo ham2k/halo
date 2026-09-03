@@ -678,6 +678,7 @@ class StationPanel extends StatelessWidget {
           : (
               label: st.remove,
               color: Theme.of(context).colorScheme.error,
+              icon: MdiIcons.trashCanOutline,
               // showFormPane closes the pane before calling this, so all
               // that is left here is the confirmation.
               onPressed: () => unawaited(_removeEquipment(context, node)),
@@ -1006,11 +1007,12 @@ class StationPanel extends StatelessWidget {
                 ),
               ),
 
-            // The CAT keyer: speed on the radio, messages in the app. Compact
-            // only, like the Power field — this is the dialog the operator
-            // reaches from the logging panel mid-QSO, which is where a speed
-            // change happens; the full page is configuration.
-            if (compact && keyerExperiment && _cat.designatedKeyIsKeyer)
+            // The CAT keyer: speed on the radio, messages in the app. In BOTH
+            // layouts, unlike the Power field — the speed and the messages
+            // belong to the key picked directly above, so a full page that
+            // named the key and then had nothing to say about it would send
+            // the operator to the compact dialog to finish the job.
+            if (keyerExperiment && _cat.designatedKeyIsKeyer)
               _cwKeyerRow(context, inset: rowInset),
 
             // What the station is made OF. Compact shows only the rig
@@ -1131,10 +1133,13 @@ class StationPanel extends StatelessWidget {
     );
   }
 
-  /// The keyer speed as a pick over the radio's own range, and the way to
-  /// the CW Messages dialog. The messages are editable with no radio at all
-  /// — they are settings — but the speed is the radio's, so without one
-  /// that can key the pick is disabled under a line saying why.
+  /// The keyer speed as a pick over the radio's own range, the way to the CW
+  /// Messages dialog, and the switch that shows the logging panel's keyer
+  /// area. The messages are editable with no radio at all — they are
+  /// settings — but the speed is the radio's, so without one that can key
+  /// the pick is disabled under a line saying why.
+  ///
+  /// Drawn in both layouts, directly under the key it describes.
   Widget _cwKeyerRow(BuildContext context, {required EdgeInsets inset}) {
     final st = context.t.settings.station;
     final canKey = _cat.canKeyCw;
@@ -1175,18 +1180,19 @@ class StationPanel extends StatelessWidget {
               ),
               const SizedBox(width: Space.md),
               // Shows or hides the keyer area in the logging panel — the same
-              // switch KEYER, the area's X and its linger move.
+              // switch KEYER, the area's X and its linger move. Unlabelled:
+              // the row it sits in is already the keyer's, so a caption would
+              // spend the width saying what everything beside it says. The
+              // name lives in Semantics, per docs/design/user-interface.md —
+              // never a tooltip.
               ValueListenableBuilder<bool>(
                 valueListenable: _cat.keyerAreaShown,
-                builder: (context, shown, _) => Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(st.cwKeyerArea, style: Theme.of(context).textTheme.bodySmall),
-                    Switch(
-                      value: shown,
-                      onChanged: canKey ? (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea() : null,
-                    ),
-                  ],
+                builder: (context, shown, _) => Semantics(
+                  label: st.cwKeyerArea,
+                  child: Switch(
+                    value: shown,
+                    onChanged: canKey ? (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea() : null,
+                  ),
                 ),
               ),
             ],
@@ -1392,9 +1398,12 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
         // `name` is a localization lookup — and every one of them would
         // otherwise be repeated for the filter, the subtitle, the glyphs and
         // each comparison the sort makes, on every keystroke in the search box.
+        // Antenna switches are left out here and listed under "Other
+        // Equipment" instead: an operator searching this list is looking for
+        // their radio, and a switch is station plumbing they add once.
         final rows = [
           for (final model in widget.cat.registry.models)
-            if (!model.hiddenFromCatalog)
+            if (!model.hiddenFromCatalog && model.category != kCategoryAntennaSwitch)
               if (widget.supportedVariants(model) case final variants when variants.isNotEmpty)
                 (model: model, variants: variants, name: model.name),
         ]
@@ -1408,6 +1417,15 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
           for (final row in rows)
             if (_matches(row, query)) row,
         ];
+        // Named makes and models, unlike the antenna and key rows they sit
+        // with — a switch is picked from the catalogue, it just isn't picked
+        // from THAT catalogue. Sorted for the same locale reason as [rows].
+        final switches = [
+          for (final model in widget.cat.registry.models)
+            if (!model.hiddenFromCatalog && model.category == kCategoryAntennaSwitch)
+              if (widget.supportedVariants(model) case final variants when variants.isNotEmpty)
+                (model: model, variants: variants, name: model.name),
+        ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
         final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
 
         return HaloDialog(
@@ -1422,8 +1440,13 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.xl, Space.md),
+              if (widget.showDiscovery) ..._discoverySection(context),
+              // The catalogue's own section header, and the field IS the
+              // heading: a band saying "Equipment" with a search box under it
+              // would spend a row of a dialog that has none to spare saying
+              // what the hint text already says.
+              _sectionBand(
+                context,
                 child: TextField(
                   // Per docs/design/user-interface.md: focusing a field must
                   // not select what is in it.
@@ -1432,6 +1455,10 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
                     isDense: true,
+                    // Against the band's own tint, so the box reads as a
+                    // control sitting ON the header rather than a hole in it.
+                    filled: true,
+                    fillColor: Theme.of(context).colorScheme.surface,
                     prefixIcon: const Icon(MdiIcons.magnify, size: 18),
                     suffixIcon: query.isEmpty
                         ? null
@@ -1441,11 +1468,11 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                           ),
                     hintText: st.searchHint,
                     border: searchBorder,
+                    enabledBorder: searchBorder,
                     focusedBorder: haloFocusedBorder(searchBorder, context),
                   ),
                 ),
               ),
-              if (widget.showDiscovery) ..._discoverySection(context),
               // BOTH scrolling regions are flex children, and that is what
               // keeps this dialog from overflowing: with `scrollable: false`
               // an inflexible child takes its full height off the top, so a
@@ -1509,7 +1536,8 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                   ),
                 ),
               ),
-              if (widget.showAntennaAndKey || widget.showKeyer) _otherEquipmentSection(context),
+              if (widget.showAntennaAndKey || widget.showKeyer || switches.isNotEmpty)
+                _otherEquipmentSection(context, switches: switches),
             ],
           ),
           // "Done", not "Cancel": the "Other Equipment" section below can add
@@ -1524,13 +1552,48 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
     );
   }
 
+  /// One section's header band — the same tint the "Other Equipment"
+  /// accordion draws its own header in, so the dialog's three sections read
+  /// as siblings rather than as one styled heading among plain ones. No
+  /// arrow: neither of these two folds by hand.
+  ///
+  /// [title] and [child] are alternatives — a heading with an optional
+  /// [trailing] control, or a control that IS the heading (the search box).
+  Widget _sectionBand(BuildContext context, {String? title, Widget? trailing, Widget? child}) {
+    final theme = Theme.of(context);
+    final onHeaderColor = theme.colorScheme.onSurfaceVariant;
+    return Material(
+      color: haloDialogBandColorAt(context),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(Space.xl, Space.sm, Space.lg, Space.sm),
+        child: child ??
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    title ?? '',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(color: onHeaderColor, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                if (trailing != null) ...[const SizedBox(width: Space.md), trailing],
+              ],
+            ),
+      ),
+    );
+  }
+
   /// Antennas and keys, added by name and type rather than picked from a
   /// catalogue — there is exactly one of each, unlike the radio list above.
   /// Closed by default (see [_otherEquipmentExpanded]): visible only when
   /// [_AddEquipmentDialog.showAntennaAndKey] says the operator tracks at
   /// least one of these against a QSO, so the section never grows a list
   /// nothing reads.
-  Widget _otherEquipmentSection(BuildContext context) {
+  Widget _otherEquipmentSection(
+    BuildContext context, {
+    required List<({EquipmentModel model, List<EquipmentType> variants, String name})> switches,
+  }) {
     final st = context.t.settings.station;
     final theme = Theme.of(context);
     final headerColor = haloDialogBandColorAt(context);
@@ -1570,7 +1633,23 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
             ListTile(
               leading: const Icon(MdiIcons.keyboardVariant),
               title: Text(st.newKeyer),
+              // A named make with a cable, unlike the two inert rows above
+              // it: the glyph says how it plugs in, the same way it does in
+              // the catalogue.
+              trailing: _TransportIcons(types: widget.supportedVariants(winkeyerModel)),
               onTap: () => Navigator.of(context).pop(_AddChoice.model(winkeyerModel)),
+              mouseCursor: SystemMouseCursors.click,
+            ),
+          // Real makes and models, so these carry the same subtitle and
+          // transport glyphs their rows had in the catalogue above.
+          for (final row in switches)
+            ListTile(
+              leading: Icon(_iconForCategory(row.model.category)),
+              title: Text(row.name),
+              subtitle: _modelSubtitle(context, row.variants),
+              titleAlignment: ListTileTitleAlignment.top,
+              trailing: _TransportIcons(types: row.variants),
+              onTap: () => Navigator.of(context).pop(_AddChoice.model(row.model)),
               mouseCursor: SystemMouseCursors.click,
             ),
         ],
@@ -1598,22 +1677,12 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
         // The spinner rides the title rather than taking a row of its own:
         // discovery runs for as long as this dialog is open, so a row that
         // exists only to say so pushed the catalogue down the whole time.
-        Padding(
-          padding: const EdgeInsets.fromLTRB(Space.xl, Space.lg, Space.xl, Space.xs),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  st.lookingForEquipment,
-                  style: theme.textTheme.titleSmall?.copyWith(color: HaLoColors.of(context).onSurfaceAccent),
-                ),
-              ),
-              if (error == null) ...[
-                const SizedBox(width: Space.md),
-                const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-              ],
-            ],
-          ),
+        _sectionBand(
+          context,
+          title: st.detectedEquipment,
+          trailing: error != null
+              ? null
+              : const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
         ),
         // AnimatedSize alone, with no controller: the collapse is a plain
         // implicit animation, the way the Home screen's FAB does it. No
@@ -1943,7 +2012,7 @@ class _EquipmentTile extends StatelessWidget {
         // An unrecognized type has no editor to put Remove inside, so this
         // row keeps its own — it is the only way to get rid of the record.
         trailing: IconButton(
-          icon: Icon(MdiIcons.deleteOutline, semanticLabel: st.remove),
+          icon: Icon(MdiIcons.trashCanOutline, semanticLabel: st.remove),
           onPressed: onRemoveUnknown,
         ),
       );
