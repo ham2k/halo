@@ -83,6 +83,12 @@ typedef CallLookup = Future<Map<String, dynamic>?> Function(
   bool recentContext,
 });
 
+/// When the log's earlier contacts with [call] started (epoch millis) — the
+/// compact call-info's worked-before pill. [excludingQsoUuid] is the QSO
+/// being edited, when there is one, so its own row is not a prior contact.
+/// Fetched by the app layer, which owns the log; the widget only asks.
+typedef WorkedBefore = Future<List<int>> Function(String call, {String? excludingQsoUuid});
+
 /// Tries the input as an extension-registered command (band/freq/mode
 /// shortcuts, and eventually spotting/operator commands). Returns a
 /// field-change map (`{freq?, band?, mode?}`) or a named `{action: ...}`
@@ -608,6 +614,17 @@ class LoggingControls extends StatefulWidget {
   /// its localized pill text; falls back to the raw key.
   final String Function(String noticeKey)? scoreNoticeLabel;
 
+  /// Fetches the station's prior contacts' start times for the call-info's
+  /// worked-before pill. Asked once per active-call change alongside the
+  /// lookup (so only when [lookup] is set, the pill being part of the
+  /// call-info the lookup fills), and once when a QSO is opened for editing,
+  /// with that QSO excluded. Null shows no pill.
+  final WorkedBefore? workedBefore;
+
+  /// The worked-before pill's text for those times — bucketed and
+  /// pluralized by the app layer, which owns the clock. No pill without it.
+  final String? Function(List<int> startTimes)? workedBeforeLabel;
+
   /// Notifies the host of the current call-info (for the detail panel — the
   /// Info tab on wide layouts), null when the call-info panel isn't showing.
   final CallInfoChanged? onCallInfoChanged;
@@ -881,6 +898,8 @@ class LoggingControls extends StatefulWidget {
     this.callLocationLine,
     this.scoreQso,
     this.scoreNoticeLabel,
+    this.workedBefore,
+    this.workedBeforeLabel,
     this.onCallInfoChanged,
     this.onQsoChanged,
     this.onPeerDraftChanged,
@@ -1078,6 +1097,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Timer? _lookupDebounce;
   String? _lookupFor;
   Map<String, dynamic>? _lookupResult;
+
+  /// The worked-before start times and the [_workedBeforeKey] they answer
+  /// for. The key is set when the fetch is ISSUED, not when it lands, so a
+  /// second request for the same key is never issued and a late answer to a
+  /// superseded one is dropped.
+  ///
+  /// Never cached across call changes the way `_lookupCache` is: logging a
+  /// QSO and typing the same call again must show one more, and the fetch is
+  /// one column of a local query.
+  String? _workedBeforeFor;
+  List<int>? _workedBefore;
 
   /// Lookups resolved during the current compose session, keyed by call, so
   /// re-typing a call already looked up this session (KI2D → KI2DX → KI2D)
@@ -2201,7 +2231,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // enqueueLookup needs no such guard, it's fire-and-forget into the
     // caller's own queue.
     if (widget.editingQso != null) {
-      if (_callInfoActive) _scheduleScore();
+      if (_callInfoActive) {
+        _scheduleScore();
+        _refreshWorkedBefore();
+      }
       widget.enqueueLookup?.call(widget.editingQso!);
     }
     // Wire the imperative handle (used by the app's dev bridge) so the call
@@ -2725,8 +2758,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _populating = false;
     // Score the edited QSO (excluding itself) so its dupe/New-* pills show, the
     // same way they do while composing — populate suppressed _onCallChanged's
-    // own trigger.
+    // own trigger. The worked-before pill likewise: an edit runs no live
+    // lookup (the saved guess stands), so the lookup path never fetches it.
     _scheduleScore();
+    _refreshWorkedBefore();
     // A QSO logged before its online lookup ever ran (e.g. offline, or a
     // quick log with the runtime still booting) should get one now rather
     // than sit unenriched until the next background pass — `enqueueLookup`
@@ -2903,6 +2938,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     _lookupFor = null;
     _lookupResult = null;
+    _workedBeforeFor = null;
+    _workedBefore = null;
     _refreshedActivityControls = null;
     _selectedControlKey = null;
     _clearScoreNotices();
@@ -3113,6 +3150,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _executeMessageTimer?.cancel();
     _lookupFor = null;
     _lookupResult = null;
+    _workedBeforeFor = null;
+    _workedBefore = null;
     _refreshedActivityControls = null;
     _clearScoreNotices();
     _lookupCache.clear();
@@ -7473,6 +7512,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// hunted POTA/SOTA ref feeds the POTA/SOTA `lookup` hooks, changing what the
   /// lookup resolves. See `_relookupForRefsChanged`.
   void _scheduleLookup() {
+    // Above every early return below, and on its own guard: a call that
+    // returns to itself inside the debounce window — a typo and the
+    // backspace correcting it — leaves `_lookupFor` still naming that call,
+    // so the lookup rightly early-returns, and a pill hung off that return
+    // would never be fetched again. Same reasoning as `_onCallChanged`
+    // hoisting `_scheduleScore()` above its own.
+    _refreshWorkedBefore();
     _lookupDebounce?.cancel();
     if (widget.lookup == null) return;
     // Preview lookup keys off whichever call is actually about to be logged
@@ -7501,11 +7547,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       setState(() {
         _lookupFor = null;
         _lookupResult = null;
+        _workedBeforeFor = null;
+        _workedBefore = null;
         _refreshedActivityControls = null;
       });
       return;
     }
-
     // Already looked up this call this session — show it instantly, no refetch.
     if (_lookupCache.containsKey(activeCall)) {
       final cached = _lookupCache[activeCall];
@@ -7591,6 +7638,37 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // applies nothing and re-triggers nothing.
       if (_applyGuessRefs(onlineResult, activeCall)) _relookupForRefsChanged();
     });
+  }
+
+  /// What a worked-before answer is FOR: the call at the cursor AND the QSO
+  /// left out of it. Both, because opening that same callsign's own QSO for
+  /// editing has to refetch — the count must now exclude it, and a key of
+  /// the call alone would call the already-fetched answer good.
+  String get _workedBeforeKey => '$_callAtCursor|${widget.editingQso?.uuid ?? ''}';
+
+  /// Fetches the worked-before times for the call at the cursor, unless an
+  /// answer is already in hand or in flight for exactly this key. That guard
+  /// is also what keeps this off the keystroke path: the call field notifies
+  /// on cursor moves and re-entered text as well, and only a genuinely new
+  /// key reaches the log.
+  ///
+  /// Deliberately setStates nothing: this runs from `initState` too (a
+  /// deeplink cold-start reaches `_scheduleLookup` there), and every caller
+  /// rebuilds on its own account anyway.
+  void _refreshWorkedBefore() {
+    final fetch = widget.workedBefore;
+    if (fetch == null || !looksLikeCallsign(_callAtCursor)) return;
+    final key = _workedBeforeKey;
+    if (_workedBeforeFor == key) return;
+    _workedBeforeFor = key;
+    _workedBefore = null;
+    unawaited(_loadWorkedBefore(key, _callAtCursor, fetch));
+  }
+
+  Future<void> _loadWorkedBefore(String key, String call, WorkedBefore fetch) async {
+    final times = await fetch(call, excludingQsoUuid: widget.editingQso?.uuid);
+    if (!mounted || _workedBeforeFor != key) return; // stale — the call or the edit moved on
+    setState(() => _workedBefore = times);
   }
 
   /// Structured dev event (#237) for a resolved call lookup — a compact summary
@@ -7707,6 +7785,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _executeMessageTimer?.cancel();
     _lookupFor = null;
     _lookupResult = null;
+    _workedBeforeFor = null;
+    _workedBefore = null;
     _refreshedActivityControls = null;
     _clearScoreNotices();
     _lookupCache.clear();
@@ -9243,9 +9323,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         alertKeys: scored ? _scoreAlertKeys : const [],
         noticeKeys: scored ? _scoreNoticeKeys : const [],
         isEditing: widget.editingQso != null,
+        workedBefore: _workedBeforeFor == _workedBeforeKey ? _workedBefore : null,
       ),
       locationLine: guess == null ? null : widget.callLocationLine?.call(guess),
       noticeLabel: widget.scoreNoticeLabel,
+      workedBeforeLabel: widget.workedBeforeLabel,
       // The panel's own tertiaryContainer fill, and the accent the main
       // buttons use (tertiary, or secondary while editing — see `accentTheme`).
       foregroundColor: theme.colorScheme.onTertiaryContainer,
@@ -9322,6 +9404,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       alertKeys: fresh ? _scoreAlertKeys : const [],
       noticeKeys: fresh ? _scoreNoticeKeys : const [],
       isEditing: widget.editingQso != null,
+      workedBefore: _workedBeforeFor == _workedBeforeKey ? _workedBefore : null,
     );
   }
 

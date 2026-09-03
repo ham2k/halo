@@ -8,6 +8,7 @@ upcoming:
   changes:
     - "Type a grid with no call and the logging panel shows the distance and bearing to it"
     - "Show Bearing has a new option to also show the reverse bearing, as 45° / 225°"
+    - "The call info area shows how many times you have worked the station before"
 
 "160":
   changes:

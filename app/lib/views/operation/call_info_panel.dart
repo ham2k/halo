@@ -97,6 +97,11 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
   bool _showImage = true;
   List<Qso>? _history;
 
+  /// The other operations the history's QSOs were logged in, by uuid — for
+  /// the "from US-1234 North Lake SP" line under each. Loaded after the
+  /// history, so the rows appear first and their origins fill in.
+  Map<String, Operation> _historyOperations = const {};
+
   /// The URL whose failure has already been reported — see
   /// [_reportImageFailure]. Also what makes the thumbnail inert: a placeholder
   /// that opened a full-window copy of itself is a dead end.
@@ -125,7 +130,50 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     final call = widget.call;
     final history = await widget.services.qsos.historyForCall(call);
     if (!mounted || widget.call != call) return;
-    setState(() => _history = history);
+    setState(() {
+      _history = history;
+      _historyOperations = const {};
+    });
+
+    // Only the operations whose rows are shown: the current one needs no
+    // "from" (the operator is in it), and past the "… and N more" cut nothing
+    // is rendered.
+    final uuids = <String>{
+      for (final q in history)
+        if (q.operationUuid != widget.operation.uuid) q.operationUuid,
+    }.take(_otherOpsToShow);
+    final operations = <String, Operation>{};
+    for (final uuid in uuids) {
+      final operation = await widget.services.operations.get(uuid);
+      if (operation != null) operations[uuid] = operation;
+    }
+    if (!mounted || widget.call != call) return;
+    setState(() => _historyOperations = operations);
+  }
+
+  /// Where a past QSO was made from: the activation references of the
+  /// operation it belongs to — "US-1234 North Lake SP", joined when the
+  /// operation activated several — or null for an operation without one.
+  /// Read off the operation's refs rather than its cached title fragments,
+  /// which exist only on the device that computed them.
+  String? _fromLine(Qso qso) {
+    final operation = _historyOperations[qso.operationUuid];
+    if (operation == null) return null;
+    final places = [
+      for (final ref in operation.refs)
+        // An operation's refs are its activations and the contest it is
+        // running; only the activations are places. An activation ref type
+        // is the program name suffixed with "Activation" (`potaActivation`,
+        // `sotaActivation`, …) — app-polo's QSON convention, which every
+        // `ref:<type>` handler follows (docs/extensions/hooks.md §ref:<type>)
+        // and which a contest's own type (`arrlDx`) cannot collide with.
+        if ((asQsonString(ref['type']) ?? '').endsWith('Activation'))
+          [asQsonString(ref['ref']), asQsonString(ref['name'])]
+              .where((s) => s != null && s.trim().isNotEmpty)
+              .join(' '),
+    ].where((s) => s.isNotEmpty).toList();
+    if (places.isEmpty) return null;
+    return context.t.callInfo.fromOperation(where: places.join(', '));
   }
 
   String? _s(String key) {
@@ -456,7 +504,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
         decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(3)),
         child: Text(
           scoreNoticeLabel(context, key),
-          style: theme.textTheme.labelSmall?.copyWith(color: fg, fontWeight: FontWeight.w600),
+          style: theme.textTheme.labelSmall?.copyWith(color: fg),
         ),
       );
     }
@@ -483,9 +531,20 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       _fmtHistoryTime(qso.startAtMillis),
       if (withCall != null) withCall,
     ].where((s) => s.isNotEmpty);
+    final from = _fromLine(qso);
     return Padding(
       padding: const EdgeInsets.only(top: Space.xxs),
-      child: Text(parts.join('  '), style: theme.textTheme.bodyMedium),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(parts.join('  '), style: theme.textTheme.bodyMedium),
+          if (from != null)
+            Padding(
+              padding: const EdgeInsets.only(left: Space.lg),
+              child: Text(from, style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant)),
+            ),
+        ],
+      ),
     );
   }
 }

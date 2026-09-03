@@ -22,6 +22,7 @@ import '../../tools/form_chrome_labels.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
+import '../../tools/worked_before_label.dart';
 import '../station_config_dialog.dart';
 
 /// Builds the QSO list's day-header/event-row vocabulary for the active
@@ -846,6 +847,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
                       .toSet(),
                 ),
             scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
+            workedBefore: (call, {excludingQsoUuid}) =>
+                widget.services.qsos.historyStartTimesForCall(call, excludingUuid: excludingQsoUuid),
+            workedBeforeLabel: (times) => workedBeforeLabel(context, times),
             onCallInfoChanged: widget.onCallInfoChanged,
             onQsoChanged: widget.onQsoChanged,
             onPeerDraftChanged: widget.onPeerDraftChanged,

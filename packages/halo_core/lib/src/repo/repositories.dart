@@ -1619,6 +1619,37 @@ class QsosRepository {
     ];
   }
 
+  /// When each contact [historyForCall] would list started, most recent
+  /// first — the call-info's "worked before" pill, which buckets them by
+  /// day. One column rather than the rows, so a callsign worked hundreds of
+  /// times does not ship every QSO's data to answer a handful of counts.
+  ///
+  /// [excludingUuid] leaves one QSO out: the QSO being EDITED is already in
+  /// the log, and counting it would call a station worked once "worked once
+  /// before" while its own QSO is open.
+  ///
+  /// The same rules as [historyForCall], in SQL: soft-deleted QSOs and QSOs
+  /// of deleted operations drop out, and so do event markers — via
+  /// [_isContact], since a bare `band != 'event'` is NULL for a band-less
+  /// QSO and would drop it too. A QSO with no start time still counts, as
+  /// a zero.
+  Future<List<int>> historyStartTimesForCall(String call, {String? excludingUuid}) async {
+    final normalized = call.trim().toUpperCase();
+    if (normalized.isEmpty) return const [];
+    final query = db.selectOnly(db.qsos).join([
+      leftOuterJoin(db.operations, db.operations.uuid.equalsExp(db.qsos.operation)),
+    ])
+      ..addColumns([db.qsos.startAtMillis])
+      ..where(db.qsos.theirCall.equals(normalized) &
+          db.qsos.deleted.equals(false) &
+          _isContact &
+          (excludingUuid == null ? const Constant(true) : db.qsos.uuid.equals(excludingUuid).not()) &
+          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
+      ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis, mode: OrderingMode.desc)]);
+    final rows = await query.get();
+    return [for (final row in rows) row.read(db.qsos.startAtMillis) ?? 0];
+  }
+
   /// [historyForCall] for every one of [calls] in a single query — an ADIF
   /// import matching a large file's counterparties one callsign at a time
   /// turns into thousands of sequential round trips. Chunked at

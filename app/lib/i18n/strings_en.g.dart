@@ -1066,6 +1066,11 @@ class Translations$callInfo$en {
 
 	/// en: 'with ${call}'
 	String withCall({required Object call}) => 'with ${call}';
+
+	/// en: 'from ${where}'
+	String fromOperation({required Object where}) => 'from ${where}';
+
+	late final Translations$callInfo$history$en history = Translations$callInfo$history$en.internal(_root);
 }
 
 // Path: settings
@@ -2776,6 +2781,27 @@ class Translations$loggingControls$info$en {
 
 	/// en: 'Grid Too Short'
 	String get noticeShortGrid => 'Grid Too Short';
+}
+
+// Path: callInfo.history
+class Translations$callInfo$history$en {
+	Translations$callInfo$history$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '${n} in last 7 days'
+	String last7days({required Object n}) => '${n} in last 7 days';
+
+	/// en: '${n} today'
+	String today({required Object n}) => '${n} today';
+
+	/// en: '(one) {${n} QSO} (other) {${n} QSOs}'
+	String qsos({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${n} QSO',
+		other: '${n} QSOs',
+	);
 }
 
 // Path: settings.theme
@@ -6219,6 +6245,10 @@ extension on Translations {
 			'callInfo.otherOpsCountOther' => ({required Object count}) => '${count} QSOs in other operations',
 			'callInfo.andMore' => ({required Object count}) => '… and ${count} more',
 			'callInfo.withCall' => ({required Object call}) => 'with ${call}',
+			'callInfo.fromOperation' => ({required Object where}) => 'from ${where}',
+			'callInfo.history.last7days' => ({required Object n}) => '${n} in last 7 days',
+			'callInfo.history.today' => ({required Object n}) => '${n} today',
+			'callInfo.history.qsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
 			'settings.title' => 'Settings',
 			'settings.language' => 'Language',
 			'settings.theme.title' => 'Theme Mode',
@@ -6582,12 +6612,12 @@ extension on Translations {
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',

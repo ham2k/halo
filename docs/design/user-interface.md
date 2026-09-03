@@ -112,7 +112,8 @@ above the field: a command's answer, or — for a callsign — the same compact
 call-info area the logging controls show, rendered by the same
 `CallInfoSummary` widget so the two cannot drift. It carries no distance and
 no scoring pills here, deliberately: both are an operation's measurements and
-the home screen has no open operation.
+the home screen has no open operation. The worked-before pill does show: how
+often the log holds the station is the log's fact, not an operation's.
 
 Enter belongs to a command whenever the text is one, including a command that
 answered with an error — that answer is what the operator asked for and

@@ -782,7 +782,16 @@
     "otherOpsCountOne": "1 QSO in other operations",
     "otherOpsCountOther": "${count} QSOs in other operations",
     "andMore": "… and ${count} more",
-    "withCall": "with ${call}"
+    "withCall": "with ${call}",
+    "fromOperation": "from ${where}",
+    "history": {
+      "last7days": "${n} in last 7 days",
+      "today": "${n} today",
+      "qsos": {
+        "one": "${n} QSO",
+        "other": "${n} QSOs"
+      }
+    }
   },
   "settings": {
     "title": "Settings",

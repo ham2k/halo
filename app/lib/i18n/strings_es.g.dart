@@ -509,6 +509,8 @@ class _Translations$callInfo$es extends Translations$callInfo$en {
 	@override String otherOpsCountOther({required Object count}) => '${count} QSOs en otras operaciones';
 	@override String andMore({required Object count}) => '… y ${count} más';
 	@override String withCall({required Object call}) => 'con ${call}';
+	@override String fromOperation({required Object where}) => 'desde ${where}';
+	@override late final _Translations$callInfo$history$es history = _Translations$callInfo$history$es._(_root);
 }
 
 // Path: settings
@@ -1325,6 +1327,21 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String get noticeUnknownEvent => 'Evento Desconocido';
 	@override String get noticeOurGrid => 'Configure Nuestro Grid';
 	@override String get noticeShortGrid => 'Grid Muy Corto';
+}
+
+// Path: callInfo.history
+class _Translations$callInfo$history$es extends Translations$callInfo$history$en {
+	_Translations$callInfo$history$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String last7days({required Object n}) => '${n} en los últimos 7 días';
+	@override String today({required Object n}) => '${n} hoy';
+	@override String qsos({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${n} QSO',
+		other: '${n} QSOs',
+	);
 }
 
 // Path: settings.theme
@@ -3316,6 +3333,10 @@ extension on TranslationsEs {
 			'callInfo.otherOpsCountOther' => ({required Object count}) => '${count} QSOs en otras operaciones',
 			'callInfo.andMore' => ({required Object count}) => '… y ${count} más',
 			'callInfo.withCall' => ({required Object call}) => 'con ${call}',
+			'callInfo.fromOperation' => ({required Object where}) => 'desde ${where}',
+			'callInfo.history.last7days' => ({required Object n}) => '${n} en los últimos 7 días',
+			'callInfo.history.today' => ({required Object n}) => '${n} hoy',
+			'callInfo.history.qsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
 			'settings.title' => 'Configuración',
 			'settings.language' => 'Idioma',
 			'settings.theme.title' => 'Modo de Tema',
@@ -3679,12 +3700,12 @@ extension on TranslationsEs {
 			'settings.station.ft891Troubleshooting' => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.yaesuTroubleshooting' => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.kenwoodTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.kenwoodTroubleshooting' => 'Este controlador está probado con una QRP Labs QMX, pero ninguna radio de marca Kenwood le ha respondido nunca: el protocolo está escrito a partir de referencias CAT publicadas, así que por favor cuéntanos qué pasa, funcione o no.\n\nSi no responde nada, casi siempre es una de estas:\n\n- **La velocidad debe coincidir** con el menú CAT de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Algunas radios requieren activar CAT** en el menú antes de responder.\n\n**Elecraft (K3, KX2, KX3) y varios SDR hablan este mismo protocolo**, así que vale la pena probar esta opción con ellos. Si la frecuencia es correcta pero el modo no, esa es justamente la parte que varía en la gama: la aplicación lo deduce de la radio y, mientras tanto, lo pregunta directamente, así que el modo puede tardar un poco más.',
 			'settings.station.statusConnected' => 'Conectado',
 			'settings.station.currentConfiguration' => 'Configuración actual',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			'settings.station.noTransceiver' => 'Ninguno',

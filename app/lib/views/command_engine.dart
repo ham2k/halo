@@ -289,6 +289,7 @@ class CommandEngine extends ChangeNotifier {
   CallLookupStage _lookupStage = CallLookupStage.none;
   Map<String, dynamic>? _lookupGuess;
   List<Map<String, dynamic>> _lookupRecords = const [];
+  List<int>? _workedBefore;
 
   /// The raw field text this engine last reacted to. A
   /// [TextEditingController] notifies its listeners for SELECTION changes as
@@ -454,6 +455,7 @@ class CommandEngine extends ChangeNotifier {
     _lookupFor = null;
     _lookupGuess = null;
     _lookupRecords = const [];
+    _workedBefore = null;
     _lookupStage = CallLookupStage.none;
   }
 
@@ -537,6 +539,7 @@ class CommandEngine extends ChangeNotifier {
     _lookupFor = text;
     _lookupGuess = null;
     _lookupRecords = const [];
+    _workedBefore = null;
     _lookupStage = CallLookupStage.searching;
     notifyListeners();
 
@@ -544,6 +547,11 @@ class CommandEngine extends ChangeNotifier {
       // No in-progress QSO on these bars — QSO-scoped lookup hooks (e.g.
       // POTA) simply find nothing to do.
       final operation = operationContext() ?? const <String, dynamic>{};
+
+      // The log's own answer, for the summary's worked-before pill, runs
+      // beside the callbook passes rather than ahead of them: awaited here, a
+      // failing query would leave the lookup stuck in `searching`.
+      unawaited(_loadWorkedBefore(text));
 
       // Offline first. Local data files answer in milliseconds, so a name
       // and country land while the online sources are still in flight;
@@ -558,6 +566,20 @@ class CommandEngine extends ChangeNotifier {
       _applyLookup(text, online, CallLookupStage.complete);
       notifyListeners();
     });
+  }
+
+  /// When this station was worked before. No QSO is open on these bars, so
+  /// nothing to exclude. A failure is not caught: it reaches ErrorPolicy like
+  /// any other escaped exception, and the pill simply stays absent.
+  Future<void> _loadWorkedBefore(String text) async {
+    final times = await services.qsos.historyStartTimesForCall(text);
+    // `_disposed` as well as the stale check: `dispose` cancels the debounce
+    // but not a query the fired timer already launched, and notifying a
+    // disposed ChangeNotifier asserts — closing the dialog mid-read is
+    // exactly that window.
+    if (_disposed || trimmedText != text) return;
+    _workedBefore = times;
+    notifyListeners();
   }
 
   /// Folds one lookup pass's result in. A null result only advances the
@@ -594,7 +616,7 @@ class CommandEngine extends ChangeNotifier {
     // and the QSO history the detail panel loads for it is exactly what an
     // operator with no callbook subscription is asking for.
     if (_lookupStage == CallLookupStage.searching) return null;
-    return CallInfoData(call: call, guess: _lookupGuess, lookups: _lookupRecords);
+    return CallInfoData(call: call, guess: _lookupGuess, lookups: _lookupRecords, workedBefore: _workedBefore);
   }
 
   /// Line 1 of the compact call-info, where no operation supplies a reference

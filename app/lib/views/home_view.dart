@@ -18,6 +18,7 @@ import '../services/link_opener.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../tools/operation_title.dart';
+import '../tools/worked_before_label.dart';
 import 'command_engine.dart';
 import 'dock_host.dart';
 import 'header_profile_label.dart';
@@ -1606,6 +1607,7 @@ class _HomeQuickLookupState extends State<HomeQuickLookup> with WidgetsBindingOb
                       child: CallInfoSummary(
                         data: callInfo!,
                         locationLine: _engine.lookupLocationLine,
+                        workedBeforeLabel: (times) => workedBeforeLabel(context, times),
                         foregroundColor: theme.colorScheme.onPrimary,
                         iconColor: theme.colorScheme.onPrimary,
                         linkColor: theme.colorScheme.onPrimary,

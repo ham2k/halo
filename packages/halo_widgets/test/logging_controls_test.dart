@@ -1184,6 +1184,97 @@ void main() {
       return (call, {required qso, required operation, required online, recentContext = false}) async => {'guess': guess};
     }
 
+    Widget withWorkedBefore({
+      required WorkedBefore workedBefore,
+      Qso? editingQso,
+    }) =>
+        MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              radioService: tunedRadio,
+              operation: operation,
+              qsosRepository: qsos,
+              editingQso: editingQso,
+              lookup: guessLookup({'name': 'Hiram'}),
+              workedBefore: workedBefore,
+              workedBeforeLabel: (times) => '${times.length} before',
+            ),
+          ),
+        );
+
+    // The argument is the whole reason an edited QSO is not its own prior
+    // contact; nothing else fails when it is dropped.
+    testWidgets('worked-before: an edit asks with its own QSO excluded, and shows the answer', (tester) async {
+      final existing = (await tester.runAsync(() => qsos.add(operation.uuid, {
+            'their': {'call': 'W1AW'},
+            'startAtMillis': 1000000,
+            'freq': 7100,
+            'mode': 'SSB',
+          })))!;
+      final asked = <(String, String?)>[];
+      await tester.pumpWidget(withWorkedBefore(
+        editingQso: existing,
+        workedBefore: (call, {excludingQsoUuid}) async {
+          asked.add((call, excludingQsoUuid));
+          return [500];
+        },
+      ));
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(asked, contains(('W1AW', existing.uuid)));
+      expect(asked.where((a) => a.$1 == 'W1AW').every((a) => a.$2 == existing.uuid), isTrue);
+      expect(find.text('1 before'), findsOneWidget);
+    });
+
+    // The trap: the worked-before fetch used to hang off the lookup's own
+    // scheduling, below its `_lookupFor == activeCall` early return. A typo
+    // and the backspace correcting it leave `_lookupFor` still naming the
+    // original call, so that return fires — and the pill, cleared for the
+    // typo, was never fetched again for the rest of the call's life.
+    testWidgets('worked-before: survives a typo corrected before the lookup debounce fires', (tester) async {
+      final pending = <String, Completer<List<int>>>{};
+      await tester.pumpWidget(withWorkedBefore(
+        workedBefore: (call, {excludingQsoUuid}) => (pending[call] ??= Completer()).future,
+      ));
+      final field = find.widgetWithText(TextField, 'Their call');
+
+      await tester.enterText(field, 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+      pending['W1AW']!.complete([1, 2, 3]);
+      await tester.pump();
+      expect(find.text('3 before'), findsOneWidget);
+
+      // The typo, and the correction before its 300ms lookup debounce fires.
+      await tester.enterText(field, 'W1AX');
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.enterText(field, 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('3 before'), findsOneWidget);
+    });
+
+    testWidgets('worked-before: an answer for a call no longer at the cursor is dropped', (tester) async {
+      final pending = <String, Completer<List<int>>>{};
+      await tester.pumpWidget(withWorkedBefore(
+        workedBefore: (call, {excludingQsoUuid}) => (pending[call] ??= Completer()).future,
+      ));
+      final field = find.widgetWithText(TextField, 'Their call');
+      await tester.enterText(field, 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.enterText(field, 'K1ABC');
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(pending.keys, containsAll(['W1AW', 'K1ABC']));
+
+      // The first call's answer lands late, after the field moved on.
+      pending['W1AW']!.complete([1, 2, 3]);
+      await tester.pump();
+      expect(find.text('3 before'), findsNothing);
+
+      pending['K1ABC']!.complete([7]);
+      await tester.pump();
+      expect(find.text('1 before'), findsOneWidget);
+    });
+
     testWidgets('idle (no call): renders the operation statistics lines', (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
@@ -1408,7 +1499,11 @@ void main() {
       // Heavily marked up on purpose: 342 as spans, 627 as raw markdown. Only
       // a measurement that parses the note fits it beside the pills here.
       final fits = await layout('**Great** **op** **and** **good** **friend**');
-      expect(fits.note.dx, greaterThan(fits.pill.dx), reason: 'a short note should sit beside the pills');
+      expect(fits.pill.dx, greaterThan(fits.note.dx), reason: 'a short note should lead, with the pills beside it');
+      expect((fits.pill.dy - fits.note.dy).abs(), lessThan(8), reason: 'on the same line');
+      // Next to the note, not at the far right: a note row that filled the
+      // line would leave the pills fitting but stranded.
+      expect(fits.pill.dx, lessThan(fits.note.dx + 400), reason: 'the pills should hug the note');
 
       // Long: note takes line 2 on its own and the pills stack below it, so the
       // note starts at the column's left edge rather than trailing the pills.

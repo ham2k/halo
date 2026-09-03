@@ -40,6 +40,14 @@ class CallInfoData {
   /// panel itself uses.
   final bool isEditing;
 
+  /// When the log's earlier contacts with this station started, epoch
+  /// millis, every operation, minus the QSO being edited when there is one.
+  /// Null while unknown (not yet fetched, or a host that does not fetch),
+  /// empty for a first contact — both paint nothing. Times rather than a
+  /// count because the pill says "3 today + 48 QSOs", and only the app layer
+  /// can bucket them: it owns the clock and the locale.
+  final List<int>? workedBefore;
+
   const CallInfoData({
     required this.call,
     this.guess,
@@ -47,6 +55,7 @@ class CallInfoData {
     this.alertKeys = const [],
     this.noticeKeys = const [],
     this.isEditing = false,
+    this.workedBefore,
   });
 }
 
@@ -56,6 +65,14 @@ class CallInfoData {
 /// way for connected/configured-but-disconnected. One constant so the two
 /// "things are good" indicators can't drift apart.
 const positiveGreen = Color(0xFF2E7D32);
+
+/// The third pill colour: app-polo's `info` level — neither a verdict on the
+/// QSO nor an alert, just a fact about the station (how often it was worked).
+const infoGrey = Color(0xFF666666);
+
+enum _NoticeLevel { alert, notice, info }
+
+typedef _Notice = ({String label, _NoticeLevel level});
 
 /// A soft halo behind small glyphs (the call-info flag/note emoji, the
 /// spotting control's source-status icons) so they stay legible against a
@@ -124,6 +141,11 @@ class CallInfoSummary extends StatelessWidget {
   /// Turns a scoring key into its display label. Keys render raw without it.
   final String Function(String key)? noticeLabel;
 
+  /// Turns [CallInfoData.workedBefore] into the worked-before pill's text —
+  /// app-polo's "3 today + 48 QSOs" — or null for no pill. Without it there
+  /// is no pill at all: the widget has no clock to bucket the times by.
+  final String? Function(List<int> startTimes)? workedBeforeLabel;
+
   /// The colour the text paints in — the logging panel sits on its own
   /// tertiaryContainer fill, the Quick Lookup bar on the app-bar fill, and
   /// neither can be derived from the ambient scheme alone.
@@ -148,6 +170,7 @@ class CallInfoSummary extends StatelessWidget {
     required this.iconColor,
     this.locationLine,
     this.noticeLabel,
+    this.workedBeforeLabel,
     this.onOpenLink,
     this.linkColor,
   });
@@ -162,12 +185,24 @@ class CallInfoSummary extends StatelessWidget {
     unicode: true,
   );
 
-  List<({String label, bool alert})> get _notices {
+  List<_Notice> get _notices {
     final labelOf = noticeLabel ?? (String key) => key;
+    final worked = _workedBeforeText;
     return [
-      for (final key in data.alertKeys) (label: labelOf(key), alert: true),
-      for (final key in data.noticeKeys) (label: labelOf(key), alert: false),
+      for (final key in data.alertKeys) (label: labelOf(key), level: _NoticeLevel.alert),
+      for (final key in data.noticeKeys) (label: labelOf(key), level: _NoticeLevel.notice),
+      if (worked != null) (label: worked, level: _NoticeLevel.info),
     ];
+  }
+
+  /// The worked-before pill's text, or null for none. Suppressed beside a
+  /// duplicate alert, as app-polo does: the dupe already says the station
+  /// was worked, and in this very operation.
+  String? get _workedBeforeText {
+    final times = data.workedBefore;
+    if (times == null || times.isEmpty || workedBeforeLabel == null) return null;
+    if (data.alertKeys.contains('duplicate')) return null;
+    return workedBeforeLabel!(times);
   }
 
   @override
@@ -207,27 +242,28 @@ class CallInfoSummary extends StatelessWidget {
         // Line 1 — flag + distance/location (blank until the lookup resolves),
         // keeping the pills and note on the second line even before it appears.
         Row(children: firstLine),
-        // Line 2 (+ 3 when they don't fit): scoring pills and the note/name.
+        // Line 2 (+ 3 when they don't fit): the note/name and the scoring pills.
         if (nameInfo != null || notices.isNotEmpty) _buildNoticesAndNote(context, theme, notices, nameInfo),
       ],
     );
   }
 
-  /// Line 2 (and, when it doesn't fit, line 3): the scoring pills and the
-  /// note/name. When pills + note fit the available width, the pills lead and
-  /// the note trails on one line; otherwise the note takes line 2 and the pills
-  /// stack below on line 3 (measured with a TextPainter — the app scales at the
-  /// root, so logical-pixel measurements match what's painted).
+  /// Line 2 (and, when it doesn't fit, line 3): the note/name and the scoring
+  /// pills. When note + pills fit the available width, the note leads and the
+  /// pills trail it on one line; otherwise the note takes line 2 and the pills
+  /// move to line 3, left-aligned under it (measured with a TextPainter — the
+  /// app scales at the root, so logical-pixel measurements match what's
+  /// painted).
   Widget _buildNoticesAndNote(
     BuildContext context,
     ThemeData theme,
-    List<({String label, bool alert})> notices,
+    List<_Notice> notices,
     ({String text, bool isNote})? nameInfo,
   ) {
     final pillsRow = <Widget>[
       for (var i = 0; i < notices.length; i++) ...[
         if (i > 0) const SizedBox(width: Space.xs),
-        _noticePill(theme, notices[i].label, alert: notices[i].alert),
+        _noticePill(theme, notices[i].label, level: notices[i].level),
       ],
     ];
     final note = nameInfo == null ? null : _buildNoteOrName(context, theme, nameInfo);
@@ -238,7 +274,7 @@ class CallInfoSummary extends StatelessWidget {
     // Measured outside the LayoutBuilder: none of it reads `constraints`, and
     // leaving it inside re-parses the note's markdown on every frame of a
     // window resize or pane-divider drag.
-    final pillStyle = theme.textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600);
+    final pillStyle = theme.textTheme.labelSmall;
     final noteStyle = _noteTextStyle(theme);
     var pillsWidth = 0.0;
     for (var i = 0; i < notices.length; i++) {
@@ -256,10 +292,10 @@ class CallInfoSummary extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         if (pillsWidth + gap + noteWidth <= constraints.maxWidth) {
-          // Fits: pills lead, note trails.
+          // Fits: note leads, pills trail.
           return Row(
             crossAxisAlignment: CrossAxisAlignment.center,
-            children: [...pillsRow, const SizedBox(width: gap), Flexible(child: note)],
+            children: [Flexible(child: note), const SizedBox(width: gap), ...pillsRow],
           );
         }
         // Doesn't fit: note on its own line, pills stacked below.
@@ -358,7 +394,10 @@ class CallInfoSummary extends StatelessWidget {
     if (parts.lead == null) return markdown ?? const SizedBox.shrink();
 
     // Leading emoji (glowed) + the rest of the note (markdown, no glow).
+    // Sized to its content: a Row that took the whole line would push the
+    // pills that trail the note to the far right of the area.
     return Row(
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Any pictographic emoji, flag or not, needs emojiFontFamily rather
@@ -373,18 +412,23 @@ class CallInfoSummary extends StatelessWidget {
     );
   }
 
-  Widget _noticePill(ThemeData theme, String label, {required bool alert}) {
-    // Alerts are the error color; notices a positive green (matching app-polo's
-    // red/green pill convention) — the logging panel's own tertiaryContainer
-    // fill rules out relying on the neutral scheme containers for contrast.
-    final background = alert ? theme.colorScheme.error : positiveGreen;
-    final foreground = alert ? theme.colorScheme.onError : Colors.white;
+  Widget _noticePill(ThemeData theme, String label, {required _NoticeLevel level}) {
+    // Alerts are the error color; notices a positive green; the worked-before
+    // count app-polo's neutral grey (matching its red/green/grey pill
+    // convention) — the logging panel's own tertiaryContainer fill rules out
+    // relying on the neutral scheme containers for contrast.
+    final background = switch (level) {
+      _NoticeLevel.alert => theme.colorScheme.error,
+      _NoticeLevel.notice => positiveGreen,
+      _NoticeLevel.info => infoGrey,
+    };
+    final foreground = level == _NoticeLevel.alert ? theme.colorScheme.onError : Colors.white;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
       decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(3)),
       child: Text(
         label,
-        style: theme.textTheme.labelSmall?.copyWith(color: foreground, fontWeight: FontWeight.w600),
+        style: theme.textTheme.labelSmall?.copyWith(color: foreground),
       ),
     );
   }
