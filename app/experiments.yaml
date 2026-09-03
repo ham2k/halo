@@ -32,6 +32,14 @@ experiments:
     name: Station Configuration
     description: Connect and control radios and other station equipment.
     aliases: [cat, rig]
+  # CW keying through a CAT radio: F1-F8 messages, the keyer area, WPM and
+  # KEYER (docs/design/cat.md § CW keying). Does nothing without Station
+  # Configuration, and is gated on its own so the keying surfaces can be
+  # tried — or left off — separately from the rest of CAT.
+  - key: keyer
+    name: CW Keying
+    description: Key CW messages on F1-F8 through a CAT-controlled radio.
+    aliases: [cw, macros]
   # A home-rail destination listing every station callsign ever logged, with
   # a virtualized table of that callsign's QSOs across all operations —
   # independent of the Operations list, which is per-operation.

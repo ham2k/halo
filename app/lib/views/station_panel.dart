@@ -1001,7 +1001,8 @@ class StationPanel extends StatelessWidget {
             // only, like the Power field — this is the dialog the operator
             // reaches from the logging panel mid-QSO, which is where a speed
             // change happens; the full page is configuration.
-            if (compact) _cwKeyerRow(context, inset: rowInset),
+            if (compact && services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */)
+              _cwKeyerRow(context, inset: rowInset),
 
             // What the station is made OF. Compact shows only the rig
             // driving the main VFO — a quick-glance connect/status row, not

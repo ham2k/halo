@@ -1274,6 +1274,9 @@ class Translations$commands$en {
 	/// en: 'Open an operation to use the CW keyer'
 	String get keyerNeedsOperation => 'Open an operation to use the CW keyer';
 
+	/// en: 'CW keying is off — turn it on with EXP KEYER'
+	String get keyerExperimentOff => 'CW keying is off — turn it on with EXP KEYER';
+
 	/// en: 'Sending CW: $text'
 	String cwSending({required Object text}) => 'Sending CW: ${text}';
 
@@ -6962,6 +6965,7 @@ extension on Translations {
 			'commands.settingVanished' => ({required Object label}) => '“${label}” is no longer available',
 			'commands.noCwKeyer' => 'No connected radio can key CW',
 			'commands.keyerNeedsOperation' => 'Open an operation to use the CW keyer',
+			'commands.keyerExperimentOff' => 'CW keying is off — turn it on with EXP KEYER',
 			'commands.cwSending' => ({required Object text}) => 'Sending CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW message F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW message F${n} was not sent: the extensions are not ready',

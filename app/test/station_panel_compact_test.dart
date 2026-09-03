@@ -67,7 +67,15 @@ void main() {
   });
 
   group('CW keyer row', () {
+    testWidgets('is not there at all without the keyer experiment', (tester) async {
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+      expect(find.byType(DropdownButtonFormField<int>), findsNothing);
+      expect(find.widgetWithText(TextButton, 'Messages'), findsNothing);
+    });
+
     testWidgets('with no radio that can key, the speed pick is disabled and the messages are still reachable', (tester) async {
+      await services.settings.setExperimentEnabled('keyer', true);
       await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
@@ -81,6 +89,7 @@ void main() {
     });
 
     testWidgets('a connected keyer-capable radio enables the pick at the speed the radio reported', (tester) async {
+      await services.settings.setExperimentEnabled('keyer', true);
       // The placeholder rig keys nothing but reports a speed like a real
       // one — the same path an IC-7300's 0x14 0x0C answer takes.
       final node = await services.cat.addNode(

@@ -1543,6 +1543,7 @@
     "settingVanished": "“${label}” is no longer available",
     "noCwKeyer": "No connected radio can key CW",
     "keyerNeedsOperation": "Open an operation to use the CW keyer",
+    "keyerExperimentOff": "CW keying is off — turn it on with EXP KEYER",
     "cwSending": "Sending CW: $text",
     "cwMessageError": "CW message F$n: $error",
     "cwMessageNotRendered": "CW message F$n was not sent: the extensions are not ready",

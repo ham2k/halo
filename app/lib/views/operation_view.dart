@@ -776,6 +776,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   bool get _cwMessagesConfigured {
     final settings = widget.services.settings;
     if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
+    if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return false;
     for (var n = 1; n <= SettingsService.cwMessageCount; n++) {
       if (settings.cwMessage(n).trim().isNotEmpty) return true;
     }
@@ -937,6 +938,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
     final services = widget.services;
     if (!services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
+    if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return false;
     final cat = services.cat;
     if (!cat.canKeyCw) return false;
     final keyboard = HardwareKeyboard.instance;

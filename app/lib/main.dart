@@ -2896,10 +2896,20 @@ class HaLoServices {
         // fails out loud rather than confirming a change nothing heard.
         final wpm = params?['wpm'];
         if (wpm is! num) return null;
+        // The hooks decline while the experiment is off, but an action can
+        // still arrive — an interpretation computed before the flip, or an
+        // extension of its own — and must not reach the radio quietly.
+        if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) {
+          return (text: t.commands.keyerExperimentOff, failed: true);
+        }
         return cat.setKeyerSpeed(wpm.round()) ? null : (text: t.commands.noCwKeyer, failed: true);
       case 'showKeyer':
-        // KEYER / MACROS: the keyer area listens for this. With nothing that
-        // can key there is nothing for the area to do, so say so instead.
+        // KEYER / MACROS: the keyer area listens for this. With the
+        // experiment off no area is mounted to hear it; with nothing that can
+        // key there is nothing for it to do — say so rather than confirm.
+        if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) {
+          return (text: t.commands.keyerExperimentOff, failed: true);
+        }
         if (!cat.canKeyCw) return (text: t.commands.noCwKeyer, failed: true);
         // The area lives in an operation's logging panel; from Home there is
         // nothing to show, and confirming would be a lie.

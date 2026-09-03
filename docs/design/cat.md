@@ -704,7 +704,8 @@ writing it:
 A radio whose CAT protocol can key CW from text keys the app's messages: F1-F8 in the operation
 view send the eight templates under Radio settings (`cwMessage1..8`), the Station dialog's keyer row
 picks the speed and opens the editor, and `20WPM` typed into the call field sets the speed the way
-`5W` sets power. Everything here is behind `gato`, with CAT.
+`5W` sets power. Everything here is behind the `keyer` experiment (`EXP KEYER`, aliases `CW`/`MACROS`)
+on top of `gato`, which it needs to reach a radio at all.
 
 It is a **capability, not a transceiver method**: `CwKeyerSession` (driver.dart) sits beside
 `AntennaSwitchSession` rather than adding three methods to `TransceiverSession`, because most

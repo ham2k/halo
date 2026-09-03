@@ -97,6 +97,7 @@ void main() {
   group('RadioSettingsGroup', () {
     Future<SettingsService> settingsWith({
       bool cat = true,
+      bool keyer = true,
       bool snap = true,
       bool zeroBeat = true,
       bool developer = true,
@@ -104,6 +105,7 @@ void main() {
       SharedPreferences.setMockInitialValues({
         if (cat) 'experiments': jsonEncode({
             'gato': {'enabled': true},
+            if (keyer) 'keyer': {'enabled': true},
           }),
         // Both features written explicitly, never left to their defaults: a
         // test isolating one of them would otherwise also be asserting the
@@ -225,6 +227,10 @@ void main() {
       expect(settings.cwMessage(2), '', reason: 'an unset message is empty, which the keys read as nothing to send');
       expect(await RadioSettingsGroup(await settingsWith(cat: false)).buildElements(), isEmpty,
           reason: 'sanity: still nothing without CAT, messages included');
+      // CAT on, keyer off: the radio's own toggles, none of the messages.
+      final withoutKeyer = await RadioSettingsGroup(await settingsWith(keyer: false, snap: false, zeroBeat: false)).buildElements();
+      expect(withoutKeyer.where(isCwMessageElement), isEmpty, reason: 'the messages follow the keyer experiment');
+      expect(withoutKeyer, isNotEmpty);
     });
 
     test('a stored value this build no longer offers falls back in the ENGINE, not just the picker', () async {

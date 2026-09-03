@@ -32,6 +32,11 @@ import manifest from "../manifest.json" with { type: "json" }
 // rather than manifest.experiments, which would gate the whole file.
 const GATO_EXPERIMENT = 'gato'
 
+// CW keying sits behind its own experiment on top of CAT (app/experiments.yaml).
+const KEYER_EXPERIMENT = 'keyer'
+const keyerEnabled = (ctx: HookContext) =>
+  !!ctx.enabledExperiments?.includes(GATO_EXPERIMENT) && !!ctx.enabledExperiments?.includes(KEYER_EXPERIMENT)
+
 const BAND_MATCH = /^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$/i
 const MODE_MATCH = /^(CW|SSB|USB|LSB|FM|AM|FT8|FT4|FT2|RTTY)$/i
 const FREQUENCY_MATCH = /^[\d.,]+$/
@@ -176,12 +181,12 @@ const PowerCommand = {
   },
 }
 
-// Same gate as POWER, for the same reason: the keyer is a CAT feature, and
-// the app reports "no CW-capable radio connected" on dispatch rather than
-// this hook guessing at the radio's state.
+// Behind the keyer experiment (and CAT): the app reports "no CW-capable
+// radio connected" on dispatch rather than this hook guessing at the
+// radio's state.
 const WpmCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return null
+    if (!keyerEnabled(ctx)) return null
     const wpm = parseWpmCommand(input)
     if (wpm == null) return null
     const t = tFor(ctx)
@@ -193,7 +198,7 @@ const WpmCommand = {
   },
 
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
-    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return []
+    if (!keyerEnabled(ctx)) return []
     const t = tFor(ctx)
     return [
       {
@@ -209,10 +214,10 @@ const WpmCommand = {
 }
 
 // KEYER / MACROS: brings up the keyer area with its message buttons. Same
-// gate as POWER and WPM; the app says when nothing connected can key.
+// gate as WPM; the app says when nothing connected can key.
 const KeyerCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
-    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return null
+    if (!keyerEnabled(ctx)) return null
     if (!parseKeyerCommand(input)) return null
     const t = tFor(ctx)
     return {
@@ -223,7 +228,7 @@ const KeyerCommand = {
   },
 
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
-    if (!ctx.enabledExperiments?.includes(GATO_EXPERIMENT)) return []
+    if (!keyerEnabled(ctx)) return []
     const t = tFor(ctx)
     return [
       {

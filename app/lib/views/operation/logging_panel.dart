@@ -248,6 +248,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
   // enable, freezing the fields below). Kept in sync by _onSettingsChanged.
   late bool _gatoEnabled = widget.services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */;
 
+  /// The CW keying surfaces (keyer area, Escape-stops-a-message) need this on
+  /// top of CAT. Kept in sync by _onSettingsChanged like _gatoEnabled.
+  late bool _keyerEnabled = widget.services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
+
   // Whether the Radio control's icon should read as CAT-configured — mirrors
   // zeroBeatSuggestionFor's gate (operation_view.dart): the experiment check
   // comes first so `services.cat`, a `late final` that builds a whole
@@ -595,6 +599,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // toggled from the Experiments panel over this one) — keep the cat
     // listener's attachment and the fields it feeds in sync with it right
     // away, rather than leaving them to drift until the next CAT event.
+    final keyer = s.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
+    if (keyer != _keyerEnabled) {
+      // Switched off mid-message: the keyer area and its Escape go away with
+      // the flag, so nothing would be left to stop what is on the air.
+      if (!keyer && widget.services.cat.cwSending) widget.services.cat.stopCw();
+      setState(() => _keyerEnabled = keyer);
+    }
     final gato = s.experimentEnabled('gato') /* stored key, see experiments.yaml */;
     if (gato != _gatoEnabled) {
       if (gato) {
@@ -770,7 +781,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
             // nothing writes without a keyer-capable radio.
             // Escape stops a CW message before it wipes anything — see
             // LoggingControls.escapeClaimed.
-            escapeClaimed: _gatoEnabled
+            escapeClaimed: _gatoEnabled && _keyerEnabled
                 ? () {
                     final cat = widget.services.cat;
                     if (!cat.cwSending) return false;
@@ -778,7 +789,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                     return true;
                   }
                 : null,
-            aboveEntryRow: _gatoEnabled
+            aboveEntryRow: _gatoEnabled && _keyerEnabled
                 ? KeyerArea(
                     cat: widget.services.cat,
                     services: widget.services,

@@ -588,6 +588,7 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String settingVanished({required Object label}) => '«${label}» ya no está disponible';
 	@override String get noCwKeyer => 'Ninguna radio conectada puede manipular CW';
 	@override String get keyerNeedsOperation => 'Abre una operación para usar el manipulador de CW';
+	@override String get keyerExperimentOff => 'La manipulación de CW está apagada — enciéndela con EXP KEYER';
 	@override String cwSending({required Object text}) => 'Enviando CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'Mensaje de CW F${n}: ${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'El mensaje de CW F${n} no se envió: las extensiones no están listas';
@@ -3977,6 +3978,7 @@ extension on TranslationsEs {
 			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
 			'commands.noCwKeyer' => 'Ninguna radio conectada puede manipular CW',
 			'commands.keyerNeedsOperation' => 'Abre una operación para usar el manipulador de CW',
+			'commands.keyerExperimentOff' => 'La manipulación de CW está apagada — enciéndela con EXP KEYER',
 			'commands.cwSending' => ({required Object text}) => 'Enviando CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'Mensaje de CW F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'El mensaje de CW F${n} no se envió: las extensiones no están listas',
