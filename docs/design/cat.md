@@ -709,22 +709,31 @@ on top of `gato`, which it needs to reach a radio at all.
 
 It is a **capability, not a transceiver method**: `CwKeyerSession` (driver.dart) sits beside
 `AntennaSwitchSession` rather than adding three methods to `TransceiverSession`, because most
-protocols in this layer (FlexRadio, flrig, rigctld, Kenwood) have no such command, and "this radio
-ignores sendCw" must never look like "the text was empty". `CatService.canKeyCw` is `radio1`'s
-session being one, and connected — the keyer row, the function keys and the WPM command all exist
-only while it is true; `setKeyerSpeed` returns whether anything could take the value, so the WPM
-command fails out loud ("No connected radio can key CW") instead of confirming a change nothing
-heard. Three sessions implement it today — the Icom CI-V driver, the Yaesu one and FlexRadio's — so the
-IC-7300 and IC-705, the FT-891, FT-710 and FTDX10, and the FLEX-6000 line — plus the placeholder radio, which
-keys nothing but remembers a speed, so the surfaces can be driven on a web build with no rig.
+protocols in this layer (flrig, rigctld, Kenwood) have no such command, "this radio ignores sendCw"
+must never look like "the text was empty" — and a keyer of its own (a K1EL WinKeyer,
+`kCategoryKeyer`) has no VFO to be a transceiver with. A transceiver that keys implements both.
+
+**What keys is the key in use.** The Station dialog's "Key in Use" pick offers the plain keys, the
+keyers, and — as "via ‹radio›" — every radio whose driver says `canKeyCw`; `CatService.canKeyCw` is
+that designated node's session being a `CwKeyerSession`, and connected. A station with a WinKeyer
+and a keying radio therefore says which one the messages go through in the place a key is already
+chosen, and a radio that could key does nothing until picked (it is auto-designated only when it is
+added with no key in use at all — the shack's first keyer keys). The keyer row, the function keys and
+the WPM command all exist only while `canKeyCw` holds; `setKeyerSpeed` returns whether anything could
+take the value, so the WPM command fails out loud ("No connected radio can key CW") instead of
+confirming a change nothing heard. Four sessions implement it — the Icom CI-V driver, the Yaesu one,
+FlexRadio's and the WinKeyer's — so the IC-7300 and IC-705, the FT-891, FT-710 and FTDX10, the
+FLEX-6000 line and a K1EL WinKeyer — plus the placeholder radio, which keys nothing but remembers a
+speed, so the surfaces can be driven on a web build with no rig.
 
 **The speed is the radio's.** `EquipmentState.keyerSpeed` is set only by `EquipmentSink.reportKeyerSpeed`,
 sessions read it once at connect and never poll it (neither protocol announces a knob turn, and a
 question the radio almost never has a new answer to does not belong in the poll), and every set is
 followed by a read-back so what shows is what the radio took — the CI-V level rounds to a WPM and
 both radios clamp. The one moment a fresh value matters is the dialog opening, so
-`showStationConfigDialog` calls `refreshKeyerSpeed` first. The same echo guard as power
-(`_NodeRuntime.lastSentKeyerSpeed`) keeps a reported value from being sent straight back.
+`showStationConfigDialog` calls `refreshKeyerSpeed` first. No echo guard, unlike power: a set is
+only ever the operator's explicit ask, and neither radio announces a knob turn, so the last value
+the app saw is not the value the radio is on.
 
 **Messages are templates.** Liquid (docs/extensions/templates.md), rendered on each keypress through
 the core `templates` extension's `template` hook against the operation and the DRAFT contact — the
@@ -743,7 +752,8 @@ boundaries to what fits, and sends the next piece only after the previous one's 
 current speed (PARIS timing, the default 20 WPM until the radio has said) — a chunk boundary falling
 on a word gap is what makes the wait invisible on the air.
 
-The two dialects differ in a way that shapes what the app can promise:
+The two dialects differ in a way that shapes what the app can promise. FlexRadio's CWX and the
+FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have not.
 
 - **Icom CI-V** has the plain command: `0x17 <text>` keys it, `0x17 0xFF` aborts what is keying,
   `0x14 0x0C` reads and sets the speed (0-255 over 6-48 WPM; the linear conversion is within one
@@ -753,12 +763,25 @@ The two dialects differ in a way that shapes what the app can promise:
   sets the speed the `cwx wpm=` status (`sub cwx all`) reports back on its own. The queue still
   paces one message behind another so the indicator tracks what is keying, not what was handed over;
   CWX's own `sent=` progress is not read yet.
+- **K1EL WinKeyer** (WK2/WK3, `winkeyer_driver.dart`) is a keyer, not a radio: its own serial port
+  at a fixed 1200 baud with TWO stop bits (the serial transport's `stopBits`, pinned by the model,
+  never a field). Host mode is opened with serial echoback on, so the keyer echoes each character as
+  it keys it and its status byte says when it is busy and when its buffer is nearly full — the only
+  keyer here with real feedback. Progress is therefore what it reports
+  (`CwSendProgress.sentCount`, which the keyer area shows in place of the estimate), the send is
+  throttled by its XOFF rather than by arithmetic, and `stopCw` clears its buffer. The speed pot
+  reports as it moves; a set is reported as taken since the keyer does not echo it. Host mode is
+  closed on teardown so the paddle keys standalone again. From the host-interface documents alone.
 - **Yaesu CAT has no "key this text" command at all.** What it has is five text memories the
   operator can also fill from the front panel: `KM<n><text>;` writes one, `KY6;`-`KYA;` play them
   back. Keying from the app is therefore WRITE-THEN-PLAY through memory 5 (`yaesuAppKeyerMemory` —
   the last, so the four most people fill first survive), and whatever the operator had there is
   gone. There is no stop: `Ft891Session.stopCw` only empties the queue, and the piece already
-  playing plays out — reported to its estimated end, so the keyer area does not claim it stopped. `KS;` is the speed, 4-60.
+  playing plays out — reported to its estimated end, so the keyer area does not claim it stopped. `KS;` is the speed, 4-60. The session polls the keyer's status every ten seconds (`0x15`) because a keyer in host mode
+  pushes nothing while idle, and the reply restates the speed so the node never reads as stale; a
+  port that answers nothing within three seconds of host open is reported as having no keyer on it,
+  and a message whose echoes stop arriving is given up on past its own timeline plus a grace, with
+  the queue cleared and a problem shown until the keyer speaks again.
 
 **What is going out is shown** in a strip between the logging panel's call-info area and its entry
 row — the keyer area (`KeyerArea`, through `LoggingControls.aboveEntryRow`): the message with its sent characters
@@ -767,8 +790,9 @@ that opens a quick speed dialog. The strip slides down with the first message; a
 the moment it ends (or is stopped), the pill lingers a minute after the last one, then the strip
 slides back up (or sooner, from the X at its end). The pill's dialog also takes a free-text message.
 While nothing is keying the area offers a button per message — the function keys for a mouse — and
-`KEYER` (or `MACROS`) in the call field, like the Station dialog's Show, brings the area up without
-sending anything. The queue reports each message as it starts (`EquipmentSink.reportCwProgress`,
+`KEYER` (or `MACROS`) in the call field, like the Station dialog's toggle, brings the area up without
+sending anything; the Station dialog's keyer row carries a switch bound to the same `keyerAreaShown`
+flag. The queue reports each message as it starts (`EquipmentSink.reportCwProgress`,
 `CatService.cwProgress`) with a per-character timeline from the same PARIS arithmetic the pacing
 uses — the radio reports nothing about its progress, so the indicator is an estimate that is right
 to the extent the pacing is, and a paddle-stop at the rig is invisible to it.

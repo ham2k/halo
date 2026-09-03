@@ -139,12 +139,18 @@ class CwSendProgress {
   /// takes, so dropping one names it rather than its position.
   final List<int> pendingIds;
 
+  /// How many characters the keyer itself has reported keyed — a Winkeyer
+  /// echoes each one. Null from a CAT keyer, which reports nothing, leaving
+  /// [characterEnds] as the only guide.
+  final int? sentCount;
+
   const CwSendProgress({
     required this.id,
     required this.text,
     required this.characterEnds,
     this.pending = const [],
     this.pendingIds = const [],
+    this.sentCount,
   });
 
   /// When the last character finishes — the whole message's length.

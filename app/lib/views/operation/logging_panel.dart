@@ -323,8 +323,13 @@ class _LoggingPanelState extends State<LoggingPanel> {
       if (name != null) our['antenna'] = name;
     }
     if (tracked.contains('key')) {
-      final name = nameFor(cat.designatedFor(kCategoryKey));
-      if (name != null) our['key'] = name;
+      // The key in use may be a radio keying over CAT; that is a keying
+      // source, not a key on the desk worth a QSO's key field. A keyer
+      // device is one.
+      final uuid = cat.designatedFor(kCategoryKey);
+      final node = uuid == null ? null : cat.nodeFor(uuid);
+      final name = nameFor(uuid);
+      if (name != null && node != null && cat.typeFor(node)?.category != kCategoryTransceiver) our['key'] = name;
     }
     return {...qso, 'our': our, if (power != null) 'power': power};
   }

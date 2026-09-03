@@ -50,9 +50,9 @@ void main() {
     context.operation = {'uuid': 'op-1'};
 
     expect((await services.handleCommandAction('setKeyerSpeed', {'wpm': 20}))?.text, contains('EXP KEYER'));
-    expect(services.cat.keyerSpeed, 22, reason: 'the placeholder stays at its default: nothing reached it');
+    expect(services.cat.canKeyCw, isFalse, reason: 'without the experiment nothing is even the key in use');
     expect((await services.handleCommandAction('showKeyer'))?.text, contains('EXP KEYER'));
-    expect(services.cat.keyerAreaRequests.value, 0);
+    expect(services.cat.keyerAreaShown.value, isFalse);
   });
 
   test('showKeyer fails out loud with nothing that can key, and bumps the area request otherwise', () async {
@@ -66,18 +66,18 @@ void main() {
     );
     await services.cat.connect(node.uuid);
     addTearDown(() => services.cat.disconnect(node.uuid));
-    expect(services.cat.keyerAreaRequests.value, 0);
+    expect(services.cat.keyerAreaShown.value, isFalse);
     // From Home there is no logging panel to hold the area: refused, not
     // confirmed.
     expect((await services.handleCommandAction('showKeyer'))?.text, 'Open an operation to use the CW keyer');
-    expect(services.cat.keyerAreaRequests.value, 0);
+    expect(services.cat.keyerAreaShown.value, isFalse);
 
     final context = services.openOperationContext('op-1');
     addTearDown(() => services.closeOperationContext(context));
     // The view fills this in once its operation loads; here that is the test.
     context.operation = {'uuid': 'op-1'};
     expect(await services.handleCommandAction('showKeyer'), isNull);
-    expect(services.cat.keyerAreaRequests.value, 1);
+    expect(services.cat.keyerAreaShown.value, isTrue);
   });
 
   test('with a keyer-capable radio connected, the speed reaches it and the hook\'s confirm stands', () async {

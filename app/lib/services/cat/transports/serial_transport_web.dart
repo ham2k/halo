@@ -166,10 +166,11 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     }
 
     final baudRate = (target['baudRate'] as num?)?.toInt() ?? 4800;
+    final stopBits = (target['stopBits'] as num?)?.toInt() ?? 1;
 
     try {
       await port
-          .open(SerialOptions(baudRate: baudRate, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none'))
+          .open(SerialOptions(baudRate: baudRate, dataBits: 8, stopBits: stopBits, parity: 'none', flowControl: 'none'))
           .toDart;
     } catch (e) {
       throw SerialPortUnavailable(name, '$e');

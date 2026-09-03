@@ -170,22 +170,25 @@ abstract class AntennaSwitchSession implements EquipmentSession {
   void selectAntenna(String portKey, String antennaKey);
 }
 
-/// A session for a transceiver whose CAT protocol can key CW from text and
-/// set its internal keyer's speed — the IC-7300 family's `0x17`, the Yaesu
-/// keyer-memory playback.
+/// A session that can key CW from text and set a keyer's speed — a
+/// transceiver whose CAT protocol has it (the IC-7300 family's `0x17`, the
+/// Yaesu keyer-memory playback, FlexRadio's CWX) or a keyer of its own, a
+/// K1EL Winkeyer.
 ///
 /// A capability of its own rather than three more methods on
 /// [TransceiverSession], for the same reason [AntennaSwitchSession] is:
-/// most radio protocols here (FlexRadio, flrig, rigctld…) have no such
+/// most radio protocols here (flrig, rigctld, Kenwood…) have no such
 /// command, and "this radio ignores sendCw" must not look like "this radio
-/// keyed nothing because the text was empty". [CatService] asks with `is`
-/// and offers the keying surfaces only when the answer is yes.
+/// keyed nothing because the text was empty" — and a keyer has no VFO to be
+/// a transceiver with at all. A transceiver that keys implements both.
+/// [CatService] asks with `is` and offers the keying surfaces only when the
+/// designated key's session answers yes.
 ///
 /// Whether the radio actually TRANSMITS is the radio's own break-in setting;
-/// with break-in off both families key only the sidetone. Deliberately not
-/// touched here: an app that flips break-in on so its message goes out has
-/// put RF on the air from a radio the operator set up not to.
-abstract class CwKeyerSession implements TransceiverSession {
+/// with break-in off the CAT families key only the sidetone. Deliberately
+/// not touched here: an app that flips break-in on so its message goes out
+/// has put RF on the air from a radio the operator set up not to.
+abstract class CwKeyerSession implements EquipmentSession {
   /// Keys [text] through the radio's keyer, in the order given, after
   /// whatever is already queued. Longer than the radio's own command
   /// buffer is fine — the session splits and paces it (see
@@ -238,6 +241,12 @@ abstract class EquipmentDriver {
   /// type picker shows this rather than presenting all drivers as equally
   /// trustworthy.
   bool get hardwareVerified;
+
+  /// Whether this driver's sessions are [CwKeyerSession]s — known without a
+  /// session, so the "key in use" pick can offer a radio's own keyer while
+  /// the radio is not connected. A driver that says true here must create
+  /// sessions that are.
+  bool get canKeyCw => false;
 
   /// [config] is the node's stored configuration — the same map the type's
   /// `configElements` collected. Most drivers ignore it; a CI-V driver needs

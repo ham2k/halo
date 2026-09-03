@@ -74,18 +74,33 @@ void main() {
       expect(find.widgetWithText(TextButton, 'Messages'), findsNothing);
     });
 
-    testWidgets('with no radio that can key, the speed pick is disabled and the messages are still reachable', (tester) async {
+    testWidgets('a radio that cannot key, as the only key, shows no keyer row', (tester) async {
       await services.settings.setExperimentEnabled('keyer', true);
       await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();
+      expect(find.byType(DropdownButtonFormField<int>), findsNothing);
+      expect(find.widgetWithText(TextButton, 'Messages'), findsNothing);
+    });
+
+    testWidgets('a keyer designated but not connected: pick disabled, messages reachable, area toggle off', (tester) async {
+      await services.settings.setExperimentEnabled('keyer', true);
+      // Added, never connected — auto-designated as the key in use because
+      // it can key and nothing else was.
+      await services.cat.addNode(
+        typeKey: 'placeholder-radio',
+        name: 'Bench Rig',
+        config: placeholderRadioModel.variants.single.defaultConfig,
+      );
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
 
       final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
-      expect(pick.onChanged, isNull, reason: 'the speed is the radio\'s; nothing connected can take one');
+      expect(pick.onChanged, isNull, reason: 'the speed is the keyer\'s; nothing connected can take one');
       expect(find.text('Connect a radio that can key CW to send messages from here.'), findsOneWidget);
       expect(find.widgetWithText(TextButton, 'Messages'), findsOneWidget, reason: 'the messages are settings, editable without a radio');
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Show')).onPressed, isNull,
-          reason: 'nothing to show a keyer area for');
+      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull, reason: 'no area to show for a keyer that is not connected');
+      expect(find.text('CAT Keyer in Bench Rig'), findsOneWidget, reason: 'a radio in the key pick is its keyer');
     });
 
     testWidgets('a connected keyer-capable radio enables the pick at the speed the radio reported', (tester) async {

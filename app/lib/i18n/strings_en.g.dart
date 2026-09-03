@@ -3765,6 +3765,12 @@ class Translations$settings$station$en {
 	/// en: 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe'
 	String get flexNoSlices => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe';
 
+	/// en: 'No WinKeyer answered on this port'
+	String get winkeyerNoAnswer => 'No WinKeyer answered on this port';
+
+	/// en: 'The WinKeyer stopped answering while sending; the message was dropped'
+	String get winkeyerStoppedAnswering => 'The WinKeyer stopped answering while sending; the message was dropped';
+
 	/// en: 'Radio username'
 	String get radioUser => 'Radio username';
 
@@ -3900,9 +3906,6 @@ class Translations$settings$station$en {
 	/// en: 'Messages'
 	String get cwMessagesButton => 'Messages';
 
-	/// en: 'Show'
-	String get cwKeyerShow => 'Show';
-
 	/// en: 'Bands'
 	String get antennaBands => 'Bands';
 
@@ -3933,6 +3936,15 @@ class Translations$settings$station$en {
 
 	/// en: 'New Key'
 	String get newKey => 'New Key';
+
+	/// en: 'WinKeyer (K1EL or compatible)'
+	String get newKeyer => 'WinKeyer (K1EL or compatible)';
+
+	/// en: 'CAT Keyer in $radio'
+	String keyViaRadio({required Object radio}) => 'CAT Keyer in ${radio}';
+
+	/// en: 'Keyer area'
+	String get cwKeyerArea => 'Keyer area';
 
 	/// en: 'Track Station Info for each QSO'
 	String get trackStationInfo => 'Track Station Info for each QSO';
@@ -5487,6 +5499,9 @@ class Translations$settings$station$models$en {
 	/// en: 'CW Key'
 	String get key => 'CW Key';
 
+	/// en: 'WinKeyer'
+	String get winkeyer => 'WinKeyer';
+
 	/// en: 'Generic Placeholder Radio (no control)'
 	String get placeholderRadio => 'Generic Placeholder Radio (no control)';
 
@@ -6694,6 +6709,8 @@ extension on Translations {
 			'settings.station.channelNotInUse' => 'not in use',
 			'settings.station.channelHeldByUnknown' => 'in use by another program',
 			'settings.station.flexNoSlices' => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe',
+			'settings.station.winkeyerNoAnswer' => 'No WinKeyer answered on this port',
+			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped answering while sending; the message was dropped',
 			'settings.station.radioUser' => 'Radio username',
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
@@ -6712,15 +6729,16 @@ extension on Translations {
 			'settings.station.models.ic7300' => 'Icom IC-7300',
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
-			'settings.station.models.ic7610' => 'Icom IC-7610',
-			'settings.station.models.ic7760' => 'Icom IC-7760',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.ic7610' => 'Icom IC-7610',
+			'settings.station.models.ic7760' => 'Icom IC-7760',
 			'settings.station.models.x6100' => 'X6100',
 			'settings.station.models.rigctld' => 'Generic Radio via rigctld',
 			'settings.station.models.flrig' => 'Generic Radio via flrig',
 			'settings.station.models.antenna' => 'Antenna',
 			'settings.station.models.key' => 'CW Key',
+			'settings.station.models.winkeyer' => 'WinKeyer',
 			'settings.station.models.placeholderRadio' => 'Generic Placeholder Radio (no control)',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
@@ -6766,7 +6784,6 @@ extension on Translations {
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.cwKeyerNotAvailable' => 'Connect a radio that can key CW to send messages from here.',
 			'settings.station.cwMessagesButton' => 'Messages',
-			'settings.station.cwKeyerShow' => 'Show',
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
 			'settings.station.antennaTypeRequired' => 'Choose an antenna type',
@@ -6790,6 +6807,9 @@ extension on Translations {
 			'settings.station.otherOptions' => 'Other Options',
 			'settings.station.newAntenna' => 'New Antenna',
 			'settings.station.newKey' => 'New Key',
+			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
+			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT Keyer in ${radio}',
+			'settings.station.cwKeyerArea' => 'Keyer area',
 			'settings.station.trackStationInfo' => 'Track Station Info for each QSO',
 			'settings.station.includeStationInfoInAdif' => 'Include in ADIF exports',
 			'settings.station.whatToTrack' => 'What to track?',

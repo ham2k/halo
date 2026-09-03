@@ -94,8 +94,10 @@ mixin SerialTransportConfig implements EquipmentTransport {
   /// [availablePorts] — a live hardware enumeration. `validate()` calls
   /// this on every connect and every unattended reconnect retry, and it
   /// has no business scanning serial hardware just to learn a field's key.
+  /// `stopBits` is never a field: a driver whose device needs two (the
+  /// WinKeyer) pins it in its model's `overrides`.
   @override
-  Set<String> get recognizedConfigKeys => const {'port', 'baudRate'};
+  Set<String> get recognizedConfigKeys => const {'port', 'baudRate', 'stopBits'};
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
@@ -107,6 +109,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
   Map<String, dynamic> targetFor(Map<String, dynamic> config) => {
         'port': serialPort(config),
         'baudRate': serialBaudRate(config),
+        'stopBits': serialStopBits(config),
       };
 
   @override
@@ -116,4 +119,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
 
   static int serialBaudRate(Map<String, dynamic> config) =>
       numberFromConfig(config, 'baudRate', supportedBaudRates.first);
+
+  /// 1 unless the model says 2; nothing here uses 1.5.
+  static int serialStopBits(Map<String, dynamic> config) => numberFromConfig(config, 'stopBits', 1) == 2 ? 2 : 1;
 }

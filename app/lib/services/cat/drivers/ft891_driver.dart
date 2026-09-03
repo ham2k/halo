@@ -79,10 +79,13 @@ class Ft891Driver extends EquipmentDriver {
       vendorId == cp2105VendorId && productId == cp2105ProductId;
 
   @override
+  bool get canKeyCw => true;
+
+  @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => Ft891Session(sink);
 }
 
-class Ft891Session implements CwKeyerSession {
+class Ft891Session implements TransceiverSession, CwKeyerSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
 

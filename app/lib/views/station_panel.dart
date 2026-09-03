@@ -147,8 +147,9 @@ class StationPanel extends StatelessWidget {
       builder: (context) => _AddEquipmentDialog(
         cat: _cat,
         showDiscovery: showDiscovery,
-        showOtherEquipment: services.settings.trackStationInfo &&
+        showAntennaAndKey: services.settings.trackStationInfo &&
             services.settings.stationInfoTrackedFields.any((f) => f == 'antenna' || f == 'key'),
+        showKeyer: services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */,
         supportedVariants: _supportedVariants,
       ),
     );
@@ -849,9 +850,14 @@ class StationPanel extends StatelessWidget {
           for (final node in nodes)
             if (_cat.typeFor(node)?.category == kCategoryAntenna) node,
         ];
+        // The key in use: a paddle on the desk, or what keys for the app —
+        // a keyer, or a radio whose CAT can. One pick, because a station
+        // with more than one has to say which one the messages go through.
+        final keyerExperiment = services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
         final keys = [
           for (final node in nodes)
             if (_cat.typeFor(node)?.category == kCategoryKey) node,
+          if (keyerExperiment) ..._cat.keyerCandidates,
         ];
         // A peer's radio is picked from the same list as this device's own:
         // it drives the same one `vfoA`, so offering a second control for it
@@ -988,7 +994,10 @@ class StationPanel extends StatelessWidget {
                           label: st.keyInUse,
                           nodes: keys,
                           selected: _cat.designatedFor(kCategoryKey),
-                          displayName: _displayName,
+                          // A radio in this list is its keyer, not the radio.
+                          displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver
+                              ? st.keyViaRadio(radio: _displayName(node))
+                              : _displayName(node),
                           noneLabel: st.noneSelected,
                           onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
                         ),
@@ -1001,7 +1010,7 @@ class StationPanel extends StatelessWidget {
             // only, like the Power field — this is the dialog the operator
             // reaches from the logging panel mid-QSO, which is where a speed
             // change happens; the full page is configuration.
-            if (compact && services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */)
+            if (compact && keyerExperiment && _cat.designatedKeyIsKeyer)
               _cwKeyerRow(context, inset: rowInset),
 
             // What the station is made OF. Compact shows only the rig
@@ -1022,6 +1031,22 @@ class StationPanel extends StatelessWidget {
                     onRemoveUnknown: () => _removeEquipment(context, node),
                     onConnect: () => _cat.connect(node.uuid),
                     onDisconnect: () => _cat.disconnect(node.uuid),
+                  ),
+              // And the keyer in use, when it is a device of its own: the
+              // row above is where it gets connected.
+              if (keyerExperiment)
+                if (_cat.designatedKeyerNode case final keyer?)
+                  _EquipmentTile(
+                    node: keyer,
+                    type: _cat.typeFor(keyer),
+                    state: _cat.stateFor(keyer.uuid),
+                    developerMode: services.settings.developerMode,
+                    displayName: _displayName(keyer),
+                    isMainVfo: false,
+                    onEdit: () => _editEquipment(context, keyer),
+                    onRemoveUnknown: () => _removeEquipment(context, keyer),
+                    onConnect: () => _cat.connect(keyer.uuid),
+                    onDisconnect: () => _cat.disconnect(keyer.uuid),
                   ),
             ] else ...[
               if (nodes.isEmpty) ListTile(title: Text(st.none)),
@@ -1148,17 +1173,21 @@ class StationPanel extends StatelessWidget {
                 label: Text(st.cwMessagesButton),
                 onPressed: () => showCwMessagesDialog(context, services),
               ),
-              // Brings up the keyer area behind this dialog, which closes so
-              // the area is what the operator sees.
-              TextButton.icon(
-                icon: const Icon(MdiIcons.dotsHorizontal),
-                label: Text(st.cwKeyerShow),
-                onPressed: canKey
-                    ? () {
-                        Navigator.of(context).maybePop();
-                        _cat.showKeyerArea();
-                      }
-                    : null,
+              const SizedBox(width: Space.md),
+              // Shows or hides the keyer area in the logging panel — the same
+              // switch KEYER, the area's X and its linger move.
+              ValueListenableBuilder<bool>(
+                valueListenable: _cat.keyerAreaShown,
+                builder: (context, shown, _) => Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(st.cwKeyerArea, style: Theme.of(context).textTheme.bodySmall),
+                    Switch(
+                      value: shown,
+                      onChanged: canKey ? (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea() : null,
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1274,14 +1303,19 @@ class _AddEquipmentDialog extends StatefulWidget {
   /// Whether the operator has opted to track an antenna or a key against
   /// QSOs — see [SettingsService.stationInfoTrackedFields]. Off, the "Other
   /// Equipment" section would only ever grow a list nothing reads.
-  final bool showOtherEquipment;
+  final bool showAntennaAndKey;
+
+  /// Whether "Other Equipment" offers a CW keyer — behind the keyer
+  /// experiment, with everything that keys.
+  final bool showKeyer;
 
   final List<EquipmentType> Function(EquipmentModel model) supportedVariants;
 
   const _AddEquipmentDialog({
     required this.cat,
     required this.showDiscovery,
-    required this.showOtherEquipment,
+    required this.showAntennaAndKey,
+    required this.showKeyer,
     required this.supportedVariants,
   });
 
@@ -1475,7 +1509,7 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                   ),
                 ),
               ),
-              if (widget.showOtherEquipment) _otherEquipmentSection(context),
+              if (widget.showAntennaAndKey || widget.showKeyer) _otherEquipmentSection(context),
             ],
           ),
           // "Done", not "Cancel": the "Other Equipment" section below can add
@@ -1493,7 +1527,7 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
   /// Antennas and keys, added by name and type rather than picked from a
   /// catalogue — there is exactly one of each, unlike the radio list above.
   /// Closed by default (see [_otherEquipmentExpanded]): visible only when
-  /// [_AddEquipmentDialog.showOtherEquipment] says the operator tracks at
+  /// [_AddEquipmentDialog.showAntennaAndKey] says the operator tracks at
   /// least one of these against a QSO, so the section never grows a list
   /// nothing reads.
   Widget _otherEquipmentSection(BuildContext context) {
@@ -1516,18 +1550,29 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          ListTile(
-            leading: const Icon(MdiIcons.antenna),
-            title: Text(st.newAntenna),
-            onTap: () => Navigator.of(context).pop(_AddChoice.model(antennaModel)),
-            mouseCursor: SystemMouseCursors.click,
-          ),
-          ListTile(
-            leading: const Icon(MdiIcons.key),
-            title: Text(st.newKey),
-            onTap: () => Navigator.of(context).pop(_AddChoice.model(keyModel)),
-            mouseCursor: SystemMouseCursors.click,
-          ),
+          if (widget.showAntennaAndKey) ...[
+            ListTile(
+              leading: const Icon(MdiIcons.antenna),
+              title: Text(st.newAntenna),
+              onTap: () => Navigator.of(context).pop(_AddChoice.model(antennaModel)),
+              mouseCursor: SystemMouseCursors.click,
+            ),
+            ListTile(
+              leading: const Icon(MdiIcons.key),
+              title: Text(st.newKey),
+              onTap: () => Navigator.of(context).pop(_AddChoice.model(keyModel)),
+              mouseCursor: SystemMouseCursors.click,
+            ),
+          ],
+          // Beside the plain key rather than in the catalogue: a keyer is
+          // where an operator looks for their key, whatever its make.
+          if (widget.showKeyer)
+            ListTile(
+              leading: const Icon(MdiIcons.keyboardVariant),
+              title: Text(st.newKeyer),
+              onTap: () => Navigator.of(context).pop(_AddChoice.model(winkeyerModel)),
+              mouseCursor: SystemMouseCursors.click,
+            ),
         ],
       ),
     );
@@ -1637,6 +1682,7 @@ IconData _iconForCategory(String? category) => switch (category) {
       kCategoryTransceiver => MdiIcons.radio,
       kCategoryAntenna => MdiIcons.antenna,
       kCategoryKey => MdiIcons.key,
+      kCategoryKeyer => MdiIcons.keyboardVariant,
       kCategoryAntennaSwitch => MdiIcons.directionsFork,
       _ => MdiIcons.developerBoard,
     };

@@ -136,7 +136,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   /// When [_autoReconnectAfterDrop] last let a burst through, so a flapping
   /// radio cannot become a reconnect storm.
-  DateTime? _lastAutoReconnect;
+  /// Per node: radio1 and the keyer flap independently.
+  final _lastAutoReconnect = <String, DateTime>{};
 
   /// The slow retry that runs while the designated radio is disconnected, and
   /// its current backoff. See [_scheduleIdleRetry].
@@ -448,7 +449,23 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   Future<void> setDesignated(String category, String? uuid) async {
     if (_designated[category] == uuid) return;
+    final previousUuid = _designated[category];
     _designated[category] = uuid;
+    if (category == kCategoryKey) {
+      // The old keyer's message would otherwise finish with nothing showing
+      // it and nothing to stop it; the new one's speed is read so the row is
+      // not left on the old one's.
+      final previous = _runtimes[previousUuid]?.session;
+      if (previous is CwKeyerSession && previous.cwSending) {
+        try {
+          previous.stopCw();
+        } catch (e, st) {
+          ErrorReportingService.report(e, st, context: 'cat:stop-cw');
+        }
+      }
+      cwProgress.value = null;
+      refreshKeyerSpeed();
+    }
     await _save();
     notifyListeners();
   }
@@ -501,53 +518,110 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     }
   }
 
-  /// radio1's session, when it is connected and its protocol can key CW —
-  /// null otherwise. Every keying surface (the keyer row in the Station
+  /// Makes [uuid] the key in use when it can key and nothing is — the rule
+  /// [addNode] applies, and what [_load] applies once for a station whose
+  /// radio keyed before the key in use decided that.
+  void _designateFirstKeyingRadio(String uuid) {
+    if (_designated[kCategoryKey] != null) return;
+    if (!_settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return;
+    final node = _nodes[uuid];
+    if (node == null || !(registry.typeFor(node.typeKey)?.driver.canKeyCw ?? false)) return;
+    _designated[kCategoryKey] = uuid;
+  }
+
+  /// The node keying for the app: the designated key ([kCategoryKey]'s
+  /// designation), when it is connected through a [CwKeyerSession] — a
+  /// Winkeyer, or a radio whose CAT can key and was picked as the key in
+  /// use. Null otherwise. Every keying surface (the keyer row in the Station
   /// dialog, F1-F8, the WPM command) exists only while this is non-null.
-  CwKeyerSession? get _cwKeyer {
-    final uuid = _radio1;
+  ///
+  /// The designation, not radio1: a station with both a Winkeyer and a
+  /// keying radio has to say which one the messages go through, and the
+  /// "key in use" pick is where a key is already chosen.
+  String? get _cwKeyerUuid {
+    final uuid = _designated[kCategoryKey];
     if (uuid == null) return null;
     final runtime = _runtimes[uuid];
     if (runtime?.state.status != EquipmentStatus.connected) return null;
-    final session = runtime!.session;
-    return session is CwKeyerSession ? session : null;
+    return runtime!.session is CwKeyerSession ? uuid : null;
   }
 
-  /// Whether radio1 is connected through a protocol that can key CW.
+  CwKeyerSession? get _cwKeyer {
+    final uuid = _cwKeyerUuid;
+    if (uuid == null) return null;
+    return _runtimes[uuid]!.session as CwKeyerSession;
+  }
+
+  /// Whether the designated key is connected and can key CW.
   bool get canKeyCw => _cwKeyer != null;
 
-  /// radio1's keyer speed as the radio reported it, or null while unknown —
-  /// also null when nothing can key.
-  int? get keyerSpeed {
-    if (_cwKeyer == null) return null;
-    return stateFor(_radio1!).keyerSpeed;
+  /// Whether the designated key COULD key — a keyer, or a radio whose
+  /// driver keys — whether or not it is connected right now. What decides
+  /// the Station dialog shows the keyer row at all: a disconnected Winkeyer
+  /// still wants its connect button and its messages reachable.
+  bool get designatedKeyIsKeyer {
+    final uuid = _designated[kCategoryKey];
+    if (uuid == null) return false;
+    final node = nodeFor(uuid);
+    if (node == null) return false;
+    return _isKeyerType(typeFor(node));
   }
 
-  /// The speeds radio1's keyer accepts — for a picker to offer exactly
+  /// The designated key's node, when [designatedKeyIsKeyer].
+  EquipmentNode? get designatedKeyerNode {
+    if (!designatedKeyIsKeyer) return null;
+    return nodeFor(_designated[kCategoryKey]!);
+  }
+
+  /// Every node the "key in use" pick may offer as a keying source: keyers,
+  /// and radios whose driver can key.
+  List<EquipmentNode> get keyerCandidates => [
+        for (final node in nodes)
+          if (_isKeyerType(typeFor(node))) node,
+      ];
+
+  static bool _isKeyerType(EquipmentType? type) =>
+      type != null && (type.category == kCategoryKeyer || type.driver.canKeyCw);
+
+  /// The keyer's speed as it reported it, or null while unknown — also null
+  /// when nothing can key.
+  int? get keyerSpeed {
+    final uuid = _cwKeyerUuid;
+    if (uuid == null) return null;
+    return stateFor(uuid).keyerSpeed;
+  }
+
+  /// The speeds the key in use accepts — for a picker to offer exactly
   /// those. Null when nothing can key.
   ({int min, int max})? get keyerSpeedRange => _cwKeyer?.keyerSpeedRange;
 
-  /// Whether radio1 is still keying something [sendCw] gave it.
+  /// Whether the key in use is still keying something [sendCw] gave it.
   bool get cwSending => _cwKeyer?.cwSending ?? false;
 
-  /// What radio1's keyer is sending for the app right now, or null — for
+  /// What the key in use is sending for the app right now, or null — for
   /// the status bar's indicator. Its own notifier rather than a field on
   /// [EquipmentState]: it changes with every message and clears seconds
   /// later, and a state change rebuilds every equipment row for a value only
   /// one small widget reads.
   final cwProgress = ValueNotifier<CwSendProgress?>(null);
 
-  /// Bumped by [showKeyerArea]; the keyer area listens and slides in. A
-  /// counter rather than a flag: showing what is already shown must still
-  /// be an event (the area may be mid-slide out), and the area owns the
-  /// hiding.
-  final keyerAreaRequests = ValueNotifier<int>(0);
+  /// Whether the keyer area is shown — the logging panel's strip follows
+  /// it, the Station dialog's toggle and the KEYER command set it, and the
+  /// area's own X and its linger clear it.
+  final keyerAreaShown = ValueNotifier<bool>(false);
 
-  /// Asks the keyer area to show — the KEYER command and the Station
-  /// dialog's Show button.
-  void showKeyerArea() => keyerAreaRequests.value++;
+  /// Bumped by every [showKeyerArea], shown already or not: the area's
+  /// linger has to end on an explicit ask even when the flag does not move.
+  final keyerShowRequests = ValueNotifier<int>(0);
 
-  /// Keys [text] on radio1 — a no-op, not an error, when nothing can key:
+  void showKeyerArea() {
+    keyerAreaShown.value = true;
+    keyerShowRequests.value++;
+  }
+
+  void hideKeyerArea() => keyerAreaShown.value = false;
+
+  /// Keys [text] on the key in use — a no-op, not an error, when nothing can key:
   /// the surfaces that call this only exist while [canKeyCw], so reaching
   /// here without a keyer is the radio dropping between the check and the
   /// keypress.
@@ -573,7 +647,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     }
   }
 
-  /// Drops one message waiting behind the one radio1 is keying — see
+  /// Drops one message waiting behind the one the key in use is keying — see
   /// [CwKeyerSession.dropQueuedCw].
   void dropQueuedCw(int id) {
     final session = _cwKeyer;
@@ -585,7 +659,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     }
   }
 
-  /// Sets radio1's keyer speed. Returns false when nothing can key, or the
+  /// Sets the key in use's keyer speed. Returns false when nothing can key, or the
   /// send threw, so the WPM command can say so rather than confirm a change
   /// that never left the app.
   ///
@@ -605,7 +679,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     return true;
   }
 
-  /// Asks radio1 for its keyer speed again — for a surface about to show it,
+  /// Asks the key in use for its keyer speed again — for a surface about to show it,
   /// since sessions read it once at connect and the radio never volunteers a
   /// knob turn.
   void refreshKeyerSpeed() {
@@ -681,6 +755,13 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         if (uuid is String && _nodes.containsKey(uuid)) _designated['${entry.key}'] = uuid;
       }
     }
+    // No key entry at all means the key in use has never been decided, and
+    // a station that keyed through radio1 until then would lose keying with
+    // nothing to say why. An explicit None is stored as null and kept.
+    final keyDecided = designated is Map && designated.containsKey(kCategoryKey);
+    if (!keyDecided) {
+      if (_radio1 case final uuid?) _designateFirstKeyingRadio(uuid);
+    }
   }
 
   Future<void> _save() => _settings.setStationEquipment({
@@ -745,7 +826,16 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // Same rule as radio1, for antenna/key: the newest one designated, so
     // adding the shack's only antenna or key needs no separate picker visit.
     if (category == kCategoryAntenna) _designated[kCategoryAntenna] = stored.uuid;
-    if (category == kCategoryKey) _designated[kCategoryKey] = stored.uuid;
+    // The key in use is also what keys, so what a new node does to it
+    // depends on what it displaces: a keyer takes over (the newest keyer
+    // keys), a plain paddle takes over only from a paddle or nothing —
+    // recording a Bencher for the log must not silently stop the radio's
+    // keying — and a radio that can key is picked only when nothing was,
+    // and only with the keyer experiment on (without it the pick never
+    // shows radios, so the designation would be one nobody could see).
+    if (category == kCategoryKeyer) _designated[kCategoryKey] = stored.uuid;
+    if (category == kCategoryKey && !designatedKeyIsKeyer) _designated[kCategoryKey] = stored.uuid;
+    if (category == kCategoryTransceiver) _designateFirstKeyingRadio(stored.uuid);
     await _save();
     _trackRadio('radio_added', stored, extra: {'via': via});
     notifyListeners();
@@ -1168,11 +1258,15 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       },
       onCwProgress: (progress) {
         if (runtime.connection != connection) return;
-        // Only the designated radio keys for the app, so only it is shown.
-        if (uuid == _radio1) cwProgress.value = progress;
+        // A keyer has no VFO to feed the silence watch with — see the
+        // reasoning at onSwitchState.
+        _noteAlive(uuid, runtime);
+        // Only the designated key keys for the app, so only it is shown.
+        if (uuid == _cwKeyerUuid) cwProgress.value = progress;
       },
       onKeyerSpeed: (wpm) {
         if (runtime.connection != connection) return;
+        _noteAlive(uuid, runtime);
         if (stateFor(uuid).keyerSpeed != wpm) _setState(uuid, stateFor(uuid).copyWith(keyerSpeed: wpm));
       },
       onProblem: (message) {
@@ -1251,9 +1345,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // And keep trying slowly afterwards, in case that burst is spent before
       // the radio is back.
       //
-      // Unconditional on purpose. An `isRadio1(uuid)` guard here would be
-      // dead code: [_scheduleIdleRetry] reads _radio1 itself and stops on
-      // the first tick if that radio is connected or absent, so the guard
+      // Unconditional on purpose. A guard on which node dropped would be
+      // dead code: [_scheduleIdleRetry] reads the nodes it covers itself and
+      // stops on the first tick if each is connected or absent, so the guard
       // could not change any outcome. One place decides, and it is the loop.
       _scheduleIdleRetry();
     }));
@@ -1305,18 +1399,23 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     _idleRetryTimer?.cancel();
     _idleRetryTimer = Timer(_idleRetryDelay, () {
       if (_disposed) return;
-      final uuid = _radio1;
-      final runtime = uuid == null ? null : _runtimes[uuid];
-      final status = uuid == null ? null : stateFor(uuid).status;
+      // radio1, and the key in use when it is a device of its own: the two
+      // nodes the app depends on, so the two this loop brings back.
+      final keyer = _designated[kCategoryKey];
+      final wanted = <String>{
+        if (_radio1 case final uuid?) uuid,
+        if (keyer != null && _isDesignatedKeyerDevice(keyer)) keyer,
+      };
 
       // STOP only for a reason that will not resolve itself: there is nothing
       // designated, the node is gone, the operator switched it off, or it is
       // already connected. connect/disconnect and a dropped session restart it.
-      final settled = uuid == null ||
+      bool settled(String uuid) =>
           !_nodes.containsKey(uuid) ||
-          (runtime?.userDisconnected ?? false) ||
-          status == EquipmentStatus.connected;
-      if (settled) {
+          (_runtimes[uuid]?.userDisconnected ?? false) ||
+          stateFor(uuid).status == EquipmentStatus.connected;
+      final open = wanted.where((uuid) => !settled(uuid)).toList();
+      if (open.isEmpty) {
         _idleRetryTimer = null;
         return;
       }
@@ -1331,7 +1430,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // gap this exists to close. Waiting on anything that is not
       // `disconnected` includes `error`, so after the first failure it would
       // wait for ever and never retry at all.
-      if (status == EquipmentStatus.connecting || status == EquipmentStatus.disconnecting) {
+      if (open.any((uuid) {
+        final status = stateFor(uuid).status;
+        return status == EquipmentStatus.connecting || status == EquipmentStatus.disconnecting;
+      })) {
         _scheduleIdleRetry();
         return;
       }
@@ -1339,8 +1441,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // Double first, so a failure that arrives after this fire still leaves
       // the next wait longer than this one.
       _idleRetryDelay = _idleRetryDelay * 2 > _idleRetryMax ? _idleRetryMax : _idleRetryDelay * 2;
-      unawaited(_connect(uuid).then((outcome) {
-        if (outcome == _ConnectOutcome.connected) {
+      unawaited(Future.wait(open.map(_connect)).then((outcomes) {
+        if (outcomes.every((outcome) => outcome == _ConnectOutcome.connected)) {
           _idleRetryDelay = idleRetryFirst;
           // CANCEL, not just forget. There is an async gap above while the
           // connect runs, and _scheduleIdleRetry may have been called during
@@ -1356,6 +1458,15 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         _scheduleIdleRetry();
       }));
     });
+  }
+
+  /// Whether [uuid] is the key in use and a device of its own (a keyer node,
+  /// not a radio doubling as one) — what the app's keying depends on, so it
+  /// is brought back the way radio1 is.
+  bool _isDesignatedKeyerDevice(String uuid) {
+    if (_designated[kCategoryKey] != uuid) return false;
+    final node = _nodes[uuid];
+    return node != null && typeFor(node)?.category == kCategoryKeyer;
   }
 
   /// When the designated radio's connection dies on its own, try to get it
@@ -1383,8 +1494,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// [reconnectDesignatedRadio] supplies the retry policy; this only decides
   /// whether it may run at all.
   void _autoReconnectAfterDrop(String uuid) {
-    if (_disposed || !isRadio1(uuid)) return;
-    final last = _lastAutoReconnect;
+    if (_disposed || !(isRadio1(uuid) || _isDesignatedKeyerDevice(uuid))) return;
+    final last = _lastAutoReconnect[uuid];
     // Real time: this cooldown rate-limits real reconnect attempts against a
     // real radio, so a rescaled clock would let a storm through.
     final now = realNowUtc();
@@ -1392,13 +1503,25 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       debugPrint('[cat] auto-reconnect suppressed: last was ${now.difference(last).inSeconds}s ago');
       return;
     }
-    _lastAutoReconnect = now;
+    _lastAutoReconnect[uuid] = now;
     unawaited(reconnectDesignatedRadio());
   }
 
+  /// radio1, and the key in use when it is a device of its own: both are
+  /// what the app depends on, and neither should wait for a button.
   Future<void> reconnectDesignatedRadio() async {
-    final uuid = _radio1;
+    final keyer = _designated[kCategoryKey];
+    await Future.wait([
+      _reconnectWithRetries(_radio1),
+      if (keyer != null && keyer != _radio1 && _isDesignatedKeyerDevice(keyer)) _reconnectWithRetries(keyer),
+    ]);
+  }
+
+  Future<void> _reconnectWithRetries(String? uuid) async {
     if (uuid == null || !_nodes.containsKey(uuid)) return;
+    // A deliberate Disconnect holds whatever else drops: the other device
+    // coming back must not bring this one with it.
+    if (_runtimes[uuid]?.userDisconnected ?? false) return;
 
     for (var attempt = 0; attempt <= _reconnectRetries; attempt++) {
       // The delay below can't be cancelled, so the service may have been
@@ -1793,7 +1916,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // freshly-reconnected radio silently disagreeing.
     runtime.lastSent = null;
     runtime.lastSentPower = null;
-    if (_radio1 != null && identical(_runtimes[_radio1], runtime)) cwProgress.value = null;
+    if (identical(_runtimes[_designated[kCategoryKey]], runtime)) cwProgress.value = null;
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a
     // fresh resting point, not the continuation of a knob turn. Only for the
@@ -1847,7 +1970,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // After the teardowns, whose synchronous prefix clears cwProgress for
     // the designated radio — a notifier disposed first would be notified.
     cwProgress.dispose();
-    keyerAreaRequests.dispose();
+    keyerAreaShown.dispose();
+    keyerShowRequests.dispose();
     _runtimes.clear();
     super.dispose();
   }

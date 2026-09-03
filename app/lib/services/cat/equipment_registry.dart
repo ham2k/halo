@@ -28,6 +28,7 @@ import 'driver.dart';
 import 'drivers/antenna_driver.dart';
 import 'drivers/antenna_genius_driver.dart';
 import 'drivers/placeholder_radio_driver.dart';
+import 'drivers/winkeyer_driver.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/flrig_driver.dart';
 import 'drivers/ft891_driver.dart';
@@ -376,6 +377,7 @@ const _x6100SerialKey = 'x6100-serial';
 const _ic705NetworkKey = 'ic705-network';
 const _ic705SerialKey = 'ic705-serial';
 const _placeholderRadioKey = 'placeholder-radio';
+const _winkeyerSerialKey = 'winkeyer-serial';
 const _antennaGeniusTcpKey = 'antenna-genius-tcp';
 const _sierraCoaxSerialKey = 'sierra-coax-serial';
 
@@ -1074,6 +1076,32 @@ const keyModel = EquipmentModel(
 
 String _keyModelName() => t.settings.station.models.key;
 
+/// A K1EL Winkeyer over its own serial (USB) port — see winkeyer_driver.dart.
+/// Offered from the Add dialog's "Other Equipment" rows beside a plain key,
+/// which is where an operator looks for a key; its port speed is the
+/// keyer's fixed 1200 baud, 2 stop bits, so neither is a field.
+const winkeyerModel = EquipmentModel(
+  key: 'winkeyer',
+  manufacturer: 'K1EL',
+  category: kCategoryKeyer,
+  name: _winkeyerModelName,
+  hiddenFromCatalog: true,
+  variants: [
+    EquipmentVariant(
+      key: _winkeyerSerialKey,
+      driver: WinkeyerDriver(),
+      transport: SerialTransport(),
+      // Overrides, not defaults: a default is only a prefill the Add form
+      // may drop (1200 is not in the baud picker, and stopBits has no
+      // field), while an override is merged into every target and takes
+      // the baud picker off the form.
+      overrides: {'baudRate': 1200, 'stopBits': 2},
+    ),
+  ],
+);
+
+String _winkeyerModelName() => t.settings.station.models.winkeyer;
+
 /// What the app can talk to, and how it gets there.
 ///
 /// A plain Dart list today. When extensions can contribute rig definitions
@@ -1102,6 +1130,7 @@ const _defaultModels = [
   sierraCoaxModel,
   antennaModel,
   keyModel,
+  winkeyerModel,
 ];
 
 class EquipmentRegistry {

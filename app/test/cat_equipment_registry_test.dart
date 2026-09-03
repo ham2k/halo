@@ -202,6 +202,7 @@ void main() {
         'rigctld-tcp',
         'flrig-tcp',
         'placeholder-radio',
+        'winkeyer-serial',
         'antenna-genius-tcp',
         'sierra-coax-serial',
         'antenna-none',
@@ -380,7 +381,8 @@ void main() {
     // CI-V belongs on the polling side HERE and only here: transceive can't
     // be read back, so a fresh session assumes the poll and drops the claim
     // once the radio announces on its own (cat_icom_civ_test.dart).
-    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius'};
+    // The Winkeyer pushes too: status, echo and pot reports, as they happen.
+    const pushes = {'flexradio', 'placeholder-radio', 'antenna-genius', 'winkeyer'};
 
     // Antenna/Key have no live connection at all — see NoneTransport — so
     // createSession is documented to throw rather than answer either way.

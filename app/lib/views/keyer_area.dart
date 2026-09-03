@@ -95,13 +95,28 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     super.initState();
     _reveal = AnimationController(vsync: this, duration: _revealDuration);
     widget.cat.cwProgress.addListener(_onProgress);
-    widget.cat.keyerAreaRequests.addListener(_onShowRequested);
+    widget.cat.keyerAreaShown.addListener(_onShownChanged);
+    widget.cat.keyerShowRequests.addListener(_onShowRequested);
     _onProgress();
+    _onShownChanged();
   }
 
-  /// KEYER, or the Station dialog's Show: in, and staying — the linger
-  /// only starts once a message has gone out.
-  void _onShowRequested() {
+  /// An explicit ask (KEYER, the toggle) while already shown: the flag does
+  /// not move, but a linger in progress must not carry the area away.
+  void _onShowRequested() => _show();
+
+  /// `CatService.keyerAreaShown` is the one switch: KEYER, the Station
+  /// dialog's toggle and a message starting set it; the X, the linger and
+  /// the toggle clear it. This only follows it in and out.
+  void _onShownChanged() {
+    if (widget.cat.keyerAreaShown.value) {
+      _show();
+    } else {
+      _close();
+    }
+  }
+
+  void _show() {
     if (widget.suppressed) return;
     _hide?.cancel();
     _hide = null;
@@ -114,49 +129,71 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     super.didUpdateWidget(old);
     if (old.cat != widget.cat) {
       old.cat.cwProgress.removeListener(_onProgress);
-      old.cat.keyerAreaRequests.removeListener(_onShowRequested);
+      old.cat.keyerAreaShown.removeListener(_onShownChanged);
+      old.cat.keyerShowRequests.removeListener(_onShowRequested);
       widget.cat.cwProgress.addListener(_onProgress);
-      widget.cat.keyerAreaRequests.addListener(_onShowRequested);
+      widget.cat.keyerAreaShown.addListener(_onShownChanged);
+      widget.cat.keyerShowRequests.addListener(_onShowRequested);
       _onProgress();
+      _onShownChanged();
     }
     if (widget.suppressed && !old.suppressed) _close();
-    if (!widget.suppressed && old.suppressed) _onProgress();
+    if (!widget.suppressed && old.suppressed) {
+      // Shown first, then the progress: a message that ended meanwhile arms
+      // the linger, which a show would otherwise cancel.
+      _onShownChanged();
+      _onProgress();
+    }
   }
 
   @override
   void dispose() {
     widget.cat.cwProgress.removeListener(_onProgress);
-    widget.cat.keyerAreaRequests.removeListener(_onShowRequested);
+    widget.cat.keyerAreaShown.removeListener(_onShownChanged);
+    widget.cat.keyerShowRequests.removeListener(_onShowRequested);
     _hide?.cancel();
     _reveal.dispose();
     super.dispose();
   }
 
+  /// The message whose start last showed the area — a Winkeyer re-reports
+  /// the same message on every echo, and each of those must not undo an X.
+  int? _shownForMessage;
+
   void _onProgress() {
     if (widget.suppressed) return;
-    if (widget.cat.cwProgress.value != null) {
+    final progress = widget.cat.cwProgress.value;
+    if (progress != null) {
       _hide?.cancel();
       _hide = null;
-      if (!_visible) setState(() => _visible = true);
-      _reveal.forward();
+      if (_shownForMessage != progress.id) {
+        _shownForMessage = progress.id;
+        // A message starting shows the area through the flag, so the
+        // Station dialog's toggle agrees.
+        widget.cat.showKeyerArea();
+      }
       return;
     }
+    _shownForMessage = null;
     if (!_visible) return;
     _hide?.cancel();
     _hide = Timer(cwSendingLingers, () {
       _hide = null;
+      widget.cat.hideKeyerArea();
+      // Directly as well: when the X went first the flag is already off and
+      // changes nothing, and nothing else would slide the area away.
       _close();
     });
   }
 
-  /// Slides the area away — the linger running out, or the X. A message
-  /// still keying keeps going; the next report brings the area back.
+  /// Slides the area away. A message still keying keeps going; its next
+  /// report brings the area back.
   void _close() {
     if (!mounted) return;
     _hide?.cancel();
     _hide = null;
     _reveal.reverse().whenComplete(() {
-      if (mounted && _hide == null && widget.cat.cwProgress.value == null) setState(() => _visible = false);
+      if (mounted && _hide == null && !widget.cat.keyerAreaShown.value) setState(() => _visible = false);
     });
   }
 
@@ -213,7 +250,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                 // accessible name is the only place this button is named.
                 icon: Icon(MdiIcons.close, size: 16, semanticLabel: context.t.settings.radio.cwMessages.closeArea),
                 visualDensity: VisualDensity.compact,
-                onPressed: _close,
+                onPressed: widget.cat.hideKeyerArea,
               ),
             ],
           ),
@@ -625,7 +662,9 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
       // zero duration, which it refuses; the queue never reports one, but
       // the widget must not be the thing that throws if it did.
       duration: widget.progress.total > Duration.zero ? widget.progress.total : const Duration(milliseconds: 1),
-    )..forward();
+    );
+    // A keyer that reports what it keyed needs no estimate running.
+    if (widget.progress.sentCount == null) _controller.forward();
   }
 
   @override
@@ -647,8 +686,13 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
-            final elapsed = progress.total * _controller.value;
-            final sent = progress.sentAt(elapsed);
+            // What the keyer reported when it reports (a Winkeyer echoes each
+            // character), the estimate otherwise.
+            final reported = progress.sentCount;
+            final sent = reported ?? progress.sentAt(progress.total * _controller.value);
+            final fraction = reported == null
+                ? _controller.value
+                : (progress.text.isEmpty ? 1.0 : reported / progress.text.length);
             // The text sizes the stack, and the bar is positioned across
             // its full width — so the bar is exactly as wide as the message
             // above it, and no wider under a short one. (An IntrinsicWidth
@@ -683,7 +727,7 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
                     children: [
                       Container(color: color.withValues(alpha: 0.25)),
                       FractionallySizedBox(
-                        widthFactor: _controller.value,
+                        widthFactor: fraction,
                         child: Container(color: color),
                       ),
                     ],

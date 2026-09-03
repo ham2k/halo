@@ -78,6 +78,9 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   bool get hardwareVerified => true;
 
   @override
+  bool get canKeyCw => true;
+
+  @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
       PlaceholderRadioSession(sink, config);
 
@@ -146,7 +149,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   }
 }
 
-class PlaceholderRadioSession implements CwKeyerSession {
+class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession {
   final EquipmentSink _sink;
 
   /// How long a set takes to come back as a reading. Zero reports

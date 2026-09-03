@@ -86,6 +86,9 @@ class IcomCivDriver extends EquipmentDriver {
   bool get hardwareVerified => true;
 
   @override
+  bool get canKeyCw => true;
+
+  @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => IcomCivSession(
         sink,
         radioAddress: _addressOrFallback(config['civAddress'], civRadioAddresses['IC-705']!),
@@ -162,7 +165,7 @@ class IcomCivDriver extends EquipmentDriver {
   static int _addressOrFallback(dynamic raw, int fallback) => _parseAddress(raw) ?? fallback;
 }
 
-class IcomCivSession implements CwKeyerSession {
+class IcomCivSession implements TransceiverSession, CwKeyerSession {
   final EquipmentSink _sink;
 
   /// The radio's CI-V bus address (IC-705 ships as 0xA4).

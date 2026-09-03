@@ -25,6 +25,13 @@ const kCategoryAntenna = 'antenna';
 /// against a QSO.
 const kCategoryKey = 'key';
 
+/// A keyer the app can drive — a K1EL Winkeyer — as opposed to a
+/// [kCategoryKey], which is a thing on the desk with nothing to connect to.
+/// Both are offered in the same "key in use" pick, alongside a radio whose
+/// CAT can key; whichever is picked is what keys the app's messages
+/// (docs/design/cat.md § CW keying).
+const kCategoryKeyer = 'keyer';
+
 /// A switch routing a set of antennas to a set of devices — a 4O3A Antenna
 /// Genius today.
 ///

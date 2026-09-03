@@ -91,7 +91,9 @@ void main() {
 
   test('hands the transport exactly what it needs to open the port', () {
     final target = type.targetFor({'port': '/dev/cu.SLAB_USBtoUART', 'baudRate': 38400});
-    expect(target, {'port': '/dev/cu.SLAB_USBtoUART', 'baudRate': 38400});
+    // `stopBits` rides along for the one device that needs two (the Winkeyer);
+    // a radio's pairing leaves it at the serial default.
+    expect(target, {'port': '/dev/cu.SLAB_USBtoUART', 'baudRate': 38400, 'stopBits': 1});
   });
 
   test('a baud round-tripped through JSON as a string still opens the port', () {

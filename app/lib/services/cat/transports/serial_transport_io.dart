@@ -122,6 +122,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
 
     final name = target['port'] as String? ?? '';
     final baudRate = (target['baudRate'] as num?)?.toInt() ?? 4800;
+    final stopBits = (target['stopBits'] as num?)?.toInt() ?? 1;
 
     final port = SerialPort(name);
     // `openReadWrite` returns false rather than throwing — the usual causes
@@ -142,7 +143,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
         // means by its baud setting.
         ..bits = 8
         ..parity = SerialPortParity.none
-        ..stopBits = 1
+        ..stopBits = stopBits
         // RTS and DTR stay OFF, which is what setFlowControl(none) leaves
         // them as. NEVER assert them here: on the common interfaces —
         // Digirig, SignaLink, most home-brew cables — RTS *is* the PTT line,
@@ -176,6 +177,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
   Future<EquipmentConnection> _connectAndroid(Map<String, dynamic> target, {required CatCancelToken cancel}) async {
     final name = target['port'] as String? ?? '';
     final baudRate = (target['baudRate'] as num?)?.toInt() ?? 4800;
+    final stopBits = (target['stopBits'] as num?)?.toInt() ?? 1;
 
     var device = _androidDevicesByName[name];
     if (device == null) {
@@ -238,7 +240,12 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     if (!opened) throw SerialPortUnavailable(name, 'permission denied, or the port is already in use');
 
     try {
-      await port.setPortParameters(baudRate, usb.UsbPort.DATABITS_8, usb.UsbPort.STOPBITS_1, usb.UsbPort.PARITY_NONE);
+      await port.setPortParameters(
+        baudRate,
+        usb.UsbPort.DATABITS_8,
+        stopBits == 2 ? usb.UsbPort.STOPBITS_2 : usb.UsbPort.STOPBITS_1,
+        usb.UsbPort.PARITY_NONE,
+      );
       await port.setFlowControl(usb.UsbPort.FLOW_CONTROL_OFF);
       // RTS and DTR stay OFF — see the RTS-as-PTT note on the desktop
       // connect path above; the same wiring risk applies here.

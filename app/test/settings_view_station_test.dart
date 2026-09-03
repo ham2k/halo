@@ -100,7 +100,7 @@ void main() {
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
-    final field = tester.getRect(find.byType(DropdownButtonFormField<String?>));
+    final field = tester.getRect(find.widgetWithText(DropdownButtonFormField<String?>, 'Transceiver for Main VFO'));
     // The leading glyph of a plain row in the same list — where a row's
     // contents actually start, inset and centring included.
     final row = tester.getRect(find.widgetWithText(ListTile, 'Add equipment'));
@@ -603,7 +603,7 @@ void main() {
     expect(find.text('Equipment Inventory'), findsOneWidget);
     expect(find.text('Transceiver for Main VFO'), findsOneWidget);
 
-    await tester.tap(find.byType(DropdownButtonFormField<String?>));
+    await tester.tap(find.widgetWithText(DropdownButtonFormField<String?>, 'Transceiver for Main VFO'));
     await tester.pumpAndSettle();
     // Neither radio is connected, and both are offered anyway.
     expect(find.text('Right Radio'), findsWidgets);

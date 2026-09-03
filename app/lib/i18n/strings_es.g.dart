@@ -1781,6 +1781,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get channelNotInUse => 'sin usar';
 	@override String get channelHeldByUnknown => 'en uso por otro programa';
 	@override String get flexNoSlices => 'Esta radio no ha informado de ningún slice — comprueba que SmartSDR esté activo y que este cliente pueda suscribirse';
+	@override String get winkeyerNoAnswer => 'Ningún WinKeyer respondió en este puerto';
+	@override String get winkeyerStoppedAnswering => 'El WinKeyer dejó de responder mientras enviaba; el mensaje se descartó';
 	@override String get radioUser => 'Usuario de la radio';
 	@override String get radioPass => 'Contraseña de la radio';
 	@override String get radioLoginDescription => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.';
@@ -1823,7 +1825,6 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get currentRadioSettings => 'Ajustes de la radio actual';
 	@override String get cwKeyerNotAvailable => 'Conecta una radio que pueda manipular CW para enviar mensajes desde aquí.';
 	@override String get cwMessagesButton => 'Mensajes';
-	@override String get cwKeyerShow => 'Mostrar';
 	@override String get placeholderConnectDelay => 'Retraso de conexión (ms)';
 	@override String get placeholderConnectDelayDescription => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.';
 	@override String get placeholderDropAfter => 'Desconectar tras (segundos)';
@@ -1854,6 +1855,9 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get otherOptions => 'Otras opciones';
 	@override String get newAntenna => 'Nueva antena';
 	@override String get newKey => 'Nuevo manipulador';
+	@override String get newKeyer => 'WinKeyer (K1EL o compatible)';
+	@override String keyViaRadio({required Object radio}) => 'Manipulador CAT en ${radio}';
+	@override String get cwKeyerArea => 'Área del manipulador';
 	@override String get trackStationInfo => 'Registrar datos de la estación en cada QSO';
 	@override String get includeStationInfoInAdif => 'Incluir en las exportaciones ADIF';
 	@override String get whatToTrack => '¿Qué registrar?';
@@ -2625,6 +2629,7 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get placeholderRadio => 'Radio genérica simulada (sin control)';
 	@override String get antenna => 'Antena';
 	@override String get key => 'Manipulador';
+	@override String get winkeyer => 'WinKeyer';
 	@override String get antennaGenius => '4O3A Antenna Genius';
 }
 
@@ -3727,6 +3732,8 @@ extension on TranslationsEs {
 			'settings.station.channelNotInUse' => 'sin usar',
 			'settings.station.channelHeldByUnknown' => 'en uso por otro programa',
 			'settings.station.flexNoSlices' => 'Esta radio no ha informado de ningún slice — comprueba que SmartSDR esté activo y que este cliente pueda suscribirse',
+			'settings.station.winkeyerNoAnswer' => 'Ningún WinKeyer respondió en este puerto',
+			'settings.station.winkeyerStoppedAnswering' => 'El WinKeyer dejó de responder mientras enviaba; el mensaje se descartó',
 			'settings.station.radioUser' => 'Usuario de la radio',
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
@@ -3745,16 +3752,17 @@ extension on TranslationsEs {
 			'settings.station.models.ic7300' => 'Icom IC-7300',
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
-			'settings.station.models.ic7610' => 'Icom IC-7610',
-			'settings.station.models.ic7760' => 'Icom IC-7760',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.models.ic7610' => 'Icom IC-7610',
+			'settings.station.models.ic7760' => 'Icom IC-7760',
 			'settings.station.models.x6100' => 'X6100',
 			'settings.station.models.rigctld' => 'Radio genérica vía rigctld',
 			'settings.station.models.flrig' => 'Radio genérica vía flrig',
 			'settings.station.models.placeholderRadio' => 'Radio genérica simulada (sin control)',
 			'settings.station.models.antenna' => 'Antena',
 			'settings.station.models.key' => 'Manipulador',
+			'settings.station.models.winkeyer' => 'WinKeyer',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.transports.network' => 'Red',
 			'settings.station.transports.usbSerial' => 'USB serie',
@@ -3794,7 +3802,6 @@ extension on TranslationsEs {
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
 			'settings.station.cwKeyerNotAvailable' => 'Conecta una radio que pueda manipular CW para enviar mensajes desde aquí.',
 			'settings.station.cwMessagesButton' => 'Mensajes',
-			'settings.station.cwKeyerShow' => 'Mostrar',
 			'settings.station.placeholderConnectDelay' => 'Retraso de conexión (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.',
 			'settings.station.placeholderDropAfter' => 'Desconectar tras (segundos)',
@@ -3825,6 +3832,9 @@ extension on TranslationsEs {
 			'settings.station.otherOptions' => 'Otras opciones',
 			'settings.station.newAntenna' => 'Nueva antena',
 			'settings.station.newKey' => 'Nuevo manipulador',
+			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
+			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT en ${radio}',
+			'settings.station.cwKeyerArea' => 'Área del manipulador',
 			'settings.station.trackStationInfo' => 'Registrar datos de la estación en cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Incluir en las exportaciones ADIF',
 			'settings.station.whatToTrack' => '¿Qué registrar?',

@@ -135,7 +135,7 @@ class _FakeTransport extends EquipmentTransport {
   }
 }
 
-class _FakeSession implements CwKeyerSession {
+class _FakeSession implements TransceiverSession, CwKeyerSession {
   final EquipmentSink sink;
   final List<String> log;
   var updatesStarted = false;
@@ -221,6 +221,11 @@ class _FakeSession implements CwKeyerSession {
 }
 
 class _FakeDriver extends EquipmentDriver {
+  /// Its sessions are keyers, so a fake radio added first is the key in
+  /// use — the same auto-designation a real keying radio gets.
+  @override
+  bool get canKeyCw => true;
+
   final List<String> log;
   final sessions = <_FakeSession>[];
   var teardownThrows = false;
@@ -285,6 +290,16 @@ EquipmentModel _plainModel(EquipmentTransport transport) => EquipmentModel(
       ],
     );
 
+/// A keyer of its own — a Winkeyer stand-in on the fake transport.
+EquipmentModel _keyerModel(EquipmentDriver driver, EquipmentTransport transport) => EquipmentModel(
+      key: 'fake-keyer',
+      category: kCategoryKeyer,
+      name: () => 'Fake Keyer',
+      variants: [
+        EquipmentVariant(key: 'keyer-type', driver: driver, transport: transport, defaultConfig: const {'host': ''}),
+      ],
+    );
+
 EquipmentModel _fakeModel(EquipmentDriver driver, EquipmentTransport transport) => EquipmentModel(
       key: 'fake',
       category: kCategoryTransceiver,
@@ -334,7 +349,7 @@ void main() {
       radio: radio,
       onTrack: onTrack,
       registry: EquipmentRegistry(
-        models: [_fakeModel(driver, transport), _plainModel(transport), antennaModel, keyModel],
+        models: [_fakeModel(driver, transport), _plainModel(transport), _keyerModel(driver, transport), antennaModel, keyModel],
         transports: {'fake': transport, 'none': const NoneTransport()},
       ),
       reconnectDelay: Duration.zero,
@@ -1347,6 +1362,75 @@ void main() {
   });
 
   group('CW keying', () {
+    // The keying rules only apply with the experiment on — a keying radio
+    // becomes the key in use, the pick offers radios.
+    setUp(() => settings.setExperimentEnabled('keyer', true));
+
+    test('Key in Use = None survives a relaunch instead of jumping back to the rig', () async {
+      // The trap: None is stored as a null entry, and a load that only kept
+      // strings would read it as "never decided" and hand keying back to
+      // radio1.
+      final node = await addRadio();
+      expect(cat.designatedFor(kCategoryKey), node.uuid);
+      await cat.setDesignated(kCategoryKey, null);
+
+      final reloaded = await makeService();
+      addTearDown(reloaded.dispose);
+      expect(reloaded.designatedFor(kCategoryKey), isNull);
+    });
+
+    test('a station that never decided its key gets its keying radio on load', () async {
+      await settings.setExperimentEnabled('keyer', false);
+      final node = await addRadio();
+      expect(cat.designatedFor(kCategoryKey), isNull, reason: 'off, the experiment designates nothing');
+      await settings.setExperimentEnabled('keyer', true);
+
+      final reloaded = await makeService();
+      addTearDown(reloaded.dispose);
+      expect(reloaded.designatedFor(kCategoryKey), node.uuid);
+    });
+
+    test('a keyer device the boot burst could not reach is retried by the slow loop while radio1 is up', () async {
+      // The trap: a loop that only reads radio1 settles on its first tick
+      // when radio1 is connected, and the keyer is never tried again.
+      final radio = await addRadio();
+      await connectAndLand(radio);
+      final keyer = await cat.addNode(typeKey: 'keyer-type', name: 'WK', config: {'host': 'wk.local'});
+      expect(cat.designatedFor(kCategoryKey), keyer.uuid);
+
+      final reconnecting = cat.reconnectDesignatedRadio();
+      for (var i = 0; i < 60; i++) {
+        for (final a in transport.attempts) {
+          if (!a.completer.isCompleted) a.completer.completeError(StateError('keyer is off'));
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        await pumpEventQueue();
+      }
+      await reconnecting;
+
+      final keyerAttempts = transport.attempts.where((a) => a.target['host'] == 'wk.local').length;
+      expect(keyerAttempts, greaterThan(3), reason: 'the burst is three attempts; anything past it is the loop');
+      expect(cat.stateFor(radio.uuid).status, EquipmentStatus.connected, reason: 'radio1 was never touched');
+    });
+
+    test('a keyer disconnected by hand is not brought back by radio1 dropping', () async {
+      final radio = await addRadio();
+      final connection = await connectAndLand(radio);
+      final keyer = await cat.addNode(typeKey: 'keyer-type', name: 'WK', config: {'host': 'wk.local'});
+      await connectAndLand(keyer);
+      await cat.disconnect(keyer.uuid);
+      int keyerAttempts() => transport.attempts.where((a) => a.target['host'] == 'wk.local').length;
+      final before = keyerAttempts();
+
+      connection.dropRemotely();
+      await pumpEventQueue();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await pumpEventQueue();
+
+      expect(keyerAttempts(), before, reason: 'Disconnect must stay disconnected');
+      expect(transport.attempts.last.target['host'], 'radio.local', reason: 'radio1 itself is retried');
+    });
+
     test('nothing can key until radio1 is connected through a keyer-capable session', () async {
       expect(cat.canKeyCw, isFalse);
       expect(cat.keyerSpeed, isNull);
@@ -1374,6 +1458,37 @@ void main() {
       expect(() => cat.dropQueuedCw(1), returnsNormally);
       expect(cat.setKeyerSpeed(20), isFalse);
       expect(cat.cwProgress.value, isNull);
+    });
+
+    test('the key in use decides what keys: a second keying radio takes over only when designated', () async {
+      final first = await addRadio(host: 'a.local');
+      final second = await cat.addNode(typeKey: 'fake-type', name: 'Second', config: {'host': 'b.local'});
+      expect(cat.designatedFor(kCategoryKey), first.uuid, reason: 'the first keying radio is the key in use');
+      await connectAndLand(first);
+      await connectAndLand(second);
+      log.clear();
+      cat.sendCw('CQ');
+      expect(log, ['sendCw:CQ']);
+
+      await cat.setDesignated(kCategoryKey, second.uuid);
+      driver.sessions.first.sink.reportCwProgress(CwSendProgress(id: 1, text: 'CQ', characterEnds: const []));
+      expect(cat.cwProgress.value, isNull, reason: 'the old keyer\'s message is not the designated keyer\'s');
+      driver.sessions.last.sink.reportKeyerSpeed(30);
+      expect(cat.keyerSpeed, 30, reason: 'the speed shown is the designated keyer\'s');
+
+      await cat.setDesignated(kCategoryKey, null);
+      expect(cat.canKeyCw, isFalse, reason: 'no key in use, nothing keys — even with two radios that could');
+    });
+
+    test('a paddle added for the log does not take keying away from a keyer; a keyer added takes over', () async {
+      final radio = await addRadio();
+      expect(cat.designatedFor(kCategoryKey), radio.uuid);
+      await cat.addNode(typeKey: 'key', name: 'Bencher', config: {'morseKeyType': 'DP'});
+      expect(cat.designatedFor(kCategoryKey), radio.uuid, reason: 'recording a paddle must not stop the keying');
+      // A keyer of its own is what keys from then on — the same rule a new
+      // radio1 follows.
+      final keyer = await cat.addNode(typeKey: 'keyer-type', name: 'WK', config: {'host': 'wk.local'});
+      expect(cat.designatedFor(kCategoryKey), keyer.uuid);
     });
 
     test('a driver reporting the keyer speed lands in stateFor and keyerSpeed', () async {

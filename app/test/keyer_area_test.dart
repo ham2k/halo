@@ -63,6 +63,8 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     services = HaLoServices(db, settings, extensions: _TemplateExtensions());
+    // A keying radio becomes the key in use only with the experiment on.
+    await settings.setExperimentEnabled('keyer', true);
   });
 
   Future<void> connectPlaceholder(WidgetTester tester) async {

@@ -75,6 +75,9 @@ class FlexRadioDriver extends EquipmentDriver {
   List<String> get channelValues => [for (var i = 0; i < sliceLabels.length; i++) '$i'];
 
   @override
+  bool get canKeyCw => true;
+
+  @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
       FlexRadioSession(sink, slice: sliceFromConfig(config));
 
@@ -234,7 +237,7 @@ const _cwxChunkLength = 128;
 const _flexKeyerSpeedMin = 5;
 const _flexKeyerSpeedMax = 100;
 
-class FlexRadioSession implements CwKeyerSession {
+class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   final EquipmentSink _sink;
 
   /// Which slice this node reads from and tunes. Symmetric on purpose: a
