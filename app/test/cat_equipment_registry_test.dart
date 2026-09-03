@@ -191,6 +191,9 @@ void main() {
         'icom-generic-serial',
         'kenwood-serial',
         'qmx-serial',
+        'kx2-serial',
+        'kx3-serial',
+        'elecraft-serial',
         'ic7300-serial',
         'ic7300mk2-serial',
         'ic706mkiig-serial',
@@ -232,6 +235,10 @@ void main() {
       // CI-V, not the Kenwood protocol the radio's own documentation implies.
       'x6100-serial': ('icom-civ', {'civAddress': 'A4', 'baudRate': 19200}),
       'qmx-serial': ('kenwood', {'baudRate': 9600}),
+      // 38400, not the Kenwood family's 9600: the whole Elecraft line ships
+      // on it, and a speed mismatch is answered with silence, not an error.
+      'kx2-serial': ('kenwood', {'baudRate': 38400}),
+      'kx3-serial': ('kenwood', {'baudRate': 38400}),
     };
 
     expected.forEach((key, spec) {
@@ -250,14 +257,34 @@ void main() {
     });
   });
 
-  // These three are what an operator reaches for when their radio is not in
-  // the catalogue by name, so the caveat on them is the difference between
+  // These are what an operator reaches for when their radio is not in the
+  // catalogue by name, so the caveat on them is the difference between
   // "worth trying" and "probably pointless". Each is proven by a specific
   // radio: an IC-7300 and an IC-706MKIIG for Icom, an FT-710 for Yaesu, a
-  // QRP Labs QMX for Kenwood.
+  // QRP Labs QMX for Kenwood, a KX2 and a KX3 for Elecraft.
   test('the generic serial entries are no longer marked untested', () {
-    for (final key in ['icom-generic-serial', 'yaesu-serial', 'kenwood-serial']) {
+    for (final key in ['icom-generic-serial', 'yaesu-serial', 'kenwood-serial', 'elecraft-serial']) {
       expect(registry.typeFor(key)!.hardwareVerified, isTrue, reason: '$key is proven on hardware');
+    }
+  });
+
+  // Elecraft answers at 38400 while the Kenwood driver's own default is
+  // 9600, and a mismatch is answered with silence rather than an error —
+  // which is the whole reason this generic exists beside the Kenwood one
+  // instead of being a line in its troubleshooting notes.
+  test('the generic Elecraft entry is the Kenwood driver at the rate Elecraft ships on', () {
+    final type = registry.typeFor('elecraft-serial')!;
+    expect(type.driver.key, 'kenwood');
+    expect(type.transportKey, SerialTransport.transportKey);
+    expect(type.defaultConfig['baudRate'], 38400);
+  });
+
+  // A hardware report is where a wrong brand costs something, and the
+  // fallback derives one from the driver's name — so every Elecraft entry
+  // would file itself as a Kenwood without this.
+  test('every Elecraft entry states its own brand rather than its protocol family', () {
+    for (final key in ['elecraft-serial', 'kx2-serial', 'kx3-serial']) {
+      expect(registry.typeFor(key)!.manufacturer, 'Elecraft', reason: '$key would otherwise report as Kenwood');
     }
   });
 

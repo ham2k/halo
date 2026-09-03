@@ -155,9 +155,11 @@ class EquipmentModel {
   /// [EquipmentVariant.notes].
   final String Function() _nameBuilder;
 
-  /// Who makes it, for a model named after a real radio. Null for the
-  /// generics and the bridges, which are named after a protocol or a program
-  /// and have no brand to state.
+  /// Who makes it. Null where the model is named after a protocol or a
+  /// program — the bridges, and a family generic whose driver's name already
+  /// IS the brand. Declared wherever it is not: [elecraftGenericModel] is a
+  /// generic too, but it rides the Kenwood driver and would otherwise file
+  /// itself as a Kenwood.
   ///
   /// Read only by the equipment report's prefill, which otherwise derives a
   /// manufacturer from the driver's name. That derivation is right whenever
@@ -382,6 +384,9 @@ const _icomGenericSerialKey = 'icom-generic-serial';
 const _yaesuSerialKey = 'yaesu-serial';
 const _kenwoodSerialKey = 'kenwood-serial';
 const _qmxSerialKey = 'qmx-serial';
+const _elecraftSerialKey = 'elecraft-serial';
+const _kx2SerialKey = 'kx2-serial';
+const _kx3SerialKey = 'kx3-serial';
 const _ic7300SerialKey = 'ic7300-serial';
 const _ic7300mk2SerialKey = 'ic7300mk2-serial';
 const _ic706mkiigSerialKey = 'ic706mkiig-serial';
@@ -613,16 +618,18 @@ List<Map<String, dynamic>> _yaesuSerialNotes() => [
     ];
 
 /// Any radio speaking Kenwood CAT over a serial port — the Kenwood line, and
-/// equally the Elecraft rigs and SDR front-ends that implement the same
-/// protocol.
+/// equally the SDR front-ends that implement the same protocol. Elecraft is
+/// named separately ([elecraftGenericModel]), because that line answers at a
+/// rate this one's default would miss.
 ///
 /// Written from published CAT references rather than from a capture, and
-/// proven since against a QRP Labs QMX (see [qmxModel]) — but against no
-/// Kenwood-branded radio, which is where those references still carry the
-/// risk. The one field they disagree about — where the mode sits inside the
-/// `IF` status packet — is learned from the radio at runtime instead of
-/// assumed, because a wrong offset would report a plausible wrong mode
-/// forever rather than failing. See kenwood_driver.dart.
+/// proven since against a QRP Labs QMX (see [qmxModel]) and an Elecraft KX2
+/// and KX3 (see [kx2Model]) — but against no Kenwood-branded radio, which is
+/// where those references still carry the risk. The one field they disagree
+/// about — where the mode sits inside the `IF` status packet — is learned
+/// from the radio at runtime instead of assumed, because a wrong offset would
+/// report a plausible wrong mode forever rather than failing. See
+/// kenwood_driver.dart.
 const kenwoodGenericModel = EquipmentModel(
   key: 'kenwood-generic',
   category: kCategoryTransceiver,
@@ -674,6 +681,96 @@ const qmxModel = EquipmentModel(
 );
 
 String _qmxName() => t.settings.station.models.qmx;
+
+/// Any Elecraft transceiver over its serial port — the K3 and K4 as much as
+/// the KX2 and KX3, which have entries of their own below.
+///
+/// Elecraft speaks Kenwood CAT, so this shares [KenwoodDriver] with
+/// [kenwoodGenericModel]. It exists as its own entry because an operator
+/// looks for the name on the front of their radio, and because the whole
+/// line answers at 38400 rather than the Kenwood default of 9600 — a
+/// mismatch there is answered with silence, not an error.
+const elecraftGenericModel = EquipmentModel(
+  key: 'elecraft-generic',
+  manufacturer: _elecraftBrand,
+  category: kCategoryTransceiver,
+  name: _elecraftGenericName,
+  variants: [
+    EquipmentVariant(
+      key: _elecraftSerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': _elecraftBaudRate},
+      notes: _elecraftSerialNotes,
+    ),
+  ],
+);
+
+/// Elecraft KX2 and KX3 — the two rigs the Elecraft pairing is proven
+/// against, both reported working on Windows and the KX3 on macOS too.
+///
+/// Each pins the `IF` mode offset [KenwoodDriver] would otherwise spend the
+/// first seconds of every connection learning; 27 is what both radios were
+/// observed to use. The session still checks it against the radio, so a
+/// wrong entry here is caught rather than believed. The generic Elecraft
+/// entry pins nothing — the rest of the line has not been seen.
+const kx2Model = EquipmentModel(
+  key: 'kx2',
+  manufacturer: _elecraftBrand,
+  category: kCategoryTransceiver,
+  name: _kx2Name,
+  variants: [
+    EquipmentVariant(
+      key: _kx2SerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': _elecraftBaudRate},
+      overrides: {KenwoodDriver.ifModeOffsetKey: 27},
+      notes: _elecraftSerialNotes,
+    ),
+  ],
+);
+
+/// See [kx2Model] — the same radio family, the same settings.
+const kx3Model = EquipmentModel(
+  key: 'kx3',
+  manufacturer: _elecraftBrand,
+  category: kCategoryTransceiver,
+  name: _kx3Name,
+  variants: [
+    EquipmentVariant(
+      key: _kx3SerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': _elecraftBaudRate},
+      overrides: {KenwoodDriver.ifModeOffsetKey: 27},
+      notes: _elecraftSerialNotes,
+    ),
+  ],
+);
+
+const _elecraftBrand = 'Elecraft';
+
+/// The rate every Elecraft CAT menu ships on, and the one all three field
+/// reports connected at. Not [KenwoodDriver.defaultBaudRate], which is the
+/// Kenwood line's 9600.
+const _elecraftBaudRate = 38400;
+
+String _elecraftGenericName() => t.settings.station.models.elecraftGeneric;
+
+String _kx2Name() => t.settings.station.models.kx2;
+
+String _kx3Name() => t.settings.station.models.kx3;
+
+List<Map<String, dynamic>> _elecraftSerialNotes() => [
+      {
+        'type': 'markdown',
+        'collapsible': true,
+        'title': t.settings.station.troubleshootingNotes,
+        'text': '**${t.settings.station.elecraftTroubleshootingTitle}**\n\n'
+            '${t.settings.station.elecraftTroubleshooting}',
+      },
+    ];
 
 /// Any Icom transceiver over CI-V on a serial port — the IC-705's USB
 /// connection, and equally an IC-7300 or IC-9700 with a different address.
@@ -1139,6 +1236,9 @@ const _defaultModels = [
   x6100Model,
   icomGenericModel,
   qmxModel,
+  kx2Model,
+  kx3Model,
+  elecraftGenericModel,
   kenwoodGenericModel,
   rigctldModel,
   flrigModel,

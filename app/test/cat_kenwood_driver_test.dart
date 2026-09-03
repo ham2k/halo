@@ -338,6 +338,25 @@ void main() {
       expect(session.declaredModeOffset, 27);
     });
 
+    test('the KX2 and KX3 pin the same layout, and the generic Elecraft entry pins none', () {
+      // The pin is the ONLY thing separating a named Elecraft from the
+      // generic one — same driver, same transport, same baud rate. Drop it
+      // and both named entries become duplicates that nothing distinguishes,
+      // while still connecting, so no other test here would notice.
+      for (final key in ['kx2-serial', 'kx3-serial']) {
+        final type = EquipmentRegistry().typeFor(key)!;
+        final session = type.driver.createSession(sink, type.driverConfig(const {})) as KenwoodSession;
+        expect(session.declaredModeOffset, 27, reason: '$key pins the offset both radios were seen using');
+      }
+
+      // The rest of the Elecraft line has not been seen, and an offset
+      // asserted for a radio nobody has run is the mistake the check in the
+      // driver exists to catch rather than one to ship.
+      final generic = EquipmentRegistry().typeFor('elecraft-serial')!;
+      final session = generic.driver.createSession(sink, generic.driverConfig(const {})) as KenwoodSession;
+      expect(session.declaredModeOffset, isNull);
+    });
+
     test('the driver declares its offset key, so a radio definition may override it', () {
       // The registry self-check refuses an override of a key no transport or
       // driver recognizes, so without this a specific radio pinning its

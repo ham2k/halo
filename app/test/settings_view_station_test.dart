@@ -272,17 +272,26 @@ void main() {
     await tester.pump();
     expect(find.text('Icom IC-705'), findsOneWidget);
     expect(find.text('Icom - Generic'), findsOneWidget);
-    expect(find.text('Yaesu FT-891'), findsNothing);
+    // The absent name has to be one the UNFILTERED list would have built:
+    // the Yaesus sort last and are below the fold either way, so looking for
+    // one of those passes whether the filter ran or not. FlexRadio sorts
+    // first.
+    expect(find.text('FlexRadio (SmartSDR)'), findsNothing);
 
     // Matching the transport too is the point: an operator with a cable in
     // their hand knows how the radio plugs in long before they know whether
     // its protocol is called CI-V.
     await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'usb');
     await tester.pump();
-    expect(find.text('Yaesu FT-891'), findsOneWidget);
-    expect(find.text('Yaesu - Generic'), findsOneWidget);
     expect(find.text('Icom IC-705'), findsOneWidget, reason: 'it has a USB serial pairing');
     expect(find.text('Generic Radio via rigctld'), findsNothing, reason: 'network only');
+    // The Yaesus sort below the fold, and a lazy list never builds what is
+    // down there — findsNothing on one of them would pass whether the filter
+    // worked or not, so they are scrolled to rather than merely looked for.
+    await tester.scrollUntilVisible(find.text('Yaesu FT-891'), 200,
+        scrollable: find.descendant(of: find.byType(HaloDialog), matching: find.byType(Scrollable)).last);
+    expect(find.text('Yaesu FT-891'), findsOneWidget);
+    expect(find.text('Yaesu - Generic'), findsOneWidget);
 
     // The brand is searchable even when the model's name doesn't carry it:
     // the X6100 is named for what is written on the radio, and an operator

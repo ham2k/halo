@@ -3805,10 +3805,16 @@ class Translations$settings$station$en {
 	String get yaesuTroubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.';
 
 	/// en: 'If the radio connects but shows no frequency'
+	String get elecraftTroubleshootingTitle => 'If the radio connects but shows no frequency';
+
+	/// en: 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working. If nothing comes back, almost always one of: - **Speed must match** the rate set under **RS232** in the radio's menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. **If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio's status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as. The K3 and K4 have not been reported either way, so please say what happens if you run one.'
+	String get elecraftTroubleshooting => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 and K4 have not been reported either way, so please say what happens if you run one.';
+
+	/// en: 'If the radio connects but shows no frequency'
 	String get kenwoodTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
-	/// en: 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way. If nothing comes back, almost always one of: - **Speed must match** the radio's own CAT menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Some rigs need CAT enabled** in the menu before they answer at all. **Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.'
-	String get kenwoodTroubleshooting => 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.';
+	/// en: 'This driver is proven against a QRP Labs QMX and against Elecraft's KX2 and KX3, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way. If nothing comes back, almost always one of: - **Speed must match** the radio's own CAT menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Some rigs need CAT enabled** in the menu before they answer at all. **Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.'
+	String get kenwoodTroubleshooting => 'This driver is proven against a QRP Labs QMX and against Elecraft\'s KX2 and KX3, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.';
 
 	/// en: 'Connected'
 	String get statusConnected => 'Connected';
@@ -5481,6 +5487,15 @@ class Translations$settings$station$models$en {
 	/// en: 'QRP Labs QMX'
 	String get qmx => 'QRP Labs QMX';
 
+	/// en: 'Elecraft - Generic'
+	String get elecraftGeneric => 'Elecraft - Generic';
+
+	/// en: 'Elecraft KX2'
+	String get kx2 => 'Elecraft KX2';
+
+	/// en: 'Elecraft KX3'
+	String get kx3 => 'Elecraft KX3';
+
 	/// en: 'Icom IC-705'
 	String get ic705 => 'Icom IC-705';
 
@@ -6743,12 +6758,15 @@ extension on Translations {
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Generic',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
+			'settings.station.models.elecraftGeneric' => 'Elecraft - Generic',
+			'settings.station.models.kx2' => 'Elecraft KX2',
+			'settings.station.models.kx3' => 'Elecraft KX3',
 			'settings.station.models.ic705' => 'Icom IC-705',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.models.ic7300' => 'Icom IC-7300',
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
 			'settings.station.models.x6100' => 'X6100',
@@ -6769,8 +6787,10 @@ extension on Translations {
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
+			'settings.station.elecraftTroubleshootingTitle' => 'If the radio connects but shows no frequency',
+			'settings.station.elecraftTroubleshooting' => 'Elecraft rigs speak Kenwood CAT, and a KX2 and a KX3 have both been run this way — VFO in both directions, mode switching and CW zero-beat all working.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the rate set under **RS232** in the radio\'s menu. 38400 is what these ship on. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\n**If the frequency is right but the mode is wrong**, tell us — the KX2 and KX3 entries read the mode from a position in the radio\'s status reply that we have pinned from the rigs we have seen, and a firmware that puts it elsewhere is something only a report reaches us as.\n\nThe K3 and K4 have not been reported either way, so please say what happens if you run one.',
 			'settings.station.kenwoodTroubleshootingTitle' => 'If the radio connects but shows no frequency',
-			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against a QRP Labs QMX, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Elecraft (K3, KX2, KX3) and several SDR front-ends speak this same protocol**, so this entry is worth trying for those too. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
+			'settings.station.kenwoodTroubleshooting' => 'This driver is proven against a QRP Labs QMX and against Elecraft\'s KX2 and KX3, but no Kenwood-branded radio has ever answered it — the protocol is written from published CAT references, so please report what happens either way.\n\nIf nothing comes back, almost always one of:\n\n- **Speed must match** the radio\'s own CAT menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Some rigs need CAT enabled** in the menu before they answer at all.\n\n**Several SDR front-ends speak this same protocol**, so this entry is worth trying for those too; Elecraft rigs have entries of their own, listed under Elecraft. If the frequency is right but the mode is wrong or missing, that is the one part that differs across the line — the app works it out from the radio and falls back to asking directly, so the mode may simply lag.',
 			'settings.station.statusConnected' => 'Connected',
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',

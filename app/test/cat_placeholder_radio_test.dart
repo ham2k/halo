@@ -297,13 +297,18 @@ void main() {
 
     testWidgets('offers it alongside every real radio', (tester) async {
       await openAddDialog(tester);
-      // Narrowed with the search box rather than scrolled: the catalogue is
-      // a lazy list, so a row an assertion names can simply never be built.
-      await tester.enterText(find.byType(TextField).first, 'generic');
+      // Narrowed to ONE match at a time rather than scrolled: the catalogue
+      // is a lazy list only a few rows deep here, so a query matching
+      // several entries pushes the last of them out of the built range and
+      // the assertion fails for the fold rather than for the catalogue.
+      await tester.enterText(find.byType(TextField).first, 'placeholder');
       await tester.pump();
       expect(find.text(t.settings.station.models.placeholderRadio), findsOneWidget);
+
       // A dialog showing nothing at all would pass the line above only by
-      // accident, so one real rig anchors it.
+      // accident, so one real rig, reached the same way, anchors it.
+      await tester.enterText(find.byType(TextField).first, 'rigctld');
+      await tester.pump();
       expect(find.text(t.settings.station.models.rigctld), findsOneWidget);
     });
   });

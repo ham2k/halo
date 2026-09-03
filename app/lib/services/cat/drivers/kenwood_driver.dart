@@ -6,10 +6,11 @@
 // only in already-framed bytes handed to it by a transport.
 //
 // The protocol comes from published CAT references rather than from a
-// capture. It has since been run against real hardware — a QRP Labs QMX,
-// both directions — but never against a Kenwood-branded radio, which is
-// where those references still carry the risk, and why the one field no
-// document settles is learned from the radio instead of assumed.
+// capture. It has since been run against real hardware — a QRP Labs QMX and
+// Elecraft's KX2 and KX3, both directions — but never against a
+// Kenwood-branded radio, which is where those references still carry the
+// risk, and why the one field no document settles is learned from the radio
+// instead of assumed.
 //
 // That field is the mode's position inside the `IF` status packet. The
 // widths ahead of it differ between the TS-2000-era layout and the

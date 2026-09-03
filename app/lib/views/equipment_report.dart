@@ -161,9 +161,9 @@ Future<void> showEquipmentReportDialog(
 /// own name for the model — an operator who renamed "Icom - Generic" to
 /// "IC-7300" has already answered the second question.
 ///
-/// A model named after a real radio states its own manufacturer, and that is
-/// used when it does. The derivation below is the fallback for the generics
-/// and the bridges, which have no brand to state.
+/// A model that declares its own manufacturer is taken at its word. The
+/// derivation below is the fallback for the bridges, and for a family generic
+/// whose driver name already carries the brand.
 ///
 /// It takes the first word because `driver.name` names a protocol family, and
 /// everything after the brand is the protocol: "Icom (CI-V)", "Kenwood
