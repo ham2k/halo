@@ -177,18 +177,27 @@ test("the candidate's own timestamp decides the day axis", async () => {
 // The logging panel's draft carries no `startAtMillis` while its time is
 // automatic. Read as-is, that lands on the epoch and every station worked
 // earlier today reads as newDay; the harness judges such a candidate as of
-// now instead. `Date.now()` here is the same clock the harness reads.
+// now instead. `Date.now` is pinned rather than read: the harness's own clock
+// read is what is under test, and a wall-clock "now" straddling 00:00 UTC
+// would put the logged contact on yesterday and pass this test on a wrong
+// answer.
 test("a candidate with no timestamp is judged as of now", async () => {
-  const now = Date.now()
-  const { hook, ctx } = hookOver([qso('W1AAA', { at: now - 60_000 })])
-  const { startAtMillis: _at, ...draft } = candidate('d', 'W1AAA').qso
+  const now = DAY_1 + 3600_000
+  const realNow = Date.now
+  Date.now = () => now
+  try {
+    const { hook, ctx } = hookOver([qso('W1AAA', { at: now - 60_000 })])
+    const { startAtMillis: _at, ...draft } = candidate('d', 'W1AAA').qso
 
-  const one = await hook.scoreQso!({ operation, qso: draft, ref: potaRef }, ctx)
-  assert.deepEqual(one.alerts, ['duplicate'])
-  assert.deepEqual(one.notices, [])
+    const one = await hook.scoreQso!({ operation, qso: draft, ref: potaRef }, ctx)
+    assert.deepEqual(one.alerts, ['duplicate'])
+    assert.deepEqual(one.notices, [])
 
-  const many = await hook.scoreCandidates!({ operation, candidates: [{ key: 'd', qso: draft }], ref: potaRef }, ctx)
-  assert.deepEqual(many.d.alerts, ['duplicate'])
+    const many = await hook.scoreCandidates!({ operation, candidates: [{ key: 'd', qso: draft }], ref: potaRef }, ctx)
+    assert.deepEqual(many.d.alerts, ['duplicate'])
+  } finally {
+    Date.now = realNow
+  }
 })
 
 // The cached end-of-log scoresheet is the caller's, held across refreshes.

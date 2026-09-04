@@ -395,9 +395,11 @@ String _spotModeFor(Map<String, dynamic> spot) => (_modeOf(spot) ?? '').toUpperC
 
 /// The QSO a scorer judges when asked "what would working this spot be?".
 ///
-/// `startAtMillis` is [now], not absent: activity scoring buckets a contact by
-/// `floor(startAtMillis / day)`, so a candidate without one lands on the epoch
-/// and every already-worked station reports `newDay` instead of `duplicate`.
+/// `startAtMillis` is [now]: activity scoring buckets a contact by
+/// `floor(startAtMillis / day)`, and a spot would be worked now, not when it
+/// was posted. The scoring harness stamps a candidate that carries no time
+/// with its own clock; stating it here keeps every spot on one board judged
+/// at the same instant rather than at whenever each scorer got to it.
 ///
 /// The callsign is uppercased for the same reason the mode is
 /// ([_spotModeFor]): scorers key their worked-call tables on the raw string,
