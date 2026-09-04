@@ -157,11 +157,9 @@ test("a station worked on another band reports newBand, not duplicate", async ()
   assert.deepEqual(result.c.notices, ['newBand'])
 })
 
-// The reason `spotCandidateQso` stamps `startAtMillis` with the current time:
 // POTA's day axis buckets by `floor(startAtMillis / DAY)`, so a candidate
-// timestamped yesterday is a fresh contact rather than a duplicate. The panel
-// must not hand over a candidate with no timestamp, which would land on the
-// epoch and make every worked station read as newDay.
+// timestamped yesterday is a fresh contact rather than a duplicate, and one
+// that states a time keeps it — the harness stamps only the timestamp-less.
 test("the candidate's own timestamp decides the day axis", async () => {
   const { hook, ctx } = hookOver([qso('W1AAA', { at: DAY_1 })])
   const result = await hook.scoreCandidates!(
@@ -174,6 +172,23 @@ test("the candidate's own timestamp decides the day axis", async () => {
   )
   assert.deepEqual(result.today.alerts, ['duplicate'])
   assert.deepEqual(result.tomorrow.notices, ['newDay'])
+})
+
+// The logging panel's draft carries no `startAtMillis` while its time is
+// automatic. Read as-is, that lands on the epoch and every station worked
+// earlier today reads as newDay; the harness judges such a candidate as of
+// now instead. `Date.now()` here is the same clock the harness reads.
+test("a candidate with no timestamp is judged as of now", async () => {
+  const now = Date.now()
+  const { hook, ctx } = hookOver([qso('W1AAA', { at: now - 60_000 })])
+  const { startAtMillis: _at, ...draft } = candidate('d', 'W1AAA').qso
+
+  const one = await hook.scoreQso!({ operation, qso: draft, ref: potaRef }, ctx)
+  assert.deepEqual(one.alerts, ['duplicate'])
+  assert.deepEqual(one.notices, [])
+
+  const many = await hook.scoreCandidates!({ operation, candidates: [{ key: 'd', qso: draft }], ref: potaRef }, ctx)
+  assert.deepEqual(many.d.alerts, ['duplicate'])
 })
 
 // The cached end-of-log scoresheet is the caller's, held across refreshes.

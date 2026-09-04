@@ -1054,6 +1054,10 @@ three pure `ContestScorer` functions and gets the loop, the checkpointing and
 both live paths for free.
 
 `scoreQso` answers for ONE not-yet-logged QSO — the callsign being typed.
+A candidate that carries no `startAtMillis` (the draft's time is still
+automatic) reaches the scorer stamped with the current time on both live
+paths, so a day-bucketed rule judges it as of now rather than at the epoch; a
+candidate that states a time keeps it.
 `scoreCandidates` answers the same question for many at once, which is what the
 Spots Panel asks to mark the spots already worked: the log is folded once per
 scorer and every candidate scored against a COPY of the result, so no candidate

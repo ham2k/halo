@@ -91,6 +91,17 @@ function startAtMillisOf(qso: Record<string, JSONValue>): number {
   return typeof at === 'number' ? at : 0
 }
 
+/// A not-yet-logged candidate judged as of NOW when it carries no time of its
+/// own. The logging panel's draft omits `startAtMillis` while its time is
+/// automatic, and a scorer that buckets by day would read the absence as the
+/// epoch — a station worked earlier today then reads as `newDay` rather than
+/// a duplicate. A candidate that states a time (a manual override, a QSO being
+/// edited, a spot the panel stamped) keeps it. `Date` in the sandbox follows
+/// the app clock, so this travels with `DEVTT`.
+function candidateAsOfNow(qso: Record<string, JSONValue>): Record<string, JSONValue> {
+  return typeof qso.startAtMillis === 'number' ? qso : { ...qso, startAtMillis: Date.now() }
+}
+
 export function contestScorer<S extends Scoresheet = Scoresheet>(
   scorer: ContestScorer<S>,
   options: ContestScorerOptions = {},
@@ -260,7 +271,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     async scoreQso(args: ScoreQsoRequest, ctx: HookContext): Promise<QsoScoreNotices> {
       const sheet = await liveScoresheet(args, ctx, args.excludeUuid)
       const { score } = scorer.scoreQso(
-        { scoresheet: sheet, qso: args.qso, operation: args.operation, ref: args.ref, isNewDay: false },
+        { scoresheet: sheet, qso: candidateAsOfNow(args.qso), operation: args.operation, ref: args.ref, isNewDay: false },
         ctx,
       )
       // `dupe` travels with them: it is how a scorer says its duplicate test
@@ -288,7 +299,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
         const { score } = scorer.scoreQso(
           {
             scoresheet: copyCheckpoint(base),
-            qso: candidate.qso,
+            qso: candidateAsOfNow(candidate.qso),
             operation: args.operation,
             ref: args.ref,
             isNewDay: false,
