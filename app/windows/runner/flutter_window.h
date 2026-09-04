@@ -38,7 +38,19 @@ class FlutterWindow : public Win32Window {
   std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
       window_chrome_channel_;
 
+  // The `ham2k/open_file` channel — the SAME name and method macOS's
+  // AppDelegate invokes, so the Dart side (OpenedFilesService) needs to know
+  // nothing about which platform handed it a file. Carries arguments a second
+  // launch forwarded to this instance.
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      open_file_channel_;
+
   void SetUpWindowChromeChannel();
+  void SetUpOpenFileChannel();
+
+  // Turns a forwarded WM_COPYDATA payload into an `openFiles` call. Returns
+  // whether the message was ours.
+  bool HandleForwardedArguments(COPYDATASTRUCT* cds);
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_

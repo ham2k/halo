@@ -1,5 +1,7 @@
 #include "flutter_window.h"
 
+#include "ham2k_ipc.h"
+
 #include <flutter/standard_method_codec.h>
 
 #include <optional>
@@ -29,6 +31,7 @@ bool FlutterWindow::OnCreate() {
   RegisterPlugins(flutter_controller_->engine());
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
   SetUpWindowChromeChannel();
+  SetUpOpenFileChannel();
 
   flutter_controller_->engine()->SetNextFrameCallback([&]() {
     this->Show();
@@ -147,6 +150,70 @@ void FlutterWindow::OnDestroy() {
   Win32Window::OnDestroy();
 }
 
+void FlutterWindow::SetUpOpenFileChannel() {
+  // Deliberately the SAME channel name and method macOS's AppDelegate uses,
+  // so `OpenedFilesService` needs no per-platform branch: a file opened on a
+  // Mac and one forwarded from a second Windows launch arrive identically.
+  open_file_channel_ =
+      std::make_unique<flutter::MethodChannel<flutter::EncodableValue>>(
+          flutter_controller_->engine()->messenger(), "ham2k/open_file",
+          &flutter::StandardMethodCodec::GetInstance());
+}
+
+bool FlutterWindow::HandleForwardedArguments(COPYDATASTRUCT* cds) {
+  if (cds == nullptr || cds->dwData != kHam2kArgumentsMessageId) {
+    return false;
+  }
+  // No channel yet means the engine has not finished starting, and that gap
+  // is REAL: `Win32Window::Create` creates the titled, correctly-classed
+  // window — findable by the sender — before `OnCreate` builds the engine and
+  // this channel.
+  //
+  // Refusing is the right answer rather than queueing, because refusing is
+  // ANSWERED: returning false here makes the WM_COPYDATA reply something
+  // other than TRUE, and the sending process is still alive and waiting on
+  // it. It keeps the arguments and starts normally instead. A queue here
+  // would take responsibility for them at the one moment this side cannot
+  // yet act on them.
+  if (open_file_channel_ == nullptr || cds->cbData == 0 || cds->lpData == nullptr) {
+    return false;
+  }
+
+  // UTF-8, NUL-separated, one argument per run, trailing NUL after the last.
+  // Walked by length rather than by strlen over the whole block, because
+  // `cbData` is the only thing that bounds it — the sender's buffer is not
+  // ours and nothing here may read past it.
+  const char* data = static_cast<const char*>(cds->lpData);
+  flutter::EncodableList paths;
+  size_t start = 0;
+  for (size_t i = 0; i < cds->cbData; i++) {
+    if (data[i] != '\0') {
+      continue;
+    }
+    if (i > start) {
+      paths.push_back(flutter::EncodableValue(std::string(data + start, i - start)));
+    }
+    start = i + 1;
+  }
+  // A final run with no terminator — a sender that changed its mind about the
+  // trailing NUL should not cost the last argument.
+  if (start < cds->cbData) {
+    paths.push_back(
+        flutter::EncodableValue(std::string(data + start, cds->cbData - start)));
+  }
+  if (paths.empty()) {
+    return false;
+  }
+
+  // One call carrying every argument, matching the macOS side's batching —
+  // the Dart handler reads `paths` as a list and filters for what it acts on.
+  open_file_channel_->InvokeMethod(
+      "openFiles", std::make_unique<flutter::EncodableValue>(flutter::EncodableMap{
+                       {flutter::EncodableValue("paths"), flutter::EncodableValue(paths)},
+                   }));
+  return true;
+}
+
 LRESULT
 FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
                               WPARAM const wparam,
@@ -162,6 +229,18 @@ FlutterWindow::MessageHandler(HWND hwnd, UINT const message,
   }
 
   switch (message) {
+    case WM_COPYDATA:
+      // A second launch handed us its arguments and exited. Ours
+      // only — app_links puts its own links through the same message with a
+      // different id, and returns nullopt for everything else, so both
+      // handlers see every WM_COPYDATA and each answers for exactly one id.
+      if (HandleForwardedArguments(reinterpret_cast<COPYDATASTRUCT*>(lparam))) {
+        // WM_COPYDATA is documented as returning TRUE when the receiver
+        // processed it, and the sender's SendMessage is blocking on this.
+        return TRUE;
+      }
+      break;
+
     case WM_FONTCHANGE:
       flutter_controller_->engine()->ReloadSystemFonts();
       break;

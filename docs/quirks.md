@@ -90,13 +90,18 @@ line passes everything and breaks `flutter build macos`.
 - **OAuth login** (`app/lib/views/oauth_browser_login.dart`). The sign-in page
   opens in the operator's own browser everywhere; what Linux and Web lack is a
   way for the authorization code to come back, so they route through LoFi's
-  webhook relay, picked by `oauthUsesWebhookRelay` (Windows joins them for the
-  same reason — it registers none of the schemes either, HALO-178). On Linux a
-  custom-scheme redirect has no way home at all: the `.desktop` file registers
-  no scheme handler and has no `%u`, `app_links` is fed only by gtk
-  `command-line`/`open` signals our runner never emits (it overrides
-  `local_command_line` and calls `g_application_activate`), and the runner is
-  `G_APPLICATION_NON_UNIQUE`.
+  webhook relay, picked by `oauthUsesWebhookRelay`. On Linux a custom-scheme
+  redirect has no way home at all, and for two separate reasons: the
+  `.desktop` file registers no scheme handler and has no `%u` (HALO-121), so
+  nothing hands the app a URL in the first place; and the runner is
+  `G_APPLICATION_NON_UNIQUE`, so even a URL that arrived would start a second
+  process rather than reaching the running one (HALO-500).
+
+  Windows has the first half — it registers the schemes and forwards them to
+  the running instance (HALO-178) — so its redirect no longer wants for a
+  scheme. `oauthUsesWebhookRelay` still routes it through the relay, and
+  should keep doing so until someone verifies the native path on a real
+  machine.
 - **Maps** (`app/lib/views/operation/map_panel.dart`). Linux falls through to the
   OSM backend rather than the MapLibre webview one — see the Linux entry in
   [backlog.md](backlog.md).

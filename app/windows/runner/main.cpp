@@ -6,6 +6,7 @@
 
 #include "app_links/app_links_plugin_c_api.h"
 #include "flutter_window.h"
+#include "ham2k_ipc.h"
 #include "halo_edition.h"
 #include "utils.h"
 
@@ -23,48 +24,99 @@
 // right: they keep separate data directories and are separate applications
 // that happen to share a codebase.
 
-// Whether everything this process was launched with can actually be handed
-// to the instance already running.
+// Every argument this launch carries, UTF-8 and NUL-separated.
 //
-// Only a URL can. `app_links` accepts an argument matching `scheme:` — at
-// least TWO characters before the colon, so `C:\...\thing.h2kext` is not one
-// (and must not be: it is a path, not a link).
+// ALL of them, with no attempt to work out which ones `app_links` will also
+// take. Its rule is `^([a-z][a-z0-9+.-]+):` — a scheme must START with a
+// letter — and any second copy of that rule here is a source of silent loss:
+// an argument this side calls a link and app_links does not is one nobody
+// carries. `\\?\C:\...`, the extended-length path the shell produces for a
+// long filename, is exactly that shape.
 //
-// This is the difference between single-instancing and silently eating an
-// argument. A double-clicked `.h2kext` reaches the app as `argv[1]` of a
-// fresh process and is installed from `launchArguments` on the Dart side
-// (HALO-422); forwarding-and-exiting on one would raise the window, send
-// nothing, and lose the bundle with no error anywhere. So a launch carrying
-// something undeliverable starts normally instead — the same second instance
-// it has always started, no worse than before, and the extension installs.
+// Sending a link on this channel as well costs nothing: it reaches the Dart
+// side's opened-files handler, which acts only on the extension it knows and
+// ignores everything else. Duplication is cheap; a dropped argument is not.
 //
-// Delivering opened FILES to the running instance too is the way to close
-// that properly, and needs a message of our own plus a Dart-side receiver.
-static bool CanForwardEverything() {
+// NUL-separated rather than joined, because a Windows path may contain almost
+// anything except NUL.
+static std::string AllArguments() {
   int argc = 0;
   wchar_t** argv = ::CommandLineToArgvW(::GetCommandLineW(), &argc);
   if (argv == nullptr) {
-    return false;
+    return std::string();
   }
-  // No arguments at all: nothing to lose, so a plain second launch just
-  // raises the window. That IS the single-instance behaviour.
-  bool forwardable = (argc == 1);
-  if (argc == 2) {
-    const std::wstring arg(argv[1]);
-    const size_t colon = arg.find(L':');
-    // `scheme:` with a scheme of two or more characters — deliberately the
-    // same shape app_links itself tests for, since it is what decides whether
-    // `SendAppLink` will carry this argument.
-    forwardable = colon != std::wstring::npos && colon >= 2;
+
+  std::string payload;
+  for (int i = 1; i < argc; i++) {
+    std::wstring arg(argv[i]);
+
+    // A path is resolved HERE, where the launching process's own working
+    // directory is the one the operator typed it against. The instance that
+    // receives it has a different cwd entirely, so `halo ./thing.h2kext`
+    // would otherwise name a file that does not exist there.
+    //
+    // Only for an argument that actually IS an existing file: that is a fact
+    // rather than a guess, and running a URL through GetFullPathName would
+    // mangle it into a path.
+    if (::GetFileAttributesW(arg.c_str()) != INVALID_FILE_ATTRIBUTES) {
+      wchar_t full[MAX_PATH * 4];
+      const DWORD length = ::GetFullPathNameW(arg.c_str(), MAX_PATH * 4, full, nullptr);
+      if (length > 0 && length < MAX_PATH * 4) {
+        arg.assign(full, length);
+      }
+    }
+
+    const int size = ::WideCharToMultiByte(CP_UTF8, 0, arg.c_str(), (int)arg.size(), nullptr, 0,
+                                           nullptr, nullptr);
+    if (size <= 0) {
+      continue;
+    }
+    std::string utf8((size_t)size, 0);
+    ::WideCharToMultiByte(CP_UTF8, 0, arg.c_str(), (int)arg.size(), &utf8[0], size, nullptr,
+                          nullptr);
+    payload += utf8;
+    payload.push_back('\0');
   }
   ::LocalFree(argv);
-  return forwardable;
+  return payload;
+}
+
+// Hands [payload] to the running instance, and reports whether it ARRIVED.
+//
+// The receipt is the whole point. `WM_COPYDATA` returns TRUE only when the
+// receiver processed it, and the receiver refuses when its Flutter engine is
+// not up yet — the window is created and findable before `OnCreate` builds
+// the channel, so that gap is real rather than theoretical. Without checking,
+// this process would exit successfully having delivered nothing.
+//
+// A private id rather than app_links': `APPLINK_MSG_ID` is internal to that
+// package and means "this is a link", so borrowing it would both misdescribe
+// the payload and break if the package renumbered.
+//
+// `cbData` is the true byte length of the buffer — not, as app_links' own
+// sender computes, twice it.
+//
+// SendMessageTimeout rather than SendMessage: this blocks on the other
+// process's UI thread, and a wedged instance would otherwise hold this one
+// forever, invisibly, once per launch. A timeout reads as "not delivered",
+// which the caller can still recover from.
+static bool SendArgumentsToInstance(HWND hwnd, const std::string& payload) {
+  if (payload.empty()) {
+    return true;  // Nothing to deliver, so nothing can be lost.
+  }
+  COPYDATASTRUCT cds = {0};
+  cds.dwData = kHam2kArgumentsMessageId;
+  cds.cbData = (DWORD)payload.size();
+  cds.lpData = (PVOID)payload.data();
+
+  DWORD_PTR handled = FALSE;
+  const LRESULT sent =
+      ::SendMessageTimeout(hwnd, WM_COPYDATA, (WPARAM)hwnd, (LPARAM)(LPVOID)&cds,
+                           SMTO_ABORTIFHUNG, 5000, &handled);
+  return sent != 0 && handled == TRUE;
 }
 
 static bool ForwardToRunningInstance() {
-  if (!CanForwardEverything()) {
-    return false;
-  }
   // The class name Flutter's own runner registers (win32_window.cpp's
   // `kWindowClassName`); matching upstream's documented example.
   HWND hwnd = ::FindWindow(L"FLUTTER_RUNNER_WIN32_WINDOW", HALO_PRODUCT_NAME_W);
@@ -72,11 +124,24 @@ static bool ForwardToRunningInstance() {
     return false;
   }
 
-  // Raise BEFORE handing anything over. `SendAppLink` uses a blocking
-  // `SendMessage`, which does not return while the other instance's UI thread
-  // is stuck — so sending first means a hung instance leaves the operator
-  // with no window and one invisible blocked process per click, while raising
-  // first at least surfaces the app they asked for.
+  // Nothing is given up until the hand-over is confirmed. A window can exist
+  // whose engine is still starting, and the operator can quit the app in the
+  // instant between finding it and sending — in both cases this launch is
+  // still the only thing holding the arguments, so it starts normally and
+  // acts on them itself. A second instance is a bad outcome the operator can
+  // see and close; a swallowed file is one they cannot.
+  if (!SendArgumentsToInstance(hwnd, AllArguments())) {
+    return false;
+  }
+
+  // The link half. `SendAppLink` carries a lone `scheme:` argument and
+  // nothing else, so it is additive to the payload above rather than an
+  // alternative to it — and it runs only now that the instance has proved it
+  // is alive and answering.
+  SendAppLink(hwnd);
+
+  // Raise last: an operator who clicked something is owed the window, and by
+  // here it is known to be a window that actually took what was sent.
   WINDOWPLACEMENT place = {sizeof(WINDOWPLACEMENT)};
   ::GetWindowPlacement(hwnd, &place);
   switch (place.showCmd) {
@@ -91,20 +156,6 @@ static bool ForwardToRunningInstance() {
       break;
   }
   ::SetForegroundWindow(hwnd);
-
-  // Hands over the link this process was started with, if any. A plain second
-  // launch carries none and this sends nothing, which is why the raise above
-  // is the whole behaviour in that case.
-  //
-  // NOTE app_links 6.4.1 sizes the WM_COPYDATA payload as
-  // `link.size() * sizeof(wchar_t)` while `GetLink()` returns a UTF-8
-  // std::string, so the kernel copies about twice the source allocation out
-  // of this process. The RESULT is correct — the copy always includes the
-  // terminating NUL and the receiver stops there — and calling the package's
-  // own entry point keeps us matching whatever it expects, rather than
-  // hand-rolling the message around a private constant. Re-check this on any
-  // app_links version bump.
-  SendAppLink(hwnd);
   return true;
 }
 
