@@ -1237,6 +1237,7 @@
       "serialPortDescription": "The port the radio's CAT interface appears on.",
       "serialPortNone": "No serial ports found",
       "serialPortRequired": "Choose a serial port",
+      "serialPortOrdinal": "port $n of $total",
       "serialDeviceRequest": "Add a USB device…",
       "baudRate": "Speed (baud)",
       "baudRateDescription": "Must match the radio's own CAT menu — a mismatch answers with garbage and no error.",

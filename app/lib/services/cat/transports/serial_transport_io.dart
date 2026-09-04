@@ -24,11 +24,110 @@ import 'dart:io' show Platform;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show MethodChannel, MissingPluginException, PlatformException;
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:usb_serial/usb_serial.dart' as usb;
 
+import '../../../i18n/strings.g.dart';
 import '../transport.dart';
 import 'serial_transport_config.dart';
+
+/// `UsbConstants.USB_CLASS_CDC_DATA`: the interface class of each serial
+/// port a CDC/ACM device presents.
+const _usbClassCdcData = 10;
+
+/// Answered by `UsbInterfacesChannel.kt`; see the note there.
+const _androidUsbInterfacesChannel = MethodChannel('ham2k/usb_interfaces');
+
+/// Joins a USB device path and an interface index into one port name, so
+/// a composite device's second serial port is a `port` config value like
+/// any other rather than a schema change.
+const androidPortInterfaceSeparator = '#';
+
+/// Interface indexes of [deviceName]'s CDC data interfaces, in descriptor
+/// order. Empty when the device has none — a dedicated bridge chip — or
+/// when the channel cannot answer, which leaves the device with its one
+/// auto-detected port.
+///
+/// Only the two expected failures are absorbed: a native build without
+/// the channel, and a device gone between enumeration and this call. A
+/// malformed answer is a bug in our own Kotlin and stays loud — absorbed,
+/// it would reproduce the exact symptom this exists to fix, with a cause
+/// nobody could see.
+Future<List<int>> androidCdcDataInterfaces(String deviceName) async {
+  final List<dynamic>? raw;
+  try {
+    raw = await _androidUsbInterfacesChannel.invokeMethod<List<dynamic>>('list', {'deviceName': deviceName});
+  } on MissingPluginException catch (e) {
+    debugPrint('[cat] android usb interface enumeration unavailable for $deviceName: $e');
+    return const [];
+  } on PlatformException catch (e) {
+    debugPrint('[cat] android usb interface enumeration failed for $deviceName: $e');
+    return const [];
+  }
+  return [
+    for (final entry in raw ?? const [])
+      if ((entry as Map)['interfaceClass'] == _usbClassCdcData) (entry['index'] as num).toInt(),
+  ];
+}
+
+/// The picker entries for one Android USB device.
+///
+/// A device with more than one CDC data interface gets one entry per
+/// interface, named `<device>#<interface index>` and numbered "port N of M"
+/// in descriptor order — the order Linux and Windows number them in, which
+/// is how the X6100's note can say CI-V is on the second. Anything else is
+/// a single entry under the bare device name, opened with usb_serial's
+/// auto-detection — so every stored config predating the split still
+/// matches. The underlying felHR85/UsbSerial library opens the FIRST CDC
+/// data interface when not told which, so without the index the second
+/// port of a composite device is unreachable.
+List<SerialPortOption> androidSerialPortOptions({
+  required String deviceName,
+  String? manufacturer,
+  String? productName,
+  String? serialNumber,
+  int? vendorId,
+  int? productId,
+  required List<int> cdcDataInterfaces,
+}) {
+  if (cdcDataInterfaces.length < 2) {
+    return [
+      SerialPortOption(
+        name: deviceName,
+        manufacturer: manufacturer,
+        productName: productName,
+        serialNumber: serialNumber,
+        vendorId: vendorId,
+        productId: productId,
+      ),
+    ];
+  }
+  return [
+    for (final (i, iface) in cdcDataInterfaces.indexed)
+      SerialPortOption(
+        name: '$deviceName$androidPortInterfaceSeparator$iface',
+        manufacturer: manufacturer,
+        productName: [
+          ?productName,
+          '(${t.settings.station.serialPortOrdinal(n: i + 1, total: cdcDataInterfaces.length)})',
+        ].join(' '),
+        serialNumber: serialNumber,
+        vendorId: vendorId,
+        productId: productId,
+      ),
+  ];
+}
+
+/// The device path and interface index a stored Android port name carries.
+/// A name without an index is the auto-detect value usb_serial takes, -1.
+({String deviceName, int iface}) androidPortTarget(String name) {
+  final at = name.lastIndexOf(androidPortInterfaceSeparator);
+  if (at < 0) return (deviceName: name, iface: -1);
+  final iface = int.tryParse(name.substring(at + 1));
+  if (iface == null) return (deviceName: name, iface: -1);
+  return (deviceName: name.substring(0, at), iface: iface);
+}
 
 /// libserialport ships with a debug handler installed, and it calls
 /// `getenv("LIBSERIALPORT_DEBUG")` on EVERY debug statement — `serialport.c`
@@ -99,13 +198,14 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     final options = <SerialPortOption>[];
     for (final device in devices) {
       byName[device.deviceName] = device;
-      options.add(SerialPortOption(
-        name: device.deviceName,
+      options.addAll(androidSerialPortOptions(
+        deviceName: device.deviceName,
         manufacturer: device.manufacturerName,
         productName: device.productName,
         serialNumber: device.serial,
         vendorId: device.vid,
         productId: device.pid,
+        cdcDataInterfaces: await androidCdcDataInterfaces(device.deviceName),
       ));
     }
     _androidDevicesByName = byName;
@@ -178,8 +278,9 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     final name = target['port'] as String? ?? '';
     final baudRate = (target['baudRate'] as num?)?.toInt() ?? 4800;
     final stopBits = (target['stopBits'] as num?)?.toInt() ?? 1;
+    final (:deviceName, :iface) = androidPortTarget(name);
 
-    var device = _androidDevicesByName[name];
+    var device = _androidDevicesByName[deviceName];
     if (device == null) {
       // Boot-time auto-reconnect and the panel's own Connect button call
       // this directly, without ever going through the equipment editor's
@@ -187,7 +288,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
       // default here. Look the device up fresh rather than assuming gone.
       try {
         for (final candidate in await usb.UsbSerial.listDevices()) {
-          if (candidate.deviceName == name) {
+          if (candidate.deviceName == deviceName) {
             device = candidate;
             break;
           }
@@ -199,13 +300,29 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     if (device == null) {
       throw SerialPortUnavailable(name, 'no longer plugged in — pick it again from the port list');
     }
+    // A device path is reused by whatever is plugged in next, so a stored
+    // index can name an interface that is now audio, or nothing at all.
+    // Opening it anyway fails as "permission denied", which sends the
+    // operator to re-grant a permission that was never the problem.
+    if (iface >= 0) {
+      final serialInterfaces = await androidCdcDataInterfaces(deviceName);
+      if (serialInterfaces.isNotEmpty && !serialInterfaces.contains(iface)) {
+        throw SerialPortUnavailable(name, 'not a serial port on this device — pick it again from the port list');
+      }
+    }
 
+    // Line coding and DTR/RTS go to interface 0 whichever port this opens:
+    // felHR85/UsbSerial addresses every CDC control transfer to wIndex 0.
+    // Data flows through the chosen interface's own endpoints regardless;
+    // on a composite device the baud rate below reaches its port only if
+    // interface 0 happens to be that port's control interface.
+    //
     // device.create() awaits Android's system USB-permission dialog, which
     // can block indefinitely on the operator — race it against cancellation
     // the same way tcp_transport_io.dart races Socket.connect, so a
     // superseded attempt doesn't leave the port claimed behind a newer one.
     final createCompleter = Completer<usb.UsbPort?>();
-    unawaited(device.create().then(
+    unawaited(device.create('', iface).then(
       (port) {
         if (createCompleter.isCompleted) {
           unawaited(port?.close().catchError((Object _) => false));

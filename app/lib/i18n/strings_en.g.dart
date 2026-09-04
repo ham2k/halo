@@ -3790,6 +3790,9 @@ class Translations$settings$station$en {
 	/// en: 'Choose a serial port'
 	String get serialPortRequired => 'Choose a serial port';
 
+	/// en: 'port $n of $total'
+	String serialPortOrdinal({required Object n, required Object total}) => 'port ${n} of ${total}';
+
 	/// en: 'Add a USB device…'
 	String get serialDeviceRequest => 'Add a USB device…';
 
@@ -6826,6 +6829,7 @@ extension on Translations {
 			'settings.station.serialPortDescription' => 'The port the radio\'s CAT interface appears on.',
 			'settings.station.serialPortNone' => 'No serial ports found',
 			'settings.station.serialPortRequired' => 'Choose a serial port',
+			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'port ${n} of ${total}',
 			'settings.station.serialDeviceRequest' => 'Add a USB device…',
 			'settings.station.baudRate' => 'Speed (baud)',
 			'settings.station.baudRateDescription' => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.',
@@ -6846,9 +6850,9 @@ extension on Translations {
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
-			'settings.station.connectFailedNetwork' => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.connectFailedNetwork' => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.',
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',

@@ -1805,6 +1805,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get serialPortDescription => 'El puerto donde aparece la interfaz CAT de la radio.';
 	@override String get serialPortNone => 'No se encontraron puertos serie';
 	@override String get serialPortRequired => 'Elige un puerto serie';
+	@override String serialPortOrdinal({required Object n, required Object total}) => 'puerto ${n} de ${total}';
 	@override String get serialDeviceRequest => 'Agregar un dispositivo USB…';
 	@override String get baudRate => 'Velocidad (baudios)';
 	@override String get baudRateDescription => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.';
@@ -3792,6 +3793,7 @@ extension on TranslationsEs {
 			'settings.station.serialPortDescription' => 'El puerto donde aparece la interfaz CAT de la radio.',
 			'settings.station.serialPortNone' => 'No se encontraron puertos serie',
 			'settings.station.serialPortRequired' => 'Elige un puerto serie',
+			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'puerto ${n} de ${total}',
 			'settings.station.serialDeviceRequest' => 'Agregar un dispositivo USB…',
 			'settings.station.baudRate' => 'Velocidad (baudios)',
 			'settings.station.baudRateDescription' => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.',
@@ -3812,9 +3814,9 @@ extension on TranslationsEs {
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
 			'settings.station.radioUserRequired' => 'Se requiere el usuario de control remoto de la radio',
-			'settings.station.connectFailedNetwork' => 'No se encuentra la radio en la red. Comprueba su dirección y que esté encendida y accesible.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.connectFailedNetwork' => 'No se encuentra la radio en la red. Comprueba su dirección y que esté encendida y accesible.',
 			'settings.station.connectFailedTimeout' => 'La radio no respondió a tiempo. Comprueba que esté encendida y accesible.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
