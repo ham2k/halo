@@ -316,6 +316,40 @@ void main() {
       expect(parseBandInput('23'), '23cm');
     });
 
+    test('reads every band the app offers, not just the ones with edges', () {
+      // `extendedBands` is the whole vocabulary the app knows; `bands` is the
+      // narrower frequency-edge table, and matching against it left everything past
+      // 23cm unreachable while answering '2m' for the '2mm' a microwave
+      // operator typed.
+      expect(parseBandInput('2mm'), '2mm');
+      expect(parseBandInput('2.5MM'), '2.5mm');
+      expect(parseBandInput('1.25cm'), '1.25cm');
+      expect(parseBandInput('submm'), 'submm');
+      expect(parseBandInput('11m'), '11m');
+      for (final band in extendedBands.where((b) => b != 'other')) {
+        expect(parseBandInput(band), band, reason: '$band is not reachable by name');
+      }
+    });
+
+    test('millimeter bands stay out of the bare-number fallback', () {
+      // "1" means 1mm to nobody, and a bare number that named the wrong band
+      // is worse than one that names none.
+      expect(parseBandInput('1'), isNull);
+      expect(parseBandInput('2.5'), isNull);
+      expect(parseBandInput('2'), '2m', reason: 'the meters band still wins its number');
+      expect(parseBandInput('6'), '6m');
+    });
+
+    test('the aliases operators actually say', () {
+      // 75m is what the phone end of 80m is called on the air, and 2200m is
+      // the common name for the band this app's table calls 2190m.
+      expect(parseBandInput('75'), '80m');
+      expect(parseBandInput('75m'), '80m');
+      expect(parseBandInput('2200'), '2190m');
+      expect(parseBandInput('2200M'), '2190m');
+      expect(parseBandInput('75cm'), isNull, reason: 'the alias is the meters band');
+    });
+
     test('a stated unit is not second-guessed', () {
       // "20cm" is a typo for 20m, not a request for it — silently correcting
       // it would log a contact on a band the operator never named.
@@ -341,10 +375,13 @@ void main() {
       // grows an entry that breaks it — a band whose wavelength number lands
       // inside another band's edges — the frequency field would start
       // swallowing real frequencies, and this is the only thing watching.
-      for (final band in bands) {
-        final asFrequency = parseFreq(band.name.replaceAll(RegExp(r'(c?m)$'), ''));
+      // Every name reachable bare — millimeters are not in the fallback, and
+      // the aliases are reachable bare too without being in `extendedBands`.
+      final reachable = [...extendedBands, ...bandAliases.keys];
+      for (final band in reachable.where((b) => b.endsWith('m') && !b.endsWith('mm'))) {
+        final asFrequency = parseFreq(band.replaceAll(RegExp(r'(c?m)$'), ''));
         expect(bandForFrequency(asFrequency!), isNull,
-            reason: '${band.name} typed bare parses as $asFrequency kHz, a real frequency');
+            reason: '$band typed bare parses as $asFrequency kHz, a real frequency');
       }
     });
   });

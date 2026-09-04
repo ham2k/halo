@@ -22,6 +22,8 @@ import { tFor } from "./i18n.ts"
 import { parsePowerCommand } from "./parsePowerCommand.ts"
 import { parseWpmCommand } from "./parseWpmCommand.ts"
 import { parseKeyerCommand } from "./parseKeyerCommand.ts"
+import { parseGigBandCommand } from "./parseGigBandCommand.ts"
+import { parseBandCommand } from "./parseBandCommand.ts"
 
 import manifest from "../manifest.json" with { type: "json" }
 
@@ -37,15 +39,14 @@ const KEYER_EXPERIMENT = 'keyer'
 const keyerEnabled = (ctx: HookContext) =>
   !!ctx.enabledExperiments?.includes(GATO_EXPERIMENT) && !!ctx.enabledExperiments?.includes(KEYER_EXPERIMENT)
 
-const BAND_MATCH = /^(2200|630|160|80|60|40|30|20|17|15|12|10|6|4|2)M?$/i
 const MODE_MATCH = /^(CW|SSB|USB|LSB|FM|AM|FT8|FT4|FT2|RTTY)$/i
 const FREQUENCY_MATCH = /^[\d.,]+$/
 
+// Every band the app supports, by name — see parseBandCommand.ts.
 const BandCommand = {
   async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
-    const match = BAND_MATCH.exec(input.trim())
-    if (!match) return null
-    const band = `${match[1].toLowerCase()}m`
+    const band = parseBandCommand(input)
+    if (!band) return null
     const t = tFor(ctx)
     return {
       describe: t('bandDescribe', { band }),
@@ -54,15 +55,47 @@ const BandCommand = {
     }
   },
 
-  // One BAND entry, not fifteen band entries — the palette lists the
-  // command, and `interpret` above is what recognizes each actual band.
+  // One BAND entry, not one per band — the palette lists the command, and
+  // `interpret` above is what recognizes each actual band.
   async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
     const t = tFor(ctx)
     return [
       {
         command: '20M',
-        params: '(80M, 40M, 20M…)',
+        params: '(80M, 20M, 70CM, 2MM…)',
         describe: t('catalogBand'),
+        category: t('catalogCategory'),
+        expectsParams: true,
+        suggest: true,
+      },
+    ]
+  },
+}
+
+// The GHz designations microwave operators actually say — see parseGigBandCommand.ts.
+// Above the frequency command in priority, though nothing it matches holds a 'G'.
+const GigBandCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    const parsed = parseGigBandCommand(input)
+    if (!parsed) return null
+    // The operator typed a designation, so the confirmation says it back, next to
+    // the band name they see everywhere else in the app.
+    const band = `${parsed.designation} (${parsed.band})`
+    const t = tFor(ctx)
+    return {
+      describe: t('bandDescribe', { band }),
+      confirm: t('bandConfirm', { band }),
+      commands: [{ setVfo: { band: parsed.band } }],
+    }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    const t = tFor(ctx)
+    return [
+      {
+        command: '10G',
+        params: '(1.2G, 24G, 47G…)',
+        describe: t('catalogGigBand'),
         category: t('catalogCategory'),
         expectsParams: true,
         suggest: true,
@@ -247,6 +280,7 @@ defineExtension({
   onActivation({ registerHook }) {
     registerHook('command', { key: 'radio-commands-band', hook: BandCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-mode', hook: ModeCommand, priority: 100 })
+    registerHook('command', { key: 'radio-commands-gig-band', hook: GigBandCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-frequency', hook: FrequencyCommand, priority: 99 })
     registerHook('command', { key: 'radio-commands-power', hook: PowerCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-wpm', hook: WpmCommand, priority: 100 })

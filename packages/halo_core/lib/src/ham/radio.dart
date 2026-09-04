@@ -364,6 +364,16 @@ const List<String> extendedBands = [
   '1mm', 'submm', 'other',
 ];
 
+/// Band names in wide use that are not what the band is called here. '75m' is
+/// the phone end of 80m, and '2200m' is the common name for the band the band
+/// table calls '2190m' — typed either way, the operator means the same band.
+/// Mirrored by the radio-commands extension's own `parseBandCommand`, which
+/// reads the band list from the published lib rather than this snapshot.
+const Map<String, String> bandAliases = {
+  '75m': '80m',
+  '2200m': '2190m',
+};
+
 const List<String> popularBands = [
   '160m', '80m', '60m', '40m', '30m', '20m', '17m', '15m', '12m', '10m', '6m', '2m', '70cm',
 ];
@@ -581,22 +591,28 @@ double? parseFreq(String input) {
 String? parseBandInput(String input) {
   var cleaned = input.trim().toLowerCase().replaceAll(',', '').replaceAll(' ', '');
   if (cleaned.isEmpty) return null;
-  // A unit the operator typed pins which of the two candidates to try; with
-  // none, "70" means 70cm because there is no 70m band to prefer.
-  final units = cleaned.endsWith('cm')
-      ? const ['cm']
-      : cleaned.endsWith('m')
-          ? const ['m']
-          : const ['m', 'cm'];
-  cleaned = cleaned.replaceAll(RegExp(r'(c?m)$'), '');
+  // A unit the operator typed pins which of the candidates to try; with none,
+  // "70" means 70cm because there is no 70m band to prefer. Millimetres are
+  // deliberately outside that fallback: "1" means 1mm to nobody, and a bare
+  // number should name no band rather than the wrong one.
+  final unitMatch = RegExp(r'(mm|cm|m)$').firstMatch(cleaned);
+  final units = unitMatch == null ? const ['m', 'cm'] : [unitMatch.group(1)!];
+  if (unitMatch != null) cleaned = cleaned.substring(0, cleaned.length - unitMatch.group(1)!.length);
   // Reject "20.0" and "1.250": a band is named by an exact string, and
   // matching on the parsed number instead would accept spellings the Band
   // dropdown never shows.
+  //
+  // Matched against [extendedBands], the whole vocabulary of bands the app
+  // knows — not [bands], which stops at 23cm and would answer "2m" for the
+  // "2mm" a microwave operator typed. Deliberately wider than the Band
+  // dropdown, which offers only the bands enabled in Settings: naming a band
+  // is how an operator reaches one they work rarely enough not to have
+  // enabled, and the dropdown appends whatever is current so it still shows.
   for (final unit in units) {
     final name = '$cleaned$unit';
-    for (final band in bands) {
-      if (band.name == name) return band.name;
-    }
+    if (extendedBands.contains(name)) return name;
+    final alias = bandAliases[name];
+    if (alias != null) return alias;
   }
   return null;
 }

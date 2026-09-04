@@ -10,6 +10,7 @@
   "wpmDescribe": "¿Cambiar la velocidad del manipulador a **{{wpm}} PPM**?",
   "wpmConfirm": "Velocidad del manipulador cambiada a **{{wpm}} PPM**",
   "catalogBand": "Cambiar de banda",
+  "catalogGigBand": "Cambiar de banda por su designación en GHz",
   "catalogFreq": "Cambiar de frecuencia",
   "catalogMode": "Cambiar de modo",
   "catalogPower": "Cambiar la potencia",

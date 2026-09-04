@@ -322,6 +322,19 @@ wavelength in meters is also a frequency inside a band — `parseBandInput` in
 `halo_core` holds that reasoning, and a test pins the property against future
 edits to the band table.
 
+Every band the app knows is reachable by name, millimeter bands included, but
+those need their unit: the bare form falls back from meters to centimeters
+("70" is 70cm because there is no 70m band) and stops there, since "1" means
+1mm to nobody and a bare number that named the wrong band is worse than one
+that names none. `75m` and `2200m` resolve as the names operators say for 80m
+and 2190m. The `40M` command reads the same vocabulary, from its own copy in
+the radio-commands extension.
+
+That vocabulary is deliberately wider than the Band dropdown beside the field,
+which offers only the bands enabled in Settings: naming a band is how an
+operator reaches one they work too rarely to have enabled, and the dropdown
+appends whatever band is current, so the one they named still displays.
+
 This exists because on a fresh install nothing has ever set either one: the
 stored VFO is empty, and every other gate looks only at the callsign. The
 resulting record is not merely incomplete — the ADIF exporter emits `BAND`

@@ -4,6 +4,11 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Microwave bands by name in the call field: 10G, 24G, 47G and the rest"
+    - "The band command now takes every band the app has, plus 75m for 80m"
+
 "162":
   changes:
     - "Change an operation's callsign and it offers to update the contacts already logged"

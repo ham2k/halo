@@ -744,6 +744,11 @@ void main() {
       // above). Read it as "a period is safe after a digit" and the guard
       // simplifies into a regression.
       expect(run('14.2P'), '14.2P');
+      // The GHz band designations (radio-commands' parseGigBandCommand) ride on the
+      // same rule, and match the dotted spelling only: rewrite these and "1.2G" reaches
+      // the command as "1/2G" and is read as a callsign instead of the 23cm band.
+      expect(run('1.2G'), '1.2G');
+      expect(run('5.7GHZ'), '5.7GHZ');
     });
 
     test('a leading "/" keeps later periods converting', () {

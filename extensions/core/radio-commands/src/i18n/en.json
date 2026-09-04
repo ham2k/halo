@@ -10,6 +10,7 @@
   "wpmDescribe": "Change keyer speed to **{{wpm}} WPM**?",
   "wpmConfirm": "Keyer speed set to **{{wpm}} WPM**",
   "catalogBand": "Set the band",
+  "catalogGigBand": "Set the band by its GHz designation",
   "catalogFreq": "Set the frequency",
   "catalogMode": "Set the mode",
   "catalogPower": "Set the power",

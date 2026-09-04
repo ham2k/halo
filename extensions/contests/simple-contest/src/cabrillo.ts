@@ -10,30 +10,42 @@
 // contest needs it, rather than being copied.
 
 import { fmtCabrilloDate, fmtCabrilloTime } from "@ham2k/lib-format-tools"
+import { EHF_BANDS, SHF_BANDS, UHF_BANDS, VHF_BANDS } from "@ham2k/lib-operation-data"
 import type { JSONValue } from "@ham2k/extension-sdk"
 
 /// VHF+ Cabrillo logs name their band rather than a kHz frequency; HF logs use
 /// kHz. Values match app-polo's table, including the entries it flags as
-/// non-standard.
+/// non-standard ('5m', '12m').
 const DEFAULT_FREQUENCIES_PER_BAND: Record<string, string> = {
   '160m': '1800', '80m': '3500', '60m': '5332', '40m': '7000', '30m': '10100',
   '20m': '14000', '17m': '18068', '15m': '21000', '12m': '24890', '10m': '28000',
-  '6m': '50', '4m': '70', '2m': '144', '70cm': '432', '33cm': '902',
+  '6m': '50', '5m': '60', '4m': '70', '2m': '144', '1.25m': '222',
+  '70cm': '432', '33cm': '902',
   '23cm': '1.2G', '13cm': '2.3G', '9cm': '3.4G', '6cm': '5.7G', '3cm': '10G',
   '1.25cm': '24G', '6mm': '47G', '4mm': '75G', '2.5mm': '122G', '2mm': '134G',
   '1mm': '241G', submm: 'LIGHT',
 }
 
+/// Every band whose Cabrillo column is an identifier rather than a frequency.
+/// A band listed here MUST have an entry above, or its QSOs export as '0' —
+/// cabrillo.test.ts holds the two to each other.
+const BANDS_REPORTED_AS_IDENTIFIERS = new Set<string>([
+  ...VHF_BANDS, ...UHF_BANDS, ...SHF_BANDS, ...EHF_BANDS,
+])
+
 function str(value: JSONValue | undefined): string {
   return typeof value === 'string' ? value : ''
 }
 
+/// The band decides, not the frequency: microwave operators log '10368.1'
+/// meaning MHz, and a magnitude test reports that as an HF kHz frequency
+/// instead of '10G'.
 export function cabrilloFreq(qso: Record<string, JSONValue>): string {
+  const band = str(qso.band)
+  if (BANDS_REPORTED_AS_IDENTIFIERS.has(band)) return DEFAULT_FREQUENCIES_PER_BAND[band] ?? '0'
   const freq = Number(qso.freq)
-  if (freq) {
-    return freq < 50000 ? `${Math.round(freq)}` : (DEFAULT_FREQUENCIES_PER_BAND[str(qso.band)] ?? '0')
-  }
-  return DEFAULT_FREQUENCIES_PER_BAND[str(qso.band)] ?? '0'
+  if (freq) return `${Math.round(freq)}`
+  return DEFAULT_FREQUENCIES_PER_BAND[band] ?? '0'
 }
 
 /// Cabrillo collapses every phone mode to PH and everything non-CW/phone to DG.
