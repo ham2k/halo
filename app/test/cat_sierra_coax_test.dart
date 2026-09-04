@@ -78,6 +78,8 @@ class _FakeSink implements EquipmentSink {
     ports = p;
     reports++;
   }
+  @override
+  void reportAlive() {}
 
   SwitchPort port(String key) => ports.firstWhere((p) => p.key == key);
 

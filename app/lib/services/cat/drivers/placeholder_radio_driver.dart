@@ -167,7 +167,7 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession {
   final _pending = <Timer>[];
 
   /// Restates the current reading often enough that `CatService`'s silence
-  /// watch never fires (`_staleAfter`, 30s). Without it a placeholder rig left
+  /// watch never fires (`catStaleAfter`, 30 s). Without it a placeholder rig left
   /// alone turns stale in half a minute and the panel says the radio has
   /// stopped answering — which is exactly the state an operator leaves it
   /// sitting in while checking something else. A restated frequency is a

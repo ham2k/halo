@@ -39,15 +39,20 @@ const _uuidGenerator = Uuid();
 /// blob is one flat category → uuid map, and [CatService._load] migrates it.
 const _storageVersion = 2;
 
-/// How long a connected radio may say NOTHING before the row stops
-/// presenting its last reading as current.
+/// How long a connected node may say NOTHING before the row stops
+/// presenting its last reading as current ([EquipmentState.stale]).
 ///
-/// Every driver here either streams (FlexRadio) or polls at a few seconds
-/// (CI-V at 5s, the FT-891 adaptively) — so half a minute of total silence
-/// from a live connection is not a slow radio, it is a stream that is not
-/// carrying anything. Generous enough that a busy rig or a lost datagram
-/// never trips it.
-const _staleAfter = Duration(seconds: 30);
+/// The invariant every driver must hold: a connected node is heard from at
+/// least this often. A polling driver holds it by polling (CI-V at 5 s, the
+/// FT-891 adaptively). A push-on-change driver — FlexRadio, the Antenna
+/// Genius, a WinKeyer — is silent for as long as nothing moves, and is
+/// responsible for generating the word itself: a resync inside this window
+/// whose reply is a reading, or a ping whose acknowledgement goes to
+/// [EquipmentSink.reportAlive]. Public so those drivers' tests can assert
+/// their cadence sits inside it, rather than against a literal that drifts.
+///
+/// Generous enough that a busy rig or a lost datagram never trips it.
+const catStaleAfter = Duration(seconds: 30);
 
 /// How hard launch tries before leaving it to the user.
 const _reconnectRetries = 2;
@@ -191,7 +196,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       this.reconnectDelay = _defaultReconnectDelay,
       this.now = realNowUtc,
       this.idleRetryFirst = _idleRetryFirst,
-      this.staleAfter = _staleAfter})
+      this.staleAfter = catStaleAfter})
       : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
         registry = registry ?? EquipmentRegistry(),
         _onTrack = onTrack,
@@ -1408,6 +1413,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         if (stateFor(uuid).diagnostic == note) return;
         _setState(uuid, stateFor(uuid).copyWith(diagnostic: note, clearDiagnostic: note == null));
       },
+      onAlive: () {
+        if (runtime.connection != connection) return;
+        _noteAlive(uuid, runtime);
+      },
     );
     // driverConfig, not config: a type may know something about its
     // protocol that is not a setting anyone should be asked for — the
@@ -2133,6 +2142,7 @@ class _NodeSink implements EquipmentSink {
   final void Function(String?) onProblem;
   final void Function(List<EquipmentChannel>) onChannels;
   final void Function(List<SwitchAntenna>, List<SwitchPort>) onSwitchState;
+  final void Function() onAlive;
 
   _NodeSink({
     required this.connection,
@@ -2144,6 +2154,7 @@ class _NodeSink implements EquipmentSink {
     required this.onProblem,
     required this.onChannels,
     required this.onSwitchState,
+    required this.onAlive,
   });
 
   @override
@@ -2173,4 +2184,7 @@ class _NodeSink implements EquipmentSink {
   @override
   void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) =>
       onSwitchState(antennas, ports);
+
+  @override
+  void reportAlive() => onAlive();
 }

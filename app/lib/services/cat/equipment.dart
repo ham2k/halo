@@ -385,7 +385,11 @@ class EquipmentState {
   /// accepted, and then no CI-V at all, with the row showing a confident
   /// green and a frequency from several minutes earlier.
   ///
-  /// Liveness that counts datagrams cannot see this. Only the readings can.
+  /// Liveness that counts bytes cannot see this — and would be fooled the
+  /// other way too, by a bus echoing our own polls. So what clears it is a
+  /// reading, or the one thing a driver may vouch for instead: an
+  /// acknowledgement that travelled the same path a reading takes
+  /// ([EquipmentSink.reportAlive], with its condition).
   final bool stale;
 
   /// What the driver worked out about this session, for developer mode only —

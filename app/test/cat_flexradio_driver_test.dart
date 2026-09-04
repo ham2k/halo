@@ -15,6 +15,7 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart' show catStaleAfter;
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
@@ -69,6 +70,10 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) {}
+
+  var alive = 0;
+  @override
+  void reportAlive() => alive++;
 
   EquipmentChannel channel(String key) => channels.firstWhere((c) => c.key == key);
 }
@@ -330,6 +335,64 @@ void main() {
         session.teardown();
         expect(sink.sent, isEmpty);
         async.flushTimers();
+      });
+    });
+  });
+
+  group('a radio nobody is touching', () {
+    // A slice status is pushed only when something changes, so a still dial
+    // is total silence — and the manager marks 30 s of it "Not responding".
+    // The 60 s resync then clears it, so without a ping an idle radio reads
+    // as dead for the second half of every minute.
+    test('pings inside the silence window, and the acknowledgement counts as life', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        sink.sent.clear();
+
+        expect(flexRadioPingInterval, lessThan(catStaleAfter));
+        async.elapse(flexRadioPingInterval);
+        final pings = sink.sent.where((line) => line.endsWith('|ping\n')).toList();
+        expect(pings, hasLength(1));
+
+        expect(sink.alive, 0, reason: 'sending the ping proves nothing; the answer does');
+        final seq = RegExp(r'^C(\d+)\|').firstMatch(pings.single)!.group(1);
+        session.feed('R$seq|0|\n');
+        expect(sink.alive, 1);
+
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('a status push is reported as a reading, not as bare life', () {
+      // Two reports for one line would be harmless today, but the sink's
+      // contract is that a reading already counts — a driver that also
+      // reports life for it has misread which of the two it is holding.
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.feed('$_sliceStatusLine\n');
+        expect(sink.readings, hasLength(1));
+        expect(sink.alive, 0);
+
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    test('stops pinging with updates', () {
+      fakeAsync((async) {
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        session.stopUpdates();
+        sink.sent.clear();
+
+        // The callback also checks _wantUpdates, so silence alone would pass
+        // over a leaked timer; the timer itself has to be gone.
+        expect(async.periodicTimerCount, 0, reason: 'a leaked ping timer retains the session for the process lifetime');
+        async.elapse(const Duration(minutes: 2));
+        expect(sentAny('ping'), isFalse);
       });
     });
   });

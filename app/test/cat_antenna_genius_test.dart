@@ -13,6 +13,7 @@ import 'dart:typed_data';
 
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart' show catStaleAfter;
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/antenna_genius_codec.dart';
@@ -93,6 +94,8 @@ class _FakeSink implements EquipmentSink {
     ports = p;
     reports++;
   }
+  @override
+  void reportAlive() {}
 
   SwitchPort port(String key) => ports.firstWhere((p) => p.key == key);
 
@@ -564,7 +567,7 @@ void main() {
 
         // Comfortably inside the 30 s the manager allows, with room for one
         // to go missing.
-        expect(antennaGeniusResyncInterval * 2, lessThan(const Duration(seconds: 30)));
+        expect(antennaGeniusResyncInterval * 2, lessThan(catStaleAfter));
 
         session.teardown();
         async.flushTimers();

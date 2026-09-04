@@ -1028,6 +1028,21 @@ delivered. `expectedUpdateInterval` stays null regardless: it describes how a
 change reaches us, and a change still arrives the moment it happens — the same
 distinction FlexRadio's 60 s resync draws.
 
+FlexRadio has the same shape of silence — a slice status is pushed only when
+something changes — and its resync is twice the window, so an idle Flex read
+as Not Responding for the second half of every minute. Rather than resync at
+twice the rate — four commands answered with a full status burst, against
+one line each way — `FlexRadioSession` sends `ping` every 25 s
+(`flexRadioPingInterval`) and reports every `R` acknowledgement through
+`EquipmentSink.reportAlive` — a word that carries no reading, admitted because
+on this radio status and acknowledgements share one socket, so the
+acknowledgement vouches for the path the readings take. That is the condition
+for calling it at all, and it is a driver's call rather than the manager
+counting bytes because a CI-V or RS-485 bus echoes our own polls: a byte
+counter would keep a dead serial radio green (the `stale` doc on
+`EquipmentState` and the sink method carry the contract). The watchdog's
+window is `catStaleAfter`, public so both drivers' tests derive from it.
+
 **The routing lives in the equipment's editor, not on its row.** The equipment
 list is what the station is made OF; a control surface there would make the
 switch the one row in it that does something. So the editor grows a **Current
@@ -1207,10 +1222,12 @@ superseded sentinel of its own, or a retry storm ends up fighting the user.
 
 Next, in order:
 
-1. **Hardening** — a manager-level staleness watchdog rather than each driver hand-rolling a resync
-   timer. Half its input already exists: `EquipmentSession.expectedUpdateInterval` is the per-driver
-   cadence Smart VFO Snap added, so the watchdog needs `lastExchangeAt` beside it rather than a
-   number of its own. Also: reconnect with a superseded sentinel.
+1. **Hardening** — the manager-level staleness watchdog exists (`catStaleAfter`, `_noteAlive`);
+   what each push-only driver still hand-rolls is the probe that feeds it (the Antenna Genius
+   10 s resync, the FlexRadio 25 s ping). The remaining step is the manager driving that probe
+   for sessions with a null `expectedUpdateInterval`, at which point `reportAlive` and the
+   per-driver timers go — not before, or the idle-Flex flicker comes back. Also: reconnect with a
+   superseded sentinel.
 2. **A second driver for breadth** — Hamlib `rigctld` over TCP. Same transport, a completely
    different protocol, so it is what actually validates the driver abstraction, and it buys
    hundreds of radios for one codec.

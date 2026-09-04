@@ -345,4 +345,6 @@ class _RecordingSink implements EquipmentSink {
 
   @override
   void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) {}
+  @override
+  void reportAlive() {}
 }

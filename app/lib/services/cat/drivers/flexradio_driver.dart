@@ -32,6 +32,21 @@ import 'line_framer.dart';
 /// this doubles as a periodic resync.
 const _resyncInterval = Duration(seconds: 60);
 
+/// The manager marks a node "Not responding" after 30 s without a word from
+/// it, and this radio says nothing while the dial is still — so with only the
+/// resync above to speak for it, an idle Flex reads as dead for the second
+/// half of every minute. A `ping` gives the radio something to answer inside
+/// the window; the `R` line it sends back is the proof of life. One ping per
+/// window is enough because TCP delivers late but never drops.
+///
+/// A ping rather than resyncing inside the window (the Antenna Genius way):
+/// the resync is four commands answered with a full slice/tx/client/cwx
+/// burst that re-runs the settle timer and the channel inventory, and a
+/// ping is one line each way. The trade is that a subscription dying over a
+/// healthy socket now shows a frozen frequency for up to one resync instead
+/// of going stale at 30 s — bounded, and never captured on hardware.
+const flexRadioPingInterval = Duration(seconds: 25);
+
 /// How long a subscription's full status refresh is given to arrive before
 /// a slice that has not appeared is taken to be one the radio does not
 /// have.
@@ -266,6 +281,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   bool _handshakeDone = false;
   bool _wantUpdates = false;
   Timer? _resyncTimer;
+  Timer? _pingTimer;
 
   final _framer = LineFramer();
 
@@ -315,15 +331,20 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     _settleTimer = Timer(_sliceRefreshSettle, _checkTrackedSlice);
   }
 
-  void _startResyncTimer() {
+  void _startPeriodicTimers() {
     _resyncTimer ??= Timer.periodic(_resyncInterval, (_) {
       if (_wantUpdates && _handshakeDone) _subscribe();
     });
+    _pingTimer ??= Timer.periodic(flexRadioPingInterval, (_) {
+      if (_wantUpdates && _handshakeDone) _sendCommand('ping');
+    });
   }
 
-  void _stopResyncTimer() {
+  void _stopPeriodicTimers() {
     _resyncTimer?.cancel();
     _resyncTimer = null;
+    _pingTimer?.cancel();
+    _pingTimer = null;
     _settleTimer?.cancel();
     _settleTimer = null;
   }
@@ -341,12 +362,19 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
       _handleHandshakeLine(line);
     } else if (line.startsWith('S')) {
       _handleStatusLine(line);
+    } else if (_replyPattern.hasMatch(line)) {
+      // A command acknowledgement: the radio answered, so it is alive. WHICH
+      // command does not matter — the ping exists only so that there is one
+      // to answer while the dial is still. Status and acknowledgements share
+      // this one socket, which is what lets an acknowledgement stand in for
+      // a reading here (see [EquipmentSink.reportAlive]).
+      _sink.reportAlive();
     }
-    // 'V' is the version banner and 'R' lines are command acknowledgements;
-    // nothing to do with either yet.
+    // 'V' is the version banner; nothing to do with it yet.
   }
 
   static final _handshakePattern = RegExp(r'^H[0-9a-fA-F]+$');
+  static final _replyPattern = RegExp(r'^R\d+\|');
   static final _slicePattern = RegExp(r'^S[0-9a-fA-F]+\|slice (\d+) (.+)$');
   static final _transmitPattern = RegExp(r'^S[0-9a-fA-F]+\|transmit (.+)$');
   static final _cwxPattern = RegExp(r'^S[0-9a-fA-F]+\|cwx (.+)$');
@@ -595,14 +623,14 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     // happened. The staleness watchdog would eventually flag the row, but
     // with the same word it uses for an unplugged radio.
     _armSettleTimer();
-    _startResyncTimer();
+    _startPeriodicTimers();
   }
 
   @override
   void stopUpdates() {
     if (!_wantUpdates) return;
     _wantUpdates = false;
-    _stopResyncTimer();
+    _stopPeriodicTimers();
     if (_handshakeDone) _unsubscribe();
   }
 
@@ -617,7 +645,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   @override
   void teardown() {
     _cwQueue.clear();
-    _stopResyncTimer();
+    _stopPeriodicTimers();
     if (_wantUpdates && _handshakeDone) _unsubscribe();
     _wantUpdates = false;
   }

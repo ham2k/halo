@@ -55,6 +55,8 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) {}
+  @override
+  void reportAlive() {}
 }
 
 extension on Ft891Session {

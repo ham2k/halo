@@ -38,6 +38,8 @@ class _FakeSink implements EquipmentSink {
   void reportChannels(List<EquipmentChannel> channels) {}
   @override
   void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports) {}
+  @override
+  void reportAlive() {}
 }
 
 void main() {

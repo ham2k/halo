@@ -80,6 +80,24 @@ abstract class EquipmentSink {
   /// and the panel would draw an empty selection over a switch that is
   /// perfectly well connected.
   void reportSwitchState(List<SwitchAntenna> antennas, List<SwitchPort> ports);
+
+  /// The equipment answered, and the answer carried nothing about its state —
+  /// a command acknowledgement, a ping reply. Re-arms the silence watch
+  /// ([EquipmentState.stale]) and nothing else.
+  ///
+  /// Only for a driver whose readings travel the SAME path the answer took,
+  /// and only for something the RADIO sent. That is why this is a driver's
+  /// call and not the manager counting bytes on the connection: a CI-V or
+  /// RS-485 bus echoes our own polls back, so a byte counter keeps a
+  /// powered-off radio on a serial adapter green forever — the drivers
+  /// discard those echoes, and only they know one from an answer. And an
+  /// acknowledgement on one channel says nothing about another: `stale`
+  /// exists for a live session over a dead reading stream, so a driver
+  /// whose control and reading paths differ never calls this. What it does
+  /// NOT vouch for even on one socket is the radio's own subscription
+  /// table; a driver that relies on it keeps its resync. A reading already
+  /// counts as life, so a driver never calls this for one.
+  void reportAlive();
 }
 
 /// One driver's state for one open connection.

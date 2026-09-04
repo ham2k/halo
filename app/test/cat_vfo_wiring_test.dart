@@ -111,6 +111,9 @@ class _FakeSession implements TransceiverSession {
   void radioReports({double? freqKHz, String? mode}) =>
       sink.report(VfoReading(freqKHz: freqKHz, mode: mode));
 
+  /// An acknowledgement with nothing in it — a FlexRadio's `R` line to a ping.
+  void radioAnswers() => sink.reportAlive();
+
   @override
   void handleData(Uint8List chunk) {}
   @override
@@ -465,6 +468,36 @@ void main() {
         session().radioReports(freqKHz: 14074, mode: 'USB');
         async.flushMicrotasks();
         expect(cat.stateFor(node.uuid).stale, isFalse);
+      });
+    });
+
+    test('an acknowledgement that carries no reading is still a word from the radio', () {
+      // A FlexRadio pushes a slice status only when something changes, so a
+      // still dial is total silence; its driver pings inside the window and
+      // the reply says nothing about the VFO. If the sink dropped that on the
+      // floor, the ping would prove the socket alive to the driver and to
+      // nobody else, and the row would go red on schedule regardless.
+      fakeAsync((async) {
+        late EquipmentNode node;
+        cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'}).then((n) => node = n);
+        async.flushMicrotasks();
+        cat.connect(node.uuid);
+        async.flushMicrotasks();
+        session().radioReports(freqKHz: 14074, mode: 'USB');
+        async.flushMicrotasks();
+
+        async.elapse(const Duration(seconds: 31));
+        expect(cat.stateFor(node.uuid).stale, isTrue);
+
+        session().radioAnswers();
+        async.flushMicrotasks();
+        expect(cat.stateFor(node.uuid).stale, isFalse);
+        expect(cat.stateFor(node.uuid).vfo.freqKHz, 14074,
+            reason: 'life is not a reading; the VFO must be exactly what the radio last said');
+
+        // And it re-arms the watch rather than merely clearing the mark.
+        async.elapse(const Duration(seconds: 31));
+        expect(cat.stateFor(node.uuid).stale, isTrue);
       });
     });
 
