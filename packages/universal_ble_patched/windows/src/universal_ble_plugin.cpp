@@ -116,6 +116,13 @@ UniversalBlePlugin::UniversalBlePlugin(
 }
 
 UniversalBlePlugin::~UniversalBlePlugin() {
+  // FIRST, before anything below is torn down. Members are destroyed after
+  // this body runs, so without it `ui_thread_handler_` is still hooked to the
+  // top-level window proc and still draining its queue while the channels and
+  // services those callbacks reach for are being reset underneath them --
+  // several of them capture `this`. Shutdown() drops the queue and unhooks the
+  // delegate, so nothing can re-enter a half-destroyed plugin.
+  ui_thread_handler_.Shutdown();
   ClearServices();
   peripheral_callback_channel_.reset();
 }

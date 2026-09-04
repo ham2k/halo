@@ -180,18 +180,76 @@ void main() {
   });
 
   test('the nodelegate arm does not unregister a delegate it never registered', () {
-    // Without the guard, ~UniversalBleUiThreadHandler hands the engine a
-    // window-proc id that was never issued. That is its own crash, in the one
-    // arm whose result we most need to trust — and it would read as "the
-    // delegate IS the problem", the exact conclusion the arm exists to test.
+    // Without the guard, teardown hands the engine a window-proc id that was
+    // never issued. That is its own crash, in the one arm whose result we most
+    // need to trust — and it would read as "the delegate IS the problem", the
+    // exact conclusion the arm exists to test.
+    //
+    // The guard lives in Shutdown(), which the destructor delegates to.
     final source = _vendored('windows/src/ui_thread_handler.hpp');
-    expect(source, contains('registered_'));
-    final body = source.substring(source.indexOf('~UniversalBleUiThreadHandler'));
+    final shutdown = source.substring(source.indexOf('void Shutdown()'));
     expect(
-      body.substring(0, body.indexOf('\n    }')),
+      shutdown.substring(0, shutdown.indexOf('\n    }')),
       contains('if (registered_)'),
-      reason: 'the destructor must skip UnregisterTopLevelWindowProcDelegate '
-          'when the nodelegate arm skipped the registration',
+      reason: 'teardown must skip UnregisterTopLevelWindowProcDelegate when '
+          'the nodelegate arm skipped the registration',
+    );
+  });
+
+  test('the UI-thread hop refuses work once teardown has begun', () {
+    // HALO-290's minidump puts universal_ble_plugin.dll directly beneath a
+    // faulting mtx_do_lock, reached from the UI thread's message loop, on a
+    // mutex whose internals read as zero — a lock taken on an object that is
+    // going away. Post() and the queue drain both check `accepting_` under the
+    // mutex so a callback queued during teardown is dropped rather than run
+    // against members already reset.
+    final source = _vendored('windows/src/ui_thread_handler.hpp');
+    expect(source, contains('accepting_'));
+    final post = source.substring(source.indexOf('void Post('));
+    expect(
+      post.substring(0, post.indexOf('\n    }')),
+      contains('if (!accepting_)'),
+      reason: 'work queued after Shutdown() would run against a half-destroyed '
+          'plugin',
+    );
+    final handle = source.substring(source.indexOf('HandleWindowMessage(\n'));
+    expect(
+      handle,
+      contains('if (!accepting_)'),
+      reason: 'a window message already posted before Shutdown() still arrives '
+          'afterwards; the drain has to refuse it too',
+    );
+  });
+
+  test('the plugin shuts the UI-thread hop down before tearing itself down', () {
+    // Members are destroyed AFTER the destructor body, so without this call
+    // the delegate is still hooked and still draining while ClearServices()
+    // and the channel resets run — and several queued callbacks capture
+    // `this`. Ordering is the whole content of the fix: a Shutdown() placed
+    // after those lines closes nothing.
+    final source = _vendored('windows/src/universal_ble_plugin.cpp');
+    final dtor = source.substring(source.indexOf('UniversalBlePlugin::~UniversalBlePlugin'));
+    final body = dtor.substring(0, dtor.indexOf('\n}'));
+    expect(body, contains('ui_thread_handler_.Shutdown()'));
+    expect(
+      body.indexOf('ui_thread_handler_.Shutdown()'),
+      lessThan(body.indexOf('ClearServices()')),
+      reason: 'shutting the hop down after the services are cleared leaves '
+          'exactly the window the crash arrives through',
+    );
+  });
+
+  test('hwnd_ is atomic, which upstream has not fixed', () {
+    // Written by the UI thread on the first window message, read by whichever
+    // thread calls Post(). Upstream races on it on every launch. A re-vendor
+    // that takes upstream's newer copy of this file wholesale would drop the
+    // fix while looking like an upgrade.
+    final source = _vendored('windows/src/ui_thread_handler.hpp');
+    expect(
+      source,
+      contains('std::atomic<HWND> hwnd_'),
+      reason: 'a plain HWND here is a data race between the UI thread and '
+          'every Post() caller',
     );
   });
 

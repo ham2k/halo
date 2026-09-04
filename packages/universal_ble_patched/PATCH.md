@@ -118,6 +118,39 @@ registration time. `mtx_do_lock` lives in MSVCP140, shared by every module, so
 the caller remains unknown. `nodelegate` dying earlier than every other arm is
 unexplained and worth keeping in view.
 
+## The UI-thread hop's teardown gate
+
+`ui_thread_handler.hpp` hops work from a WinRT thread-pool thread onto the UI
+thread by queueing it and poking the top-level window proc. The minidump from
+build 162 puts `universal_ble_plugin.dll` directly beneath a faulting
+`mtx_do_lock`, reached from the UI thread's message loop, on a mutex whose
+internal pointer reads as zero -- a lock taken on an object that is going away.
+
+Two defects, one of them upstream's and one it still has:
+
+`Post()` and the queue drain had no notion of teardown, so work queued while
+the handler was being destroyed ran against members already reset, and a window
+message posted before destruction still found the delegate registered
+afterwards. `accepting_`, checked under the mutex in both, closes that. The
+delegate is unregistered LAST, since the flag is what makes an already-queued
+message harmless and must be false before the delegate can stop being called.
+This half is ported from upstream `main` (`05e7e73`).
+
+`hwnd_` is written by the UI thread on the first window message and read by
+whichever thread calls `Post()`, with no synchronization at all -- a data race
+on every launch. It is `std::atomic` here. **Upstream has NOT fixed this**, so a
+re-vendor that takes upstream's newer copy of this file wholesale would drop it
+while looking like an upgrade; a guard test says so.
+
+`~UniversalBlePlugin` calls `Shutdown()` FIRST. Members are destroyed after the
+destructor body, so without that call the delegate is still hooked and still
+draining while `ClearServices()` and the channel resets run underneath the
+queued callbacks -- several of which capture `this`.
+
+Not claimed: that this is proven to fix the boot crash. The minidump names the
+module, not the function -- the plugin's PDB has never reached Sentry (see
+below), so the four frames under the fault are still unresolved.
+
 ## Release PDBs
 
 `windows/CMakeLists.txt` adds `/Zi` (compile) and `/DEBUG` (link) for Release.
