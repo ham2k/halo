@@ -6984,7 +6984,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       'refs': refs,
       'our': {
         ...?(base['our'] as Map<String, dynamic>?),
-        'call': widget.operation.stationCall,
+        // The FIRST of the operation's callsigns, not the field: several
+        // callsigns live in it as one comma-separated string, and a contact
+        // holds exactly one. Stamping the field puts "N0DEV,KI2D" — which is
+        // not a callsign — on every contact and into the `our_call` column
+        // the cross-operation Logs view groups by. Which of several calls
+        // made a given contact is not recorded here (app-polo doesn't record
+        // it either); the exports fan out per call and restamp each file's
+        // records themselves (`ExportService._qsosAs`).
+        'call': widget.operation.stationCalls.first,
         'sent': _rstOrDefault(_sentController.text.trim()),
         ..._ourExtra,
       },

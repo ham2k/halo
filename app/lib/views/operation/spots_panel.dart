@@ -1207,8 +1207,14 @@ class _SpotsPanelState extends State<SpotsPanel> {
 
   /// This operation's own station callsign, uppercased — the spot to tint
   /// rather than offer as a contact.
+  ///
+  /// The FIRST of the operation's callsigns: the raw field holds all of them
+  /// as one comma-separated string, which matches no spot at all, so a
+  /// multi-call operation would tint none of its own spots and would offer
+  /// itself as a contact to work. A spot of one of the OTHER calls still
+  /// goes untinted — `spotDisplayFlags` and `spotIsSelfOnly` take one call.
   String? get _ourCall {
-    final call = widget.operation.stationCall.trim().toUpperCase();
+    final call = widget.operation.stationCalls.first.trim().toUpperCase();
     return call.isEmpty ? null : call;
   }
 

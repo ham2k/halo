@@ -69,4 +69,40 @@ void main() {
     // plain operation, and not the current operation's own row.
     expect(find.textContaining('from '), findsOneWidget);
   });
+
+  testWidgets('a multi-callsign operation does not mark its own contacts as made elsewhere', (tester) async {
+    // The row says "with <call>" only for a contact made under some OTHER
+    // station. An operation can run under several callsigns, held in one
+    // comma-separated field while each contact carries exactly one of them,
+    // so comparing a contact against the FIELD marks every row of such an
+    // operation as somebody else's.
+    final services = await buildServices();
+    final current = await services.operations.create(stationCall: 'KI2D, W1AW');
+    await services.qsos.add(current.uuid, {
+      'their': {'call': 'W2XYZ'},
+      'our': {'call': 'KI2D'},
+      'band': '20m',
+      'startAtMillis': 3000,
+    });
+    final elsewhere = await services.operations.create(stationCall: 'N0DEV');
+    await services.qsos.add(elsewhere.uuid, {
+      'their': {'call': 'W2XYZ'},
+      'our': {'call': 'N0DEV'},
+      'band': '20m',
+      'startAtMillis': 2000,
+    });
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: Scaffold(
+          body: CallInfoPanel(operation: current, services: services, call: 'W2XYZ', guess: const {}),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining(t.callInfo.withCall(call: 'KI2D')), findsNothing);
+    expect(find.textContaining(t.callInfo.withCall(call: 'N0DEV')), findsOneWidget,
+        reason: 'a contact made under a call this operation does not run still says so');
+  });
 }

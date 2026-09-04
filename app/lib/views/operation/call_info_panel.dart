@@ -522,7 +522,11 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
 
   Widget _historyRow(ThemeData theme, Qso qso) {
     final ourCall = qso.ourCall;
-    final withCall = (ourCall.isNotEmpty && ourCall != widget.operation.stationCall)
+    // Against every callsign the operation runs under, not the field: one
+    // operation can hold several, and a contact carries exactly one of them,
+    // so a field-vs-call comparison marks every row of a multi-call operation
+    // as made under some other station.
+    final withCall = (ourCall.isNotEmpty && !widget.operation.stationCalls.contains(ourCall))
         ? context.t.callInfo.withCall(call: ourCall)
         : null;
     final parts = [

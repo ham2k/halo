@@ -1858,7 +1858,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
 
   Future<void> _resolveOurEntityPrefix(Operation operation) async {
     final ourInfo = await widget.services.extensions.lookupCall(
-      operation.stationCall,
+      // One callsign: the raw field can hold several, and a lookup of
+      // "KI2D, W1AW" resolves nothing — leaving the operation with no entity,
+      // no ITU region and no country, which the logging controls and the
+      // scorers both read.
+      operation.stationCalls.first,
       qso: const {},
       operation: operation.data,
       online: false,

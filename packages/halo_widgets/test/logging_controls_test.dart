@@ -553,6 +553,23 @@ void main() {
     expect(button.onTap, isNull);
   });
 
+  testWidgets('an operation run under several callsigns logs contacts under the first, not the field', (tester) async {
+    // The several callsigns live in `stationCall` as ONE comma-separated
+    // string, so stamping the field puts "KI2D,W1AW" — not a callsign — on
+    // every contact and into the `our_call` column the cross-operation Logs
+    // view groups by. A contact holds exactly one call, as it does in
+    // app-polo, whose extra calls sit in a separate array entirely.
+    operation = await operations.create(stationCall: 'KI2D, W1AW');
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W2XYZ');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+    final logged = await waitForQsos(tester, 1);
+    expect(logged.single.ourCall, 'KI2D');
+  });
+
   testWidgets('Enter logs a QSO with mode, band and default RSTs', (tester) async {
     await tester.pumpWidget(host());
     await openControl(tester, MdiIcons.radio);
