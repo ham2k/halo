@@ -984,8 +984,8 @@ class _SuggestingExtensions extends ExtensionServiceWithMockHost {
     Map<String, dynamic> operationData, {
     String? searchTerm,
     GridLocation? fallbackLocation,
-    String? activityKey,
-    String? preferredKey,
+    List<String>? activityKeys,
+    List<String>? preferredKeys,
     String? preferredSearchTerm,
   }) async =>
       (

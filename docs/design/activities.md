@@ -421,8 +421,10 @@ Two details worth knowing before adding the seventh program:
   program that omits one gets the raw key in its UI.
 - Control keys are `<extensionKey>/activation`, which is what makes `wca:`
   scoping — and the softer `wca <ref>`, which merely puts that extension's hits
-  first — work in the activity search. The core derives both from the part
-  before the slash, so a control keyed anything else silently never gets scoped.
+  first — reach the extension in the activity search. The scope WORD comes from
+  the control's ref type (`wcaActivation` -> `wca`), and the hook key it asks
+  from the part before the slash, so a control keyed anything else silently
+  never gets scoped.
 
 `huntingType` became optional on `activityScorer` for these: several of the
 castle and lighthouse awards only recognise activations, and app-polo says so by

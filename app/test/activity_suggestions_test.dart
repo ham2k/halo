@@ -136,7 +136,7 @@ void main() {
             {'name': 'summit-near', 'distance': 40, 'relevance': 1.0},
           ]
         },
-      ], preferredKey: 'sota');
+      ], preferredKeys: {'sota'});
       expect(_names(merged), ['summit-near', 'summit-far', 'park']);
     });
 
@@ -158,7 +158,7 @@ void main() {
             {'name': 'park-near', 'distance': 8, 'relevance': 1.0},
           ]
         },
-      ], preferredKey: 'sota');
+      ], preferredKeys: {'sota'});
       expect(_names(merged), ['summit-near', 'summit-far', 'park-near', 'park-far']);
     });
 
@@ -187,7 +187,7 @@ void main() {
         {'key': 'wwff', 'ok': false, 'error': 'boom'},
         {'key': 'iota', 'ok': true, 'value': 'not a list'},
         entry('pota', ['park']),
-      ], preferredKey: 'sota');
+      ], preferredKeys: {'sota'});
       expect(_names(merged), ['park']);
     });
 
@@ -235,7 +235,7 @@ void main() {
       final merged = mergeActivitySuggestions([
         {'key': 'sota', 'ok': false, 'error': 'boom'},
         entry('pota', ['park']),
-      ], preferredKey: 'sota');
+      ], preferredKeys: {'sota'});
       expect(_names(merged), ['park']);
     });
   });

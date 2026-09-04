@@ -28,22 +28,22 @@ bool allActivitySourcesFailed(List<Map<String, dynamic>> entries) =>
 /// hook, the shape `invokeHookAll` returns — in the order the picker should
 /// show them.
 ///
-/// [preferredKey]'s own suggestions form a band ahead of everyone else's, each
-/// band ranked among itself by [rankActivitySuggestions]. Naming an extension
-/// in the search box says WHICH extension holds the answer, so a nearer hit
-/// from another one must not push the named extension's results down the list.
+/// The [preferredKeys] hooks' own suggestions form a band ahead of everyone
+/// else's, each band ranked among itself by [rankActivitySuggestions]. Naming
+/// a type in the search box says WHICH extensions hold the answer, so a
+/// nearer hit from another one must not push their results down the list.
 ///
 /// An entry that failed, or answered with anything but a list, contributes
 /// nothing: one broken hook never costs the others their results.
 List<Map<String, dynamic>> mergeActivitySuggestions(
   List<Map<String, dynamic>> entries, {
-  String? preferredKey,
+  Set<String> preferredKeys = const {},
 }) {
   final preferred = <Map<String, dynamic>>[];
   final others = <Map<String, dynamic>>[];
   for (final entry in entries) {
     if (entry['ok'] != true || entry['value'] is! List) continue;
-    final band = preferredKey != null && entry['key'] == preferredKey ? preferred : others;
+    final band = preferredKeys.contains(entry['key']) ? preferred : others;
     band.addAll((entry['value'] as List).cast<Map>().map((s) => s.cast<String, dynamic>()));
   }
   return [...rankActivitySuggestions(preferred), ...rankActivitySuggestions(others)];

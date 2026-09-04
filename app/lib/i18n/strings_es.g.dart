@@ -346,6 +346,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get retiredReference => 'Retirada';
 	@override String enableExtension({required Object name}) => 'Activar ${name}';
 	@override String get enableExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está activada';
+	@override String get enableExtensionForRefHint => 'Esta extensión maneja una de las referencias de esta operación, pero no está activada';
 	@override String get setupUnavailable => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar';
 	@override String get controlsUnavailableTitle => 'Controles de actividad no disponibles';
 	@override String get controlsUnavailableReason => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.';
@@ -3360,6 +3361,7 @@ extension on TranslationsEs {
 			'activitiesView.retiredReference' => 'Retirada',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
+			'activitiesView.enableExtensionForRefHint' => 'Esta extensión maneja una de las referencias de esta operación, pero no está activada',
 			'activitiesView.setupUnavailable' => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar',
 			'activitiesView.controlsUnavailableTitle' => 'Controles de actividad no disponibles',
 			'activitiesView.controlsUnavailableReason' => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.',
@@ -3861,9 +3863,9 @@ extension on TranslationsEs {
 			'settings.station.serialPortDescription' => 'El puerto donde aparece la interfaz CAT de la radio.',
 			'settings.station.serialPortNone' => 'No se encontraron puertos serie',
 			'settings.station.serialPortRequired' => 'Elige un puerto serie',
-			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'puerto ${n} de ${total}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'puerto ${n} de ${total}',
 			'settings.station.serialDeviceRequest' => 'Agregar un dispositivo USB…',
 			'settings.station.baudRate' => 'Velocidad (baudios)',
 			'settings.station.baudRateDescription' => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.',

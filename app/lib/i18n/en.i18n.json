@@ -638,6 +638,7 @@
     "retiredReference": "Retired",
     "enableExtension": "Enable ${name}",
     "enableExtensionHint": "This extension matches your search, but it is not currently enabled",
+    "enableExtensionForRefHint": "This extension handles one of this operation's references, but it is not currently enabled",
     "setupUnavailable": "Could not load this activity's setup — try again from Manage",
     "controlsUnavailableTitle": "Activity controls unavailable",
     "controlsUnavailableReason": "Your references are safe, but editing them is unavailable right now.",

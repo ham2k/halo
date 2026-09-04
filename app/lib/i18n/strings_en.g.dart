@@ -681,6 +681,9 @@ class Translations$activitiesView$en {
 	/// en: 'This extension matches your search, but it is not currently enabled'
 	String get enableExtensionHint => 'This extension matches your search, but it is not currently enabled';
 
+	/// en: 'This extension handles one of this operation's references, but it is not currently enabled'
+	String get enableExtensionForRefHint => 'This extension handles one of this operation\'s references, but it is not currently enabled';
+
 	/// en: 'Could not load this activity's setup — try again from Manage'
 	String get setupUnavailable => 'Could not load this activity\'s setup — try again from Manage';
 
@@ -6471,6 +6474,7 @@ extension on Translations {
 			'activitiesView.retiredReference' => 'Retired',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
 			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
+			'activitiesView.enableExtensionForRefHint' => 'This extension handles one of this operation\'s references, but it is not currently enabled',
 			'activitiesView.setupUnavailable' => 'Could not load this activity\'s setup — try again from Manage',
 			'activitiesView.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'activitiesView.controlsUnavailableReason' => 'Your references are safe, but editing them is unavailable right now.',
@@ -6973,9 +6977,9 @@ extension on Translations {
 			'settings.station.serialPortDescription' => 'The port the radio\'s CAT interface appears on.',
 			'settings.station.serialPortNone' => 'No serial ports found',
 			'settings.station.serialPortRequired' => 'Choose a serial port',
-			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'port ${n} of ${total}',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'port ${n} of ${total}',
 			'settings.station.serialDeviceRequest' => 'Add a USB device…',
 			'settings.station.baudRate' => 'Speed (baud)',
 			'settings.station.baudRateDescription' => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.',
@@ -7487,6 +7491,8 @@ extension on Translations {
 			'offline.retryThrottled' => 'Just tried — give it a moment.',
 			'offline.retryDisabled' => 'Sync is switched off, so there is nothing to probe with.',
 			'offline.syncService' => 'Ham2K LoFi sync',
+			_ => null,
+		} ?? switch (path) {
 			'offline.retryInFlight' => 'Already trying — hang on.',
 			_ => null,
 		};

@@ -494,15 +494,20 @@ a set of placeless suggestions (dated contest events, say) among themselves, but
 never lifts one above a located park. Implemented by: `pota`, `sota`,
 `stateparks`, `cwt`.
 
-The activity search box also treats a leading `key:` as a scope — typing
-`pota:` (or tapping a row under "Activity Types") asks that extension alone,
-via a key-scoped `invokeHook` rather than the usual fan-out. For that to
-work, an extension's `activity` hook must be registered under its own
-**extension key**, and its control descriptors keyed `<extensionKey>/<name>`
-(`pota/activation`) — the core derives the scope from the part before the
-slash. An extension that deviates simply never gets scoped: its rows still
-add references, but `key:` would ask a hook that doesn't exist and come back
-empty.
+The activity search box also treats a leading scope word as a scope — typing
+`pota:` (or tapping a row under "Activity Types") asks the extension serving
+that reference type alone, via a key-scoped `invokeHook` rather than the usual
+fan-out. The word is the **reference type's base name**, lowercased —
+`potaActivation` and `pota` both scope as `pota:` — never the extension key: a
+user-published `ki2d-pota` serving `potaActivation` is still scoped as
+`pota:`, since the operator is adding POTA parks whichever extension supplies
+them. Two enabled extensions serving one type share the word, and the scoped
+search asks both. For the hook call to reach the extension, its `activity`
+hook must be registered under its own **extension key**, and its control
+descriptors keyed `<extensionKey>/<name>` (`pota/activation`) — the core
+derives the hook key from the part before the slash. An extension that
+deviates simply never gets scoped: its rows still add references, but the
+scope would ask a hook that doesn't exist and come back empty.
 
 `editable` declares whether a reference of this type has anything to edit
 once it's on the operation. It defaults to **false**: a plain reference

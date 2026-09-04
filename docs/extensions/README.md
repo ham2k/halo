@@ -160,8 +160,14 @@ it into `defineExtension`, and `build.mjs` reads it to produce
 `index.json` for the Dart host — which must list even *disabled*
 extensions, whose bundles are never evaluated, so the metadata has to be
 readable without running any JS. The build fails if a manifest's `key`
-doesn't match its bundle entry. `hooks` is declarative (documentation and
-tooling); the kernel still learns the actual hooks from `registerHook`.
+doesn't match its bundle entry. `hooks` is declarative — the kernel still
+learns the actual hooks from `registerHook` — but its `ref:<type>` entries are
+read by the host: an operation carrying a reference of a type no loaded
+extension handles offers to enable the switched-off extension that declares
+it, so an activity that leaves them out is never offered that way. List only
+the types the extension publishes a control for — a `ref:` entry for a legacy
+type it merely decorates or scores would offer a switch that cannot clear the
+row.
 
 Rules of the road:
 

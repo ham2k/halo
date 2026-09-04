@@ -298,35 +298,52 @@ List<Map<String, dynamic>> refsKeptWhenAdding({
   return refs.where((r) => r['type'] != type).toList();
 }
 
-/// A search box entry split into an optional extension scope and the text
-/// after it: `pota:` scopes to POTA's own suggestions, `pota: bear mtn`
-/// scopes AND searches, `pota bear mtn` merely gives POTA precedence, and
-/// plain `bear mtn` searches everything evenly. The scope is what the
-/// "Activity Types" rows insert when tapped.
+/// The word the search box scopes a reference type by: the type's base name,
+/// lowercased — `potaActivation` and `pota` are both `pota`.
+///
+/// A ref TYPE, not the extension's key, on purpose: a user-published
+/// extension is keyed by its author's callsign (`ki2d-pota`), and the
+/// operator adding parks from it is still adding POTA parks. The scope names
+/// what is being searched for, and two extensions serving the same type
+/// share it.
+///
+/// `<base>Activation` / `<base>` is the convention every activity's pair of
+/// ref types follows (see `activityRefTypes`), which is what makes the base
+/// name derivable at all.
+String activityScopeWord(String refType) => refType.replaceFirst(RegExp(r'Activation$'), '').toLowerCase();
+
+/// A search box entry split into an optional scope and the text after it:
+/// `pota:` scopes to POTA's own suggestions, `pota: bear mtn` scopes AND
+/// searches, `pota bear mtn` merely gives POTA precedence, and plain `bear
+/// mtn` searches everything evenly. The scope is what the "Activity Types"
+/// rows insert when tapped, and is a ref type's [activityScopeWord] rather
+/// than an extension key — see there for why.
 class ActivitySearchQuery {
-  /// The extension key to ask, or null for "every activity hook".
-  final String? activityKey;
+  /// The activity hook keys to ask — every extension serving the scoped ref
+  /// type — or null for "every activity hook".
+  final List<String>? activityKeys;
 
-  /// The extension whose suggestions rank ahead of every other one's, or null
-  /// when no leading key was typed. Never set together with [activityKey] —
-  /// preferring is the soft form of scoping, for when the key came without a
-  /// colon and the rest of the box may still be meant for someone else.
-  final String? preferredKey;
+  /// The extensions whose suggestions rank ahead of every other one's, or
+  /// null when no leading word was typed. Never set together with
+  /// [activityKeys] — preferring is the soft form of scoping, for when the
+  /// word came without a colon and the rest of the box may still be meant for
+  /// someone else.
+  final List<String>? preferredKeys;
 
-  /// What [activityKey] / [preferredKey] searches for — empty means "just show
-  /// me this scope's nearby suggestions".
+  /// What [activityKeys] / [preferredKeys] search for — empty means "just
+  /// show me this scope's nearby suggestions".
   final String term;
 
   /// What every OTHER hook searches for: the raw input, leading key word and
   /// all. Only the named extension gets its own key stripped — handing the
   /// leftover text to the rest would bury `sota bear` under every park named
   /// Bear, and precedence is supposed to narrow the list, not widen it.
-  /// Equals [term] whenever [preferredKey] is null.
+  /// Equals [term] whenever [preferredKeys] is null.
   final String otherTerm;
 
   const ActivitySearchQuery({
-    this.activityKey,
-    this.preferredKey,
+    this.activityKeys,
+    this.preferredKeys,
     required this.term,
     required this.otherTerm,
   });
@@ -334,29 +351,31 @@ class ActivitySearchQuery {
   static final _scopePattern = RegExp(r'^([a-zA-Z][a-zA-Z0-9_-]*):(.*)$', dotAll: true);
   static final _leadingWordPattern = RegExp(r'^([a-zA-Z][a-zA-Z0-9_-]*)(?:\s+(.*))?$', dotAll: true);
 
-  /// A leading `key`, with or without its colon, only counts when [knownKeys]
-  /// actually has that key — references and park names carry colons and lead
-  /// with words too (`US-0001: Something`, `bear mountain`), and treating one
-  /// as a scope would quietly search the wrong extension, or none, while
-  /// looking like it worked.
-  factory ActivitySearchQuery.parse(String input, Set<String> knownKeys) {
+  /// A leading scope word, with or without its colon, only counts when
+  /// [scopes] actually has it — references and park names carry colons and
+  /// lead with words too (`US-0001: Something`, `bear mountain`), and treating
+  /// one as a scope would quietly search the wrong extension, or none, while
+  /// looking like it worked. [scopes] maps each word to the activity hook
+  /// keys that serve it, which is what the query carries: the word is the
+  /// operator's, the keys are the runtime's.
+  factory ActivitySearchQuery.parse(String input, Map<String, List<String>> scopes) {
     final trimmed = input.trim();
 
     final scope = _scopePattern.firstMatch(trimmed);
-    final scopeKey = scope?.group(1)?.toLowerCase();
-    if (scopeKey != null && knownKeys.contains(scopeKey)) {
+    final scopeKeys = scopes[scope?.group(1)?.toLowerCase()];
+    if (scopeKeys != null) {
       final term = (scope!.group(2) ?? '').trim();
-      return ActivitySearchQuery(activityKey: scopeKey, term: term, otherTerm: term);
+      return ActivitySearchQuery(activityKeys: scopeKeys, term: term, otherTerm: term);
     }
 
     final word = _leadingWordPattern.firstMatch(trimmed);
-    final wordKey = word?.group(1)?.toLowerCase();
-    if (wordKey != null && knownKeys.contains(wordKey)) {
+    final wordKeys = scopes[word?.group(1)?.toLowerCase()];
+    if (wordKeys != null) {
       final rest = (word!.group(2) ?? '').trim();
-      // A key on its own scopes exactly like `key:` does: there is nothing
+      // A word on its own scopes exactly like `word:` does: there is nothing
       // else in the box that the other extensions could be answering.
-      if (rest.isEmpty) return ActivitySearchQuery(activityKey: wordKey, term: '', otherTerm: '');
-      return ActivitySearchQuery(preferredKey: wordKey, term: rest, otherTerm: trimmed);
+      if (rest.isEmpty) return ActivitySearchQuery(activityKeys: wordKeys, term: '', otherTerm: '');
+      return ActivitySearchQuery(preferredKeys: wordKeys, term: rest, otherTerm: trimmed);
     }
 
     return ActivitySearchQuery(term: trimmed, otherTerm: trimmed);
@@ -364,7 +383,7 @@ class ActivitySearchQuery {
 
   /// The text the search field holds for a bare scope — what tapping an
   /// "Activity Types" row types for the user.
-  static String scopePrefixFor(String activityKey) => '$activityKey: ';
+  static String scopePrefixFor(String scopeWord) => '$scopeWord: ';
 }
 
 /// How [input] should be matched against an extension the operator has NOT
@@ -388,6 +407,17 @@ class ActivitySearchQuery {
   final firstWord = input.trim().split(RegExp(r'\s')).first;
   return (search: trimmed, key: firstWord.replaceFirst(RegExp(r':$'), '').toLowerCase());
 }
+
+/// The extensions among [available] declaring a `ref:<type>` hook for any of
+/// [refTypes] — the manifest's own statement of which reference types it
+/// handles, which is what a ref no loaded control recognizes can be matched
+/// against. Exact, unlike the search's loose match: a ref type is an
+/// identifier, and `sotaActivation` names SOTA, not everything mentioning
+/// summits.
+List<ExtensionInfo> extensionsDeclaringRefTypes(Iterable<ExtensionInfo> available, Set<String> refTypes) => [
+      for (final info in available)
+        if (info.hooks.any((hook) => hook.startsWith('ref:') && refTypes.contains(hook.substring(4)))) info,
+    ];
 
 /// What's in [typed] past a leading [key], or empty when it doesn't lead with
 /// that key at all — an extension matched by its name or a keyword leaves
@@ -483,6 +513,63 @@ class OperationSheetState extends State<OperationSheet> {
   /// searched for looking like it simply doesn't exist is worse than one
   /// extra row. Empty unless the box has text in it.
   List<ExtensionInfo> _disabledMatches = const [];
+
+  /// Switched-off extensions that declare a ref type the operation carries
+  /// but no loaded control handles — the switch behind a red "unknown" row
+  /// in Current Activities, offered as the same "enable this?" rows. An
+  /// extension the search already offers is left to [_disabledMatches], so
+  /// it never shows twice.
+  ///
+  /// Refreshed by [_refreshUnhandledRefMatches] wherever its inputs change,
+  /// not derived on read: the sheet body's LayoutBuilder re-runs on every
+  /// constraint change (a keyboard sliding in, a window resize), and this
+  /// walks the refs, the descriptors and the whole catalog.
+  List<ExtensionInfo> _unhandledRefMatches = const [];
+
+  /// The extensions an unhandled ref has already opened the Activity Types
+  /// section for. The section opens itself when a NEW one appears, and only
+  /// then: the descriptors reload on every ref change, and an operator who
+  /// saw the offer, declined it and collapsed the section must not have it
+  /// reopen under their hand each time they add or remove an activity.
+  final Set<String> _unhandledRefKeysOffered = {};
+
+  /// Recomputes [_unhandledRefMatches] — inside the setState that changed
+  /// the refs, the descriptors or [_disabledMatches] — and opens the section
+  /// for any extension offered for the first time. Same reasoning as the
+  /// search's enable rows (see `_search`): a collapsed section shows nothing,
+  /// leaving a red row above with its remedy hidden. Not persisted.
+  void _refreshUnhandledRefMatches() {
+    final unhandled = _extensionsForUnhandledRefs();
+    // Recorded BEFORE the search's matches are subtracted: an extension the
+    // box happens to name right now is still one the operator has seen
+    // offered, and forgetting it would reopen the section as soon as the box
+    // clears and a later reload finds it "new".
+    final keys = {for (final info in unhandled) info.key};
+    if (!_unhandledRefKeysOffered.containsAll(keys)) _allOptionsExpanded = true;
+    _unhandledRefKeysOffered.addAll(keys);
+    final offeredBySearch = {for (final info in _disabledMatches) info.key};
+    _unhandledRefMatches = [
+      for (final info in unhandled)
+        if (!offeredBySearch.contains(info.key)) info,
+    ];
+  }
+
+  /// Every switched-off extension declaring a ref type the operation carries
+  /// with no loaded control. Empty while the descriptors are unreliable — an
+  /// absent control then means "not loaded yet", not "no extension has it".
+  List<ExtensionInfo> _extensionsForUnhandledRefs() {
+    if (_controlsUnreliable) return const [];
+    final types = {
+      for (final ref in _operation.refs)
+        if (ref['type'] is String && isUnknownRefType(_controls, ref['type'] as String)) ref['type'] as String,
+    };
+    if (types.isEmpty) return const [];
+    final extensions = widget.services.extensions;
+    return [
+      for (final info in extensionsDeclaringRefTypes(extensions.availableExtensions, types))
+        if (!info.core && extensions.isExtensionAvailable(info) && !extensions.isExtensionEnabled(info)) info,
+    ];
+  }
 
   /// Guards against a second tap while an enable-and-restart is in flight.
   bool _enablingExtension = false;
@@ -607,6 +694,7 @@ class OperationSheetState extends State<OperationSheet> {
       setState(() {
         _controls = result.controls;
         _controlsState = result.loadFailed ? ControlsLoadState.failed : ControlsLoadState.loaded;
+        _refreshUnhandledRefMatches();
       });
       // Links come from the same runtime the descriptors do, so they are
       // reloaded together rather than on triggers of their own. Enabling an
@@ -978,25 +1066,50 @@ class OperationSheetState extends State<OperationSheet> {
     _searchFocusNode.requestFocus();
   }
 
-  /// The extension keys the loaded activity controls belong to — what a
-  /// `key:` prefix in the search box is checked against.
-  Set<String> get _activityKeys => _controls
-      .map((control) => ((control['key'] as String?) ?? '').split('/').first)
-      .where((key) => key.isNotEmpty)
-      .toSet();
+  /// The scope words the loaded controls answer to, each mapped to the
+  /// activity hook keys serving it (the control key's namespace,
+  /// `ki2d-pota/activation` -> `ki2d-pota`) — what a leading word in the
+  /// search box is checked against, and what tapping a row inserts. Two
+  /// extensions serving one ref type share the word and are BOTH asked: the
+  /// operator scoped to parks, not to one supplier of them.
+  ///
+  /// Form controls count too: a contest lists no references, but its
+  /// `suggest` still answers a scope (`cwt: 1300` narrows the sessions), so
+  /// dropping it here would leave that hook's `scoped` branch unreachable.
+  Map<String, List<String>> get _activityScopes {
+    final scopes = <String, List<String>>{};
+    for (final control in _controls) {
+      final word = _scopeWordOf(control);
+      final hookKey = ((control['key'] as String?) ?? '').split('/').first;
+      if (word == null || hookKey.isEmpty) continue;
+      final keys = scopes.putIfAbsent(word, () => []);
+      if (!keys.contains(hookKey)) keys.add(hookKey);
+    }
+    return scopes;
+  }
+
+  /// [control]'s scope word, or null for a control declaring no ref type —
+  /// which every activity control is required to (docs/extensions/hooks.md),
+  /// so null is a malformed descriptor, not a kind of control.
+  static String? _scopeWordOf(Map<String, dynamic> control) {
+    final refType = (control['input'] as Map?)?['refType'];
+    if (refType is! String || refType.isEmpty) return null;
+    final word = activityScopeWord(refType);
+    return word.isEmpty ? null : word;
+  }
 
   Future<void> _search(String term) async {
     final requestId = ++_searchRequestId;
     setState(() => _loadingSuggestions = true);
-    final query = ActivitySearchQuery.parse(term, _activityKeys);
+    final query = ActivitySearchQuery.parse(term, _activityScopes);
     final trimmed = query.term;
     final location = widget.services.location;
     final fallbackPosition = location.position;
     final results = await widget.services.extensions.suggestActivities(
       _operation.data,
       searchTerm: query.otherTerm.isEmpty ? null : query.otherTerm,
-      activityKey: query.activityKey,
-      preferredKey: query.preferredKey,
+      activityKeys: query.activityKeys,
+      preferredKeys: query.preferredKeys,
       preferredSearchTerm: trimmed.isEmpty ? null : trimmed,
       fallbackLocation:
           fallbackPosition == null ? null : GridLocation(fallbackPosition.latitude, fallbackPosition.longitude),
@@ -1008,17 +1121,18 @@ class OperationSheetState extends State<OperationSheet> {
         _suggestions = results.suggestions;
         _searchFailed = results.allSourcesFailed;
         _suggestionsAreSearchResults = trimmed.isNotEmpty;
-        // A recognized scope (`query.activityKey` set) already names a KNOWN,
-        // enabled extension — the box's fuzzy search text still reaches
+        // A recognized scope (`query.activityKeys` set) already names KNOWN,
+        // enabled extensions — the box's fuzzy search text still reaches
         // `_disabledExtensionsMatching` otherwise, and an unrelated disabled
         // extension whose keywords happen to mention this one's name (`pota:`
         // matching State Parks' "similar to POTA" blurb, say) would offer to
         // enable it above the very extension the operator just scoped to.
-        // Unscoped text still needs this: it's what catches a DISABLED
-        // extension's own key, which `ActivitySearchQuery.parse` can never
-        // recognize as a scope (a switched-off extension loads no controls,
-        // so its key never reaches `knownKeys`).
-        _disabledMatches = query.activityKey == null ? _disabledExtensionsMatching(term) : const [];
+        // The exact key still counts inside a scope: the word is shared by
+        // every extension serving the type, so `pota` parses as a scope while
+        // stock POTA is off and a user-published one serves parks — and
+        // typing its key is how stock POTA gets switched back on from here.
+        _disabledMatches = _disabledExtensionsMatching(term, keyOnly: query.activityKeys != null);
+        _refreshUnhandledRefMatches();
         // The enable row lives in the Activity Types section, which the
         // operator may have collapsed — so a search that finds only a
         // switched-off extension would otherwise answer with nothing at all.
@@ -1132,11 +1246,12 @@ class OperationSheetState extends State<OperationSheet> {
     _saveRefs([...refs]..[index] = decorated);
   }
 
-  /// Non-core extensions that match [input] but are switched off.
+  /// Non-core extensions that match [input] but are switched off — by their
+  /// exact key alone when [keyOnly], else by the loose search as well.
   /// Experiment-gated extensions are excluded: enabling one from here
   /// couldn't load it anyway (the gate still holds), leaving a dead
   /// "enable" row and a scope prefix that matches nothing.
-  List<ExtensionInfo> _disabledExtensionsMatching(String input) {
+  List<ExtensionInfo> _disabledExtensionsMatching(String input, {bool keyOnly = false}) {
     final candidates = extensionSearchCandidates(input);
     if (candidates.search.isEmpty) return const [];
     final locale = LocaleSettings.currentLocale.languageCode;
@@ -1146,20 +1261,28 @@ class OperationSheetState extends State<OperationSheet> {
         if (!info.core &&
             extensions.isExtensionAvailable(info) &&
             !extensions.isExtensionEnabled(info) &&
-            (info.key.toLowerCase() == candidates.key || info.matchesSearch(candidates.search, locale: locale)))
+            (info.key.toLowerCase() == candidates.key ||
+                (!keyOnly && info.matchesSearch(candidates.search, locale: locale))))
           info,
     ];
   }
 
   /// Turns an extension on from the search results, then scopes the search to
-  /// it. Text that merely NAMED the extension is dropped — its own suggestions
-  /// are what the operator wants next — but a reference typed after its key
-  /// (`sota w7a/mn-001`) is carried across into the scope, since that half of
-  /// the box was never about naming the extension. Enabling restarts the
-  /// extension runtime, so the controls are reloaded too: the new type has to
-  /// appear under "Activity Types" as well, and the scope prefix only parses
-  /// once its key is among the loaded ones.
-  Future<void> _enableExtension(ExtensionInfo info) async {
+  /// the ref type it lists. Text that merely NAMED the extension is dropped —
+  /// its own suggestions are what the operator wants next — but a reference
+  /// typed after its key (`sota w7a/mn-001`) is carried across into the
+  /// scope, since that half of the box was never about naming the extension.
+  /// Enabling restarts the extension runtime, so the controls are reloaded
+  /// too: the new type has to appear under "Activity Types" as well, and its
+  /// scope word only exists once its control is among the loaded ones.
+  ///
+  /// [scopeSearch] is false for an extension enabled on behalf of a ref the
+  /// operation already carries: nothing was typed, and the operator wants
+  /// that row recognized, not a search for more of its kind. The current
+  /// search is re-run as-is, which also settles the results spinner. The
+  /// same happens for an extension whose controls declare no ref type: there
+  /// is no word to type.
+  Future<void> _enableExtension(ExtensionInfo info, {bool scopeSearch = true}) async {
     // Enabling restarts the runtime, which takes a moment — a second tap
     // would queue a second restart on top of the first.
     if (_enablingExtension) return;
@@ -1181,8 +1304,14 @@ class OperationSheetState extends State<OperationSheet> {
       if (!mounted) return;
       await _loadControls();
       if (!mounted) return;
+      final scopeWord = scopeSearch ? _scopeWordServedBy(info.key) : null;
+      if (scopeWord == null) {
+        _debounce?.cancel();
+        await _search(_searchController.text);
+        return;
+      }
       final scoped =
-          ActivitySearchQuery.scopePrefixFor(info.key) + searchTextAfterKey(_searchController.text, info.key);
+          ActivitySearchQuery.scopePrefixFor(scopeWord) + searchTextAfterKey(_searchController.text, info.key);
       _searchController.value = TextEditingValue(
         text: scoped,
         selection: TextSelection.collapsed(offset: scoped.length),
@@ -1193,6 +1322,32 @@ class OperationSheetState extends State<OperationSheet> {
       _enablingExtension = false;
     }
   }
+
+  /// The scope word any of [hookKey]'s loaded controls answers to, or null
+  /// when none declares a ref type. A word shared with another extension
+  /// still counts: the scope asks every hook serving it.
+  String? _scopeWordServedBy(String hookKey) {
+    for (final entry in _activityScopes.entries) {
+      if (entry.value.contains(hookKey)) return entry.key;
+    }
+    return null;
+  }
+
+  /// An "Enable X" row of the Activity Types section, for an extension the
+  /// search matched or one an unhandled ref needs — the same row, told apart
+  /// by [hint] and by whether enabling then scopes the search to it.
+  Widget _enableExtensionRow(ThemeData theme, ExtensionInfo info, {required String hint, required bool scopeSearch}) =>
+      ListTile(
+        tileColor: theme.colorScheme.secondaryContainer,
+        leading: _accentIcon(info.icon, resolveExtensionColor(info.accentColor)),
+        title: Text(
+          context.t.activitiesView.enableExtension(name: info.nameFor(LocaleSettings.currentLocale.languageCode)),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Text(hint),
+        trailing: const Icon(MdiIcons.plus),
+        onTap: () => _enableExtension(info, scopeSearch: scopeSearch),
+      );
 
   /// Tapping an activity type scopes the search to it (`pota: `) rather than
   /// prompting for a reference: the extension's own suggestions and search
@@ -1208,9 +1363,13 @@ class OperationSheetState extends State<OperationSheet> {
       unawaited(_addFormActivity(control));
       return;
     }
-    final activityKey = ((control['key'] as String?) ?? '').split('/').first;
-    if (activityKey.isEmpty) return;
-    final prefix = ActivitySearchQuery.scopePrefixFor(activityKey);
+    final scopeWord = _scopeWordOf(control);
+    if (scopeWord == null) {
+      // A malformed descriptor; without this line the tap is a silent no-op.
+      debugPrint('[activities] control ${control['key']} declares no refType, nothing to scope to');
+      return;
+    }
+    final prefix = ActivitySearchQuery.scopePrefixFor(scopeWord);
     _searchController.value = TextEditingValue(
       text: prefix,
       selection: TextSelection.collapsed(offset: prefix.length),
@@ -1262,9 +1421,10 @@ class OperationSheetState extends State<OperationSheet> {
   double _optionsPeekHeightFor(BuildContext context, double available) {
     final scale = MediaQuery.textScalerOf(context);
     final floor = scale.scale(_optionsPeekHeight);
-    if (_disabledMatches.isEmpty) return floor;
+    final enableRows = _disabledMatches.length + _unhandledRefMatches.length;
+    if (enableRows == 0) return floor;
 
-    final wanted = scale.scale(_disabledMatches.length * _twoLineRowHeight + _optionRowHeight);
+    final wanted = scale.scale(enableRows * _twoLineRowHeight + _optionRowHeight);
     return clampDouble(wanted, floor, _optionsMaxHeightFor(context, available));
   }
 
@@ -2693,17 +2853,11 @@ class OperationSheetState extends State<OperationSheet> {
                   // window they are the rows that have to fit; below the
                   // loaded types they would be the rows that get cut.
                   for (final info in _disabledMatches)
-                    ListTile(
-                      tileColor: theme.colorScheme.secondaryContainer,
-                      leading: _accentIcon(info.icon, resolveExtensionColor(info.accentColor)),
-                      title: Text(
-                        t.enableExtension(name: info.nameFor(LocaleSettings.currentLocale.languageCode)),
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(t.enableExtensionHint),
-                      trailing: const Icon(MdiIcons.plus),
-                      onTap: () => _enableExtension(info),
-                    ),
+                    _enableExtensionRow(theme, info, hint: t.enableExtensionHint, scopeSearch: true),
+                  // Next, and for the same reason: the remedy for a red
+                  // "unknown" row in Current Activities.
+                  for (final info in _unhandledRefMatches)
+                    _enableExtensionRow(theme, info, hint: t.enableExtensionForRefHint, scopeSearch: false),
                   for (final control in _controls)
                     if ((control['input'] as Map?)?['kind'] == 'refList' ||
                         (control['input'] as Map?)?['kind'] == 'form')

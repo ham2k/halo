@@ -3198,9 +3198,11 @@ class ExtensionService implements PanelExtensionSource {
   /// Read off the `refList` control descriptors an activity ALREADY publishes
   /// rather than from a hook of its own: those descriptors are where an
   /// activity names its types, the control key is already namespaced by
-  /// extension key (which is what makes `sota:` scoping work in the activity
-  /// search), and a second declaration would be a second thing to keep in
-  /// step. An operation control is an activation, a logging control is a hunt.
+  /// extension key (the same namespace the activity search's scope resolves
+  /// to a hook through — the scope WORD itself comes from the type, see
+  /// `activityScopeWord`), and a second declaration would be a second thing
+  /// to keep in step. An operation control is an activation, a logging
+  /// control is a hunt.
   ///
   /// Only extensions that are switched ON answer, because only they publish
   /// controls — matching app-polo, whose `findHooks('activity', {key})` sees
@@ -3408,13 +3410,15 @@ class ExtensionService implements PanelExtensionSource {
   /// suggestions still work before the operation's location is set.
   /// `callsign` falls back from the operation's own settings to the
   /// operator's global default.
-  /// [activityKey] scopes the fan-out to ONE activity extension (the search
-  /// field's `pota:` prefix) — that hook alone is asked, rather than every
-  /// hook's results being merged and then filtered, so an unrelated
-  /// extension's slow search can't hold up a scoped one.
-  /// [preferredKey] is the softer form (a `pota ` prefix, no colon): everyone
-  /// is still asked, but that hook's results lead the list and it searches for
-  /// [preferredSearchTerm] — the box's text with its own key stripped — while
+  /// [activityKeys] scopes the fan-out to the activity extensions serving one
+  /// ref type (the search field's `pota:` prefix — usually one hook, two when
+  /// a user-published extension serves the same type as a stock one) — those
+  /// hooks alone are asked, rather than every hook's results being merged and
+  /// then filtered, so an unrelated extension's slow search can't hold up a
+  /// scoped one.
+  /// [preferredKeys] is the softer form (a `pota ` prefix, no colon): everyone
+  /// is still asked, but those hooks' results lead the list and they search
+  /// for [preferredSearchTerm] — the box's text with the word stripped — while
   /// the others get [searchTerm] verbatim.
   /// Answers whether every source failed as well as the suggestions
   /// themselves: "nothing matched" and "every extension broke" are the same
@@ -3423,8 +3427,8 @@ class ExtensionService implements PanelExtensionSource {
     Map<String, dynamic> operationData, {
     String? searchTerm,
     GridLocation? fallbackLocation,
-    String? activityKey,
-    String? preferredKey,
+    List<String>? activityKeys,
+    List<String>? preferredKeys,
     String? preferredSearchTerm,
   }) async {
     final host = _host;
@@ -3441,8 +3445,8 @@ class ExtensionService implements PanelExtensionSource {
         ? operationData['stationCall'] as String
         : settings?.activeProfile.operatorCall;
 
-    // `scoped` tells a hook it is the only one being asked — the operator
-    // picked its "Activity Types" row, or typed its key as a scope. A bare
+    // `scoped` tells a hook its type alone is being asked for — the operator
+    // picked its "Activity Types" row, or typed its word as a scope. A bare
     // scope and the nearby list both arrive with no search term, and an
     // extension that keeps itself out of the nearby list still has to answer
     // when it is the one being asked.
@@ -3455,48 +3459,58 @@ class ExtensionService implements PanelExtensionSource {
         };
 
     try {
-      if (activityKey != null) {
-        // Wrapped in invokeHookAll's own {ok, value} entry shape so the merge
-        // doesn't need a second code path.
-        final value = await host.invokeHook(
-          'activity',
-          key: activityKey,
-          method: 'suggest',
-          args: argsSearchingFor(searchTerm, scoped: true),
-          timeout: const Duration(seconds: 5),
-        );
-        final entries = [
-          <String, dynamic>{'ok': true, 'value': value}
-        ];
+      if (activityKeys != null) {
+        // Each hook asked on its own, wrapped in invokeHookAll's own
+        // {key, ok, value} entry shape so the merge doesn't need a second
+        // code path — and so one failing hook is one failed entry rather
+        // than the whole scope's answer.
+        final entries = await Future.wait([
+          for (final key in activityKeys)
+            host
+                .invokeHook(
+                  'activity',
+                  key: key,
+                  method: 'suggest',
+                  args: argsSearchingFor(searchTerm, scoped: true),
+                  timeout: const Duration(seconds: 5),
+                )
+                .then((value) => <String, dynamic>{'key': key, 'ok': true, 'value': value})
+                .onError<ExtensionHostException>((e, _) {
+              debugPrint('[extensions] scoped activity hook $key failed: $e');
+              return <String, dynamic>{'key': key, 'ok': false, 'error': '$e'};
+            }),
+        ]);
         return (suggestions: mergeActivitySuggestions(entries), allSourcesFailed: allActivitySourcesFailed(entries));
       }
 
-      // The preferred hook is asked SEPARATELY because it searches for
-      // something else — its own key stripped off the front — so its answer to
-      // the everyone-else question is discarded below rather than merged.
+      // The preferred hooks are asked SEPARATELY because they search for
+      // something else — the word stripped off the front — so their answers
+      // to the everyone-else question are discarded below rather than merged.
       // A fan-out that never returned an entry is a failure with nothing to
       // count, so it contributes one — the caller has to be able to tell
       // "nobody could answer" from "nobody had anything".
       var fanOutFailed = false;
-      final preferred = preferredKey == null
-          ? Future.value(const <Map<String, dynamic>>[])
-          : host
+      final preferred = Future.wait([
+        for (final key in preferredKeys ?? const <String>[])
+          host
               .invokeHook(
                 'activity',
-                key: preferredKey,
+                key: key,
                 method: 'suggest',
                 args: argsSearchingFor(preferredSearchTerm),
                 timeout: const Duration(seconds: 5),
               )
-              .then((value) => [
-                    <String, dynamic>{'key': preferredKey, 'ok': true, 'value': value}
-                  ])
-              // Precedence is only an ordering: when the preferred hook fails,
+              .then((value) => <String, dynamic>{'key': key, 'ok': true, 'value': value})
+              // Precedence is only an ordering: when a preferred hook fails,
               // what the other extensions found is still the right answer.
               .onError<ExtensionHostException>((e, _) {
-                debugPrint('[extensions] preferred activity hook $preferredKey failed: $e');
-                return const [];
-              });
+            debugPrint('[extensions] preferred activity hook $key failed: $e');
+            return <String, dynamic>{'key': key, 'ok': false, 'error': '$e'};
+          }),
+      ]).then((entries) => [
+            for (final entry in entries)
+              if (entry['ok'] == true) entry,
+          ]);
 
       // The fan-out is ONE message under ONE timeout, so its failure takes
       // every hook with it — but not the preferred one, asked separately and
@@ -3516,13 +3530,14 @@ class ExtensionService implements PanelExtensionSource {
       });
 
       final results = await Future.wait([preferred, everyone]);
+      final preferredSet = preferredKeys?.toSet() ?? const <String>{};
       final entries = [
         ...results[0],
         for (final entry in results[1])
-          if (preferredKey == null || entry['key'] != preferredKey) entry,
+          if (!preferredSet.contains(entry['key'])) entry,
       ];
       return (
-        suggestions: mergeActivitySuggestions(entries, preferredKey: preferredKey),
+        suggestions: mergeActivitySuggestions(entries, preferredKeys: preferredSet),
         allSourcesFailed: (fanOutFailed && entries.isEmpty) || allActivitySourcesFailed(entries),
       );
     } on ExtensionHostException catch (e) {
@@ -4052,8 +4067,11 @@ class ExtensionInfo {
   /// Extra Extensions-panel search terms beyond name/description.
   final List<String> keywords;
 
-  /// The hook categories the extension's manifest declares (informational;
-  /// the runtime learns actual hooks from registerHook).
+  /// The hook categories the extension's manifest declares. The runtime
+  /// learns actual hooks from registerHook, and reads nothing else here — but
+  /// the `ref:<type>` entries are load-bearing for the host: they are how an
+  /// operation ref no loaded extension handles finds the switched-off
+  /// extension to offer (docs/extensions/README.md).
   final List<String> hooks;
 
   /// Per-locale overrides for [name]/[description] plus extra localized
