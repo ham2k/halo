@@ -72,9 +72,17 @@ include(flutter/generated_plugins.cmake)
 #
 # The release pipeline sweeps build/windows/x64 recursively for symbols, so
 # the PDBs upload with no pipeline change.
+#
+# A plugin that ships no native code of its own registers <name>_plugin as an
+# ALIAS to another target (sentry_flutter aliases sentry-native's `sentry`),
+# and CMake hard-errors on any target_* call against an alias. Those carry no
+# plugin DLL to symbolize, so skip them.
 foreach(plugin ${FLUTTER_PLUGIN_LIST})
-  target_compile_options(${plugin}_plugin PRIVATE $<$<CONFIG:Release>:/Zi>)
-  target_link_options(${plugin}_plugin PRIVATE $<$<CONFIG:Release>:/DEBUG>)
+  get_target_property(plugin_alias_target ${plugin}_plugin ALIASED_TARGET)
+  if(NOT plugin_alias_target)
+    target_compile_options(${plugin}_plugin PRIVATE $<$<CONFIG:Release>:/Zi>)
+    target_link_options(${plugin}_plugin PRIVATE $<$<CONFIG:Release>:/DEBUG>)
+  endif()
 endforeach(plugin)
 
 
