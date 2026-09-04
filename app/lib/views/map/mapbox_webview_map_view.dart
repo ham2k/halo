@@ -30,7 +30,7 @@ import '../../services/error_reporting_service.dart';
 import '../../services/windows_webview.dart';
 import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
-import 'map_load_notice.dart';
+import 'map_unavailable_state.dart';
 import 'map_marker_data.dart';
 import 'map_zoom_controller.dart';
 
@@ -79,7 +79,10 @@ class MapboxWebviewMapView extends StatefulWidget {
 class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   InAppWebViewController? _controller;
   bool _mapReady = false;
-  bool _loadFailed = false;
+
+  /// Drives [MapUnavailableState]. Set when the map gives up, cleared by the
+  /// page reporting in — a map that recovers must not keep the empty state.
+  bool _unavailable = false;
 
   /// Covers the window before the page's own error channel exists: if
   /// maplibre-gl.js never loads (offline at map open, DNS, a proxy) or WebGL
@@ -88,21 +91,35 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   /// is blank with no evidence anywhere.
   Timer? _readyWatchdog;
 
-  /// One 'poloMapEvent' call from the page: 'style-timeout' and 'recovered'
-  /// drive the in-panel notice, everything (bar 'recovered') goes to
-  /// ErrorPolicy through the reporter. Only the banner needs [mounted] —
-  /// the reporter is static, and an error draining during teardown is
-  /// still evidence.
+  /// One 'poloMapEvent' call from the page: everything bar 'recovered' goes
+  /// to ErrorPolicy through the reporter, and the kinds that leave the pane
+  /// blank also raise the empty state. What the operator is told is the
+  /// CONDITION only ([MapUnavailableState]) — the kind naming the cause is
+  /// evidence, and never reaches them. Only the empty state needs [mounted];
+  /// the reporter is static, and an error draining during teardown is still
+  /// evidence.
   void _onMapEvent(String kind, String message) {
     if (kind == 'marker-click') {
       widget.onMarkerTap?.call(message);
       return;
     }
     if (kind == 'recovered') {
-      if (mounted && _loadFailed) setState(() => _loadFailed = false);
+      if (mounted && _unavailable) setState(() => _unavailable = false);
       return;
     }
-    if (kind == 'style-timeout' && mounted && !_loadFailed) setState(() => _loadFailed = true);
+    // Which kinds mean the operator has NO map, as opposed to a degraded
+    // one: 'style-timeout' is the payload watchdog (markers waiting on a
+    // style that never parsed), and a 'page-error' before ready is the page
+    // dying before the map object exists — the same condition the web
+    // backend catches synchronously as 'gl-load'. Without the second, that
+    // failure is known within a second and shown only when the 15s
+    // never-ready watchdog gets to it.
+    //
+    // Deliberately NOT here: 'style-swap-timeout' (the previous style is
+    // still up with the data restored onto it — a working map), and a
+    // 'page-error' after ready, which must not blank a map already drawn.
+    final noMap = kind == 'style-timeout' || (kind == 'page-error' && !_mapReady);
+    if (noMap && mounted && !_unavailable) setState(() => _unavailable = true);
     MapErrorReporter.report(backend: 'webview', kind: kind, message: message);
   }
 
@@ -115,7 +132,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
       ..onMoveTo = _moveTo;
     _readyWatchdog = Timer(const Duration(seconds: 15), () {
       if (!mounted || _mapReady) return;
-      setState(() => _loadFailed = true);
+      setState(() => _unavailable = true);
       MapErrorReporter.report(
           backend: 'webview', kind: 'never-ready', message: 'the map page never reported ready');
     });
@@ -218,10 +235,10 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
           callback: (args) {
             _mapReady = true;
             _readyWatchdog?.cancel();
-            // A never-ready banner shown by the watchdog is stale the
-            // moment the page reports in; the style watchdog re-raises it
-            // if the map is ready but its style is stuck.
-            if (mounted && _loadFailed) setState(() => _loadFailed = false);
+            // An empty state raised by the watchdog is stale the moment the
+            // page reports in; the style watchdog re-raises it if the map is
+            // ready but its style is stuck.
+            if (mounted && _unavailable) setState(() => _unavailable = false);
             _applyProjection();
             // Dark mode is picked at creation (see _html/create's initialDark)
             // rather than applied here — for MapLibre, doing it again on
@@ -249,7 +266,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
     return Stack(
       children: [
         Positioned.fill(child: webview),
-        if (_loadFailed) const MapLoadNotice(),
+        if (_unavailable) const Positioned.fill(child: MapUnavailableState()),
       ],
     );
   }

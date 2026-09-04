@@ -25,10 +25,15 @@
 // ErrorPolicy (via MapErrorReporter) instead of a console nobody reads in a
 // release build. Kinds: 'gl-error' (the map's own error event),
 // 'style-timeout' (the pending-payload watchdog — the "map stays blank"
-// signal, which backends also surface in-panel), 'recovered' (a payload
-// applied after a style-timeout: not an error, it clears that notice),
-// 'deferred-update' and 'marker-drift'. Without a callback the script falls
-// back to the console, which is where a bare devtools session still looks.
+// signal, and the ONLY kind here that means the operator has no map, so it
+// is the one the backends also surface as their empty state),
+// 'style-swap-timeout' (a swap that never completed, leaving the PREVIOUS
+// style up with the data restored onto it — evidence, but the operator still
+// has a working map, so it must never raise that empty state),
+// 'recovered' (a payload applied after a style-timeout: not an error, it
+// clears the empty state), 'deferred-update' and 'marker-drift'. Without a
+// callback the script falls back to the console, which is where a bare
+// devtools session still looks.
 
 import 'dart:math';
 
@@ -276,7 +281,7 @@ window.poloMapGl = window.poloMapGl || {
         // isn't swallowed by the guard above as "already showing".
         appliedStyleUrl = null;
         styleTimedOut = true;
-        report('style-timeout', 'a style swap never completed; putting the map data back on the style still up');
+        report('style-swap-timeout', 'a style swap never completed; putting the map data back on the style still up');
         restoreAfterStyle('the stuck style swap');
       }, STYLE_GRACE_MS);
     }

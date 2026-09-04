@@ -582,7 +582,7 @@
   },
   "map": {
     "emptyState": "No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.",
-    "loadFailed": "The map could not load. Check your connection.",
+    "unavailable": "The map isn't available right now.",
     "qthPopupTitle": "QTH: ${grid}",
     "distanceKm": "${distance} km",
     "distanceMiles": "${distance} mi",

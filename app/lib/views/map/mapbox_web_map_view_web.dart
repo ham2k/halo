@@ -20,8 +20,8 @@ import 'package:web/web.dart' as web;
 
 import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
-import 'map_load_notice.dart';
 import 'map_marker_data.dart';
+import 'map_unavailable_state.dart';
 import 'map_zoom_controller.dart';
 
 /// Loads MapLibre GL JS and injects the shared map script, once per page.
@@ -109,23 +109,32 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
 
   web.HTMLDivElement? _container;
   JSObject? _handle;
-  bool _loadFailed = false;
 
-  /// The shared script's event callback: 'style-timeout' and 'recovered'
-  /// drive the in-panel notice, everything (bar 'recovered') goes to
-  /// ErrorPolicy through the reporter. Only the banner needs [mounted] —
-  /// the reporter is static, and an error draining during teardown is
-  /// still evidence.
+  /// Drives [MapUnavailableState]. Set when the map gives up, cleared by the
+  /// script's 'recovered' signal — a map that recovers must not keep the
+  /// empty state.
+  bool _unavailable = false;
+
+  /// The shared script's event callback: everything bar 'recovered' goes to
+  /// ErrorPolicy through the reporter, and a stuck style also raises the
+  /// empty state. What the operator is told is the CONDITION only
+  /// ([MapUnavailableState]) — the kind naming the cause is evidence, and
+  /// never reaches them. Only the empty state needs [mounted]; the reporter
+  /// is static, and an error draining during teardown is still evidence.
   void _onMapEvent(String kind, String message) {
     if (kind == 'marker-click') {
       widget.onMarkerTap?.call(message);
       return;
     }
     if (kind == 'recovered') {
-      if (mounted && _loadFailed) setState(() => _loadFailed = false);
+      if (mounted && _unavailable) setState(() => _unavailable = false);
       return;
     }
-    if (kind == 'style-timeout' && mounted && !_loadFailed) setState(() => _loadFailed = true);
+    // 'style-timeout' is the payload watchdog — markers waiting on a style
+    // that never parsed, so the pane is blank. 'style-swap-timeout' is
+    // deliberately absent: there the previous style is still up with the data
+    // restored onto it, and covering a working map would be the worse error.
+    if (kind == 'style-timeout' && mounted && !_unavailable) setState(() => _unavailable = true);
     MapErrorReporter.report(backend: 'web', kind: kind, message: message);
   }
 
@@ -168,10 +177,10 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     } catch (e, s) {
       // A CDN load failure (offline at map open) or a create() throw (no
       // WebGL) would otherwise escape as a generic zone error: no offline
-      // stamp, no banner, and a blank pane with no evidence — the exact
+      // stamp, no empty state, and a blank pane with no evidence — the exact
       // defect this backend's error channel exists to close.
       MapErrorReporter.report(backend: 'web', kind: 'gl-load', message: '$e', stack: s);
-      if (mounted) setState(() => _loadFailed = true);
+      if (mounted) setState(() => _unavailable = true);
       return;
     }
     _applyProjection();
@@ -261,7 +270,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   Widget build(BuildContext context) => Stack(
         children: [
           Positioned.fill(child: HtmlElementView(viewType: _viewType)),
-          if (_loadFailed) const MapLoadNotice(),
+          if (_unavailable) const Positioned.fill(child: MapUnavailableState()),
         ],
       );
 }

@@ -282,7 +282,7 @@ class _Translations$map$es extends Translations$map$en {
 
 	// Translations
 	@override String get emptyState => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.';
-	@override String get loadFailed => 'No se pudo cargar el mapa. Verifica tu conexión.';
+	@override String get unavailable => 'El mapa no está disponible en este momento.';
 	@override String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
 	@override String distanceKm({required Object distance}) => '${distance} km';
 	@override String distanceMiles({required Object distance}) => '${distance} mi';
@@ -3303,7 +3303,7 @@ extension on TranslationsEs {
 			'operation.import.gapDialogRecentOnly' => 'Solo los recientes',
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Incluir los ${count}',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
-			'map.loadFailed' => 'No se pudo cargar el mapa. Verifica tu conexión.',
+			'map.unavailable' => 'El mapa no está disponible en este momento.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
 			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',

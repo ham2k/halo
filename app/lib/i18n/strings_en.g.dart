@@ -510,8 +510,8 @@ class Translations$map$en {
 	/// en: 'No QSO locations yet. QSOs with a grid square, state, or country will show up here.'
 	String get emptyState => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.';
 
-	/// en: 'The map could not load. Check your connection.'
-	String get loadFailed => 'The map could not load. Check your connection.';
+	/// en: 'The map isn't available right now.'
+	String get unavailable => 'The map isn\'t available right now.';
 
 	/// en: 'QTH: ${grid}'
 	String qthPopupTitle({required Object grid}) => 'QTH: ${grid}';
@@ -6415,7 +6415,7 @@ extension on Translations {
 			'operation.import.gapDialogRecentOnly' => 'Just the recent ones',
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Include all ${count}',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
-			'map.loadFailed' => 'The map could not load. Check your connection.',
+			'map.unavailable' => 'The map isn\'t available right now.',
 			'map.qthPopupTitle' => ({required Object grid}) => 'QTH: ${grid}',
 			'map.distanceKm' => ({required Object distance}) => '${distance} km',
 			'map.distanceMiles' => ({required Object distance}) => '${distance} mi',
