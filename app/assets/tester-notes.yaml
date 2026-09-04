@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"162":
   changes:
     - "Change an operation's callsign and it offers to update the contacts already logged"
 
