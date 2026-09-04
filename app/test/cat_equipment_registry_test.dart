@@ -369,14 +369,15 @@ void main() {
     });
   }
 
-  // None of the 4 registered radios pass a non-empty `restrictions` map
-  // today, so the per-type "narrows, never adds" checks above never
-  // actually execute their assertions for any of them — that loop stays
-  // green even if the narrowing logic itself is broken or deleted. This
-  // exercises the one real implementation (serial baud rate) directly,
-  // so the mechanism has to keep working whether or not a radio uses it
-  // yet.
-  group('restrictions narrowing, exercised directly (no registered radio uses this yet)', () {
+  // No registered radio restricts a LIST-valued field, so the per-type
+  // "narrows, never adds" checks above never execute their assertions for
+  // any of them — that loop stays green even if the narrowing logic itself
+  // is broken or deleted. (The `port` restrictions some radios carry are
+  // maps, which that check skips; cat_serial_port_choice_test.dart covers
+  // them.) This exercises the list implementation (serial baud rate)
+  // directly, so the mechanism has to keep working whether or not a radio
+  // uses it yet.
+  group('restrictions narrowing, exercised directly (no registered radio restricts a list yet)', () {
     const transport = SerialTransport();
 
     test('an unrestricted baud-rate field offers the full supported list', () {

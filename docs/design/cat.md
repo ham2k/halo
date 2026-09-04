@@ -243,8 +243,9 @@ ASCII terminated by `;` over a serial port, FlexRadio is a different text protoc
 neither driver nor transport had to learn anything about the other.
 
 Serial is `flutter_libserialport` (FFI, the same shape as the existing `halo_quickjs` plugin), behind
-the same conditional-export barrel as TCP. Desktop only: Android's USB host stack needs a different
-package and a runtime permission flow, and iOS has no USB host API at all without MFi.
+the same conditional-export barrel as TCP. Android goes through the `usb_serial` plugin instead
+(`UsbManager` over a MethodChannel, with a runtime permission flow), and iOS has no USB host API at
+all without MFi.
 
 **Baud is the operator's to set.** app-polo hardcoded 4800 with no UI, which its own notes call out
 as a silent-failure mode — a radio whose CAT menu says 38400 answers with garbage and no error, and
@@ -254,6 +255,19 @@ nothing on screen suggests why.
 native library is missing — a Linux box without libudev at runtime, or any test process. It degrades
 to an empty list, because the port picker saying "no serial ports found" is far better than the
 equipment editor failing to open.
+
+**One picker entry per port, where the platform can tell them apart.** On desktop the OS names each
+port and nothing in the app knows two of them are siblings. Android is different: `usb_serial` hands
+over one *device*, and the felHR85/UsbSerial library under it opens the first interface unless told
+which — so a device carrying several serial ports (the X6100's two CDC ports, with CI-V on the
+second; a CP2105's or FT2232's two vendor-class ones) could only ever reach one. There
+`serial_transport_io.dart` asks its own `UsbInterfacesChannel` for the interface descriptors and
+splits such a device into `<device>#<interface>` entries labelled "port N of M" in descriptor order,
+passing the index through to `create()`. A radio that knows which port carries CAT declares it as a
+`port` restriction on its variant — `{'index': n}`, plus `'vendorId'` to confine it to one maker's
+bridges — and the picker then offers only that port of a split device, under a plain label. The
+restriction acts only on ports the transport split itself and never hides one the OS named, so on
+desktop the model notes keep saying which port to pick.
 
 Platform cost, none of it optional:
 

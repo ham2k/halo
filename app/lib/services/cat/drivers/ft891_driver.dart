@@ -62,6 +62,13 @@ class Ft891Driver extends EquipmentDriver {
   static const cp2105VendorId = 0x10C4;
   static const cp2105ProductId = 0xEA70;
 
+  /// CAT is on the CP2105's Enhanced port, the first of its two; the
+  /// Standard port carries PTT and keying. A `port` restriction for the
+  /// serial transport: where the platform can tell the two apart, the
+  /// picker offers only the first, and only on a Silicon Labs bridge —
+  /// a radio reached through some other adapter's two ports gets both.
+  static const cp2105CatPort = {'index': 0, 'vendorId': cp2105VendorId};
+
   /// What the radio's CAT menu ships set to. It is also the one polo
   /// hardcoded, which its own notes call out as a silent-failure mode — a
   /// radio set to 38400 answers with garbage and no explanation — so this

@@ -28,13 +28,23 @@ import 'package:flutter/services.dart' show MethodChannel, MissingPluginExceptio
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:usb_serial/usb_serial.dart' as usb;
 
-import '../../../i18n/strings.g.dart';
 import '../transport.dart';
 import 'serial_transport_config.dart';
 
 /// `UsbConstants.USB_CLASS_CDC_DATA`: the interface class of each serial
 /// port a CDC/ACM device presents.
 const _usbClassCdcData = 10;
+
+/// `UsbConstants.USB_CLASS_VENDOR_SPEC`: what a bridge chip's UART
+/// interfaces are, one per port.
+const _usbClassVendorSpecific = 0xFF;
+
+/// The two bridge families whose multi-port parts present one vendor-class
+/// interface per port: FTDI (FT2232, FT4232) and Silicon Labs (CP2105,
+/// CP2108). Their single-port parts present exactly one, so the rule
+/// "every vendor-class interface is a port" holds across the family.
+const _usbVendorFtdi = 0x0403;
+const _usbVendorSiliconLabs = 0x10C4;
 
 /// Answered by `UsbInterfacesChannel.kt`; see the note there.
 const _androidUsbInterfacesChannel = MethodChannel('ham2k/usb_interfaces');
@@ -44,9 +54,9 @@ const _androidUsbInterfacesChannel = MethodChannel('ham2k/usb_interfaces');
 /// any other rather than a schema change.
 const androidPortInterfaceSeparator = '#';
 
-/// Interface indexes of [deviceName]'s CDC data interfaces, in descriptor
-/// order. Empty when the device has none — a dedicated bridge chip — or
-/// when the channel cannot answer, which leaves the device with its one
+/// Interface indexes of [deviceName]'s serial ports, in descriptor order
+/// — see [androidSerialInterfaceIndexes] for what counts. Empty when the
+/// channel cannot answer, which leaves the device with its one
 /// auto-detected port.
 ///
 /// Only the two expected failures are absorbed: a native build without
@@ -54,7 +64,7 @@ const androidPortInterfaceSeparator = '#';
 /// malformed answer is a bug in our own Kotlin and stays loud — absorbed,
 /// it would reproduce the exact symptom this exists to fix, with a cause
 /// nobody could see.
-Future<List<int>> androidCdcDataInterfaces(String deviceName) async {
+Future<List<int>> androidSerialInterfaces(String deviceName, {required int? vendorId}) async {
   final List<dynamic>? raw;
   try {
     raw = await _androidUsbInterfacesChannel.invokeMethod<List<dynamic>>('list', {'deviceName': deviceName});
@@ -65,23 +75,44 @@ Future<List<int>> androidCdcDataInterfaces(String deviceName) async {
     debugPrint('[cat] android usb interface enumeration failed for $deviceName: $e');
     return const [];
   }
+  return androidSerialInterfaceIndexes(vendorId: vendorId, interfaces: [for (final entry in raw ?? const []) entry as Map]);
+}
+
+/// Which of a device's interfaces are serial ports, given its descriptors
+/// as `UsbInterfacesChannel.kt` reports them.
+///
+/// An FTDI or Silicon Labs bridge is one port per vendor-class interface:
+/// nothing in that class says "serial", so the vendor is what says it —
+/// and the class still rules out the audio or HID interfaces the same
+/// makers' non-UART parts present (CP2114, FT260), which would otherwise
+/// be offered as ports and fail to open as "permission denied". Everything
+/// else is a CDC/ACM device, whose ports are its CDC data interfaces —
+/// never the control interfaces (class 2) paired with them, which would
+/// list the X6100 as four. felHR85/UsbSerial addresses the chosen
+/// interface correctly for all three: CP210x control transfers carry the
+/// interface id, FTDI's carry the id plus one (port A is 1), and CDC's
+/// data endpoints belong to the interface itself.
+List<int> androidSerialInterfaceIndexes({required int? vendorId, required List<Map> interfaces}) {
+  final bridge = vendorId == _usbVendorFtdi || vendorId == _usbVendorSiliconLabs;
+  final portClass = bridge ? _usbClassVendorSpecific : _usbClassCdcData;
   return [
-    for (final entry in raw ?? const [])
-      if ((entry as Map)['interfaceClass'] == _usbClassCdcData) (entry['index'] as num).toInt(),
+    for (final entry in interfaces)
+      if (entry['interfaceClass'] == portClass) (entry['index'] as num).toInt(),
   ];
 }
 
 /// The picker entries for one Android USB device.
 ///
-/// A device with more than one CDC data interface gets one entry per
+/// A device with more than one serial interface gets one entry per
 /// interface, named `<device>#<interface index>` and numbered "port N of M"
 /// in descriptor order — the order Linux and Windows number them in, which
-/// is how the X6100's note can say CI-V is on the second. Anything else is
-/// a single entry under the bare device name, opened with usb_serial's
+/// is how the X6100's note can say CI-V is on the second, and which puts a
+/// CP2105's Enhanced port (CAT, on a Yaesu) first. Anything else is a
+/// single entry under the bare device name, opened with usb_serial's
 /// auto-detection — so every stored config predating the split still
-/// matches. The underlying felHR85/UsbSerial library opens the FIRST CDC
-/// data interface when not told which, so without the index the second
-/// port of a composite device is unreachable.
+/// matches. The underlying felHR85/UsbSerial library opens the FIRST
+/// interface (or the first CDC data one) when not told which, so without
+/// the index the second port of any of these devices is unreachable.
 List<SerialPortOption> androidSerialPortOptions({
   required String deviceName,
   String? manufacturer,
@@ -89,9 +120,9 @@ List<SerialPortOption> androidSerialPortOptions({
   String? serialNumber,
   int? vendorId,
   int? productId,
-  required List<int> cdcDataInterfaces,
+  required List<int> serialInterfaces,
 }) {
-  if (cdcDataInterfaces.length < 2) {
+  if (serialInterfaces.length < 2) {
     return [
       SerialPortOption(
         name: deviceName,
@@ -104,17 +135,16 @@ List<SerialPortOption> androidSerialPortOptions({
     ];
   }
   return [
-    for (final (i, iface) in cdcDataInterfaces.indexed)
+    for (final (i, iface) in serialInterfaces.indexed)
       SerialPortOption(
         name: '$deviceName$androidPortInterfaceSeparator$iface',
         manufacturer: manufacturer,
-        productName: [
-          ?productName,
-          '(${t.settings.station.serialPortOrdinal(n: i + 1, total: cdcDataInterfaces.length)})',
-        ].join(' '),
+        productName: productName,
         serialNumber: serialNumber,
         vendorId: vendorId,
         productId: productId,
+        portIndex: i,
+        portCount: serialInterfaces.length,
       ),
   ];
 }
@@ -205,7 +235,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
         serialNumber: device.serial,
         vendorId: device.vid,
         productId: device.pid,
-        cdcDataInterfaces: await androidCdcDataInterfaces(device.deviceName),
+        serialInterfaces: await androidSerialInterfaces(device.deviceName, vendorId: device.vid),
       ));
     }
     _androidDevicesByName = byName;
@@ -305,17 +335,19 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     // Opening it anyway fails as "permission denied", which sends the
     // operator to re-grant a permission that was never the problem.
     if (iface >= 0) {
-      final serialInterfaces = await androidCdcDataInterfaces(deviceName);
+      final serialInterfaces = await androidSerialInterfaces(deviceName, vendorId: device.vid);
       if (serialInterfaces.isNotEmpty && !serialInterfaces.contains(iface)) {
         throw SerialPortUnavailable(name, 'not a serial port on this device — pick it again from the port list');
       }
     }
 
-    // Line coding and DTR/RTS go to interface 0 whichever port this opens:
-    // felHR85/UsbSerial addresses every CDC control transfer to wIndex 0.
-    // Data flows through the chosen interface's own endpoints regardless;
-    // on a composite device the baud rate below reaches its port only if
-    // interface 0 happens to be that port's control interface.
+    // On a CDC device, line coding and DTR/RTS go to interface 0 whichever
+    // port this opens: felHR85/UsbSerial addresses every CDC control
+    // transfer to wIndex 0. Data flows through the chosen interface's own
+    // endpoints regardless; on a composite device the baud rate below
+    // reaches its port only if interface 0 happens to be that port's
+    // control interface. The FTDI and CP210x paths carry the interface in
+    // theirs, so a bridge's second port gets its own settings.
     //
     // device.create() awaits Android's system USB-permission dialog, which
     // can block indefinitely on the operator — race it against cancellation

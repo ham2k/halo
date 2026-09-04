@@ -9,7 +9,7 @@ upcoming:
     - "Microwave bands by name in the call field: 10G, 24G, 47G and the rest"
     - "The band command now takes every band the app has, plus 75m for 80m"
     - "Operation's callsign is now per-segment"
-    - "Android: a radio with two USB serial ports, like the X6100, now lists both in the port picker"
+    - "Android: a radio or bridge with two serial ports lists both, and the X6100 and Yaesus pick their CAT port for you"
     - "An operation with a reference from a switched-off extension now offers to enable it"
 
 "162":

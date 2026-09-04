@@ -515,6 +515,7 @@ const ft891Model = EquipmentModel(
       // asks a developer instead (keyer_config.dart). Twenty seconds a
       // memory, per the Advance Manual.
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 20},
+      restrictions: {'port': Ft891Driver.cp2105CatPort},
       // The failure this driver actually produces is silence: the commands
       // go out, nothing comes back, and nothing anywhere reports an error.
       // Every cause is a setting the operator has to change on the radio or
@@ -579,6 +580,7 @@ const ftdx10Model = EquipmentModel(
       defaultConfig: {'baudRate': 38400},
       // Ninety seconds a memory, on the SD card, per the Operation Manual.
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 90},
+      restrictions: {'port': Ft891Driver.cp2105CatPort},
     ),
   ],
 );
@@ -1033,6 +1035,9 @@ const x6100Model = EquipmentModel(
       // Keys through 0x17 like the Icoms it imitates; whether it has voice
       // memories reachable over CI-V is undocumented, so none are offered.
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
+      // CI-V is on the second of the radio's two serial ports; where the
+      // platform can tell them apart, the picker offers only that one.
+      restrictions: {'port': {'index': 1}},
       notes: _x6100SerialNotes,
     ),
   ],

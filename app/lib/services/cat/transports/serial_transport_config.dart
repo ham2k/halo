@@ -23,6 +23,14 @@ class SerialPortOption {
   final int? vendorId;
   final int? productId;
 
+  /// Where this port sits among its device's serial ports, and how many
+  /// the device has — set only where the platform can tell (Android),
+  /// and only for a device presenting more than one. Null means the OS
+  /// already gave the port its own name and nothing here knows its
+  /// siblings.
+  final int? portIndex;
+  final int? portCount;
+
   const SerialPortOption({
     required this.name,
     this.description,
@@ -31,18 +39,26 @@ class SerialPortOption {
     this.serialNumber,
     this.vendorId,
     this.productId,
+    this.portIndex,
+    this.portCount,
   });
 
   /// What to show in the picker. The raw device name rarely identifies
   /// anything — a dual-port bridge (the CP2105 behind most Yaesu USB
   /// interfaces) presents two of them, one carrying CAT and one carrying
-  /// PTT, distinguishable only by whatever the USB descriptors say.
-  String get label {
-    final detail = description ??
-        [
-          if (manufacturer != null) manufacturer!,
-          if (productName != null) productName!,
-        ].join(' ');
+  /// PTT, distinguishable only by whatever the USB descriptors say. Where
+  /// [portIndex] is known the label says "port N of M" as well; [bareLabel]
+  /// leaves that off, for a list that has already picked the port.
+  String get label => _label(withPort: true);
+
+  String get bareLabel => _label(withPort: false);
+
+  String _label({required bool withPort}) {
+    final detail = [
+      if (description != null) description! else ...[?manufacturer, ?productName],
+      if (withPort && portIndex != null && portCount != null)
+        '(${t.settings.station.serialPortOrdinal(n: portIndex! + 1, total: portCount!)})',
+    ].join(' ');
     return detail.isEmpty ? name : '$name — $detail';
   }
 }
@@ -66,7 +82,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
             'label': t.settings.station.serialPort,
             'description': t.settings.station.serialPortDescription,
             'options': [
-              for (final port in availablePorts) {'value': port.name, 'label': port.label},
+              for (final choice in portChoices(restrictions['port'])) {'value': choice.name, 'label': choice.label},
             ],
           },
         if (!overrides.containsKey('baudRate'))
@@ -81,6 +97,36 @@ mixin SerialTransportConfig implements EquipmentTransport {
             ],
           },
       ];
+
+  /// The picker's entries once a `port` restriction has had its say.
+  ///
+  /// `{'index': n}` says which of a multi-port device's serial ports the
+  /// radio's CAT is on, counted from 0 in descriptor order — the X6100's
+  /// CI-V is on 1, a Yaesu's on its CP2105's 0. That device then shows
+  /// only that port, under a label with no "port N of M". With
+  /// `'vendorId'` the rule applies only to that maker's bridges, so a
+  /// radio reached through some other adapter's two ports still offers
+  /// both. A device the platform could not split, or with fewer ports
+  /// than the index names, is listed whole: the restriction narrows what
+  /// this transport knows to be siblings and never hides a port the OS
+  /// named on its own.
+  List<({String name, String label})> portChoices(Object? restriction) {
+    final index = restriction is Map ? restriction['index'] : null;
+    final vendorId = restriction is Map ? restriction['vendorId'] : null;
+    bool decides(SerialPortOption port) =>
+        index is int &&
+        index >= 0 &&
+        port.portIndex != null &&
+        index < (port.portCount ?? 0) &&
+        (vendorId == null || port.vendorId == vendorId);
+    return [
+      for (final port in availablePorts)
+        if (!decides(port))
+          (name: port.name, label: port.label)
+        else if (port.portIndex == index)
+          (name: port.name, label: port.bareLabel),
+    ];
+  }
 
   static List<int> _allowedBaudRates(Map<String, dynamic> restrictions) {
     final allowed = restrictions['baudRate'];
