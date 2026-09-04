@@ -16,6 +16,9 @@
 //               __polo.activateReloaded(token)  — the dev loop's reload
 //   JS → Dart   'polo' channel messages:
 //               {type:'result', id, ok, value|error, jsMillis}
+//                 — the core adds `queueMicros` on the way through: how long
+//                   the call waited for the engine, which only the core can
+//                   see (see _noteQueueWait)
 //               {type:'partial', id, keys}    — an invokeAll's roster, and
 //               {type:'partial', id, entry}   — one hook of it as it settles;
 //                                               both only when wantsPartials
@@ -28,7 +31,8 @@ import 'dart:convert';
 import 'dart:isolate';
 import 'dart:math';
 
-import 'package:halo_core/halo_core.dart' show ham2kSsoFetchUri, sotaSsoHost;
+import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:halo_core/halo_core.dart' show ham2kSsoFetchUri, realNowUtc, sotaSsoHost;
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart' show visibleForTesting;
 
@@ -58,7 +62,74 @@ class HookCallSample {
   final int totalMillis;
   final int jsMillis;
 
-  const HookCallSample({required this.label, required this.totalMillis, required this.jsMillis});
+  /// How long this call sat between being dispatched and the engine starting
+  /// its eval — the single engine's backlog, not this hook's own cost.
+  ///
+  /// Microseconds rather than milliseconds like its neighbours: the waits
+  /// worth acting on start around a frame, and a millisecond field reports
+  /// most of that range as `0` or `1`. Always ~0 in a host running the core
+  /// in-process (every test, and all of web), where dispatch calls the core
+  /// synchronously and there is no queue to wait in.
+  final int queueMicros;
+
+  const HookCallSample({
+    required this.label,
+    required this.totalMillis,
+    required this.jsMillis,
+    this.queueMicros = 0,
+  });
+}
+
+/// The worst and typical queue wait seen for one hook label — see
+/// [ExtensionHost.queueWaitSummary].
+class QueueWaitStat {
+  final String label;
+  final int calls;
+
+  /// Microseconds, as [HookCallSample.queueMicros].
+  final int worstMicros;
+  final int totalMicros;
+
+  const QueueWaitStat({
+    required this.label,
+    required this.calls,
+    required this.worstMicros,
+    required this.totalMicros,
+  });
+
+  int get meanMicros => calls == 0 ? 0 : totalMicros ~/ calls;
+
+  @override
+  String toString() => '$label ×$calls worst ${worstMicros ~/ 1000}ms mean ${meanMicros ~/ 1000}ms';
+}
+
+/// [ExtensionHost.queueWaitSummary]'s aggregation, as a function of the
+/// samples alone so it can be exercised without booting an engine.
+///
+/// Ordered by the WORST wait rather than the mean: one hook stalling behind a
+/// rescore for a second is the thing worth finding, and averaging it against
+/// that hook's hundreds of instant calls hides exactly that.
+@visibleForTesting
+List<QueueWaitStat> summarizeQueueWaits(List<HookCallSample> samples) {
+  final calls = <String, int>{};
+  final worst = <String, int>{};
+  final total = <String, int>{};
+  for (final sample in samples) {
+    calls[sample.label] = (calls[sample.label] ?? 0) + 1;
+    total[sample.label] = (total[sample.label] ?? 0) + sample.queueMicros;
+    if (sample.queueMicros > (worst[sample.label] ?? 0)) worst[sample.label] = sample.queueMicros;
+  }
+  final stats = [
+    for (final entry in calls.entries)
+      QueueWaitStat(
+        label: entry.key,
+        calls: entry.value,
+        worstMicros: worst[entry.key] ?? 0,
+        totalMicros: total[entry.key] ?? 0,
+      ),
+  ];
+  stats.sort((a, b) => b.worstMicros.compareTo(a.worstMicros));
+  return stats;
 }
 
 /// The host's own allowances for a fetch, and the ceiling an extension's
@@ -171,6 +242,15 @@ class ExtensionHost {
   });
 
   Stream<String> get logs => _logs.stream;
+
+  /// What has queued worst behind the single engine, per hook label, worst
+  /// first — the standing question the per-call log line only ever answers
+  /// one call at a time.
+  ///
+  /// Built from [samples], so it covers the last [_maxSamples] calls rather
+  /// than the whole session, and reads all-zero on a host running the core
+  /// in-process (see [HookCallSample.queueMicros]).
+  List<QueueWaitStat> queueWaitSummary() => summarizeQueueWaits(samples);
 
   /// See [_activated]'s doc comment.
   Future<void> get activated => _activated.future;
@@ -397,7 +477,16 @@ class ExtensionHost {
       'category': category,
       'key': key,
       'method': method,
-      'argsJson': jsonEncode(args ?? const <String, Object?>{}),
+      // Encoded by the core, not here: on a large payload (a whole
+      // operation's QSOs going to a scorer) this is real CPU, and here means
+      // the UI isolate.
+      //
+      // A caller may still mutate `args` the moment this returns, because
+      // both dispatch paths capture the value before it does — the isolate
+      // path deep-copies at `send`, and the in-process path runs the core's
+      // encode synchronously inside `_dispatch`. Neither may become lazy
+      // without giving callers a snapshot of their own.
+      'args': args ?? const <String, Object?>{},
     }, timeout);
   }
 
@@ -436,7 +525,8 @@ class ExtensionHost {
       final result = await _send('invokeAll', '$category.$method*', {
         'category': category,
         'method': method,
-        'argsJson': jsonEncode(args ?? const <String, Object?>{}),
+        // Encoded by the core — see invokeHook.
+        'args': args ?? const <String, Object?>{},
         // Narration is not free — it puts every hook's result on the bridge a
         // second time — so it is requested only by a caller that will keep it.
         'wantsPartials': partialOnTimeout,
@@ -461,7 +551,24 @@ class ExtensionHost {
     _pending[id] = completer;
     _inFlight[id] = (label, Stopwatch()..start());
 
-    _dispatch({'type': type, 'id': id, ...fields});
+    // Stamped here rather than in `_dispatch`: the core subtracts it from its
+    // own read of the same clock to learn how long the message sat in the
+    // isolate's port queue, and only the hook-call messages carry a caller
+    // waiting on that number. `realNow`, not the app clock — a travelled
+    // session must not report a queue wait measured in virtual time
+    // (docs/design/time.md §1).
+    try {
+      _dispatch({'type': type, 'id': id, 'sentAtMicros': realNowUtc().microsecondsSinceEpoch, ...fields});
+    } catch (e) {
+      // `args` crosses as a live object graph now, so `SendPort.send` can
+      // refuse it (a closure, a ReceivePort, anything holding a native
+      // resource) — and the core never learns the id exists, so no result
+      // and no `abandon` will ever clear these. Without this the entries,
+      // and the Stopwatch with them, are kept for the life of the host.
+      _pending.remove(id);
+      _inFlight.remove(id);
+      rethrow;
+    }
 
     try {
       return await completer.future.timeout(timeout);
@@ -577,6 +684,7 @@ class ExtensionHost {
             label: flight.$1,
             totalMillis: flight.$2.elapsedMilliseconds,
             jsMillis: (msg['jsMillis'] as num?)?.toInt() ?? 0,
+            queueMicros: (msg['queueMicros'] as num?)?.toInt() ?? 0,
           ));
           if (samples.length > _maxSamples) samples.removeAt(0);
         }
@@ -889,6 +997,39 @@ class _HostCore {
   /// and nothing else need be outstanding to keep the job queue moving.
   final Set<int> _reloadsInFlight = {};
 
+  /// How long each in-flight call waited before its eval began, carried here
+  /// only until its `result` goes back — the host records it against the
+  /// sample it already keeps for that id.
+  final Map<int, int> _queueMicros = {};
+
+  /// What this engine most recently began evaluating. A call that waited is
+  /// reported against this, because [handle] runs *between* evals: whatever
+  /// the engine was busy with is by then the previous entry, and naming it is
+  /// the difference between "something was slow" and a lead worth pulling.
+  String? _lastEvalLabel;
+
+  /// `--dart-define=HALO_SLOW_HOOK_MS=<n>`: the threshold in milliseconds,
+  /// and the switch that turns these lines on in a RELEASE build.
+  ///
+  /// Both at once, deliberately. A debug build's Dart is slow enough that its
+  /// waits overstate what an operator's build does, so the numbers worth
+  /// quoting only exist in release — and someone who has gone as far as
+  /// naming a threshold is measuring, which is the only reason to want the
+  /// line there. Unset (0) leaves the default below, debug-only.
+  static const _slowHookMillisOverride = int.fromEnvironment('HALO_SLOW_HOOK_MS');
+
+  /// Roughly six frames at 60Hz — below this a call is merely behind ordinary
+  /// work, and logging it would bury the waits that cost a visible pause.
+  static const _defaultSlowQueueMillis = 100;
+
+  static const _slowQueueMicros =
+      (_slowHookMillisOverride > 0 ? _slowHookMillisOverride : _defaultSlowQueueMillis) * 1000;
+
+  /// Measuring never stops (see [_noteQueueWait]); only the reporting is
+  /// gated, so a release build sweeping the threshold down reports the same
+  /// numbers it was already computing.
+  static const _reportsSlowQueue = _slowHookMillisOverride > 0 || kDebugMode;
+
   _HostCore(
       {required this.emit,
       Map<String, List<String>> fetchAllowlists = const {},
@@ -925,16 +1066,39 @@ class _HostCore {
         final id = msg['id'] as int;
         _outstandingIds.add(id);
         _ensurePumping();
+        final label = '${msg['category']}.${msg['method']}';
+        _noteQueueWait(id, label, msg['sentAtMicros']);
         try {
+          // Inside the try, so an arg the caller believed JSON-encodable and
+          // is not fails as this call's error rather than as an uncaught
+          // throw on the extension isolate — where nothing is waiting to turn
+          // it back into an answer, and the caller would burn its whole
+          // timeout to learn nothing.
+          //
+          // The label rides along in the message because this is the one
+          // failure here that is the CALLER's bug rather than the runtime's,
+          // and every caller that catches it degrades quietly — so without
+          // the hook named, the only trace is a console line that says
+          // something somewhere failed to encode.
+          final String argsJson;
+          try {
+            argsJson = jsonEncode(msg['args'] ?? const <String, Object?>{});
+          } catch (e) {
+            throw ExtensionHostException('hook $label was given arguments that are not JSON-encodable: $e');
+          }
           if (msg['type'] == 'invoke') {
-            _js.invoke(id, msg['category'] as String, msg['key'] as String?, msg['method'] as String, msg['argsJson'] as String);
+            _js.invoke(id, msg['category'] as String, msg['key'] as String?, msg['method'] as String, argsJson);
           } else {
-            _js.invokeAll(id, msg['category'] as String, msg['method'] as String, msg['argsJson'] as String,
+            _js.invokeAll(id, msg['category'] as String, msg['method'] as String, argsJson,
                 wantsPartials: msg['wantsPartials'] == true);
           }
+          // Only once an eval has actually begun: a call that failed above
+          // never reached the engine, and naming it as what the NEXT slow
+          // call queued behind would send a reader after a hook that never
+          // ran.
+          _lastEvalLabel = label;
         } catch (e) {
-          _outstandingIds.remove(id);
-          emit({'type': 'result', 'id': id, 'ok': false, 'error': '$e'});
+          _settle(id, {'type': 'result', 'id': id, 'ok': false, 'error': '$e'});
         }
       case 'reloadBundle':
         final token = msg['token'] as int;
@@ -962,6 +1126,9 @@ class _HostCore {
       case 'abandon':
         // The main-isolate side timed this call out and stopped waiting.
         _outstandingIds.remove(msg['id']);
+        // No result will carry this one home, so drop it rather than leaking
+        // an entry per abandoned call over a long session.
+        _queueMicros.remove(msg['id']);
       case 'kvSet':
         _kv.putIfAbsent(msg['ns'] as String? ?? 'default', () => {})[msg['key'] as String] = msg['value'];
       case 'invalidateContext':
@@ -991,6 +1158,60 @@ class _HostCore {
     }
   }
 
+  /// Finishes call [id] off: drops the bookkeeping it owns and sends [result]
+  /// home carrying whatever queue wait was measured for it.
+  ///
+  /// The ONE way an id is closed out. A hook that failed before reaching the
+  /// engine settles here too, rather than emitting a result of its own — two
+  /// exits meant the failure path silently kept its `_queueMicros` entry
+  /// forever, and reported a call that may have queued for a second as having
+  /// waited none, biasing the summary away from exactly the calls most likely
+  /// to have stalled.
+  void _settle(Object? id, Map<String, dynamic> result) {
+    _outstandingIds.remove(id);
+    final queued = _queueMicros.remove(id);
+    emit(queued == null ? result : {...result, 'queueMicros': queued});
+  }
+
+  /// Records how long the call that just arrived spent waiting for the
+  /// engine, and says so in the log when the wait was long enough to matter.
+  ///
+  /// The wait is a subtraction across the isolate boundary, so it is only
+  /// meaningful because both sides read the same real clock; a host running
+  /// the core in-process dispatches synchronously and lands at ~0, which is
+  /// the true answer there rather than a missing measurement.
+  ///
+  /// Measured on every build but logged only in debug: making release skip
+  /// the read would leave the shipped path different from the measured one,
+  /// and the whole point of the number is to describe what an operator's
+  /// build actually does.
+  void _noteQueueWait(int id, String label, Object? sentAtMicros) {
+    if (sentAtMicros is! int) {
+      // Not a runtime condition: `_send` is the only builder of these
+      // messages and stamps every one, with the spread after the stamp so no
+      // caller can shadow it. So an unstamped message is a bridge that has
+      // been changed wrongly — and staying silent would hide it perfectly,
+      // because an unmeasured call and an instant one both report zero.
+      assert(false, 'hook message for $label reached the core with no sentAtMicros stamp');
+      if (kDebugMode) {
+        emit({'type': 'log', 'message': 'UNSTAMPED-HOOK $label — queue wait not measured'});
+      }
+      return;
+    }
+    // Clamped at zero: nothing downstream should have to reason about a
+    // negative wait if the two reads ever straddle a clock adjustment.
+    final waited = max(0, realNowUtc().microsecondsSinceEpoch - sentAtMicros);
+    _queueMicros[id] = waited;
+    if (_reportsSlowQueue && waited >= _slowQueueMicros) {
+      final behind = _lastEvalLabel;
+      emit({
+        'type': 'log',
+        'message': 'SLOW-QUEUE $label waited ${waited ~/ 1000}ms'
+            '${behind == null ? '' : ' (behind $behind)'}',
+      });
+    }
+  }
+
   /// Pumps the JS job queue only while hook calls are outstanding, instead
   /// of a permanent fast timer.
   void _ensurePumping() {
@@ -1008,6 +1229,11 @@ class _HostCore {
   /// `ExtensionHost` fail every hook call still waiting on a result.
   void _onFatalError(String message) {
     _outstandingIds.clear();
+    // Nothing will settle these calls, so nothing would ever drop their
+    // measurements. The label goes too: the next runtime's first slow call
+    // must not be reported as queued behind a hook from the dead one.
+    _queueMicros.clear();
+    _lastEvalLabel = null;
     for (final token in _reloadsInFlight.toList()) {
       emit({'type': 'reloadComplete', 'token': token, 'ok': false, 'error': message});
     }
@@ -1018,8 +1244,7 @@ class _HostCore {
   void _onPoloMessage(Map<String, dynamic> msg) {
     switch (msg['type']) {
       case 'result':
-        _outstandingIds.remove(msg['id']);
-        emit(msg);
+        _settle(msg['id'], msg);
       case 'partial':
         // Running commentary on an in-flight `invokeAll`. Deliberately does
         // NOT touch `_outstandingIds` — the call is still outstanding, and
