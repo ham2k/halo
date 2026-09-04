@@ -351,6 +351,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         _runtimes[_radio1!]?.lastSent = null;
         _runtimes[_radio1!]?.lastSentPower = null;
         cwProgress.value = null;
+        voiceActivity.value = null;
         _cancelSnap(null);
         _radio1 = null;
       }
@@ -379,6 +380,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
           _runtimes[id]?.lastSent = null;
           _runtimes[id]?.lastSentPower = null;
           cwProgress.value = null;
+          voiceActivity.value = null;
         }
       }
       // Same reasoning for the snapper: a movement measured on the outgoing
@@ -497,7 +499,14 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     if (uuid == null) return null;
     final node = _nodes[uuid];
     if (node == null) return null;
-    return (registry.typeFor(node.typeKey)?.driver.canKeyCw ?? false) ? uuid : null;
+    return _radioKeysCw(node) ? uuid : null;
+  }
+
+  /// Whether [node]'s CAT keys CW — the driver's answer for THIS node's
+  /// merged config, since on a generic entry that is a per-node fact.
+  bool _radioKeysCw(EquipmentNode node) {
+    final type = registry.typeFor(node.typeKey);
+    return type != null && type.driver.canKeyCwWith(type.driverConfig(node.config));
   }
 
   bool isDesignated(String category, String uuid) => designatedFor(category) == uuid;
@@ -610,7 +619,12 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     if (uuid == null) return null;
     final runtime = _runtimes[uuid];
     if (runtime?.state.status != EquipmentStatus.connected) return null;
-    return runtime!.session is CwKeyerSession ? uuid : null;
+    if (runtime!.session is! CwKeyerSession) return null;
+    // A session class serves a whole line (Kenwood's), so being a
+    // CwKeyerSession is not being a keyer: the node's entry decides.
+    final node = _nodes[uuid];
+    if (node != null && !_isKeyerNode(node)) return null;
+    return uuid;
   }
 
   CwKeyerSession? get _cwKeyer {
@@ -631,7 +645,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     if (uuid == null) return false;
     final node = nodeFor(uuid);
     if (node == null) return false;
-    return _isKeyerType(typeFor(node));
+    return _isKeyerNode(node);
   }
 
   /// The designated key's node, when [designatedKeyIsKeyer].
@@ -644,11 +658,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// and radios whose driver can key.
   List<EquipmentNode> get keyerCandidates => [
         for (final node in nodes)
-          if (_isKeyerType(typeFor(node))) node,
+          if (_isKeyerNode(node)) node,
       ];
 
-  static bool _isKeyerType(EquipmentType? type) =>
-      type != null && (type.category == kCategoryKeyer || type.driver.canKeyCw);
+  bool _isKeyerNode(EquipmentNode node) => typeFor(node)?.category == kCategoryKeyer || _radioKeysCw(node);
 
   /// The keyer's speed as it reported it, or null while unknown — also null
   /// when nothing can key.
@@ -756,6 +769,74 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       session.refreshKeyerSpeed();
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:refresh-keyer-speed');
+    }
+  }
+
+  /// [radio1]'s session, when it is connected and has voice memories to
+  /// play. Radio1 and not the key in use: the memories are audio held by
+  /// the transceiver itself, so there is nothing to designate — a WinKeyer
+  /// has none, and a second radio's memories are that radio's. Every voice
+  /// surface (the Phone-mode message buttons, F1-F8 in a Phone mode, the
+  /// Voice Messages dialog's Play and Record) exists only while this is
+  /// non-null.
+  VoiceKeyerSession? get _voiceKeyer {
+    final uuid = _radio1;
+    if (uuid == null) return null;
+    final runtime = _runtimes[uuid];
+    if (runtime?.state.status != EquipmentStatus.connected) return null;
+    final session = runtime!.session;
+    if (session is! VoiceKeyerSession || session.voiceMemoryCount <= 0) return null;
+    return session;
+  }
+
+  /// Whether radio1 is connected and can play its voice memories.
+  bool get canPlayVoice => _voiceKeyer != null;
+
+  /// How many memories radio1 has, 0 when nothing can play — the surfaces
+  /// offer exactly that many.
+  int get voiceMemoryCount => _voiceKeyer?.voiceMemoryCount ?? 0;
+
+  /// Whether radio1's CAT can also record a memory (docs/design/cat.md
+  /// § Voice keying lists which can).
+  bool get canRecordVoice => _voiceKeyer?.canRecordVoice ?? false;
+
+  /// What radio1's voice keyer is doing for the app, or null — for the keyer
+  /// area. Its own notifier for the same reason [cwProgress] is.
+  final voiceActivity = ValueNotifier<VoiceActivity?>(null);
+
+  /// Plays memory [n] on radio1 — a no-op, not an error, when nothing can
+  /// play: the surfaces that call this only exist while [canPlayVoice], so
+  /// reaching here without one is the radio dropping between the check and
+  /// the keypress.
+  void playVoiceMemory(int n) {
+    final session = _voiceKeyer;
+    if (session == null) return;
+    try {
+      session.playVoiceMemory(n);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:play-voice-memory');
+    }
+  }
+
+  /// Starts recording memory [n] on radio1 — see [VoiceKeyerSession.recordVoiceMemory].
+  void recordVoiceMemory(int n) {
+    final session = _voiceKeyer;
+    if (session == null || !session.canRecordVoice) return;
+    try {
+      session.recordVoiceMemory(n);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:record-voice-memory');
+    }
+  }
+
+  /// Stops whatever radio1's voice keyer is playing or recording.
+  void stopVoice() {
+    final session = _voiceKeyer;
+    if (session == null) return;
+    try {
+      session.stopVoice();
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:stop-voice');
     }
   }
 
@@ -1374,6 +1455,15 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         if (runtime.connection != connection) return;
         _noteAlive(uuid, runtime);
         if (stateFor(uuid).keyerSpeed != wpm) _setState(uuid, stateFor(uuid).copyWith(keyerSpeed: wpm));
+      },
+      onVoiceActivity: (activity) {
+        if (runtime.connection != connection) return;
+        // NOT _noteAlive, unlike onCwProgress: a voice report is made at the
+        // app's own keypress and at a local ceiling timer, never from a byte
+        // off the radio, so it says nothing about the link. The poll answers
+        // that end one feed the watch through the normal reading path.
+        // Only radio1's memories play for the app, so only its are shown.
+        if (uuid == _radio1) voiceActivity.value = activity;
       },
       onProblem: (message) {
         if (runtime.connection != connection) return;
@@ -2027,6 +2117,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     runtime.lastSent = null;
     runtime.lastSentPower = null;
     if (identical(_runtimes[designatedFor(kCategoryKey)], runtime)) cwProgress.value = null;
+    if (_radio1 != null && identical(_runtimes[_radio1], runtime)) voiceActivity.value = null;
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a
     // fresh resting point, not the continuation of a knob turn. Only for the
@@ -2080,6 +2171,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // After the teardowns, whose synchronous prefix clears cwProgress for
     // the designated radio — a notifier disposed first would be notified.
     cwProgress.dispose();
+    voiceActivity.dispose();
     keyerAreaShown.dispose();
     keyerShowRequests.dispose();
     _runtimes.clear();
@@ -2138,6 +2230,7 @@ class _NodeSink implements EquipmentSink {
   final void Function(num) onPower;
   final void Function(int) onKeyerSpeed;
   final void Function(CwSendProgress?) onCwProgress;
+  final void Function(VoiceActivity?) onVoiceActivity;
   final void Function(String?) onDiagnostic;
   final void Function(String?) onProblem;
   final void Function(List<EquipmentChannel>) onChannels;
@@ -2150,6 +2243,7 @@ class _NodeSink implements EquipmentSink {
     required this.onPower,
     required this.onKeyerSpeed,
     required this.onCwProgress,
+    required this.onVoiceActivity,
     required this.onDiagnostic,
     required this.onProblem,
     required this.onChannels,
@@ -2171,6 +2265,9 @@ class _NodeSink implements EquipmentSink {
 
   @override
   void reportCwProgress(CwSendProgress? progress) => onCwProgress(progress);
+
+  @override
+  void reportVoiceActivity(VoiceActivity? activity) => onVoiceActivity(activity);
 
   @override
   void reportDiagnostic(String? note) => onDiagnostic(note);

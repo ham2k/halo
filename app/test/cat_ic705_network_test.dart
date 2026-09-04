@@ -770,6 +770,8 @@ class _CountingSink implements EquipmentSink {
   @override
   void reportCwProgress(CwSendProgress? progress) {}
   @override
+  void reportVoiceActivity(VoiceActivity? activity) {}
+  @override
   void reportDiagnostic(String? note) {}
   @override
   void reportProblem(String? message) => problems.add(message);

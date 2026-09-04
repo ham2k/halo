@@ -1274,6 +1274,9 @@ class Translations$commands$en {
 	/// en: 'No connected radio can key CW'
 	String get noCwKeyer => 'No connected radio can key CW';
 
+	/// en: 'No connected radio can key CW or play voice memories'
+	String get noKeyer => 'No connected radio can key CW or play voice memories';
+
 	/// en: 'Open an operation to use the CW keyer'
 	String get keyerNeedsOperation => 'Open an operation to use the CW keyer';
 
@@ -3079,6 +3082,7 @@ class Translations$settings$radio$en {
 
 	late final Translations$settings$radio$keyerSpeed$en keyerSpeed = Translations$settings$radio$keyerSpeed$en.internal(_root);
 	late final Translations$settings$radio$cwMessages$en cwMessages = Translations$settings$radio$cwMessages$en.internal(_root);
+	late final Translations$settings$radio$voiceMessages$en voiceMessages = Translations$settings$radio$voiceMessages$en.internal(_root);
 	late final Translations$settings$radio$avoidZeroBeat$en avoidZeroBeat = Translations$settings$radio$avoidZeroBeat$en.internal(_root);
 	late final Translations$settings$radio$zeroBeatRange$en zeroBeatRange = Translations$settings$radio$zeroBeatRange$en.internal(_root);
 }
@@ -3982,6 +3986,12 @@ class Translations$settings$station$en {
 	/// en: 'Messages'
 	String get cwMessagesButton => 'Messages';
 
+	/// en: 'Voice Messages'
+	String get voiceMessagesButton => 'Voice Messages';
+
+	/// en: 'Voice keyer: $count memories in the radio'
+	String voiceKeyerAvailable({required Object count}) => 'Voice keyer: ${count} memories in the radio';
+
 	/// en: 'Bands'
 	String get antennaBands => 'Bands';
 
@@ -4084,6 +4094,51 @@ class Translations$settings$station$en {
 
 	/// en: 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.'
 	String get placeholderReplyDelayDescription => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.';
+
+	/// en: 'CAT CW keyer'
+	String get cwKeyerField => 'CAT CW keyer';
+
+	/// en: 'Whether this radio keys CW from text over CAT. Off for a rig the app does not know.'
+	String get cwKeyerFieldDescription => 'Whether this radio keys CW from text over CAT. Off for a rig the app does not know.';
+
+	/// en: 'Voice memories'
+	String get voiceMemories => 'Voice memories';
+
+	/// en: 'How many voice memories the radio plays over CAT. 0 for none.'
+	String get voiceMemoriesDescription => 'How many voice memories the radio plays over CAT. 0 for none.';
+
+	/// en: 'A whole number, 0 or more'
+	String get voiceMemoriesInvalid => 'A whole number, 0 or more';
+
+	/// en: 'None'
+	String get keyerNone => 'None';
+
+	/// en: 'CW keying dialect'
+	String get cwDialect => 'CW keying dialect';
+
+	/// en: 'Which shape of the KY command this radio takes. None keys nothing.'
+	String get cwDialectDescription => 'Which shape of the KY command this radio takes. None keys nothing.';
+
+	/// en: 'Kenwood (KY, padded to 24)'
+	String get cwDialectKenwood => 'Kenwood (KY, padded to 24)';
+
+	/// en: 'Elecraft (KY text)'
+	String get cwDialectElecraft => 'Elecraft (KY text)';
+
+	/// en: 'Voice keyer dialect'
+	String get voiceDialect => 'Voice keyer dialect';
+
+	/// en: 'How this radio plays its voice memories over CAT. None plays nothing. With a dialect and no count, the dialect's own count applies.'
+	String get voiceDialectDescription => 'How this radio plays its voice memories over CAT. None plays nothing. With a dialect and no count, the dialect\'s own count applies.';
+
+	/// en: 'Kenwood (PB, TS-590 style)'
+	String get voiceDialectPb => 'Kenwood (PB, TS-590 style)';
+
+	/// en: 'Elecraft K4 (PB and DA)'
+	String get voiceDialectK4 => 'Elecraft K4 (PB and DA)';
+
+	/// en: 'Elecraft KX2/KX3 (switch taps)'
+	String get voiceDialectKx => 'Elecraft KX2/KX3 (switch taps)';
 
 	/// en: 'Simulated'
 	String get placeholderDiagnostic => 'Simulated';
@@ -5435,6 +5490,75 @@ class Translations$settings$radio$cwMessages$en {
 	String get closeArea => 'Close the keyer area';
 }
 
+// Path: settings.radio.voiceMessages
+class Translations$settings$radio$voiceMessages$en {
+	Translations$settings$radio$voiceMessages$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Voice Messages'
+	String get title => 'Voice Messages';
+
+	/// en: 'The radio's own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.'
+	String get description => 'The radio\'s own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.';
+
+	/// en: 'M$n'
+	String key({required Object n}) => 'M${n}';
+
+	/// en: 'Voice memory ($n)'
+	String messageTitle({required Object n}) => 'Voice memory (${n})';
+
+	/// en: 'Label'
+	String get labelField => 'Label';
+
+	/// en: 'Voice memory $n label'
+	String labelKey({required Object n}) => 'Voice memory ${n} label';
+
+	/// en: 'Voice'
+	String get pill => 'Voice';
+
+	/// en: 'Play memory $n'
+	String play({required Object n}) => 'Play memory ${n}';
+
+	/// en: 'Stop'
+	String get stop => 'Stop';
+
+	/// en: 'Record memory $n'
+	String record({required Object n}) => 'Record memory ${n}';
+
+	/// en: 'Stop recording'
+	String get stopRecording => 'Stop recording';
+
+	/// en: 'Playing…'
+	String get playing => 'Playing…';
+
+	/// en: 'Recording…'
+	String get recording => 'Recording…';
+
+	/// en: 'Playing $label'
+	String playingMemory({required Object label}) => 'Playing ${label}';
+
+	/// en: 'Recording $label'
+	String recordingMemory({required Object label}) => 'Recording ${label}';
+
+	/// en: 'Playing $label?'
+	String playingDoubtful({required Object label}) => 'Playing ${label}?';
+
+	/// en: 'Recording $label?'
+	String recordingDoubtful({required Object label}) => 'Recording ${label}?';
+
+	/// en: 'Did the radio play it? It said it was idle right away.'
+	String get doubtful => 'Did the radio play it? It said it was idle right away.';
+
+	/// en: 'Connect a radio with a voice keyer to play or record from here.'
+	String get notAvailable => 'Connect a radio with a voice keyer to play or record from here.';
+
+	/// en: 'This radio records its memories from its own front panel.'
+	String get recordOnRadio => 'This radio records its memories from its own front panel.';
+}
+
 // Path: settings.radio.avoidZeroBeat
 class Translations$settings$radio$avoidZeroBeat$en {
 	Translations$settings$radio$avoidZeroBeat$en.internal(this._root);
@@ -6602,6 +6726,26 @@ extension on Translations {
 			'settings.radio.cwMessages.customField' => 'Message',
 			'settings.radio.cwMessages.send' => 'Send',
 			'settings.radio.cwMessages.closeArea' => 'Close the keyer area',
+			'settings.radio.voiceMessages.title' => 'Voice Messages',
+			'settings.radio.voiceMessages.description' => 'The radio\'s own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.',
+			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Voice memory (${n})',
+			'settings.radio.voiceMessages.labelField' => 'Label',
+			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Voice memory ${n} label',
+			'settings.radio.voiceMessages.pill' => 'Voice',
+			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Play memory ${n}',
+			'settings.radio.voiceMessages.stop' => 'Stop',
+			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Record memory ${n}',
+			'settings.radio.voiceMessages.stopRecording' => 'Stop recording',
+			'settings.radio.voiceMessages.playing' => 'Playing…',
+			'settings.radio.voiceMessages.recording' => 'Recording…',
+			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Playing ${label}',
+			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Recording ${label}',
+			'settings.radio.voiceMessages.playingDoubtful' => ({required Object label}) => 'Playing ${label}?',
+			'settings.radio.voiceMessages.recordingDoubtful' => ({required Object label}) => 'Recording ${label}?',
+			'settings.radio.voiceMessages.doubtful' => 'Did the radio play it? It said it was idle right away.',
+			'settings.radio.voiceMessages.notAvailable' => 'Connect a radio with a voice keyer to play or record from here.',
+			'settings.radio.voiceMessages.recordOnRadio' => 'This radio records its memories from its own front panel.',
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tune a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tune exactly to the spotted frequency.',
@@ -6830,6 +6974,8 @@ extension on Translations {
 			'settings.station.serialPortNone' => 'No serial ports found',
 			'settings.station.serialPortRequired' => 'Choose a serial port',
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'port ${n} of ${total}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.serialDeviceRequest' => 'Add a USB device…',
 			'settings.station.baudRate' => 'Speed (baud)',
 			'settings.station.baudRateDescription' => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.',
@@ -6850,8 +6996,6 @@ extension on Translations {
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.connectFailedNetwork' => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.',
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
@@ -6925,6 +7069,8 @@ extension on Translations {
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.cwKeyerNotAvailable' => 'Connect a radio that can key CW to send messages from here.',
 			'settings.station.cwMessagesButton' => 'Messages',
+			'settings.station.voiceMessagesButton' => 'Voice Messages',
+			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Voice keyer: ${count} memories in the radio',
 			'settings.station.antennaBands' => 'Bands',
 			'settings.station.antennaType' => 'Antenna type',
 			'settings.station.antennaTypeRequired' => 'Choose an antenna type',
@@ -6972,6 +7118,21 @@ extension on Translations {
 			'settings.station.placeholderPower' => 'Power (watts)',
 			'settings.station.placeholderReplyDelay' => 'Reply delay (ms)',
 			'settings.station.placeholderReplyDelayDescription' => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.',
+			'settings.station.cwKeyerField' => 'CAT CW keyer',
+			'settings.station.cwKeyerFieldDescription' => 'Whether this radio keys CW from text over CAT. Off for a rig the app does not know.',
+			'settings.station.voiceMemories' => 'Voice memories',
+			'settings.station.voiceMemoriesDescription' => 'How many voice memories the radio plays over CAT. 0 for none.',
+			'settings.station.voiceMemoriesInvalid' => 'A whole number, 0 or more',
+			'settings.station.keyerNone' => 'None',
+			'settings.station.cwDialect' => 'CW keying dialect',
+			'settings.station.cwDialectDescription' => 'Which shape of the KY command this radio takes. None keys nothing.',
+			'settings.station.cwDialectKenwood' => 'Kenwood (KY, padded to 24)',
+			'settings.station.cwDialectElecraft' => 'Elecraft (KY text)',
+			'settings.station.voiceDialect' => 'Voice keyer dialect',
+			'settings.station.voiceDialectDescription' => 'How this radio plays its voice memories over CAT. None plays nothing. With a dialect and no count, the dialect\'s own count applies.',
+			'settings.station.voiceDialectPb' => 'Kenwood (PB, TS-590 style)',
+			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB and DA)',
+			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (switch taps)',
 			'settings.station.placeholderDiagnostic' => 'Simulated',
 			'settings.station.placeholderWholeNumberInvalid' => 'Must be a whole number, 0 or more',
 			'settings.station.placeholderFreqInvalid' => 'Must be a frequency in kHz, greater than zero',
@@ -7130,6 +7291,7 @@ extension on Translations {
 			'commands.settingExpectsNumber' => 'a number',
 			'commands.settingVanished' => ({required Object label}) => '“${label}” is no longer available',
 			'commands.noCwKeyer' => 'No connected radio can key CW',
+			'commands.noKeyer' => 'No connected radio can key CW or play voice memories',
 			'commands.keyerNeedsOperation' => 'Open an operation to use the CW keyer',
 			'commands.keyerExperimentOff' => 'CW keying is off — turn it on with EXP KEYER',
 			'commands.cwSending' => ({required Object text}) => 'Sending CW: ${text}',

@@ -813,6 +813,17 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// panels that care read the cache themselves.
   int _spotsRevision = 0;
 
+  /// Whether a function key could play a voice memory: the keying
+  /// experiment on, and radio1 able to play. Read at build, like
+  /// [_cwMessagesConfigured]; the view rebuilds on the CAT service's
+  /// notifications, so a radio connecting takes effect on the next one.
+  bool get _voiceKeyingPossible {
+    final settings = widget.services.settings;
+    if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
+    if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return false;
+    return widget.services.cat.canPlayVoice;
+  }
+
   /// Whether a function key would key anything — the draft is worth
   /// tracking for the messages only once one exists. Read at build, so a
   /// message typed mid-operation takes effect on the next rebuild.
@@ -925,8 +936,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   Timer? _draftQsoDebounce;
 
   /// The draft as of the last keystroke — [_draftQso] before the debounce
-  /// has let it through. Read by [_sendCwMessage] only.
+  /// has let it through. Read by [_sendCwMessage] and [_keyingPhone] only.
   Map<String, dynamic>? _latestDraftQso;
+
+  /// Whether the function keys play voice memories rather than key CW:
+  /// the draft's mode is Phone. From the LATEST draft, and handed to the
+  /// keyer area as a value, so the keys and the strip answer from one
+  /// snapshot — the strip's rebuild still waits for the debounce, but a
+  /// build never disagrees with the keys about which keyer it is.
+  bool get _keyingPhone => superModeForMode(_latestDraftQso?['mode'] as String?) == 'Phone';
 
   /// Coalesces the keystroke burst of typing a callsign into one rebuild.
   ///
@@ -970,11 +988,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     });
   }
 
-  /// F1-F8 key the matching CW message through radio1; Escape stops one
-  /// that is still going out. Only while this view is the front-most route
-  /// — a dialog over it (the CW Messages editor included) owns the keyboard
-  /// — and only with a radio that can key, so on a station without one the
-  /// keys stay free for whatever else wants them.
+  /// F1-F8 key the matching CW message through the key in use — or, while
+  /// the draft contact is in a Phone mode, play the matching voice memory
+  /// of radio1; Escape stops either while it is still going out. Only while
+  /// this view is the front-most route — a dialog over it (the message
+  /// editors included) owns the keyboard — and only with a radio that can
+  /// key (or play), so on a station without one the keys stay free for
+  /// whatever else wants them.
   bool _onCwKeyEvent(KeyEvent event) {
     if (event is! KeyDownEvent) return false;
     if (testerOverlayCovering.value) return false;
@@ -983,7 +1003,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     if (!services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
     if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return false;
     final cat = services.cat;
-    if (!cat.canKeyCw) return false;
     final keyboard = HardwareKeyboard.instance;
     if (keyboard.isMetaPressed || keyboard.isControlPressed || keyboard.isAltPressed) return false;
 
@@ -992,14 +1011,37 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       // fields from also wiping on the same keystroke — a handler's answer
       // here never stops the focus tree's dispatch — that is
       // LoggingControls.escapeClaimed, wired in logging_panel.dart. With
-      // nothing to stop, Escape keeps its usual meaning.
+      // nothing to stop, Escape keeps its usual meaning. Ahead of the
+      // capability gate below, and for either keyer whatever the mode: a CW
+      // message keyed just before the draft went to SSB is still the one
+      // to stop, on a station whose radio plays no voice at all.
+      if (cat.voiceActivity.value != null) {
+        cat.stopVoice();
+        return true;
+      }
       if (!cat.cwSending) return false;
       cat.stopCw();
       return true;
     }
 
+    // The DRAFT's mode decides — [_keyingPhone], the same answer the keyer
+    // area is built with: the message is for the contact being logged,
+    // whatever the rig sits in.
+    final phone = _keyingPhone;
+    if (phone ? !cat.canPlayVoice : !cat.canKeyCw) return false;
+
     final n = cwMessageIndexForKey(event.logicalKey);
     if (n == null) return false;
+    if (phone) {
+      // A key past the radio's last memory keys nothing, and stays free.
+      if (n > cat.voiceMemoryCount) return false;
+      // A recording is not interrupted by a play: the dialog disables its
+      // buttons while one runs, and a key must not do what a button cannot
+      // — on a K4 the recording would be lost unsaved.
+      if (cat.voiceActivity.value?.recording ?? false) return true;
+      cat.playVoiceMemory(n);
+      return true;
+    }
     final template = services.settings.cwMessage(n);
     if (template.trim().isEmpty) return false;
     unawaited(_sendCwMessage(n, template));
@@ -2798,6 +2840,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             services: widget.services,
             onSendCwMessage: _sendCwMessageNumber,
             cwTemplateContext: panelRenderContext,
+            keyingPhone: _keyingPhone,
             qsos: qsos,
             loggingControls: _loggingControls,
             onCommandAction: _handleCommandAction,
@@ -2875,7 +2918,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             // A CW message counts too: `{{ qso.call }}` in one is rendered
             // against this draft (`_sendCwMessage`), and with nothing else
             // asking for it F1 would key the message with the call blank.
-            onQsoChanged: _anyPanelWants('qso') || _anyPanelWants('lookup') || _cwMessagesConfigured
+            // And the voice keyer: its MODE is the draft's (`_keyingPhone`),
+            // so with nothing tracking the draft F1 in SSB would fall
+            // through to a CW keyer that keys nothing, silently.
+            onQsoChanged: _anyPanelWants('qso') || _anyPanelWants('lookup') || _cwMessagesConfigured || _voiceKeyingPossible
                 ? _onQsoDraftChanged
                 : null,
             // Peer sharing is its own reason to publish, independent of the

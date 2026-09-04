@@ -58,6 +58,8 @@ class _FakeSink implements EquipmentSink {
   void reportKeyerSpeed(int wpm) => keyerSpeeds.add(wpm);
   @override
   void reportCwProgress(CwSendProgress? progress) {}
+  @override
+  void reportVoiceActivity(VoiceActivity? activity) {}
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);

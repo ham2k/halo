@@ -135,6 +135,11 @@ class LoggingPanel extends StatefulWidget {
   /// A new one arrives with each draft change (debounced upstream).
   final PanelRenderContext? cwTemplateContext;
 
+  /// Whether the keyer area is the voice keyer's — the draft contact's mode
+  /// is Phone — decided by the operation view, which routes the function
+  /// keys by the same answer.
+  final bool keyingPhone;
+
   /// Fires when a day header in the QSO list is tapped — the operation view
   /// opens the operation's own info the same two ways.
   final VoidCallback? onOperationInfoTap;
@@ -173,6 +178,7 @@ class LoggingPanel extends StatefulWidget {
     this.onCallInfoTap,
     this.onSendCwMessage,
     this.cwTemplateContext,
+    this.keyingPhone = false,
     this.onOperationInfoTap,
   });
 
@@ -789,11 +795,15 @@ class _LoggingPanelState extends State<LoggingPanel> {
             radioName: _radioName,
             // Only with CAT: the strip reads CatService.cwProgress, which
             // nothing writes without a keyer-capable radio.
-            // Escape stops a CW message before it wipes anything — see
-            // LoggingControls.escapeClaimed.
+            // Escape stops a CW message, or a voice memory, before it wipes
+            // anything — see LoggingControls.escapeClaimed.
             escapeClaimed: _gatoEnabled && _keyerEnabled
                 ? () {
                     final cat = widget.services.cat;
+                    if (cat.voiceActivity.value != null) {
+                      cat.stopVoice();
+                      return true;
+                    }
                     if (!cat.cwSending) return false;
                     cat.stopCw();
                     return true;
@@ -805,6 +815,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                     services: widget.services,
                     onSendMessage: widget.onSendCwMessage,
                     templateContext: widget.cwTemplateContext,
+                    phone: widget.keyingPhone,
                     suppressed: _selectedQso != null,
                   )
                 : null,

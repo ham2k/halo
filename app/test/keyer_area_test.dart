@@ -12,6 +12,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -79,7 +80,7 @@ void main() {
   }
 
   final sent = <int>[];
-  Widget host({bool suppressed = false, PanelRenderContext? templateContext}) => TranslationProvider(
+  Widget host({bool suppressed = false, PanelRenderContext? templateContext, bool phone = false}) => TranslationProvider(
         child: MaterialApp(
           home: Scaffold(
             body: Column(children: [
@@ -89,6 +90,7 @@ void main() {
                 onSendMessage: sent.add,
                 suppressed: suppressed,
                 templateContext: templateContext,
+                phone: phone,
               ),
             ]),
           ),
@@ -403,6 +405,115 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
     expect(services.cat.keyerSpeed, 50, reason: 'the placeholder keyer tops out at 50');
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('in a Phone mode the strip is the voice keyer\'s: a voice pill, a button per memory of the radio', (tester) async {
+    await connectPlaceholder(tester);
+    await services.settings.setCwMessage(1, 'CQ CQ DE {{ op.call }} K');
+    await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
+    await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
+    services.cat.showKeyerArea();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.text('Voice'), findsOneWidget, reason: 'the pill says whose strip this is');
+    expect(find.text('22 wpm'), findsNothing, reason: 'a keyer speed means nothing to a voice memory');
+    // The RADIO's memories, every one, labelled where a label exists.
+    expect(find.widgetWithText(InkWell, 'M1'), findsOneWidget);
+    expect(find.widgetWithText(InkWell, 'CQ POTA'), findsOneWidget);
+    expect(find.widgetWithText(InkWell, 'M8'), findsOneWidget, reason: 'the placeholder has eight');
+    expect(find.widgetWithText(InkWell, 'F1'), findsNothing, reason: 'the CW message with text is not offered here');
+
+    // A button plays straight through CatService — no template, nothing to
+    // render — and the strip shows the memory in the message's place.
+    await tester.tap(find.widgetWithText(InkWell, 'CQ POTA'));
+    await tester.pump();
+    expect(services.cat.voiceActivity.value?.memory, 2);
+    expect(find.text('Playing CQ POTA'), findsOneWidget);
+    expect(find.widgetWithText(InkWell, 'M1'), findsNothing, reason: 'the buttons wait under the message');
+    // Tapping it stops it (Esc's other form), and the buttons come back.
+    await tester.tap(find.text('Playing CQ POTA'));
+    await tester.pump();
+    expect(services.cat.voiceActivity.value, isNull);
+    expect(find.widgetWithText(InkWell, 'M1'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 62));
+  });
+
+  testWidgets('a memory playing brings the strip up by itself, and it lingers after, like a CW message', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
+    expect(stripHeight(tester), 0);
+    services.cat.playVoiceMemory(3); // F3
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Playing M3'), findsOneWidget);
+    // The placeholder's pretend playback ends on its own.
+    await tester.pump(const Duration(seconds: 5));
+    expect(find.text('Playing M3'), findsNothing);
+    expect(find.text('Voice'), findsOneWidget, reason: 'lingering');
+    await tester.pump(const Duration(seconds: 62));
+    await tester.pump(const Duration(seconds: 1)); // the slide away
+    await tester.pump();
+    expect(stripHeight(tester), 0);
+  });
+
+  testWidgets('a doubtful play asks, with a question mark, in the memory\'s place', (tester) async {
+    await connectPlaceholder(tester);
+    await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
+    await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
+    // What a session reports when the radio said "not going" before ever
+    // saying "going" — the placeholder never polls, so it is set directly.
+    services.cat.voiceActivity.value = const VoiceActivity(memory: 2, doubtful: true);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('Playing CQ POTA?'), findsOneWidget);
+    expect(find.text('Playing CQ POTA'), findsNothing);
+    services.cat.voiceActivity.value = null;
+    await tester.pump(const Duration(seconds: 62));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.pump();
+  });
+
+  testWidgets('a CW draft keeps the CW strip, whatever the radio can play', (tester) async {
+    await connectPlaceholder(tester);
+    await services.settings.setCwMessage(1, 'CQ');
+    await tester.pumpWidget(host(templateContext: contextFor('N0CALL')));
+    services.cat.showKeyerArea();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('22 wpm'), findsOneWidget);
+    expect(find.text('Voice'), findsNothing);
+    expect(find.widgetWithText(InkWell, 'F1'), findsOneWidget);
+    expect(find.widgetWithText(InkWell, 'M1'), findsNothing);
+  });
+
+  testWidgets('a mode flip keeps the CW buttons mounted, so their rendered labels survive it', (tester) async {
+    await connectPlaceholder(tester);
+    await services.settings.setCwMessage(1, 'CQ');
+    await services.settings.setCwMessageLabel(1, '{{ qso.call }} CQ');
+    final extensions = services.extensions as _TemplateExtensions;
+    // ONE context across the flips: a draft that did not move is the same
+    // object, which is what _MessageButtons compares.
+    final context = contextFor('N0CALL');
+    await tester.pumpWidget(host(templateContext: context));
+    services.cat.showKeyerArea();
+    await tester.pump();
+    await tester.pump(cwLabelRenderDelay);
+    await tester.pump();
+    expect(find.widgetWithText(InkWell, 'N0CALL CQ'), findsOneWidget);
+    final batches = extensions.batches;
+
+    await tester.pumpWidget(host(templateContext: context, phone: true));
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.widgetWithText(InkWell, 'M1'), findsOneWidget);
+    await tester.pumpWidget(host(templateContext: context));
+    await tester.pump();
+    // The trap: a slot that swaps widget types remounts _MessageButtons,
+    // which comes back showing the raw template and crosses the bridge
+    // again for a draft that has not moved.
+    expect(find.widgetWithText(InkWell, 'N0CALL CQ'), findsOneWidget);
+    expect(extensions.batches, batches, reason: 'no render for a draft that did not move');
     await tester.pump(const Duration(seconds: 62));
   });
 }

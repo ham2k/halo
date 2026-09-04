@@ -1063,6 +1063,21 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   Future<void> setCwMessageLabel(int n, String value) => setSettingValue(radioGroup, cwMessageLabelKey(n), value);
 
+  /// How many voice memory labels there are: one per function key, like
+  /// the CW messages — the most any radio here has (an Icom's T1-T8). A
+  /// radio with fewer shows fewer; the labels past its count keep.
+  static const voiceMessageCount = 8;
+
+  /// The name shown for the radio's voice memory [n] (1-based) — its
+  /// button in the keyer area and its row in the Voice Messages dialog.
+  /// A label and nothing more: the audio lives in the radio, which is why
+  /// there is no `voiceMessage$n` beside it.
+  static String voiceMessageLabelKey(int n) => 'voiceMessageLabel$n';
+
+  String voiceMessageLabel(int n) => (settingValue(radioGroup, voiceMessageLabelKey(n)) as String?) ?? '';
+
+  Future<void> setVoiceMessageLabel(int n, String value) => setSettingValue(radioGroup, voiceMessageLabelKey(n), value);
+
   /// Smart VFO Snap's feel, as four numbers the operator can turn.
   ///
   /// The option lists live HERE rather than beside the settings fields, and

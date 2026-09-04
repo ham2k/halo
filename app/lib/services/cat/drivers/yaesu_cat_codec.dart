@@ -122,6 +122,34 @@ String buildWriteKeyerMemoryCommand(int memory, String text) => 'KM$memory$text;
 /// what `KM` writes.
 String buildPlayKeyerMemoryCommand(int memory) => 'KY${(5 + memory).toRadixString(16).toUpperCase()};';
 
+/// The voice memories ("DVS" in the CAT manuals) across the line: five on
+/// the FT-891, FT-710, FT-991A and FTDX10 alike. `PB` plays one and `LM`
+/// records one, both with a fixed `0` ahead of the channel digit.
+const yaesuVoiceMemoryCount = 5;
+
+String buildPlayVoiceMemoryCommand(int n) => 'PB0${n.clamp(1, yaesuVoiceMemoryCount)};';
+
+/// `PB00;` — stops playback.
+String buildStopVoiceMemoryCommand() => 'PB00;';
+
+/// `PB0;` — the answer, `PB0n;`, names the channel playing, or 0.
+String buildReadVoicePlaybackCommand() => 'PB0;';
+
+/// Starts recording into memory [n] — the same command sent again stops it,
+/// which is why [buildStopVoiceRecordingCommand] exists: a stop that does not
+/// have to know which channel was recording.
+String buildRecordVoiceMemoryCommand(int n) => 'LM0${n.clamp(1, yaesuVoiceMemoryCount)};';
+
+/// `LM00;` — recording stop.
+String buildStopVoiceRecordingCommand() => 'LM00;';
+
+/// `LM0;` — the answer, `LM0n;`, names the channel recording, or 0.
+String buildReadVoiceRecordingCommand() => 'LM0;';
+
+/// `0n` → n, for both `PB` and `LM` answers. Null for anything else.
+int? parseVoiceChannelParams(String params) =>
+    RegExp(r'^0\d$').hasMatch(params) ? int.tryParse(params.substring(1)) : null;
+
 /// `FA014250000;` → 14250000 Hz. Null unless it's exactly nine digits —
 /// a truncated or over-long response is not a frequency.
 int? parseFrequencyParams(String params) {

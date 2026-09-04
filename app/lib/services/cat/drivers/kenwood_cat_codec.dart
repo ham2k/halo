@@ -152,5 +152,135 @@ String? parseKenwoodInfoModeAt(String params, int offset) {
 /// the whole modern line.
 String buildKenwoodAutoInformationCommand(bool on) => on ? 'AI2;' : 'AI0;';
 
+/// How a radio on this driver keys CW from text — two shapes of the same
+/// `KY` command. Pinned per catalogue entry through config like the voice
+/// dialect; a rig with none declares no dialect and keys nothing.
+enum KenwoodCwDialect {
+  /// Kenwood proper (TS-590 and the older line): `KY ` then the text padded
+  /// with spaces to 24, a fixed 28-byte command the radio otherwise
+  /// ignores; `KY0;` empties the buffer. 4-60 WPM. From hamlib's account
+  /// of the line rather than a Kenwood document.
+  kenwood,
+
+  /// Elecraft (K3, KX2, KX3, K4 — and a QRP Labs QMX): `KY text;` as is,
+  /// up to 24 characters; `KY @;` terminates the message, the `@` the
+  /// programmer's reference reserves for exactly that. 8-50 WPM.
+  elecraft,
+}
+
+/// What one `KY` command may carry on either dialect — the K3 family's
+/// limit, and the block a Kenwood pads to. The K4 takes 60, which is not
+/// exploited: a chunk boundary on a word gap is invisible on the air.
+const kenwoodKeyerMaxChars = 24;
+
+/// [text] must already be sanitized (cw_send_queue.dart) and at most
+/// [kenwoodKeyerMaxChars] long.
+String buildKenwoodSendCwCommand(KenwoodCwDialect dialect, String text) => switch (dialect) {
+      KenwoodCwDialect.kenwood => 'KY ${text.padRight(kenwoodKeyerMaxChars)};',
+      KenwoodCwDialect.elecraft => 'KY $text;',
+    };
+
+String buildKenwoodStopCwCommand(KenwoodCwDialect dialect) => switch (dialect) {
+      KenwoodCwDialect.kenwood => 'KY0;',
+      KenwoodCwDialect.elecraft => 'KY @;',
+    };
+
+({int min, int max}) kenwoodKeyerSpeedRange(KenwoodCwDialect dialect) => switch (dialect) {
+      KenwoodCwDialect.kenwood => (min: 4, max: 60),
+      KenwoodCwDialect.elecraft => (min: 8, max: 50),
+    };
+
+/// `KS;` reads the keyer speed; the answer is `KSnnn;` on both dialects.
+String buildKenwoodReadKeyerSpeedCommand() => 'KS;';
+
+String buildKenwoodSetKeyerSpeedCommand(KenwoodCwDialect dialect, int wpm) {
+  final range = kenwoodKeyerSpeedRange(dialect);
+  return 'KS${wpm.clamp(range.min, range.max).toString().padLeft(3, '0')};';
+}
+
+/// `KS020;` → 20. Null unless it's exactly three digits.
+int? parseKenwoodKeyerSpeedParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
+
+/// How a radio on this driver plays its voice memories — the line agrees
+/// on `PB` for playback but on little else, and the KX2/KX3 have no `PB`
+/// at all. Pinned per catalogue entry through config, like the `IF` mode
+/// offset; a rig with none (a QMX) declares no dialect.
+enum KenwoodVoiceDialect {
+  /// `PBn;` plays, `PB0;` stops, `PB;` reads what is playing — the TS-590
+  /// generation, and what Kenwood's own reference documents. No recording.
+  pb,
+
+  /// The Elecraft K4: `PBn;` as an alias of `DAMPn;`, `DA;` answering `DA0;`
+  /// idle / `DAPM…;` playing / `DARM…;` recording, and recording over CAT —
+  /// `DARM;` records from the microphone, `DAMSn;` saves it to memory n.
+  k4,
+
+  /// The Elecraft KX2 and KX3: no message command, only front-panel switch
+  /// emulation — a tap of MSG (`SWT11;`) then of the message's number key.
+  /// `RX;` ends message play per the programmer's reference. No recording.
+  kx,
+}
+
+/// `PBn;` — the same across the pb and k4 dialects.
+String buildKenwoodPlayVoiceCommand(int n) => 'PB$n;';
+
+/// `PB0;` cancels playback — the pb dialect's stop; the K4 stops through
+/// [buildK4StopDigitalAudioCommand] instead.
+String buildKenwoodStopVoiceCommand() => 'PB0;';
+
+String buildKenwoodReadVoicePlaybackCommand() => 'PB;';
+
+/// `PBn` → n. Null for anything but a single digit.
+int? parseKenwoodVoicePlaybackParams(String params) =>
+    RegExp(r'^\d$').hasMatch(params) ? int.tryParse(params) : null;
+
+String buildK4ReadDigitalAudioCommand() => 'DA;';
+
+/// `DA0;` — "stop any digital audio action (stop transmitting, stop
+/// recording, etc.)", the K4's one stop for playback and recording alike.
+String buildK4StopDigitalAudioCommand() => 'DA0;';
+
+/// `DA;`'s answer, reduced to what the session needs: whether a message is
+/// playing to the transmitter (`DAPM…`), a recording is running (`DARM…`),
+/// or neither (`DA0`, or any of the speaker-side states).
+({bool playing, bool recording})? parseK4DigitalAudioParams(String params) {
+  if (params == '0') return (playing: false, recording: false);
+  if (params.startsWith('PM')) return (playing: true, recording: false);
+  if (params.startsWith('RM')) return (playing: false, recording: true);
+  if (params.startsWith('PW') || params.startsWith('RS') || params.startsWith('PS')) {
+    return (playing: false, recording: false);
+  }
+  return null;
+}
+
+/// `DARM;` — record a voice message from the microphone.
+String buildK4RecordVoiceCommand() => 'DARM;';
+
+/// `DAMSn;` — save the last recording as message [n], 1-8.
+String buildK4SaveVoiceCommand(int n) => 'DAMS$n;';
+
+/// The KX3/KX2 keypad digits as switch identifiers (programmer's reference
+/// tables 8 and 8A): '1' is PRE on both, '2' is ATTN on the KX3 and FIL on
+/// the KX2, both 27. Two messages is all either radio's DVR holds.
+const kxVoiceMemoryCount = 2;
+const _kxMsgSwitch = 11;
+const _kxDigitSwitches = {1: 19, 2: 27};
+
+/// A tap of MSG then of the digit: two commands, in this order.
+List<String> buildKxPlayVoiceCommands(int n) => [
+      'SWT$_kxMsgSwitch;',
+      'SWT${_kxDigitSwitches[n.clamp(1, kxVoiceMemoryCount)]};',
+    ];
+
+/// `RX;` — "terminates transmit in all modes, including message play".
+String buildKxStopVoiceCommand() => 'RX;';
+
+/// `TQ;` — `TQ1;` transmitting, `TQ0;` not; the cheapest way the
+/// programmer's reference offers to learn a message has ended.
+String buildElecraftReadTransmitQueryCommand() => 'TQ;';
+
+bool? parseElecraftTransmitQueryParams(String params) =>
+    switch (params) { '0' => false, '1' => true, _ => null };
+
 /// Re-exported so a driver needs one import for the whole protocol.
 typedef KenwoodFramer = AsciiCatFramer;

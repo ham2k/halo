@@ -78,6 +78,8 @@ class _FakeSink implements EquipmentSink {
   void reportKeyerSpeed(int wpm) => fail('a switch has no keyer');
   @override
   void reportCwProgress(CwSendProgress? progress) {}
+  @override
+  void reportVoiceActivity(VoiceActivity? activity) {}
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);

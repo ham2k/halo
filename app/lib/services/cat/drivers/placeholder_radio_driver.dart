@@ -32,6 +32,14 @@ const placeholderRadioDefaultMode = 'LSB';
 const placeholderRadioDefaultWatts = 75;
 const placeholderRadioDefaultKeyerSpeed = 22;
 
+/// As many as an Icom, the most of the real ones — so every label the
+/// editor offers has a memory behind it here.
+const placeholderVoiceMemoryCount = 8;
+
+/// How long a pretend memory "plays": long enough to see the keyer area's
+/// playing view, short enough that a tester need not stop it.
+const placeholderVoicePlayDuration = Duration(seconds: 4);
+
 /// Null for a value no parse accepts, rather than the default: the caller
 /// that READS applies the default, the caller that VALIDATES rejects the
 /// null. One parse for both, so a frequency that passes the editor is the
@@ -149,7 +157,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   }
 }
 
-class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession {
+class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
   final EquipmentSink _sink;
 
   /// How long a set takes to come back as a reading. Zero reports
@@ -190,6 +198,14 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession {
     speedWpm: () => _keyerSpeed,
     onProgress: _sink.reportCwProgress,
   );
+
+  /// A voice keyer that plays nothing: a memory "plays" for
+  /// [placeholderVoicePlayDuration] and a recording runs until stopped, so
+  /// the voice surfaces can be driven with no radio. Its own timer rather
+  /// than the tracker's poll — there is no radio to ask — cancelled by
+  /// [stopVoice], which teardown goes through.
+  VoiceActivity? _voice;
+  Timer? _voiceEnd;
 
   PlaceholderRadioSession(this._sink, Map<String, dynamic> config)
       : _replyDelay = Duration(milliseconds: numberFromConfig(config, 'placeholderReplyDelay', 0)),
@@ -287,6 +303,40 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession {
   @override
   void refreshKeyerSpeed() => _afterDelay(() => _sink.reportKeyerSpeed(_keyerSpeed));
 
+  @override
+  int get voiceMemoryCount => placeholderVoiceMemoryCount;
+
+  @override
+  bool get canRecordVoice => true;
+
+  @override
+  Duration get voiceMemoryCeiling => voiceActivityCeiling;
+
+  @override
+  void playVoiceMemory(int n) {
+    _startVoice(VoiceActivity(memory: n));
+    _voiceEnd = Timer(placeholderVoicePlayDuration, stopVoice);
+  }
+
+  @override
+  void recordVoiceMemory(int n) => _startVoice(VoiceActivity(memory: n, recording: true));
+
+  void _startVoice(VoiceActivity activity) {
+    _voiceEnd?.cancel();
+    _voiceEnd = null;
+    _voice = activity;
+    _sink.reportVoiceActivity(activity);
+  }
+
+  @override
+  void stopVoice() {
+    _voiceEnd?.cancel();
+    _voiceEnd = null;
+    if (_voice == null) return;
+    _voice = null;
+    _sink.reportVoiceActivity(null);
+  }
+
   /// Null, not a short interval: this session reports a change as it
   /// happens, so a quiet VFO is a settled one.
   @override
@@ -295,6 +345,7 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession {
   @override
   void teardown() {
     _cwQueue.clear();
+    stopVoice();
     stopUpdates();
   }
 }

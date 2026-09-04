@@ -589,6 +589,7 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String get settingExpectsNumber => 'un número';
 	@override String settingVanished({required Object label}) => '«${label}» ya no está disponible';
 	@override String get noCwKeyer => 'Ninguna radio conectada puede manipular CW';
+	@override String get noKeyer => 'Ninguna radio conectada puede manipular CW ni reproducir memorias de voz';
 	@override String get keyerNeedsOperation => 'Abre una operación para usar el manipulador de CW';
 	@override String get keyerExperimentOff => 'La manipulación de CW está apagada — enciéndela con EXP KEYER';
 	@override String cwSending({required Object text}) => 'Enviando CW: ${text}';
@@ -1511,6 +1512,7 @@ class _Translations$settings$radio$es extends Translations$settings$radio$en {
 	@override String get cwKeying => 'Manipulación de CW';
 	@override late final _Translations$settings$radio$keyerSpeed$es keyerSpeed = _Translations$settings$radio$keyerSpeed$es._(_root);
 	@override late final _Translations$settings$radio$cwMessages$es cwMessages = _Translations$settings$radio$cwMessages$es._(_root);
+	@override late final _Translations$settings$radio$voiceMessages$es voiceMessages = _Translations$settings$radio$voiceMessages$es._(_root);
 	@override late final _Translations$settings$radio$avoidZeroBeat$es avoidZeroBeat = _Translations$settings$radio$avoidZeroBeat$es._(_root);
 	@override late final _Translations$settings$radio$zeroBeatRange$es zeroBeatRange = _Translations$settings$radio$zeroBeatRange$es._(_root);
 }
@@ -1866,6 +1868,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get currentRadioSettings => 'Ajustes de la radio actual';
 	@override String get cwKeyerNotAvailable => 'Conecta una radio que pueda manipular CW para enviar mensajes desde aquí.';
 	@override String get cwMessagesButton => 'Mensajes';
+	@override String get voiceMessagesButton => 'Mensajes de voz';
+	@override String voiceKeyerAvailable({required Object count}) => 'Manipulador de voz: ${count} memorias en la radio';
 	@override String get placeholderConnectDelay => 'Retraso de conexión (ms)';
 	@override String get placeholderConnectDelayDescription => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.';
 	@override String get placeholderDropAfter => 'Desconectar tras (segundos)';
@@ -1879,6 +1883,21 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get placeholderPower => 'Potencia (vatios)';
 	@override String get placeholderReplyDelay => 'Retraso de respuesta (ms)';
 	@override String get placeholderReplyDelayDescription => 'Cuánto tarda la radio simulada en informar de un cambio. Vacío o 0 responde de inmediato.';
+	@override String get cwKeyerField => 'Manipulador de CW por CAT';
+	@override String get cwKeyerFieldDescription => 'Si esta radio manipula CW desde texto por CAT. Apagado para una radio que la app no conoce.';
+	@override String get voiceMemories => 'Memorias de voz';
+	@override String get voiceMemoriesDescription => 'Cuántas memorias de voz reproduce la radio por CAT. 0 si ninguna.';
+	@override String get voiceMemoriesInvalid => 'Un número entero, 0 o más';
+	@override String get keyerNone => 'Ninguno';
+	@override String get cwDialect => 'Dialecto de manipulación de CW';
+	@override String get cwDialectDescription => 'Qué forma del comando KY acepta esta radio. Ninguno no manipula nada.';
+	@override String get cwDialectKenwood => 'Kenwood (KY, rellenado a 24)';
+	@override String get cwDialectElecraft => 'Elecraft (KY texto)';
+	@override String get voiceDialect => 'Dialecto del manipulador de voz';
+	@override String get voiceDialectDescription => 'Cómo reproduce esta radio sus memorias de voz por CAT. Ninguno no reproduce nada. Con dialecto y sin cantidad, se aplica la cantidad propia del dialecto.';
+	@override String get voiceDialectPb => 'Kenwood (PB, estilo TS-590)';
+	@override String get voiceDialectK4 => 'Elecraft K4 (PB y DA)';
+	@override String get voiceDialectKx => 'Elecraft KX2/KX3 (pulsaciones de teclas)';
 	@override String get placeholderDiagnostic => 'Simulada';
 	@override String get placeholderWholeNumberInvalid => 'Debe ser un número entero, 0 o más';
 	@override String get placeholderFreqInvalid => 'Debe ser una frecuencia en kHz, mayor que cero';
@@ -2586,6 +2605,35 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 	@override String get customField => 'Mensaje';
 	@override String get send => 'Enviar';
 	@override String get closeArea => 'Cerrar el área del manipulador';
+}
+
+// Path: settings.radio.voiceMessages
+class _Translations$settings$radio$voiceMessages$es extends Translations$settings$radio$voiceMessages$en {
+	_Translations$settings$radio$voiceMessages$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mensajes de voz';
+	@override String get description => 'Las memorias de voz de la propia radio, reproducidas con F1 a F8 mientras el contacto que se está registrando está en un modo de fonía. El audio se graba en la radio; aquí solo se define el nombre que muestra cada memoria.';
+	@override String key({required Object n}) => 'M${n}';
+	@override String messageTitle({required Object n}) => 'Memoria de voz (${n})';
+	@override String get labelField => 'Etiqueta';
+	@override String labelKey({required Object n}) => 'Etiqueta de la memoria de voz ${n}';
+	@override String get pill => 'Voz';
+	@override String play({required Object n}) => 'Reproducir la memoria ${n}';
+	@override String get stop => 'Detener';
+	@override String record({required Object n}) => 'Grabar la memoria ${n}';
+	@override String get stopRecording => 'Detener la grabación';
+	@override String get playing => 'Reproduciendo…';
+	@override String get recording => 'Grabando…';
+	@override String playingMemory({required Object label}) => 'Reproduciendo ${label}';
+	@override String recordingMemory({required Object label}) => 'Grabando ${label}';
+	@override String playingDoubtful({required Object label}) => '¿Reproduciendo ${label}?';
+	@override String recordingDoubtful({required Object label}) => '¿Grabando ${label}?';
+	@override String get doubtful => '¿La radio lo reprodujo? Dijo estar en reposo de inmediato.';
+	@override String get notAvailable => 'Conecta una radio con manipulador de voz para reproducir o grabar desde aquí.';
+	@override String get recordOnRadio => 'Esta radio graba sus memorias desde su propio panel frontal.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -3566,6 +3614,26 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.customField' => 'Mensaje',
 			'settings.radio.cwMessages.send' => 'Enviar',
 			'settings.radio.cwMessages.closeArea' => 'Cerrar el área del manipulador',
+			'settings.radio.voiceMessages.title' => 'Mensajes de voz',
+			'settings.radio.voiceMessages.description' => 'Las memorias de voz de la propia radio, reproducidas con F1 a F8 mientras el contacto que se está registrando está en un modo de fonía. El audio se graba en la radio; aquí solo se define el nombre que muestra cada memoria.',
+			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
+			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Memoria de voz (${n})',
+			'settings.radio.voiceMessages.labelField' => 'Etiqueta',
+			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Etiqueta de la memoria de voz ${n}',
+			'settings.radio.voiceMessages.pill' => 'Voz',
+			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Reproducir la memoria ${n}',
+			'settings.radio.voiceMessages.stop' => 'Detener',
+			'settings.radio.voiceMessages.record' => ({required Object n}) => 'Grabar la memoria ${n}',
+			'settings.radio.voiceMessages.stopRecording' => 'Detener la grabación',
+			'settings.radio.voiceMessages.playing' => 'Reproduciendo…',
+			'settings.radio.voiceMessages.recording' => 'Grabando…',
+			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Reproduciendo ${label}',
+			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Grabando ${label}',
+			'settings.radio.voiceMessages.playingDoubtful' => ({required Object label}) => '¿Reproduciendo ${label}?',
+			'settings.radio.voiceMessages.recordingDoubtful' => ({required Object label}) => '¿Grabando ${label}?',
+			'settings.radio.voiceMessages.doubtful' => '¿La radio lo reprodujo? Dijo estar en reposo de inmediato.',
+			'settings.radio.voiceMessages.notAvailable' => 'Conecta una radio con manipulador de voz para reproducir o grabar desde aquí.',
+			'settings.radio.voiceMessages.recordOnRadio' => 'Esta radio graba sus memorias desde su propio panel frontal.',
 			'settings.radio.avoidZeroBeat.title' => 'Evitar batido cero en los spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'Con una radio conectada, sintoniza unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Sintoniza exactamente la frecuencia del spot.',
@@ -3794,6 +3862,8 @@ extension on TranslationsEs {
 			'settings.station.serialPortNone' => 'No se encontraron puertos serie',
 			'settings.station.serialPortRequired' => 'Elige un puerto serie',
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'puerto ${n} de ${total}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.serialDeviceRequest' => 'Agregar un dispositivo USB…',
 			'settings.station.baudRate' => 'Velocidad (baudios)',
 			'settings.station.baudRateDescription' => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.',
@@ -3814,8 +3884,6 @@ extension on TranslationsEs {
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
 			'settings.station.radioUserRequired' => 'Se requiere el usuario de control remoto de la radio',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.connectFailedNetwork' => 'No se encuentra la radio en la red. Comprueba su dirección y que esté encendida y accesible.',
 			'settings.station.connectFailedTimeout' => 'La radio no respondió a tiempo. Comprueba que esté encendida y accesible.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
@@ -3884,6 +3952,8 @@ extension on TranslationsEs {
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
 			'settings.station.cwKeyerNotAvailable' => 'Conecta una radio que pueda manipular CW para enviar mensajes desde aquí.',
 			'settings.station.cwMessagesButton' => 'Mensajes',
+			'settings.station.voiceMessagesButton' => 'Mensajes de voz',
+			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de voz: ${count} memorias en la radio',
 			'settings.station.placeholderConnectDelay' => 'Retraso de conexión (ms)',
 			'settings.station.placeholderConnectDelayDescription' => 'Cuánto tarda el saludo simulado. Vacío o 0 conecta al instante.',
 			'settings.station.placeholderDropAfter' => 'Desconectar tras (segundos)',
@@ -3897,6 +3967,21 @@ extension on TranslationsEs {
 			'settings.station.placeholderPower' => 'Potencia (vatios)',
 			'settings.station.placeholderReplyDelay' => 'Retraso de respuesta (ms)',
 			'settings.station.placeholderReplyDelayDescription' => 'Cuánto tarda la radio simulada en informar de un cambio. Vacío o 0 responde de inmediato.',
+			'settings.station.cwKeyerField' => 'Manipulador de CW por CAT',
+			'settings.station.cwKeyerFieldDescription' => 'Si esta radio manipula CW desde texto por CAT. Apagado para una radio que la app no conoce.',
+			'settings.station.voiceMemories' => 'Memorias de voz',
+			'settings.station.voiceMemoriesDescription' => 'Cuántas memorias de voz reproduce la radio por CAT. 0 si ninguna.',
+			'settings.station.voiceMemoriesInvalid' => 'Un número entero, 0 o más',
+			'settings.station.keyerNone' => 'Ninguno',
+			'settings.station.cwDialect' => 'Dialecto de manipulación de CW',
+			'settings.station.cwDialectDescription' => 'Qué forma del comando KY acepta esta radio. Ninguno no manipula nada.',
+			'settings.station.cwDialectKenwood' => 'Kenwood (KY, rellenado a 24)',
+			'settings.station.cwDialectElecraft' => 'Elecraft (KY texto)',
+			'settings.station.voiceDialect' => 'Dialecto del manipulador de voz',
+			'settings.station.voiceDialectDescription' => 'Cómo reproduce esta radio sus memorias de voz por CAT. Ninguno no reproduce nada. Con dialecto y sin cantidad, se aplica la cantidad propia del dialecto.',
+			'settings.station.voiceDialectPb' => 'Kenwood (PB, estilo TS-590)',
+			'settings.station.voiceDialectK4' => 'Elecraft K4 (PB y DA)',
+			'settings.station.voiceDialectKx' => 'Elecraft KX2/KX3 (pulsaciones de teclas)',
 			'settings.station.placeholderDiagnostic' => 'Simulada',
 			'settings.station.placeholderWholeNumberInvalid' => 'Debe ser un número entero, 0 o más',
 			'settings.station.placeholderFreqInvalid' => 'Debe ser una frecuencia en kHz, mayor que cero',
@@ -4074,6 +4159,7 @@ extension on TranslationsEs {
 			'commands.settingExpectsNumber' => 'un número',
 			'commands.settingVanished' => ({required Object label}) => '«${label}» ya no está disponible',
 			'commands.noCwKeyer' => 'Ninguna radio conectada puede manipular CW',
+			'commands.noKeyer' => 'Ninguna radio conectada puede manipular CW ni reproducir memorias de voz',
 			'commands.keyerNeedsOperation' => 'Abre una operación para usar el manipulador de CW',
 			'commands.keyerExperimentOff' => 'La manipulación de CW está apagada — enciéndela con EXP KEYER',
 			'commands.cwSending' => ({required Object text}) => 'Enviando CW: ${text}',

@@ -33,6 +33,9 @@ import 'drivers/flexradio_driver.dart';
 import 'drivers/flrig_driver.dart';
 import 'drivers/ft891_driver.dart';
 import 'drivers/icom_civ_driver.dart';
+import 'drivers/civ_codec.dart' show civVoiceMemoryCount;
+import 'drivers/kenwood_cat_codec.dart' show kxVoiceMemoryCount;
+import 'drivers/yaesu_cat_codec.dart' show yaesuVoiceMemoryCount;
 import 'drivers/kenwood_driver.dart';
 import 'drivers/key_driver.dart';
 import 'drivers/rigctld_driver.dart';
@@ -508,6 +511,10 @@ const ft891Model = EquipmentModel(
       driver: Ft891Driver(),
       transport: SerialTransport(),
       defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+      // What the entry knows about the radio's keyers — the generic entry
+      // asks a developer instead (keyer_config.dart). Twenty seconds a
+      // memory, per the Advance Manual.
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 20},
       // The failure this driver actually produces is silence: the commands
       // go out, nothing comes back, and nothing anywhere reports an error.
       // Every cause is a setting the operator has to change on the radio or
@@ -550,6 +557,7 @@ const ft710Model = EquipmentModel(
       transport: SerialTransport(),
       // The radio's own CAT RATE default, unlike the FT-891's 4800.
       defaultConfig: {'baudRate': 38400},
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount},
     ),
   ],
 );
@@ -569,6 +577,8 @@ const ftdx10Model = EquipmentModel(
       driver: Ft891Driver(),
       transport: SerialTransport(),
       defaultConfig: {'baudRate': 38400},
+      // Ninety seconds a memory, on the SD card, per the Operation Manual.
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 90},
     ),
   ],
 );
@@ -599,7 +609,10 @@ const yaesuGenericModel = EquipmentModel(
       transport: SerialTransport(),
       // The FT-891's factory rate. Every Yaesu CAT menu offers it, and it is
       // the one a radio nobody has configured is most likely already on.
-      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate},
+      // Off until a developer says otherwise: the catalogue does not know
+      // which Yaesu this is, and a rig with no keyer must not be offered
+      // as one (keyer_config.dart).
+      defaultConfig: {'baudRate': Ft891Driver.defaultBaudRate, cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0},
       notes: _yaesuSerialNotes,
     ),
   ],
@@ -639,7 +652,10 @@ const kenwoodGenericModel = EquipmentModel(
       key: _kenwoodSerialKey,
       driver: KenwoodDriver(),
       transport: SerialTransport(),
-      defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate},
+      // No keyer until a developer names a dialect: the line disagrees on
+      // both (`KY` padded or not, `PB` with a list to open or not), and
+      // the catalogue does not know which Kenwood this is.
+      defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate, voiceMemoriesConfigKey: 0},
       notes: _kenwoodSerialNotes,
     ),
   ],
@@ -674,7 +690,14 @@ const qmxModel = EquipmentModel(
       driver: KenwoodDriver(),
       transport: SerialTransport(),
       defaultConfig: {'baudRate': KenwoodDriver.defaultBaudRate},
-      overrides: {KenwoodDriver.ifModeOffsetKey: 27},
+      overrides: {
+        KenwoodDriver.ifModeOffsetKey: 27,
+        // hamlib keys a QMX through the Elecraft-shaped `KY`, but no QRP
+        // Labs document says so, and it has no voice memories.
+        KenwoodDriver.cwDialectKey: '',
+        KenwoodDriver.voiceDialectKey: '',
+        KenwoodDriver.voiceMemoriesKey: 0,
+      },
       notes: _kenwoodSerialNotes,
     ),
   ],
@@ -700,7 +723,10 @@ const elecraftGenericModel = EquipmentModel(
       key: _elecraftSerialKey,
       driver: KenwoodDriver(),
       transport: SerialTransport(),
-      defaultConfig: {'baudRate': _elecraftBaudRate},
+      // No keyer until a developer names a dialect — a K4 plays through
+      // `PB`/`DA`, a K3 with a KDVR3 through switch taps, and the entry
+      // cannot tell them apart.
+      defaultConfig: {'baudRate': _elecraftBaudRate, voiceMemoriesConfigKey: 0},
       notes: _elecraftSerialNotes,
     ),
   ],
@@ -725,7 +751,14 @@ const kx2Model = EquipmentModel(
       driver: KenwoodDriver(),
       transport: SerialTransport(),
       defaultConfig: {'baudRate': _elecraftBaudRate},
-      overrides: {KenwoodDriver.ifModeOffsetKey: 27},
+      overrides: {
+        KenwoodDriver.ifModeOffsetKey: 27,
+        KenwoodDriver.cwDialectKey: 'elecraft',
+        KenwoodDriver.voiceDialectKey: 'kx',
+        KenwoodDriver.voiceMemoriesKey: kxVoiceMemoryCount,
+        // Two fifteen-second messages, per the owner's manual.
+        voiceCeilingConfigKey: 15,
+      },
       notes: _elecraftSerialNotes,
     ),
   ],
@@ -743,13 +776,24 @@ const kx3Model = EquipmentModel(
       driver: KenwoodDriver(),
       transport: SerialTransport(),
       defaultConfig: {'baudRate': _elecraftBaudRate},
-      overrides: {KenwoodDriver.ifModeOffsetKey: 27},
+      overrides: {
+        KenwoodDriver.ifModeOffsetKey: 27,
+        KenwoodDriver.cwDialectKey: 'elecraft',
+        KenwoodDriver.voiceDialectKey: 'kx',
+        KenwoodDriver.voiceMemoriesKey: kxVoiceMemoryCount,
+        // Two fifteen-second messages, per the owner's manual.
+        voiceCeilingConfigKey: 15,
+      },
       notes: _elecraftSerialNotes,
     ),
   ],
 );
 
 const _elecraftBrand = 'Elecraft';
+
+/// How long an Icom voice memory holds — "up to 1.5 minutes" per the
+/// IC-7300's manual, and the line's figure.
+const _icomVoiceSeconds = 90;
 
 /// The rate every Elecraft CAT menu ships on, and the one all three field
 /// reports connected at. Not [KenwoodDriver.defaultBaudRate], which is the
@@ -797,6 +841,9 @@ const icomGenericModel = EquipmentModel(
         // Icom's CI-V default. The radio can also be set to Auto, which
         // negotiates nothing and simply follows the host.
         'baudRate': 19200,
+        // Off until a developer says otherwise — see keyer_config.dart.
+        cwKeyerConfigKey: false,
+        voiceMemoriesConfigKey: 0,
       },
       notes: _icomGenericSerialNotes,
     ),
@@ -832,6 +879,7 @@ const ic7300Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '94', 'baudRate': 19200},
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
       notes: _ic7300SerialNotes,
     ),
   ],
@@ -873,6 +921,7 @@ const ic7300mk2Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': 'B6', 'baudRate': 19200},
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
       notes: _ic7300mk2SerialNotes,
     ),
   ],
@@ -896,6 +945,10 @@ const ic706mkiigModel = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '58', 'baudRate': 19200},
+      // No voice keyer and no text keying on this generation: the driver's
+      // defaults are the modern line's, and a play or a message here would
+      // show as going out while the radio silently ignored it.
+      overrides: {cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0},
       notes: _ic706mkiigSerialNotes,
     ),
   ],
@@ -922,6 +975,7 @@ const ic7610Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '98', 'baudRate': 9600},
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
       notes: _ic7610SerialNotes,
     ),
   ],
@@ -948,6 +1002,7 @@ const ic7760Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': 'B2', 'baudRate': 19200},
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
       notes: _ic7760SerialNotes,
     ),
   ],
@@ -975,6 +1030,9 @@ const x6100Model = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': 'A4', 'baudRate': 19200},
+      // Keys through 0x17 like the Icoms it imitates; whether it has voice
+      // memories reachable over CI-V is undocumented, so none are offered.
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
       notes: _x6100SerialNotes,
     ),
   ],
@@ -1015,6 +1073,9 @@ const ic705Model = EquipmentModel(
         // On its own battery the radio caps actual output well below the
         // SET level it keeps reporting — see civMeterDcInputVoltage.
         'batteryMaxWatts': 5,
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: civVoiceMemoryCount,
+        voiceCeilingConfigKey: _icomVoiceSeconds,
       },
       // The failure this transport actually produces is silence: the
       // handshake succeeds and the login is ignored, so a busy radio and a
@@ -1035,7 +1096,13 @@ const ic705Model = EquipmentModel(
       // Unlike the address, the radio's own power ceiling can't change by
       // sharing a bus — a fixed fact about this model, same as the network
       // variant's override above.
-      overrides: {'maxWatts': 10, 'batteryMaxWatts': 5},
+      overrides: {
+        'maxWatts': 10,
+        'batteryMaxWatts': 5,
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: civVoiceMemoryCount,
+        voiceCeilingConfigKey: _icomVoiceSeconds,
+      },
       notes: _icomGenericSerialNotes,
     ),
   ],

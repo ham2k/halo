@@ -71,6 +71,17 @@ class CivCommand {
   /// which is why a session paces them (cw_send_queue.dart).
   static const sendCw = 0x17;
 
+  /// Sub-command 0x00 with one data byte: reads or sets whether the radio
+  /// is transmitting. Read here only, to learn when a voice memory has
+  /// finished — 0x28 says nothing about its own progress.
+  static const transmitStatus = 0x1C;
+
+  /// Sub-command 0x00 with one data byte: 0x01-0x08 transmits voice memory
+  /// T1-T8, 0x00 stops the one playing. Documented on the IC-7300MK2 and
+  /// IC-7610; the same command is reported working on the IC-7300 and
+  /// IC-705, whose guides omit it. Nothing in CI-V records one.
+  static const voiceMemory = 0x28;
+
   /// The radio accepted the command.
   static const ack = 0xFB;
 
@@ -306,6 +317,27 @@ List<int> buildStopCwFrame({required int to, int from = civDefaultControllerAddr
 
 /// What one [CivCommand.sendCw] may carry, per the CI-V guides.
 const civCwMaxChars = 30;
+
+/// T1-T8 on every Icom with a voice keyer.
+const civVoiceMemoryCount = 8;
+
+/// Transmits voice memory [n], 1-based up to [civVoiceMemoryCount].
+List<int> buildPlayVoiceMemoryFrame({required int to, int from = civDefaultControllerAddress, required int n}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.voiceMemory, data: [0x00, n.clamp(1, civVoiceMemoryCount)]);
+
+/// Stops the voice memory being transmitted.
+List<int> buildStopVoiceMemoryFrame({required int to, int from = civDefaultControllerAddress}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.voiceMemory, data: const [0x00, 0x00]);
+
+List<int> buildReadTransmitStatusFrame({required int to, int from = civDefaultControllerAddress}) =>
+    buildCivFrame(to: to, from: from, command: CivCommand.transmitStatus, data: const [0x00]);
+
+/// `frame.data` of a 0x1C reply: sub-command 0x00 then 0x00 (receiving) or
+/// 0x01 (transmitting). Null for any other sub-command or a short reply.
+bool? parseTransmitStatusData(List<int> data) {
+  if (data.length < 2 || data[0] != 0x00) return null;
+  return switch (data[1]) { 0x00 => false, 0x01 => true, _ => null };
+}
 
 /// DC input to the radio, in tenths of a volt (e.g. level 115 means
 /// 11.5V) — distinguishes external DC from internal battery on a radio

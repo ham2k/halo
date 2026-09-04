@@ -126,9 +126,15 @@ void main() {
     bool isCwMessageElement(Map<String, dynamic> el) =>
         el['key'] == null || (el['key'] as String).startsWith('cwMessage');
 
+    /// The voice memory labels, the same way, under `voice-messages`.
+    bool isVoiceMessageElement(Map<String, dynamic> el) =>
+        el['key'] == null || (el['key'] as String).startsWith('voiceMessage');
+
+    bool isMessageElement(Map<String, dynamic> el) => isCwMessageElement(el) || isVoiceMessageElement(el);
+
     Future<Set<String>> keysFor(SettingsService settings) async => {
           for (final el in await RadioSettingsGroup(settings).buildElements())
-            if (!isCwMessageElement(el)) el['key'] as String,
+            if (!isMessageElement(el)) el['key'] as String,
         };
 
     test('contributes nothing at all until the CAT experiment is on', () async {
@@ -182,7 +188,7 @@ void main() {
       final group = RadioSettingsGroup(settings);
       final knobs = [
         for (final el in await group.buildElements())
-          if (!toggles.contains(el['key']) && !isCwMessageElement(el)) el,
+          if (!toggles.contains(el['key']) && !isMessageElement(el)) el,
       ];
       expect(knobs, hasLength(5));
       for (final el in knobs) {
@@ -207,9 +213,10 @@ void main() {
     test('the CW messages sit under their own target, never the tune dialog, and commit as text', () async {
       final settings = await settingsWith(developer: false, snap: false, zeroBeat: false);
       final group = RadioSettingsGroup(settings);
+      final all = await group.buildElements();
       final messages = [
-        for (final el in await group.buildElements())
-          if (isCwMessageElement(el)) el,
+        for (final el in all)
+          if (isCwMessageElement(el) && !elementMatchesTarget(el, 'voice-messages')) el,
       ];
       // Eight messages, their eight labels, and the note explaining the placeholders.
       expect(messages.where((el) => el['type'] == 'field'), hasLength(SettingsService.cwMessageCount * 2));
@@ -220,6 +227,22 @@ void main() {
         expect(elementMatchesTarget(el, 'current-radio'), isFalse);
         expect(elementMatchesTarget(el, 'current-radio-extended'), isFalse);
       }
+      // The voice memory labels: eight labels and ONE note, and no message
+      // field beside them — the audio is in the radio, so a `voiceMessage$n`
+      // text field would be a setting nothing reads.
+      final voice = [
+        for (final el in all)
+          if (elementMatchesTarget(el, 'voice-messages')) el,
+      ];
+      expect(voice.where((el) => el['type'] == 'field').map((el) => el['key']),
+          [for (var n = 1; n <= SettingsService.voiceMessageCount; n++) 'voiceMessageLabel$n']);
+      expect(voice.where((el) => el['type'] == 'markdown'), hasLength(1));
+      for (final el in voice) {
+        expect(elementMatchesTarget(el, 'cw-messages'), isFalse, reason: '${el['key']} is not a CW message');
+        expect(elementMatchesTarget(el, 'current-radio-extended'), isFalse);
+      }
+      await group.commit('voiceMessageLabel3', 'CQ POTA');
+      expect(settings.voiceMessageLabel(3), 'CQ POTA');
       // A template is text; a commit path narrowed to bools and option
       // strings would drop it silently.
       await group.commit('cwMessage1', 'CQ CQ DE {{ op.call }} K');
@@ -229,7 +252,7 @@ void main() {
           reason: 'sanity: still nothing without CAT, messages included');
       // CAT on, keyer off: the radio's own toggles, none of the messages.
       final withoutKeyer = await RadioSettingsGroup(await settingsWith(keyer: false, snap: false, zeroBeat: false)).buildElements();
-      expect(withoutKeyer.where(isCwMessageElement), isEmpty, reason: 'the messages follow the keyer experiment');
+      expect(withoutKeyer.where(isMessageElement), isEmpty, reason: 'the messages follow the keyer experiment');
       expect(withoutKeyer, isNotEmpty);
     });
 

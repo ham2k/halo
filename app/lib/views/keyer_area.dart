@@ -12,7 +12,11 @@
 //
 // The strip slides down into place with the first message, or on KEYER /
 // the Station dialog's Show, and while nothing is keying offers a button
-// per message. A message leaves
+// per message. In a Phone mode — the draft contact's — the strip is the
+// voice keyer's instead: a voice pill in place of the speed, a button per
+// voice memory of the radio, and the memory playing (or recording) in
+// place of the message going out (docs/design/cat.md § Voice keying). A
+// message leaves
 // it the moment it ends — finished or stopped, what went out is not worth
 // re-reading — and the pill stays for [cwSendingLingers] after the last one,
 // which is when a speed change is most often wanted, before the strip slides
@@ -31,7 +35,9 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../i18n/strings.g.dart';
 import '../main.dart';
 import 'cw_messages_dialog.dart';
+import 'voice_messages_dialog.dart';
 import '../services/cat/cat_service.dart';
+import '../services/cat/driver.dart' show VoiceActivity;
 import '../services/error_reporting_service.dart';
 import '../services/cat/drivers/cw_send_queue.dart';
 import '../services/settings_service.dart';
@@ -60,6 +66,14 @@ class KeyerArea extends StatefulWidget {
   /// as written.
   final PanelRenderContext? templateContext;
 
+  /// Whether the strip is the voice keyer's: the draft contact's mode is
+  /// Phone. Decided by the operation view, which routes F1-F8 by the same
+  /// answer — decided ONCE, so the keys and the strip never disagree about
+  /// which keyer this is. The draft's mode, not the radio's: the messages
+  /// are for the contact being logged, and a rig sitting in USB while the
+  /// operator logs CW keys CW.
+  final bool phone;
+
   /// True while the logging panel is editing a logged QSO: the area slides
   /// out and stays out until editing ends, then comes back if something is
   /// still keying. Messages are for the contact in progress, not for one
@@ -72,6 +86,7 @@ class KeyerArea extends StatefulWidget {
     required this.services,
     this.onSendMessage,
     this.templateContext,
+    this.phone = false,
     this.suppressed = false,
   });
 
@@ -95,6 +110,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     super.initState();
     _reveal = AnimationController(vsync: this, duration: _revealDuration);
     widget.cat.cwProgress.addListener(_onProgress);
+    widget.cat.voiceActivity.addListener(_onProgress);
     widget.cat.keyerAreaShown.addListener(_onShownChanged);
     widget.cat.keyerShowRequests.addListener(_onShowRequested);
     _onProgress();
@@ -129,9 +145,11 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     super.didUpdateWidget(old);
     if (old.cat != widget.cat) {
       old.cat.cwProgress.removeListener(_onProgress);
+      old.cat.voiceActivity.removeListener(_onProgress);
       old.cat.keyerAreaShown.removeListener(_onShownChanged);
       old.cat.keyerShowRequests.removeListener(_onShowRequested);
       widget.cat.cwProgress.addListener(_onProgress);
+      widget.cat.voiceActivity.addListener(_onProgress);
       widget.cat.keyerAreaShown.addListener(_onShownChanged);
       widget.cat.keyerShowRequests.addListener(_onShowRequested);
       _onProgress();
@@ -149,6 +167,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
   @override
   void dispose() {
     widget.cat.cwProgress.removeListener(_onProgress);
+    widget.cat.voiceActivity.removeListener(_onProgress);
     widget.cat.keyerAreaShown.removeListener(_onShownChanged);
     widget.cat.keyerShowRequests.removeListener(_onShowRequested);
     _hide?.cancel();
@@ -160,21 +179,30 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
   /// the same message on every echo, and each of those must not undo an X.
   int? _shownForMessage;
 
+  /// The voice activity that last showed it, the same way.
+  VoiceActivity? _shownForVoice;
+
   void _onProgress() {
     if (widget.suppressed) return;
     final progress = widget.cat.cwProgress.value;
-    if (progress != null) {
+    final voice = widget.cat.voiceActivity.value;
+    if (progress != null || voice != null) {
       _hide?.cancel();
       _hide = null;
-      if (_shownForMessage != progress.id) {
+      if (progress != null && _shownForMessage != progress.id) {
         _shownForMessage = progress.id;
         // A message starting shows the area through the flag, so the
         // Station dialog's toggle agrees.
         widget.cat.showKeyerArea();
       }
+      if (voice != null && _shownForVoice != voice) {
+        _shownForVoice = voice;
+        widget.cat.showKeyerArea();
+      }
       return;
     }
     _shownForMessage = null;
+    _shownForVoice = null;
     if (!_visible) return;
     _hide?.cancel();
     _hide = Timer(cwSendingLingers, () {
@@ -214,35 +242,50 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              _KeyerSpeedPill(cat: widget.cat, services: widget.services),
+              if (widget.phone)
+                _VoicePill(cat: widget.cat, services: widget.services)
+              else
+                _KeyerSpeedPill(cat: widget.cat, services: widget.services),
               const SizedBox(width: Space.md),
               Expanded(
-                child: ValueListenableBuilder<CwSendProgress?>(
-                  valueListenable: widget.cat.cwProgress,
-                  builder: (context, progress, _) => Stack(
-                    alignment: AlignmentDirectional.centerStart,
-                    children: [
-                      // Kept mounted under the message, not rebuilt after each
-                      // one: the buttons hold rendered labels, and a remount
-                      // would show raw templates and cross the bridge again
-                      // for a draft that has not moved.
-                      Visibility(
-                        visible: progress == null,
-                        maintainState: true,
-                        child: _MessageButtons(
-                          services: widget.services,
-                          onSendMessage: widget.onSendMessage,
-                          templateContext: widget.templateContext,
+                child: ListenableBuilder(
+                  listenable: Listenable.merge([widget.cat.cwProgress, widget.cat.voiceActivity]),
+                  builder: (context, _) {
+                    final progress = widget.cat.cwProgress.value;
+                    final voice = widget.cat.voiceActivity.value;
+                    return Stack(
+                      alignment: AlignmentDirectional.centerStart,
+                      children: [
+                        // Kept mounted under the message, not rebuilt after each
+                        // one: the buttons hold rendered labels, and a remount
+                        // would show raw templates and cross the bridge again
+                        // for a draft that has not moved. Two siblings rather
+                        // than one slot swapping types: a mode flip must not
+                        // remount them either.
+                        Visibility(
+                          visible: !widget.phone && progress == null && voice == null,
+                          maintainState: true,
+                          child: _MessageButtons(
+                            services: widget.services,
+                            onSendMessage: widget.onSendMessage,
+                            templateContext: widget.templateContext,
+                          ),
                         ),
-                      ),
-                      // Keyed on the message's id, so a new one restarts the
-                      // animation from its own beginning — while a re-report of
-                      // the SAME message (the queue behind it changed) keeps the
-                      // animation where it is.
-                      if (progress != null)
-                        _CwProgressView(key: ValueKey(progress.id), progress: progress, cat: widget.cat),
-                    ],
-                  ),
+                        Visibility(
+                          visible: widget.phone && progress == null && voice == null,
+                          child: _VoiceButtons(services: widget.services),
+                        ),
+                        // Keyed on the message's id, so a new one restarts the
+                        // animation from its own beginning — while a re-report of
+                        // the SAME message (the queue behind it changed) keeps the
+                        // animation where it is.
+                        if (progress != null)
+                          _CwProgressView(key: ValueKey(progress.id), progress: progress, cat: widget.cat),
+                        if (voice != null && progress == null)
+                          _VoiceActivityView(activity: voice, cat: widget.cat, services: widget.services),
+                      ],
+                    );
+                  },
                 ),
               ),
               IconButton(
@@ -450,6 +493,192 @@ class _MessageButtonsState extends State<_MessageButtons> {
                     ),
                   ),
             ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// While nothing is playing, in a Phone mode: one outlined button per voice
+/// memory of the radio — the function keys for a mouse or a finger — with
+/// its label, or its key when it has none. Without a radio that can play,
+/// the memories that have a label, disabled: the names the operator set are
+/// worth seeing before the rig is on.
+class _VoiceButtons extends StatelessWidget {
+  final HaLoServices services;
+
+  const _VoiceButtons({required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    final settings = services.settings;
+    final cat = services.cat;
+    final m = context.t.settings.radio.voiceMessages;
+    return ListenableBuilder(
+      listenable: Listenable.merge([settings, cat]),
+      builder: (context, _) {
+        final enabled = cat.canPlayVoice;
+        final count = enabled ? cat.voiceMemoryCount : SettingsService.voiceMessageCount;
+        final theme = Theme.of(context);
+        var color = theme.colorScheme.tertiary;
+        if (!enabled) color = color.withValues(alpha: 0.5);
+        final borderRadius = BorderRadius.circular(8);
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (var n = 1; n <= count; n++)
+                if (enabled || settings.voiceMessageLabel(n).trim().isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(right: Space.sm),
+                    child: Material(
+                      color: Colors.transparent,
+                      shape: RoundedRectangleBorder(borderRadius: borderRadius, side: BorderSide(color: color)),
+                      child: InkWell(
+                        borderRadius: borderRadius,
+                        onTap: enabled ? () => cat.playVoiceMemory(n) : null,
+                        mouseCursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(cwMessageNumberIcons[n - 1], size: 14, color: color),
+                              const SizedBox(width: Space.xs),
+                              Text(
+                                voiceMessageLabelFor(settings, n, m.key(n: n)),
+                                style: TextStyle(
+                                  fontFamily: 'RobotoCondensed',
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: color,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// The memory playing or recording, in the message's place: tapping it
+/// stops it (Esc's other form). No bar — no radio here reports how far
+/// along a memory is, and a bar pacing nothing would be a guess dressed as
+/// a measurement.
+class _VoiceActivityView extends StatelessWidget {
+  final VoiceActivity activity;
+  final CatService cat;
+  final HaLoServices services;
+
+  const _VoiceActivityView({required this.activity, required this.cat, required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    final m = context.t.settings.radio.voiceMessages;
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium ?? const TextStyle();
+    final label = voiceMessageLabelFor(services.settings, activity.memory, m.key(n: activity.memory));
+    // Doubtful — the radio said "not going" before ever saying "going" —
+    // asks rather than states: an empty memory must not read as a short one.
+    final text = switch ((activity.recording, activity.doubtful)) {
+      (true, false) => m.recordingMemory(label: label),
+      (true, true) => m.recordingDoubtful(label: label),
+      (false, false) => m.playingMemory(label: label),
+      (false, true) => m.playingDoubtful(label: label),
+    };
+    return Semantics(
+      label: text,
+      liveRegion: true,
+      child: ExcludeSemantics(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: cat.stopVoice,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                activity.recording ? MdiIcons.recordCircleOutline : MdiIcons.play,
+                size: 16,
+                color: activity.recording ? theme.colorScheme.error : style.color,
+              ),
+              const SizedBox(width: Space.xs),
+              Flexible(
+                child: Text(
+                  text,
+                  style: style.copyWith(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The speed pill's place in a Phone mode: says the strip is the voice
+/// keyer's, and opens the Voice Messages dialog — where a memory is named,
+/// played to check, or recorded — the way the speed pill opens the keyer's.
+/// Faded the same way when nothing can play.
+class _VoicePill extends StatelessWidget {
+  final CatService cat;
+  final HaLoServices services;
+
+  const _VoicePill({required this.cat, required this.services});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final poloColors = HaLoColors.of(context);
+    final borderRadius = BorderRadius.circular(8);
+    return ListenableBuilder(
+      listenable: cat,
+      builder: (context, _) {
+        final enabled = cat.canPlayVoice;
+        var foreground = theme.colorScheme.onTertiaryContainer;
+        var background = poloColors.tertiaryLight;
+        if (!enabled) {
+          foreground = foreground.withValues(alpha: 0.5);
+          background = background.withValues(alpha: 0.5);
+        }
+        return Material(
+          color: background,
+          borderRadius: borderRadius,
+          child: InkWell(
+            borderRadius: borderRadius,
+            onTap: () => showVoiceMessagesDialog(context, services),
+            mouseCursor: SystemMouseCursors.click,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(MdiIcons.microphone, size: 14, color: foreground),
+                  const SizedBox(width: Space.xs),
+                  Text(
+                    context.t.settings.radio.voiceMessages.pill,
+                    style: TextStyle(
+                      fontFamily: 'RobotoCondensed',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: foreground,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         );
       },

@@ -3247,7 +3247,7 @@ class HaLoServices {
         if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) {
           return (text: t.commands.keyerExperimentOff, failed: true);
         }
-        if (!cat.canKeyCw) return (text: t.commands.noCwKeyer, failed: true);
+        if (!cat.canKeyCw && !cat.canPlayVoice) return (text: t.commands.noKeyer, failed: true);
         // The area lives in an operation's logging panel; from Home there is
         // nothing to show, and confirming would be a lie.
         if (currentOperationContext == null) return (text: t.commands.keyerNeedsOperation, failed: true);

@@ -41,6 +41,13 @@ abstract class EquipmentSink {
   /// shows it (docs/design/cat.md § CW keying).
   void reportCwProgress(CwSendProgress? progress);
 
+  /// What the radio's voice keyer is doing for the app — playing or
+  /// recording a memory — and null once it is idle again. Only from a
+  /// [VoiceKeyerSession]; the keyer area shows it (docs/design/cat.md
+  /// § Voice keying). Sessions report the end when the radio says so, or
+  /// at [voiceActivityCeiling] when it never does.
+  void reportVoiceActivity(VoiceActivity? activity);
+
   /// Something a DEVELOPER would want to know about this session — what a
   /// protocol negotiated, what a driver had to work out for itself. Not an
   /// error (nothing is wrong) and not a reading (it is about the session, not
@@ -243,6 +250,140 @@ abstract class CwKeyerSession implements EquipmentSession {
   void refreshKeyerSpeed();
 }
 
+/// One voice memory the radio is busy with on the app's behalf.
+class VoiceActivity {
+  /// The memory, 1-based, as the radio numbers it.
+  final int memory;
+
+  /// Recording into [memory] rather than playing it.
+  final bool recording;
+
+  /// The radio said it was over before it ever said it was going: a
+  /// refused play (the memory empty, the radio not in a voice mode) or a
+  /// very short one, which no protocol here tells apart. Shown with a
+  /// question mark for [voiceDoubtLinger], then gone.
+  final bool doubtful;
+
+  const VoiceActivity({required this.memory, this.recording = false, this.doubtful = false});
+
+  VoiceActivity asDoubtful() => VoiceActivity(memory: memory, recording: recording, doubtful: true);
+
+  @override
+  bool operator ==(Object other) =>
+      other is VoiceActivity && other.memory == memory && other.recording == recording && other.doubtful == doubtful;
+
+  @override
+  int get hashCode => Object.hash(memory, recording, doubtful);
+
+  @override
+  String toString() => 'VoiceActivity(${recording ? 'recording' : 'playing'} $memory${doubtful ? '?' : ''})';
+}
+
+/// The config key a catalogue entry pins a radio's voice memory count
+/// under, for any driver whose sessions are [VoiceKeyerSession]s — zero for
+/// a rig on a line whose driver otherwise assumes one (an IC-706 on the
+/// CI-V driver). Absent means the driver's own default. A GENERIC entry
+/// pins nothing and prefills zero, and shows the field under developer
+/// mode: the catalogue does not know which rig is behind it, so a
+/// developer says (docs/design/cat.md § Voice keying).
+const voiceMemoriesConfigKey = 'voiceMemories';
+
+/// The most memories any surface offers: one per function key, and the
+/// number of labels stored (`voiceMessageLabel1..8`). A count above it is
+/// clamped here rather than crashing a strip indexing eight icons.
+const maxVoiceMemories = 8;
+
+/// The config key under which a catalogue entry says whether the radio's
+/// CAT keys CW — `true`/`false` on a driver that keys by default (Icom,
+/// Yaesu), where absent means it does; the Kenwood driver keys only with a
+/// dialect named (`cwDialect`, kenwood_driver.dart). Like
+/// [voiceMemoriesConfigKey]: pinned on the named entries, asked under
+/// developer mode on the generics.
+const cwKeyerConfigKey = 'cwKeyer';
+
+/// [voiceMemoriesConfigKey]'s value as a count, or [fallback] when absent —
+/// a number field stores a num, a pinned override an int, and a value typed
+/// into a text-shaped form arrives as a String.
+int voiceMemoriesFromConfig(Map<String, dynamic> config, {required int fallback}) {
+  final raw = config[voiceMemoriesConfigKey];
+  final count = raw is num ? raw.round() : (raw is String ? int.tryParse(raw.trim()) : null);
+  return (count != null && count >= 0 ? count : fallback).clamp(0, maxVoiceMemories);
+}
+
+/// [cwKeyerConfigKey] as a bool: absent is [fallback], and a checkbox
+/// stores a bool.
+bool cwKeyerFromConfig(Map<String, dynamic> config, {required bool fallback}) => switch (config[cwKeyerConfigKey]) {
+      final bool on => on,
+      'true' => true,
+      'false' => false,
+      _ => fallback,
+    };
+
+/// The longest a session lets a memory play or record without the radio
+/// confirming it is over, when nothing better is known: a memory is a CQ or
+/// an exchange, seconds long, and a radio whose protocol never answers
+/// "still playing?" clears at this — and is told to stop — rather than
+/// showing a message playing on. A radio whose memory length IS known
+/// ([voiceCeilingConfigKey], [VoiceKeyerSession.voiceMemoryCeiling]) gets
+/// that instead: the memory cannot run longer than it holds.
+const voiceActivityCeiling = Duration(seconds: 15);
+
+/// The config key a catalogue entry pins how long the radio's memories hold,
+/// in seconds — from its manual (an IC-7300's 90, an FT-891's 20, a KX3's
+/// 15). Absent means [voiceActivityCeiling]: a generic entry, or a radio
+/// whose manual has not been read for it.
+const voiceCeilingConfigKey = 'voiceCeilingSeconds';
+
+/// [voiceCeilingConfigKey] as a duration, or [voiceActivityCeiling].
+Duration voiceCeilingFromConfig(Map<String, dynamic> config) {
+  final raw = config[voiceCeilingConfigKey];
+  final seconds = raw is num ? raw.round() : (raw is String ? int.tryParse(raw.trim()) : null);
+  return seconds != null && seconds > 0 ? Duration(seconds: seconds) : voiceActivityCeiling;
+}
+
+/// How long a doubtful activity shows its question mark before clearing.
+const voiceDoubtLinger = Duration(seconds: 1);
+
+/// A transceiver whose CAT can play — and sometimes record — the voice
+/// memories it holds itself. The counterpart of [CwKeyerSession] for Phone
+/// modes: the messages are audio in the radio, so the app keys a memory
+/// NUMBER, never text, and the only thing it stores is a label.
+///
+/// A capability, like the CW one, and for the same reasons: most protocols
+/// here have no such command, and "this radio has no voice memories" must
+/// never look like "the memory was empty". Unlike CW there is no break-in
+/// question — a voice memory transmits — which is why the surfaces that
+/// play one exist only in a Phone mode.
+abstract class VoiceKeyerSession implements EquipmentSession {
+  /// How many memories this radio has, 1-based up to here. Zero means
+  /// none: a driver shared across a line (Kenwood CAT) creates sessions
+  /// that implement this for rigs that have no voice keyer at all.
+  int get voiceMemoryCount;
+
+  /// Whether [recordVoiceMemory] does anything — the Yaesu line and the
+  /// K4 record over CAT, Icom's is front-panel only.
+  bool get canRecordVoice;
+
+  /// The longest a memory can play or record on this radio — its memory
+  /// length when the entry pinned one ([voiceCeilingConfigKey]),
+  /// [voiceActivityCeiling] otherwise. Past it a session stops the radio
+  /// and clears what it showed (voice_activity_tracker.dart).
+  Duration get voiceMemoryCeiling;
+
+  /// Plays memory [n] through the transmitter. Reported through
+  /// [EquipmentSink.reportVoiceActivity] as it starts and when the radio
+  /// says it is over.
+  void playVoiceMemory(int n);
+
+  /// Starts recording into memory [n] from the radio's own microphone;
+  /// [stopVoice] ends it. Nothing on a session whose [canRecordVoice] is
+  /// false.
+  void recordVoiceMemory(int n);
+
+  /// Stops whatever is playing or recording.
+  void stopVoice();
+}
+
 abstract class EquipmentDriver {
   const EquipmentDriver();
 
@@ -265,6 +406,13 @@ abstract class EquipmentDriver {
   /// the radio is not connected. A driver that says true here must create
   /// sessions that are.
   bool get canKeyCw => false;
+
+  /// [canKeyCw] for one node: [config] is the node's merged configuration
+  /// (the entry's overrides included), and a driver whose keyer is a
+  /// per-entry fact — [cwKeyerConfigKey] — answers from it. The service
+  /// asks THIS, never the bare getter: a generic Icom picked for a rig with
+  /// no keyer must not be offered as the key in use.
+  bool canKeyCwWith(Map<String, dynamic> config) => canKeyCw;
 
   /// [config] is the node's stored configuration — the same map the type's
   /// `configElements` collected. Most drivers ignore it; a CI-V driver needs

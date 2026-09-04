@@ -32,6 +32,7 @@ import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
 import '../tools/form_chrome_labels.dart';
 import 'cw_messages_dialog.dart';
+import 'voice_messages_dialog.dart';
 import 'equipment_report.dart';
 
 /// Shown as the HINT of a secret field whose value is already in the keychain,
@@ -1015,6 +1016,13 @@ class StationPanel extends StatelessWidget {
             if (keyerExperiment && _cat.designatedKeyIsKeyer)
               _cwKeyerRow(context, inset: rowInset),
 
+            // The voice keyer: radio1's own memories, whatever the key in
+            // use — so its row stands on its own, and only while radio1 is
+            // connected and has memories to name (a label is a setting, but
+            // the row that has nowhere to play is not worth the space).
+            if (keyerExperiment && _cat.canPlayVoice)
+              _voiceKeyerRow(context, inset: rowInset),
+
             // What the station is made OF. Compact shows only the rig
             // driving the main VFO — a quick-glance connect/status row, not
             // the whole catalogue Add Equipment and the other radios imply.
@@ -1202,6 +1210,46 @@ class StationPanel extends StatelessWidget {
               padding: const EdgeInsets.only(top: Space.xs),
               child: Text(st.cwKeyerNotAvailable, style: Theme.of(context).textTheme.bodySmall),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// The way to the Voice Messages dialog, under a line saying whose
+  /// memories they are — the one thing the app has to say about a voice
+  /// keyer, since the speed, the audio and the recording all live in the
+  /// radio.
+  Widget _voiceKeyerRow(BuildContext context, {required EdgeInsets inset}) {
+    final st = context.t.settings.station;
+    return Padding(
+      padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              st.voiceKeyerAvailable(count: _cat.voiceMemoryCount),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          const SizedBox(width: Space.md),
+          TextButton.icon(
+            icon: const Icon(MdiIcons.microphoneMessage),
+            label: Text(st.voiceMessagesButton),
+            onPressed: () => showVoiceMessagesDialog(context, services),
+          ),
+          const SizedBox(width: Space.md),
+          // The same switch the CW row carries — a voice-only radio has no
+          // CW row, and F-keys PLAY, so this is its way to the area idle.
+          ValueListenableBuilder<bool>(
+            valueListenable: _cat.keyerAreaShown,
+            builder: (context, shown, _) => Semantics(
+              label: st.cwKeyerArea,
+              child: Switch(
+                value: shown,
+                onChanged: (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea(),
+              ),
+            ),
+          ),
         ],
       ),
     );

@@ -22,6 +22,8 @@ import '../driver.dart';
 import '../equipment.dart';
 import 'civ_codec.dart';
 import 'cw_send_queue.dart';
+import 'keyer_config.dart';
+import 'voice_activity_tracker.dart';
 
 /// Transceive makes the radio announce changes on its own, but it is a
 /// setting on the radio that may simply be off, and nothing in CI-V lets us
@@ -88,6 +90,12 @@ class IcomCivDriver extends EquipmentDriver {
   @override
   bool get canKeyCw => true;
 
+  /// The line keys by default (0x17 is documented across it) — an entry
+  /// for a rig that does not, or a developer on the generic entry, says
+  /// otherwise through [cwKeyerConfigKey].
+  @override
+  bool canKeyCwWith(Map<String, dynamic> config) => cwKeyerFromConfig(config, fallback: true);
+
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => IcomCivSession(
         sink,
@@ -95,6 +103,11 @@ class IcomCivDriver extends EquipmentDriver {
         controllerAddress: _addressOrFallback(config['civControllerAddress'], civDefaultControllerAddress),
         maxWatts: (config['maxWatts'] as num?) ?? _assumedMaxWatts,
         batteryMaxWatts: config['batteryMaxWatts'] as num?,
+        // Absent means NONE, unlike the CW keyer: every named entry pins
+        // the count, so an absent key is a generic entry's node — one
+        // added before the field existed — and a generic knows no rig.
+        voiceMemories: voiceMemoriesFromConfig(config, fallback: 0).clamp(0, civVoiceMemoryCount),
+        voiceMemoryCeiling: voiceCeilingFromConfig(config),
       );
 
   /// `civControllerAddress`, `maxWatts` and `batteryMaxWatts` are read
@@ -102,31 +115,42 @@ class IcomCivDriver extends EquipmentDriver {
   /// fields on any of them — device facts ([icomNetworkControllerAddress], a
   /// model's rated power), not settings.
   @override
-  Set<String> get recognizedConfigKeys =>
-      {...super.recognizedConfigKeys, 'civControllerAddress', 'maxWatts', 'batteryMaxWatts'};
+  Set<String> get recognizedConfigKeys => {
+        ...super.recognizedConfigKeys,
+        'civControllerAddress',
+        'maxWatts',
+        'batteryMaxWatts',
+        cwKeyerConfigKey,
+        voiceMemoriesConfigKey,
+        voiceCeilingConfigKey,
+      };
 
   @override
   List<Map<String, dynamic>> configElements({
     Map<String, dynamic> overrides = const {},
     Map<String, dynamic> restrictions = const {},
   }) =>
-      // A pairing that hardcodes the address (the IC-705's network type
-      // fixes it, since RS-BA1 only ever talks to the one radio it's
-      // paired with) has nothing to show here.
-      overrides.containsKey('civAddress')
-          ? const []
-          : [
-              {
-                'type': 'field',
-                'fieldType': 'text',
-                'key': 'civAddress',
-                'label': t.settings.station.civAddress,
-                'description': t.settings.station.civAddressDescription,
-              },
-            ];
+      [
+        // A pairing that hardcodes the address (the IC-705's network type
+        // fixes it, since RS-BA1 only ever talks to the one radio it's
+        // paired with) has nothing to show here.
+        if (!overrides.containsKey('civAddress'))
+          {
+            'type': 'field',
+            'fieldType': 'text',
+            'key': 'civAddress',
+            'label': t.settings.station.civAddress,
+            'description': t.settings.station.civAddressDescription,
+          },
+        // The keyer facts, asked only where the entry did not pin them —
+        // the generic Icom — and only of a developer (docs/design/cat.md
+        // § Voice keying).
+        ...keyerConfigElements(overrides),
+      ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
+    if (key == voiceMemoriesConfigKey) return validateVoiceMemories(value);
     if (key != 'civAddress') return null;
     // A wrong address is SILENT — the radio ignores frames addressed
     // elsewhere, which is indistinguishable from a dead cable. Catch an
@@ -165,7 +189,7 @@ class IcomCivDriver extends EquipmentDriver {
   static int _addressOrFallback(dynamic raw, int fallback) => _parseAddress(raw) ?? fallback;
 }
 
-class IcomCivSession implements TransceiverSession, CwKeyerSession {
+class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
   final EquipmentSink _sink;
 
   /// The radio's CI-V bus address (IC-705 ships as 0xA4).
@@ -201,13 +225,37 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession {
     onProgress: _sink.reportCwProgress,
   );
 
+  /// 0x28 says nothing about its own progress, so while a memory plays the
+  /// radio is asked whether it is still transmitting (0x1C 0x00) — a voice
+  /// memory transmits — and the activity ends when it is not. That poll is
+  /// also how a REFUSED play ends (the radio not in a voice mode, the memory
+  /// empty): a second late, rather than on the NAK, because CI-V's ACK/NAK
+  /// names no command and sends are not awaited, so a NAK in flight from a
+  /// meter read would end a memory that is on the air.
+  late final VoiceActivityTracker _voice = VoiceActivityTracker(
+    report: _sink.reportVoiceActivity,
+    stop: stopVoice,
+    ceiling: () => voiceMemoryCeiling,
+    onCeiling: (limit) => _sink.reportDiagnostic('voice memory stopped at the ${limit.inSeconds} s ceiling'),
+    poll: () => _send(buildReadTransmitStatusFrame(to: radioAddress, from: controllerAddress)),
+  );
+
+  /// See [voiceMemoriesConfigKey]: what the entry pinned, at most the
+  /// line's eight.
+  final int _voiceMemories;
+
+  @override
+  final Duration voiceMemoryCeiling;
+
   IcomCivSession(
     this._sink, {
     required this.radioAddress,
     required this.controllerAddress,
     this.maxWatts = _assumedMaxWatts,
     this.batteryMaxWatts,
-  });
+    int voiceMemories = civVoiceMemoryCount,
+    this.voiceMemoryCeiling = voiceActivityCeiling,
+  }) : _voiceMemories = voiceMemories;
 
   void _send(List<int> frame) => _sink.send(frame);
 
@@ -319,6 +367,19 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession {
         if (frame.data.isEmpty || frame.data[0] != civMeterDcInputVoltage) return;
         _dcInputDeciVolts = parseMeterData(frame.data);
         _reportPower();
+
+      case CivCommand.transmitStatus:
+        // Only asked while a voice memory plays — see [_voice]. Receiving
+        // again is the memory over — or, before it was ever seen
+        // transmitting, a play the radio refused.
+        switch (parseTransmitStatusData(frame.data)) {
+          case true:
+            _voice.confirm();
+          case false:
+            _voice.endFromPoll();
+          case null:
+            break;
+        }
     }
   }
 
@@ -372,6 +433,30 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession {
   }
 
   @override
+  int get voiceMemoryCount => _voiceMemories;
+
+  /// Nothing in any CI-V guide records a voice memory: that is the front
+  /// panel's (VOICE > REC) alone.
+  @override
+  bool get canRecordVoice => false;
+
+  @override
+  void playVoiceMemory(int n) {
+    _send(buildPlayVoiceMemoryFrame(to: radioAddress, from: controllerAddress, n: n));
+    _voice.start(VoiceActivity(memory: n));
+  }
+
+  @override
+  void recordVoiceMemory(int n) {}
+
+  @override
+  void stopVoice() {
+    if (!_voice.active) return;
+    _send(buildStopVoiceMemoryFrame(to: radioAddress, from: controllerAddress));
+    _voice.end();
+  }
+
+  @override
   void startUpdates() {
     _framer.reset();
     _requestFrequencyAndMode();
@@ -411,6 +496,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession {
   @override
   void teardown() {
     _cwQueue.clear();
+    _voice.dispose();
     _stopPolling();
   }
 

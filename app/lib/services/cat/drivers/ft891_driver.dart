@@ -34,6 +34,8 @@ import '../adaptive_poller.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import 'cw_send_queue.dart';
+import 'keyer_config.dart';
+import 'voice_activity_tracker.dart';
 import 'yaesu_cat_codec.dart';
 
 /// Belt-and-suspenders resync, same reasoning as the FlexRadio driver's:
@@ -81,11 +83,40 @@ class Ft891Driver extends EquipmentDriver {
   @override
   bool get canKeyCw => true;
 
+  /// The line keys by default (`KM`/`KY` are documented across it) — an
+  /// entry for a rig that does not, or a developer on the generic entry,
+  /// says otherwise through [cwKeyerConfigKey].
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => Ft891Session(sink);
+  bool canKeyCwWith(Map<String, dynamic> config) => cwKeyerFromConfig(config, fallback: true);
+
+  @override
+  Set<String> get recognizedConfigKeys =>
+      {...super.recognizedConfigKeys, cwKeyerConfigKey, voiceMemoriesConfigKey, voiceCeilingConfigKey};
+
+  /// The keyer facts, asked only where the entry did not pin them — the
+  /// generic Yaesu — and only of a developer (docs/design/cat.md § Voice
+  /// keying).
+  @override
+  List<Map<String, dynamic>> configElements({
+    Map<String, dynamic> overrides = const {},
+    Map<String, dynamic> restrictions = const {},
+  }) =>
+      keyerConfigElements(overrides);
+
+  @override
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) =>
+      key == voiceMemoriesConfigKey ? validateVoiceMemories(value) : null;
+
+  @override
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => Ft891Session(
+        sink,
+        // Absent means NONE — see the Icom driver's createSession.
+        voiceMemories: voiceMemoriesFromConfig(config, fallback: 0).clamp(0, yaesuVoiceMemoryCount),
+        voiceMemoryCeiling: voiceCeilingFromConfig(config),
+      );
 }
 
-class Ft891Session implements TransceiverSession, CwKeyerSession {
+class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
   final EquipmentSink _sink;
   final _framer = AsciiCatFramer();
 
@@ -114,7 +145,30 @@ class Ft891Session implements TransceiverSession, CwKeyerSession {
     onProgress: _sink.reportCwProgress,
   );
 
-  Ft891Session(this._sink);
+  /// `PB0;` answers which memory is playing and `LM0;` which is recording,
+  /// so while one is going the matching read goes out every second and the
+  /// activity ends on a 0 — see voice_activity_tracker.dart. From the
+  /// FTDX10 CAT manual; the FT-891, FT-710 and FT-991A list the same two
+  /// commands, none of it yet sent to a radio.
+  late final VoiceActivityTracker _voice = VoiceActivityTracker(
+    report: _sink.reportVoiceActivity,
+    stop: stopVoice,
+    ceiling: () => voiceMemoryCeiling,
+    onCeiling: (limit) => _sink.reportDiagnostic('voice memory stopped at the ${limit.inSeconds} s ceiling'),
+    poll: () => _send(_voice.activity?.recording ?? false
+        ? buildReadVoiceRecordingCommand()
+        : buildReadVoicePlaybackCommand()),
+  );
+
+  /// See [voiceMemoriesConfigKey]: what the entry pinned, at most the
+  /// line's five.
+  final int _voiceMemories;
+
+  @override
+  final Duration voiceMemoryCeiling;
+
+  Ft891Session(this._sink, {int voiceMemories = yaesuVoiceMemoryCount, this.voiceMemoryCeiling = voiceActivityCeiling})
+      : _voiceMemories = voiceMemories;
 
   /// The cadence the poller has settled on — for tests, which otherwise
   /// could only infer it from timing.
@@ -184,6 +238,15 @@ class Ft891Session implements TransceiverSession, CwKeyerSession {
           _sink.reportKeyerSpeed(wpm);
         }
 
+      // Answers to [_voice]'s polls: channel 0 is the radio idle again,
+      // any other channel the memory still going.
+      case 'PB':
+        if (_voice.activity?.recording ?? true) return;
+        _handleVoicePoll(parseVoiceChannelParams(command.params));
+      case 'LM':
+        if (!(_voice.activity?.recording ?? false)) return;
+        _handleVoicePoll(parseVoiceChannelParams(command.params));
+
       // What Auto-Information actually pushes. One packet carries both the
       // frequency and the mode, so a dial turn reaches the app immediately
       // instead of waiting out the poll.
@@ -240,6 +303,41 @@ class Ft891Session implements TransceiverSession, CwKeyerSession {
     _send(buildReadKeyerSpeedCommand());
   }
 
+  void _handleVoicePoll(int? channel) {
+    if (channel == null) return;
+    if (channel == 0) {
+      _voice.endFromPoll();
+    } else {
+      _voice.confirm();
+    }
+  }
+
+  @override
+  int get voiceMemoryCount => _voiceMemories;
+
+  @override
+  bool get canRecordVoice => true;
+
+  @override
+  void playVoiceMemory(int n) {
+    _send(buildPlayVoiceMemoryCommand(n));
+    _voice.start(VoiceActivity(memory: n));
+  }
+
+  @override
+  void recordVoiceMemory(int n) {
+    _send(buildRecordVoiceMemoryCommand(n));
+    _voice.start(VoiceActivity(memory: n, recording: true));
+  }
+
+  @override
+  void stopVoice() {
+    final activity = _voice.activity;
+    if (activity == null) return;
+    _send(activity.recording ? buildStopVoiceRecordingCommand() : buildStopVoiceMemoryCommand());
+    _voice.end();
+  }
+
   @override
   void startUpdates() {
     _framer.reset();
@@ -275,6 +373,7 @@ class Ft891Session implements TransceiverSession, CwKeyerSession {
   @override
   void teardown() {
     _cwQueue.clear();
+    _voice.dispose();
     // Via stopUpdates, so "stop talking to the radio" is written once.
     stopUpdates();
   }

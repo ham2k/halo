@@ -752,7 +752,19 @@ take the value, so the WPM command fails out loud ("No connected radio can key C
 confirming a change nothing heard. Four sessions implement it — the Icom CI-V driver, the Yaesu one,
 FlexRadio's and the WinKeyer's — so the IC-7300 and IC-705, the FT-891, FT-710 and FTDX10, the
 FLEX-6000 line and a K1EL WinKeyer — plus the placeholder radio, which keys nothing but remembers a
-speed, so the surfaces can be driven on a web build with no rig.
+speed, so the surfaces can be driven on a web build with no rig. A fifth, the Kenwood driver, keys
+through `KY` on the entries that name a dialect (below).
+
+**Whether a radio keys is a fact about its entry, asked of its node.** `EquipmentDriver.canKeyCw` is
+the driver's word, but a driver serves a line — the CI-V driver an IC-706 as much as an IC-7300, the
+Kenwood driver a QMX as much as a K4 — so what the service reads is `canKeyCwWith(config)`, the
+driver's answer for THAT node's merged config (`CatService._radioKeysCw`): `cwKeyer` on Icom and
+Yaesu (absent means yes, the line's documented default), `cwDialect` on Kenwood (absent means no).
+The named entries pin these as overrides, the way the IC-705 pins its addresses; the four GENERIC
+entries prefill them off and, under developer mode, show them as fields (keyer_config.dart; the
+Kenwood driver's own dialect pickers) — the catalogue does not know which rig is behind a generic,
+and a rig with no keyer offered as the key in use keys nothing while the strip shows a message going
+out. A node stored before the field existed has no key and keys as it always did.
 
 **The speed is the radio's.** `EquipmentState.keyerSpeed` is set only by `EquipmentSink.reportKeyerSpeed`,
 sessions read it once at connect and never poll it (neither protocol announces a knob turn, and a
@@ -800,6 +812,14 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
   throttled by its XOFF rather than by arithmetic, and `stopCw` clears its buffer. The speed pot
   reports as it moves; a set is reported as taken since the keyer does not echo it. Host mode is
   closed on teardown so the paddle keys standalone again. From the host-interface documents alone.
+- **Kenwood CAT** (`kenwood_driver.dart`, on the entries that name a `cwDialect`) is `KY` in two
+  shapes: the Kenwood line proper wants `KY ` and the text padded with spaces to a fixed 28-byte
+  command, and `KY0;` empties its buffer — from hamlib's account of the TS-590, no Kenwood document
+  of ours; the Elecraft line (K3, KX2, KX3, K4, and reportedly a QMX) takes `KY text;` as is, up to
+  24 characters, and `KY @;` terminates a message, the `@` the programmer's reference reserves for
+  it. `KS` is the speed on both (4-60 and 8-50). `KY;` only ever says whether the buffer is full,
+  never when it empties, so the queue paces chunks by arithmetic like the CI-V session's. The KX2
+  and KX3 entries pin the Elecraft dialect; the QMX pins none.
 - **Yaesu CAT has no "key this text" command at all.** What it has is five text memories the
   operator can also fill from the front panel: `KM<n><text>;` writes one, `KY6;`-`KYA;` play them
   back. Keying from the app is therefore WRITE-THEN-PLAY through memory 5 (`yaesuAppKeyerMemory` —
@@ -831,6 +851,79 @@ out has put RF on the air from a radio the operator set up not to.
 
 None of this has met hardware yet; both drivers say so in their headers, and `hardwareVerified`
 still reflects only the frequency/mode path.
+
+## Voice keying
+
+The same eight keys, in a Phone mode: while the DRAFT contact's mode is Phone (`superModeForMode`
+— SSB, FM, AM and the digital-voice modes), F1-F8 and the keyer area's buttons play the radio's own
+voice memories, Escape stops one, and the Voice Messages dialog names each memory and — on a radio
+whose CAT can — records into it. Under the same `keyer` experiment (renamed "Keying"; `VOICE` is an
+alias). The draft's mode and not the radio's, the same reasoning as the messages being templates
+against the draft: the message is for the contact being logged, and a rig left in USB while the
+operator logs CW keys CW.
+
+**The messages are audio in the radio, so the app stores only a label.** `voiceMessageLabel1..8`
+(Radio settings, like the CW ones) is the whole of it — nothing to render, nothing to sanitize, and
+no `voiceMessage$n` beside it. A memory is keyed by NUMBER, and every surface offers exactly as many
+as radio1's session says it has (`voiceMemoryCount`: 8 on an Icom, 5 on a Yaesu, 4 on a TS-590, 8
+on a K4, 2 on a KX2/KX3), which is why the labels are eight and a radio with fewer shows fewer.
+
+**Radio1 plays, not the key in use.** `VoiceKeyerSession` (driver.dart) sits beside `CwKeyerSession`,
+a capability for the same reasons — but `CatService.canPlayVoice` is radio1's session being one, and
+connected, with no designation in between: the memories are the transceiver's, a WinKeyer has none,
+and a second radio's are that radio's. A driver shared across a line (Kenwood CAT) creates sessions
+that implement it for rigs that have no voice keyer at all, which is what a `voiceMemoryCount` of
+zero is for — a QMX on the Kenwood driver is not a voice keyer, and the catalogue entry, not the
+driver, says so (`voiceDialect`/`voiceMemories` overrides, the way `ifModeOffset` is pinned). The
+Icom and Yaesu drivers honour `voiceMemories` the same way (the IC-706 and X6100 pin zero), and the
+generic entries prefill zero and ask under developer mode — see § CW keying on why a generic asks.
+
+**The radio says when it is done, or the ceiling does.** No protocol here reports a memory's
+progress, and only some answer "still playing?", so a session reports `VoiceActivity` (memory,
+playing or recording — `EquipmentSink.reportVoiceActivity`, `CatService.voiceActivity`) as it sends
+the command and then asks its own question every second (voice_activity_tracker.dart): Yaesu's `PB0;`
+answers the channel playing, the K4's `DA;` answers `DA0;` when idle, Icom and the KX line have no
+such read so they are asked whether they are transmitting (`0x1C 0x00`, `TQ;`) — a voice memory
+transmits. Past the radio's own memory length — `VoiceKeyerSession.voiceMemoryCeiling`, pinned per
+named entry from its manual (`voiceCeilingSeconds`: an Icom's 90, the FT-891's 20, the FTDX10's 90,
+a KX2/KX3's 15) and `voiceActivityCeiling` (15 s) on a generic entry or a radio whose manual has not
+been read for it — the session STOPS it on the radio through its own stop and clears what it showed,
+since a recording never ends on its own and an activity the app no longer shows is one the operator
+can no longer stop. A poll answering "not going" before any answered
+"going" is the one thing the polls can say about a REFUSED play — the memory empty, the radio not in
+a voice mode, which no protocol reports outright — so it is shown as doubtful (`VoiceActivity.doubtful`,
+"Playing M3?") for a second and then stopped and cleared, rather than as a play that simply ended.
+Doubt is not an end: the polls and the ceiling run on through it, a "going" on the next poll takes
+the question mark away (a radio can need more than a second to key up), and the doubt's own expiry
+sends the stop too — a stop to an idle radio costs nothing, and a memory on the air behind a cleared
+strip would be one the operator cannot stop. A ceiling stop leaves a developer diagnostic on the
+node, since a memory that keeps ending at fifteen seconds is an entry missing its length.
+The keyer area shows the memory playing with no bar, deliberately: a bar pacing a duration the app
+does not know would be a guess dressed as a measurement.
+
+Per dialect, from the manuals and hamlib; **none of it has met hardware**:
+
+- **Icom CI-V**: `0x28 0x00 nn` (01-08) transmits T1-T8, `0x28 0x00 0x00` stops. Documented on the
+  IC-7300MK2 and IC-7610, reported working on the IC-7300 and IC-705 whose guides omit it. A play
+  the radio refuses (not in a voice mode, the memory empty) ends at the first transmit-status poll,
+  a second later, and NOT on the NAK: CI-V's ACK/NAK names no command and sends are not awaited, so
+  a NAK in flight from a meter read would end a memory that is on the air. Nothing in CI-V records
+  a memory: `canRecordVoice` is false, and the dialog says to use the front panel. Every named entry
+  pins its `voiceMemories` (eight on the modern line, zero on the IC-706 and the X6100); an absent
+  key is a generic entry's node and means none.
+- **Yaesu** (FT-891, FT-710, FT-991A, FTDX10/101 — hamlib lists both commands valid on all of them):
+  `PB0n;` plays, `PB00;` stops; `LM0n;` starts recording into channel n and `LM00;` stops it, so
+  the dialog's Record works. Five memories, pinned on the named entries; absent means none.
+- **Kenwood CAT**, by dialect, which a developer picks on the generic entries: `pb` — `PBn;`/`PB0;`,
+  the TS-590 generation (the TS-890/990 speak a different `PB`, a message list to open first, and
+  are not a dialect yet); `k4` — `PBn;` (an alias of `DAMPn;`) plays, `DA0;`
+  stops anything (its reference's one stop for playback and recording alike), and recording is
+  `DARM;` then, on stop, `DA0;` and `DAMSn;` to save it as message n; eight. The KX2
+  and KX3 are `kx` — no message command at all, only switch emulation: `SWT11;` (MSG) then `SWT19;`
+  or `SWT27;` (the 1 and 2 keys), `RX;` to stop, two memories. A K3 with a KDVR3 plays through
+  different switches and is not covered.
+- **FlexRadio** has no voice memories in its API; the **placeholder radio** "plays" for four
+  seconds and records until stopped, so the surfaces run on a web build.
 
 ## Smart VFO Snap
 

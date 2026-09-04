@@ -42,6 +42,8 @@ class _FakeSink implements EquipmentSink {
   void reportKeyerSpeed(int wpm) => keyerSpeeds.add(wpm);
   @override
   void reportCwProgress(CwSendProgress? progress) {}
+  @override
+  void reportVoiceActivity(VoiceActivity? activity) {}
 
   @override
   void reportDiagnostic(String? note) => diagnostics.add(note);
@@ -431,11 +433,11 @@ void main() {
       expect(type.defaultConfig['baudRate'], 19200);
     });
 
-    test('asks for port, speed and address', () {
-      expect(
-        [for (final e in type.configElements()) if (e['type'] == 'field') e['key']],
-        ['port', 'baudRate', 'civAddress'],
-      );
+    test('asks for port, speed and address — and, of a developer, the keyer facts the generic entry cannot pin', () {
+      final fields = [for (final e in type.configElements()) if (e['type'] == 'field') e];
+      expect(fields.map((e) => e['key']), ['port', 'baudRate', 'civAddress', 'cwKeyer', 'voiceMemories']);
+      expect(fields.where((e) => e['devMode'] == true).map((e) => e['key']), ['cwKeyer', 'voiceMemories'],
+          reason: 'an operator sees the first three only');
     });
 
     test('warns about a radio offering two serial ports at once', () {

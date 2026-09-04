@@ -22,11 +22,15 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import '../../../i18n/strings.g.dart';
 import '../adaptive_poller.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import 'cat_ascii_codec.dart';
+import 'cw_send_queue.dart';
 import 'kenwood_cat_codec.dart';
+import 'keyer_config.dart';
+import 'voice_activity_tracker.dart';
 
 class KenwoodDriver extends EquipmentDriver {
   const KenwoodDriver();
@@ -56,8 +60,46 @@ class KenwoodDriver extends EquipmentDriver {
   /// noticing is reporting wrong modes forever.
   static const ifModeOffsetKey = 'ifModeOffset';
 
+  /// Which voice-memory dialect the radio speaks ([KenwoodVoiceDialect] by
+  /// name) and how many memories it has — pinned per catalogue entry the
+  /// way [ifModeOffsetKey] is, since the driver serves a whole line and a
+  /// QMX has no voice keyer at all. Absent means none.
+  static const voiceDialectKey = 'voiceDialect';
+  static const voiceMemoriesKey = voiceMemoriesConfigKey;
+
+  /// Which shape of `KY` keys CW ([KenwoodCwDialect] by name), pinned the
+  /// same way. Absent — or a name no dialect answers to — keys nothing.
+  static const cwDialectKey = 'cwDialect';
+
+  static KenwoodCwDialect? cwDialectFrom(Map<String, dynamic> config) =>
+      KenwoodCwDialect.values.where((d) => d.name == config[cwDialectKey]).firstOrNull;
+
+  static KenwoodVoiceDialect? voiceDialectFrom(Map<String, dynamic> config) =>
+      KenwoodVoiceDialect.values.where((d) => d.name == config[voiceDialectKey]).firstOrNull;
+
+  /// A dialect named with no count — the developer picked one and left the
+  /// other — takes the dialect's own: a `pb` TS-590 has four, a K4 eight, a
+  /// KX two. A count is never more than the dialect can address.
+  static int voiceMemoriesFrom(Map<String, dynamic> config) {
+    final dialect = voiceDialectFrom(config);
+    if (dialect == null) return 0;
+    final own = switch (dialect) {
+      KenwoodVoiceDialect.pb => 4,
+      KenwoodVoiceDialect.k4 => maxVoiceMemories,
+      KenwoodVoiceDialect.kx => kxVoiceMemoryCount,
+    };
+    final count = voiceMemoriesFromConfig(config, fallback: 0);
+    return (count > 0 ? count : own).clamp(0, dialect == KenwoodVoiceDialect.kx ? kxVoiceMemoryCount : maxVoiceMemories);
+  }
+
+  /// A whole line on one driver, so the keyer is a fact about the entry —
+  /// the named ones pin it, the generics ask under developer mode.
   @override
-  Set<String> get recognizedConfigKeys => {...super.recognizedConfigKeys, ifModeOffsetKey};
+  bool canKeyCwWith(Map<String, dynamic> config) => cwDialectFrom(config) != null;
+
+  @override
+  Set<String> get recognizedConfigKeys =>
+      {...super.recognizedConfigKeys, ifModeOffsetKey, cwDialectKey, voiceDialectKey, voiceMemoriesKey, voiceCeilingConfigKey};
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => KenwoodSession(
@@ -66,10 +108,61 @@ class KenwoodDriver extends EquipmentDriver {
           final int offset when offset >= kenwoodFrequencyDigits => offset,
           _ => null,
         },
+        cwDialect: cwDialectFrom(config),
+        voiceDialect: voiceDialectFrom(config),
+        voiceMemories: voiceMemoriesFrom(config),
+        voiceMemoryCeiling: voiceCeilingFromConfig(config),
       );
+
+  /// The keyer facts, asked only where the entry did not pin them — the
+  /// generic Kenwood and Elecraft — and only of a developer: which shape of
+  /// `KY` the rig takes and which voice keyer it has are things the
+  /// catalogue should know, and these fields are how it learns before an
+  /// entry exists (docs/design/cat.md § Voice keying).
+  @override
+  List<Map<String, dynamic>> configElements({
+    Map<String, dynamic> overrides = const {},
+    Map<String, dynamic> restrictions = const {},
+  }) =>
+      [
+        if (!overrides.containsKey(cwDialectKey))
+          {
+            'type': 'field',
+            'fieldType': 'select',
+            'key': cwDialectKey,
+            'label': t.settings.station.cwDialect,
+            'description': t.settings.station.cwDialectDescription,
+            'devMode': true,
+            'options': [
+              {'value': '', 'label': t.settings.station.keyerNone},
+              {'value': KenwoodCwDialect.kenwood.name, 'label': t.settings.station.cwDialectKenwood},
+              {'value': KenwoodCwDialect.elecraft.name, 'label': t.settings.station.cwDialectElecraft},
+            ],
+          },
+        if (!overrides.containsKey(voiceDialectKey))
+          {
+            'type': 'field',
+            'fieldType': 'select',
+            'key': voiceDialectKey,
+            'label': t.settings.station.voiceDialect,
+            'description': t.settings.station.voiceDialectDescription,
+            'devMode': true,
+            'options': [
+              {'value': '', 'label': t.settings.station.keyerNone},
+              {'value': KenwoodVoiceDialect.pb.name, 'label': t.settings.station.voiceDialectPb},
+              {'value': KenwoodVoiceDialect.k4.name, 'label': t.settings.station.voiceDialectK4},
+              {'value': KenwoodVoiceDialect.kx.name, 'label': t.settings.station.voiceDialectKx},
+            ],
+          },
+        if (!overrides.containsKey(voiceMemoriesKey)) voiceMemoriesConfigElement(),
+      ];
+
+  @override
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) =>
+      key == voiceMemoriesKey ? validateVoiceMemories(value) : null;
 }
 
-class KenwoodSession implements TransceiverSession {
+class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
   final EquipmentSink _sink;
   final _framer = KenwoodFramer();
 
@@ -115,7 +208,63 @@ class KenwoodSession implements TransceiverSession {
 
   static const _agreementsNeeded = 2;
 
-  KenwoodSession(this._sink, {this.declaredModeOffset}) : _modeOffset = declaredModeOffset;
+  /// See [KenwoodDriver.cwDialectKey]. Null keys nothing: the session still
+  /// implements [CwKeyerSession] — one class serves the line — and the
+  /// service reads [EquipmentDriver.canKeyCwWith] before offering it.
+  final KenwoodCwDialect? cwDialect;
+
+  /// What the radio last said its keyer runs at — the pace [_cwQueue]
+  /// spaces chunks by.
+  int? _keyerSpeed;
+
+  /// `KY` takes 24 characters and `KY;` only says whether the buffer is
+  /// full, never when it empties — so the queue paces by arithmetic like
+  /// the Icom and Yaesu sessions do (cw_send_queue.dart).
+  late final CwSendQueue _cwQueue = CwSendQueue(
+    maxChunkLength: kenwoodKeyerMaxChars,
+    send: (chunk) {
+      final dialect = cwDialect;
+      if (dialect != null) _send(buildKenwoodSendCwCommand(dialect, chunk));
+    },
+    speedWpm: () => _keyerSpeed,
+    onProgress: _sink.reportCwProgress,
+  );
+
+  /// See [KenwoodDriver.voiceDialectKey]. Null with no voice keyer, in which
+  /// case [voiceMemoryCount] is zero whatever was declared.
+  final KenwoodVoiceDialect? voiceDialect;
+  final int _voiceMemories;
+
+  @override
+  final Duration voiceMemoryCeiling;
+
+  /// Each dialect has its own "still going?": `PB;` on a Kenwood, `DA;` on
+  /// the K4, `TQ;` (transmitting?) on a KX — see voice_activity_tracker.dart.
+  late final VoiceActivityTracker _voice = VoiceActivityTracker(
+    report: _sink.reportVoiceActivity,
+    stop: stopVoice,
+    ceiling: () => voiceMemoryCeiling,
+    onCeiling: (limit) => _sink.reportDiagnostic('voice memory stopped at the ${limit.inSeconds} s ceiling'),
+    poll: () {
+      final command = switch (voiceDialect) {
+        KenwoodVoiceDialect.pb => buildKenwoodReadVoicePlaybackCommand(),
+        KenwoodVoiceDialect.k4 => buildK4ReadDigitalAudioCommand(),
+        KenwoodVoiceDialect.kx => buildElecraftReadTransmitQueryCommand(),
+        null => null,
+      };
+      if (command != null) _send(command);
+    },
+  );
+
+  KenwoodSession(
+    this._sink, {
+    this.declaredModeOffset,
+    this.cwDialect,
+    this.voiceDialect,
+    int voiceMemories = 0,
+    this.voiceMemoryCeiling = voiceActivityCeiling,
+  })  : _modeOffset = declaredModeOffset,
+        _voiceMemories = voiceMemories;
 
   /// Where the mode is being read from, whether that was declared by the
   /// radio's own definition or worked out here — [declaredModeOffset] is what
@@ -205,6 +354,35 @@ class KenwoodSession implements TransceiverSession {
       case 'PC':
         final watts = parseKenwoodPowerParams(command.params);
         if (watts != null) _sink.reportPower(watts);
+
+      case 'KS':
+        if (cwDialect == null) return;
+        final wpm = parseKenwoodKeyerSpeedParams(command.params);
+        if (wpm != null) {
+          _keyerSpeed = wpm;
+          _sink.reportKeyerSpeed(wpm);
+        }
+
+      // Answers to [_voice]'s polls, each dialect its own: "going" confirms,
+      // "not going" ends — a refusal when nothing confirmed first.
+      case 'PB':
+        if (voiceDialect != KenwoodVoiceDialect.pb) return;
+        final channel = parseKenwoodVoicePlaybackParams(command.params);
+        if (channel == null) return;
+        _voicePollSays(going: channel != 0);
+      case 'DA':
+        // Only the K4's: on a Kenwood `DA` is the DATA-mode command, whose
+        // `DA0;` would otherwise read as "idle" and end a memory on the air.
+        if (voiceDialect != KenwoodVoiceDialect.k4) return;
+        final state = parseK4DigitalAudioParams(command.params);
+        final activity = _voice.activity;
+        if (state == null || activity == null) return;
+        _voicePollSays(going: activity.recording ? state.recording : state.playing);
+      case 'TQ':
+        if (voiceDialect != KenwoodVoiceDialect.kx) return;
+        final transmitting = parseElecraftTransmitQueryParams(command.params);
+        if (transmitting == null) return;
+        _voicePollSays(going: transmitting);
     }
     // Everything else is an acknowledgement or something we don't track;
     // ignoring them is what lets AI mode be noisy without harm.
@@ -300,6 +478,102 @@ class KenwoodSession implements TransceiverSession {
   void setPower(num watts) => _send(buildKenwoodSetPowerCommand(watts));
 
   @override
+  void sendCw(String text) {
+    if (cwDialect != null) _cwQueue.enqueue(text);
+  }
+
+  /// Empties the queue and the radio's buffer both — each dialect has a
+  /// terminator, unlike Yaesu's memory playback.
+  @override
+  void stopCw() {
+    _cwQueue.clear();
+    final dialect = cwDialect;
+    if (dialect != null) _send(buildKenwoodStopCwCommand(dialect));
+  }
+
+  @override
+  bool get cwSending => _cwQueue.sending;
+
+  @override
+  void dropQueuedCw(int id) => _cwQueue.dropPending(id);
+
+  @override
+  ({int min, int max}) get keyerSpeedRange => kenwoodKeyerSpeedRange(cwDialect ?? KenwoodCwDialect.elecraft);
+
+  /// Sets, then reads back, so the value shown is what the radio took.
+  @override
+  void setKeyerSpeed(int wpm) {
+    final dialect = cwDialect;
+    if (dialect == null) return;
+    _send(buildKenwoodSetKeyerSpeedCommand(dialect, wpm));
+    _send(buildKenwoodReadKeyerSpeedCommand());
+  }
+
+  /// Asks the radio for its keyer speed again — see [startUpdates].
+  @override
+  void refreshKeyerSpeed() {
+    if (cwDialect != null) _send(buildKenwoodReadKeyerSpeedCommand());
+  }
+
+  @override
+  int get voiceMemoryCount => voiceDialect == null ? 0 : _voiceMemories;
+
+  /// Only the K4 documents recording over CAT.
+  @override
+  bool get canRecordVoice => voiceDialect == KenwoodVoiceDialect.k4;
+
+  void _voicePollSays({required bool going}) {
+    if (going) {
+      _voice.confirm();
+    } else {
+      _voice.endFromPoll();
+    }
+  }
+
+  @override
+  void playVoiceMemory(int n) {
+    switch (voiceDialect) {
+      case KenwoodVoiceDialect.pb:
+      case KenwoodVoiceDialect.k4:
+        _send(buildKenwoodPlayVoiceCommand(n));
+      case KenwoodVoiceDialect.kx:
+        buildKxPlayVoiceCommands(n).forEach(_send);
+      case null:
+        return;
+    }
+    _voice.start(VoiceActivity(memory: n));
+  }
+
+  @override
+  void recordVoiceMemory(int n) {
+    if (!canRecordVoice) return;
+    _send(buildK4RecordVoiceCommand());
+    _voice.start(VoiceActivity(memory: n, recording: true));
+  }
+
+  /// On the K4 a recording is not a memory until saved: the stop is
+  /// `DA0;` — the verb its reference gives for ending ANY digital-audio
+  /// action, playback included, where `PB0;` is documented only as
+  /// playback's — and then `DAMSn;` for the memory the recording was for.
+  @override
+  void stopVoice() {
+    final activity = _voice.activity;
+    if (activity == null) return;
+    switch (voiceDialect) {
+      case KenwoodVoiceDialect.pb:
+        _send(buildKenwoodStopVoiceCommand());
+      case KenwoodVoiceDialect.k4:
+        _send(buildK4StopDigitalAudioCommand());
+        if (activity.recording) _send(buildK4SaveVoiceCommand(activity.memory));
+      case KenwoodVoiceDialect.kx:
+        _send(buildKxStopVoiceCommand());
+      case null:
+        break;
+    }
+    _voice.end();
+  }
+
+  @override
   void startUpdates() {
     _framer.reset();
     _started = true;
@@ -308,6 +582,10 @@ class KenwoodSession implements TransceiverSession {
     }
     _send(buildKenwoodAutoInformationCommand(true));
     _requestState();
+    // Once, not per poll — the same reasoning as the Icom driver's: the
+    // speed changes only when someone turns the knob, and the dialog that
+    // shows it re-reads it when it opens.
+    if (cwDialect != null) _send(buildKenwoodReadKeyerSpeedCommand());
     _poller.start();
   }
 
@@ -325,6 +603,8 @@ class KenwoodSession implements TransceiverSession {
 
   @override
   void teardown() {
+    _cwQueue.clear();
+    _voice.dispose();
     // Via stopUpdates, so "stop talking to the radio" is written once.
     stopUpdates();
   }

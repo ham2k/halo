@@ -697,6 +697,17 @@ class RadioSettingsGroup extends SettingsGroup {
             target: 'cw-messages',
           ),
         ],
+        // The voice memory labels, the same way, under `voice-messages`:
+        // the audio is in the radio, so a label is all there is to edit.
+        {'type': 'markdown', 'text': s.voiceMessages.description, 'target': 'voice-messages'},
+        for (var n = 1; n <= SettingsService.voiceMessageCount; n++)
+          _text(
+            key: SettingsService.voiceMessageLabelKey(n),
+            label: s.voiceMessages.labelKey(n: n),
+            icon: 'numeric-$n-circle-outline',
+            value: settings.voiceMessageLabel(n),
+            target: 'voice-messages',
+          ),
       ],
     ];
   }
