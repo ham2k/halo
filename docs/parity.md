@@ -106,13 +106,28 @@ more locales (Italian, Korean).
   jump-after-RST.
 
 ### Station & operator model
-- `/P`-style suffixes as first-class, club / multi-operator handling with
-  QSO-migration prompts, "suggest default operator", multi-profile actually
-  in use (HaLo: profiles scaffolded, single profile active).
-- **Multi-station identifier** ✅ (`b83dbeb6`): a per-device free-text
-  identifier, appended to self-spots and exported as
-  `APP_HAM2K_POSITION` — PoLo landed the same `/OP{n}` spotting in
-  `bf0c090c`. What remains is the club / multi-operator model above it.
+- Multi-station ✅ and in places ahead: several station callsigns in one
+  comma-separated `stationCall` (`Operation.stationCalls`, where PoLo splits
+  `stationCall` + `stationCallPlusArray`), the operating position in
+  `localData['multiIdentifier']` (`b83dbeb6`) written through one canonicalizer
+  by both the details dialog and `POSITION`, appended to self-spots and
+  exported as `APP_HAM2K_POSITION` — PoLo landed the same `/OP{n}` spotting in
+  `bf0c090c` — and the operator stored **per position** in synced data
+  (`operator1`, `operator2`, … — `operation_operator.dart`) where PoLo keeps
+  one device-local `operatorCall`. PoLo's separate `isMultiStation` boolean is
+  a deliberate divergence, not a gap: here a non-empty position *is* the flag.
+- The Operation Details dialog's remaining half ✅ (HALO-279): it names the
+  calls the log already holds and offers to restamp them (PoLo's
+  QSO-migration prompts), warns about an unparseable callsign without
+  refusing it, disables the operator field under several station calls, and
+  suggests the operator's own call behind "Suggest Operator" — PoLo's
+  `suggestDefaultOperator`. Clearing an operator deliberately offers no
+  restamp: an empty field is also every intermediate state of typing one.
+  ("`/P`-style suffixes as first-class" left this list as a first-sweep
+  artifact — it matches no code in PoLo.)
+- **Multi-profile actually in use** ⛔ (HaLo: profiles scaffolded, single
+  profile active) — HALO-107. Showing which operator and position logged each
+  QSO is HALO-439.
 
 ### Operations
 - **Operation templates** ("use as template" + suggestions on create). ⛔
@@ -280,7 +295,8 @@ HaLo has, PoLo lacks: `DEVSTATUS`/`DEVPROGRESS` (status-bar exercisers),
    (M12); WAB. (M7 and M8 are done.)
 7. Per-export-type template overrides + Wavelog + File Stash (+ user-facing
    QSON). REG1TEST/EDI is done.
-8. Multi-station / operator model.
+8. ~~Multi-station / operator model~~ — done (HALO-370, HALO-279). What is
+   left of §2's "Station & operator model" is profiles (HALO-107).
 9. Long tail (HamQTH/QRZCALL.EU, todo done-toggle and the pending-to-dos
    export warning, global Spots screen, operation templates/undelete/badge,
    keep-awake, credits/community links, dev-mode database surgery, polish).

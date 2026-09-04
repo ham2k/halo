@@ -451,6 +451,8 @@ class Translations$dialogs$en {
 
 	/// en: 'Remove'
 	String get receivedPurgesAction => 'Remove';
+
+	late final Translations$dialogs$callChange$en callChange = Translations$dialogs$callChange$en.internal(_root);
 }
 
 // Path: operation
@@ -2129,6 +2131,63 @@ class Translations$home$logs$en {
 	late final Translations$home$logs$import$en import = Translations$home$logs$import$en.internal(_root);
 }
 
+// Path: dialogs.callChange
+class Translations$dialogs$callChange$en {
+	Translations$dialogs$callChange$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Invalid callsign: ${call}'
+	String invalidCallsign({required Object call}) => 'Invalid callsign: ${call}';
+
+	/// en: 'Invalid callsigns: ${calls}'
+	String invalidCallsigns({required Object calls}) => 'Invalid callsigns: ${calls}';
+
+	/// en: '${previous} used so far. ${typed} will be used for new contacts.'
+	String stationSoFar({required Object previous, required Object typed}) => '${previous} used so far. ${typed} will be used for new contacts.';
+
+	/// en: 'No callsign used so far. ${typed} will be used for new contacts.'
+	String stationNoneSoFar({required Object typed}) => 'No callsign used so far. ${typed} will be used for new contacts.';
+
+	/// en: 'This operation already has contacts under ${calls}. ${typed} will only be used for new ones.'
+	String stationSeveral({required Object calls, required Object typed}) => 'This operation already has contacts under ${calls}. ${typed} will only be used for new ones.';
+
+	/// en: '(one) {Also change the contact already logged to ${typed}} (other) {Also change all ${count} contacts already logged to ${typed}}'
+	String stationRestamp({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Also change the contact already logged to ${typed}',
+		other: 'Also change all ${count} contacts already logged to ${typed}',
+	);
+
+	/// en: '${previous} has operated so far. ${typed} will be recorded for new contacts.'
+	String operatorSoFar({required Object previous, required Object typed}) => '${previous} has operated so far. ${typed} will be recorded for new contacts.';
+
+	/// en: 'No operator recorded so far. ${typed} will be recorded for new contacts.'
+	String operatorNoneSoFar({required Object typed}) => 'No operator recorded so far. ${typed} will be recorded for new contacts.';
+
+	/// en: 'This operation already has contacts by ${calls}. ${typed} will only be recorded for new ones.'
+	String operatorSeveral({required Object calls, required Object typed}) => 'This operation already has contacts by ${calls}. ${typed} will only be recorded for new ones.';
+
+	/// en: '(one) {Also record ${typed} as the operator of the contact already logged} (other) {Also record ${typed} as the operator of all ${count} contacts already logged}'
+	String operatorRestamp({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Also record ${typed} as the operator of the contact already logged',
+		other: 'Also record ${typed} as the operator of all ${count} contacts already logged',
+	);
+
+	/// en: 'When using multiple stations over the air, there's no support for separate operators'
+	String get operatorSeveralStations => 'When using multiple stations over the air, there\'s no support for separate operators';
+
+	/// en: 'This operation's contacts could not be read, so changing a callsign here won't offer to update them'
+	String get contactsUnreadable => 'This operation\'s contacts could not be read, so changing a callsign here won\'t offer to update them';
+
+	/// en: 'The contacts already logged could not be updated, so nothing was changed: ${error}'
+	String restampFailed({required Object error}) => 'The contacts already logged could not be updated, so nothing was changed: ${error}';
+
+	/// en: '${written} of ${planned} contacts were updated — the rest are no longer in this operation'
+	String restampShortfall({required Object written, required Object planned}) => '${written} of ${planned} contacts were updated — the rest are no longer in this operation';
+}
+
 // Path: operation.tabs
 class Translations$operation$tabs$en {
 	Translations$operation$tabs$en.internal(this._root);
@@ -2993,6 +3052,7 @@ class Translations$settings$logging$en {
 	late final Translations$settings$logging$leftieMode$en leftieMode = Translations$settings$logging$leftieMode$en.internal(_root);
 	late final Translations$settings$logging$fieldsOnTop$en fieldsOnTop = Translations$settings$logging$fieldsOnTop$en.internal(_root);
 	late final Translations$settings$logging$countryFlags$en countryFlags = Translations$settings$logging$countryFlags$en.internal(_root);
+	late final Translations$settings$logging$suggestDefaultOperator$en suggestDefaultOperator = Translations$settings$logging$suggestDefaultOperator$en.internal(_root);
 	late final Translations$settings$logging$showBearing$en showBearing = Translations$settings$logging$showBearing$en.internal(_root);
 	late final Translations$settings$logging$showReverseBearing$en showReverseBearing = Translations$settings$logging$showReverseBearing$en.internal(_root);
 	late final Translations$settings$logging$switchSentRcvd$en switchSentRcvd = Translations$settings$logging$switchSentRcvd$en.internal(_root);
@@ -5042,6 +5102,24 @@ class Translations$settings$logging$countryFlags$en {
 	String get none => 'Don\'t show any flags';
 }
 
+// Path: settings.logging.suggestDefaultOperator
+class Translations$settings$logging$suggestDefaultOperator$en {
+	Translations$settings$logging$suggestDefaultOperator$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Suggest Operator'
+	String get title => 'Suggest Operator';
+
+	/// en: 'Offer your own callsign as the operator when an operation runs under a different station callsign'
+	String get descriptionOn => 'Offer your own callsign as the operator when an operation runs under a different station callsign';
+
+	/// en: 'Leave the operator blank unless you fill it in'
+	String get descriptionOff => 'Leave the operator blank unless you fill it in';
+}
+
 // Path: settings.logging.showBearing
 class Translations$settings$logging$showBearing$en {
 	Translations$settings$logging$showBearing$en.internal(this._root);
@@ -5896,6 +5974,20 @@ extension on Translations {
 			'dialogs.receivedPurgesTitle' => 'Test Operations Removed Elsewhere',
 			'dialogs.receivedPurgesBody' => 'These were deleted as Test Operations on another device. Remove them here too? This permanently deletes them and their QSOs, and cannot be undone.',
 			'dialogs.receivedPurgesAction' => 'Remove',
+			'dialogs.callChange.invalidCallsign' => ({required Object call}) => 'Invalid callsign: ${call}',
+			'dialogs.callChange.invalidCallsigns' => ({required Object calls}) => 'Invalid callsigns: ${calls}',
+			'dialogs.callChange.stationSoFar' => ({required Object previous, required Object typed}) => '${previous} used so far. ${typed} will be used for new contacts.',
+			'dialogs.callChange.stationNoneSoFar' => ({required Object typed}) => 'No callsign used so far. ${typed} will be used for new contacts.',
+			'dialogs.callChange.stationSeveral' => ({required Object calls, required Object typed}) => 'This operation already has contacts under ${calls}. ${typed} will only be used for new ones.',
+			'dialogs.callChange.stationRestamp' => ({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Also change the contact already logged to ${typed}', other: 'Also change all ${count} contacts already logged to ${typed}', ), 
+			'dialogs.callChange.operatorSoFar' => ({required Object previous, required Object typed}) => '${previous} has operated so far. ${typed} will be recorded for new contacts.',
+			'dialogs.callChange.operatorNoneSoFar' => ({required Object typed}) => 'No operator recorded so far. ${typed} will be recorded for new contacts.',
+			'dialogs.callChange.operatorSeveral' => ({required Object calls, required Object typed}) => 'This operation already has contacts by ${calls}. ${typed} will only be recorded for new ones.',
+			'dialogs.callChange.operatorRestamp' => ({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Also record ${typed} as the operator of the contact already logged', other: 'Also record ${typed} as the operator of all ${count} contacts already logged', ), 
+			'dialogs.callChange.operatorSeveralStations' => 'When using multiple stations over the air, there\'s no support for separate operators',
+			'dialogs.callChange.contactsUnreadable' => 'This operation\'s contacts could not be read, so changing a callsign here won\'t offer to update them',
+			'dialogs.callChange.restampFailed' => ({required Object error}) => 'The contacts already logged could not be updated, so nothing was changed: ${error}',
+			'dialogs.callChange.restampShortfall' => ({required Object written, required Object planned}) => '${written} of ${planned} contacts were updated — the rest are no longer in this operation',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
@@ -6256,6 +6348,8 @@ extension on Translations {
 			'activitiesView.locationGrantRefused' => 'Still no location — the system said no again',
 			'activitiesView.searchUnavailableTitle' => 'Activity search unavailable',
 			'activitiesView.searchUnavailableReason' => 'No activity extension could answer. Try again in a moment.',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.exportLogs' => 'Export Logs',
@@ -6270,8 +6364,6 @@ extension on Translations {
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
 			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
 			'activitiesView.setupUnavailable' => 'Could not load this activity\'s setup — try again from Manage',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'activitiesView.controlsUnavailableReason' => 'Your references are safe, but editing them is unavailable right now.',
 			'activitiesView.controlsUnavailableRetry' => 'Retry',
@@ -6464,6 +6556,9 @@ extension on Translations {
 			'settings.logging.countryFlags.dx' => 'Show only for DX contacts',
 			'settings.logging.countryFlags.all' => 'Show flags for all contacts',
 			'settings.logging.countryFlags.none' => 'Don\'t show any flags',
+			'settings.logging.suggestDefaultOperator.title' => 'Suggest Operator',
+			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Offer your own callsign as the operator when an operation runs under a different station callsign',
+			'settings.logging.suggestDefaultOperator.descriptionOff' => 'Leave the operator blank unless you fill it in',
 			'settings.logging.showBearing.title' => 'Show Bearing',
 			'settings.logging.showBearing.descriptionOn' => 'Show estimated bearing to station',
 			'settings.logging.showBearing.descriptionOff' => 'Don\'t show bearing information',
@@ -6767,6 +6862,8 @@ extension on Translations {
 			'settings.station.winkeyerNoAnswer' => 'No WinKeyer answered on this port',
 			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped answering while sending; the message was dropped',
 			'settings.station.radioUser' => 'Radio username',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
@@ -6784,8 +6881,6 @@ extension on Translations {
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
 			'settings.station.models.ic705' => 'Icom IC-705',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ic7300' => 'Icom IC-7300',
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',

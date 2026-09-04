@@ -167,7 +167,29 @@
     "syncAllAction": "Wipe and Resync",
     "receivedPurgesTitle": "Test Operations Removed Elsewhere",
     "receivedPurgesBody": "These were deleted as Test Operations on another device. Remove them here too? This permanently deletes them and their QSOs, and cannot be undone.",
-    "receivedPurgesAction": "Remove"
+    "receivedPurgesAction": "Remove",
+    "callChange": {
+      "invalidCallsign": "Invalid callsign: ${call}",
+      "invalidCallsigns": "Invalid callsigns: ${calls}",
+      "stationSoFar": "${previous} used so far. ${typed} will be used for new contacts.",
+      "stationNoneSoFar": "No callsign used so far. ${typed} will be used for new contacts.",
+      "stationSeveral": "This operation already has contacts under ${calls}. ${typed} will only be used for new ones.",
+      "stationRestamp": {
+        "one": "Also change the contact already logged to ${typed}",
+        "other": "Also change all ${count} contacts already logged to ${typed}"
+      },
+      "operatorSoFar": "${previous} has operated so far. ${typed} will be recorded for new contacts.",
+      "operatorNoneSoFar": "No operator recorded so far. ${typed} will be recorded for new contacts.",
+      "operatorSeveral": "This operation already has contacts by ${calls}. ${typed} will only be recorded for new ones.",
+      "operatorRestamp": {
+        "one": "Also record ${typed} as the operator of the contact already logged",
+        "other": "Also record ${typed} as the operator of all ${count} contacts already logged"
+      },
+      "operatorSeveralStations": "When using multiple stations over the air, there's no support for separate operators",
+      "contactsUnreadable": "This operation's contacts could not be read, so changing a callsign here won't offer to update them",
+      "restampFailed": "The contacts already logged could not be updated, so nothing was changed: ${error}",
+      "restampShortfall": "${written} of ${planned} contacts were updated — the rest are no longer in this operation"
+    }
   },
   "operation": {
     "tabs": {
@@ -855,6 +877,11 @@
         "dx": "Show only for DX contacts",
         "all": "Show flags for all contacts",
         "none": "Don't show any flags"
+      },
+      "suggestDefaultOperator": {
+        "title": "Suggest Operator",
+        "descriptionOn": "Offer your own callsign as the operator when an operation runs under a different station callsign",
+        "descriptionOff": "Leave the operator blank unless you fill it in"
       },
       "showBearing": {
         "title": "Show Bearing",

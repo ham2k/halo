@@ -16,18 +16,26 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation_dialogs.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   late HaLoDatabase db;
+  late SettingsService settings;
+  late HaLoServices services;
   late OperationsRepository operations;
   late Operation operation;
 
   setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    settings = SettingsService(await SharedPreferences.getInstance());
     db = HaLoDatabase(NativeDatabase.memory());
-    operations = OperationsRepository(db);
+    services = HaLoServices(db, settings);
+    operations = services.operations;
     operation = await operations.create(stationCall: 'KI2D', userTitle: 'Field day');
   });
 
@@ -36,6 +44,7 @@ void main() {
   /// Opens the real dialog the way OperationView does, and returns the
   /// Operation it handed back once the dialog is dismissed.
   Future<Operation?> openDialog(WidgetTester tester, {required bool developerMode, bool save = true}) async {
+    await settings.setDeveloperMode(developerMode);
     Operation? result;
     var opened = false;
     await tester.pumpWidget(TranslationProvider(
@@ -46,8 +55,7 @@ void main() {
             // After the first frame: the dialog needs a Navigator, which this
             // builder's own context does not have until the route is up.
             WidgetsBinding.instance.addPostFrameCallback((_) async {
-              result = await editOperationDetails(context, operations, operation,
-                  save: save, developerMode: developerMode);
+              result = await editOperationDetails(context, services, operation, save: save);
             });
           }
           return const SizedBox.shrink();

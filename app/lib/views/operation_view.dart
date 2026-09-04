@@ -1758,10 +1758,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           onEditDetails: () async {
             final updated = await editOperationDetails(
               context,
-              widget.services.operations,
+              widget.services,
               _draftOperation ?? operation,
               save: false,
-              developerMode: widget.services.settings.developerMode,
             );
             if (updated != null && mounted) {
               setState(() {
@@ -2227,8 +2226,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               title: Text(t.operationDetails),
               onTap: () {
                 Navigator.of(dialogContext).pop();
-                unawaited(editOperationDetails(context, widget.services.operations, operation,
-                    developerMode: widget.services.settings.developerMode));
+                unawaited(editOperationDetails(context, widget.services, operation));
               },
             ),
             ListTile(

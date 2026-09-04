@@ -68,20 +68,7 @@ class Operation {
   /// Always at least one entry — an operation with no callsign at all yields
   /// `['']` rather than an empty list, so callers that fan out over this
   /// still produce their one set of results instead of silently none.
-  List<String> get stationCalls {
-    final parts = [
-      for (final part in stationCall.split(','))
-        if (part.trim().isNotEmpty) part.trim().toUpperCase(),
-    ];
-    // Deduped, order preserved: "N0DEV, N0DEV" is a typo, not a request for
-    // two identical sets of files that would then collide on filename.
-    final seen = <String>{};
-    final unique = [
-      for (final call in parts)
-        if (seen.add(call)) call,
-    ];
-    return unique.isEmpty ? const [''] : unique;
-  }
+  List<String> get stationCalls => splitStationCalls(stationCall);
 
   /// True when any of [stationCalls] is a test call — the operator's own
   /// signal that this operation is for testing, not a real activation.
@@ -155,6 +142,24 @@ class Operation {
   /// legacy fallback as [createdAtMillis] — this one decides which side of a
   /// sync merge wins, so a null would make a legacy record look revision-less.
   int? get updatedAtMillis => asQsonNum(data['updatedAtMillis'] ?? data['updatedOnMillis'])?.toInt();
+}
+
+/// The callsigns in one operation's `stationCall` field — see
+/// [Operation.stationCalls], whose contract this is. Split out so a field
+/// still being TYPED can be read by the same rules as a stored one.
+List<String> splitStationCalls(String raw) {
+  final parts = [
+    for (final part in raw.split(','))
+      if (part.trim().isNotEmpty) part.trim().toUpperCase(),
+  ];
+  // Deduped, order preserved: "N0DEV, N0DEV" is a typo, not a request for
+  // two identical sets of files that would then collide on filename.
+  final seen = <String>{};
+  final unique = [
+    for (final call in parts)
+      if (seen.add(call)) call,
+  ];
+  return unique.isEmpty ? const [''] : unique;
 }
 
 /// One contact. QSON shape (same as app-polo):
@@ -231,6 +236,13 @@ class Qso {
   String? get ourRig => asQsonString(_our['rig']);
   String? get ourAntenna => asQsonString(_our['antenna']);
   String? get ourKey => asQsonString(_our['key']);
+
+  /// Who was at the key, and in which operating position, when this contact
+  /// was made — both empty on a contact made by a plain single-operator
+  /// station, which names no operator apart from [ourCall] and sits in no
+  /// position. See `operation_operator.dart` for what a position is.
+  String get ourOperatorCall => asQsonString(_our['operatorCall']) ?? '';
+  String get ourMultiIdentifier => asQsonString(_our['multiIdentifier']) ?? '';
 
   String get theirCall => asQsonString(_their['call']) ?? '';
   // `guess` (the merged lookup result) stays nested rather than flattened

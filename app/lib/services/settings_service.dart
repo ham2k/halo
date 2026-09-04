@@ -990,6 +990,14 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     notifyListeners();
   }
 
+  /// Whether the Operation Details dialog offers the operator's own callsign
+  /// as the operator of an operation running under a DIFFERENT station call —
+  /// a club station, a special event, a callsign borrowed for a contest. On by
+  /// default (app-polo's `suggestDefaultOperator`), because the operator at
+  /// the key is nearly always whoever set the operation up; off for the club
+  /// secretary who creates the operations and does not operate them.
+  bool get suggestDefaultOperator => _loggingBool('suggestDefaultOperator', true);
+
   bool _loggingBool(String key, bool fallback) => (settingValue(loggingGroup, key) as bool?) ?? fallback;
 
   String _loggingString(String key) => ((settingValue(loggingGroup, key) as String?) ?? '').trim();

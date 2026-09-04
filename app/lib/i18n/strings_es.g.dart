@@ -246,6 +246,7 @@ class _Translations$dialogs$es extends Translations$dialogs$en {
 	@override String get receivedPurgesTitle => 'Operaciones de prueba eliminadas en otro dispositivo';
 	@override String get receivedPurgesBody => 'Estas se borraron como operaciones de prueba en otro dispositivo. ¿Eliminarlas aquí también? Esto las borra permanentemente junto con sus QSOs, y no se puede deshacer.';
 	@override String get receivedPurgesAction => 'Eliminar';
+	@override late final _Translations$dialogs$callChange$es callChange = _Translations$dialogs$callChange$es._(_root);
 }
 
 // Path: operation
@@ -1039,6 +1040,35 @@ class _Translations$home$logs$es extends Translations$home$logs$en {
 	@override late final _Translations$home$logs$columns$es columns = _Translations$home$logs$columns$es._(_root);
 }
 
+// Path: dialogs.callChange
+class _Translations$dialogs$callChange$es extends Translations$dialogs$callChange$en {
+	_Translations$dialogs$callChange$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String invalidCallsign({required Object call}) => 'Indicativo inválido: ${call}';
+	@override String invalidCallsigns({required Object calls}) => 'Indicativos inválidos: ${calls}';
+	@override String stationSoFar({required Object previous, required Object typed}) => '${previous} usado hasta ahora. ${typed} se usará para los nuevos contactos.';
+	@override String stationNoneSoFar({required Object typed}) => 'Ningún indicativo usado hasta ahora. ${typed} se usará para los nuevos contactos.';
+	@override String stationSeveral({required Object calls, required Object typed}) => 'Esta operación ya tiene contactos con ${calls}. ${typed} solo se usará para los nuevos.';
+	@override String stationRestamp({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Cambiar también a ${typed} el contacto ya registrado',
+		other: 'Cambiar también a ${typed} los ${count} contactos ya registrados',
+	);
+	@override String operatorSoFar({required Object previous, required Object typed}) => '${previous} ha operado hasta ahora. ${typed} se registrará en los nuevos contactos.';
+	@override String operatorNoneSoFar({required Object typed}) => 'Ningún operador registrado hasta ahora. ${typed} se registrará en los nuevos contactos.';
+	@override String operatorSeveral({required Object calls, required Object typed}) => 'Esta operación ya tiene contactos de ${calls}. ${typed} solo se registrará en los nuevos.';
+	@override String operatorRestamp({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: 'Registrar también a ${typed} como operador del contacto ya registrado',
+		other: 'Registrar también a ${typed} como operador de los ${count} contactos ya registrados',
+	);
+	@override String get operatorSeveralStations => 'Cuando se usan varias estaciones al aire, no hay soporte para operadores separados';
+	@override String get contactsUnreadable => 'No se pudieron leer los contactos de esta operación, así que cambiar un indicativo aquí no ofrecerá actualizarlos';
+	@override String restampFailed({required Object error}) => 'No se pudieron actualizar los contactos ya registrados, así que no se cambió nada: ${error}';
+	@override String restampShortfall({required Object written, required Object planned}) => 'Se actualizaron ${written} de ${planned} contactos — el resto ya no está en esta operación';
+}
+
 // Path: operation.tabs
 class _Translations$operation$tabs$es extends Translations$operation$tabs$en {
 	_Translations$operation$tabs$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1456,6 +1486,7 @@ class _Translations$settings$logging$es extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$leftieMode$es leftieMode = _Translations$settings$logging$leftieMode$es._(_root);
 	@override late final _Translations$settings$logging$fieldsOnTop$es fieldsOnTop = _Translations$settings$logging$fieldsOnTop$es._(_root);
 	@override late final _Translations$settings$logging$countryFlags$es countryFlags = _Translations$settings$logging$countryFlags$es._(_root);
+	@override late final _Translations$settings$logging$suggestDefaultOperator$es suggestDefaultOperator = _Translations$settings$logging$suggestDefaultOperator$es._(_root);
 	@override late final _Translations$settings$logging$showBearing$es showBearing = _Translations$settings$logging$showBearing$es._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$es showReverseBearing = _Translations$settings$logging$showReverseBearing$es._(_root);
 	@override late final _Translations$settings$logging$switchSentRcvd$es switchSentRcvd = _Translations$settings$logging$switchSentRcvd$es._(_root);
@@ -2334,6 +2365,18 @@ class _Translations$settings$logging$countryFlags$es extends Translations$settin
 	@override String get none => 'No mostrar banderas';
 }
 
+// Path: settings.logging.suggestDefaultOperator
+class _Translations$settings$logging$suggestDefaultOperator$es extends Translations$settings$logging$suggestDefaultOperator$en {
+	_Translations$settings$logging$suggestDefaultOperator$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Sugerir Operador';
+	@override String get descriptionOn => 'Ofrecer tu propio indicativo como operador cuando la operación usa otro indicativo de estación';
+	@override String get descriptionOff => 'Dejar el operador en blanco salvo que lo completes';
+}
+
 // Path: settings.logging.showBearing
 class _Translations$settings$logging$showBearing$es extends Translations$settings$logging$showBearing$en {
 	_Translations$settings$logging$showBearing$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -2889,6 +2932,20 @@ extension on TranslationsEs {
 			'dialogs.receivedPurgesTitle' => 'Operaciones de prueba eliminadas en otro dispositivo',
 			'dialogs.receivedPurgesBody' => 'Estas se borraron como operaciones de prueba en otro dispositivo. ¿Eliminarlas aquí también? Esto las borra permanentemente junto con sus QSOs, y no se puede deshacer.',
 			'dialogs.receivedPurgesAction' => 'Eliminar',
+			'dialogs.callChange.invalidCallsign' => ({required Object call}) => 'Indicativo inválido: ${call}',
+			'dialogs.callChange.invalidCallsigns' => ({required Object calls}) => 'Indicativos inválidos: ${calls}',
+			'dialogs.callChange.stationSoFar' => ({required Object previous, required Object typed}) => '${previous} usado hasta ahora. ${typed} se usará para los nuevos contactos.',
+			'dialogs.callChange.stationNoneSoFar' => ({required Object typed}) => 'Ningún indicativo usado hasta ahora. ${typed} se usará para los nuevos contactos.',
+			'dialogs.callChange.stationSeveral' => ({required Object calls, required Object typed}) => 'Esta operación ya tiene contactos con ${calls}. ${typed} solo se usará para los nuevos.',
+			'dialogs.callChange.stationRestamp' => ({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Cambiar también a ${typed} el contacto ya registrado', other: 'Cambiar también a ${typed} los ${count} contactos ya registrados', ), 
+			'dialogs.callChange.operatorSoFar' => ({required Object previous, required Object typed}) => '${previous} ha operado hasta ahora. ${typed} se registrará en los nuevos contactos.',
+			'dialogs.callChange.operatorNoneSoFar' => ({required Object typed}) => 'Ningún operador registrado hasta ahora. ${typed} se registrará en los nuevos contactos.',
+			'dialogs.callChange.operatorSeveral' => ({required Object calls, required Object typed}) => 'Esta operación ya tiene contactos de ${calls}. ${typed} solo se registrará en los nuevos.',
+			'dialogs.callChange.operatorRestamp' => ({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Registrar también a ${typed} como operador del contacto ya registrado', other: 'Registrar también a ${typed} como operador de los ${count} contactos ya registrados', ), 
+			'dialogs.callChange.operatorSeveralStations' => 'Cuando se usan varias estaciones al aire, no hay soporte para operadores separados',
+			'dialogs.callChange.contactsUnreadable' => 'No se pudieron leer los contactos de esta operación, así que cambiar un indicativo aquí no ofrecerá actualizarlos',
+			'dialogs.callChange.restampFailed' => ({required Object error}) => 'No se pudieron actualizar los contactos ya registrados, así que no se cambió nada: ${error}',
+			'dialogs.callChange.restampShortfall' => ({required Object written, required Object planned}) => 'Se actualizaron ${written} de ${planned} contactos — el resto ya no está en esta operación',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
@@ -3249,6 +3306,8 @@ extension on TranslationsEs {
 			'activitiesView.locationGrantRefused' => 'Sigue sin ubicación — el sistema volvió a negarlo',
 			'activitiesView.searchUnavailableTitle' => 'Búsqueda de actividades no disponible',
 			'activitiesView.searchUnavailableReason' => 'Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
 			'activitiesView.exports' => 'Exportar',
 			'activitiesView.imports' => 'Importar',
@@ -3263,8 +3322,6 @@ extension on TranslationsEs {
 			'activitiesView.retiredReference' => 'Retirada',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.setupUnavailable' => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar',
 			'activitiesView.controlsUnavailableTitle' => 'Controles de actividad no disponibles',
 			'activitiesView.controlsUnavailableReason' => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.',
@@ -3457,6 +3514,9 @@ extension on TranslationsEs {
 			'settings.logging.countryFlags.dx' => 'Mostrar solo para contactos DX',
 			'settings.logging.countryFlags.all' => 'Mostrar banderas para todos los contactos',
 			'settings.logging.countryFlags.none' => 'No mostrar banderas',
+			'settings.logging.suggestDefaultOperator.title' => 'Sugerir Operador',
+			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Ofrecer tu propio indicativo como operador cuando la operación usa otro indicativo de estación',
+			'settings.logging.suggestDefaultOperator.descriptionOff' => 'Dejar el operador en blanco salvo que lo completes',
 			'settings.logging.showBearing.title' => 'Mostrar Rumbo',
 			'settings.logging.showBearing.descriptionOn' => 'Mostrar rumbo estimado a la estación',
 			'settings.logging.showBearing.descriptionOff' => 'No mostrar información de rumbo',
@@ -3760,6 +3820,8 @@ extension on TranslationsEs {
 			'settings.station.winkeyerNoAnswer' => 'Ningún WinKeyer respondió en este puerto',
 			'settings.station.winkeyerStoppedAnswering' => 'El WinKeyer dejó de responder mientras enviaba; el mensaje se descartó',
 			'settings.station.radioUser' => 'Usuario de la radio',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
 			'settings.station.radioUserRequired' => 'Se requiere el usuario de control remoto de la radio',
@@ -3777,8 +3839,6 @@ extension on TranslationsEs {
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
 			'settings.station.models.ic705' => 'Icom IC-705',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.models.ic7300' => 'Icom IC-7300',
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',

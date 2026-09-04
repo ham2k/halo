@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "Change an operation's callsign and it offers to update the contacts already logged"
+
 "161":
   changes:
     - "Type a grid with no call and the logging panel shows the distance and bearing to it"

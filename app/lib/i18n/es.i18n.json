@@ -167,7 +167,29 @@
     "purgeTestsAction": "Purgar",
     "receivedPurgesTitle": "Operaciones de prueba eliminadas en otro dispositivo",
     "receivedPurgesBody": "Estas se borraron como operaciones de prueba en otro dispositivo. ¿Eliminarlas aquí también? Esto las borra permanentemente junto con sus QSOs, y no se puede deshacer.",
-    "receivedPurgesAction": "Eliminar"
+    "receivedPurgesAction": "Eliminar",
+    "callChange": {
+      "invalidCallsign": "Indicativo inválido: ${call}",
+      "invalidCallsigns": "Indicativos inválidos: ${calls}",
+      "stationSoFar": "${previous} usado hasta ahora. ${typed} se usará para los nuevos contactos.",
+      "stationNoneSoFar": "Ningún indicativo usado hasta ahora. ${typed} se usará para los nuevos contactos.",
+      "stationSeveral": "Esta operación ya tiene contactos con ${calls}. ${typed} solo se usará para los nuevos.",
+      "stationRestamp": {
+        "one": "Cambiar también a ${typed} el contacto ya registrado",
+        "other": "Cambiar también a ${typed} los ${count} contactos ya registrados"
+      },
+      "operatorSoFar": "${previous} ha operado hasta ahora. ${typed} se registrará en los nuevos contactos.",
+      "operatorNoneSoFar": "Ningún operador registrado hasta ahora. ${typed} se registrará en los nuevos contactos.",
+      "operatorSeveral": "Esta operación ya tiene contactos de ${calls}. ${typed} solo se registrará en los nuevos.",
+      "operatorRestamp": {
+        "one": "Registrar también a ${typed} como operador del contacto ya registrado",
+        "other": "Registrar también a ${typed} como operador de los ${count} contactos ya registrados"
+      },
+      "operatorSeveralStations": "Cuando se usan varias estaciones al aire, no hay soporte para operadores separados",
+      "contactsUnreadable": "No se pudieron leer los contactos de esta operación, así que cambiar un indicativo aquí no ofrecerá actualizarlos",
+      "restampFailed": "No se pudieron actualizar los contactos ya registrados, así que no se cambió nada: ${error}",
+      "restampShortfall": "Se actualizaron ${written} de ${planned} contactos — el resto ya no está en esta operación"
+    }
   },
   "operation": {
     "tabs": {
@@ -855,6 +877,11 @@
         "dx": "Mostrar solo para contactos DX",
         "all": "Mostrar banderas para todos los contactos",
         "none": "No mostrar banderas"
+      },
+      "suggestDefaultOperator": {
+        "title": "Sugerir Operador",
+        "descriptionOn": "Ofrecer tu propio indicativo como operador cuando la operación usa otro indicativo de estación",
+        "descriptionOff": "Dejar el operador en blanco salvo que lo completes"
       },
       "showBearing": {
         "title": "Mostrar Rumbo",

@@ -356,6 +356,16 @@ class LoggingSettingsGroup extends SettingsGroup {
         target: 'logging-extended',
       ),
       _toggle(
+        key: 'suggestDefaultOperator',
+        label: s.suggestDefaultOperator.title,
+        icon: 'account-arrow-right',
+        description: settings.suggestDefaultOperator
+            ? s.suggestDefaultOperator.descriptionOn
+            : s.suggestDefaultOperator.descriptionOff,
+        value: settings.suggestDefaultOperator,
+        target: 'logging-extended',
+      ),
+      _toggle(
         key: 'showBearing',
         label: s.showBearing.title,
         icon: 'compass',
