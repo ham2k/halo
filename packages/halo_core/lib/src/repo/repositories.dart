@@ -1659,6 +1659,55 @@ class QsosRepository {
     return true;
   }
 
+  /// Rewrites `our.call` on every real contact of the LATEST segment that
+  /// does not already carry [stationCall]. Returns how many were written.
+  ///
+  /// The station call is what a segment states (`segmentOverrideKeys`), so a
+  /// contact inside one cannot disagree with it: the segment IS the claim
+  /// about which station was on the air for that stretch. Unlike the operator
+  /// — who hands the key over mid-segment, and whose restamp is therefore the
+  /// operator's own judgment call — there is nothing here for anyone to
+  /// decide, so this runs unasked from `onLocalSave`.
+  ///
+  /// Contacts before the latest segment are left alone: an earlier stretch
+  /// genuinely ran under the call its own segment names, and rewriting it
+  /// would be this method claiming the operation had always been one station.
+  /// A log with no segment rows at all has one implicit segment covering
+  /// everything, so every contact follows.
+  ///
+  /// Event rows are skipped ([Qso.isRealContact]): a break marker is not a
+  /// contact and has no station to be wrong about.
+  Future<int> restampSegmentStationCall(String operationUuid, String stationCall) async {
+    final call = stationCall.trim();
+    if (call.isEmpty) return 0;
+    var from = 0;
+    for (final row in await eventsForOperation(operationUuid)) {
+      if (eventKindOpensSegment(row.eventKind)) from = row.startAtMillis ?? from;
+    }
+    final contacts = [
+      for (final qso in await forOperation(operationUuid))
+        if (qso.isRealContact && (qso.startAtMillis ?? 0) >= from && qso.ourCall != call) qso,
+    ];
+    if (contacts.isEmpty) return 0;
+    return writeBatch(
+      operationUuid: operationUuid,
+      updates: [
+        for (final qso in contacts)
+          Qso(
+            uuid: qso.uuid,
+            operationUuid: qso.operationUuid,
+            data: {
+              ...qso.data,
+              'our': {...?asQsonMap(qso.data['our']), 'call': call},
+            },
+          ),
+      ],
+      // Read a moment ago, and a sync pull landing in between must survive
+      // everywhere this restamp does not reach.
+      updateBases: {for (final qso in contacts) qso.uuid: qso},
+    );
+  }
+
   /// Just the operation's event rows (`band = 'event'` — see [Qso.isEvent]),
   /// oldest first. What the segment writers and [restampLatestSegment] read:
   /// decoding a whole 5000-QSO log to find a handful of markers is a cost

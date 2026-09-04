@@ -1840,6 +1840,11 @@ class HaLoServices {
     onLocalSave: (before, after) async {
       if (before != null && !segmentOverrideDiffers(before.data, after.data)) return;
       final override = segmentOverrideOf(after.data);
+      // The segment's contacts follow its station call, unasked: the segment
+      // states which station was on the air for that stretch, so a contact
+      // inside it cannot say otherwise. The FIRST call — several live in the
+      // field as one string, and a contact holds one (HALO-507).
+      await qsos.restampSegmentStationCall(after.uuid, after.stationCalls.first);
       // The description is composed only once a row is actually going to be
       // written: it fans out to an extension hook per ref, and an
       // unsegmented log (the common case) must not pay that on every save.

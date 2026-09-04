@@ -174,19 +174,26 @@ class ExportService {
 
   /// The log as ONE station callsign sees it.
   ///
-  /// A multi-operator operation is logged once and owes each callsign its own
-  /// submission, so every QSO is claimed by whichever call is exporting —
-  /// `our.call` is rewritten rather than filtered, which is what app-polo does
+  /// A multi-operator station is logged once and owes each of its callsigns
+  /// its own submission, so within a stretch run under several calls every
+  /// QSO is claimed by whichever call is exporting — `our.call` is rewritten
+  /// rather than filtered, which is what app-polo does
   /// (`generateExports.js:26`) and the only reading that produces a complete
   /// log per operator.
   ///
-  /// The exception is the two of them working each other: after the rewrite
-  /// that QSO says N0DEV worked N0DEV, which no program will accept and which
-  /// polo drops for the same reason.
-  List<Map<String, dynamic>> _qsosAs(String stationCall, List<Qso> qsoList) {
+  /// ACROSS segments it is the opposite: a log that changed call at a `break`
+  /// made those contacts under the call its own segment names, so a call takes
+  /// only the segments naming it. Claiming the whole log for each would put
+  /// contacts into a submission by a station that was not on the air for them.
+  ///
+  /// The exception is two of them working each other: after the rewrite that
+  /// QSO says N0DEV worked N0DEV, which no program will accept and which polo
+  /// drops for the same reason.
+  List<Map<String, dynamic>> _qsosAs(String stationCall, List<Qso> qsoList, SegmentedOperation segmented) {
     return [
       for (final qso in qsoList)
         () {
+          if (!segmented.segmentUses(qso.startAtMillis, stationCall)) return null;
           final data = {...qso.data};
           final our = {...?asQsonMap(data['our'])};
           final theirCall = asQsonString(asQsonMap(data['their'])?['call'])?.toUpperCase();
@@ -213,18 +220,24 @@ class ExportService {
     String stationCall,
     Operation operation,
     List<Qso> qsoList,
+    SegmentedOperation segmented,
   ) {
     final payload = qsonPayloadFor(operation: operation, qsos: qsoList);
-    if (operation.stationCalls.length < 2) return payload;
+    // The calls of every SEGMENT, not the base operation's: a log that changed
+    // call at a `break` has more than one even when the operation itself names
+    // exactly one, and short-circuiting on the base would hand each file the
+    // whole log under the last call.
+    if (segmented.allStationCalls.length < 2) return payload;
     (payload['operation'] as Map<String, dynamic>)['stationCall'] = stationCall;
-    payload['qsos'] = _qsosAs(stationCall, qsoList);
+    payload['qsos'] = _qsosAs(stationCall, qsoList, segmented);
     return payload;
   }
 
   /// Every export option offered by every extension for this operation, for
   /// the Exports Panel's checkbox list.
   ///
-  /// Asked once PER STATION CALLSIGN ([Operation.stationCalls]), because each
+  /// Asked once PER STATION CALLSIGN ([SegmentedOperation.allStationCalls] —
+  /// base and segments both, since a `break` can change the call), because each
   /// call owes its own set of files; every option is tagged with the call it
   /// belongs to so the panel can group them and `generateExports` can rebuild
   /// the same payload.
@@ -235,10 +248,10 @@ class ExportService {
     // empty answer this exists to give into a worse failure than the one it
     // replaced.
     if (log == null) return <Map<String, dynamic>>[];
-    final calls = operation.stationCalls;
+    final calls = log.segmented.allStationCalls;
 
     final perCall = await Future.wait(calls.map((call) async {
-      final payload = _payloadAs(call, operation, log.qsos);
+      final payload = _payloadAs(call, operation, log.qsos, log.segmented);
 
       // Hooks are asked about every ref ANY segment carries, not just the base's.
       // Each contest's `suggestExportOptions` opens with
@@ -306,7 +319,7 @@ class ExportService {
       // call covers an option that predates the fan-out (or a caller passing
       // one by hand, as the tests do).
       final call = option['stationCall'] as String? ?? operation.stationCalls.first;
-      final args = _payloadAs(call, operation, scoped);
+      final args = _payloadAs(call, operation, scoped, log.segmented);
       // Same reason `getExportOptions` patches the refs above: a hook offered an
       // option off a ref that lives only in a segment has to be able to READ
       // that ref when it writes the file. Without it the two halves of one

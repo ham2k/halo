@@ -24,12 +24,26 @@
 import 'dart:convert';
 
 import 'models.dart';
+import 'qson_values.dart';
 
 /// What a `start`/`break` row restates about the operation — polo's
 /// `captureOperationParameters`, plus the location keys HaLo carries
 /// (docs/design/locations.md: a grid without a coordinate must clear the
-/// pair, so `lat`/`lon` travel with `grid`).
-const segmentOverrideKeys = ['refs', 'grid', 'gridSource', 'lat', 'lon', 'state', 'county'];
+/// pair, so `lat`/`lon` travel with `grid`) and the STATION CALL.
+///
+/// The call is here and not on the operation alone because a log that changes
+/// it has changed what is true from that point on, which is what a segment
+/// says. app-polo lets the call change for the whole operation at once — it
+/// had no segments when that was asked for — and then cannot say which
+/// stretch ran under which call. A segment can, and everything downstream
+/// (the exports' per-call fan-out, the scorers) reads the segment-effective
+/// operation, so it gets the right answer per stretch for free.
+///
+/// The operator callsign is deliberately NOT here: an operator changes mid
+/// segment, hands the key over and takes it back, none of which is a
+/// statement about the stretch. It lives on the operation, per position, and
+/// a contact records it as it is logged (`operation_operator.dart`).
+const segmentOverrideKeys = ['stationCall', 'refs', 'grid', 'gridSource', 'lat', 'lon', 'state', 'county'];
 
 /// The override a new segment row carries for [operationData]. Every key is
 /// present, absent ones as explicit nulls: a segment is a complete statement
@@ -176,6 +190,39 @@ class SegmentedOperation {
       }
     }
     return byIdentity.values.toList();
+  }
+
+  /// Every station callsign this operation ran under, base and segments, in
+  /// the order they first appear — what the exports fan out over.
+  ///
+  /// A log that changed call at a `break` owes each call its own files, and
+  /// reading only the base operation would offer the last one's alone. Within
+  /// ONE segment several calls are a multi-operator station (one comma-
+  /// separated field), and each of those still claims that segment's whole
+  /// log; ACROSS segments they are different stretches, and each call takes
+  /// only the segments naming it.
+  ///
+  /// Never empty: an operation with no callsign at all yields `['']`, exactly
+  /// as [Operation.stationCalls] does, so a caller fanning out over this still
+  /// produces its one set of files.
+  List<String> get allStationCalls {
+    final seen = <String>{};
+    final calls = [
+      for (final segment in segments)
+        for (final call in splitStationCalls(asQsonString(segment.operation['stationCall']) ?? ''))
+          if (call.isNotEmpty && seen.add(call)) call,
+    ];
+    return calls.isEmpty ? const [''] : calls;
+  }
+
+  /// Whether the segment covering [startAtMillis] was run under [stationCall].
+  ///
+  /// The export fan-out's per-call filter: a contact belongs in a call's files
+  /// when the stretch it was made in named that call.
+  bool segmentUses(int? startAtMillis, String stationCall) {
+    final call = stationCall.trim().toUpperCase();
+    if (call.isEmpty) return false;
+    return splitStationCalls(asQsonString(effectiveAt(startAtMillis)['stationCall']) ?? '').contains(call);
   }
 
   /// The QSOs belonging to segments carrying [ref] — an export's default view.

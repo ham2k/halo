@@ -171,13 +171,6 @@
     "callChange": {
       "invalidCallsign": "Indicativo inválido: ${call}",
       "invalidCallsigns": "Indicativos inválidos: ${calls}",
-      "stationSoFar": "${previous} usado hasta ahora. ${typed} se usará para los nuevos contactos.",
-      "stationNoneSoFar": "Ningún indicativo usado hasta ahora. ${typed} se usará para los nuevos contactos.",
-      "stationSeveral": "Esta operación ya tiene contactos con ${calls}. ${typed} solo se usará para los nuevos.",
-      "stationRestamp": {
-        "one": "Cambiar también a ${typed} el contacto ya registrado",
-        "other": "Cambiar también a ${typed} los ${count} contactos ya registrados"
-      },
       "operatorSoFar": "${previous} ha operado hasta ahora. ${typed} se registrará en los nuevos contactos.",
       "operatorNoneSoFar": "Ningún operador registrado hasta ahora. ${typed} se registrará en los nuevos contactos.",
       "operatorSeveral": "Esta operación ya tiene contactos de ${calls}. ${typed} solo se registrará en los nuevos.",

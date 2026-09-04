@@ -104,176 +104,40 @@ void main() {
   Future<List<Qso>> storedContacts() => qsos.forOperation(operation.uuid);
 
   group('station callsign', () {
-    testWidgets('names what the log holds and offers to restamp it', (tester) async {
+    // The station call is what a SEGMENT states, so its contacts follow it
+    // with nothing to ask — the dialog carries no station offer at all, and
+    // the restamp happens in `onLocalSave` for every writer, not just here.
+    testWidgets('offers nothing, and says nothing, about the station call', (tester) async {
       await logContact('W1AW');
       await logContact('K1ABC');
       await openDialog(tester);
       await tester.enterText(stationField(), 'KI2D');
       await tester.pumpAndSettle();
 
-      expect(find.text(t.dialogs.callChange.stationSoFar(previous: 'N0DEV', typed: 'KI2D')), findsOneWidget);
-      expect(find.text(t.dialogs.callChange.stationRestamp(count: 2, typed: 'KI2D')), findsOneWidget);
+      expect(find.byType(Checkbox), findsNothing);
     });
 
-    testWidgets('leaves the log alone unless the offer is accepted', (tester) async {
-      // The whole point of asking: an operator who genuinely swapped calls
-      // mid-operation must keep the earlier contacts under the old one.
+    testWidgets('changing it rewrites the segment\'s contacts, unasked', (tester) async {
+      // Through the repository's save hook, not the dialog: every writer of
+      // the station call gets this, not just this one screen.
       await logContact('W1AW');
       await openDialog(tester);
       await tester.enterText(stationField(), 'KI2D');
       await save(tester);
 
-      expect((await storedContacts()).single.ourCall, 'N0DEV');
       expect((await operations.get(operation.uuid))!.stationCall, 'KI2D');
-    });
-
-    testWidgets('restamps every contact once accepted', (tester) async {
-      await logContact('W1AW');
-      await logContact('K1ABC');
-      await openDialog(tester);
-      await tester.enterText(stationField(), 'KI2D');
-      await tester.pumpAndSettle();
-      await tester.tap(find.byType(Checkbox));
-      await save(tester);
-
-      expect((await storedContacts()).map((qso) => qso.ourCall), everyElement('KI2D'));
-    });
-
-    testWidgets('a further edit drops a restamp already ticked', (tester) async {
-      // The number on the checkbox was about the call that was typed when it
-      // was ticked. Carrying the tick across to a different call would restamp
-      // the log to something the operator never agreed to.
-      await logContact('W1AW');
-      await openDialog(tester);
-      await tester.enterText(stationField(), 'KI2D');
-      await tester.pumpAndSettle();
-      await tester.tap(find.byType(Checkbox));
-      await tester.pumpAndSettle();
-      await tester.enterText(stationField(), 'W1AW');
-      await save(tester);
-
-      expect((await storedContacts()).single.ourCall, 'N0DEV');
-    });
-
-    testWidgets('a tick dropped by widening the station call does not write', (tester) async {
-      // The offer names a call, a count and a scope. Type a second station
-      // call and the operator offer leaves the screen entirely — a tick that
-      // outlived it would rewrite contacts against a rule the dialog has just
-      // said does not apply.
-      await logContact('W1AW', operatorCall: 'KI2D');
-      await openDialog(tester);
-      await tester.enterText(operatorField(), 'W2XYZ');
-      await tester.pumpAndSettle();
-      await tester.tap(find.byType(Checkbox));
-      await tester.pumpAndSettle();
-      await tester.enterText(stationField(), 'N0DEV, W1AW');
-      await save(tester);
-
-      expect((await storedContacts()).single.ourOperatorCall, 'KI2D');
-    });
-
-    testWidgets('both restamps in one save reach the same contact', (tester) async {
-      // Two updates for one record is what `writeBatch` refuses outright, so
-      // the fold in `editOperationDetails` is load-bearing: without it the
-      // headline case — an operation set up under the wrong call AND the
-      // wrong operator — throws instead of saving.
-      await logContact('W1AW');
-      await openDialog(tester);
-      await tester.enterText(stationField(), 'KI2D');
-      await tester.enterText(operatorField(), 'W2XYZ');
-      await tester.pumpAndSettle();
-      for (final box in find.byType(Checkbox).evaluate().toList()) {
-        await tester.tap(find.byWidget(box.widget));
-        await tester.pumpAndSettle();
-      }
-      await save(tester);
-
-      final stored = (await storedContacts()).single;
-      expect(stored.ourCall, 'KI2D');
-      expect(stored.ourOperatorCall, 'W2XYZ');
-    });
-
-    testWidgets('a concurrent edit survives the restamp', (tester) async {
-      // The contacts were read when the dialog opened. A sync pull or a peer
-      // merge landing while it sat open must survive everywhere the restamp
-      // did not touch — that is what `updateBases` buys, and without it the
-      // whole stored blob is replaced by the snapshot taken at open time.
-      await logContact('W1AW');
-      await openDialog(tester);
-      await tester.enterText(stationField(), 'KI2D');
-      await tester.pumpAndSettle();
-      await tester.tap(find.byType(Checkbox));
-      await tester.pumpAndSettle();
-
-      final concurrent = (await storedContacts()).single;
-      await qsos.update(Qso(
-        uuid: concurrent.uuid,
-        operationUuid: concurrent.operationUuid,
-        data: {...concurrent.data, 'notes': 'landed while the dialog was open'},
-      ));
-      await save(tester);
-
-      final stored = (await storedContacts()).single;
-      expect(stored.ourCall, 'KI2D');
-      expect(stored.data['notes'], 'landed while the dialog was open');
-    });
-
-    testWidgets('contacts that already carry the call are not counted', (tester) async {
-      // The number on the offer is what actually changes. Counting contacts
-      // that are already right would promise twelve and rewrite two.
-      await logContact('W1AW', ourCall: 'KI2D');
-      await logContact('K1ABC');
-      await openDialog(tester);
-      await tester.enterText(stationField(), 'KI2D');
-      await tester.pumpAndSettle();
-
-      expect(find.text(t.dialogs.callChange.stationRestamp(count: 1, typed: 'KI2D')), findsOneWidget);
-    });
-
-    testWidgets('offers nothing when the log already holds several calls', (tester) async {
-      await logContact('W1AW');
-      await logContact('K1ABC', ourCall: 'W2XYZ');
-      await openDialog(tester);
-      await tester.enterText(stationField(), 'KI2D');
-      await tester.pumpAndSettle();
-
-      expect(find.text(t.dialogs.callChange.stationSeveral(calls: 'N0DEV, W2XYZ', typed: 'KI2D')), findsOneWidget);
-      expect(find.byType(Checkbox), findsNothing);
-    });
-
-    testWidgets('offers nothing while several station calls are being typed', (tester) async {
-      // A restamp would have to pick one of them to write onto every contact,
-      // and nothing here knows which.
-      await logContact('W1AW');
-      await openDialog(tester);
-      await tester.enterText(stationField(), 'KI2D, W1AW');
-      await tester.pumpAndSettle();
-
-      expect(find.byType(Checkbox), findsNothing);
-    });
-
-    testWidgets('says nothing at all when the log already agrees', (tester) async {
-      await logContact('W1AW');
-      await openDialog(tester);
-      await tester.pumpAndSettle();
-
-      expect(find.byType(Checkbox), findsNothing);
-      expect(find.text(t.dialogs.callChange.stationSoFar(previous: 'N0DEV', typed: 'N0DEV')), findsNothing,
-          reason: 'nothing has changed; the dialog is just a form');
+      expect((await storedContacts()).single.ourCall, 'KI2D');
     });
   });
 
   group('what reaches the log and the operation', () {
-    testWidgets('a restamp writes the parsed call, not the raw field text', (tester) async {
+    testWidgets('the restamp writes the parsed call, not the raw field text', (tester) async {
       // One backspace away from a two-call operation: the field reads
-      // "N0DEV, " and the offer appears normally, because the parser drops
-      // the empty tail. Stamping the field verbatim would put a trailing
-      // comma on every contact, and into every export and sync record.
+      // "N0DEV, ". Writing it verbatim would put a trailing comma on every
+      // contact, and into every export and sync record after it.
       await logContact('W1AW', ourCall: 'W2XYZ');
       await openDialog(tester);
       await tester.enterText(stationField(), 'N0DEV, ');
-      await tester.pumpAndSettle();
-      await tester.tap(find.byType(Checkbox));
       await save(tester);
 
       expect((await storedContacts()).single.ourCall, 'N0DEV');
@@ -300,10 +164,10 @@ void main() {
       // affected, and agreeing to "2 contacts" while 1 changes is exactly what
       // that honest count exists to surface — silence here would leave the
       // operator believing a log they never got.
-      await logContact('W1AW');
-      await logContact('K1ABC');
+      await logContact('W1AW', operatorCall: 'KI2D');
+      await logContact('K1ABC', operatorCall: 'KI2D');
       await openDialog(tester);
-      await tester.enterText(stationField(), 'KI2D');
+      await tester.enterText(operatorField(), 'W2XYZ');
       await tester.pumpAndSettle();
       await tester.tap(find.byType(Checkbox));
       await tester.pumpAndSettle();

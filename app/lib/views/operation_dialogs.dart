@@ -251,11 +251,16 @@ class _DetailsResult {
   final String notes;
   final String multiIdentifier;
 
-  /// Contacts the operator asked to restamp with the new station call, and
-  /// with the new operator call. Empty unless they asked; carried out of the
-  /// dialog rather than re-queried, so the write targets exactly the records
-  /// the count on the checkbox was computed from.
-  final List<Qso> restampStation;
+  /// Contacts the operator asked to restamp with the new operator call.
+  /// Empty unless they asked; carried out of the dialog rather than
+  /// re-queried, so the write targets exactly the records the count on the
+  /// checkbox was computed from.
+  ///
+  /// There is no station-call equivalent: the station call is what a SEGMENT
+  /// states, so its contacts follow it with nothing to ask
+  /// (`QsosRepository.restampSegmentStationCall`, run from `onLocalSave`).
+  /// An operator hands the key over mid-segment, which is why that one is
+  /// still a judgment call.
   final List<Qso> restampOperator;
 
   const _DetailsResult({
@@ -264,7 +269,6 @@ class _DetailsResult {
     required this.userTitle,
     required this.notes,
     required this.multiIdentifier,
-    this.restampStation = const [],
     this.restampOperator = const [],
   });
 }
@@ -327,12 +331,6 @@ Future<Operation?> editOperationDetails(
   final newMultiIdentifier = normalizedMultiIdentifier(result.multiIdentifier);
   final newOperatorCall = result.operatorCall.trim().toUpperCase();
   final newStationCall = result.stationCall.trim().toUpperCase();
-  // The operation keeps the field as typed — several calls live in it as one
-  // comma-separated string. A CONTACT holds exactly one, so the restamp takes
-  // the parsed call the offer itself was computed from: `"N0DEV, "`, one
-  // backspace away from a two-call operation, would otherwise stamp a trailing
-  // comma onto every contact, and into every export and sync record after it.
-  final restampCall = splitStationCalls(newStationCall).first;
   // The position is the only device-local field here, so it alone rides the
   // guarded `updateLocalData` write below; the operator is the operation's
   // shared data, stored in the slot of the position being SAVED.
@@ -373,17 +371,9 @@ Future<Operation?> editOperationDetails(
     startAtMillisMax: operation.startAtMillisMax,
     localData: localPatch.isEmpty ? operation.localData : {...operation.localData, ...localPatch},
   );
-  // One batch, whichever restamps were asked for: a contact can be in both
-  // lists, and `writeBatch` refuses a batch that names one record twice —
-  // rightly, since two updates for a row would apply in order and the second
-  // would discard the first's merge.
-  final restamped = <String, Map<String, String>>{};
-  for (final qso in result.restampStation) {
-    (restamped[qso.uuid] ??= {})['call'] = restampCall;
-  }
-  for (final qso in result.restampOperator) {
-    (restamped[qso.uuid] ??= {})['operatorCall'] = newOperatorCall;
-  }
+  final restamped = <String, Map<String, String>>{
+    for (final qso in result.restampOperator) qso.uuid: {'operatorCall': newOperatorCall},
+  };
   // BEFORE the operation is written, so a batch that throws leaves the whole
   // edit undone rather than a renamed operation over a log that still says
   // the old call — a half-applied rename the reopened dialog would describe
@@ -393,9 +383,7 @@ Future<Operation?> editOperationDetails(
   // sheet's draft, which always commits when the sheet closes; a discard path
   // added there would have to reach this write too.
   if (restamped.isNotEmpty) {
-    final bases = {
-      for (final qso in [...result.restampStation, ...result.restampOperator]) qso.uuid: qso,
-    };
+    final bases = {for (final qso in result.restampOperator) qso.uuid: qso};
     final int written;
     try {
       // ONLY the write is guarded, as `adif_import_flow.dart` guards its own:
@@ -687,7 +675,6 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
   /// trap this feature exists to close.
   bool _contactsFailed = false;
 
-  bool _restampStation = false;
   bool _restampOperator = false;
 
   /// The operator field's value is the operator's own decision, and the
@@ -741,7 +728,6 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
   // making the operator re-tick a box they never untucked.
   void _onStationCallChanged() {
     _suggestOperator();
-    _restampStation = false;
     _refresh();
   }
 
@@ -797,16 +783,6 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
     ];
   }
 
-  /// What the log says about the station call being typed. Silent while
-  /// several are typed: the restamp would have to pick one of them to write
-  /// onto every contact, and nothing here knows which.
-  CallChangeAdvice get _stationAdvice {
-    final contacts = _contacts;
-    final calls = _stationCalls;
-    if (contacts == null || calls.length != 1) return const CallChangeAdvice(CallChange.quiet);
-    return adviceForCallChange(calls: contacts.map((qso) => qso.ourCall), typed: calls.single);
-  }
-
   CallChangeAdvice get _operatorAdvice {
     if (_contacts == null || !_operatorApplies) return const CallChangeAdvice(CallChange.quiet);
     return adviceForCallChange(
@@ -860,13 +836,6 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
       // Hidden means untouched: the controller still holds what came in, so
       // the caller's change check sees no change and writes nothing.
       multiIdentifier: _multiIdentifierController.text.trim(),
-      restampStation: _restampTargets(
-        ticked: _restampStation,
-        advice: _stationAdvice,
-        scope: _contacts ?? const [],
-        typed: _stationCalls.length == 1 ? _stationCalls.single : '',
-        callOf: (qso) => qso.ourCall,
-      ),
       restampOperator: _restampTargets(
         ticked: _restampOperator,
         advice: _operatorAdvice,
@@ -961,19 +930,10 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
               ),
               onSubmitted: (_) => _save(),
             ),
+            // No station-call offer: the call is what a SEGMENT states, so
+            // its contacts follow it with nothing to ask
+            // (`QsosRepository.restampSegmentStationCall`).
             if (_contactsFailed) _adviceNote(context.t.dialogs.callChange.contactsUnreadable),
-            ..._adviceFor(
-              advice: _stationAdvice,
-              // Only ever consulted for the single-call case, which is the
-              // only one `_stationAdvice` speaks for.
-              typed: _stationCalls.length == 1 ? _stationCalls.single : '',
-              soFar: (previous, typed) => context.t.dialogs.callChange.stationSoFar(previous: previous, typed: typed),
-              noneSoFar: (typed) => context.t.dialogs.callChange.stationNoneSoFar(typed: typed),
-              several: (calls, typed) => context.t.dialogs.callChange.stationSeveral(calls: calls, typed: typed),
-              restamp: (count, typed) => context.t.dialogs.callChange.stationRestamp(count: count, typed: typed),
-              checked: _restampStation,
-              onChanged: (value) => setState(() => _restampStation = value),
-            ),
             const SizedBox(height: Space.lg),
             TextField(
               selectAllOnFocus: false,

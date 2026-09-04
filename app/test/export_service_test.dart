@@ -181,6 +181,52 @@ void main() {
       expect((await operations.get(created.uuid))!.stationCalls, ['N0CALL']);
     });
 
+    test('a call that only a segment names is still offered its own files', () async {
+      // A log that changed callsign at a BREAK has two calls while the
+      // operation itself names one. Reading the base alone would offer the
+      // last call's files and nothing for the stretch before it.
+      final created = await operations.create(stationCall: 'W1AW', userTitle: 'Roved');
+      await qsos.addEvent(created.uuid, kind: 'start', atMillis: 1000, operation: {'stationCall': 'N0CALL'});
+      await qsos.addEvent(created.uuid, kind: 'break', atMillis: 3000, operation: {'stationCall': 'W1AW'});
+      final op = (await operations.get(created.uuid))!;
+      await qsos.add(op.uuid, {
+        'our': {'call': 'N0CALL'},
+        'their': {'call': 'DL1ABC'},
+        'band': '20m',
+        'startAtMillis': 2000,
+      });
+      await qsos.add(op.uuid, {
+        'our': {'call': 'W1AW'},
+        'their': {'call': 'K1ABC'},
+        'band': '20m',
+        'startAtMillis': 4000,
+      });
+
+      final extensions = _ExtensionsWithHost(_CapturingHost());
+      final service = ExportService(extensions: extensions, qsos: qsos, settings: settings);
+      await service.getExportOptions(op);
+
+      // Unordered: what matters is that BOTH are offered. The order is the
+      // segments' own — the base operation first, then each override as it
+      // appears — which the panel groups by and nothing else depends on.
+      expect(
+        extensions.optionRequests.map((r) => (r['operation'] as Map)['stationCall']),
+        unorderedEquals(['N0CALL', 'W1AW']),
+        reason: 'the call the first stretch ran under owes files too',
+      );
+      // ACROSS segments a call takes only its own stretch — the opposite of
+      // several calls WITHIN one, where each claims the whole log. Claiming
+      // everything here would put N0CALL's contacts into W1AW's submission,
+      // by a station that was not on the air for them.
+      final byCall = {
+        for (final request in extensions.optionRequests)
+          ((request['operation'] as Map)['stationCall'] as String):
+              ((request['qsos'] as List).map((qso) => ((qso as Map)['their'] as Map)['call']).toList()),
+      };
+      expect(byCall['N0CALL'], ['DL1ABC']);
+      expect(byCall['W1AW'], ['K1ABC']);
+    });
+
     test('the hooks are asked once per call, each seeing only its own', () async {
       final extensions = _ExtensionsWithHost(_CapturingHost());
       final service = ExportService(extensions: extensions, qsos: qsos, settings: settings);

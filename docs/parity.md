@@ -116,15 +116,20 @@ more locales (Italian, Korean).
   (`operator1`, `operator2`, … — `operation_operator.dart`) where PoLo keeps
   one device-local `operatorCall`. PoLo's separate `isMultiStation` boolean is
   a deliberate divergence, not a gap: here a non-empty position *is* the flag.
-- The Operation Details dialog's remaining half ✅ (HALO-279): it names the
-  calls the log already holds and offers to restamp them (PoLo's
-  QSO-migration prompts), warns about an unparseable callsign without
-  refusing it, disables the operator field under several station calls, and
-  suggests the operator's own call behind "Suggest Operator" — PoLo's
-  `suggestDefaultOperator`. Clearing an operator deliberately offers no
-  restamp: an empty field is also every intermediate state of typing one.
+- The Operation Details dialog's remaining half ✅ (HALO-279), warning about
+  an unparseable callsign without refusing it, disabling the operator field
+  under several station calls, and suggesting the operator's own call behind
+  "Suggest Operator" — PoLo's `suggestDefaultOperator`.
   ("`/P`-style suffixes as first-class" left this list as a first-sweep
   artifact — it matches no code in PoLo.)
+- **PoLo's QSO-migration prompts are answered by a different design** (HALO-510):
+  the station call is a SEGMENT key here, so changing it rewrites that
+  segment's contacts unasked, and contacts in earlier segments keep the call
+  they were made under — something PoLo cannot express, having added the
+  mid-operation call change before it had segments. The **operator** keeps the
+  prompt, since an operator does change mid-segment; clearing one deliberately
+  offers no restamp, an empty field being every intermediate state of typing
+  one, and the `OPER` command restamps nothing.
 - **Multi-profile actually in use** ⛔ (HaLo: profiles scaffolded, single
   profile active) — HALO-107. Showing which operator and position logged each
   QSO is HALO-439.

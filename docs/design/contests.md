@@ -466,12 +466,45 @@ into each of them by whatever creates them, which is a UI concern.
 This is a deliberate divergence from app-polo, which accumulates
 (`operation = {...operation, ...qso.event.operation}`, `qsonToADIF.js:89-99`).
 
+**The station call is one of them, and its contacts follow it unasked.** A log
+that changes callsign has changed what is true from that point on, which is
+exactly what a segment says — so the call is an override key, and
+`QsosRepository.restampSegmentStationCall` rewrites `our.call` on the latest
+segment's contacts whenever it changes. That runs from
+`OperationsRepository.onLocalSave`, so every writer gets it: the details
+dialog, the operation setup sheet, a command. Contacts in earlier segments keep
+the call they were made under, and an unsegmented log has one implicit segment,
+so all of its contacts follow. There is nothing to ask the operator: the
+segment IS the claim about which station was on the air.
+
+app-polo lets the call change for the whole operation at once — it had no
+segments when that was asked for — and so cannot say which stretch ran under
+which call.
+
+**The exports fan out over the segments' calls** (`SegmentedOperation.
+allStationCalls`), not the base operation's, or a log that changed call at a
+`break` would be offered the last call's files alone. The two multi-call cases
+then pull in opposite directions, and both are right: several calls WITHIN one
+segment are a multi-operator station, so each claims that segment's whole log
+(`our.call` rewritten, polo's rule); ACROSS segments they are different
+stretches, so each call takes only the segments naming it
+(`ExportService._qsosAs`). Claiming everything for each would put one station's
+contacts into another's submission.
+
+The **operator** callsign is deliberately not a segment key and is not
+restamped this way. An operator hands the key over mid-segment and takes it
+back, which is not a statement about the stretch; a contact records who was at
+the key as it is logged (`operation_operator.dart`), and changing the
+operation's operator OFFERS to restamp the contacts of the current operating
+position (HALO-279) rather than doing it. Changing it through the `OPER`
+command restamps nothing.
+
 **Creating one.** The `START`/`BREAK`/`STOP`/`ROVERQTH` commands
 (operation-commands → `HaLoServices._markSegment`) are the writers. A row's
-override is `segmentOverrideOf` (halo_core `segments.dart`): refs plus the
-location keys (`grid`, `gridSource`, `lat`, `lon`, `state`, `county`), absent
-ones as explicit nulls, so it is the complete statement the paragraph above
-requires. A log getting its first `break` also gets a `start` at its top
+override is `segmentOverrideOf` (halo_core `segments.dart`): the station call,
+refs, and the location keys (`grid`, `gridSource`, `lat`, `lon`, `state`,
+`county`), absent ones as explicit nulls, so it is the complete statement the
+paragraph above requires. A log getting its first `break` also gets a `start` at its top
 holding what the contacts so far were made under — otherwise, the moment the
 base moves, they would all silently move with it. `stop` (polo's kind, and
 `end` in older rows) closes the operation and opens nothing.

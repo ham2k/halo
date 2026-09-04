@@ -926,4 +926,79 @@ void main() {
     final underscoreMatch = await lookupRepo.queryLookups('pota', 'A_B');
     expect(underscoreMatch.map((r) => r.key), ['US-0003']);
   });
+
+  group('restampSegmentStationCall', () {
+    Future<Qso> contact(String operationUuid, String call, int atMillis, {String? ourCall}) => qsos.add(operationUuid, {
+          'their': {'call': call},
+          if (ourCall != null) 'our': {'call': ourCall},
+          'band': '20m',
+          'startAtMillis': atMillis,
+        });
+
+    test('an unsegmented log follows the call in full', () async {
+      // No segment rows means one implicit segment covering everything, so
+      // every contact is inside the stretch the call describes.
+      final op = await operations.create(stationCall: 'N0DEV');
+      await contact(op.uuid, 'W1AW', 1000, ourCall: 'N0DEV');
+      await contact(op.uuid, 'K1ABC', 2000, ourCall: 'N0DEV');
+
+      expect(await qsos.restampSegmentStationCall(op.uuid, 'KI2D'), 2);
+      expect((await qsos.forOperation(op.uuid)).map((qso) => qso.ourCall), everyElement('KI2D'));
+    });
+
+    test('an earlier segment keeps the call it ran under', () async {
+      // The whole point of the segment model: a log that genuinely changed
+      // call at a BREAK made those earlier contacts under the earlier call,
+      // and a restamp that reached back would be claiming otherwise.
+      final op = await operations.create(stationCall: 'N0DEV');
+      await contact(op.uuid, 'W1AW', 1000, ourCall: 'N0DEV');
+      await qsos.addEvent(op.uuid, kind: 'break', atMillis: 1500);
+      await contact(op.uuid, 'K1ABC', 2000, ourCall: 'N0DEV');
+
+      expect(await qsos.restampSegmentStationCall(op.uuid, 'KI2D'), 1);
+      final byCall = {
+        for (final qso in await qsos.forOperation(op.uuid))
+          if (qso.isRealContact) qso.theirCall: qso.ourCall,
+      };
+      expect(byCall['W1AW'], 'N0DEV', reason: 'made before the break, under the old call');
+      expect(byCall['K1ABC'], 'KI2D');
+    });
+
+    test('a contact on the boundary belongs to the segment it opens', () async {
+      final op = await operations.create(stationCall: 'N0DEV');
+      await qsos.addEvent(op.uuid, kind: 'break', atMillis: 2000);
+      await contact(op.uuid, 'W1AW', 2000, ourCall: 'N0DEV');
+
+      expect(await qsos.restampSegmentStationCall(op.uuid, 'KI2D'), 1);
+    });
+
+    test('contacts already carrying the call are not rewritten', () async {
+      // A restamp is a revision every other device receives; writing rows
+      // that already agree is pure sync churn.
+      final op = await operations.create(stationCall: 'KI2D');
+      await contact(op.uuid, 'W1AW', 1000, ourCall: 'KI2D');
+
+      expect(await qsos.restampSegmentStationCall(op.uuid, 'KI2D'), 0);
+    });
+
+    test('the break marker itself is left alone', () async {
+      // An event row is not a contact and has no station to be wrong about.
+      final op = await operations.create(stationCall: 'N0DEV');
+      final marker = await qsos.addEvent(op.uuid, kind: 'break', atMillis: 1000);
+      await contact(op.uuid, 'W1AW', 2000, ourCall: 'N0DEV');
+
+      await qsos.restampSegmentStationCall(op.uuid, 'KI2D');
+      expect((await qsos.get(marker.uuid))!.ourCall, isEmpty);
+    });
+
+    test('an empty call writes nothing', () async {
+      // An operation with no callsign is not saveable, but a save hook must
+      // not blank a whole segment's contacts on the way to finding that out.
+      final op = await operations.create(stationCall: 'N0DEV');
+      await contact(op.uuid, 'W1AW', 1000, ourCall: 'N0DEV');
+
+      expect(await qsos.restampSegmentStationCall(op.uuid, '  '), 0);
+      expect((await qsos.forOperation(op.uuid)).single.ourCall, 'N0DEV');
+    });
+  });
 }

@@ -1049,13 +1049,6 @@ class _Translations$dialogs$callChange$es extends Translations$dialogs$callChang
 	// Translations
 	@override String invalidCallsign({required Object call}) => 'Indicativo inválido: ${call}';
 	@override String invalidCallsigns({required Object calls}) => 'Indicativos inválidos: ${calls}';
-	@override String stationSoFar({required Object previous, required Object typed}) => '${previous} usado hasta ahora. ${typed} se usará para los nuevos contactos.';
-	@override String stationNoneSoFar({required Object typed}) => 'Ningún indicativo usado hasta ahora. ${typed} se usará para los nuevos contactos.';
-	@override String stationSeveral({required Object calls, required Object typed}) => 'Esta operación ya tiene contactos con ${calls}. ${typed} solo se usará para los nuevos.';
-	@override String stationRestamp({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
-		one: 'Cambiar también a ${typed} el contacto ya registrado',
-		other: 'Cambiar también a ${typed} los ${count} contactos ya registrados',
-	);
 	@override String operatorSoFar({required Object previous, required Object typed}) => '${previous} ha operado hasta ahora. ${typed} se registrará en los nuevos contactos.';
 	@override String operatorNoneSoFar({required Object typed}) => 'Ningún operador registrado hasta ahora. ${typed} se registrará en los nuevos contactos.';
 	@override String operatorSeveral({required Object calls, required Object typed}) => 'Esta operación ya tiene contactos de ${calls}. ${typed} solo se registrará en los nuevos.';
@@ -2934,10 +2927,6 @@ extension on TranslationsEs {
 			'dialogs.receivedPurgesAction' => 'Eliminar',
 			'dialogs.callChange.invalidCallsign' => ({required Object call}) => 'Indicativo inválido: ${call}',
 			'dialogs.callChange.invalidCallsigns' => ({required Object calls}) => 'Indicativos inválidos: ${calls}',
-			'dialogs.callChange.stationSoFar' => ({required Object previous, required Object typed}) => '${previous} usado hasta ahora. ${typed} se usará para los nuevos contactos.',
-			'dialogs.callChange.stationNoneSoFar' => ({required Object typed}) => 'Ningún indicativo usado hasta ahora. ${typed} se usará para los nuevos contactos.',
-			'dialogs.callChange.stationSeveral' => ({required Object calls, required Object typed}) => 'Esta operación ya tiene contactos con ${calls}. ${typed} solo se usará para los nuevos.',
-			'dialogs.callChange.stationRestamp' => ({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Cambiar también a ${typed} el contacto ya registrado', other: 'Cambiar también a ${typed} los ${count} contactos ya registrados', ), 
 			'dialogs.callChange.operatorSoFar' => ({required Object previous, required Object typed}) => '${previous} ha operado hasta ahora. ${typed} se registrará en los nuevos contactos.',
 			'dialogs.callChange.operatorNoneSoFar' => ({required Object typed}) => 'Ningún operador registrado hasta ahora. ${typed} se registrará en los nuevos contactos.',
 			'dialogs.callChange.operatorSeveral' => ({required Object calls, required Object typed}) => 'Esta operación ya tiene contactos de ${calls}. ${typed} solo se registrará en los nuevos.',
@@ -3306,12 +3295,12 @@ extension on TranslationsEs {
 			'activitiesView.locationGrantRefused' => 'Sigue sin ubicación — el sistema volvió a negarlo',
 			'activitiesView.searchUnavailableTitle' => 'Búsqueda de actividades no disponible',
 			'activitiesView.searchUnavailableReason' => 'Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
 			'activitiesView.exports' => 'Exportar',
 			'activitiesView.imports' => 'Importar',
 			'activitiesView.exportLogs' => 'Exportar registros',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.tools' => 'Herramientas',
 			'activitiesView.toolsTitle' => 'Herramientas de la operación',
 			'activitiesView.operationDetails' => 'Detalles de la Operación',
@@ -3820,12 +3809,12 @@ extension on TranslationsEs {
 			'settings.station.winkeyerNoAnswer' => 'Ningún WinKeyer respondió en este puerto',
 			'settings.station.winkeyerStoppedAnswering' => 'El WinKeyer dejó de responder mientras enviaba; el mensaje se descartó',
 			'settings.station.radioUser' => 'Usuario de la radio',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
 			'settings.station.radioUserRequired' => 'Se requiere el usuario de control remoto de la radio',
 			'settings.station.connectFailedNetwork' => 'No se encuentra la radio en la red. Comprueba su dirección y que esté encendida y accesible.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.connectFailedTimeout' => 'La radio no respondió a tiempo. Comprueba que esté encendida y accesible.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',

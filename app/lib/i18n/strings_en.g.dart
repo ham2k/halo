@@ -2145,21 +2145,6 @@ class Translations$dialogs$callChange$en {
 	/// en: 'Invalid callsigns: ${calls}'
 	String invalidCallsigns({required Object calls}) => 'Invalid callsigns: ${calls}';
 
-	/// en: '${previous} used so far. ${typed} will be used for new contacts.'
-	String stationSoFar({required Object previous, required Object typed}) => '${previous} used so far. ${typed} will be used for new contacts.';
-
-	/// en: 'No callsign used so far. ${typed} will be used for new contacts.'
-	String stationNoneSoFar({required Object typed}) => 'No callsign used so far. ${typed} will be used for new contacts.';
-
-	/// en: 'This operation already has contacts under ${calls}. ${typed} will only be used for new ones.'
-	String stationSeveral({required Object calls, required Object typed}) => 'This operation already has contacts under ${calls}. ${typed} will only be used for new ones.';
-
-	/// en: '(one) {Also change the contact already logged to ${typed}} (other) {Also change all ${count} contacts already logged to ${typed}}'
-	String stationRestamp({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
-		one: 'Also change the contact already logged to ${typed}',
-		other: 'Also change all ${count} contacts already logged to ${typed}',
-	);
-
 	/// en: '${previous} has operated so far. ${typed} will be recorded for new contacts.'
 	String operatorSoFar({required Object previous, required Object typed}) => '${previous} has operated so far. ${typed} will be recorded for new contacts.';
 
@@ -5976,10 +5961,6 @@ extension on Translations {
 			'dialogs.receivedPurgesAction' => 'Remove',
 			'dialogs.callChange.invalidCallsign' => ({required Object call}) => 'Invalid callsign: ${call}',
 			'dialogs.callChange.invalidCallsigns' => ({required Object calls}) => 'Invalid callsigns: ${calls}',
-			'dialogs.callChange.stationSoFar' => ({required Object previous, required Object typed}) => '${previous} used so far. ${typed} will be used for new contacts.',
-			'dialogs.callChange.stationNoneSoFar' => ({required Object typed}) => 'No callsign used so far. ${typed} will be used for new contacts.',
-			'dialogs.callChange.stationSeveral' => ({required Object calls, required Object typed}) => 'This operation already has contacts under ${calls}. ${typed} will only be used for new ones.',
-			'dialogs.callChange.stationRestamp' => ({required num count, required Object typed}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Also change the contact already logged to ${typed}', other: 'Also change all ${count} contacts already logged to ${typed}', ), 
 			'dialogs.callChange.operatorSoFar' => ({required Object previous, required Object typed}) => '${previous} has operated so far. ${typed} will be recorded for new contacts.',
 			'dialogs.callChange.operatorNoneSoFar' => ({required Object typed}) => 'No operator recorded so far. ${typed} will be recorded for new contacts.',
 			'dialogs.callChange.operatorSeveral' => ({required Object calls, required Object typed}) => 'This operation already has contacts by ${calls}. ${typed} will only be recorded for new ones.',
@@ -6348,12 +6329,12 @@ extension on Translations {
 			'activitiesView.locationGrantRefused' => 'Still no location — the system said no again',
 			'activitiesView.searchUnavailableTitle' => 'Activity search unavailable',
 			'activitiesView.searchUnavailableReason' => 'No activity extension could answer. Try again in a moment.',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.exportLogs' => 'Export Logs',
 			'activitiesView.tools' => 'Tools',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.toolsTitle' => 'Operation Tools',
 			'activitiesView.operationDetails' => 'Operation Details',
 			'activitiesView.share' => 'Share',
@@ -6862,12 +6843,12 @@ extension on Translations {
 			'settings.station.winkeyerNoAnswer' => 'No WinKeyer answered on this port',
 			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped answering while sending; the message was dropped',
 			'settings.station.radioUser' => 'Radio username',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
 			'settings.station.connectFailedNetwork' => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
 			'settings.station.models.ft891' => 'Yaesu FT-891',
