@@ -42,6 +42,10 @@ The core purpose of the app is to register QSOs (amateur radio contacts) between
 
 QSOs are often grouped in Operations, which have their own `refs` and attributes that apply to the entire operation. And they can be broken down into segments, each with their own refs and attributes.
 
+An operation also moves through a lifecycle, recorded as an attribute of the operation itself: new, ready, active, paused, completed, processed and archived. Most of the transitions are explicit — the operator starts, pauses, ends or restarts. Two are inferred by the app, after a long silence or after an operation has been sitting processed for a while, and one, `processed`, is written whenever a log first leaves the app through an export or an upload to a confirmation service. From `paused` onwards the new-QSO entry row is locked and nothing else is; existing contacts stay editable, and reopening an operation returns it to `active`.
+
+On a shared operation, only the owner changes the state. Ownership is an account: the operation records the account it was created under, and a device may only write the status when that matches the account it is signed in to. A device that receives an operation from a peer on another account contributes contacts to it but never starts, pauses, ends or archives it, because it cannot know when the operator whose log it is considers the work done, and a guest's guess would travel back to the owner as if the owner had made it. An operation created by a device signed in to no account has no owner, and any device may change its state.
+
 ## Stations
 
 A station is a collection of equipment (radios, antennas, switches, etc) used by one or more operators to make radio contacts.
