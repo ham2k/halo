@@ -41,6 +41,13 @@ class _FakeSink implements EquipmentSink {
   @override
   void reportPower(num watts) => powers.add(watts);
 
+  final txReports = <bool>[];
+  final meterReports = <(RadioMeter, num)>[];
+  @override
+  void reportTransmitting(bool transmitting) => txReports.add(transmitting);
+  @override
+  void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
+
   @override
   void reportKeyerSpeed(int wpm) {}
   @override
@@ -241,6 +248,42 @@ void main() {
       receive('IF00014260000' '0000' '+00000' '3;');
       expect(sink.readings.single.freqKHz, 14260.0);
       expect(sink.readings.single.mode, 'CW');
+    });
+
+    test('the transmit flag rides in IF, one place ahead of the mode', () {
+      // Kenwood's `TX;` KEYS the radio — there is no readable transmit
+      // status anywhere on the line — so this flag is the only way to ask,
+      // and it is read against the same offset the mode is. Getting it from
+      // an offset of its own would be a second unverified guess about a
+      // layout this driver deliberately refuses to guess about once.
+      const rx = '0000' '+0000' '0';
+      const tx = '0000' '+0000' '1';
+      receive('MD2;IF00014250000$rx' '2;');
+      receive('MD2;IF00014255000$rx' '2;');
+      expect(session.modeOffset, 21, reason: 'the offset has to be settled before the flag can be located');
+      // Not from the packet that SETTLED the offset: that one is read with
+      // the offset it had on arrival, which is none — the same rule the
+      // mode itself follows here.
+      expect(sink.txReports, isEmpty);
+
+      receive('IF00014255000$rx' '2;');
+      expect(sink.txReports, [false]);
+      receive('IF00014255000$tx' '2;');
+      expect(sink.txReports, [false, true]);
+      receive('IF00014255000$tx' '2;');
+      expect(sink.txReports, [false, true], reason: 'still transmitting is not news');
+      receive('IF00014255000$rx' '2;');
+      expect(sink.txReports, [false, true, false]);
+    });
+
+    test('an unlearned layout says nothing about transmitting', () {
+      // The flag is located by the mode offset, so before that is settled
+      // there is no character to read — and reading one anyway would report
+      // a digit out of the clarifier offset as the PTT, which decides
+      // whether an antenna relay may move.
+      receive('IF00014250000' '0000' '+0000' '1' '2;');
+      expect(session.modeOffset, isNull);
+      expect(sink.txReports, isEmpty);
     });
 
     test('an IF with no MD before it teaches nothing', () {

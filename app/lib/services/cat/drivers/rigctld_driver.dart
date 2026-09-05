@@ -33,8 +33,10 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../adaptive_poller.dart';
+import '../telemetry_poller.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import 'telemetry_config.dart';
 
 const _lineFeed = 0x0a;
 const _carriageReturn = 0x0d;
@@ -108,8 +110,29 @@ class RigctldDriver extends EquipmentDriver {
   @override
   bool get hardwareVerified => true;
 
+  /// The levels Hamlib defines for these, all of them read-only meters. No
+  /// ALC-free or SWR-free backend is excluded by declaring them: a level a
+  /// backend does not implement answers `RPRT -11`, which this driver
+  /// ignores like every other error, and the slot simply stays empty.
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => RigctldSession(sink);
+  Set<RadioMeter> get telemetryMeters =>
+      const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.alc, RadioMeter.supplyVolts};
+
+  /// The meter cadence, and nothing else: where the daemon is listening is
+  /// the TCP transport's question.
+  @override
+  List<Map<String, dynamic>> configElements({
+    Map<String, dynamic> overrides = const {},
+    Map<String, dynamic> restrictions = const {},
+  }) =>
+      [telemetryConfigElement()];
+
+  @override
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) =>
+      key == telemetryIntervalConfigKey ? validateTelemetryInterval(value) : null;
+
+  @override
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => RigctldSession(sink, config);
 }
 
 /// Hamlib's `RFPOWER` level (unlike `RFPOWER_METER_WATTS`, see [setPower])
@@ -122,9 +145,24 @@ const _assumedMaxWatts = 100;
 class RigctldSession implements TransceiverSession {
   final EquipmentSink _sink;
 
-  RigctldSession(this._sink);
+  RigctldSession(this._sink, [this._config = const {}]);
+
+  final Map<String, dynamic> _config;
 
   late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode);
+
+  /// Watches for the operator to key the rig, and reads its meters while
+  /// they hold it — telemetry_poller.dart, and the opposite rule to
+  /// [_poller]'s.
+  ///
+  /// Both cadences take the flat default: rigctld is reached over TCP, and
+  /// the serial link on the far side of the daemon is one this app never
+  /// sees and cannot budget for.
+  late final TelemetryPoller _telemetry = TelemetryPoller(
+    onPoll: _pollTelemetry,
+    idleInterval: telemetryIntervalFor(_config, cycleBytes: 0),
+    txInterval: telemetryIntervalFor(_config, cycleBytes: 0),
+  );
 
   /// What was last reported upward, so a repeat can be told from a move —
   /// the poller's fast/slow choice rides on this, same as the FT-891's.
@@ -162,11 +200,24 @@ class RigctldSession implements TransceiverSession {
     _send('+l$_vfo RFPOWER_METER_WATTS');
   }
 
+  /// One turn of the telemetry cadence. No backlog guard, unlike flrig's:
+  /// rigctld labels every extended answer, so a question asked twice is
+  /// answered twice and read correctly both times — there is no positional
+  /// correlation to fall out of step.
+  void _pollTelemetry(bool transmitting) {
+    _send('+t$_vfo');
+    if (!transmitting) return;
+    // RFPOWER_METER_WATTS is already on the state poll (see
+    // [_requestFrequencyAndMode]) — it is asked again here because that
+    // poll runs at seconds and a transmission is measured in them.
+    _send('+l$_vfo RFPOWER_METER_WATTS');
+    _send('+l$_vfo SWR');
+    _send('+l$_vfo ALC');
+    _send('+l$_vfo VD_METER');
+  }
+
   @override
   void handleData(Uint8List chunk) {
-    // Anything at all defers the next poll — the daemon just answered, so
-    // asking again now would repeat a question we hold the answer to.
-    _poller.noteData();
     for (final byte in chunk) {
       if (byte == _lineFeed) {
         _handleLine(ascii.decode(_residual, allowInvalid: true));
@@ -177,7 +228,27 @@ class RigctldSession implements TransceiverSession {
     }
   }
 
+  /// The lines that are the daemon ANSWERING OUR TELEMETRY, rather than
+  /// telling us where the radio is. They must not defer the state poll: the
+  /// TX watch asks several times a second, and treating its answers as "the
+  /// daemon just told us something" re-arms the poll timer before it can
+  /// ever fire — leaving the frequency to arrive only on AdaptivePoller's
+  /// 9-second staleness ceiling.
+  ///
+  /// `RFPOWER_METER_WATTS` belongs here even though the STATE poll asks for
+  /// it too: the telemetry cycle asks again several times a second while the
+  /// radio is keyed, so leaving it out re-armed the poll timer through every
+  /// transmission — the same starvation the other three labels are here to
+  /// prevent, just harder to see, because it only bit while transmitting.
+  /// The state poll's own frequency and mode answers are what defer it, and
+  /// they arrive in the same round.
+  static const _telemetryLabels = ['PTT: ', 'SWR: ', 'ALC: ', 'VD_METER: ', 'RFPOWER_METER_WATTS: '];
+
   void _handleLine(String line) {
+    // Anything else defers the next poll — the daemon just answered, so
+    // asking again now would repeat a question we hold the answer to.
+    if (!_telemetryLabels.any(line.startsWith)) _poller.noteData();
+
     // Extended responses label every value; anything else on the stream —
     // `get_freq:` headers, `Passband:`, `RPRT n` acknowledgements — asks
     // nothing of us.
@@ -199,7 +270,37 @@ class RigctldSession implements TransceiverSession {
       if (token.isNotEmpty) _report(VfoReading(mode: appModeForHamlibMode(token)));
     } else if (line.startsWith('RFPOWER_METER_WATTS: ')) {
       final watts = double.tryParse(line.substring('RFPOWER_METER_WATTS: '.length).trim());
-      if (watts != null) _sink.reportPower(watts);
+      if (watts != null) {
+        // Both, from the one reading, and they are not the same claim: the
+        // app's power is what the station is running at, and the meter is
+        // what left the radio a moment ago. Hamlib happens to answer the
+        // second everywhere else's protocol answers the first.
+        _sink.reportPower(watts);
+        // As a METER, only while the radio is actually keyed. This level is
+        // also on the state poll, where it reads 0 — and a measured "0 W" on
+        // the strip is a different statement from an empty slot: one says
+        // the radio put out nothing, the other that there was nothing to
+        // measure. The second is what is true between overs.
+        if (_telemetry.transmitting) _sink.reportMeter(RadioMeter.powerOut, watts);
+      }
+    } else if (line.startsWith('PTT: ')) {
+      final ptt = int.tryParse(line.substring('PTT: '.length).trim());
+      // Anything else is a backend that does not implement it, and is left
+      // as "nobody knows" rather than read as receiving.
+      if (ptt != null && _telemetry.noteTransmitting(ptt != 0)) _sink.reportTransmitting(ptt != 0);
+    } else if (line.startsWith('SWR: ')) {
+      final swr = double.tryParse(line.substring('SWR: '.length).trim());
+      // Below 1 is physically impossible, so it is a backend answering
+      // zero for a meter it does not have — and a 0.0 on the strip reads as
+      // a perfect match, the most reassuring way available to be wrong.
+      if (swr != null && swr >= 1) _sink.reportMeter(RadioMeter.swr, swr);
+    } else if (line.startsWith('ALC: ')) {
+      final alc = double.tryParse(line.substring('ALC: '.length).trim());
+      // Hamlib's ALC is already a fraction of the backend's own scale.
+      if (alc != null) _sink.reportMeter(RadioMeter.alc, alc.clamp(0.0, 1.0));
+    } else if (line.startsWith('VD_METER: ')) {
+      final volts = double.tryParse(line.substring('VD_METER: '.length).trim());
+      if (volts != null) _sink.reportMeter(RadioMeter.supplyVolts, volts);
     }
   }
 
@@ -251,10 +352,14 @@ class RigctldSession implements TransceiverSession {
     _send('+\\chk_vfo');
     _requestFrequencyAndMode();
     _poller.start();
+    _telemetry.start();
   }
 
   @override
-  void stopUpdates() => _poller.stop();
+  void stopUpdates() {
+    _poller.stop();
+    _telemetry.stop();
+  }
 
 
   /// The poller's CURRENT cadence, not its floor: it runs fast while the
@@ -268,5 +373,6 @@ class RigctldSession implements TransceiverSession {
     // Nothing to say goodbye to: rigctld holds no per-client state, so
     // stopping the poll is the whole farewell.
     stopUpdates();
+    _telemetry.dispose();
   }
 }

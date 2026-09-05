@@ -32,6 +32,7 @@ import 'drivers/winkeyer_driver.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/flrig_driver.dart';
 import 'drivers/ft891_driver.dart';
+import 'drivers/meter_calibration.dart';
 import 'drivers/icom_civ_driver.dart';
 import 'drivers/civ_codec.dart' show civVoiceMemoryCount;
 import 'drivers/kenwood_cat_codec.dart' show kxVoiceMemoryCount;
@@ -292,6 +293,23 @@ class EquipmentType {
   /// the map rather than through a narrowed shape like [targetFor].
   Map<String, dynamic> driverConfig(Map<String, dynamic> config) => _merged(config);
 
+  /// Which meters a node on this pairing can show — the driver's answer for
+  /// the MERGED config, so the entry's own overrides (the calibration file
+  /// it names) are part of the question.
+  ///
+  /// Through the type rather than reaching for the driver directly: a caller
+  /// holding a node has its stored config, not the merged one, and asking
+  /// the driver with the stored map would leave a named radio looking like a
+  /// generic one.
+  Set<RadioMeter> telemetryMetersFor(Map<String, dynamic> config) =>
+      driver.telemetryMetersWith(_merged(config));
+
+  /// The meter cadence a node on this pairing falls back to — again for the
+  /// MERGED config, so the speed prefilled by the entry counts even when the
+  /// operator has never opened the box.
+  Duration defaultTelemetryIntervalFor(Map<String, dynamic> config) =>
+      driver.defaultTelemetryInterval(_merged(config));
+
   /// A one-line "where is it" for the equipment list.
   String describeTarget(Map<String, dynamic> config) {
     final merged = _merged(config);
@@ -514,7 +532,15 @@ const ft891Model = EquipmentModel(
       // What the entry knows about the radio's keyers — the generic entry
       // asks a developer instead (keyer_config.dart). Twenty seconds a
       // memory, per the Advance Manual.
-      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 20},
+      // The meter scales, which Yaesu publishes nowhere — see
+      // drivers/info/README.md. Named per ENTRY rather than per driver
+      // because one driver serves the whole line and the scales do not.
+      overrides: {
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: yaesuVoiceMemoryCount,
+        voiceCeilingConfigKey: 20,
+        meterInfoConfigKey: 'yaesu/ft-891',
+      },
       restrictions: {'port': Ft891Driver.cp2105CatPort},
       // The failure this driver actually produces is silence: the commands
       // go out, nothing comes back, and nothing anywhere reports an error.
@@ -558,7 +584,11 @@ const ft710Model = EquipmentModel(
       transport: SerialTransport(),
       // The radio's own CAT RATE default, unlike the FT-891's 4800.
       defaultConfig: {'baudRate': 38400},
-      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount},
+      overrides: {
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: yaesuVoiceMemoryCount,
+        meterInfoConfigKey: 'yaesu/ft-710',
+      },
     ),
   ],
 );
@@ -579,7 +609,12 @@ const ftdx10Model = EquipmentModel(
       transport: SerialTransport(),
       defaultConfig: {'baudRate': 38400},
       // Ninety seconds a memory, on the SD card, per the Operation Manual.
-      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: yaesuVoiceMemoryCount, voiceCeilingConfigKey: 90},
+      overrides: {
+        cwKeyerConfigKey: true,
+        voiceMemoriesConfigKey: yaesuVoiceMemoryCount,
+        voiceCeilingConfigKey: 90,
+        meterInfoConfigKey: 'yaesu/ftdx10',
+      },
       restrictions: {'port': Ft891Driver.cp2105CatPort},
     ),
   ],
@@ -947,10 +982,16 @@ const ic706mkiigModel = EquipmentModel(
       driver: IcomCivDriver(),
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '58', 'baudRate': 19200},
-      // No voice keyer and no text keying on this generation: the driver's
-      // defaults are the modern line's, and a play or a message here would
-      // show as going out while the radio silently ignored it.
-      overrides: {cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0},
+      // No voice keyer, no text keying and no TX meters on this generation:
+      // the driver's defaults are the modern line's, and a play or a message
+      // here would show as going out while the radio silently ignored it.
+      //
+      // The empty meterInfo is the same statement about meters, and it has to
+      // be said out loud — inheriting the driver's default would reserve
+      // power, SWR and ALC slots on a panel where they can never fill. This
+      // radio's CI-V table gives command 0x15 exactly two sub-commands, 01
+      // squelch and 02 S-meter; the TX meters arrived a generation later.
+      overrides: {cwKeyerConfigKey: false, voiceMemoriesConfigKey: 0, meterInfoConfigKey: ''},
       notes: _ic706mkiigSerialNotes,
     ),
   ],
@@ -1150,6 +1191,7 @@ const placeholderRadioModel = EquipmentModel(
         'placeholderFreq': placeholderRadioDefaultFreqKHz,
         'placeholderMode': placeholderRadioDefaultMode,
         'placeholderPower': placeholderRadioDefaultWatts,
+        'placeholderSwr': placeholderRadioDefaultSwr,
         'placeholderConnectDelay': 0,
         'placeholderDropAfter': 0,
         'placeholderReplyDelay': 0,

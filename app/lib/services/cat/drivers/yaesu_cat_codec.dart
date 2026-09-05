@@ -87,6 +87,87 @@ String buildReadPowerCommand() => 'PC;';
 int? parsePowerParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? int.tryParse(params) : null;
 
 
+/// Asks whether the radio is transmitting.
+///
+/// READ ONLY — `TX1;`/`TX2;` would KEY the radio, so the bare `TX;` is the
+/// only form this app ever sends. (The Kenwood line has no read form at
+/// all, which is why its driver reads the flag out of `IF` instead.)
+String buildReadTransmitStatusCommand() => 'TX;';
+
+/// `TX0;` receiving, `TX1;` transmitting from the radio's own PTT, `TX2;`
+/// transmitting because CAT asked. Null for anything else, which is a
+/// radio that does not answer the command rather than one that is
+/// receiving — the difference decides whether an antenna relay may move.
+bool? parseTransmitStatusParams(String params) => switch (params.trim()) {
+      '0' => false,
+      '1' || '2' => true,
+      _ => null,
+    };
+
+/// The meter reads, by the numbers Yaesu's own CAT manuals give them.
+///
+/// The spec, for both radios this driver has met:
+/// https://www.yaesu.com/Files/4CB893D7-1018-01AF-FA97E9E9AD48B50C/FT-891_CAT_OM_ENG_1909-C.pdf
+/// https://www.yaesu.com/Files/4CB893D7-1018-01AF-FA97E9E9AD48B50C/FTDX10_CAT_OM_ENG_2308-F.pdf
+///
+/// They agree on the three that matter — 4 ALC, 5 PO, 6 SWR — and on a
+/// reading of 0-255. What neither publishes, anywhere, is what that number
+/// MEANS: there is no table from 0-255 to watts or to an SWR ratio. That
+/// missing scale is why nothing here converts.
+///
+/// Reading a numbered meter is SAFE, unlike on a Kenwood: which meter the
+/// front panel displays is a separate command (`MS`), so asking for one
+/// here does not change what the operator is looking at. Only `RM0` and
+/// `RM2` are tied to the panel — they read "whatever it is showing" — which
+/// is why neither is ever asked for.
+///
+/// Worse than undocumented, the scale is per-RADIO. The technical
+/// supplements align these meters in service mode, per band, on each
+/// individual unit (`100W MTR 1.8` and its siblings), so a table taken off
+/// one FTDX10 describes that FTDX10. Anything shipped from a capture is a
+/// starting point, not a calibration. The raw values are captured
+/// against a rig on the bench (see [Ft891Session]) so a real table can be
+/// built from real readings, rather than a curve being invented and then
+/// compared against an SWR threshold the operator is warned at.
+const yaesuMeterAlc = 4;
+const yaesuMeterPowerOut = 5;
+const yaesuMeterSwr = 6;
+
+/// DC input voltage — on the FTDX10, which has it; the FT-891's table stops
+/// at 7 (ID) and answers this with nothing useful. Asked anyway during a
+/// capture: a radio that does not have the meter simply does not answer,
+/// and the alternative is a second capture pass to find out.
+const yaesuMeterVdd = 8;
+
+/// The meters a capture reads, in the order asked.
+const yaesuCaptureMeters = [yaesuMeterPowerOut, yaesuMeterSwr, yaesuMeterAlc, yaesuMeterVdd];
+
+String buildReadMeterCommand(int meter) => 'RM$meter;';
+
+/// `RM5123;` → (meter: 5, level: 123).
+///
+/// TWO answer shapes, and this is exactly the kind of difference that makes
+/// "the Yaesu line is all the same" wrong. The FT-891 answers
+/// `RM P1 P2P2P2;`; the FTDX10 answers `RM P1 P2P2P2 P3P3P3;` with a P3 its
+/// manual documents as fixed `000`. A parser that took only the shorter form
+/// would read NOTHING from an FTDX10 — silently, since an unparsed answer
+/// looks exactly like a radio that never replied.
+///
+/// The fixed tail is dropped rather than checked: it is documented as a
+/// constant, so a radio that put something else there is telling us
+/// something this parser has no way to interpret, and refusing the whole
+/// reading over it would lose the part we do understand.
+///
+/// Null for anything else — including `RM0;`, which selects what the front
+/// panel displays rather than answering a question.
+({int meter, int level})? parseMeterParams(String params) {
+  if (params.length != 4 && params.length != 7) return null;
+  final meter = int.tryParse(params[0]);
+  final level = int.tryParse(params.substring(1, 4));
+  if (meter == null || level == null) return null;
+  return (meter: meter, level: level);
+}
+
 /// `KS;` reads the keyer speed; the answer is `KSnnn;`, 004-060 WPM on the
 /// FTDX10 and FT-891 alike.
 String buildReadKeyerSpeedCommand() => 'KS;';

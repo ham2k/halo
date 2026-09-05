@@ -30,11 +30,18 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart';
+
+import '../../../i18n/strings.g.dart';
 import '../adaptive_poller.dart';
+import '../telemetry_poller.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import '../transports/config_field_helpers.dart';
 import 'cw_send_queue.dart';
 import 'keyer_config.dart';
+import 'meter_calibration.dart';
+import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 import 'yaesu_cat_codec.dart';
 
@@ -96,9 +103,85 @@ class Ft891Driver extends EquipmentDriver {
   @override
   bool canKeyCwWith(Map<String, dynamic> config) => cwKeyerFromConfig(config, fallback: true);
 
+  /// [meterInfoConfigKey] is read on every named entry and never shown as a
+  /// field on any of them — which calibration file describes a radio is a
+  /// fact about the model, not a setting anyone should be asked for.
   @override
-  Set<String> get recognizedConfigKeys =>
-      {...super.recognizedConfigKeys, cwKeyerConfigKey, voiceMemoriesConfigKey, voiceCeilingConfigKey};
+  Set<String> get recognizedConfigKeys => {
+        ...super.recognizedConfigKeys,
+        cwKeyerConfigKey,
+        voiceMemoriesConfigKey,
+        voiceCeilingConfigKey,
+        meterInfoConfigKey,
+      };
+
+  /// Nothing WITHOUT a table: Yaesu answers `RM` with a raw 0-255 and
+  /// publishes no scale anywhere, so a radio whose catalogue entry names no
+  /// calibration file (the generic Yaesu entry, which does not know which
+  /// radio is behind it) has meters that cannot be interpreted — and an
+  /// uninterpreted SWR would still be measured against the threshold the
+  /// operator is warned at.
+  @override
+  Set<RadioMeter> get telemetryMeters => const {};
+
+  @override
+  Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) {
+    final calibration = MeterCalibrations.instance[config[meterInfoConfigKey] as String?];
+    if (calibration == null) return const {};
+    return {
+      for (final entry in _metersByTable.entries)
+        if (calibration.has(entry.key)) entry.value,
+    };
+  }
+
+  @override
+  int get telemetryWatchBytes => yaesuTxWatchBytes;
+
+  /// The watch plus every meter a capture reads — the ceiling, for the base
+  /// class's own default. What a given NODE spends is
+  /// [_cycleBytesFor], which counts only the meters it will actually ask
+  /// for.
+  @override
+  int get telemetryCycleBytes => yaesuTxWatchBytes + yaesuCaptureMeters.length * yaesuMeterReadBytes;
+
+  /// The meter numbers a node will ask for on each transmit cycle.
+  ///
+  /// A CAPTURE asks for all of them — its whole purpose is the numbers
+  /// nothing can interpret yet. Otherwise only the meters the radio's table
+  /// describes: asking for one it does not is a read the radio answers with
+  /// nothing (an FT-891 has no Vdd meter at all), and it would reserve a
+  /// slot on the strip that can never fill.
+  static List<int> meterNumbersFor(MeterCalibration? calibration, {required bool capturing}) {
+    if (capturing) return yaesuCaptureMeters;
+    if (calibration == null) return const [];
+    return [
+      for (final meter in yaesuCaptureMeters)
+        if (_tablesByMeterNumber[meter] case final table? when calibration.has(table)) meter,
+    ];
+  }
+
+  int _cycleBytesFor(Map<String, dynamic> config) =>
+      yaesuTxWatchBytes +
+      meterNumbersFor(calibrationFor(config), capturing: config[yaesuMeterCaptureConfigKey] == true).length *
+          yaesuMeterReadBytes;
+
+  /// Per NODE, unlike the base rule, because the capture is per node: with
+  /// it off — which is every radio but a developer's — a transmitting Yaesu
+  /// asks exactly one question, and showing the placeholder the capture's
+  /// slower cadence would tell an operator their link cannot carry
+  /// something it is not being asked to.
+  @override
+  Duration defaultTelemetryInterval(Map<String, dynamic> config) => telemetryIntervalFor(
+        const {},
+        // The SAME question the session asks itself (`_readsMeters`): is
+        // there anything to read the meters for — a table to convert them
+        // with, or a capture building one? Keyed on the capture alone this
+        // showed 200 to every named Yaesu, all of which have a table, while
+        // the session ran at 459 ms — so an operator typing the number they
+        // were shown had it silently clamped.
+        cycleBytes: _cycleBytesFor(config),
+        baudRate: serialBaudRateOrNull(config),
+      );
 
   /// The keyer facts, asked only where the entry did not pin them — the
   /// generic Yaesu — and only of a developer (docs/design/cat.md § Voice
@@ -108,11 +191,29 @@ class Ft891Driver extends EquipmentDriver {
     Map<String, dynamic> overrides = const {},
     Map<String, dynamic> restrictions = const {},
   }) =>
-      keyerConfigElements(overrides);
+      [
+        ...keyerConfigElements(overrides),
+        // Developer mode only, and off by default: it puts three extra reads
+        // on the wire for every transmission and shows a line of raw numbers
+        // nobody but a developer can use. It exists to BUILD the scale that
+        // will make them meters (yaesu_cat_codec.dart), not to be a feature.
+        {
+          'type': 'field',
+          'fieldType': 'checkbox',
+          'key': yaesuMeterCaptureConfigKey,
+          'label': t.settings.station.yaesuMeterCapture,
+          'description': t.settings.station.yaesuMeterCaptureDescription,
+          'devMode': true,
+        },
+        telemetryConfigElement(),
+      ];
 
   @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) =>
-      key == voiceMemoriesConfigKey ? validateVoiceMemories(value) : null;
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
+        voiceMemoriesConfigKey => validateVoiceMemories(value),
+        telemetryIntervalConfigKey => validateTelemetryInterval(value),
+        _ => null,
+      };
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => Ft891Session(
@@ -120,8 +221,36 @@ class Ft891Driver extends EquipmentDriver {
         // Absent means NONE — see the Icom driver's createSession.
         voiceMemories: voiceMemoriesFromConfig(config, fallback: 0).clamp(0, yaesuVoiceMemoryCount),
         voiceMemoryCeiling: voiceCeilingFromConfig(config),
+        config: config,
       );
 }
+
+/// `TX;` out and `TX0;` back — the whole of a Yaesu's telemetry until its
+/// meter scales have met a bench.
+const yaesuTxWatchBytes = 7;
+
+/// `RM5;` out and `RM5123;` back.
+const yaesuMeterReadBytes = 12;
+
+/// Which meter number carries which reading, and which calibration table
+/// turns it into something an operator can read. One map, so the poll, the
+/// parse and the "what can this radio show" question cannot disagree.
+const _metersByTable = <MeterTable, RadioMeter>{
+  MeterTable.power: RadioMeter.powerOut,
+  MeterTable.swr: RadioMeter.swr,
+  MeterTable.alc: RadioMeter.alc,
+  MeterTable.voltage: RadioMeter.supplyVolts,
+};
+
+const _tablesByMeterNumber = <int, MeterTable>{
+  yaesuMeterPowerOut: MeterTable.power,
+  yaesuMeterSwr: MeterTable.swr,
+  yaesuMeterAlc: MeterTable.alc,
+  yaesuMeterVdd: MeterTable.voltage,
+};
+
+/// The config key for the bench capture — see this driver's config field.
+const yaesuMeterCaptureConfigKey = 'yaesuMeterCapture';
 
 class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
   final EquipmentSink _sink;
@@ -174,8 +303,105 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   @override
   final Duration voiceMemoryCeiling;
 
-  Ft891Session(this._sink, {int voiceMemories = yaesuVoiceMemoryCount, this.voiceMemoryCeiling = voiceActivityCeiling})
-      : _voiceMemories = voiceMemories;
+  Ft891Session(
+    this._sink, {
+    int voiceMemories = yaesuVoiceMemoryCount,
+    this.voiceMemoryCeiling = voiceActivityCeiling,
+    Map<String, dynamic> config = const {},
+  })  : _voiceMemories = voiceMemories,
+        _config = config,
+        _captureMeters = config[yaesuMeterCaptureConfigKey] == true,
+        _meterInfoKey = config[meterInfoConfigKey] as String?;
+
+  /// The node's merged config, kept for [_telemetry]'s cadence — a `late
+  /// final` field cannot be initialised from another field.
+  // ignore: prefer_initializing_formals
+  final Map<String, dynamic> _config;
+
+  /// Whether to read the meters and print what they answer RAW — the bench
+  /// switch that builds a calibration in the first place. Independent of
+  /// [_meterInfoKey]: a developer measuring a radio that already has a table
+  /// is exactly how a wrong table gets found.
+  final bool _captureMeters;
+
+  /// Which calibration file this node's catalogue entry names, if any — see
+  /// [meterInfoConfigKey]. Looked up on every reading rather than resolved
+  /// once, so a session built before the tables finished loading starts
+  /// converting the moment they land.
+  final String? _meterInfoKey;
+
+  MeterCalibration? get _calibration => MeterCalibrations.instance[_meterInfoKey];
+
+  /// The last raw reading from each meter, by its own number. Kept ACROSS
+  /// the unkey rather than cleared with it: the numbers are read off the
+  /// screen by a person, and a line that blanked the instant the operator
+  /// let go of the key would be unreadable by the only thing that can use
+  /// it.
+  final _rawMeters = <int, int>{};
+
+  /// Watches for the operator to key the rig.
+  ///
+  /// ONLY the watch: the Yaesu meter reads (`RM`) answer a raw 0-255 with no
+  /// published scale behind it, so a number taken from one would be
+  /// invented — and an invented SWR is measured against a threshold that
+  /// warns the operator. The meters wait for a bench session against the
+  /// FT-891 and FTDX10 this driver was verified on; the TX state does not,
+  /// because `TX;` answers a documented three-way and nothing has to be
+  /// converted.
+  ///
+  /// Both cadences are the same: with no meters to read, transmitting costs
+  /// exactly what receiving does.
+  late final TelemetryPoller _telemetry = TelemetryPoller(
+    onPoll: _pollTelemetry,
+    idleInterval: telemetryIntervalFor(_config, cycleBytes: _txWatchBytes, baudRate: serialBaudRateOrNull(_config)),
+    txInterval: telemetryIntervalFor(
+      _config,
+      cycleBytes: _txWatchBytes +
+          Ft891Driver.meterNumbersFor(_calibration, capturing: _captureMeters).length * yaesuMeterReadBytes,
+      baudRate: serialBaudRateOrNull(_config),
+    ),
+  );
+
+  /// One turn of the telemetry cadence: is the rig keyed, and — while it is,
+  /// and only with the capture switched on — what do its meters answer?
+  ///
+  /// Nothing is converted. Yaesu publishes no scale for these, so the raw
+  /// 0-255 goes to the developer diagnostic and to the console and no
+  /// further: an invented curve would reach the operator as an SWR they were
+  /// warned about, which is the one place a guess must not end up.
+  void _pollTelemetry(bool transmitting) {
+    _send(buildReadTransmitStatusCommand());
+    if (!transmitting) return;
+    // Resolved per poll, not once: the tables load asynchronously, so a
+    // session that came up first starts asking the moment they land.
+    for (final meter in Ft891Driver.meterNumbersFor(_calibration, capturing: _captureMeters)) {
+      _send(buildReadMeterCommand(meter));
+    }
+  }
+
+  void _handleMeterReading(int meter, int level) {
+    final table = _tablesByMeterNumber[meter];
+    final reading = table == null ? null : _calibration?.convert(table, level);
+    if (reading != null) {
+      // Only what the table describes: a file with no ALC rows leaves the
+      // ALC meter unreported, which is what keeps the panel from reserving
+      // a slot that never fills.
+      _sink.reportMeter(_metersByTable[table]!, reading);
+    }
+    if (!_captureMeters) return;
+    _rawMeters[meter] = level;
+    final note = 'RM ${[
+      for (final entry in _rawMeters.entries) '${entry.key}=${entry.value}',
+    ].join(' ')}';
+    _sink.reportDiagnostic(note);
+    // Also on the console, which is where a capture is actually READ from:
+    // the diagnostic line is one row in a dialog and holds only the latest
+    // values, while a transmission's worth of them is a series.
+    debugPrint('[cat] yaesu meters $note');
+  }
+
+  /// `TX;` out and `TX0;` back.
+  static const _txWatchBytes = yaesuTxWatchBytes;
 
   /// The cadence the poller has settled on — for tests, which otherwise
   /// could only infer it from timing.
@@ -215,7 +441,6 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     // something, so asking now would repeat a question we have the answer
     // to. A spun dial with transceive on keeps this resetting, and we poll
     // zero times through the whole turn.
-    _poller.noteData();
     // Yaesu CAT is ASCII, not binary like CI-V. `allowInvalid` because a
     // line-noise byte on a serial link must not throw out of a stream
     // callback — the framer will simply not match it as a command.
@@ -225,6 +450,15 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   }
 
   void _handle(AsciiCatCommand command) {
+    // The state poll is deferred by what the RADIO volunteers, never by an
+    // answer to a question of our own — and the TX watch asks one several
+    // times a second. Counting those as "the radio just told us something"
+    // re-arms the poll timer before it can ever fire, leaving the frequency
+    // to arrive only on AdaptivePoller's 9-second staleness ceiling: a
+    // dial turn taking nine seconds to reach the app, on the very radios
+    // (AI off) where the poll is the only source there is.
+    if (command.command != 'TX' && command.command != 'RM') _poller.noteData();
+
     switch (command.command) {
       case 'FA':
         final freqHz = parseFrequencyParams(command.params);
@@ -237,6 +471,20 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
       case 'PC':
         final watts = parsePowerParams(command.params);
         if (watts != null) _sink.reportPower(watts);
+
+      case 'RM':
+        // Only when this session asked: an unsolicited `RM` on a shared line
+        // belongs to whatever else is talking to the radio, and reading it
+        // would report a meter for a question we never posed.
+        if (!_captureMeters && _calibration == null) return;
+        final reading = parseMeterParams(command.params);
+        if (reading != null) _handleMeterReading(reading.meter, reading.level);
+
+      case 'TX':
+        final transmitting = parseTransmitStatusParams(command.params);
+        if (transmitting != null && _telemetry.noteTransmitting(transmitting)) {
+          _sink.reportTransmitting(transmitting);
+        }
 
       case 'KS':
         final wpm = parseKeyerSpeedParams(command.params);
@@ -355,6 +603,7 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     // shows it re-reads it when it opens.
     _send(buildReadKeyerSpeedCommand());
     _poller.start();
+    _telemetry.start();
   }
 
   /// Asks the radio for its keyer speed again — see [startUpdates].
@@ -383,7 +632,11 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     _voice.dispose();
     // Via stopUpdates, so "stop talking to the radio" is written once.
     stopUpdates();
+    _telemetry.dispose();
   }
 
-  void _stopPolling() => _poller.stop();
+  void _stopPolling() {
+    _poller.stop();
+    _telemetry.stop();
+  }
 }

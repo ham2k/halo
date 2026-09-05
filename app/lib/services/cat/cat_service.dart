@@ -25,6 +25,7 @@ import '../radio_service.dart';
 import '../settings_service.dart';
 import 'discovery.dart';
 import 'driver.dart';
+import 'drivers/meter_calibration.dart';
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
 import 'equipment_registry.dart';
@@ -202,6 +203,14 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         _onTrack = onTrack,
         _radio = radio {
     _load();
+    // The meter calibration tables (drivers/info/), read once. Not awaited
+    // by anything: a session asks for its table each time it converts a
+    // reading, so one built before this lands simply starts converting when
+    // it does — and the panel is told, so a radio's meter slots appear
+    // rather than waiting for the next notification of their own.
+    unawaited(MeterCalibrations.instance.load().then((_) {
+      if (!_disposed) notifyListeners();
+    }));
     _lastSeenVfoPower = _radio?.vfoA.power;
     _radio?.addListener(_onVfoChanged);
   }
@@ -853,11 +862,54 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   void selectAntenna(String uuid, String portKey, String antennaKey) {
     final session = _runtimes[uuid]?.session;
     if (session is! AntennaSwitchSession) return;
+    // Nothing throws a relay under RF: that is what destroys one. A switch
+    // that senses its own ports refuses this in its driver and this changes
+    // nothing for it — but a switch with no RF sensing at all (the Sierra
+    // CX-1 has no PTT input) has only what the RADIO says, and until
+    // telemetry there was nothing here that knew.
+    //
+    // Asked of the designated radio, whose antenna this switch is routing
+    // (docs/design/cat.md § The picks belong to the radio). A radio that
+    // cannot say — every driver reporting no TX state, which is most of
+    // them — leaves `transmitting` null and the selection goes through: a
+    // switch an operator could never work would be worse than the switch
+    // they have today.
+    if (radio1IsTransmitting) {
+      // Said out loud, in the one place a developer will look. The refusal
+      // is right, but a tap that does nothing at all is indistinguishable
+      // from a switch that has stopped working — and the operator has no
+      // other way to tell those apart.
+      debugPrint('[cat] antenna selection refused: ${_radio1 == null ? 'a radio' : displayNameFor(nodeFor(_radio1!)!)} is transmitting');
+      return;
+    }
     try {
       session.selectAntenna(portKey, antennaKey);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:select-antenna');
     }
+  }
+
+  /// Whether the radio driving `vfoA` says it is keyed RIGHT NOW.
+  ///
+  /// False when nothing knows — a driver that cannot read TX state never
+  /// reports one, and both callers want "go ahead unless the radio has said
+  /// otherwise" — a shack whose rigs cannot answer must keep working exactly
+  /// as it did before there was any telemetry at all.
+  bool get radio1IsTransmitting {
+    final uuid = _radio1;
+    if (uuid == null) return false;
+    final state = stateFor(uuid);
+    // A radio that has gone SILENT is not a radio that is transmitting, even
+    // if the last thing it said was that it had keyed. Nothing in any of
+    // these protocols announces an unkey, so a rig unplugged or switched off
+    // mid-over leaves that "true" standing for the life of the session —
+    // refusing every antenna selection and holding off every snap, with a TX
+    // legend lit beside a readout that says NO DATA. [EquipmentState.stale]
+    // is what already knows the difference, and a gate that fails closed on
+    // an answer known to be out of date, with nothing on screen to say why,
+    // is worse than one that reopens.
+    if (state.stale) return false;
+    return state.telemetry.isTransmitting;
   }
 
   /// The type handling [node], or null if it isn't in the catalogue — a
@@ -1298,10 +1350,14 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   _NodeRuntime _runtimeFor(String uuid) => _runtimes.putIfAbsent(uuid, _NodeRuntime.new);
 
-  void _setState(String uuid, EquipmentState state) {
+  /// [notify] false stores the state without waking a listener — for a
+  /// change nothing on screen can render. Only the meter refresh below uses
+  /// it, and it is the one place where a write that changes the state and a
+  /// write worth a repaint genuinely differ.
+  void _setState(String uuid, EquipmentState state, {bool notify = true}) {
     if (_disposed) return;
     _runtimeFor(uuid).state = state;
-    notifyListeners();
+    if (notify) notifyListeners();
   }
 
   Future<void> connect(String uuid) {
@@ -1442,6 +1498,32 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
           _lastSeenVfoPower = watts;
           _radio?.setVfo('vfoA', power: watts, origin: VfoOrigin.radio);
         }
+      },
+      onTransmitting: (transmitting) {
+        if (runtime.connection != connection) return;
+        // NOT _noteAlive: a driver may know this WITHOUT the radio saying
+        // so — the app keys the rig itself for a CW or voice message — and
+        // the silence watch exists to catch a live session over a dead
+        // reading stream. A driver whose TX state arrived off the wire
+        // reports it as a reading or calls reportAlive itself.
+        final state = stateFor(uuid);
+        if (state.telemetry.transmitting == transmitting) return;
+        _setState(uuid, state.copyWith(telemetry: state.telemetry.withTransmitting(transmitting)));
+      },
+      onMeter: (meter, value) {
+        if (runtime.connection != connection) return;
+        final state = stateFor(uuid);
+        final previous = state.telemetry.meters[meter];
+        // Stamped with the app clock, never DateTime.now()
+        // (docs/design/time.md) — developer time travel moves the whole app,
+        // expiry included.
+        final telemetry = state.telemetry.withMeter(meter, value, nowMillis());
+        // A meter answering with the number it answered with last time is
+        // not news. The timestamp still has to move — that is what keeps
+        // the reading from expiring under a steady transmission — but at
+        // three meters on a 200 ms cycle, repainting every listener fifteen
+        // times a second to redraw an unchanged 1.2 is work nobody sees.
+        _setState(uuid, state.copyWith(telemetry: telemetry), notify: previous?.value != value);
       },
       onCwProgress: (progress) {
         if (runtime.connection != connection) return;
@@ -1892,6 +1974,14 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       _cancelSnap(freqKHz);
       return;
     }
+    // Hands off a transmitting radio. Retuning a rig mid-over is the one
+    // thing this feature must never do — some rigs simply refuse it, the
+    // ones that don't sweep the carrier across the band on their way — and
+    // a burst measured across a transmission is not a knob turn anyway.
+    if (radio1IsTransmitting) {
+      _cancelSnap(freqKHz);
+      return;
+    }
     if (!_snapper.report(freqKHz, now())) return;
     _snapTimer?.cancel();
     // Read per reading, not cached: the operator tuning this setting is
@@ -1940,7 +2030,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // Settled first, so the movement is consumed either way: switching the
     // setting off during a turn must not leave a burst behind to be settled
     // by whatever reading follows it being switched back on.
-    if (target == null || _disposed || !_settings.smartVfoSnap) return;
+    // Checked again here, not only when the burst was fed: the operator can
+    // key the rig during the settle delay, and this is the line that
+    // actually moves it.
+    if (target == null || _disposed || !_settings.smartVfoSnap || radio1IsTransmitting) return;
     // Written as the OPERATOR, deliberately: the snap is a decision about
     // where they meant to be, so it takes the same path a typed frequency
     // does — RadioService notifies, [_onVfoChanged] tunes the radio. Tagging
@@ -2228,6 +2321,8 @@ class _NodeSink implements EquipmentSink {
   final EquipmentConnection connection;
   final void Function(VfoReading) onReading;
   final void Function(num) onPower;
+  final void Function(bool) onTransmitting;
+  final void Function(RadioMeter, num) onMeter;
   final void Function(int) onKeyerSpeed;
   final void Function(CwSendProgress?) onCwProgress;
   final void Function(VoiceActivity?) onVoiceActivity;
@@ -2241,6 +2336,8 @@ class _NodeSink implements EquipmentSink {
     required this.connection,
     required this.onReading,
     required this.onPower,
+    required this.onTransmitting,
+    required this.onMeter,
     required this.onKeyerSpeed,
     required this.onCwProgress,
     required this.onVoiceActivity,
@@ -2259,6 +2356,12 @@ class _NodeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => onPower(watts);
+
+  @override
+  void reportTransmitting(bool transmitting) => onTransmitting(transmitting);
+
+  @override
+  void reportMeter(RadioMeter meter, num value) => onMeter(meter, value);
 
   @override
   void reportKeyerSpeed(int wpm) => onKeyerSpeed(wpm);

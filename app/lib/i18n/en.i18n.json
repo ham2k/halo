@@ -394,7 +394,12 @@
         "radioWatts": "W",
         "radioConnect": "Connect this radio",
         "radioDisconnect": "Disconnect this radio",
-        "radioStale": "NO DATA"
+        "radioStale": "NO DATA",
+        "radioTransmitting": "TX",
+        "radioSwr": "SWR",
+        "radioAlc": "ALC",
+        "radioVolts": "V",
+        "radioSwrHigh": "high SWR"
       },
       "htmlPanelUnsupported": "This panel needs a web view, which this platform does not provide",
       "htmlPanelUnsupportedOnWeb": "This panel needs a sandbox the web version cannot provide"
@@ -1416,6 +1421,14 @@
       "voiceMemories": "Voice memories",
       "voiceMemoriesDescription": "How many voice memories the radio plays over CAT. 0 for none.",
       "voiceMemoriesInvalid": "A whole number, 0 or more",
+      "yaesuMeterCapture": "Capture meter readings",
+      "yaesuMeterCaptureDescription": "Reads the radio's PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.",
+      "telemetryInterval": "Meter reading interval (ms)",
+      "telemetryIntervalDescription": "How often to read the radio's meters while it is transmitting. Leave blank for the fastest this connection can carry, up to 200 ms.",
+      "telemetryIntervalInvalid": "A whole number of milliseconds, ${min} to ${max}",
+      "placeholderSwr": "SWR reading",
+      "placeholderSwrDescription": "What this radio answers its SWR meter with while transmitting. Above 1.8 the panel warns.",
+      "placeholderSwrInvalid": "A number, 1 or more",
       "keyerNone": "None",
       "cwDialect": "CW keying dialect",
       "cwDialectDescription": "Which shape of the KY command this radio takes. None keys nothing.",

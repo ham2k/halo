@@ -55,10 +55,22 @@ class VoiceActivityTracker {
   Timer? _poll;
   Timer? _ceiling;
   Timer? _doubt;
+  Timer? _settle;
 
   /// Whether a poll has answered "still going" since [start] — see
   /// [endFromPoll].
   bool _confirmed = false;
+
+  /// Whether [voiceActivityPollInterval] has elapsed since [start].
+  ///
+  /// The radio is given that long to key up before anything it says is read
+  /// as a refusal — which used to be implicit, because the tracker's own
+  /// poll was the only thing that ever asked. It is not any more: on CI-V
+  /// the telemetry watch asks the same question ("are you transmitting?")
+  /// several times a second, and its first answer lands while the rig is
+  /// still keying. Read as a refusal, that puts a question mark on every
+  /// play, and on a slow link stops a memory that is on the air.
+  bool _settled = false;
 
   VoiceActivityTracker({required this.report, required this.stop, required this.ceiling, this.poll, this.onCeiling});
 
@@ -73,8 +85,19 @@ class VoiceActivityTracker {
     _cancelTimers();
     _activity = activity;
     _confirmed = false;
+    _settled = false;
     report(activity);
-    if (poll != null) _poll = Timer.periodic(voiceActivityPollInterval, (_) => poll!());
+    if (poll != null) {
+      _poll = Timer.periodic(voiceActivityPollInterval, (_) {
+        _settled = true;
+        poll!();
+      });
+    } else {
+      // Nothing to ask, so nothing can arrive early — but an answer may
+      // still reach [endFromPoll] from elsewhere, and after this long it
+      // means what it says.
+      _settle = Timer(voiceActivityPollInterval, () => _settled = true);
+    }
     final limit = ceiling();
     _ceiling = Timer(limit, () {
       onCeiling?.call(limit);
@@ -113,6 +136,10 @@ class VoiceActivityTracker {
       end();
       return;
     }
+    // Too early to mean anything: the radio has not had [voiceActivityPollInterval]
+    // to key up, and something else on the link may be asking the same
+    // question far faster than this tracker does.
+    if (!_settled) return;
     // A second "not going" while already in doubt changes nothing: the
     // linger runs its course, so the question mark is seen.
     if (activity.doubtful) return;
@@ -144,5 +171,7 @@ class VoiceActivityTracker {
     _ceiling = null;
     _doubt?.cancel();
     _doubt = null;
+    _settle?.cancel();
+    _settle = null;
   }
 }

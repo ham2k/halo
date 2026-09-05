@@ -393,7 +393,12 @@
         "radioWatts": "W",
         "radioConnect": "Conectar esta radio",
         "radioDisconnect": "Desconectar esta radio",
-        "radioStale": "SIN DATOS"
+        "radioStale": "SIN DATOS",
+        "radioTransmitting": "TX",
+        "radioSwr": "ROE",
+        "radioAlc": "ALC",
+        "radioVolts": "V",
+        "radioSwrHigh": "ROE alta"
       },
       "htmlPanelUnsupported": "Este panel necesita un visor web, que esta plataforma no ofrece",
       "htmlPanelUnsupportedOnWeb": "Este panel necesita un entorno aislado que la versión web no puede ofrecer"
@@ -1373,6 +1378,14 @@
       "voiceMemories": "Memorias de voz",
       "voiceMemoriesDescription": "Cuántas memorias de voz reproduce la radio por CAT. 0 si ninguna.",
       "voiceMemoriesInvalid": "Un número entero, 0 o más",
+      "yaesuMeterCapture": "Capturar lecturas de medidores",
+      "yaesuMeterCaptureDescription": "Lee los medidores PO, ROE y ALC de la radio mientras transmite y escribe los valores en bruto en el registro. Sirve para construir la escala que Yaesu no publica; los valores no se muestran como medidores.",
+      "telemetryInterval": "Intervalo de lectura de medidores (ms)",
+      "telemetryIntervalDescription": "Cada cuánto se leen los medidores de la radio mientras transmite. Déjalo en blanco para lo más rápido que admita esta conexión, hasta 200 ms.",
+      "telemetryIntervalInvalid": "Un número entero de milisegundos, de ${min} a ${max}",
+      "placeholderSwr": "Lectura de ROE",
+      "placeholderSwrDescription": "Con qué ROE responde esta radio mientras transmite. Por encima de 1,8 el panel avisa.",
+      "placeholderSwrInvalid": "Un número, 1 o más",
       "keyerNone": "Ninguno",
       "cwDialect": "Dialecto de manipulación de CW",
       "cwDialectDescription": "Qué forma del comando KY acepta esta radio. Ninguno no manipula nada.",

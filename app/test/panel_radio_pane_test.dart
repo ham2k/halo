@@ -11,10 +11,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart' show nowMillis;
+import 'package:halo_widgets/halo_widgets.dart' show MdiIcons;
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/views/operation/radio/radio_faces.dart';
 import 'package:ham2k_logger/views/operation/radio/radio_panel.dart';
+
+/// A reading as fresh as one that just arrived off the radio.
+MeterReading justRead(num value) => MeterReading(value, nowMillis());
 
 void main() {
   final p = t.operation.layout.panels;
@@ -28,6 +33,7 @@ void main() {
     required EquipmentState state,
     required bool live,
     num? power,
+    Set<RadioMeter> meters = const {},
     String style = radioStyleModern,
   }) =>
       tester.pumpWidget(MaterialApp(
@@ -39,6 +45,7 @@ void main() {
             style: style,
             palette: live ? palette : palette.dimmed(0.3),
             power: power,
+            meters: meters,
             onTune: null,
             powerButton: node == null
                 ? null
@@ -264,4 +271,258 @@ void main() {
     // whatever was left of a short pane.
     expect(tester.getSize(find.byType(RadioPowerButton)).height, equals(22));
   });
+
+  group('the meter strip', () {
+    /// A reading as fresh as one that just arrived off the radio.
+
+    testWidgets('a keyed radio says TX and shows what its meters read', (tester) async {
+      await pumpReadout(
+        tester,
+        node: node,
+        state: EquipmentState(
+          status: EquipmentStatus.connected,
+          vfo: const VfoReading(freqKHz: 14074.0, mode: 'USB'),
+          telemetry: RadioTelemetry(
+            transmitting: true,
+            meters: {
+              RadioMeter.powerOut: justRead(48),
+              RadioMeter.swr: justRead(1.3),
+              RadioMeter.supplyVolts: justRead(13.8),
+            },
+          ),
+        ),
+        live: true,
+        power: 100,
+        meters: const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.supplyVolts},
+      );
+      expect(find.text(p.radioTransmitting), findsOneWidget);
+      // The measured output, NOT the 100 W the radio is set to: the whole
+      // reason powerOut is a meter and Vfo.power is not.
+      expect(find.text('48 ${p.radioWatts}'), findsOneWidget);
+      expect(find.text('${p.radioSwr} 1.3'), findsOneWidget);
+      expect(find.text('13.8 ${p.radioVolts}'), findsOneWidget);
+    });
+
+    testWidgets('an SWR past the alert threshold is coloured and named', (tester) async {
+      await pumpReadout(
+        tester,
+        node: node,
+        state: EquipmentState(
+          status: EquipmentStatus.connected,
+          telemetry: RadioTelemetry(transmitting: true, meters: {RadioMeter.swr: justRead(2.4)}),
+        ),
+        live: true,
+        meters: const {RadioMeter.swr},
+      );
+      final reading = tester.widget<Text>(find.text('${p.radioSwr} 2.4'));
+      final context = tester.element(find.text('${p.radioSwr} 2.4'));
+      expect(reading.style?.color, Theme.of(context).colorScheme.error);
+      // Colour alone is never the whole message — an operator who cannot use
+      // hue reads a red 2.4 as a black one (the same defect HALO-450 records
+      // for the Radio control), and a screen reader reads digits that say
+      // nothing about whether 2.4 is a problem.
+      expect(find.bySemanticsLabel(RegExp(p.radioSwrHigh)), findsOneWidget);
+      expect(find.byIcon(MdiIcons.alertOutline), findsOneWidget);
+    });
+
+    testWidgets('a healthy SWR is not dressed up as a warning', (tester) async {
+      await pumpReadout(
+        tester,
+        node: node,
+        state: EquipmentState(
+          status: EquipmentStatus.connected,
+          telemetry: RadioTelemetry(transmitting: true, meters: {RadioMeter.swr: justRead(1.7)}),
+        ),
+        live: true,
+        meters: const {RadioMeter.swr},
+      );
+      // Just under the line, which is where an off-by-one lives.
+      expect(find.byIcon(MdiIcons.alertOutline), findsNothing);
+    });
+
+    testWidgets('a reading nobody has refreshed stops being shown', (tester) async {
+      // The failure this prevents: meters are read only while transmitting,
+      // so every reading STOPS being refreshed at the end of every over. A
+      // strip that kept the last value would show the SWR of a transmission
+      // from an hour ago, on a different band, as though it were current.
+      await pumpReadout(
+        tester,
+        node: node,
+        state: EquipmentState(
+          status: EquipmentStatus.connected,
+          telemetry: RadioTelemetry(
+            meters: {
+              RadioMeter.swr: MeterReading(2.4, nowMillis() - meterLinger.inMilliseconds - 1000),
+            },
+          ),
+        ),
+        live: true,
+        meters: const {RadioMeter.swr},
+      );
+      expect(find.text('${p.radioSwr} 2.4'), findsNothing);
+      expect(find.byIcon(MdiIcons.alertOutline), findsNothing);
+      // The slot keeps its label rather than emptying: a strip that vanished
+      // between overs would read as a fault, when the truth is only that the
+      // radio is receiving.
+      expect(find.text(p.radioSwr), findsOneWidget);
+    });
+
+    testWidgets('a radio whose driver reads no meters gets no strip at all', (tester) async {
+      await pumpReadout(
+        tester,
+        node: node,
+        state: const EquipmentState(status: EquipmentStatus.connected),
+        live: true,
+      );
+      expect(find.text(p.radioSwr), findsNothing);
+    });
+  });
+  group('the meter bars', () {
+    MeterBarPainter painterFor(WidgetTester tester, {required Finder within}) => tester
+        .widgetList<CustomPaint>(find.descendant(of: within, matching: find.byType(CustomPaint)))
+        .map((p) => p.painter)
+        .whereType<MeterBarPainter>()
+        .single;
+
+    testWidgets('the SWR bar turns red where the operator is warned, not at the end', (tester) async {
+      await pumpReadout(
+        tester,
+        node: node,
+        state: EquipmentState(
+          status: EquipmentStatus.connected,
+          telemetry: RadioTelemetry(transmitting: true, meters: {RadioMeter.swr: MeterReading(2.0, nowMillis())}),
+        ),
+        live: true,
+        meters: const {RadioMeter.swr},
+      );
+      final painter = painterFor(tester, within: find.byType(RadioReadout));
+      // 1.0-3.0 across the bar, so the 1.8 threshold sits at 40% of it and
+      // 2.0 lights half. A scale that started its red zone at the END would
+      // mean the bar never disagreed with the number beside it about
+      // anything, which is the whole reason it is there.
+      expect(painter.alertFrom, closeTo(0.4, 0.001));
+      expect(painter.fraction, closeTo(0.5, 0.001));
+    });
+
+    testWidgets('the red zone is drawn before the operator reaches it', (tester) async {
+      // A meter face prints its red zone whether the needle is in it or not.
+      // Painting it only once crossed would be a bar that says "fine" right
+      // up to the moment it says "bad", with no sense of how close.
+      await pumpReadout(
+        tester,
+        node: node,
+        state: EquipmentState(
+          status: EquipmentStatus.connected,
+          telemetry: RadioTelemetry(transmitting: true, meters: {RadioMeter.swr: MeterReading(1.1, nowMillis())}),
+        ),
+        live: true,
+        meters: const {RadioMeter.swr},
+      );
+      expect(painterFor(tester, within: find.byType(RadioReadout)).alertFrom, closeTo(0.4, 0.001));
+    });
+
+    testWidgets('power is measured against what the radio was ASKED for', (tester) async {
+      // No protocol here states a radio's rated maximum, so a "full power"
+      // scale would be invented. The set level is a real number the operator
+      // chose, and the question the bar answers — am I making what I asked
+      // for? — is the one they actually have.
+      await pumpReadout(
+        tester,
+        node: node,
+        state: EquipmentState(
+          status: EquipmentStatus.connected,
+          telemetry: RadioTelemetry(transmitting: true, meters: {RadioMeter.powerOut: MeterReading(25, nowMillis())}),
+        ),
+        live: true,
+        power: 100,
+        meters: const {RadioMeter.powerOut},
+      );
+      expect(painterFor(tester, within: find.byType(RadioReadout)).fraction, closeTo(0.25, 0.001));
+    });
+
+    testWidgets('a reading above the set power widens the scale rather than overflowing', (tester) async {
+      await pumpReadout(
+        tester,
+        node: node,
+        state: EquipmentState(
+          status: EquipmentStatus.connected,
+          telemetry: RadioTelemetry(transmitting: true, meters: {RadioMeter.powerOut: MeterReading(60, nowMillis())}),
+        ),
+        live: true,
+        power: 50,
+        meters: const {RadioMeter.powerOut},
+      );
+      expect(painterFor(tester, within: find.byType(RadioReadout)).fraction, 1.0);
+    });
+
+    testWidgets('a strip of four meters fits a narrow pane', (tester) async {
+      // A Row gives a non-flex child unbounded width, so the plain readings
+      // would take everything and the bars would collapse — the same shape
+      // as the Wrap-in-a-Row overflow this codebase has been bitten by. The
+      // wide test font makes this the case worth pinning: it is exactly what
+      // the tightest Font Scale does to a real pane.
+      await tester.pumpWidget(TranslationProvider(
+        child: MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 180,
+                height: 120,
+                child: RadioReadout(
+                  node: node,
+                  state: EquipmentState(
+                    status: EquipmentStatus.connected,
+                    vfo: const VfoReading(freqKHz: 14074.0, mode: 'USB'),
+                    telemetry: RadioTelemetry(
+                      transmitting: true,
+                      meters: {
+                        RadioMeter.powerOut: justRead(48),
+                        RadioMeter.swr: justRead(1.3),
+                        RadioMeter.alc: justRead(0.4),
+                        RadioMeter.supplyVolts: justRead(13.8),
+                      },
+                    ),
+                  ),
+                  live: true,
+                  style: radioStyleModern,
+                  palette: palette,
+                  power: 100,
+                  meters: const {
+                    RadioMeter.powerOut,
+                    RadioMeter.swr,
+                    RadioMeter.alc,
+                    RadioMeter.supplyVolts,
+                  },
+                  onTune: null,
+                  powerButton: null,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+    });
+
+    test('any reading at all lights a segment', () {
+      // A 3 W reading against a 100 W set level rounds to nothing across ten
+      // segments, and an empty bar during a real transmission reads as a
+      // radio putting out zero — the one thing the strip must never say
+      // while the rig is on the air.
+      expect(MeterBarPainter.litSegments(0.03, 10), 1);
+      expect(MeterBarPainter.litSegments(0, 10), 0, reason: 'nothing measured is still nothing');
+      expect(MeterBarPainter.litSegments(0.5, 10), 5);
+      expect(MeterBarPainter.litSegments(2.0, 10), 10, reason: 'past full scale pins, never overflows');
+    });
+
+    test('the segment straddling the threshold belongs to the side most of it is on', () {
+      // Measured at the segment's middle. Measured at its leading edge, the
+      // red zone would start one segment early on every bar in the app.
+      expect(MeterBarPainter.isAlertSegment(3, 10, 0.4), isFalse);
+      expect(MeterBarPainter.isAlertSegment(4, 10, 0.4), isTrue);
+      expect(MeterBarPainter.isAlertSegment(9, 10, null), isFalse, reason: 'no zone, no red');
+    });
+  });
+
 }

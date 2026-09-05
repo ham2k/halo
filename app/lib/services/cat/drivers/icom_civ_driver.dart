@@ -20,9 +20,13 @@ import 'package:flutter/foundation.dart';
 import '../../../i18n/strings.g.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import '../telemetry_poller.dart';
+import '../transports/config_field_helpers.dart';
 import 'civ_codec.dart';
 import 'cw_send_queue.dart';
 import 'keyer_config.dart';
+import 'meter_calibration.dart';
+import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
 /// Transceive makes the radio announce changes on its own, but it is a
@@ -57,13 +61,44 @@ num _wattsForLevel(int level, num maxWatts) {
   return maxWatts <= _preciseWattsCeiling ? (raw * 10).round() / 10 : raw.round();
 }
 
-/// Below this, [IcomCivSession.dcInputDeciVolts] reads as the radio's own
-/// battery rather than an external supply — confirmed LIVE against an
-/// IC-705: ~11.5V (115) on its internal battery, ~19.5V (195) plugged in.
-/// The midpoint, since only those two bench readings exist; a supply that
-/// happens to land near it would misclassify, but nothing between "flat
+/// Below this RAW reading, [IcomCivSession.dcInputMeterLevel] says the radio
+/// is on its own battery rather than an external supply — confirmed LIVE
+/// against an IC-705, which read 115 on its internal battery and 195 plugged
+/// in. The midpoint, since only those two bench readings exist; a supply
+/// that happens to land near it would misclassify, but nothing between "flat
 /// battery" and "external DC" is physically expected.
-const _batteryDeciVoltsCeiling = 150;
+///
+/// Deliberately compared as a RAW level and not as volts. Icom's published
+/// Vd scale is a curve, and a different one per radio (see
+/// [civMeterDcInputVoltage]) — this check needs neither, because both bench
+/// readings are in the same units the radio answers in.
+const _batteryMeterCeiling = 150;
+
+/// A CI-V exchange is a 7-byte question and a 9-byte answer with one data
+/// byte pair — 16 bytes on the wire, which is what the cadence floor is
+/// computed from ([telemetryIntervalFor]).
+const _civExchangeBytes = 16;
+
+/// The TX watch is one exchange; the meter cycle is one per meter read.
+const civTxWatchBytes = _civExchangeBytes;
+const civMeterCycleBytes = _civExchangeBytes * 4;
+
+/// Which CI-V meter carries which reading, and which calibration table turns
+/// its 0-255 into something an operator can read. One map, so the poll, the
+/// parse and the "what can this radio show" question cannot disagree.
+const _metersByTable = <MeterTable, RadioMeter>{
+  MeterTable.powerFraction: RadioMeter.powerOut,
+  MeterTable.swr: RadioMeter.swr,
+  MeterTable.alc: RadioMeter.alc,
+  MeterTable.voltage: RadioMeter.supplyVolts,
+};
+
+const _tablesByMeterId = <int, MeterTable>{
+  civMeterRfPower: MeterTable.powerFraction,
+  civMeterSwr: MeterTable.swr,
+  civMeterAlc: MeterTable.alc,
+  civMeterDcInputVoltage: MeterTable.voltage,
+};
 
 class IcomCivDriver extends EquipmentDriver {
   const IcomCivDriver();
@@ -87,6 +122,36 @@ class IcomCivDriver extends EquipmentDriver {
   @override
   bool get hardwareVerified => true;
 
+  /// Icom publishes ONE set of meter breakpoints for the current CI-V line,
+  /// so the scale is the driver's rather than each entry's — unlike Yaesu,
+  /// where every radio is aligned individually. An entry may still name
+  /// another file for a radio known to differ.
+  @override
+  String? get defaultMeterInfoKey => 'icom/civ-generic';
+
+  /// What the table describes, which for the shipped one is everything the
+  /// line publishes a scale for. Supply voltage was already being read for
+  /// the battery-derating check ([civMeterDcInputVoltage]) — this is the
+  /// first thing that shows it.
+  @override
+  Set<RadioMeter> get telemetryMeters => telemetryMetersWith(const {});
+
+  @override
+  Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) {
+    final calibration = calibrationFor(config);
+    if (calibration == null) return const {};
+    return {
+      for (final entry in _metersByTable.entries)
+        if (calibration.has(entry.key)) entry.value,
+    };
+  }
+
+  @override
+  int get telemetryWatchBytes => civTxWatchBytes;
+
+  @override
+  int get telemetryCycleBytes => civMeterCycleBytes;
+
   @override
   bool get canKeyCw => true;
 
@@ -108,6 +173,8 @@ class IcomCivDriver extends EquipmentDriver {
         // added before the field existed — and a generic knows no rig.
         voiceMemories: voiceMemoriesFromConfig(config, fallback: 0).clamp(0, civVoiceMemoryCount),
         voiceMemoryCeiling: voiceCeilingFromConfig(config),
+        config: config,
+        meterInfoKey: (config[meterInfoConfigKey] as String?) ?? defaultMeterInfoKey,
       );
 
   /// `civControllerAddress`, `maxWatts` and `batteryMaxWatts` are read
@@ -117,6 +184,7 @@ class IcomCivDriver extends EquipmentDriver {
   @override
   Set<String> get recognizedConfigKeys => {
         ...super.recognizedConfigKeys,
+        meterInfoConfigKey,
         'civControllerAddress',
         'maxWatts',
         'batteryMaxWatts',
@@ -146,11 +214,13 @@ class IcomCivDriver extends EquipmentDriver {
         // the generic Icom — and only of a developer (docs/design/cat.md
         // § Voice keying).
         ...keyerConfigElements(overrides),
+        telemetryConfigElement(),
       ];
 
   @override
   String? validateField(String key, dynamic value, Map<String, dynamic> config) {
     if (key == voiceMemoriesConfigKey) return validateVoiceMemories(value);
+    if (key == telemetryIntervalConfigKey) return validateTelemetryInterval(value);
     if (key != 'civAddress') return null;
     // A wrong address is SILENT — the radio ignores frames addressed
     // elsewhere, which is indistinguishable from a dead cable. Catch an
@@ -203,7 +273,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   final num maxWatts;
 
   /// A lower ceiling that applies instead of [maxWatts] while
-  /// [dcInputDeciVolts] says the radio is running off its own battery — null
+  /// [dcInputMeterLevel] says the radio is running off its own battery — null
   /// for a radio with no separate battery rating (everything but the IC-705
   /// today). The SET level itself doesn't drop on battery — see
   /// [civMeterDcInputVoltage] — so without this a QRP radio quietly reports
@@ -212,6 +282,34 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
   final _framer = CivFramer();
   Timer? _pollTimer;
+
+  /// Watches for the operator to key the rig, and reads the meters while
+  /// they hold it. Its own cadence, separate from [_pollTimer]'s five
+  /// seconds: a whole over can begin and end inside one of those, and CI-V
+  /// announces nothing about transmitting on its own — transceive covers
+  /// the dial and the mode, not the PTT.
+  late final TelemetryPoller _telemetry = TelemetryPoller(
+    onPoll: _pollTelemetry,
+    idleInterval: telemetryIntervalFor(_config, cycleBytes: civTxWatchBytes, baudRate: _baudRate),
+    txInterval: telemetryIntervalFor(_config, cycleBytes: civMeterCycleBytes, baudRate: _baudRate),
+  );
+
+  /// The node's merged config, kept for [_telemetry]'s intervals — a `late
+  /// final` field cannot be initialised from another field in the
+  /// constructor's initialiser list.
+  final Map<String, dynamic> _config;
+
+  /// Null on the network pairing, where there is no serial line to budget
+  /// against — see [telemetryFloor].
+  final int? _baudRate;
+
+  /// Which calibration file describes this radio's meters — resolved by the
+  /// driver, since for CI-V it is usually the driver's own default. Looked
+  /// up on every reading rather than resolved once, so a session built
+  /// before the tables finished loading starts converting when they land.
+  final String? _meterInfoKey;
+
+  MeterCalibration? get _calibration => MeterCalibrations.instance[_meterInfoKey];
 
   /// What the radio last said its keyer runs at — the pace [_cwQueue]
   /// spaces chunks by, so it is read once at startUpdates rather than only
@@ -255,7 +353,12 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     this.batteryMaxWatts,
     int voiceMemories = civVoiceMemoryCount,
     this.voiceMemoryCeiling = voiceActivityCeiling,
-  }) : _voiceMemories = voiceMemories;
+    Map<String, dynamic> config = const {},
+    String? meterInfoKey,
+  })  : _voiceMemories = voiceMemories,
+        _config = config,
+        _meterInfoKey = meterInfoKey,
+        _baudRate = serialBaudRateOrNull(config);
 
   void _send(List<int> frame) => _sink.send(frame);
 
@@ -266,12 +369,39 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _send(buildReadMeterFrame(to: radioAddress, from: controllerAddress, meterId: civMeterDcInputVoltage));
   }
 
-  /// DC input to the radio, in tenths of a volt — see [civMeterDcInputVoltage].
-  /// Feeds [batteryMaxWatts] capping below, but the voltage itself is not
-  /// surfaced via [EquipmentState] — public only so a test can read it
-  /// without a new EquipmentState field for a value nothing else consumes.
-  int? get dcInputDeciVolts => _dcInputDeciVolts;
-  int? _dcInputDeciVolts;
+  /// One turn of the telemetry cadence: ask whether the radio is keyed, or
+  /// — while it is — read every meter it publishes a scale for.
+  ///
+  /// The TX watch is not folded into [_requestFrequencyAndMode]'s five
+  /// seconds deliberately: at that rate a ten-second over is noticed
+  /// halfway through and a short one not at all, and a meter strip that
+  /// lights up after the operator has stopped talking is worse than none.
+  void _pollTelemetry(bool transmitting) {
+    // ALWAYS, transmitting or not. CI-V announces nothing about the PTT, and
+    // this is the only question that can hear the radio UNKEY — asked in the
+    // idle branch alone, a session that saw one transmission would report
+    // the radio as keyed for the rest of the connection, blocking every
+    // antenna switch and every snap and reading four meters at 200 ms
+    // forever.
+    _send(buildReadTransmitStatusFrame(to: radioAddress, from: controllerAddress));
+    if (!transmitting) return;
+    // Only what something can interpret: a radio whose entry names no
+    // calibration (an IC-706MKIIG, whose CI-V has no TX meters at all) would
+    // otherwise spend four exchanges a cycle collecting answers nothing
+    // reads — and, on that radio, four rejections.
+    if (_calibration == null) return;
+    for (final meter in const [civMeterRfPower, civMeterSwr, civMeterAlc, civMeterDcInputVoltage]) {
+      _send(buildReadMeterFrame(to: radioAddress, from: controllerAddress, meterId: meter));
+    }
+  }
+
+  /// The DC-input meter's RAW reading — not a voltage, and not convertible
+  /// into one without a per-model table (see [civMeterDcInputVoltage]).
+  /// Feeds the [batteryMaxWatts] capping below; public only so a test can
+  /// read it without an [EquipmentState] field for a value nothing else
+  /// consumes.
+  int? get dcInputMeterLevel => _dcInputMeterLevel;
+  int? _dcInputMeterLevel;
 
   /// The last RF-power SET level (0x14 0x0A) the radio reported, cached so a
   /// later DC-input reading — on battery, potentially a lower cap — can
@@ -279,7 +409,25 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   /// poll.
   int? _lastLevel;
 
-  bool get _onBattery => _dcInputDeciVolts != null && _dcInputDeciVolts! < _batteryDeciVoltsCeiling;
+  bool get _onBattery => _dcInputMeterLevel != null && _dcInputMeterLevel! < _batteryMeterCeiling;
+
+  /// Watts for a 0.0-1.0 fraction of the radio's rated output, under the
+  /// same battery cap [_reportPower] applies to the SET level.
+  num _wattsForFraction(double fraction) {
+    final ceiling = batteryMaxWatts != null && _onBattery ? math.min(maxWatts, batteryMaxWatts!) : maxWatts;
+    final watts = fraction * ceiling;
+    return ceiling <= _preciseWattsCeiling ? (watts * 10).round() / 10 : watts.round();
+  }
+
+  /// The radio answered the TX watch: tell the app, and move the cadence.
+  ///
+  /// The poller dedupes a restatement, but the SINK must not be told on
+  /// every cycle either — [CatService] drops an unchanged value, and a
+  /// driver leaning on that would be one refactor away from waking every
+  /// listener five times a second.
+  void _noteTransmitting(bool transmitting) {
+    if (_telemetry.noteTransmitting(transmitting)) _sink.reportTransmitting(transmitting);
+  }
 
   void _reportPower() {
     final level = _lastLevel;
@@ -362,20 +510,46 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
         }
 
       case CivCommand.readMeter:
-        // 0x15 covers several meters sharing one command number — only
-        // react to the DC-input sub-command; see [dcInputDeciVolts].
-        if (frame.data.isEmpty || frame.data[0] != civMeterDcInputVoltage) return;
-        _dcInputDeciVolts = parseMeterData(frame.data);
-        _reportPower();
+        // 0x15 covers several meters sharing one command number, and each
+        // has its own scale — the raw 0-255 level means nothing until it is
+        // read against the right one.
+        if (frame.data.isEmpty) return;
+        final level = parseMeterData(frame.data);
+        if (level == null) return;
+        // The DC-input meter is read for two different reasons and only one
+        // of them is display: it is what tells an IC-705 on its own battery
+        // from one on external DC (see [dcInputMeterLevel]), and that has to
+        // happen whether or not a calibration exists to show it with — which
+        // for this meter is the normal case, since no shipped table says
+        // what an Icom's Vd reading means.
+        if (frame.data[0] == civMeterDcInputVoltage) {
+          _dcInputMeterLevel = level;
+          _reportPower();
+        }
+        final table = _tablesByMeterId[frame.data[0]];
+        final reading = table == null ? null : _calibration?.convert(table, level);
+        if (reading == null) return;
+        // Power arrives as a FRACTION of the radio's rated output — CI-V
+        // states no wattage anywhere — so it is resolved against the same
+        // ceiling the SET level uses, battery cap included: a 10W radio
+        // derated to 5W by its own battery is putting out at most 5W however
+        // hard the meter swings.
+        _sink.reportMeter(
+          _metersByTable[table]!,
+          table == MeterTable.powerFraction ? _wattsForFraction(reading) : reading,
+        );
 
       case CivCommand.transmitStatus:
-        // Only asked while a voice memory plays — see [_voice]. Receiving
-        // again is the memory over — or, before it was ever seen
-        // transmitting, a play the radio refused.
+        // Asked by two things now — the voice tracker, to learn when a
+        // memory has finished, and the telemetry watch — and answered the
+        // same way whoever asked. The voice tracker's own methods ignore an
+        // answer it is not waiting for.
         switch (parseTransmitStatusData(frame.data)) {
           case true:
+            _noteTransmitting(true);
             _voice.confirm();
           case false:
+            _noteTransmitting(false);
             _voice.endFromPoll();
           case null:
             break;
@@ -467,6 +641,7 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     // carrying a question the radio almost never has a new answer to.
     _send(buildReadKeyerSpeedFrame(to: radioAddress, from: controllerAddress));
     _pollTimer ??= Timer.periodic(_pollInterval, (_) => _requestFrequencyAndMode());
+    _telemetry.start();
   }
 
   /// Asks the radio for its keyer speed again — see [startUpdates].
@@ -498,10 +673,12 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _cwQueue.clear();
     _voice.dispose();
     _stopPolling();
+    _telemetry.dispose();
   }
 
   void _stopPolling() {
     _pollTimer?.cancel();
     _pollTimer = null;
+    _telemetry.stop();
   }
 }

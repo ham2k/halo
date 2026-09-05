@@ -24,12 +24,15 @@ import 'dart:typed_data';
 
 import '../../../i18n/strings.g.dart';
 import '../adaptive_poller.dart';
+import '../telemetry_poller.dart';
+import '../transports/config_field_helpers.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import 'cat_ascii_codec.dart';
 import 'cw_send_queue.dart';
 import 'kenwood_cat_codec.dart';
 import 'keyer_config.dart';
+import 'telemetry_config.dart';
 import 'voice_activity_tracker.dart';
 
 class KenwoodDriver extends EquipmentDriver {
@@ -102,6 +105,9 @@ class KenwoodDriver extends EquipmentDriver {
       {...super.recognizedConfigKeys, ifModeOffsetKey, cwDialectKey, voiceDialectKey, voiceMemoriesKey, voiceCeilingConfigKey};
 
   @override
+  int get telemetryWatchBytes => kenwoodTxWatchBytes;
+
+  @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => KenwoodSession(
         sink,
         declaredModeOffset: switch (config[ifModeOffsetKey]) {
@@ -112,6 +118,7 @@ class KenwoodDriver extends EquipmentDriver {
         voiceDialect: voiceDialectFrom(config),
         voiceMemories: voiceMemoriesFrom(config),
         voiceMemoryCeiling: voiceCeilingFromConfig(config),
+        config: config,
       );
 
   /// The keyer facts, asked only where the entry did not pin them — the
@@ -155,12 +162,21 @@ class KenwoodDriver extends EquipmentDriver {
             ],
           },
         if (!overrides.containsKey(voiceMemoriesKey)) voiceMemoriesConfigElement(),
+        telemetryConfigElement(),
       ];
 
   @override
-  String? validateField(String key, dynamic value, Map<String, dynamic> config) =>
-      key == voiceMemoriesKey ? validateVoiceMemories(value) : null;
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) => switch (key) {
+        voiceMemoriesKey => validateVoiceMemories(value),
+        telemetryIntervalConfigKey => validateTelemetryInterval(value),
+        _ => null,
+      };
 }
+
+/// `IF;` out, and the ~38-byte status packet back — much the largest TX
+/// watch of any driver here, because Kenwood is the only line with no
+/// narrow question to ask (its `TX;` keys the radio).
+const kenwoodTxWatchBytes = 41;
 
 class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSession {
   final EquipmentSink _sink;
@@ -169,6 +185,25 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   /// Auto-Information is the primary path; this covers what it can't — the
   /// radio's AI menu switched off, or a frame lost to line noise.
   late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestState);
+
+  /// Watches for the operator to key the rig, by asking for the `IF` packet
+  /// that carries the flag — see [_handleInfo].
+  ///
+  /// The watch has no meter half. Kenwood's meter reads (`RM`) require
+  /// SELECTING which meter the radio displays, so reading SWR would change
+  /// what is on the operator's own front panel; and the scale behind the
+  /// answer is unpublished besides. That is a bench question, not a
+  /// guess-in-code one, so this driver declares no meters at all.
+  late final TelemetryPoller _telemetry = TelemetryPoller(
+    onPoll: (_) => _send(buildKenwoodReadInfoCommand()),
+    idleInterval: telemetryIntervalFor(_config, cycleBytes: _txWatchBytes, baudRate: serialBaudRateOrNull(_config)),
+    txInterval: telemetryIntervalFor(_config, cycleBytes: _txWatchBytes, baudRate: serialBaudRateOrNull(_config)),
+  );
+
+  /// `IF;` out, and the ~38-byte status packet back — much the largest TX
+  /// watch of any driver here, because it is the only one that cannot ask
+  /// the narrow question.
+  static const _txWatchBytes = kenwoodTxWatchBytes;
 
   /// What was last reported upward, so a repeat can be told from a move.
   VfoReading? _lastReported;
@@ -263,8 +298,14 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     this.voiceDialect,
     int voiceMemories = 0,
     this.voiceMemoryCeiling = voiceActivityCeiling,
+    Map<String, dynamic> config = const {},
   })  : _modeOffset = declaredModeOffset,
-        _voiceMemories = voiceMemories;
+        _voiceMemories = voiceMemories,
+        // ignore: prefer_initializing_formals
+        _config = config;
+
+  /// The node's merged config, kept for [_telemetry]'s cadence.
+  final Map<String, dynamic> _config;
 
   /// Where the mode is being read from, whether that was declared by the
   /// radio's own definition or worked out here — [declaredModeOffset] is what
@@ -397,6 +438,18 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
 
     if (freqHz != null || mode != null) {
       _report(VfoReading(freqKHz: freqHz == null ? null : freqHz / 1000, mode: mode));
+    }
+
+    // The transmit flag rides in the same packet, one character ahead of the
+    // mode — the only way to ask a Kenwood, whose `TX;` is the command that
+    // keys the radio rather than a question about it. Only once the mode
+    // offset is known, because that is what locates it: an unlearned layout
+    // reports nothing rather than a character read from the wrong place.
+    if (learned != null) {
+      final transmitting = parseKenwoodInfoTransmittingBeforeMode(params, learned);
+      if (transmitting != null && _telemetry.noteTransmitting(transmitting)) {
+        _sink.reportTransmitting(transmitting);
+      }
     }
 
     // Not `if (learned == null)`: a DECLARED offset arrives already set, and
@@ -582,6 +635,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     }
     _send(buildKenwoodAutoInformationCommand(true));
     _requestState();
+    _telemetry.start();
     // Once, not per poll — the same reasoning as the Icom driver's: the
     // speed changes only when someone turns the knob, and the dialog that
     // shows it re-reads it when it opens.
@@ -592,6 +646,7 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
   @override
   void stopUpdates() {
     _poller.stop();
+    _telemetry.stop();
     // Leave the radio as we found it: AI persists across a disconnect, so a
     // logger that never turns it off leaves the rig chattering at whatever
     // connects next. Only if we turned it on — teardown reaches here for a
@@ -607,5 +662,6 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     _voice.dispose();
     // Via stopUpdates, so "stop talking to the radio" is written once.
     stopUpdates();
+    _telemetry.dispose();
   }
 }

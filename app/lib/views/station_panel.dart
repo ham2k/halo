@@ -23,6 +23,7 @@ import 'accordion_section.dart';
 import '../settings/settings_target_dialog.dart';
 import '../services/cat/discovery.dart';
 import '../services/cat/equipment.dart';
+import '../services/cat/telemetry_poller.dart';
 import '../services/cat/drivers/antenna_genius_driver.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/transports/none_transport.dart';
@@ -568,6 +569,20 @@ class StationPanel extends StatelessWidget {
               {
                 ...element,
                 if (storedSecrets.contains(element['key'])) 'placeholder': _storedSecretPlaceholder,
+                // What a BLANK cadence field actually does, in the box where
+                // the operator would otherwise assume 200. Per candidate, so
+                // the serial pairing shows the number its baud rate can
+                // afford and the network one beside it shows its own — the
+                // whole reason the field is left blank by default is that
+                // the answer is not the same on both.
+                if (element['key'] == telemetryIntervalConfigKey)
+                  // Through the TYPE, so the entry's own overrides and
+                  // prefills are part of the question — the same reason
+                  // telemetryMetersFor exists. Handed the node's raw stored
+                  // map instead, a radio whose speed comes from its entry
+                  // rather than from a box the operator touched computes as
+                  // though the link had no stated speed at all.
+                  'placeholder': '${candidate.defaultTelemetryIntervalFor(node?.config ?? const {}).inMilliseconds}',
                 // Only when there is a choice to hide behind: an unconditional
                 // visibleWhen on a single-transport radio would depend on a
                 // `transport` value no field sets.

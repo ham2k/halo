@@ -1,0 +1,23 @@
+{
+  "manufacturer": "Icom",
+  "model": "Icom CI-V (generic)",
+  "meterCalibration": {
+    "_comments": "Icom's own published figures, from the IC-7300MK2 CI-V Reference Guide (command 15, sub-commands 11/12/13), and shared across the current CI-V line — which is why this is the driver's default for every Icom rather than a file each entry names. Values are decimal, as the codec decodes them from BCD: the guide writes 00 48 for 48. Not checked against hardware here. The guide also states that Po, SWR and ALC all read 00 00 while receiving, which is why meters are only polled during a transmission.",
+    "_voltage": "Deliberately absent. The guide's Vd scale (00 00=0 V, 00 13=10 V, 02 41=16 V) is a two-segment curve for a 13.8 V radio, and this file describes the whole line — the IC-705 runs on USB, an internal battery or external DC and almost certainly does not share it. A supply voltage is worth nothing if it is the wrong one, so nothing is reported until a per-model file says otherwise. The battery-derating check does not depend on this: it compares the RAW level against a bench-measured threshold.",
+    "powerFraction": [
+      { "value": 0, "fraction": 0.0 },
+      { "value": 143, "fraction": 0.5 },
+      { "value": 213, "fraction": 1.0 }
+    ],
+    "swr": [
+      { "value": 0, "ratio": 1.0 },
+      { "value": 48, "ratio": 1.5 },
+      { "value": 80, "ratio": 2.0 },
+      { "value": 120, "ratio": 3.0 }
+    ],
+    "alc": [
+      { "value": 0, "level": 0.0 },
+      { "value": 120, "level": 1.0 }
+    ]
+  }
+}

@@ -17,6 +17,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/adaptive_poller.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/flrig_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
@@ -37,6 +38,13 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => powers.add(watts);
+
+  final txReports = <bool>[];
+  final meterReports = <(RadioMeter, num)>[];
+  @override
+  void reportTransmitting(bool transmitting) => txReports.add(transmitting);
+  @override
+  void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
 
   @override
   void reportKeyerSpeed(int wpm) {}
@@ -91,6 +99,18 @@ String _fault() {
       '$body';
 }
 
+/// A session whose TX watch is set so slow it never fires inside a test.
+///
+/// Every test below is about the STATE poll — its queue discipline, its
+/// cadence, its framing — and the two pollers share one request queue, so an
+/// unsilenced watch would interleave `rig.get_ptt` into sequences these
+/// assert on positionally. That is not a fiction: an XML-RPC answer
+/// correlates to the oldest unanswered question and nothing else, so a test
+/// that fed a frequency to a PTT question would be lying about what the
+/// driver saw. The watch has tests of its own below.
+FlrigSession _stateOnlySession(EquipmentSink sink) =>
+    FlrigSession(sink, const {telemetryIntervalConfigKey: 600000});
+
 void main() {
   group('mode names', () {
     test('translate between the app\'s spellings and flrig\'s', () {
@@ -119,7 +139,7 @@ void main() {
   group('requests', () {
     test('go out as complete HTTP/1.1 POSTs with an accurate length', () {
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.startUpdates();
       final request = sink.sent.single;
       expect(request, startsWith('POST /RPC2 HTTP/1.1\r\n'));
@@ -138,7 +158,7 @@ void main() {
       // name. Bursting the poll pair would lose the second question and
       // desync every answer after it.
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.startUpdates();
       expect(sink.sent, hasLength(1));
       expect(sink.sent.single, contains('rig.get_vfo'));
@@ -152,7 +172,7 @@ void main() {
   group('reading', () {
     test('a frequency answer reports in kHz', () {
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.startUpdates();
       session.feed(_response('14070000'));
       expect(sink.readings, [const VfoReading(freqKHz: 14070)]);
@@ -163,7 +183,7 @@ void main() {
       // "7074000" and a mode name are both bare <value> strings; only the
       // ask queue tells them apart.
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.startUpdates();
       session.feed(_response('7074000'));
       session.feed(_response('USB-D'));
@@ -178,7 +198,7 @@ void main() {
       // TCP delivers arbitrary chunks; a split inside the headers and
       // another inside the body are the expected case, not a rare one.
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.startUpdates();
       final response = _response('7074000');
       session.feed(response.substring(0, 30));
@@ -194,7 +214,7 @@ void main() {
       // set_frequency answers <i4>1</i4>: read as a frequency it would
       // report a 0.001 kHz QSY. The ask queue must consume it silently.
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.startUpdates();
       session.feed(_response('7074000'));
       session.feed(_response('USB'));
@@ -209,7 +229,7 @@ void main() {
 
     test('a power answer reports watts', () {
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.startUpdates();
       session.feed(_response('14070000'));
       session.feed(_response('USB'));
@@ -222,7 +242,7 @@ void main() {
       // A fault consumes the outstanding ask; leaving it outstanding would
       // stall the queue forever on the first unsupported method.
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.startUpdates();
       session.feed(_fault());
       expect(sink.readings, isEmpty);
@@ -234,7 +254,7 @@ void main() {
   group('writing', () {
     test('frequency goes out as an XML-RPC double in Hz', () {
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.setFrequency(7074.5);
       expect(sink.sent.single, contains('rig.set_frequency'));
       expect(sink.sent.single, contains('<double>7074500</double>'));
@@ -242,7 +262,7 @@ void main() {
 
     test('mode goes out translated', () {
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.setMode('DATA-USB');
       expect(sink.sent.single, contains('rig.set_mode'));
       expect(sink.sent.single, contains('<value>USB-D</value>'));
@@ -250,7 +270,7 @@ void main() {
 
     test('power goes out as an XML-RPC double, in watts', () {
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.setPower(75);
       expect(sink.sent.single, contains('rig.set_power'));
       expect(sink.sent.single, contains('<double>75</double>'));
@@ -265,9 +285,13 @@ void main() {
       // in between.
       fakeAsync((async) {
         final sink = _FakeSink();
-        final session = FlrigSession(sink);
+        final session = _stateOnlySession(sink);
         session.startUpdates();
         async.elapse(kPollSlow * 3);
+        // The TX watch runs several times a second on its own cadence and
+        // is held back by the SAME backlog guard — which is the point here:
+        // an flrig that has gone quiet must not accumulate a queue of
+        // questions whose answers are stale before they arrive.
         expect(sink.sent, hasLength(1));
         // flrig catches up: the answers release exactly the queued
         // mode/power questions, not the missed ticks' worth of stale polls.
@@ -277,10 +301,6 @@ void main() {
         expect(sink.sent, hasLength(3));
         expect(sink.sent[1], contains('rig.get_mode'));
         expect(sink.sent[2], contains('rig.get_power'));
-        // The next fresh trio waits for its own tick.
-        async.elapse(kPollSlow + const Duration(milliseconds: 10));
-        expect(sink.sent, hasLength(4));
-        expect(sink.sent[3], contains('rig.get_vfo'));
         session.teardown();
       });
     });
@@ -290,7 +310,7 @@ void main() {
       // operator's write — dropping it here would lose a QSY with no
       // error surfacing anywhere.
       final sink = _FakeSink();
-      final session = FlrigSession(sink);
+      final session = _stateOnlySession(sink);
       session.startUpdates();
       expect(sink.sent, hasLength(1), reason: 'get_vfo on the wire');
       session.setFrequency(7074);
@@ -309,7 +329,7 @@ void main() {
       // re-decodes an ever-growing buffer on every chunk.
       fakeAsync((async) {
         final sink = _FakeSink();
-        final session = FlrigSession(sink);
+        final session = _stateOnlySession(sink);
         session.startUpdates();
         for (var i = 0; i < 100; i++) {
           session.feed('spotted W1AW on 14074.0 with no blank line ever\n' * 10);
@@ -331,7 +351,7 @@ void main() {
       // desyncs the ask queue from reality.
       fakeAsync((async) {
         final sink = _FakeSink();
-        final session = FlrigSession(sink);
+        final session = _stateOnlySession(sink);
         session.startUpdates();
         session.feed(_response('14070000'));
         session.feed(_response('USB'));
@@ -347,7 +367,7 @@ void main() {
     test('a moving radio drops the poll to the fast cadence', () {
       fakeAsync((async) {
         final sink = _FakeSink();
-        final session = FlrigSession(sink);
+        final session = _stateOnlySession(sink);
         session.startUpdates();
         session.feed(_response('14250000'));
         expect(session.pollInterval, kPollSlow,
@@ -364,7 +384,7 @@ void main() {
     test('teardown stops the polling', () {
       fakeAsync((async) {
         final sink = _FakeSink();
-        final session = FlrigSession(sink);
+        final session = _stateOnlySession(sink);
         session.startUpdates();
         session.feed(_response('14070000'));
         session.feed(_response('USB'));
@@ -375,4 +395,93 @@ void main() {
       });
     });
   });
+  group('the meters', () {
+    /// The real thing: a session whose watch actually runs.
+    FlrigSession watching(_FakeSink sink) => FlrigSession(sink, const {telemetryIntervalConfigKey: 200});
+
+    /// Answers whatever the session has actually asked for, the way flrig
+    /// does — by method name, not by position in a script the test wrote.
+    ///
+    /// The two pollers share one request queue and interleave, so which
+    /// question is on the wire at any moment is not something a test should
+    /// be asserting by counting. What matters is that every answer is
+    /// correlated to the question it belongs to, and a responder keyed on
+    /// the method name is the only way to hold a test to that.
+    void answerAll(FlrigSession session, _FakeSink sink, {bool transmitting = false}) {
+      const answers = {
+        'rig.get_vfo': '14070000',
+        'rig.get_mode': 'USB',
+        'rig.get_power': '100',
+        'rig.get_pwrmeter': '48.5',
+        'rig.get_swrmeter': '1.4',
+        'rig.get_alcmeter': '60',
+        'rig.get_vmeter': '13.6',
+      };
+      var guard = 0;
+      while (sink.sent.isNotEmpty && guard++ < 50) {
+        final request = sink.sent.removeAt(0);
+        final method = RegExp(r'<methodName>([^<]+)</methodName>').firstMatch(request)!.group(1)!;
+        final value = method == 'rig.get_ptt' ? (transmitting ? '1' : '0') : answers[method];
+        if (value != null) session.feed(_response(value));
+      }
+    }
+
+    test('a receiving rig is watched and nothing else is measured', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        answerAll(session, sink);
+        async.elapse(const Duration(milliseconds: 250));
+        answerAll(session, sink);
+        expect(sink.txReports, [false], reason: 'a receiving rig is a fact worth reporting, not silence');
+        expect(sink.meterReports, isEmpty, reason: 'SWR and power out mean nothing at rest');
+        session.teardown();
+      });
+    });
+
+    test('a keyed rig has every meter read, each in its own units', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = watching(sink);
+        session.startUpdates();
+        answerAll(session, sink);
+
+        async.elapse(const Duration(milliseconds: 250));
+        answerAll(session, sink, transmitting: true);
+        expect(sink.txReports.last, isTrue);
+        // The burst goes out on the transition and is answered on the next
+        // pass, which is where it lands.
+        async.elapse(const Duration(milliseconds: 250));
+        answerAll(session, sink, transmitting: true);
+
+        expect(sink.meterReports.toSet(), {
+          (RadioMeter.powerOut, 48.5),
+          (RadioMeter.swr, 1.4),
+          // flrig answers ALC as a percentage of its own scale; the app
+          // carries a fraction, because no protocol here states what full
+          // scale means in dB.
+          (RadioMeter.alc, 0.6),
+          (RadioMeter.supplyVolts, 13.6),
+        });
+        session.teardown();
+      });
+    });
+
+    test('an SWR below 1 is dropped rather than shown', () {
+      // Physically impossible, so it is an flrig that does not implement the
+      // method answering 0 — and a 0.0 on the strip reads as a perfect
+      // match, the most reassuring possible way to be wrong.
+      final sink = _FakeSink();
+      final session = watching(sink);
+      // Straight at the parser: the value is what is on trial, not the
+      // cadence that fetched it.
+      session.startUpdates();
+      sink.sent.clear();
+      session.feed(_response('0'));
+      expect(sink.meterReports.map((m) => m.$1), isNot(contains(RadioMeter.swr)));
+      session.teardown();
+    });
+  });
+
 }

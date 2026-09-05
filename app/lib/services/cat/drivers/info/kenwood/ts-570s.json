@@ -1,0 +1,19 @@
+
+{
+  "manufacturer": "Kenwood",
+  "model": "TS-570S",
+  "meterCalibration": {
+    "_comments": "As reported in Hamlib",
+    "strength": [
+      { "value": 0, "db": -60 },
+      { "value": 3, "db": -48 },
+      { "value": 6, "db": -36 },
+      { "value": 9, "db": -24 },
+      { "value": 12, "db": -12 },
+      { "value": 15, "db": 0 },
+      { "value": 20, "db": 20 },
+      { "value": 25, "db": 40 },
+      { "value": 30, "db": 60 }
+    ]
+  }
+}

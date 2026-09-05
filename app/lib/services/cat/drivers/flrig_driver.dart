@@ -30,6 +30,8 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import '../adaptive_poller.dart';
+import '../telemetry_poller.dart';
+import 'telemetry_config.dart';
 import '../driver.dart';
 import '../equipment.dart';
 
@@ -78,21 +80,56 @@ class FlrigDriver extends EquipmentDriver {
   @override
   bool get hardwareVerified => true;
 
+  /// Everything flrig publishes a meter method for. Its power meter answers
+  /// watts outright and its SWR a ratio, so this is the one driver here
+  /// converting nothing on the way up.
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => FlrigSession(sink);
+  Set<RadioMeter> get telemetryMeters =>
+      const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.alc, RadioMeter.supplyVolts};
+
+  /// The meter cadence, and nothing else: where flrig is and which port it
+  /// listens on are the TCP transport's questions.
+  @override
+  List<Map<String, dynamic>> configElements({
+    Map<String, dynamic> overrides = const {},
+    Map<String, dynamic> restrictions = const {},
+  }) =>
+      [telemetryConfigElement()];
+
+  @override
+  String? validateField(String key, dynamic value, Map<String, dynamic> config) =>
+      key == telemetryIntervalConfigKey ? validateTelemetryInterval(value) : null;
+
+  @override
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => FlrigSession(sink, config);
 }
 
 /// What kind of answer the outstanding request will produce — the only
 /// correlation an XML-RPC response offers is "it answers the oldest
 /// unanswered question".
-enum _Ask { frequency, mode, power, ignored }
+enum _Ask { frequency, mode, power, transmitting, meterPower, meterSwr, meterAlc, meterVolts, ignored }
 
 class FlrigSession implements TransceiverSession {
   final EquipmentSink _sink;
 
-  FlrigSession(this._sink);
+  FlrigSession(this._sink, [this._config = const {}]);
 
   late final AdaptivePoller _poller = AdaptivePoller(onPoll: _requestFrequencyAndMode);
+
+  /// Watches for the operator to key the rig, and reads its meters while
+  /// they hold it. Separate from [_poller], which follows the opposite rule
+  /// — see telemetry_poller.dart.
+  ///
+  /// No baud rate anywhere: this is an XML-RPC server over TCP, so both
+  /// cadences fall back to the flat default rather than a budget computed
+  /// from a wire nobody measured.
+  late final TelemetryPoller _telemetry = TelemetryPoller(
+    onPoll: _pollTelemetry,
+    idleInterval: telemetryIntervalFor(_config, cycleBytes: 0),
+    txInterval: telemetryIntervalFor(_config, cycleBytes: 0),
+  );
+
+  final Map<String, dynamic> _config;
 
   /// What was last reported upward, so a repeat can be told from a move —
   /// the poller's fast/slow choice rides on this, same as the FT-891's.
@@ -141,7 +178,15 @@ class FlrigSession implements TransceiverSession {
   void _requestFrequencyAndMode() {
     // A backed-up queue means flrig is answering slower than the poll
     // cadence; asking again would only deepen the backlog it's behind on.
-    if (_outstanding != null || _queue.isNotEmpty) return;
+    //
+    // The QUEUE alone, not the outstanding request: the TX watch runs many
+    // times faster than this poll and leaves a `get_ptt` in flight most of
+    // the time, so waiting for an idle socket would starve the state poll
+    // outright — the radio's frequency would stop updating, with nothing to
+    // point at but a driver that had gone quiet. One request in flight and
+    // an empty queue is the normal state of a healthy session, not a
+    // backlog.
+    if (_queue.isNotEmpty) return;
     _call(_Ask.frequency, 'rig.get_vfo');
     _call(_Ask.mode, 'rig.get_mode');
     // Documented flrig XML-RPC method (rig.get_power/rig.set_power, watts as
@@ -150,9 +195,41 @@ class FlrigSession implements TransceiverSession {
     _call(_Ask.power, 'rig.get_power');
   }
 
+  /// One turn of the telemetry cadence.
+  ///
+  /// Skipped while anything is still WAITING, so an flrig that has gone
+  /// slow cannot accumulate a queue of meter reads whose answers are stale
+  /// before they arrive — the same protection [_requestFrequencyAndMode]
+  /// gives itself, against a cadence several times faster.
+  ///
+  /// It does NOT wait for the outstanding request to be answered, unlike
+  /// that one. The burst that matters most is fired from inside the
+  /// handling of a response — the PTT answer that says the rig has just
+  /// been keyed — and at that moment the request being answered is still
+  /// the outstanding one. Guarding on it would drop the meter read for
+  /// every transmission, at the exact moment there was finally something to
+  /// measure, and the queue exists so a request can wait its turn.
+  void _pollTelemetry(bool transmitting) {
+    if (_queue.isNotEmpty) return;
+    if (!transmitting) {
+      _call(_Ask.transmitting, 'rig.get_ptt');
+      return;
+    }
+    // The four meter methods flrig's XML-RPC list documents. What each
+    // ANSWERS IN is the open question and is handled at the parse below —
+    // none of it has been captured against a live instance, and an earlier
+    // version of this comment asserted a scale ("0-100 for everything except
+    // SWR") that the parse never implemented. Better to say what is unknown
+    // than to describe code that does something else.
+    _call(_Ask.transmitting, 'rig.get_ptt');
+    _call(_Ask.meterPower, 'rig.get_pwrmeter');
+    _call(_Ask.meterSwr, 'rig.get_swrmeter');
+    _call(_Ask.meterAlc, 'rig.get_alcmeter');
+    _call(_Ask.meterVolts, 'rig.get_vmeter');
+  }
+
   @override
   void handleData(Uint8List chunk) {
-    _poller.noteData();
     _buffer.addAll(chunk);
     // Consume as many complete responses as the buffer holds — TCP chunks
     // align with nothing.
@@ -197,6 +274,12 @@ class FlrigSession implements TransceiverSession {
   void _handleResponse(String body) {
     final ask = _outstanding;
     if (ask == null) return;
+    // Deferring the state poll is for what flrig volunteers about the RADIO,
+    // never for an answer to a question of our own — and the TX watch asks
+    // one several times a second. Counted as data, those re-arm the poll
+    // timer before it can ever fire, leaving the frequency to arrive only on
+    // AdaptivePoller's 9-second staleness ceiling.
+    if (ask == _Ask.frequency || ask == _Ask.mode || ask == _Ask.power) _poller.noteData();
     // A fault answers the question with nothing; the next poll re-asks.
     if (body.contains('<fault>')) return;
     final value = RegExp(r'<value>([^<]*)</value>').firstMatch(body)?.group(1)?.trim();
@@ -213,9 +296,42 @@ class FlrigSession implements TransceiverSession {
       case _Ask.power:
         final watts = double.tryParse(value);
         if (watts != null) _sink.reportPower(watts);
+      case _Ask.transmitting:
+        // "1" transmitting, "0" receiving. Anything else — an flrig that
+        // does not implement it — is left as "nobody knows" rather than
+        // read as receiving, which is what keeps the antenna gate honest.
+        final ptt = int.tryParse(value);
+        if (ptt != null) _noteTransmitting(ptt != 0);
+      case _Ask.meterPower:
+        // Read as WATTS, which is the assumption most likely to be right —
+        // flrig owns the radio's own calibration and its power display is in
+        // watts — and the one that is wrong in a visible way if it is not: a
+        // 100 W rig reading 35 would show 35 W beside a bar drawn against
+        // the power the operator set, which is a disagreement they can see.
+        // Unverified against a live flrig, like [_Ask.power] above.
+        final watts = double.tryParse(value);
+        if (watts != null) _sink.reportMeter(RadioMeter.powerOut, watts);
+      case _Ask.meterSwr:
+        final swr = double.tryParse(value);
+        if (swr != null && swr >= 1) _sink.reportMeter(RadioMeter.swr, swr);
+      case _Ask.meterAlc:
+        final alc = double.tryParse(value);
+        if (alc != null) _sink.reportMeter(RadioMeter.alc, (alc / 100).clamp(0.0, 1.0));
+      case _Ask.meterVolts:
+        // Volts, on the same reasoning and with the same caveat: a supply
+        // reading anywhere near 13.8 is self-evidently right, and one that
+        // is not is self-evidently wrong.
+        final volts = double.tryParse(value);
+        if (volts != null) _sink.reportMeter(RadioMeter.supplyVolts, volts);
       case _Ask.ignored:
         break;
     }
+  }
+
+  /// The server answered the TX watch: tell the app, and move the cadence.
+  /// Deduped here, not left to CatService — see IcomCivSession._noteTransmitting.
+  void _noteTransmitting(bool transmitting) {
+    if (_telemetry.noteTransmitting(transmitting)) _sink.reportTransmitting(transmitting);
   }
 
   /// Reports upward, and tells the poller whether the radio is moving.
@@ -252,10 +368,14 @@ class FlrigSession implements TransceiverSession {
     _outstanding = null;
     _requestFrequencyAndMode();
     _poller.start();
+    _telemetry.start();
   }
 
   @override
-  void stopUpdates() => _poller.stop();
+  void stopUpdates() {
+    _poller.stop();
+    _telemetry.stop();
+  }
 
 
   /// The poller's CURRENT cadence, not its floor: it runs fast while the
@@ -268,5 +388,6 @@ class FlrigSession implements TransceiverSession {
   void teardown() {
     // flrig holds no per-client state; stopping the poll is the farewell.
     stopUpdates();
+    _telemetry.dispose();
   }
 }

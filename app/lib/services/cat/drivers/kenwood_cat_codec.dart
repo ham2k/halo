@@ -146,6 +146,25 @@ String? parseKenwoodInfoModeAt(String params, int offset) {
   return kenwoodModeForCode(params[offset]);
 }
 
+/// Whether the radio is transmitting, read out of an `IF` packet whose mode
+/// position is already known.
+///
+/// The Kenwood line has NO readable transmit-status command — its `TX;` is
+/// the command that KEYS the radio, which this app must never send — so the
+/// flag in `IF` is the only way to ask. It sits in the character
+/// immediately before the mode across every documented generation of the
+/// packet (P8 RX/TX, then P9 mode), which is why this takes the mode offset
+/// rather than an offset of its own: it inherits whatever confidence that
+/// one has, including the driver's refusal to guess it.
+///
+/// Null for a packet too short, or a character that is neither `0` nor `1` —
+/// a layout this does not fit, rather than a radio that is receiving.
+bool? parseKenwoodInfoTransmittingBeforeMode(String params, int modeOffset) {
+  final offset = modeOffset - 1;
+  if (offset < 0 || offset >= params.length) return null;
+  return switch (params[offset]) { '0' => false, '1' => true, _ => null };
+}
+
 /// Kenwood's Auto-Information has two levels, and the difference matters:
 /// `AI1` reports only what the radio itself changed, `AI2` also reports what
 /// the host changed. `AI2` is the one that reflects a dial turn promptly on

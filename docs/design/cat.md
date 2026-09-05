@@ -736,10 +736,14 @@ writing it:
 - The IC-705's SET level (0x14 0x0A) doesn't drop when it's running off its own battery, even though
   actual output does — confirmed LIVE (5W actual against a 10W SET level on battery). CI-V has no
   command for actual transmitted power outside a live transmission (the RF-power METER, 0x15 0x11,
-  reads 0 at rest), so `IcomCivSession` infers battery vs. external DC from the DC-input-voltage
-  meter (0x15 0x15) instead, and clamps the reported watts to `batteryMaxWatts` (5, from
-  `ic705Model`'s override) whenever that reading is below `_batteryDeciVoltsCeiling`. The threshold
-  and both wattage figures come from one bench session each, not a published spec.
+  reads 0 at rest — Icom's guide says so outright), so `IcomCivSession` infers battery vs. external DC
+  from the DC-input meter (0x15 0x15) instead, and clamps the reported watts to `batteryMaxWatts` (5,
+  from `ic705Model`'s override) whenever that reading is below `_batteryMeterCeiling`. The threshold
+  and both wattage figures come from one bench session each, not a published spec. That comparison is
+  against the RAW reading, which is what saved it: the meter was long documented here as tenths of a
+  volt, and Icom's own guide gives a two-segment curve instead (`00 13`=10 V, `02 41`=16 V on an
+  IC-7300MK2). No voltage is reported from it at all now — that curve is a 13.8 V radio's, and the
+  file describes the whole line.
 
 ## CW keying
 
@@ -865,6 +869,147 @@ out has put RF on the air from a radio the operator set up not to.
 
 None of this has met hardware yet; both drivers say so in their headers, and `hardwareVerified`
 still reflects only the frequency/mode path.
+
+## Telemetry: what the radio is doing
+
+Where the VFO says where the radio is pointed, telemetry says what it is *doing* — keyed or not,
+and what its meters read while it is. `EquipmentState.telemetry` holds it, `EquipmentSink`'s
+`reportTransmitting` and `reportMeter` are how a driver contributes, and `EquipmentDriver.telemetryMeters`
+declares what a driver can offer before it has offered anything.
+
+**Meters are read only while the radio is transmitting.** SWR and ALC read zero at rest and output
+power is not a thing that exists there — CI-V's RF-power meter answers 0 outside a live
+transmission, which is not a defect but the point. So the cadence has two gears
+(`telemetry_poller.dart`), and they are the opposite of `AdaptivePoller`'s: that one polls hardest
+while the dial is *moving* and eases off when it settles; this one spends nothing while the radio is
+receiving and everything while it is keyed.
+
+**The watch asks on every cycle, transmitting or not.** It is the only question that can hear the
+radio UNKEY — CI-V, Yaesu and Hamlib all announce nothing about the PTT — so a cycle that only read
+meters while transmitting would leave the app believing the rig was keyed for the life of the
+connection. And what it defers is nothing: the state poll (`AdaptivePoller`) backs off on data the
+RADIO volunteers, never on an answer to a question of the app's own. Counted as data, a watch
+answering several times a second re-arms that timer before it can ever fire, and the frequency
+arrives only on the 9-second staleness ceiling — a dial turn nine seconds late, on exactly the
+radios where the poll is the only source there is.
+
+**The TX watch is its own poll, not a field on the state poll**, and that is the piece worth
+defending. Folded into the CI-V driver's five seconds or the Kenwood's three, a ten-second over is
+noticed halfway through and a short one not at all — and a strip that lights up after the operator
+has stopped talking is worse than no strip. The watch is one short exchange (16 bytes on CI-V, 7 on
+a Yaesu), which is what makes running it several times a second affordable at all.
+
+**One setting, two floors.** The operator states a single interval per node
+(`telemetryInterval`, default 200 ms) and each cadence is that number held against its own budget:
+`cycleBytes × 10 ÷ baud ÷ 0.25`, the same 25% duty cycle adaptive_poller.dart reasons in. An FT-891
+at 4800 can afford the watch at 200 ms and a four-meter cycle no faster than ~430 ms; the same radio
+at 38400 affords both. The clamp is **one-directional**: an operator may ask for slower — a shared
+line, a bridge, a rig they do not want chattered at — and only the fast end is a wire fact they
+cannot overrule. A link that states no speed (TCP, flrig, rigctld) is *unmeasured*, not infinitely
+fast, and gets a flat floor rather than an arithmetic answer computed from a baud rate that does not
+exist.
+
+Two consequences that bit during the build, both worth keeping:
+
+- **A fast watch starves a guarded state poll.** flrig serializes one request at a time, and its
+  state poll originally waited for an idle socket. With a watch running many times faster there is
+  almost always a request in flight, so the frequency stopped updating altogether — visible as a
+  driver that had gone quiet, with nothing pointing at the cause. The guard is the QUEUE alone: one
+  request in flight and an empty queue is a healthy session, not a backlog.
+- **The transition burst fires from inside a response.** The meter read that matters most is the one
+  triggered by the PTT answer saying the rig has just been keyed — and at that moment the request
+  being answered is still the outstanding one. A driver that guarded the burst on "nothing
+  outstanding" would drop it for every transmission, at exactly the moment there was finally
+  something to measure.
+
+**Readings expire; they are never cleared.** A driver stops polling the instant the radio unkeys,
+which is the normal end of every transmission and not a reason to blank the panel the operator is
+looking down at. So each reading is stamped (`nowMillis`, never `DateTime.now()` — time.md) and the
+reader drops it after `meterLinger`. A strip that kept the last value would show the SWR of a
+transmission from an hour ago, on a different band, as though it were current.
+
+**A meter answering with the number it answered last time is not news.** Three meters on a 200 ms
+cycle is fifteen state writes a second into a `ChangeNotifier` the whole station listens to. The
+timestamp still moves — that is what keeps a steady reading from expiring mid-over — but the write
+does not notify. This is the one place in `CatService` where "the state changed" and "something is
+worth repainting" genuinely differ.
+
+**"Receiving" and "nobody knows" are different answers**, which is why `transmitting` is nullable
+and why a driver's first answer is reported even when it is "receiving". Most drivers here can say
+nothing at all, and a shack full of them has to go on working exactly as it did before any of this
+existed.
+
+### What each driver can actually say
+
+Every scale a reading is turned by lives in `drivers/info/`, as JSON, one file per model —
+`meter_calibration.dart` reads them and `info/README.md` is the format. Not in the drivers, because
+they are data: edited far more often than the code, checked against a manual or a bench sheet, and
+contributed by anyone with a radio. A radio with no table reports NOTHING rather than a guess.
+
+The two manufacturers differ in a way the mechanism has to carry. Icom publishes ONE set of
+breakpoints for the current CI-V line, so its driver names the file (`defaultMeterInfoKey`) and an
+entry overrides it only where a radio is known to differ. Yaesu publishes no scale at all and aligns
+each meter per radio, per band, in service mode — so there every entry names its own file, and the
+generic Yaesu entry names none.
+
+| driver | TX state | meters |
+|---|---|---|
+| Icom CI-V | `0x1C 0x00`, polled | power out, SWR, ALC (`0x15`, Icom's own published breakpoints) |
+| flrig | `rig.get_ptt` | `get_pwrmeter` (watts outright), `get_swrmeter` (a ratio), `get_alcmeter`, `get_vmeter` |
+| rigctld | `+t` | `RFPOWER_METER_WATTS`, `SWR`, `ALC`, `VD_METER` |
+| FlexRadio | `interlock state=`, PUSHED — costs nothing | none: SmartSDR's meters ride a VITA-49 stream, a project of its own |
+| Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts — for a radio whose entry names a table |
+| Kenwood | the flag in `IF`, one place ahead of the mode | none — see below |
+
+Two things are still deliberately missing:
+
+- **Kenwood's meter reads require SELECTING which meter the radio displays**, so reading SWR would
+  change what is on the operator's own front panel, and the scale behind the answer is unpublished
+  besides. (Yaesu's do not: `MS` is a separate command, so `RM4/5/6/8` leave the panel alone.)
+- **An Icom's supply voltage.** Icom's Vd scale is a two-segment curve for a 13.8 V radio, and the
+  CI-V file describes the whole line — an IC-705 runs on USB, a battery or external DC and almost
+  certainly does not share it. The battery-derating check above is unaffected: it compares the raw
+  reading against a raw bench threshold.
+
+The Yaesu driver also keeps a **bench capture** — a developer-mode switch that reads `RM` and reports
+the raw 0-255 to the diagnostic line and the console, converting nothing. That is how a table gets
+built in the first place, and it stays available on a radio that already has one, because measuring a
+radio with a table is how a wrong table is found.
+
+Kenwood's TX state is worth one more line: the line has **no readable transmit-status command** —
+its `TX;` is the command that KEYS the radio, which this app must never send — so the flag in `IF`
+is the only way to ask. It sits immediately before the mode (P8, then P9) on every documented
+generation of the packet, so it is read against the mode offset the driver already learns rather
+than against a second guess of its own, and says nothing at all until that offset is settled.
+
+### The alert, and the two things TX state is allowed to stop
+
+`swrAlertThreshold` is **1.8** — not where a rig folds back, but where the ANTENNA is telling you
+something: a wet feedline, a wrong band, an ATU that never found a solution. The Radio panel's meter
+strip lights it in the error weight, with a glyph and a named semantics label beside it, because
+colour alone is not a message an operator who cannot use hue can read.
+
+The strip's slots are reserved from `telemetryMeters` — the DRIVER's claim, not what has arrived —
+so the first transmission fills them instead of creating them. A row that appeared mid-over would
+shove the frequency up the pane at the moment the operator was watching it.
+
+**A silent radio is not a transmitting one.** Nothing in any of these protocols announces an unkey,
+so a rig unplugged or switched off mid-over leaves its last word — "transmitting" — standing for the
+rest of the session. `radio1IsTransmitting` therefore reads `EquipmentState.stale` as well: a gate
+that fails closed on an answer known to be out of date, with nothing on screen to say why, is worse
+than one that reopens.
+
+Knowing the radio is keyed is what lets the app refuse two things:
+
+- **No antenna relay moves under RF.** Switching one is what destroys it, and a switch with no RF
+  sensing of its own (the Sierra CX-1 has no PTT input) has only what the radio says. Refused, not
+  queued: a selection made a moment ago is not worth honouring after the over ends.
+- **Smart VFO Snap keeps its hands off a transmitting rig**, checked both when a burst is fed and
+  again when the settle timer fires — the operator can key the radio during the delay, and that
+  timer is the line that actually moves it.
+
+Tuning commands are deliberately NOT blocked: rigs disagree about what they do with one mid-over,
+and a refused tune is worse than a late one.
 
 ## Voice keying
 

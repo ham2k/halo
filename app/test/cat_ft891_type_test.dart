@@ -13,6 +13,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
@@ -77,7 +78,15 @@ void main() {
       for (final e in type.configElements())
         if (e['type'] == 'field') e['key'],
     ];
-    expect(keys, ['port', 'baudRate']);
+    // The meter capture is a DEVELOPER's switch (see the driver), so an
+    // operator never sees it — but it is still a field this form collects,
+    // and a list that pretended otherwise would stop noticing when one is
+    // added.
+    expect(keys, ['port', 'baudRate', yaesuMeterCaptureConfigKey, telemetryIntervalConfigKey]);
+    expect(
+      [for (final e in type.configElements()) if (e['devMode'] == true) e['key']],
+      contains(yaesuMeterCaptureConfigKey),
+    );
   });
 
   test('and tells the operator why a connected radio can still say nothing', () {
@@ -155,6 +164,13 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => powers.add(watts);
+
+  final txReports = <bool>[];
+  final meterReports = <(RadioMeter, num)>[];
+  @override
+  void reportTransmitting(bool transmitting) => txReports.add(transmitting);
+  @override
+  void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
 
   @override
   void reportKeyerSpeed(int wpm) {}

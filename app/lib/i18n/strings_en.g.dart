@@ -4113,6 +4113,30 @@ class Translations$settings$station$en {
 	/// en: 'A whole number, 0 or more'
 	String get voiceMemoriesInvalid => 'A whole number, 0 or more';
 
+	/// en: 'Capture meter readings'
+	String get yaesuMeterCapture => 'Capture meter readings';
+
+	/// en: 'Reads the radio's PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.'
+	String get yaesuMeterCaptureDescription => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.';
+
+	/// en: 'Meter reading interval (ms)'
+	String get telemetryInterval => 'Meter reading interval (ms)';
+
+	/// en: 'How often to read the radio's meters while it is transmitting. Leave blank for the fastest this connection can carry, up to 200 ms.'
+	String get telemetryIntervalDescription => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can carry, up to 200 ms.';
+
+	/// en: 'A whole number of milliseconds, ${min} to ${max}'
+	String telemetryIntervalInvalid({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}';
+
+	/// en: 'SWR reading'
+	String get placeholderSwr => 'SWR reading';
+
+	/// en: 'What this radio answers its SWR meter with while transmitting. Above 1.8 the panel warns.'
+	String get placeholderSwrDescription => 'What this radio answers its SWR meter with while transmitting. Above 1.8 the panel warns.';
+
+	/// en: 'A number, 1 or more'
+	String get placeholderSwrInvalid => 'A number, 1 or more';
+
 	/// en: 'None'
 	String get keyerNone => 'None';
 
@@ -4948,6 +4972,21 @@ class Translations$operation$layout$panels$en {
 
 	/// en: 'NO DATA'
 	String get radioStale => 'NO DATA';
+
+	/// en: 'TX'
+	String get radioTransmitting => 'TX';
+
+	/// en: 'SWR'
+	String get radioSwr => 'SWR';
+
+	/// en: 'ALC'
+	String get radioAlc => 'ALC';
+
+	/// en: 'V'
+	String get radioVolts => 'V';
+
+	/// en: 'high SWR'
+	String get radioSwrHigh => 'high SWR';
 }
 
 // Path: operation.export.compactFileNames
@@ -6293,6 +6332,11 @@ extension on Translations {
 			'operation.layout.panels.radioConnect' => 'Connect this radio',
 			'operation.layout.panels.radioDisconnect' => 'Disconnect this radio',
 			'operation.layout.panels.radioStale' => 'NO DATA',
+			'operation.layout.panels.radioTransmitting' => 'TX',
+			'operation.layout.panels.radioSwr' => 'SWR',
+			'operation.layout.panels.radioAlc' => 'ALC',
+			'operation.layout.panels.radioVolts' => 'V',
+			'operation.layout.panels.radioSwrHigh' => 'high SWR',
 			'operation.layout.htmlPanelUnsupported' => 'This panel needs a web view, which this platform does not provide',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'This panel needs a sandbox the web version cannot provide',
 			'operation.export.title' => 'Operation Exports',
@@ -6458,13 +6502,13 @@ extension on Translations {
 			'activitiesView.locationSettingsUnavailable' => 'Allow location access in your system settings',
 			'activitiesView.locationGrantRefused' => 'Still no location — the system said no again',
 			'activitiesView.searchUnavailableTitle' => 'Activity search unavailable',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.searchUnavailableReason' => 'No activity extension could answer. Try again in a moment.',
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
 			'activitiesView.exportLogs' => 'Export Logs',
 			'activitiesView.tools' => 'Tools',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.toolsTitle' => 'Operation Tools',
 			'activitiesView.operationDetails' => 'Operation Details',
 			'activitiesView.share' => 'Share',
@@ -6972,13 +7016,13 @@ extension on Translations {
 			'settings.station.unverifiedShort' => 'untested',
 			'settings.station.troubleshootingNotes' => 'Troubleshooting Notes',
 			'settings.station.mainVfo' => 'Main VFO',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.useAsMainVfo' => 'Use as Main VFO',
 			'settings.station.serialPort' => 'Serial port',
 			'settings.station.serialPortDescription' => 'The port the radio\'s CAT interface appears on.',
 			'settings.station.serialPortNone' => 'No serial ports found',
 			'settings.station.serialPortRequired' => 'Choose a serial port',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'port ${n} of ${total}',
 			'settings.station.serialDeviceRequest' => 'Add a USB device…',
 			'settings.station.baudRate' => 'Speed (baud)',
@@ -7127,6 +7171,14 @@ extension on Translations {
 			'settings.station.voiceMemories' => 'Voice memories',
 			'settings.station.voiceMemoriesDescription' => 'How many voice memories the radio plays over CAT. 0 for none.',
 			'settings.station.voiceMemoriesInvalid' => 'A whole number, 0 or more',
+			'settings.station.yaesuMeterCapture' => 'Capture meter readings',
+			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
+			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',
+			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can carry, up to 200 ms.',
+			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'A whole number of milliseconds, ${min} to ${max}',
+			'settings.station.placeholderSwr' => 'SWR reading',
+			'settings.station.placeholderSwrDescription' => 'What this radio answers its SWR meter with while transmitting. Above 1.8 the panel warns.',
+			'settings.station.placeholderSwrInvalid' => 'A number, 1 or more',
 			'settings.station.keyerNone' => 'None',
 			'settings.station.cwDialect' => 'CW keying dialect',
 			'settings.station.cwDialectDescription' => 'Which shape of the KY command this radio takes. None keys nothing.',
@@ -7478,6 +7530,8 @@ extension on Translations {
 			'offline.reachable' => 'All services responding as expected.',
 			'offline.whatStops' => 'Lookups, spots and data files are paused. Logging and nearby sync are not.',
 			'offline.servicesTitle' => 'Services',
+			_ => null,
+		} ?? switch (path) {
 			'offline.noServices' => 'Nothing has reported in yet.',
 			'offline.lastSuccess' => ({required Object when}) => 'Last answered ${when} ago',
 			'offline.neverSucceeded' => 'Has not answered yet',
@@ -7491,8 +7545,6 @@ extension on Translations {
 			'offline.retryThrottled' => 'Just tried — give it a moment.',
 			'offline.retryDisabled' => 'Sync is switched off, so there is nothing to probe with.',
 			'offline.syncService' => 'Ham2K LoFi sync',
-			_ => null,
-		} ?? switch (path) {
 			'offline.retryInFlight' => 'Already trying — hang on.',
 			_ => null,
 		};

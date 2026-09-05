@@ -404,6 +404,56 @@ void main() {
       expect(session.commands, isEmpty);
     });
 
+    test('a transmitting radio is never snapped', () async {
+      // The one move this feature must never make. Retuning a rig mid-over
+      // sweeps the carrier across the band on the rigs that allow it and is
+      // silently refused by the ones that do not — and a "burst" measured
+      // across a transmission was never a knob turn in the first place.
+      await settings.setSmartVfoSnap(true);
+      final session = await restingRadio();
+      fakeAsync((async) {
+        session.sink.reportTransmitting(true);
+        session.radioReports(freqKHz: 14285.43);
+        async.elapse(quiet * 2);
+      });
+      expect(session.commands, isEmpty);
+    });
+
+    test('a radio keyed DURING the settle delay is not snapped when it elapses', () async {
+      // The gate has to hold at both ends: the reading arrives while the rig
+      // is receiving, the operator keys it a moment later, and the timer
+      // that fires afterwards is what actually moves the radio.
+      await settings.setSmartVfoSnap(true);
+      final session = await restingRadio();
+      fakeAsync((async) {
+        session.radioReports(freqKHz: 14285.43);
+        async.elapse(const Duration(milliseconds: 100));
+        session.sink.reportTransmitting(true);
+        async.elapse(quiet * 2);
+      });
+      expect(session.commands, isEmpty);
+    });
+
+    test('a radio that has finished transmitting is snapped again', () async {
+      // The gate is a hold, not an off switch: a rig that reported TX once
+      // and was never snapped again would look exactly like the setting
+      // silently failing.
+      await settings.setSmartVfoSnap(true);
+      final session = await restingRadio();
+      fakeAsync((async) {
+        session.sink.reportTransmitting(true);
+        session.radioReports(freqKHz: 14285.43);
+        async.elapse(quiet * 2);
+        session.sink.reportTransmitting(false);
+        // A fresh move: the held snap rebased to where the rig was, so
+        // restating that frequency is not a knob turn and would prove
+        // nothing either way.
+        session.radioReports(freqKHz: 14290.43);
+        async.elapse(quiet * 2);
+      });
+      expect(session.commands, ['freq:14290.0']);
+    });
+
     test('a typed frequency cancels the pending snap and is not itself snapped', () async {
       // Typing 14290.43 is an exact statement of where to be. Rounding it
       // would be the app undoing the operator — and the snap that was

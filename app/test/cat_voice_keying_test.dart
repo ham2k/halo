@@ -21,6 +21,7 @@ import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_cat_codec.dart';
+import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/drivers/kenwood_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/voice_activity_tracker.dart';
 import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart';
@@ -41,6 +42,13 @@ class _Sink implements EquipmentSink {
   void report(VfoReading reading) {}
   @override
   void reportPower(num watts) {}
+  final txReports = <bool>[];
+  final meterReports = <(RadioMeter, num)>[];
+  @override
+  void reportTransmitting(bool transmitting) => txReports.add(transmitting);
+  @override
+  void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
+
   @override
   void reportKeyerSpeed(int wpm) {}
   @override
@@ -148,6 +156,11 @@ void main() {
         var stops = 0;
         final tracker = VoiceActivityTracker(report: reports.add, stop: () => stops++, ceiling: () => voiceActivityCeiling);
         tracker.start(playing3);
+        // The radio gets a poll interval to key up before anything it says
+        // reads as a refusal — on CI-V the telemetry watch asks the same
+        // question several times a second, and its first answer lands while
+        // the rig is still keying.
+        async.elapse(voiceActivityPollInterval);
         tracker.endFromPoll();
         expect(reports.last, const VoiceActivity(memory: 3, doubtful: true));
         tracker.confirm();
@@ -159,6 +172,7 @@ void main() {
         expect(reports.last, isNull, reason: 'confirmed, so the next "not going" is the end');
         // The ceiling still stands behind a doubted play.
         tracker.start(playing3);
+        async.elapse(voiceActivityPollInterval);
         tracker.endFromPoll();
         tracker.confirm();
         async.elapse(voiceActivityCeiling + const Duration(seconds: 1));
@@ -167,12 +181,16 @@ void main() {
     });
 
     test('a "going" with nothing active is ignored — a late answer to the last play must not confirm the next', () {
-      final reports = <VoiceActivity?>[];
-      final tracker = VoiceActivityTracker(report: reports.add, stop: () {}, ceiling: () => voiceActivityCeiling);
-      tracker.confirm();
-      tracker.start(playing3);
-      tracker.endFromPoll();
-      expect(reports.last, const VoiceActivity(memory: 3, doubtful: true), reason: 'not confirmed by the stray answer');
+      fakeAsync((async) {
+        final reports = <VoiceActivity?>[];
+        final tracker = VoiceActivityTracker(report: reports.add, stop: () {}, ceiling: () => voiceActivityCeiling);
+        tracker.confirm();
+        tracker.start(playing3);
+        async.elapse(voiceActivityPollInterval);
+        tracker.endFromPoll();
+        expect(reports.last, const VoiceActivity(memory: 3, doubtful: true),
+            reason: 'not confirmed by the stray answer');
+      });
     });
 
     test('end is idempotent, and a start replaces what was going', () {
@@ -239,6 +257,37 @@ void main() {
         async.elapse(voiceDoubtLinger);
         expect(sink.activities.last, isNull);
         expect(sink.sent.last, [0xFE, 0xFE, radio, us, 0x28, 0x00, 0x00, 0xFD], reason: 'stopped, in case it was merely slow');
+      });
+    });
+
+    test('the telemetry watch does not turn every play into a refusal', () {
+      // The regression this exists for: the TX watch asks "are you
+      // transmitting?" several times a second, and on CI-V that is the SAME
+      // question the voice tracker polls with — so its answers reach the
+      // tracker too. The first lands ~200 ms after the play command, while
+      // the rig is still keying, and read as a refusal it puts a question
+      // mark on every single play. On a slow link the doubt then expires and
+      // STOPS a memory that is on the air.
+      fakeAsync((async) {
+        final sink = _Sink();
+        final session = const IcomCivDriver().createSession(sink, const {
+          voiceMemoriesConfigKey: 8,
+          telemetryIntervalConfigKey: 200,
+        }) as VoiceKeyerSession;
+        (session as EquipmentSession).startUpdates();
+        session.playVoiceMemory(1);
+        expect(sink.activities.last?.doubtful, isFalse);
+
+        // Three watch cycles' worth of "not transmitting" while the radio
+        // keys up — exactly what a real rig answers in that window.
+        for (var i = 0; i < 3; i++) {
+          async.elapse(const Duration(milliseconds: 200));
+          session.handleData(Uint8List.fromList(
+              [0xFE, 0xFE, civDefaultControllerAddress, 0xA4, 0x1C, 0x00, 0x00, 0xFD]));
+        }
+        expect(sink.activities.last?.doubtful, isFalse, reason: 'the radio has not had a poll interval to key up');
+        expect(sink.activities.last, isNotNull, reason: 'and the memory has certainly not been stopped');
+        (session as EquipmentSession).teardown();
       });
     });
 

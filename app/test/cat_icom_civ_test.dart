@@ -18,6 +18,8 @@ import 'package:ham2k_logger/services/cat/drivers/civ_codec.dart';
 import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/drivers/meter_calibration.dart';
+import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_transport.dart';
 
 class _FakeSink implements EquipmentSink {
@@ -37,6 +39,13 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => powers.add(watts);
+
+  final txReports = <bool>[];
+  final meterReports = <(RadioMeter, num)>[];
+  @override
+  void reportTransmitting(bool transmitting) => txReports.add(transmitting);
+  @override
+  void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
 
   @override
   void reportKeyerSpeed(int wpm) => keyerSpeeds.add(wpm);
@@ -164,7 +173,7 @@ void main() {
       // nothing for batteryMaxWatts to recompute — see the battery group
       // below for that.
       feed([0xFE, 0xFE, us, ic705, 0x15, 0x15, 0x01, 0x15, 0xFD]);
-      expect(session.dcInputDeciVolts, 115);
+      expect(session.dcInputMeterLevel, 115);
       expect(sink.powers, isEmpty);
     });
 
@@ -172,7 +181,7 @@ void main() {
       // 0x15 covers several meters (S-meter, RF power…) sharing one command
       // number; only sub-command 0x15 is DC input.
       feed([0xFE, 0xFE, us, ic705, 0x15, 0x11, 0x00, 0x50, 0xFD]);
-      expect(session.dcInputDeciVolts, isNull);
+      expect(session.dcInputMeterLevel, isNull);
     });
   });
 
@@ -360,13 +369,85 @@ void main() {
         expect(sink.sent, hasLength(5), reason: 'asks once immediately, the keyer speed included');
         sink.sent.clear();
 
+        // Counted apart from the TX watch, which runs on its own much
+        // faster cadence (telemetry_poller.dart) and would otherwise swamp
+        // any count of the state poll.
         async.elapse(const Duration(seconds: 5));
-        expect(sink.sent, hasLength(4), reason: 'the keyer speed is not polled');
+        final state = sink.sent.where((f) => !_isTxWatch(f)).toList();
+        expect(state, hasLength(4), reason: 'the keyer speed is not polled');
 
         sink.sent.clear();
         session.stopUpdates();
         async.elapse(const Duration(minutes: 1));
-        expect(sink.sent, isEmpty);
+        expect(sink.sent, isEmpty, reason: 'the TX watch stops with everything else');
+      });
+    });
+
+    test('watches for the operator to key the rig, far faster than it polls state', () {
+      // The five-second state poll cannot carry this: a whole over can begin
+      // and end inside one of those, and CI-V announces nothing about the
+      // PTT on its own — transceive covers the dial and the mode.
+      fakeAsync((async) {
+        session.startUpdates();
+        sink.sent.clear();
+        async.elapse(const Duration(seconds: 1));
+        expect(sink.sent.where(_isTxWatch).length, greaterThan(1));
+        expect(sink.sent.where((f) => !_isTxWatch(f)), isEmpty, reason: 'nothing else is asked this often');
+        session.teardown();
+      });
+    });
+
+    test('a keyed radio is announced, and its meters read on their own scales', () {
+      // Through the DRIVER, not the session's constructor: which calibration
+      // describes a CI-V radio is the driver's own default (Icom publishes
+      // one table for the line), and a session built by hand would carry no
+      // table and report no meters — a green test over a strip that stayed
+      // empty on every Icom in the catalogue.
+      MeterCalibrations.instance.setForTesting({
+        'icom/civ-generic': MeterCalibration(model: 'CI-V', tables: const {
+          MeterTable.swr: [MeterPoint(0, 1.0), MeterPoint(80, 2.0)],
+        }),
+      });
+      addTearDown(() => MeterCalibrations.instance.setForTesting({}));
+      final session = const IcomCivDriver().createSession(sink, const {}) as IcomCivSession;
+      void feed(List<int> bytes) => session.handleData(Uint8List.fromList(bytes));
+
+      fakeAsync((async) {
+        session.startUpdates();
+        feed(_fromRadio([0x1C, 0x00, 0x01]));
+        expect(sink.txReports, [true]);
+
+        // Every meter, on the transition — a short over must not be missed
+        // waiting for the first tick.
+        final asked = sink.sent.where((f) => f.length > 5 && f[4] == 0x15).map((f) => f[5]).toSet();
+        expect(asked, {civMeterRfPower, civMeterSwr, civMeterAlc, civMeterDcInputVoltage});
+
+        sink.meterReports.clear();
+        // 80 is the published 2.0 point on Icom's SWR scale — the shipped
+        // table's own numbers are checked in cat_meter_calibration_test.
+        feed(_fromRadio([0x15, civMeterSwr, 0x00, 0x80]));
+        expect(sink.meterReports.single.$1, RadioMeter.swr);
+        expect(sink.meterReports.single.$2, closeTo(2.0, 0.001));
+
+        // The radio is ASKED again on every cycle, which is the only way an
+        // unkey is ever heard: CI-V announces nothing about the PTT, so a
+        // cycle that only read meters would leave the app believing the rig
+        // was still keyed for the life of the connection — blocking every
+        // antenna switch and every snap, and reading four meters at 200 ms
+        // forever. (This is why the unkey below is fed as an ANSWER: the
+        // radio never volunteers one.)
+        sink.sent.clear();
+        async.elapse(const Duration(milliseconds: 250));
+        expect(sink.sent.where(_isTxWatch), isNotEmpty, reason: 'the TX watch runs during transmit too');
+
+        // And the radio saying it has stopped ends the meter reading.
+        sink.sent.clear();
+        feed(_fromRadio([0x1C, 0x00, 0x00]));
+        expect(sink.txReports, [true, false]);
+        async.elapse(const Duration(seconds: 2));
+        expect(sink.sent.where((f) => f.length > 5 && f[4] == 0x15 && f[5] != civMeterDcInputVoltage), isEmpty,
+            reason: 'a receiving radio has no meters worth reading');
+        session.teardown();
       });
     });
   });
@@ -435,7 +516,8 @@ void main() {
 
     test('asks for port, speed and address — and, of a developer, the keyer facts the generic entry cannot pin', () {
       final fields = [for (final e in type.configElements()) if (e['type'] == 'field') e];
-      expect(fields.map((e) => e['key']), ['port', 'baudRate', 'civAddress', 'cwKeyer', 'voiceMemories']);
+      expect(fields.map((e) => e['key']),
+          ['port', 'baudRate', 'civAddress', 'cwKeyer', 'voiceMemories', telemetryIntervalConfigKey]);
       expect(fields.where((e) => e['devMode'] == true).map((e) => e['key']), ['cwKeyer', 'voiceMemories'],
           reason: 'an operator sees the first three only');
     });
@@ -477,3 +559,11 @@ void main() {
     });
   });
 }
+
+/// A frame the session sends to ask whether the radio is transmitting.
+bool _isTxWatch(List<int> frame) => frame.length > 4 && frame[4] == 0x1C;
+
+/// A complete frame FROM the IC-705 addressed to us, wrapped around
+/// [payload] — the command byte and its data.
+List<int> _fromRadio(List<int> payload) =>
+    [0xFE, 0xFE, civDefaultControllerAddress, 0xA4, ...payload, 0xFD];

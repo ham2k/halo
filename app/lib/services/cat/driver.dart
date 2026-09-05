@@ -15,6 +15,9 @@ import 'dart:typed_data';
 
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
+import 'drivers/meter_calibration.dart';
+import 'telemetry_poller.dart';
+import 'transports/config_field_helpers.dart';
 
 /// What a session is allowed to do: write bytes, and report what it read.
 abstract class EquipmentSink {
@@ -29,6 +32,29 @@ abstract class EquipmentSink {
   /// never calls this, which is how [EquipmentState.power] tells "unknown"
   /// apart from "the radio said zero".
   void reportPower(num watts);
+
+  /// The radio is keyed, or is not — see [RadioTelemetry.transmitting].
+  ///
+  /// Its own call rather than a meter, because this one is not a reading to
+  /// display: it gates behaviour. Nothing may throw an antenna relay under
+  /// RF, and the app's own snap must keep its hands off a transmitting
+  /// radio, so "receiving" and "nobody asked" have to be different answers —
+  /// which they are only if a driver that cannot tell never calls this.
+  void reportTransmitting(bool transmitting);
+
+  /// One meter's current reading, in [meter]'s own unit.
+  ///
+  /// Called per meter as each answer arrives, rather than a set at a time:
+  /// every protocol here reads meters one command at a time, and a driver
+  /// batching them would have to hold a partial set across the gaps and
+  /// decide when it was complete.
+  ///
+  /// Like [reportPower], a driver that cannot read a meter never reports it,
+  /// so an absent reading is not a zero. Readings are stamped and EXPIRE
+  /// ([meterLinger]) rather than being cleared: a driver stops polling the
+  /// moment the radio unkeys, which is the normal end of every transmission
+  /// and not a reason to blank the panel the operator is looking at.
+  void reportMeter(RadioMeter meter, num value);
 
   /// The radio's keyer speed, in WPM, as the radio reports it — only from a
   /// [CwKeyerSession], and only after asking or being told. Like
@@ -400,6 +426,67 @@ abstract class EquipmentDriver {
   /// type picker shows this rather than presenting all drivers as equally
   /// trustworthy.
   bool get hardwareVerified;
+
+  /// Which meters this driver can read, if the radio answers — see
+  /// [EquipmentSink.reportMeter]. Empty for a driver that reads none, and
+  /// for everything that is not a transceiver.
+  ///
+  /// Declared without a session, like [canKeyCw], so a panel can lay out
+  /// the readings a radio WILL have before it has any: a strip that grew a
+  /// column mid-transmission would move the number the operator is watching
+  /// at the moment they are watching it. It is a claim about the protocol,
+  /// not a promise about the rig — a radio on a generic entry may answer
+  /// none of them, which is what expiry covers.
+  Set<RadioMeter> get telemetryMeters => const {};
+
+  /// How many bytes one turn of this driver's TELEMETRY costs on the wire,
+  /// question and answer together — the TX watch, and the meter cycle where
+  /// there is one. Zero for a driver that watches nothing, and for one whose
+  /// link has no measurable speed anyway.
+  ///
+  /// Declared here rather than left inside the session because the EDITOR
+  /// needs it: the cadence field shows the default it would use as its
+  /// placeholder, and that number comes from the same arithmetic the session
+  /// runs (telemetry_poller.dart).
+  int get telemetryWatchBytes => 0;
+  int get telemetryCycleBytes => 0;
+
+  /// The cadence this driver falls back to for a node configured like
+  /// [config] when the operator states none.
+  ///
+  /// The SLOWEST of the two cadences, deliberately. A blank field means a
+  /// different number for the watch and for the meters — each is clamped to
+  /// its own budget — and the one worth showing is the one the operator
+  /// would otherwise be surprised by: the meter cycle on a slow link is
+  /// several times the 200 ms they would have assumed.
+  Duration defaultTelemetryInterval(Map<String, dynamic> config) => telemetryIntervalFor(
+        // Not [config]'s own value: this is what a BLANK field would do, and
+        // reading the operator's answer here would make the placeholder echo
+        // the number already in the box.
+        const {},
+        cycleBytes: telemetryWatchBytes > telemetryCycleBytes ? telemetryWatchBytes : telemetryCycleBytes,
+        baudRate: serialBaudRateOrNull(config),
+      );
+
+  /// The calibration this driver assumes when a node's entry names none —
+  /// see [calibrationForConfig]. Null for a driver whose meter scales differ
+  /// radio by radio, which is every Yaesu.
+  String? get defaultMeterInfoKey => null;
+
+  /// The tables describing a node on this driver, or null when nothing does.
+  MeterCalibration? calibrationFor(Map<String, dynamic> config) =>
+      calibrationForConfig(config, fallbackKey: defaultMeterInfoKey);
+
+  /// [telemetryMeters] for ONE node: [config] is its merged configuration,
+  /// the entry's overrides included. The service and the panel ask THIS,
+  /// never the bare getter.
+  ///
+  /// A driver whose meters are a per-ENTRY fact answers from it — a Yaesu
+  /// can only show what its calibration file describes, and a generic Yaesu
+  /// entry, which does not know which radio is behind it, can show nothing.
+  /// The same split [canKeyCwWith] draws, for the same reason: the catalogue
+  /// knows things about a radio that its protocol cannot answer.
+  Set<RadioMeter> telemetryMetersWith(Map<String, dynamic> config) => telemetryMeters;
 
   /// Whether this driver's sessions are [CwKeyerSession]s — known without a
   /// session, so the "key in use" pick can offer a radio's own keyer while

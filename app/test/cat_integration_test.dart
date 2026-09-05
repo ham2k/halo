@@ -160,6 +160,16 @@ class _FakeFlrig {
   String mode = 'USB';
   String power = '100';
 
+  /// The rig's PTT and meters, writable by the test the same way the dial
+  /// is. flrig answers every one of these on a real instance — a fake that
+  /// answered only what the test expected to be asked would let a driver
+  /// that stalls on an unanswered request pass.
+  bool transmitting = false;
+  String swr = '1.2';
+  String powerMeter = '95';
+  String alc = '40';
+  String volts = '13.8';
+
   _FakeFlrig(this._server) {
     _server.listen(
       (socket) {
@@ -196,6 +206,16 @@ class _FakeFlrig {
                 case 'rig.set_power':
                   power = RegExp(r'<double>([\d.]+)</double>').firstMatch(body)!.group(1)!;
                   socket.add(_response('<i4>1</i4>'));
+                case 'rig.get_ptt':
+                  socket.add(_response('<i4>${transmitting ? 1 : 0}</i4>'));
+                case 'rig.get_pwrmeter':
+                  socket.add(_response(powerMeter));
+                case 'rig.get_swrmeter':
+                  socket.add(_response(swr));
+                case 'rig.get_alcmeter':
+                  socket.add(_response(alc));
+                case 'rig.get_vmeter':
+                  socket.add(_response(volts));
               }
             }
           },

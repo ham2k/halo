@@ -1,0 +1,23 @@
+{
+  "manufacturer": "Kenwood",
+  "model": "TS-990S",
+  "meterCalibration": {
+    "_comments": "As reported in Hamlib",
+    "strength": [
+      { "value": 0, "db": -54, "tick": "S0" },
+      { "value": 4, "db": -48, "tick": "S1" },
+      { "value": 11, "db": -36, "tick": "S3" },
+      { "value": 19, "db": -24, "tick": "S5" },
+      { "value": 27, "db": -12, "tick": "S7" },
+      { "value": 37, "db": 0, "tick": "S9" },
+      { "value": 70, "db": 60, "tick": "S9+60" }
+    ],
+    "swr": [
+      { "value": 0, "ratio": 1.0 },
+      { "value": 7, "ratio": 1.5 },
+      { "value": 36, "ratio": 3.0 },
+      { "value": 43, "ratio": 6.0 },
+      { "value": 70, "ratio": 10.0 }
+    ]
+  }
+}

@@ -17,6 +17,7 @@ import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/icom_civ_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/transports/icom_network_protocol.dart';
 import 'package:ham2k_logger/services/cat/transports/icom_network_transport.dart';
@@ -390,7 +391,7 @@ void main() {
       // note, which have no key and ask the operator for nothing.
       expect(
         [for (final e in elements) if (e['type'] == 'field') e['key']],
-        ['host', 'username', 'password'],
+        ['host', 'username', 'password', telemetryIntervalConfigKey],
       );
       final password = elements.firstWhere((e) => e['key'] == 'password');
       expect(password['fieldType'], 'secret', reason: 'obscured in the editor');
@@ -764,6 +765,13 @@ class _CountingSink implements EquipmentSink {
   void report(VfoReading reading) {}
   @override
   void reportPower(num watts) {}
+
+  final txReports = <bool>[];
+  final meterReports = <(RadioMeter, num)>[];
+  @override
+  void reportTransmitting(bool transmitting) => txReports.add(transmitting);
+  @override
+  void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
 
   @override
   void reportKeyerSpeed(int wpm) {}

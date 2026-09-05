@@ -74,6 +74,13 @@ class _FakeSink implements EquipmentSink {
   @override
   void reportPower(num watts) => fail('a switch has no power to report');
 
+  final txReports = <bool>[];
+  final meterReports = <(RadioMeter, num)>[];
+  @override
+  void reportTransmitting(bool transmitting) => txReports.add(transmitting);
+  @override
+  void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
+
   @override
   void reportKeyerSpeed(int wpm) => fail('a switch has no keyer');
   @override

@@ -54,6 +54,13 @@ class _FakeSink implements EquipmentSink {
   void reportPower(num watts) => powers.add(watts);
 
   final keyerSpeeds = <int>[];
+  final txReports = <bool>[];
+  final meterReports = <(RadioMeter, num)>[];
+  @override
+  void reportTransmitting(bool transmitting) => txReports.add(transmitting);
+  @override
+  void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
+
   @override
   void reportKeyerSpeed(int wpm) => keyerSpeeds.add(wpm);
   @override
@@ -652,6 +659,42 @@ void main() {
         sliceD.teardown();
         async.flushTimers();
       });
+    });
+  });
+
+  group('the interlock', () {
+    test('says when the radio is on the air, without being asked', () {
+      // A Flex is the one radio here that costs nothing to watch: the
+      // interlock object arrives on the `tx` subscription this driver
+      // already takes, so there is no TX poll at all.
+      session.feed('S40000001|interlock state=RECEIVE\n');
+      expect(sink.txReports, [false]);
+      session.feed('S40000001|interlock state=TRANSMITTING\n');
+      expect(sink.txReports, [false, true]);
+      // Every subscribe refreshes the whole object; a restatement is not
+      // news, and reporting one would wake every listener on each refresh.
+      session.feed('S40000001|interlock state=TRANSMITTING reason=\n');
+      expect(sink.txReports, [false, true]);
+    });
+
+    test('counts the two states either side of TRANSMITTING as keyed', () {
+      // What reads this is the rule that no relay moves under RF. RF is
+      // imminent on PTT_REQUESTED and still present on UNKEY_REQUESTED, so
+      // reading only TRANSMITTING would open the gate exactly at the two
+      // edges of a transmission.
+      session.feed('S40000001|interlock state=PTT_REQUESTED\n');
+      expect(sink.txReports, [true]);
+      session.feed('S40000001|interlock state=UNKEY_REQUESTED\n');
+      expect(sink.txReports, [true], reason: 'still keyed, so still not news');
+      session.feed('S40000001|interlock state=READY\n');
+      expect(sink.txReports, [true, false]);
+    });
+
+    test('a push with no state says nothing about transmitting', () {
+      // Status pushes carry only what CHANGED, so a line about some other
+      // interlock field must not be read as "receiving".
+      session.feed('S40000001|interlock timeout=180\n');
+      expect(sink.txReports, isEmpty);
     });
   });
 

@@ -11,6 +11,7 @@ upcoming:
     - "Operation's callsign is now per-segment"
     - "Android: a radio or bridge with two serial ports lists both, and the X6100 and Yaesus pick their CAT port for you"
     - "An operation with a reference from a switched-off extension now offers to enable it"
+    - "The Radio panel shows TX, power out, SWR and supply volts while you transmit, and warns above 1.8 SWR"
 
 "162":
   changes:

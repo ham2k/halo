@@ -53,3 +53,23 @@ int numberFromConfig(Map<String, dynamic> config, String key, int fallback) {
   if (raw is num) return raw.toInt();
   return int.tryParse('$raw') ?? fallback;
 }
+
+/// The node's serial speed, or null when its config states none.
+///
+/// For the telemetry cadence floor (telemetry_poller.dart), which is a
+/// question about the WIRE and not about the driver. A driver cannot ask
+/// its transport — it never sees one — so it reads the same key the serial
+/// transport collects.
+///
+/// A node on a NETWORK pairing may still carry a baud rate: the editor
+/// renders every variant's fields at once, so an IC-705 configured over
+/// WiFi arrives holding the serial pairing's speed (docs/design/cat.md
+/// § Layering). That is harmless here and nowhere else would be. The floor
+/// is a lower clamp only, so the worst it can do is poll a fast link more
+/// slowly than it could have — never faster than a slow one can carry,
+/// which is the direction that costs anything.
+int? serialBaudRateOrNull(Map<String, dynamic> config) {
+  final raw = config['baudRate'];
+  final baud = raw is num ? raw.toInt() : int.tryParse('${raw ?? ''}'.trim());
+  return baud != null && baud > 0 ? baud : null;
+}

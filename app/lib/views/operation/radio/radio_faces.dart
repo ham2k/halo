@@ -324,3 +324,99 @@ class LcdAnnunciator extends StatelessWidget {
     );
   }
 }
+
+/// A segmented bar — a rig's own LED meter, in the pane's colours.
+///
+/// Segments rather than a continuous fill because that is what the thing
+/// being copied does, and because it reads at a glance: an operator watching
+/// a transmission is counting blocks out of the corner of their eye, not
+/// measuring a bar's length. It also stops a 200 ms cadence from looking
+/// twitchier than the radio is — a value wobbling by a percent moves a
+/// continuous fill on every poll and a segmented one not at all.
+///
+/// The SCALE is the caller's, not this widget's: watts against the power the
+/// radio was set to, SWR against 1.0-3.0. All this knows is a fraction and
+/// where the red zone starts.
+class MeterBarPainter extends CustomPainter {
+  /// How much of the bar is lit, 0.0-1.0. Values above 1 pin the bar full
+  /// rather than overflowing it — an SWR off the end of the scale is still
+  /// only "as bad as this bar can say", and the number beside it is what
+  /// carries the rest.
+  final double fraction;
+
+  /// Where the alert zone begins, as a fraction — 0.4 for SWR, whose scale
+  /// runs 1.0-3.0 and whose threshold is 1.8. Null for a meter with no such
+  /// zone.
+  final double? alertFrom;
+
+  final Color lit;
+  final Color unlit;
+  final Color alert;
+
+  const MeterBarPainter({
+    required this.fraction,
+    required this.lit,
+    required this.unlit,
+    required this.alert,
+    this.alertFrom,
+  });
+
+  /// A segment and the gap after it. Fixed, with the COUNT derived from the
+  /// width — so a wide pane gets a finer bar rather than fatter blocks, and
+  /// a narrow one degrades to a handful of chunky ones instead of a row of
+  /// slivers.
+  static const _segmentWidth = 4.0;
+  static const _segmentGap = 2.0;
+  static const _minSegments = 4;
+  static const _maxSegments = 32;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.width <= 0 || size.height <= 0) return;
+    final count = ((size.width + _segmentGap) / (_segmentWidth + _segmentGap))
+        .floor()
+        .clamp(_minSegments, _maxSegments);
+    final width = (size.width - _segmentGap * (count - 1)) / count;
+    if (width <= 0) return;
+    final litCount = litSegments(fraction, count);
+    final paint = Paint()..style = PaintingStyle.fill;
+    for (var i = 0; i < count; i++) {
+      final inAlertZone = isAlertSegment(i, count, alertFrom);
+      paint.color = switch ((i < litCount, inAlertZone)) {
+        (true, true) => alert,
+        (true, false) => lit,
+        // The red zone is printed on the scale of a real meter whether the
+        // needle is in it or not, and that is worth keeping: it says where
+        // the line IS before the operator crosses it.
+        (false, true) => alert.withValues(alpha: 0.22),
+        (false, false) => unlit,
+      };
+      canvas.drawRect(Rect.fromLTWH(i * (width + _segmentGap), 0, width, size.height), paint);
+    }
+  }
+
+  /// How many of [count] segments a [fraction] lights.
+  ///
+  /// Any reading at all lights one. Rounding alone shows an EMPTY bar for a
+  /// real transmission at the bottom of its scale — a QRP rig measured
+  /// against a 100 W set level — which reads as a radio putting out nothing
+  /// at the exact moment it is putting out something.
+  static int litSegments(double fraction, int count) {
+    final target = fraction.clamp(0.0, 1.0);
+    return target <= 0 ? 0 : (target * count).round().clamp(1, count);
+  }
+
+  /// Whether segment [i] of [count] falls in the red zone. Measured at the
+  /// segment's MIDDLE, so the segment straddling the threshold belongs to
+  /// whichever side most of it is on.
+  static bool isAlertSegment(int i, int count, double? alertFrom) =>
+      alertFrom != null && (i + 0.5) / count >= alertFrom;
+
+  @override
+  bool shouldRepaint(MeterBarPainter old) =>
+      old.fraction != fraction ||
+      old.alertFrom != alertFrom ||
+      old.lit != lit ||
+      old.unlit != unlit ||
+      old.alert != alert;
+}

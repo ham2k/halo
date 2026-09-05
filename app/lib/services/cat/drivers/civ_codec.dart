@@ -339,15 +339,46 @@ bool? parseTransmitStatusData(List<int> data) {
   return switch (data[1]) { 0x00 => false, 0x01 => true, _ => null };
 }
 
-/// DC input to the radio, in tenths of a volt (e.g. level 115 means
-/// 11.5V) — distinguishes external DC from internal battery on a radio
-/// that can run on either. Confirmed LIVE against an IC-705: ~11.5V on
-/// its internal battery, ~19.5V with a 12V-class external supply
-/// connected — the RF-power SET level (0x14 0x0A) does not change either
-/// way, but the radio quietly caps actual output on battery (see the RF
-/// power METER, 0x15 0x11). Voltage scaling is inferred from that one
-/// bench session, not a published reference.
+/// The DC input meter — a 0-255 reading like every other meter, NOT a
+/// voltage.
+///
+/// Icom's own guide gives the scale as a two-segment curve (00 00=0 V,
+/// 00 13=10 V, 02 41=16 V on an IC-7300MK2), which is nothing like the
+/// tenths-of-a-volt this was once read as. It is also a 13.8 V radio's
+/// curve, and this codec serves the whole line, so no voltage is reported
+/// from it at all until a per-model table says what it means — see
+/// info/icom/civ-generic.json.
+///
+/// What it IS used for needs no scale: an IC-705 running on its own battery
+/// reads far lower here than one on external DC (raw ~115 against ~195,
+/// measured on the bench), and the RF-power SET level does not move either
+/// way while actual output is quietly capped. The threshold is a raw
+/// number compared against raw numbers, which is why that check survived
+/// the scale being wrong.
 const civMeterDcInputVoltage = 0x15;
+
+/// RF power actually leaving the radio, as a 0-255 meter reading — NOT the
+/// SET level (0x14 0x0A), which is what the radio was ASKED for and does not
+/// move when an ATU folds back or a battery derates the PA.
+///
+/// Reads 0 at rest: CI-V has no command for output power outside a live
+/// transmission, which is the whole reason meters are polled only while the
+/// radio is keyed.
+const civMeterRfPower = 0x11;
+
+/// SWR, as a 0-255 meter reading. See [swrForCivMeterLevel] for the scale.
+const civMeterSwr = 0x12;
+
+/// ALC, as a 0-255 meter reading, where 120 is the top of the radio's ALC
+/// zone.
+const civMeterAlc = 0x13;
+
+/// What each 0-255 meter reading MEANS is not here, and not anywhere in
+/// this file: Icom's published breakpoints live in
+/// `info/icom/civ-generic.json` and are read through
+/// meter_calibration.dart, like every other radio's. A codec builds and
+/// parses frames; what a number in one stands for is data, and data that
+/// gets edited far more often than this.
 
 List<int> buildReadMeterFrame({
   required int to,

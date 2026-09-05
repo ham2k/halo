@@ -30,6 +30,7 @@ import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart'
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
+import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/transports/placeholder_transport.dart';
 
 void main() {
@@ -86,6 +87,8 @@ void main() {
         'placeholderMode',
         'placeholderPower',
         'placeholderReplyDelay',
+        'placeholderSwr',
+        telemetryIntervalConfigKey,
       });
       expect(type.validate(type.defaultConfig), isNull,
           reason: 'the prefilled form must be submittable as it opens');
@@ -205,6 +208,84 @@ void main() {
         expect(sink.readings.last.freqKHz, 10136.0);
         session.teardown();
       });
+    });
+  });
+
+  group('the meters, which are the only ones reachable with no radio', () {
+    test('keying a message puts the rig on the air and reads its meters', () {
+      // The whole reason the placeholder reports telemetry at all: on a
+      // machine with no radio, a CW message is the only thing in the app
+      // that can key anything, so it is the only way the TX annunciator,
+      // the meter strip and the SWR alert are ever reachable by hand.
+      fakeAsync((async) {
+        final sink = _RecordingSink();
+        final session = const PlaceholderRadioDriver()
+            .createSession(sink, {...type.defaultConfig, 'placeholderSwr': 2.4}) as CwKeyerSession;
+        session.startUpdates();
+        expect(sink.txReports, [false], reason: 'a rig that KNOWS it is receiving says so');
+
+        session.sendCw('CQ TEST');
+        expect(sink.txReports.last, isTrue);
+        // On the transition, not an interval later — see
+        // cat_telemetry_poller_test.dart.
+        expect(sink.meterReports.map((m) => m.$1), contains(RadioMeter.swr));
+        expect(sink.meterReports.firstWhere((m) => m.$1 == RadioMeter.swr).$2, 2.4);
+        expect(sink.meterReports.firstWhere((m) => m.$1 == RadioMeter.powerOut).$2, 75);
+
+        final duringFirstPoll = sink.meterReports.length;
+        async.elapse(const Duration(milliseconds: 250));
+        expect(sink.meterReports.length, greaterThan(duringFirstPoll),
+            reason: 'the meters are re-read for as long as the message keys');
+
+        // Long enough for any message to finish keying.
+        async.elapse(const Duration(minutes: 1));
+        expect(sink.txReports.last, isFalse);
+        final atUnkey = sink.meterReports.length;
+        async.elapse(const Duration(minutes: 1));
+        expect(sink.meterReports.length, atUnkey, reason: 'a receiving rig has no meters worth reading');
+        (session as EquipmentSession).teardown();
+      });
+    });
+
+    test('recording a voice memory does not key the rig', () {
+      // A real radio records into a memory off the air. A placeholder that
+      // keyed for it would light a meter strip for a transmission that never
+      // happened — and the strip is the thing these readings exist to feed.
+      fakeAsync((async) {
+        final sink = _RecordingSink();
+        final session = const PlaceholderRadioDriver()
+            .createSession(sink, type.driverConfig(type.defaultConfig)) as VoiceKeyerSession;
+        (session as EquipmentSession).startUpdates();
+        sink.txReports.clear();
+
+        session.recordVoiceMemory(1);
+        expect(sink.txReports, isEmpty);
+        expect(sink.meterReports, isEmpty);
+
+        session.stopVoice();
+        session.playVoiceMemory(1);
+        expect(sink.txReports.last, isTrue, reason: 'playing a memory DOES put the rig on the air');
+        async.elapse(const Duration(seconds: 10));
+        expect(sink.txReports.last, isFalse);
+        (session as EquipmentSession).teardown();
+      });
+    });
+
+    test('an SWR the operator cannot set is an alert they cannot see', () {
+      // The knob exists for exactly one reason, so it is worth pinning: the
+      // panel's warning threshold is [swrAlertThreshold], and without a way
+      // to cross it nobody — tester or developer — can check that the alert
+      // renders at all.
+      expect(placeholderRadioDefaultSwr, lessThan(swrAlertThreshold));
+      expect(
+        const PlaceholderRadioDriver().validateField('placeholderSwr', 2.5, const {}),
+        isNull,
+      );
+      expect(
+        const PlaceholderRadioDriver().validateField('placeholderSwr', 0.5, const {}),
+        isNotNull,
+        reason: 'an SWR below 1 is not a match, it is a typo',
+      );
     });
   });
 
@@ -329,6 +410,13 @@ class _RecordingSink implements EquipmentSink {
 
   @override
   void reportPower(num w) => watts.add(w);
+
+  final txReports = <bool>[];
+  final meterReports = <(RadioMeter, num)>[];
+  @override
+  void reportTransmitting(bool transmitting) => txReports.add(transmitting);
+  @override
+  void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
 
   @override
   void reportKeyerSpeed(int wpm) {}

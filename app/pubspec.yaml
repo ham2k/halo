@@ -231,6 +231,15 @@ flutter:
   uses-material-design: true
   assets:
     - assets/extensions/
+    # Meter calibration tables, one file per radio — see
+    # lib/services/cat/drivers/info/README.md. Beside the drivers that read
+    # them rather than under assets/, because they are edited as part of
+    # working on a driver. Asset directories are NOT recursive, so a new
+    # MANUFACTURER folder needs a line of its own here; a new radio in an
+    # existing folder needs nothing.
+    - lib/services/cat/drivers/info/yaesu/
+    - lib/services/cat/drivers/info/icom/
+    - lib/services/cat/drivers/info/kenwood/
     - assets/images/
     - assets/images/releases/
     - assets/release-notes.yaml

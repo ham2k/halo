@@ -17,6 +17,8 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/adaptive_poller.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
+import 'package:ham2k_logger/services/cat/drivers/meter_calibration.dart';
+import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/yaesu_cat_codec.dart';
@@ -39,6 +41,13 @@ class _FakeSink implements EquipmentSink {
 
   @override
   void reportPower(num watts) => powers.add(watts);
+
+  final txReports = <bool>[];
+  final meterReports = <(RadioMeter, num)>[];
+  @override
+  void reportTransmitting(bool transmitting) => txReports.add(transmitting);
+  @override
+  void reportMeter(RadioMeter meter, num value) => meterReports.add((meter, value));
 
   @override
   void reportKeyerSpeed(int wpm) => keyerSpeeds.add(wpm);
@@ -64,6 +73,14 @@ class _FakeSink implements EquipmentSink {
 extension on Ft891Session {
   void feed(String text) => handleData(Uint8List.fromList(ascii.encode(text)));
 }
+
+/// A session whose TX watch is set so slow it never fires inside a test.
+///
+/// The tests below assert on the exact commands the STATE poll sends, and
+/// the watch writes `TX;` to the same port several times a second. It has
+/// its own tests below.
+Ft891Session _stateOnlySession(EquipmentSink sink) =>
+    Ft891Session(sink, config: const {telemetryIntervalConfigKey: 600000});
 
 void main() {
   group('the codec', () {
@@ -164,7 +181,7 @@ void main() {
 
     setUp(() {
       sink = _FakeSink();
-      session = Ft891Session(sink);
+      session = _stateOnlySession(sink);
     });
 
     test('reports frequency in kHz from the radio\'s exact Hz', () {
@@ -361,7 +378,7 @@ void main() {
     // anchored parse threw the whole thing away silently — on a 4800-baud
     // line beside a transmitting rig, that is the expected case.
     final sink = _FakeSink();
-    final session = Ft891Session(sink);
+    final session = _stateOnlySession(sink);
     session.handleData(Uint8List.fromList([0xFF, ...ascii.encode('FA014233700;')]));
     expect(sink.readings, [const VfoReading(freqKHz: 14233.7)]);
   });
@@ -371,7 +388,7 @@ void main() {
     // dropped every single connection into 200ms polling for the second or
     // so it took to ramp back down, for a radio nobody was touching.
     final sink = _FakeSink();
-    final session = Ft891Session(sink)..startUpdates();
+    final session = _stateOnlySession(sink)..startUpdates();
     session.handleData(Uint8List.fromList(ascii.encode('FA014233700;')));
     expect(session.pollInterval, kPollSlow);
 
@@ -386,10 +403,235 @@ void main() {
     // normal disconnect wrote it twice and the teardown protocol lived in
     // two places.
     final sink = _FakeSink();
-    Ft891Session(sink)
+    _stateOnlySession(sink)
       ..startUpdates()
       ..teardown();
     final offs = sink.sent.where((c) => c == 'AI0;').length;
     expect(offs, 1);
   });
+  group('the TX watch', () {
+    test('asks whether the radio is keyed, on its own cadence', () {
+      // NOT folded into the five-second state poll: a whole over fits
+      // inside one of those, and Auto-Information pushes nothing about the
+      // PTT — `IF` carries the frequency and the mode and no TX flag.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 200});
+        session.startUpdates();
+        sink.sent.clear();
+        async.elapse(const Duration(milliseconds: 450));
+        expect(sink.sent, ['TX;', 'TX;']);
+        session.teardown();
+      });
+    });
+
+    test('reads all three answers, and says nothing for a radio that will not answer', () {
+      final sink = _FakeSink();
+      final session = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 200});
+      session.feed('TX0;');
+      expect(sink.txReports, [false]);
+      // TX1 is the radio's own PTT — the mic, a footswitch — and TX2 is CAT
+      // asking. Reading only TX2 as transmitting would leave the antenna
+      // gate open for every over the operator keys by hand, which is most
+      // of them.
+      session.feed('TX1;');
+      expect(sink.txReports, [false, true]);
+      session.feed('TX2;');
+      expect(sink.txReports, [false, true], reason: 'still transmitting is not news');
+      session.feed('TX0;');
+      expect(sink.txReports, [false, true, false]);
+
+      sink.txReports.clear();
+      session.feed('TX9;');
+      expect(sink.txReports, isEmpty, reason: 'an answer nobody can read is not "receiving"');
+      session.teardown();
+    });
+
+    test('the watch does not starve the frequency poll', () {
+      // The trap, and it is invisible from either side alone: the watch
+      // answers several times a second, AdaptivePoller defers on incoming
+      // data, and a state poll that is re-armed every 200 ms never fires at
+      // all. What is left is the 9-second staleness ceiling — so a dial turn
+      // reaches the app nine seconds later, on exactly the radios (AI off)
+      // where the poll is the only source of a frequency there is.
+      //
+      // Every other test here uses a session with the watch silenced, which
+      // is why this one builds a live one.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 200});
+        session.startUpdates();
+        sink.sent.clear();
+
+        // The radio answering the watch, as it would, all the way through.
+        for (var i = 0; i < 20; i++) {
+          async.elapse(const Duration(milliseconds: 200));
+          session.feed('TX0;');
+        }
+        // Four seconds have passed: at the slow cadence the state poll is
+        // due at least once, and it must have gone out.
+        expect(sink.sent.where((c) => c == 'FA;'), isNotEmpty,
+            reason: 'the frequency poll was starved by the TX watch');
+        session.teardown();
+      });
+    });
+
+    test('the meter capture is off unless a developer asks for it', () {
+      // It costs three extra reads per cycle on a link that may be running
+      // at 4800, and produces a line of raw numbers only a developer can
+      // use. Left on by default it would be a permanent tax on every Yaesu
+      // for a readout nobody sees.
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 200});
+        session.startUpdates();
+        session.feed('TX1;');
+        sink.sent.clear();
+        async.elapse(const Duration(milliseconds: 250));
+        expect(sink.sent, ['TX;'], reason: 'the watch alone, no RM');
+        session.teardown();
+      });
+    });
+
+    test('with the capture on, a keyed rig has its meters read', () {
+      fakeAsync((async) {
+        final sink = _FakeSink();
+        final session = Ft891Session(sink, config: const {
+          telemetryIntervalConfigKey: 200,
+          yaesuMeterCaptureConfigKey: true,
+        });
+        session.startUpdates();
+        sink.sent.clear();
+        // The transition reads them immediately: a capture that waited for
+        // the next tick would miss a short over, which on a bench is most of
+        // them.
+        session.feed('TX1;');
+        // The watch rides along with the meters: re-asking `TX;` is how the
+        // unkey is noticed, and dropping it would leave the capture running
+        // after the transmission ended.
+        // PO, SWR, ALC and — on an FTDX10, which has the meter — VDD.
+        expect(sink.sent, ['TX;', 'RM5;', 'RM6;', 'RM4;', 'RM8;']);
+
+        sink.sent.clear();
+        session.feed('TX0;');
+        async.elapse(const Duration(milliseconds: 250));
+        expect(sink.sent, ['TX;'], reason: 'nothing to measure on a receiving rig');
+        session.teardown();
+      });
+    });
+
+    test('both answer shapes on the Yaesu line are read', () {
+      // The FT-891 answers `RM5123;` and the FTDX10 `RM5123000;` — its
+      // manual documents a fixed three-digit tail the 891 does not have.
+      // A parser that took only the short form would read NOTHING from an
+      // FTDX10, and an unparsed answer looks exactly like a radio that
+      // never replied.
+      expect(parseMeterParams('5123'), (meter: 5, level: 123));
+      expect(parseMeterParams('5123000'), (meter: 5, level: 123));
+      // Neither a meter answer: `RM0;` selects what the front panel shows.
+      expect(parseMeterParams('0'), isNull);
+      expect(parseMeterParams('51x'), isNull);
+    });
+
+    test('a captured reading is reported RAW, and survives the unkey', () {
+      final sink = _FakeSink();
+      final session = Ft891Session(sink, config: const {yaesuMeterCaptureConfigKey: true});
+      session.feed('RM5201;');
+      session.feed('RM6012;');
+      // Raw 0-255, unconverted. The whole point of the capture is that
+      // Yaesu publishes no scale — a value that arrived here already turned
+      // into watts or an SWR would be the guess this exists to avoid.
+      expect(sink.diagnostics.last, contains('5=201'));
+      expect(sink.diagnostics.last, contains('6=12'));
+
+      // Kept after the rig unkeys: the numbers are read off a screen by a
+      // person, and a line that blanked the moment they let go of the key
+      // could not be read by the only thing that can use it.
+      session.feed('TX0;');
+      expect(sink.diagnostics.last, contains('5=201'));
+      session.teardown();
+    });
+
+    test('an RM answer nobody asked for is ignored', () {
+      // Without the capture on, an `RM` on the line belongs to something
+      // else — another program on a shared port, a radio answering its own
+      // front panel — and reading it would put numbers on a developer line
+      // nobody switched on.
+      final sink = _FakeSink();
+      final session = Ft891Session(sink);
+      session.feed('RM5201;');
+      expect(sink.diagnostics, isEmpty);
+      session.teardown();
+    });
+
+    test('a radio with a calibration reports real meters, in real units', () {
+      // The other half of the capture: once a table exists, the same raw
+      // reading becomes something an operator can act on. The FTDX10's own
+      // table puts 89 at an SWR of 2.0 and 147 at 50 W.
+      MeterCalibrations.instance.setForTesting({
+        'yaesu/ftdx10': MeterCalibration(model: 'FTdx10', tables: const {
+          MeterTable.swr: [MeterPoint(0, 1.0), MeterPoint(89, 2.0)],
+          MeterTable.power: [MeterPoint(0, 0), MeterPoint(147, 50.0)],
+        }),
+      });
+      addTearDown(() => MeterCalibrations.instance.setForTesting({}));
+
+      final sink = _FakeSink();
+      final session = Ft891Session(sink, config: const {meterInfoConfigKey: 'yaesu/ftdx10'});
+      session.feed('RM6089;');
+      session.feed('RM5147;');
+      expect(sink.meterReports, [(RadioMeter.swr, 2.0), (RadioMeter.powerOut, 50.0)]);
+
+      // A meter the table does not describe stays off: the FTDX10 has an
+      // ALC meter, but a table with no ALC rows cannot say what its numbers
+      // mean, and a slot that never fills is worse than no slot.
+      session.feed('RM4064;');
+      expect(sink.meterReports.length, 2);
+      session.teardown();
+    });
+
+    test('a radio with no calibration reads no meters at all', () {
+      // The generic Yaesu entry, which does not know which radio is behind
+      // it. Reading the meters anyway would spend three commands per cycle
+      // on numbers nothing can interpret.
+      MeterCalibrations.instance.setForTesting({});
+      final sink = _FakeSink();
+      final session = Ft891Session(sink, config: const {telemetryIntervalConfigKey: 200});
+      session.startUpdates();
+      session.feed('TX1;');
+      sink.sent.clear();
+      session.feed('RM6089;');
+      expect(sink.meterReports, isEmpty);
+      expect(const Ft891Driver().telemetryMetersWith(const {}), isEmpty);
+      session.teardown();
+    });
+
+    test('what a radio can show follows its table, not its driver', () {
+      // One driver serves the whole Yaesu line and the scales do not: the
+      // panel reserves a slot per meter BEFORE the first transmission, so
+      // this answer decides what an operator sees on a radio that has never
+      // been keyed.
+      MeterCalibrations.instance.setForTesting({
+        'yaesu/ftdx10': MeterCalibration(model: 'FTdx10', tables: const {
+          MeterTable.swr: [MeterPoint(0, 1.0)],
+          MeterTable.voltage: [MeterPoint(192, 13.8)],
+        }),
+      });
+      addTearDown(() => MeterCalibrations.instance.setForTesting({}));
+      expect(
+        const Ft891Driver().telemetryMetersWith(const {meterInfoConfigKey: 'yaesu/ftdx10'}),
+        {RadioMeter.swr, RadioMeter.supplyVolts},
+      );
+    });
+
+    test('the meters are deliberately not read', () {
+      // Yaesu answers `RM` with a raw 0-255 and publishes no scale for it,
+      // so any SWR taken from one would be invented — and this app warns
+      // the operator at 1.8. The capture above is how the scale gets built;
+      // until it has been, the driver declaring no meters is what keeps the
+      // panel from reserving slots that will never fill.
+      expect(const Ft891Driver().telemetryMeters, isEmpty);
+    });
+  });
+
 }

@@ -151,6 +151,134 @@ class VfoReading {
   String toString() => 'VfoReading(freqKHz: $freqKHz, mode: $mode)';
 }
 
+/// One of the radio's meters — what it is DOING, as opposed to where
+/// [VfoReading] says it is tuned.
+///
+/// Only readings that mean something DURING a transmission are here,
+/// because that is when they are asked for: the meter cycle runs while the
+/// radio is keyed and stops when it unkeys (docs/design/cat.md §
+/// Telemetry), so a receive-side meter would never be read at all.
+/// [supplyVolts] is the exception in one direction only — it is valid at
+/// rest too, and a driver already reading it on its ordinary cycle reports
+/// it whenever it likes.
+enum RadioMeter {
+  /// RF actually leaving the radio, in watts.
+  ///
+  /// NOT [EquipmentState.power], which is the level the radio is SET to.
+  /// The two disagree for real reasons — an ATU folding back, a rig on its
+  /// own battery — and merging them would send a measured 4.7 W back at the
+  /// radio as a power command the operator never gave.
+  powerOut,
+
+  /// Standing wave ratio, as a ratio: 1.0 is a perfect match. At or above
+  /// [swrAlertThreshold] the operator is told.
+  swr,
+
+  /// How hard the radio's ALC is working, as 0.0-1.0 of its own scale.
+  ///
+  /// A fraction rather than dB because that is all any of these protocols
+  /// actually says: every one of them reports a relative figure against a
+  /// full scale it never states.
+  alc,
+
+  /// DC input to the radio, in volts.
+  supplyVolts,
+}
+
+/// The SWR at which the operator is warned.
+///
+/// Not the point where a rig folds back — most survive well past it — but
+/// the point where the ANTENNA is telling you something: a match this far
+/// off is a wet feedline, a wrong band, or an ATU that never found a
+/// solution, and all three are worth knowing before the next call rather
+/// than after the session.
+const swrAlertThreshold = 1.8;
+
+/// How long a meter reading stands after the radio stops confirming it.
+///
+/// Meters are read only while transmitting, so every reading is about to
+/// stop being refreshed by design — that is the normal end of a
+/// transmission, not a fault. Long enough to still be on screen when the
+/// operator looks down after letting go of the key; short enough that the
+/// SWR from an hour ago is never mistaken for the antenna they are on now.
+const meterLinger = Duration(seconds: 8);
+
+/// One meter's value, and when it was read.
+///
+/// The timestamp is what makes expiry the reader's decision rather than a
+/// driver's: nothing in any of these protocols announces that a reading has
+/// gone stale, and a driver clearing its own meters at unkey would have to
+/// guess how long a panel wanted them for.
+@immutable
+class MeterReading {
+  final num value;
+
+  /// App-clock millis ([nowMillis], never `DateTime.now()` — docs/design/time.md).
+  final int atMillis;
+
+  const MeterReading(this.value, this.atMillis);
+
+  @override
+  bool operator ==(Object other) =>
+      other is MeterReading && other.value == value && other.atMillis == atMillis;
+
+  @override
+  int get hashCode => Object.hash(value, atMillis);
+
+  @override
+  String toString() => 'MeterReading($value @$atMillis)';
+}
+
+/// What the radio is doing right now: keyed or not, and what its meters
+/// read while it is.
+///
+/// Live-only and never persisted, like everything else in [EquipmentState].
+@immutable
+class RadioTelemetry {
+  /// Null until the radio has said.
+  ///
+  /// A driver whose protocol cannot answer never reports one, and "the
+  /// radio is receiving" is a different claim from "nobody knows" — the
+  /// difference decides whether it is safe to throw an antenna relay.
+  final bool? transmitting;
+
+  final Map<RadioMeter, MeterReading> meters;
+
+  const RadioTelemetry({this.transmitting, this.meters = const {}});
+
+  /// Keyed, as far as anything knows. An unanswered radio reads as
+  /// receiving here; every caller that must not assume that reads
+  /// [transmitting] itself.
+  bool get isTransmitting => transmitting ?? false;
+
+  RadioTelemetry withTransmitting(bool value) =>
+      RadioTelemetry(transmitting: value, meters: meters);
+
+  RadioTelemetry withMeter(RadioMeter meter, num value, int atMillis) => RadioTelemetry(
+        transmitting: transmitting,
+        meters: {...meters, meter: MeterReading(value, atMillis)},
+      );
+
+  /// [meter]'s reading if it is still worth showing at [nowMillis], else
+  /// null — see [meterLinger].
+  MeterReading? fresh(RadioMeter meter, int nowMillis, {Duration linger = meterLinger}) {
+    final reading = meters[meter];
+    if (reading == null) return null;
+    return nowMillis - reading.atMillis <= linger.inMilliseconds ? reading : null;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is RadioTelemetry && other.transmitting == transmitting && mapEquals(other.meters, meters);
+
+  @override
+  int get hashCode => Object.hash(transmitting, Object.hashAllUnordered(meters.entries.map((e) => Object.hash(e.key, e.value))));
+
+  @override
+  String toString() => 'RadioTelemetry(${transmitting == null ? 'tx unknown' : transmitting! ? 'TX' : 'RX'}'
+      '${meters.isEmpty ? '' : ', ${meters.entries.map((e) => '${e.key.name}=${e.value.value}').join(', ')}'})';
+}
+
 /// One of several independently-tunable channels the same piece of
 /// equipment offers — a FlexRadio's slices, and nothing else today.
 ///
@@ -372,6 +500,14 @@ class EquipmentState {
   /// reporting zero.
   final num? power;
 
+  /// What the radio is doing — keyed or not, and its meters while it is.
+  ///
+  /// Its own value rather than more fields on this class because the pieces
+  /// travel together and expire together: a panel asks "is this reading
+  /// still worth showing?" of the set, not of each meter's own timestamp
+  /// field. Empty on a driver that reports no telemetry at all.
+  final RadioTelemetry telemetry;
+
   /// The transceiver's keyer speed in WPM, when its driver can report one —
   /// see [EquipmentSink.reportKeyerSpeed]. Null on a driver that never asks.
   final int? keyerSpeed;
@@ -429,6 +565,7 @@ class EquipmentState {
     this.errorDetail,
     this.vfo = const VfoReading(),
     this.power,
+    this.telemetry = const RadioTelemetry(),
     this.keyerSpeed,
     this.stale = false,
     this.diagnostic,
@@ -444,6 +581,7 @@ class EquipmentState {
     String? errorDetail,
     VfoReading? vfo,
     num? power,
+    RadioTelemetry? telemetry,
     int? keyerSpeed,
     bool? stale,
     String? diagnostic,
@@ -462,6 +600,7 @@ class EquipmentState {
         errorDetail: status == null || status == EquipmentStatus.error ? (errorDetail ?? this.errorDetail) : null,
         vfo: vfo ?? this.vfo,
         power: power ?? this.power,
+        telemetry: telemetry ?? this.telemetry,
         keyerSpeed: keyerSpeed ?? this.keyerSpeed,
         stale: stale ?? this.stale,
         // Needs its own flag rather than a null argument: a driver saying

@@ -21,8 +21,10 @@ import 'dart:typed_data';
 import '../../../i18n/strings.g.dart';
 import '../driver.dart';
 import '../equipment.dart';
+import '../telemetry_poller.dart';
 import '../transports/config_field_helpers.dart';
 import 'cw_send_queue.dart';
+import 'telemetry_config.dart';
 
 /// Where a new placeholder rig comes up, so it lands somewhere plausible
 /// rather than reporting nothing at all — 40m phone, at a typical barefoot
@@ -31,6 +33,16 @@ const placeholderRadioDefaultFreqKHz = 7200.0;
 const placeholderRadioDefaultMode = 'LSB';
 const placeholderRadioDefaultWatts = 75;
 const placeholderRadioDefaultKeyerSpeed = 22;
+
+/// What a placeholder rig answers its SWR meter with, and the reason the
+/// value is settable: [swrAlertThreshold] is the one number on the meter
+/// strip that changes how the strip LOOKS, and an operator or a tester who
+/// cannot cross it has no way to see the warning they are being promised.
+const placeholderRadioDefaultSwr = 1.3;
+
+/// A rig on a healthy 13.8 V supply. Fixed rather than settable: nothing in
+/// the app branches on it, so a knob would be a knob for its own sake.
+const placeholderRadioSupplyVolts = 13.8;
 
 /// As many as an Icom, the most of the real ones — so every label the
 /// editor offers has a memory behind it here.
@@ -88,6 +100,14 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   @override
   bool get canKeyCw => true;
 
+  /// The three a placeholder can answer honestly: the power it was set to,
+  /// the SWR it was configured with, and a fixed supply. No ALC — there is
+  /// no audio chain here for one to act on, and a made-up number on a meter
+  /// nobody can influence is worse than an empty slot.
+  @override
+  Set<RadioMeter> get telemetryMeters =>
+      const {RadioMeter.powerOut, RadioMeter.swr, RadioMeter.supplyVolts};
+
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
       PlaceholderRadioSession(sink, config);
@@ -121,6 +141,15 @@ class PlaceholderRadioDriver extends EquipmentDriver {
             'key': 'placeholderPower',
             'label': t.settings.station.placeholderPower,
           },
+        if (!overrides.containsKey('placeholderSwr'))
+          {
+            'type': 'field',
+            'fieldType': 'number',
+            'key': 'placeholderSwr',
+            'label': t.settings.station.placeholderSwr,
+            'description': t.settings.station.placeholderSwrDescription,
+          },
+        telemetryConfigElement(),
         if (!overrides.containsKey('placeholderReplyDelay'))
           {
             'type': 'field',
@@ -145,6 +174,11 @@ class PlaceholderRadioDriver extends EquipmentDriver {
         return numberFromConfig({...config, key: value}, key, -1) < 0
             ? t.settings.station.placeholderWholeNumberInvalid
             : null;
+      case telemetryIntervalConfigKey:
+        return validateTelemetryInterval(value);
+      case 'placeholderSwr':
+        final swr = value is num ? value : num.tryParse('${value ?? ''}'.trim());
+        return (swr == null || swr < 1) ? t.settings.station.placeholderSwrInvalid : null;
       case 'placeholderMode':
         // Blank IS allowed here, and means the default: a `text` field hands
         // over the string the operator typed, so an empty box is empty and
@@ -170,6 +204,27 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
   String _mode;
   num _watts;
 
+  /// What this rig answers its SWR meter with — see
+  /// [placeholderRadioDefaultSwr].
+  final num _swr;
+
+  /// Reads the meters while this rig is "transmitting", on exactly the
+  /// cadence a real one would be read at. It has no wire to spend, so the
+  /// poller is here for the SHAPE: the panel, the expiry and the alert are
+  /// then exercised by the same timing a radio would drive them with,
+  /// rather than by a special case that only the placeholder takes.
+  /// Never [TelemetryPoller.start]ed: this rig keys itself, so there is
+  /// nothing to watch for and no exchange worth spending on asking.
+  late final TelemetryPoller _telemetry = TelemetryPoller(
+    onPoll: (_) => _reportMeters(),
+    txInterval: telemetryIntervalFor(_config, cycleBytes: 0),
+  );
+
+  /// Kept for [_telemetry]'s interval, which is read once when the poller is
+  /// first touched rather than in the constructor — a `late final` field
+  /// initialising from another field cannot run there.
+  final Map<String, dynamic> _config;
+
   /// Pending reports, so [teardown] can drop them: a timer that survives
   /// the session reports a reading for a connection that is gone.
   final _pending = <Timer>[];
@@ -192,11 +247,19 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
   /// seconds a message would take.
   int _keyerSpeed = placeholderRadioDefaultKeyerSpeed;
 
+  /// Keying is what puts this rig on the air, so the progress report is
+  /// also where its PTT comes from — the one thing in the app that can
+  /// actually key a placeholder. Without it there would be no way to reach
+  /// the transmitting half of the panel on a machine with no radio, which
+  /// is the whole reason this driver exists.
   late final _cwQueue = CwSendQueue(
     maxChunkLength: 30,
     send: (_) {},
     speedWpm: () => _keyerSpeed,
-    onProgress: _sink.reportCwProgress,
+    onProgress: (progress) {
+      _sink.reportCwProgress(progress);
+      _setTransmitting(progress != null);
+    },
   );
 
   /// A voice keyer that plays nothing: a memory "plays" for
@@ -208,10 +271,35 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
   Timer? _voiceEnd;
 
   PlaceholderRadioSession(this._sink, Map<String, dynamic> config)
-      : _replyDelay = Duration(milliseconds: numberFromConfig(config, 'placeholderReplyDelay', 0)),
+      : _config = config,
+        _replyDelay = Duration(milliseconds: numberFromConfig(config, 'placeholderReplyDelay', 0)),
         _freqKHz = freqFromConfig(config) ?? placeholderRadioDefaultFreqKHz,
         _mode = modeFromConfig(config),
-        _watts = numberFromConfig(config, 'placeholderPower', placeholderRadioDefaultWatts);
+        _watts = numberFromConfig(config, 'placeholderPower', placeholderRadioDefaultWatts),
+        _swr = _swrFromConfig(config);
+
+  static num _swrFromConfig(Map<String, dynamic> config) {
+    final raw = config['placeholderSwr'];
+    final swr = raw is num ? raw : num.tryParse('${raw ?? ''}'.trim());
+    return (swr != null && swr >= 1) ? swr : placeholderRadioDefaultSwr;
+  }
+
+  /// Keyed, or not — reported only on a CHANGE, which is what the poller
+  /// wants: it fires a first read on the transition and would stall if a
+  /// restatement restarted its timer.
+  void _setTransmitting(bool transmitting) {
+    if (_telemetry.noteTransmitting(transmitting)) _sink.reportTransmitting(transmitting);
+  }
+
+  /// What the meters read while this rig is on the air. Deterministic — no
+  /// jitter, no ramp: a value that wandered would make every test of the
+  /// strip assert on a range, and a placeholder's job is to be exactly as
+  /// interesting as it was configured to be.
+  void _reportMeters() {
+    _sink.reportMeter(RadioMeter.powerOut, _watts);
+    _sink.reportMeter(RadioMeter.swr, _swr);
+    _sink.reportMeter(RadioMeter.supplyVolts, placeholderRadioSupplyVolts);
+  }
 
   void _afterDelay(void Function() report) {
     if (_replyDelay == Duration.zero) {
@@ -244,6 +332,12 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
     _reportVfo();
     _afterDelay(() => _sink.reportPower(_watts));
     _afterDelay(() => _sink.reportKeyerSpeed(_keyerSpeed));
+    // Said out loud, rather than left unknown: this rig KNOWS it is not
+    // transmitting, and the difference is what the antenna-switch gate and
+    // Smart VFO Snap both read. Through [_setTransmitting] and not straight
+    // at the sink, so the poller has heard it too — otherwise its first
+    // real answer would be the second time the app was told.
+    _setTransmitting(false);
     _heartbeat?.cancel();
     _heartbeat = Timer.periodic(_heartbeatInterval, (_) => _reportVfo());
   }
@@ -255,6 +349,9 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
   void stopUpdates() {
     _heartbeat?.cancel();
     _heartbeat = null;
+    // stop(), not noteTransmitting(false): nothing said the rig unkeyed, and
+    // a session picked up again must ask rather than assume.
+    _telemetry.stop();
     for (final timer in _pending) {
       timer.cancel();
     }
@@ -325,6 +422,11 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
     _voiceEnd?.cancel();
     _voiceEnd = null;
     _voice = activity;
+    // Playing a memory puts the rig on the air; recording into one does
+    // not. A real radio makes exactly that distinction, and a placeholder
+    // that keyed while recording would show a meter strip for a
+    // transmission that never happened.
+    _setTransmitting(!activity.recording);
     _sink.reportVoiceActivity(activity);
   }
 
@@ -334,6 +436,7 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
     _voiceEnd = null;
     if (_voice == null) return;
     _voice = null;
+    _setTransmitting(false);
     _sink.reportVoiceActivity(null);
   }
 
@@ -347,5 +450,6 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
     _cwQueue.clear();
     stopVoice();
     stopUpdates();
+    _telemetry.dispose();
   }
 }

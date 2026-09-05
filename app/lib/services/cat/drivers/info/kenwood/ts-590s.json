@@ -1,0 +1,25 @@
+{
+  "manufacturer": "Kenwood",
+  "model": "TS-590S",
+  "meterCalibration": {
+    "_comments": "As reported in Hamlib",
+    "strength": [
+      { "value": 0, "db": -60 },
+      { "value": 3, "db": -48 },
+      { "value": 6, "db": -36 },
+      { "value": 9, "db": -24 },
+      { "value": 12, "db": -12 },
+      { "value": 15, "db": 0 },
+      { "value": 20, "db": 20 },
+      { "value": 25, "db": 40 },
+      { "value": 30, "db": 60 }
+    ],
+    "swr": [
+      { "value": 0, "ratio": 1.0 },
+      { "value": 6, "ratio": 1.5 },
+      { "value": 12, "ratio": 2.0 },
+      { "value": 18, "ratio": 3.0 },
+      { "value": 30, "ratio": 10.0 }
+    ]
+  }
+}

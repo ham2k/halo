@@ -1,0 +1,24 @@
+{
+  "manufacturer": "Kenwood",
+  "model": "TS-890S",
+  "meterCalibration": {
+    "_comments": "As reported in Hamlib",
+    "strength": [
+      { "value": 0, "db": -54, "tick": "S0" },
+      { "value": 4, "db": -48, "tick": "S1" },
+      { "value": 11, "db": -36, "tick": "S3" },
+      { "value": 19, "db": -24, "tick": "S5" },
+      { "value": 27, "db": -12, "tick": "S7" },
+      { "value": 37, "db": 0, "tick": "S9" },
+      { "value": 70, "db": 60, "tick": "S9+60" }
+    ],
+    "swr": [
+      { "value": 0, "ratio": 1.0 },
+      { "value": 11, "ratio": 1.5 },
+      { "value": 23, "ratio": 2.0 },
+      { "value": 35, "ratio": 3.0 },
+      { "value": 70, "ratio": 15.0 }
+    ],
+    "_alc": "Parked, not loaded. These rows read { value: 0, level: 0 }, { value: 255, level: 35 } — but alc is documented as a 0.0-1.0 fraction of the radio's ALC zone, and 35 renders as 3500%. Whatever 35 measures here (a raw span, a dB figure) has to be stated before this can be a fraction; restore it as \"alc\" once it is."
+  }
+}

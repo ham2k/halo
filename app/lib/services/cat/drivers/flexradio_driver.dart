@@ -378,6 +378,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   static final _slicePattern = RegExp(r'^S[0-9a-fA-F]+\|slice (\d+) (.+)$');
   static final _transmitPattern = RegExp(r'^S[0-9a-fA-F]+\|transmit (.+)$');
   static final _cwxPattern = RegExp(r'^S[0-9a-fA-F]+\|cwx (.+)$');
+  static final _interlockPattern = RegExp(r'^S[0-9a-fA-F]+\|interlock (.+)$');
   static final _clientPattern = RegExp(r'^S[0-9a-fA-F]+\|client (0x[0-9a-fA-F]+) (.+)$');
 
   void _handleHandshakeLine(String line) {
@@ -401,7 +402,34 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     if (transmitMatch != null) _handleTransmitLine(transmitMatch);
     final cwxMatch = _cwxPattern.firstMatch(line);
     if (cwxMatch != null) _handleCwxLine(cwxMatch);
+    final interlockMatch = _interlockPattern.firstMatch(line);
+    if (interlockMatch != null) _handleInterlockLine(interlockMatch);
   }
+
+  /// `interlock state=TRANSMITTING …`, on the `tx` subscription this driver
+  /// already takes — so a Flex costs nothing at all to watch, unlike every
+  /// polled radio here.
+  ///
+  /// Three of the eight documented states count as keyed, not one. RF is
+  /// either about to be on the antenna (`PTT_REQUESTED`), on it
+  /// (`TRANSMITTING`), or still on it while the radio winds down
+  /// (`UNKEY_REQUESTED`) — and what reads this is the rule that no relay
+  /// moves under RF, where the cost of being early is nothing and the cost
+  /// of being late is a burnt relay.
+  void _handleInterlockLine(RegExpMatch match) {
+    final state = _parseFields(match.group(1)!)['state']?.toUpperCase();
+    // A push carries only what changed: a line with no `state=` says
+    // nothing about transmitting rather than saying "receiving".
+    if (state == null) return;
+    final transmitting = const {'PTT_REQUESTED', 'TRANSMITTING', 'UNKEY_REQUESTED'}.contains(state);
+    if (_transmitting == transmitting) return;
+    _transmitting = transmitting;
+    _sink.reportTransmitting(transmitting);
+  }
+
+  /// What the interlock last said, so a restatement is not re-reported —
+  /// SmartSDR refreshes the whole object on every subscribe.
+  bool? _transmitting;
 
   /// `cwx wpm=25 break_in_delay=…`, on the CWX subscription — the speed
   /// `cw wpm` sets and the front panel's knob turns. `sent=` and the erase

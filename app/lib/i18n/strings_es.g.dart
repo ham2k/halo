@@ -1889,6 +1889,14 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get voiceMemories => 'Memorias de voz';
 	@override String get voiceMemoriesDescription => 'Cuántas memorias de voz reproduce la radio por CAT. 0 si ninguna.';
 	@override String get voiceMemoriesInvalid => 'Un número entero, 0 o más';
+	@override String get yaesuMeterCapture => 'Capturar lecturas de medidores';
+	@override String get yaesuMeterCaptureDescription => 'Lee los medidores PO, ROE y ALC de la radio mientras transmite y escribe los valores en bruto en el registro. Sirve para construir la escala que Yaesu no publica; los valores no se muestran como medidores.';
+	@override String get telemetryInterval => 'Intervalo de lectura de medidores (ms)';
+	@override String get telemetryIntervalDescription => 'Cada cuánto se leen los medidores de la radio mientras transmite. Déjalo en blanco para lo más rápido que admita esta conexión, hasta 200 ms.';
+	@override String telemetryIntervalInvalid({required Object min, required Object max}) => 'Un número entero de milisegundos, de ${min} a ${max}';
+	@override String get placeholderSwr => 'Lectura de ROE';
+	@override String get placeholderSwrDescription => 'Con qué ROE responde esta radio mientras transmite. Por encima de 1,8 el panel avisa.';
+	@override String get placeholderSwrInvalid => 'Un número, 1 o más';
 	@override String get keyerNone => 'Ninguno';
 	@override String get cwDialect => 'Dialecto de manipulación de CW';
 	@override String get cwDialectDescription => 'Qué forma del comando KY acepta esta radio. Ninguno no manipula nada.';
@@ -2263,6 +2271,11 @@ class _Translations$operation$layout$panels$es extends Translations$operation$la
 	@override String get radioConnect => 'Conectar esta radio';
 	@override String get radioDisconnect => 'Desconectar esta radio';
 	@override String get radioStale => 'SIN DATOS';
+	@override String get radioTransmitting => 'TX';
+	@override String get radioSwr => 'ROE';
+	@override String get radioAlc => 'ALC';
+	@override String get radioVolts => 'V';
+	@override String get radioSwrHigh => 'ROE alta';
 }
 
 // Path: operation.export.compactFileNames
@@ -3178,6 +3191,11 @@ extension on TranslationsEs {
 			'operation.layout.panels.radioConnect' => 'Conectar esta radio',
 			'operation.layout.panels.radioDisconnect' => 'Desconectar esta radio',
 			'operation.layout.panels.radioStale' => 'SIN DATOS',
+			'operation.layout.panels.radioTransmitting' => 'TX',
+			'operation.layout.panels.radioSwr' => 'ROE',
+			'operation.layout.panels.radioAlc' => 'ALC',
+			'operation.layout.panels.radioVolts' => 'V',
+			'operation.layout.panels.radioSwrHigh' => 'ROE alta',
 			'operation.layout.htmlPanelUnsupported' => 'Este panel necesita un visor web, que esta plataforma no ofrece',
 			'operation.layout.htmlPanelUnsupportedOnWeb' => 'Este panel necesita un entorno aislado que la versión web no puede ofrecer',
 			'operation.export.title' => 'Exportaciones de la operación',
@@ -3344,13 +3362,13 @@ extension on TranslationsEs {
 			'activitiesView.locationSettingsUnavailable' => 'Permite el acceso a la ubicación en los ajustes del sistema',
 			'activitiesView.locationGrantRefused' => 'Sigue sin ubicación — el sistema volvió a negarlo',
 			'activitiesView.searchUnavailableTitle' => 'Búsqueda de actividades no disponible',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.searchUnavailableReason' => 'Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.',
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
 			'activitiesView.exports' => 'Exportar',
 			'activitiesView.imports' => 'Importar',
 			'activitiesView.exportLogs' => 'Exportar registros',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.tools' => 'Herramientas',
 			'activitiesView.toolsTitle' => 'Herramientas de la operación',
 			'activitiesView.operationDetails' => 'Detalles de la Operación',
@@ -3858,13 +3876,13 @@ extension on TranslationsEs {
 			'settings.station.unverifiedShort' => 'sin probar',
 			'settings.station.troubleshootingNotes' => 'Notas de resolución de problemas',
 			'settings.station.mainVfo' => 'VFO principal',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.useAsMainVfo' => 'Usar como VFO principal',
 			'settings.station.serialPort' => 'Puerto serie',
 			'settings.station.serialPortDescription' => 'El puerto donde aparece la interfaz CAT de la radio.',
 			'settings.station.serialPortNone' => 'No se encontraron puertos serie',
 			'settings.station.serialPortRequired' => 'Elige un puerto serie',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'puerto ${n} de ${total}',
 			'settings.station.serialDeviceRequest' => 'Agregar un dispositivo USB…',
 			'settings.station.baudRate' => 'Velocidad (baudios)',
@@ -3974,6 +3992,14 @@ extension on TranslationsEs {
 			'settings.station.voiceMemories' => 'Memorias de voz',
 			'settings.station.voiceMemoriesDescription' => 'Cuántas memorias de voz reproduce la radio por CAT. 0 si ninguna.',
 			'settings.station.voiceMemoriesInvalid' => 'Un número entero, 0 o más',
+			'settings.station.yaesuMeterCapture' => 'Capturar lecturas de medidores',
+			'settings.station.yaesuMeterCaptureDescription' => 'Lee los medidores PO, ROE y ALC de la radio mientras transmite y escribe los valores en bruto en el registro. Sirve para construir la escala que Yaesu no publica; los valores no se muestran como medidores.',
+			'settings.station.telemetryInterval' => 'Intervalo de lectura de medidores (ms)',
+			'settings.station.telemetryIntervalDescription' => 'Cada cuánto se leen los medidores de la radio mientras transmite. Déjalo en blanco para lo más rápido que admita esta conexión, hasta 200 ms.',
+			'settings.station.telemetryIntervalInvalid' => ({required Object min, required Object max}) => 'Un número entero de milisegundos, de ${min} a ${max}',
+			'settings.station.placeholderSwr' => 'Lectura de ROE',
+			'settings.station.placeholderSwrDescription' => 'Con qué ROE responde esta radio mientras transmite. Por encima de 1,8 el panel avisa.',
+			'settings.station.placeholderSwrInvalid' => 'Un número, 1 o más',
 			'settings.station.keyerNone' => 'Ninguno',
 			'settings.station.cwDialect' => 'Dialecto de manipulación de CW',
 			'settings.station.cwDialectDescription' => 'Qué forma del comando KY acepta esta radio. Ninguno no manipula nada.',
@@ -4364,6 +4390,8 @@ extension on TranslationsEs {
 			'offline.retryUnreachable' => 'Sigue sin responder.',
 			'offline.retryNotAttempted' => 'No hay nada que enviar ahora mismo.',
 			'offline.retryThrottled' => 'Acabas de intentarlo — espera un momento.',
+			_ => null,
+		} ?? switch (path) {
 			'offline.retryDisabled' => 'La sincronización está desactivada, así que no hay con qué sondear.',
 			'offline.syncService' => 'Sincronización Ham2K LoFi',
 			'offline.retryInFlight' => 'Ya se está intentando — un momento.',

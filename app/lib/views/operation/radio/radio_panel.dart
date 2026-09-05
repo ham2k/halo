@@ -59,6 +59,25 @@ const double _dimmedAlpha = 0.40;
 /// this by it would scale it twice (docs/design/ui-scaling.md).
 const double _annunciatorHeight = 22;
 
+/// The height of the meter strip below the frequency.
+///
+/// Reserved whenever the radio's driver reads meters at all, empty or not,
+/// and that is deliberate: the strip fills the moment the operator keys the
+/// rig, and a row that APPEARED then would shove the frequency up the pane
+/// at the exact moment they are watching it. A driver that reads no meters
+/// declares none and gives the height back.
+const double _meterStripHeight = 18;
+
+/// The lit height of a meter bar inside that strip — shorter than the row,
+/// so the segments sit on the text's own baseline band rather than towering
+/// over the digits beside them.
+const double _meterBarHeight = 9;
+
+/// The top of the SWR bar's scale, as a rig's own meter face draws it: 1.0
+/// to 3.0, with the red zone starting at [swrAlertThreshold]. A reading past
+/// it pins the bar full and is still spelled out in the number beside it.
+const double _swrFullScale = 3.0;
+
 class RadioPanel extends StatefulWidget {
   /// The PLACEMENT's id (`radio#1`), never the descriptor's — it is the key
   /// this pane's config is stored under, so two panes handed the same one
@@ -236,6 +255,17 @@ class _RadioPanelState extends State<RadioPanel> {
             // slot reserved for a measurement, on a pane whose whole premise
             // is what THIS radio is doing, is the invented reading to avoid.
             power: live ? state.power : null,
+            // From the DRIVER rather than from what has arrived: the strip
+            // reserves its slots before the radio has ever been keyed, so
+            // the first transmission fills them instead of creating them.
+            // The NODE's meters, not the driver's: a Yaesu shows what its
+            // calibration file describes, and the generic Yaesu entry —
+            // which does not know which radio is behind it — describes
+            // nothing. Asked of the merged config so the entry's own
+            // overrides are in it.
+            meters: node == null
+                ? const {}
+                : (_cat.typeFor(node)?.telemetryMetersFor(node.config) ?? const {}),
             // The dialog governs the VFO the app FOLLOWS
             // (core_settings_groups.dart), so it is only this pane's to open
             // when this pane is showing that radio. On a second-rig pane it
@@ -298,6 +328,11 @@ class RadioReadout extends StatelessWidget {
   final String style;
   final RadioPalette palette;
   final num? power;
+
+  /// Which meters this radio's driver can read — [EquipmentDriver.telemetryMeters],
+  /// not what has arrived. Empty hides the strip entirely.
+  final Set<RadioMeter> meters;
+
   final VoidCallback? onTune;
   final Widget? powerButton;
 
@@ -309,6 +344,7 @@ class RadioReadout extends StatelessWidget {
     required this.style,
     required this.palette,
     required this.power,
+    this.meters = const {},
     required this.onTune,
     required this.powerButton,
   });
@@ -341,11 +377,15 @@ class RadioReadout extends StatelessWidget {
     // screen reader told "not connected" would send the operator to reconnect
     // a session that is already up (docs/design/cat.md).
     final stale = state.stale;
+    // Announced ahead of the frequency, because it changes what the reading
+    // MEANS: a screen-reader user handed digits alone has no way to know
+    // the rig is on the air.
+    final tx = state.telemetry.isTransmitting ? '${t.operation.layout.panels.radioTransmitting} ' : '';
     final label = failure ??
         (stale
             ? '${p.radioStale} ${freq == null ? '' : fmtFreqToTheHz(freq)}'
             : live
-                ? '${freq == null ? p.radioNoFrequency : fmtFreqToTheHz(freq)} ${mode ?? ''}'
+                ? '$tx${freq == null ? p.radioNoFrequency : fmtFreqToTheHz(freq)} ${mode ?? ''}'
                     '${power == null ? '' : ' ${_wattsText(power!)}'}'
                 : p.radioOff);
 
@@ -382,8 +422,184 @@ class RadioReadout extends StatelessWidget {
             ),
           ),
         ),
+        if (live && meters.isNotEmpty) _meterStrip(context),
       ],
     );
+  }
+
+  /// What the radio's meters read, under the frequency.
+  ///
+  /// Rebuilt once a second on top of whatever CatService notifies, because
+  /// readings EXPIRE ([meterLinger]) and nothing notifies when they do: the
+  /// last thing a driver does before a reading goes stale is stop reporting,
+  /// so without a tick the strip would show the SWR of a transmission that
+  /// ended twenty minutes ago.
+  Widget _meterStrip(BuildContext context) => SizedBox(
+        height: _meterStripHeight,
+        child: OncePerSecond(
+          builder: (context, nowUtc) {
+            final now = nowUtc.millisecondsSinceEpoch;
+            return Row(
+              children: [
+                for (final meter in RadioMeter.values)
+                  if (meters.contains(meter))
+                    _meterSlot(context, meter, state.telemetry.fresh(meter, now)),
+              ],
+            );
+          },
+        ),
+      );
+
+  /// One meter's place in the row.
+  ///
+  /// The two with a BAR take the width that is going and the plain readings
+  /// take what they need: a bar is only worth drawing at a width it can put
+  /// segments in, and a voltage is a number an operator reads rather than
+  /// gauges.
+  Widget _meterSlot(BuildContext context, RadioMeter meter, MeterReading? reading) {
+    final bar = _barFor(meter, reading);
+    final cell = bar == null
+        ? _meter(context, meter, reading)
+        : Row(
+            children: [
+              Expanded(child: _bar(context, meter, bar)),
+              const SizedBox(width: Space.xs),
+              // Flexible, not bare: a non-flex child of a Row is given
+              // unbounded width, so the reading beside a bar would take its
+              // natural size whatever was left and push the row past its
+              // edge — which at the tightest Font Scale is every time.
+              Flexible(child: _meter(context, meter, reading)),
+            ],
+          );
+    final padded = Padding(padding: const EdgeInsets.only(right: Space.sm), child: cell);
+    // Flexible either way, never a bare child. A non-flex child of a Row is
+    // given UNBOUNDED width, so on a narrow pane — or at the tightest Font
+    // Scale — the plain readings would take everything they asked for, the
+    // bars beside them would collapse to nothing, and the row would overflow.
+    // The gauged ones take the space that is going; the plain ones take what
+    // they need and give the rest back.
+    return bar == null ? Flexible(child: padded) : Expanded(child: padded);
+  }
+
+  /// How far up its own scale a reading sits, and where that scale turns
+  /// red — null for a meter this pane does not gauge.
+  ({double fraction, double? alertFrom})? _barFor(RadioMeter meter, MeterReading? reading) {
+    switch (meter) {
+      case RadioMeter.powerOut:
+        // Against the power the radio was SET to, which is the question an
+        // operator actually has: am I making what I asked for? There is no
+        // command in any of these protocols that states a radio's rated
+        // maximum, so a scale of "full power" would be invented — and the
+        // set level is a real number the operator chose. A reading ABOVE it
+        // widens the scale rather than overflowing the bar.
+        final asked = power;
+        final measured = reading?.value ?? 0;
+        final full = asked == null ? measured : (measured > asked ? measured : asked);
+        if (full <= 0) return (fraction: 0, alertFrom: null);
+        return (fraction: measured / full, alertFrom: null);
+      case RadioMeter.swr:
+        // 1.0 to 3.0, the span a rig's own SWR scale covers, with the red
+        // zone starting at the threshold the operator is warned at.
+        final value = reading?.value ?? 1.0;
+        return (
+          fraction: ((value - 1) / (_swrFullScale - 1)).clamp(0.0, 1.0),
+          alertFrom: (swrAlertThreshold - 1) / (_swrFullScale - 1),
+        );
+      case RadioMeter.alc:
+      case RadioMeter.supplyVolts:
+        // A supply voltage has no scale worth drawing — it is 13.8 or it is
+        // a problem — and ALC is a number for a developer, not a gauge.
+        return null;
+    }
+  }
+
+  Widget _bar(BuildContext context, RadioMeter meter, ({double fraction, double? alertFrom}) bar) => SizedBox(
+        height: _meterBarHeight,
+        child: CustomPaint(
+          painter: MeterBarPainter(
+            fraction: bar.fraction,
+            alertFrom: bar.alertFrom,
+            lit: palette.ink,
+            // The LCD face has real unlit segments to borrow; the Modern one
+            // has no ghosts of its own, so the unlit track is the label
+            // colour worn thin.
+            unlit: palette.ghost ?? palette.label.withValues(alpha: 0.20),
+            alert: _alertColor(context),
+          ),
+        ),
+      );
+
+  /// One meter's reading, or its label alone while nothing has been read.
+  ///
+  /// The label stays visible with no value behind it, rather than the slot
+  /// going blank: a strip that emptied out would read as a fault, and what
+  /// is actually true is that the radio is not transmitting and there is
+  /// nothing to measure.
+  Widget _meter(BuildContext context, RadioMeter meter, MeterReading? reading) {
+    final alert = meter == RadioMeter.swr && reading != null && reading.value >= swrAlertThreshold;
+    final text = reading == null ? _meterLabel(meter) : _meterText(meter, reading.value);
+    final base = (style == radioStyleLcd
+            ? TextStyle(fontSize: _meterStripHeight * 0.72, fontWeight: FontWeight.w700, height: 1.0)
+            : Theme.of(context).textTheme.labelSmall ?? const TextStyle())
+        .copyWith(
+      color: alert ? _alertColor(context) : palette.label,
+      fontWeight: alert ? FontWeight.w700 : null,
+      // The digits change every poll; without tabular figures the whole
+      // strip shuffles sideways while the operator is transmitting.
+      fontFeatures: const [FontFeature.tabularFigures()],
+    );
+    // Ellipsised rather than wrapped: the strip is one row tall by
+    // construction, and a second line would be clipped rather than shown.
+    final label = Text(text, style: base, maxLines: 1, overflow: TextOverflow.ellipsis);
+    if (!alert) return label;
+    // Named rather than left as bare digits: "SWR 2.5" read aloud says
+    // nothing about whether 2.5 is a problem, and this strip's whole reason
+    // for colouring it — and for the red zone painted on the bar beside it —
+    // is that it is.
+    return Semantics(
+      label: '$text — ${t.operation.layout.panels.radioSwrHigh}',
+      excludeSemantics: true,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(MdiIcons.alertOutline, size: _meterStripHeight * 0.8, color: _alertColor(context)),
+          const SizedBox(width: Space.xxs),
+          // The glyph keeps its size and the digits give way: an SWR warning
+          // that lost its icon to a narrow pane would be a plain number
+          // again, which is the one thing colour alone cannot say.
+          Flexible(child: label),
+        ],
+      ),
+    );
+  }
+
+  /// Red on both faces, and the only red either of them wears.
+  ///
+  /// The TX legend deliberately does NOT use it, though a rig's own TX lamp
+  /// is red: transmitting is what the operator asked for, and if the normal
+  /// case is already lit red then the one thing on this pane that means
+  /// "stop and look" has nothing left to say it with.
+  Color _alertColor(BuildContext context) =>
+      style == radioStyleLcd ? const Color(0xFFE04A2F) : Theme.of(context).colorScheme.error;
+
+  String _meterLabel(RadioMeter meter) {
+    final p = t.operation.layout.panels;
+    return switch (meter) {
+      RadioMeter.powerOut => p.radioWatts,
+      RadioMeter.swr => p.radioSwr,
+      RadioMeter.alc => p.radioAlc,
+      RadioMeter.supplyVolts => p.radioVolts,
+    };
+  }
+
+  String _meterText(RadioMeter meter, num value) {
+    final p = t.operation.layout.panels;
+    return switch (meter) {
+      RadioMeter.powerOut => '${powerText(value)} ${p.radioWatts}',
+      RadioMeter.swr => '${p.radioSwr} ${value.toStringAsFixed(1)}',
+      RadioMeter.alc => '${p.radioAlc} ${(value * 100).round()}%',
+      RadioMeter.supplyVolts => '${value.toStringAsFixed(1)} ${p.radioVolts}',
+    };
   }
 
   /// The row above the frequency: mode at the left, power at the right — the
@@ -404,6 +620,14 @@ class RadioReadout extends StatelessWidget {
             if (stale) ...[
               const SizedBox(width: Space.xs),
               _mode(context, t.operation.layout.panels.radioStale),
+            ],
+            // Only when the radio has SAID it is keyed. A driver that
+            // cannot answer leaves this null, and an unlit TX legend on a
+            // rig that is actually transmitting is honest about what the
+            // app knows; a lit one that guessed would not be.
+            if (state.telemetry.isTransmitting) ...[
+              const SizedBox(width: Space.xs),
+              _mode(context, t.operation.layout.panels.radioTransmitting),
             ],
             const Spacer(),
             _power(context),

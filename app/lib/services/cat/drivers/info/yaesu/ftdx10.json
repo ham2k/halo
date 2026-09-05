@@ -1,0 +1,65 @@
+{
+  "manufacturer": "Yaesu",
+  "model": "FTdx10",
+  "meterCalibration": {
+    "_comments": "As reported in Hamlib",
+    "strength": [
+      { "value": 0, "db": -54, "tick": "S0" },
+      { "value": 12, "db": -48, "tick": "S1" },
+      { "value": 27, "db": -42, "tick": "S2" },
+      { "value": 40, "db": -36, "tick": "S3" },
+      { "value": 55, "db": -30, "tick": "S4" },
+      { "value": 65, "db": -24, "tick": "S5" },
+      { "value": 80, "db": -18, "tick": "S6" },
+      { "value": 95, "db": -12, "tick": "S7" },
+      { "value": 112, "db": -6, "tick": "S8" },
+      { "value": 130, "db": 0, "tick": "S9" },
+      { "value": 150, "db": 10, "tick": "S9+10" },
+      { "value": 172, "db": 20, "tick": "S9+20" },
+      { "value": 190, "db": 30, "tick": "S9+30" },
+      { "value": 220, "db": 40, "tick": "S9+40" },
+      { "value": 240, "db": 50, "tick": "S9+50" },
+      { "value": 250, "db": 60, "tick": "S9+60" }
+    ],
+    "power": [
+      { "value": 27, "watts": 5.0 },
+      { "value": 94, "watts": 25.0 },
+      { "value": 147, "watts": 50.0 },
+      { "value": 176, "watts": 75.0 },
+      { "value": 205, "watts": 100.0 }
+    ],
+    "swr": [
+      { "value": 0, "ratio": 1.0 },
+      { "value": 26, "ratio": 1.2 },
+      { "value": 52, "ratio": 1.5 },
+      { "value": 89, "ratio": 2.0 },
+      { "value": 126, "ratio": 3.0 },
+      { "value": 173, "ratio": 4.0 },
+      { "value": 236, "ratio": 5.0 },
+      { "value": 255, "ratio": 25.0 }
+    ],
+    "drain": [
+      { "value": 0, "amperes": 0.0 },
+      { "value": 255, "amperes": 25.5 }
+    ],
+    "voltage": [
+      { "value": 0, "volts": 0.0 },
+      { "value": 192, "volts": 13.8 }
+    ],
+    "compression": [
+      { "value": 0, "db": 0.0 },
+      { "value": 40, "db": 2.5 },
+      { "value": 60, "db": 5.0 },
+      { "value": 85, "db": 7.5 },
+      { "value": 135, "db": 10.0 },
+      { "value": 150, "db": 12.5 },
+      { "value": 175, "db": 15.0 },
+      { "value": 195, "db": 17.5 },
+      { "value": 220, "db": 20.0 }
+    ],
+    "alc": [
+      { "value": 0, "level": 0.0 },
+      { "value": 64, "level": 1.0 }
+    ]
+  }
+}
