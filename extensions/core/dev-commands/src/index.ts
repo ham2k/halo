@@ -275,6 +275,48 @@ const DevSentryCommand = {
   catalog: devCatalog('DEVSENTRY', 'Send a test error report', { params: '[message]' }),
 }
 
+// DEVBENCH [n]: log a synthetic CQ WW contest into a throwaway Test Operation
+// and report what each phase cost as the log grew (HALO-119). The count is
+// optional and defaults app-side.
+//
+// Developer mode only, and like DEVTT that gate is checked HERE as well as in
+// the app — the sandbox can see `ctx.developerMode`, and returning null keeps
+// the command from existing at all for an ordinary operator. The app checks
+// again because this one writes several thousand contacts, and a gate that
+// matters is not left to the caller.
+//
+// It DOES carry a `catalog`, unlike DEVTT: a benchmark that cleans up after
+// itself is safe to discover, where a silently-travelled clock is not.
+const DEVBENCH_MATCH = /^DEVBENCH(?:\s+(\d+))?$/i
+
+const DevBenchCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (!ctx.developerMode) return null
+    const match = DEVBENCH_MATCH.exec(input.trim())
+    if (!match) return null
+    const count = match[1] ? Number(match[1]) : null
+    if (count !== null && count < 1) return { mixedCase: true, error: 'DEVBENCH needs a positive number of QSOs' }
+    // Refused here rather than clamped silently by the app: the confirmation
+    // below quotes the number back, and quoting one the run will not use tells
+    // the operator something untrue at the one moment they can still say no.
+    if (count !== null && count > 20000) {
+      return { mixedCase: true, error: 'DEVBENCH tops out at 20000 QSOs' }
+    }
+    return {
+      mixedCase: true,
+      // Says "written and synced" because they are: the workload logs into a
+      // real Test Operation, which syncs like any other and can surface on the
+      // operator's other devices before the purge tombstones it back out.
+      describe: count
+        ? `Benchmark logging ${count} QSOs? They are written and synced, then removed.`
+        : 'Benchmark logging? Contacts are written and synced, then removed.',
+      commands: [{ devBench: count === null ? {} : { qsoCount: count } }],
+    }
+  },
+
+  catalog: devCatalog('DEVBENCH', 'Benchmark logging a contest', { params: '[qsos]' }),
+}
+
 // "RELOAD POTA" / "RELOAD SOTA" -> reload data files whose category matches
 // that word; "RELOAD ALL", "RELOADALL", or bare "RELOAD!" -> reload every
 // data file. Bare "RELOAD" (no target, no ALL/!) isn't executable by itself,
@@ -550,5 +592,6 @@ defineExtension({
     registerHook('command', { key: 'dev-commands-seed', hook: SeedCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-exp', hook: ExpCommand, priority: 100 })
     registerHook('command', { key: 'dev-commands-devtimetravel', hook: DevTimeTravelCommand, priority: 100 })
+    registerHook('command', { key: 'dev-commands-devbench', hook: DevBenchCommand, priority: 100 })
   },
 })

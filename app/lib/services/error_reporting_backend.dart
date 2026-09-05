@@ -27,6 +27,20 @@ abstract class ErrorReportingBackend {
   /// native crash this app's own Dart error hooks never see (crashpad
   /// captures those independently of everything above).
   void addBreadcrumb(String message, {String? category});
+
+  /// Uploads a diagnostic report the OPERATOR deliberately asked for — a
+  /// benchmark run, a device profile — with [title] naming the kind of report
+  /// and [body] carrying its detail.
+  ///
+  /// Not [captureException] with a synthetic error: nothing here went wrong,
+  /// and dressing a result as a failure would put it in the same issue stream
+  /// as real crashes, where it would be triaged as one. A backend that groups
+  /// or routes by kind needs to be able to tell them apart, which is why this
+  /// is its own entry point rather than a flag on an existing one.
+  ///
+  /// Never called on this app's own initiative: an operator ran a command and
+  /// is waiting to be told what it found.
+  void captureDiagnostic({required String title, required String body});
 }
 
 class NoopErrorReportingBackend implements ErrorReportingBackend {
@@ -43,4 +57,7 @@ class NoopErrorReportingBackend implements ErrorReportingBackend {
 
   @override
   void addBreadcrumb(String message, {String? category}) {}
+
+  @override
+  void captureDiagnostic({required String title, required String body}) {}
 }

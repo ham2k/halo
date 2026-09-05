@@ -71,6 +71,23 @@ void main() {
     expect(dispatched.single.value, {'seconds': 20});
   });
 
+  test('devBench reaches runAction with its params', () async {
+    // Without this branch DEVBENCH interprets, the palette accepts it, and
+    // nothing runs — the only trace a "no dispatch branch" line in a console
+    // nobody is watching.
+    final (commandEngine, dispatched) = await engine();
+
+    await commandEngine.dispatchActions([
+      {
+        'devBench': {'qsoCount': 2000},
+      },
+    ]);
+
+    expect(dispatched, hasLength(1));
+    expect(dispatched.single.key, 'devBench');
+    expect(dispatched.single.value, {'qsoCount': 2000});
+  });
+
   test('updateOperation reaches runAction, carrying the open operation\'s uuid', () async {
     // OPER/POSITION are app-scoped: the logging panel contributes only the
     // uuid, which the open operation's context has too. Without a branch here

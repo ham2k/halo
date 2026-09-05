@@ -6907,6 +6907,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         await widget.onCommandAction?.call('devPopup');
       } else if (map['devTimeTravel'] is Map) {
         await widget.onCommandAction?.call('devTimeTravel', (map['devTimeTravel'] as Map).cast<String, dynamic>());
+      } else if (map['devBench'] is Map) {
+        await widget.onCommandAction?.call('devBench', (map['devBench'] as Map).cast<String, dynamic>());
       } else if (map['reloadDataFiles'] is Map) {
         await widget.onCommandAction?.call('reloadDataFiles', (map['reloadDataFiles'] as Map).cast<String, dynamic>());
       } else if (map['toggleExperiment'] is Map) {

@@ -132,6 +132,32 @@ class ErrorReportingService {
     }
   }
 
+  /// Uploads a diagnostic report the operator asked for — see
+  /// [ErrorReportingBackend.captureDiagnostic]. Swallows a SYNCHRONOUS backend
+  /// failure for the same reason [breadcrumb] does: the operator is waiting on
+  /// a result, and a reporting backend that cannot send must not take the
+  /// result down with it.
+  ///
+  /// An asynchronous one is not caught here — the real backend's upload is
+  /// unawaited — and can still reach [run]'s fallback zone, exactly as
+  /// [breadcrumb]'s can. So a failed upload may surface as an ordinary error
+  /// notice moments after the operator was told the run succeeded.
+  /// Returns whether the backend took it. A caller that tells the operator
+  /// their report left the device must not say so on the strength of
+  /// [reportingEnabled] alone: that is a configuration flag, and a backend
+  /// that threw leaves the only copy on screen behind a notice they are about
+  /// to dismiss.
+  static bool diagnostic({required String title, required String body}) {
+    debugPrint('[diagnostic] $title\n$body');
+    try {
+      _backend.captureDiagnostic(title: title, body: body);
+      return true;
+    } catch (error, stackTrace) {
+      debugPrint('[diagnostic] backend threw, ignoring: $error\n$stackTrace');
+      return false;
+    }
+  }
+
   /// Consecutive failures per [reportIfRepeated] key. Process-wide and
   /// never persisted: "stuck" is a claim about this session.
   static final Map<String, int> _failureStreaks = {};

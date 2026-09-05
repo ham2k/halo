@@ -31,6 +31,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 
+import 'tools/contest_bench.dart';
 import 'tools/operation_title.dart';
 import 'views/command_dialog.dart';
 import 'views/confirm_device_dialog.dart';
@@ -2898,6 +2899,137 @@ class HaLoServices {
   /// test can find the item rather than matching on its text.
   static const timeTravelStatusKey = 'clock:timeTravel';
 
+  /// A run in flight. DEVBENCH yields to the event loop on every contact, so
+  /// the palette stays usable and a second run can be started on top of the
+  /// first — two Test Operations interleaving their inserts and rescores
+  /// through one database, each timing the other's load, which corrupts the
+  /// slope this tool exists to report. They also share the `devbench` status
+  /// key, so whichever finishes first clears the other's progress. DEVHAMMER
+  /// guards the same way for the same reason.
+  bool _benchmarking = false;
+
+  /// How often the DEVBENCH progress bar advances, in contacts. The bench runs
+  /// on the UI isolate, so every repaint is time the run is not measuring the
+  /// thing it exists to measure — and at the default 100-QSO size a per-contact
+  /// bar would be pure overhead for a run that finishes in a second anyway.
+  static const _benchProgressEvery = 100;
+
+  /// DEVBENCH: log a synthetic contest into a throwaway Test Operation and
+  /// report what each phase cost as the log grew (HALO-119).
+  ///
+  /// The developer-mode gate is re-checked here rather than trusted from the
+  /// command hook. The hook's own check keeps the command from existing for an
+  /// ordinary operator, but this writes thousands of contacts and purges an
+  /// operation, and a gate that matters does not live only in the sandbox —
+  /// the same reasoning as [_travelTime]'s.
+  Future<CommandActionOutcome?> _runContestBench(Map<String, dynamic>? params) async {
+    if (!settings.developerMode) {
+      return (text: 'DEVBENCH needs developer mode', failed: true);
+    }
+    if (_benchmarking) return (text: 'A benchmark is already running', failed: true);
+
+    // Read defensively and BEFORE the flag is raised. A command action is raw
+    // JSON from any hook, template or third-party extension — the SDK's
+    // `qsoCount?: number` is a compile-time claim, not a runtime one — so a
+    // string here would throw a cast error, and anything that throws between
+    // raising the flag and entering the try leaves it raised for the session,
+    // refusing every later run.
+    //
+    // Clamped rather than trusted for the same reason: a zero would run no
+    // contacts, close no bands, and hand the report an "expected growth" of
+    // -1.0x, nonsense carrying the confidence of a measurement.
+    final requested = params?['qsoCount'];
+    final qsoCount = (requested is num ? requested.toInt() : 100).clamp(1, 20000);
+
+    _benchmarking = true;
+
+    // A determinate bar from the start: a run of a few thousand contacts takes
+    // long enough that an operator with no feedback has no way to tell it from
+    // a hang. Updated every `_benchProgressEvery` contacts rather than every
+    // one — repainting the bar per contact would have the bench measuring the
+    // repaints as much as the work.
+    statusBar.setProgress(
+      key: 'devbench',
+      icon: 'speedometer',
+      title: 'Benchmarking',
+      text: '0 of $qsoCount QSOs',
+      value: 0,
+    );
+    try {
+      final result = await runContestBench(
+        qsos: qsos,
+        operations: operations,
+        extensions: extensions,
+        scoring: scoring,
+        qsoCount: qsoCount,
+        purge: purgeOperation,
+        onProgress: (done, total) {
+          if (done % _benchProgressEvery != 0 && done != total) return;
+          statusBar.setProgress(
+            key: 'devbench',
+            icon: 'speedometer',
+            title: 'Benchmarking',
+            text: '$done of $total QSOs',
+            value: done / total,
+          );
+        },
+      );
+
+      // On screen: the notice card renders markdown tables, so the operator
+      // gets the shape rather than a number they would have to trust. Not
+      // persisted, because the copy action is the point and an action cannot
+      // survive into notice history.
+      statusBar.showNotice(
+        key: 'devbench:result',
+        icon: 'speedometer',
+        title: 'Benchmark: $qsoCount QSOs',
+        text: result.markdownSummary,
+        persist: false,
+        actions: [
+          StatusBarAction(
+            label: 'Copy details',
+            onTap: () => unawaited(Clipboard.setData(ClipboardData(text: result.plainReport))),
+          ),
+        ],
+      );
+
+      // And a copy off the device, so a slow phone's numbers can be read
+      // without the phone. Not an exception: nothing went wrong, and the
+      // reporting backend keeps this out of the crash stream.
+      final uploaded = ErrorReportingService.diagnostic(title: 'DEVBENCH', body: result.plainReport);
+
+      // A build with no reporting backend keeps the numbers on the device, and
+      // an operator told nothing would reasonably believe they are retrievable
+      // from it. DEVSENTRY draws the same distinction.
+      //
+      // It cannot promise the upload LANDED. The Sentry backend fires its
+      // capture unawaited, so `uploaded` only catches a backend that throws
+      // synchronously, and `reportingEnabled` stays true even when that
+      // backend's own init failed. Copy details is the answer to both, which
+      // is why the notice carries it.
+      final sent = uploaded && ErrorReportingService.reportingEnabled ? '' : ' (local only)';
+      return (text: '${result.headline}$sent', failed: false);
+    } on BenchCleanupFailed catch (error, stackTrace) {
+      // The one outcome that leaves the log dirty, so it says so instead of
+      // being reported as an ordinary failure.
+      ErrorReportingService.report(error, stackTrace, context: 'devbench:cleanup');
+      return (
+        text: 'Benchmark left its test operation behind — run PURGETESTS to remove it',
+        failed: true,
+      );
+    } on BenchNotConfigured catch (error) {
+      // The operator's to fix, so it is NOT reported: an unconfigured run is
+      // not a defect, and uploading it would put it in the crash stream.
+      return (text: '$error', failed: true);
+    } catch (error, stackTrace) {
+      ErrorReportingService.report(error, stackTrace, context: 'devbench');
+      return (text: 'Benchmark failed: $error', failed: true);
+    } finally {
+      _benchmarking = false;
+      statusBar.clear('devbench');
+    }
+  }
+
   /// DEVTT: moves the app clock (docs/design/time.md).
   ///
   /// Both gates live here rather than in the command hook, because neither the
@@ -3176,6 +3308,8 @@ class HaLoServices {
           text: ErrorReportingService.reportingEnabled ? t.commands.sentryTestSent : t.commands.sentryTestLocalOnly,
           failed: false,
         );
+      case 'devBench':
+        return _runContestBench(params);
       case 'sendSpots':
         return _sendSpot(params ?? const {});
       case 'toggleExperiment':

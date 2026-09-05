@@ -1210,6 +1210,12 @@ export interface CommandAction {
   /// neither the sync account nor the clock's current reading is visible from
   /// inside the sandbox.
   devTimeTravel?: { reset?: boolean; deltaMillis?: number; speed?: number }
+  /// Runs the logging benchmark (DEVBENCH) against a throwaway Test Operation
+  /// and reports what each phase cost as the log grew. Declared here like every
+  /// other action so a misspelled key is a typecheck error rather than a
+  /// dispatch that silently does nothing — the index signature below would
+  /// otherwise accept it. Developer mode is re-checked app-side.
+  devBench?: { qsoCount?: number }
   /// Toggles an experimental feature (EXP command). The app resolves
   /// `token` against `app/experiments.yaml`'s keys and aliases and flips
   /// that experiment's persisted state; an unknown token reports an error

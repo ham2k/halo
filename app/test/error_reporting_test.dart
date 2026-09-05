@@ -80,6 +80,7 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   final exceptions = <RecordedException>[];
   final userContextCalls = <RecordedUserContext>[];
   final breadcrumbs = <RecordedBreadcrumb>[];
+  final diagnostics = <(String, String)>[];
 
   /// Simulates the backend's own init failing before it ever calls
   /// startBody (e.g. a real Sentry init throwing) — the caller must still
@@ -91,7 +92,16 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   /// call sites run it right before a dispose()'s own teardown.
   final bool breadcrumbThrows;
 
-  FakeErrorReportingBackend({this.failsToRun = false, this.breadcrumbThrows = false});
+  /// Simulates the diagnostic upload throwing synchronously. The operator is
+  /// waiting on a result when this runs, so a backend that cannot send must
+  /// not take the result down with it.
+  final bool diagnosticThrows;
+
+  FakeErrorReportingBackend({
+    this.failsToRun = false,
+    this.breadcrumbThrows = false,
+    this.diagnosticThrows = false,
+  });
 
   @override
   Future<bool> run(FutureOr<void> Function() startBody) async {
@@ -103,6 +113,12 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   @override
   void captureException(Object error, StackTrace? stackTrace, {String? context}) {
     exceptions.add(RecordedException(error, stackTrace, context));
+  }
+
+  @override
+  void captureDiagnostic({required String title, required String body}) {
+    if (diagnosticThrows) throw StateError('diagnostic upload failed');
+    diagnostics.add((title, body));
   }
 
   @override
@@ -329,6 +345,34 @@ void main() {
     final backend = FakeErrorReportingBackend(breadcrumbThrows: true);
     await withErrorHooks(() async {
       expect(() => ErrorReportingService.breadcrumb('map webview disposing', category: 'webview'), returnsNormally);
+    }, backend: backend);
+  });
+
+  test('diagnostic() reaches the backend with what it was given', () async {
+    final backend = FakeErrorReportingBackend();
+    await withErrorHooks(() async {
+      // The RETURN value, not just the call: DEVBENCH's headline says
+      // "(local only)" on `!uploaded`, so a `true` here that should be `false`
+      // tells an operator their report left the device when it did not.
+      expect(ErrorReportingService.diagnostic(title: 'DEVBENCH', body: 'insert: 0.4ms'), isTrue);
+    }, backend: backend);
+
+    expect(backend.diagnostics, [('DEVBENCH', 'insert: 0.4ms')]);
+  });
+
+  test('diagnostic() swallows a throwing backend — an operator is waiting on the result', () async {
+    // The caller is a command reporting a benchmark it just finished. A
+    // reporting backend that cannot send must not take the result down with
+    // it, so the failure stops here rather than reaching the command.
+    final backend = FakeErrorReportingBackend(diagnosticThrows: true);
+    await withErrorHooks(() async {
+      expect(
+        () => ErrorReportingService.diagnostic(title: 'DEVBENCH', body: 'rows'),
+        returnsNormally,
+      );
+      // And says it did not land, which is what stops the headline claiming
+      // the numbers reached the backend.
+      expect(ErrorReportingService.diagnostic(title: 'DEVBENCH', body: 'rows'), isFalse);
     }, backend: backend);
   });
 

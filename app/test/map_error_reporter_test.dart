@@ -39,6 +39,9 @@ class _RecordingBackend implements ErrorReportingBackend {
 
   @override
   void addBreadcrumb(String message, {String? category}) {}
+
+  @override
+  void captureDiagnostic({required String title, required String body}) {}
 }
 
 void main() {
