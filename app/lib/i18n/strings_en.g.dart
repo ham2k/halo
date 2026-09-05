@@ -3800,6 +3800,12 @@ class Translations$settings$station$en {
 	/// en: 'port $n of $total'
 	String serialPortOrdinal({required Object n, required Object total}) => 'port ${n} of ${total}';
 
+	/// en: 'suggested'
+	String get serialPortSuggested => 'suggested';
+
+	/// en: 'Recently connected'
+	String get serialPortJustNow => 'Recently connected';
+
 	/// en: 'Add a USB device…'
 	String get serialDeviceRequest => 'Add a USB device…';
 
@@ -7024,6 +7030,8 @@ extension on Translations {
 			'settings.station.serialPortNone' => 'No serial ports found',
 			'settings.station.serialPortRequired' => 'Choose a serial port',
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'port ${n} of ${total}',
+			'settings.station.serialPortSuggested' => 'suggested',
+			'settings.station.serialPortJustNow' => 'Recently connected',
 			'settings.station.serialDeviceRequest' => 'Add a USB device…',
 			'settings.station.baudRate' => 'Speed (baud)',
 			'settings.station.baudRateDescription' => 'Must match the radio\'s own CAT menu — a mismatch answers with garbage and no error.',
@@ -7528,10 +7536,10 @@ extension on Translations {
 			'offline.noRoute' => 'No network connection at all.',
 			'offline.unreachable' => 'The network is up, but nothing is answering — often a sign-in page waiting in a browser.',
 			'offline.reachable' => 'All services responding as expected.',
-			'offline.whatStops' => 'Lookups, spots and data files are paused. Logging and nearby sync are not.',
-			'offline.servicesTitle' => 'Services',
 			_ => null,
 		} ?? switch (path) {
+			'offline.whatStops' => 'Lookups, spots and data files are paused. Logging and nearby sync are not.',
+			'offline.servicesTitle' => 'Services',
 			'offline.noServices' => 'Nothing has reported in yet.',
 			'offline.lastSuccess' => ({required Object when}) => 'Last answered ${when} ago',
 			'offline.neverSucceeded' => 'Has not answered yet',

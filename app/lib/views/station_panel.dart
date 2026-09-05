@@ -522,9 +522,13 @@ class StationPanel extends StatelessWidget {
     // reads it. Every offered pairing's transport gets prepared, not just
     // the selected one: they all render, so they all have to be ready before
     // the first build.
-    for (final candidate in variants) {
-      await candidate.transport.prepareConfigElements();
+    Future<void> prepareVariants() async {
+      for (final candidate in variants) {
+        await candidate.transport.prepareConfigElements();
+      }
     }
+
+    await prepareVariants();
     if (!context.mounted) return null;
 
     // Reused whenever an action changes what's available to pick (a newly
@@ -718,6 +722,21 @@ class StationPanel extends StatelessWidget {
                 state: _cat.stateFor(node.uuid),
               )),
             ),
+      // A USB cable plugged in while this pane is open should show up in the
+      // port picker without closing and reopening the editor — that pause,
+      // with the cable in hand, is exactly when the operator is looking at
+      // this form. Every transport gets re-prepared and the whole element
+      // list rebuilt, because the transport's own state is what
+      // configElements() reads; showFormPane republishes only when the
+      // result actually differs, so an untouched machine costs one
+      // enumeration and no rebuild.
+      refreshElements: (
+        every: const Duration(seconds: 3),
+        build: () async {
+          await prepareVariants();
+          return buildElements();
+        },
+      ),
       // Cancel/Save/Close and the rest of the pane's chrome. Without this
       // the form's own fields are translated and the buttons around them
       // are not.

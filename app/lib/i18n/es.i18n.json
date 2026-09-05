@@ -1266,6 +1266,8 @@
       "serialPortNone": "No se encontraron puertos serie",
       "serialPortRequired": "Elige un puerto serie",
       "serialPortOrdinal": "puerto $n de $total",
+      "serialPortSuggested": "sugerido",
+      "serialPortJustNow": "Conectado recientemente",
       "serialDeviceRequest": "Agregar un dispositivo USB…",
       "baudRate": "Velocidad (baudios)",
       "baudRateDescription": "Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.",

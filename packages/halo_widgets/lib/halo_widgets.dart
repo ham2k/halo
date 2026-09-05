@@ -26,6 +26,7 @@ export 'src/platform_chrome.dart';
 export 'src/qso_list.dart';
 export 'src/ref_text_input.dart';
 export 'src/resizable_split_view.dart';
+export 'src/row_select_field.dart';
 export 'src/secondary_control_row.dart';
 export 'src/secret_text_field.dart';
 export 'src/section_header.dart';

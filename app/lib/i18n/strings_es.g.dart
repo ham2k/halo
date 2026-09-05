@@ -1809,6 +1809,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get serialPortNone => 'No se encontraron puertos serie';
 	@override String get serialPortRequired => 'Elige un puerto serie';
 	@override String serialPortOrdinal({required Object n, required Object total}) => 'puerto ${n} de ${total}';
+	@override String get serialPortSuggested => 'sugerido';
+	@override String get serialPortJustNow => 'Conectado recientemente';
 	@override String get serialDeviceRequest => 'Agregar un dispositivo USB…';
 	@override String get baudRate => 'Velocidad (baudios)';
 	@override String get baudRateDescription => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.';
@@ -3884,6 +3886,8 @@ extension on TranslationsEs {
 			'settings.station.serialPortNone' => 'No se encontraron puertos serie',
 			'settings.station.serialPortRequired' => 'Elige un puerto serie',
 			'settings.station.serialPortOrdinal' => ({required Object n, required Object total}) => 'puerto ${n} de ${total}',
+			'settings.station.serialPortSuggested' => 'sugerido',
+			'settings.station.serialPortJustNow' => 'Conectado recientemente',
 			'settings.station.serialDeviceRequest' => 'Agregar un dispositivo USB…',
 			'settings.station.baudRate' => 'Velocidad (baudios)',
 			'settings.station.baudRateDescription' => 'Debe coincidir con el menú CAT de la radio — si no, responde con datos ilegibles y sin error.',
@@ -4388,10 +4392,10 @@ extension on TranslationsEs {
 			'offline.retrying' => 'Intentando…',
 			'offline.retryReached' => 'Conexión restablecida.',
 			'offline.retryUnreachable' => 'Sigue sin responder.',
-			'offline.retryNotAttempted' => 'No hay nada que enviar ahora mismo.',
-			'offline.retryThrottled' => 'Acabas de intentarlo — espera un momento.',
 			_ => null,
 		} ?? switch (path) {
+			'offline.retryNotAttempted' => 'No hay nada que enviar ahora mismo.',
+			'offline.retryThrottled' => 'Acabas de intentarlo — espera un momento.',
 			'offline.retryDisabled' => 'La sincronización está desactivada, así que no hay con qué sondear.',
 			'offline.syncService' => 'Sincronización Ham2K LoFi',
 			'offline.retryInFlight' => 'Ya se está intentando — un momento.',

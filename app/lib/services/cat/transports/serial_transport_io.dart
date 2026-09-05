@@ -24,6 +24,7 @@ import 'dart:io' show Platform;
 import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:flutter/services.dart' show MethodChannel, MissingPluginException, PlatformException;
 import 'package:flutter_libserialport/flutter_libserialport.dart';
 import 'package:usb_serial/usb_serial.dart' as usb;
@@ -537,12 +538,36 @@ class _AndroidSerialConnection implements EquipmentConnection {
   Future<void> close() async => _markClosed();
 }
 
+/// What each port's USB descriptors said, and when they were read.
+///
+/// The NAMES are never cached — a USB adapter can appear or vanish between
+/// one look and the next — but reading these fields means OPENING the port,
+/// and an open picker re-enumerates every few seconds. Repeating those opens
+/// every tick would poke a port a live CAT session is holding, and is the
+/// shape of the unbounded synchronous open that wedges the UI isolate on a
+/// stuck COM port.
+///
+/// So each answer is kept, but only for [_descriptorTtl], because a port NAME
+/// does not identify hardware: Windows hands `COM3` to whatever is plugged in
+/// next, Linux the same with `/dev/ttyUSB0`. Cached for the life of the
+/// process, one adapter swapped for another while no picker is open would
+/// wear the old one's description, VID and PID — which is what a `suggest`
+/// pattern matches on, what the duplicate numbering counts, and what an
+/// equipment report quotes. An expiry bounds that lie to half a minute
+/// instead of a session, and still spares all but one enumeration in ten.
+///
+/// The stamp is [realNowMillis]: this is a cache expiry, real elapsed time,
+/// and must not travel with the app clock (docs/design/time.md §1).
+final Map<String, ({SerialPortOption option, int readAtMillis})> _portDescriptors = {};
+
+const _descriptorTtl = Duration(seconds: 30);
+
 /// Ports the app could open, enumerated fresh — a USB adapter can appear or
-/// vanish between one look and the next, so this is never cached.
+/// vanish between one look and the next, so the LIST is never cached (see
+/// [_portDescriptors] for what is).
 List<SerialPortOption> availableSerialPorts() {
   _quietLibserialport();
 
-  final options = <SerialPortOption>[];
   final List<String> names;
   try {
     names = SerialPort.availablePorts;
@@ -556,33 +581,58 @@ List<SerialPortOption> availableSerialPorts() {
     return const [];
   }
 
-  for (final name in names) {
-    final port = SerialPort(name);
-    // Each attribute in its own try. libserialport reads several of these by
-    // opening the port, and on macOS that fails with EAGAIN for every port —
-    // so fetching them together would throw on `description` and silently
-    // cost us the USB identity as well, leaving the picker showing bare
-    // device names like `cu.usbserial-01AF7D0E0`.
-    T? probe<T>(String field, T Function() read) {
-      try {
-        return read();
-      } catch (e) {
-        debugPrint('[cat] port $name: no $field ($e)');
-        return null;
-      }
-    }
+  final now = realNowMillis();
+  _portDescriptors.removeWhere((name, _) => !names.contains(name));
 
-    options.add(SerialPortOption(
-      name: name,
-      description: probe<String?>('description', () => port.description),
-      manufacturer: probe<String?>('manufacturer', () => port.manufacturer),
-      productName: probe<String?>('productName', () => port.productName),
-      serialNumber: probe<String?>('serialNumber', () => port.serialNumber),
-      vendorId: probe<int?>('vendorId', () => port.vendorId),
-      productId: probe<int?>('productId', () => port.productId),
-    ));
-    port.dispose();
+  return [
+    for (final name in names)
+      if (_portDescriptors[name] case final cached?
+          when now - cached.readAtMillis < _descriptorTtl.inMilliseconds)
+        cached.option
+      else
+        _remember(_describeSerialPort(name), now),
+  ];
+}
+
+/// Keeps [option] as this port's answer for the next [_descriptorTtl].
+///
+/// A probe that read NOTHING is kept too, which looks wrong and is not: the
+/// ports that refuse to be opened are exactly the busy ones — this app's own
+/// live CAT session, or WSJT-X and fldigi holding a port — so re-probing them
+/// on every tick is an open attempt against a busy port every three seconds,
+/// on the UI isolate. The expiry is what recovers the descriptors once the
+/// port frees up, at the cost of up to half a minute showing a bare name.
+SerialPortOption _remember(SerialPortOption option, int nowMillis) {
+  _portDescriptors[option.name] = (option: option, readAtMillis: nowMillis);
+  return option;
+}
+
+SerialPortOption _describeSerialPort(String name) {
+  final port = SerialPort(name);
+  // Each attribute in its own try, because on macOS they do not fail
+  // together: `vendorId`/`productId` throw for every port, while
+  // `description` answers normally (a CP2105 reads back as "CP2105 Dual USB
+  // to UART Bridge Controller" — observed on macOS 26). Fetched as one
+  // block, the USB ids' throw would cost the description too, leaving the
+  // picker showing bare device names like `cu.usbserial-01AF7D0E0`.
+  T? probe<T>(String field, T Function() read) {
+    try {
+      return read();
+    } catch (e) {
+      debugPrint('[cat] port $name: no $field ($e)');
+      return null;
+    }
   }
 
-  return options;
+  final option = SerialPortOption(
+    name: name,
+    description: probe<String?>('description', () => port.description),
+    manufacturer: probe<String?>('manufacturer', () => port.manufacturer),
+    productName: probe<String?>('productName', () => port.productName),
+    serialNumber: probe<String?>('serialNumber', () => port.serialNumber),
+    vendorId: probe<int?>('vendorId', () => port.vendorId),
+    productId: probe<int?>('productId', () => port.productId),
+  );
+  port.dispose();
+  return option;
 }

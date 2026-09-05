@@ -226,7 +226,10 @@ void main() {
       // about a dual-port bridge actionable is which of its two ports the
       // operator picked, and that lives only in the option's label.
       final report = reportFor(type: portsType, config: {'port': 'COM8', 'baudRate': 38400});
-      expect(report.body, contains('COM8 — Silicon Labs CP2105 Dual USB to UART Bridge'));
+      // The picker's row puts the device node in its own column, so the
+      // label no longer carries it and `_shownValue` appends the raw value —
+      // which is what keeps the report naming a port that can be looked up.
+      expect(report.body, contains('Silicon Labs CP2105 Dual USB to UART Bridge (`COM8`)'));
       // The baud rate's own option label is the value itself: a picker field
       // must not lose its value to a label lookup that finds nothing useful.
       expect(report.body, contains('38400'));

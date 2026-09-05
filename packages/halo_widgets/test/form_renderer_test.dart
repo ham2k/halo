@@ -1228,6 +1228,377 @@ void main() {
       expect(submitted?['port'], 'usb-new');
     });
 
+    testWidgets('a periodic refresh reaches the open form, and stops with it', (tester) async {
+      // A serial port picker refreshes on a timer so a cable plugged in with
+      // the pane open shows up without closing and reopening the editor.
+      // The trap is the timer outliving the pane: it holds the element
+      // notifier and goes on enumerating hardware for a form nobody has on
+      // screen, which the last pump here is what catches.
+      var builds = 0;
+      var extraPort = false;
+      List<Map<String, dynamic>> elements() => [
+            {
+              'type': 'field',
+              'fieldType': 'select',
+              'key': 'port',
+              'label': 'Port',
+              'options': [
+                {'value': 'COM1', 'label': 'COM1'},
+                if (extraPort) {'value': 'COM9', 'label': 'COM9'},
+              ],
+            },
+          ];
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showFormPane(
+                context,
+                formDefinition: {'title': 'Radio', 'elements': elements()},
+                initialState: const {'port': 'COM1'},
+                refreshElements: (
+                  every: const Duration(seconds: 1),
+                  build: () async {
+                    builds++;
+                    return elements();
+                  },
+                ),
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.text('COM9'), findsNothing);
+
+      // A tick with nothing plugged in: the callback runs and the list is
+      // unchanged.
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(builds, greaterThan(0));
+      expect(find.text('COM1'), findsWidgets);
+
+      extraPort = true;
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButtonFormField<dynamic>));
+      await tester.pumpAndSettle();
+      expect(find.text('COM9'), findsOneWidget);
+
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+      final after = builds;
+      await tester.pump(const Duration(seconds: 3));
+      expect(builds, after);
+    });
+
+    testWidgets('a refresh that removes the chosen option drops it rather than asserting', (tester) async {
+      // Unplug the cable with the port dropdown open. DropdownButton asserts
+      // its value is exactly one of its items, so a picker that refreshes
+      // under a selected-then-vanished port takes the whole form down with
+      // "There should be exactly one item with [DropdownButton]'s value".
+      var unplugged = false;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showFormPane(
+                context,
+                formDefinition: const {
+                  'title': 'Radio',
+                  'elements': [
+                    {
+                      'type': 'field',
+                      'fieldType': 'select',
+                      'key': 'port',
+                      'label': 'Port',
+                      'options': [
+                        {'value': 'COM1', 'label': 'COM1'},
+                        {'value': 'COM9', 'label': 'COM9'},
+                      ],
+                    },
+                  ],
+                },
+                initialState: const {'port': 'COM9'},
+                refreshElements: (
+                  every: const Duration(seconds: 1),
+                  build: () async => [
+                    {
+                      'type': 'field',
+                      'fieldType': 'select',
+                      'key': 'port',
+                      'label': 'Port',
+                      'options': [
+                        const {'value': 'COM1', 'label': 'COM1'},
+                        if (!unplugged) const {'value': 'COM9', 'label': 'COM9'},
+                      ],
+                    },
+                  ],
+                ),
+              ),
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      expect(find.text('COM9'), findsOneWidget);
+
+      unplugged = true;
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      // The form stops claiming a port that is not there, rather than
+      // showing one the operator could save.
+      expect(find.text('COM9'), findsNothing);
+    });
+
+    testWidgets('an isAction option in a ROW select runs its action instead of becoming the value', (tester) async {
+      // The web serial transport's "Add a USB device…" lives inside the port
+      // list. Once one real port carries a tag or an icon the field renders as
+      // rows, and an action that is not honoured on that path stores its own
+      // key as the port — which Save then writes into the radio's config.
+      var ran = 0;
+      Map<String, dynamic>? submitted;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                submitted = await showFormPane(
+                  context,
+                  formDefinition: const {
+                    'title': 'Radio',
+                    'elements': [
+                      {
+                        'type': 'field',
+                        'fieldType': 'select',
+                        'key': 'port',
+                        'label': 'Port',
+                        'options': [
+                          {'value': 'COM1', 'label': 'CP2105', 'trailing': 'usbserial-A1'},
+                          {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
+                        ],
+                      },
+                    ],
+                  },
+                  initialState: const {'port': 'COM1'},
+                  onAction: (actionKey, method, state) async {
+                    ran++;
+                    return null;
+                  },
+                );
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.descendant(of: find.byType(RowSelectField), matching: find.byType(InkWell)).first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add a device…').last);
+      await tester.pumpAndSettle();
+
+      expect(ran, 1);
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submitted?['port'], 'COM1', reason: 'the action must never become the field value');
+    });
+
+    testWidgets('a refresh that drops a ROW select\'s value leaves the value alone', (tester) async {
+      // The opposite of the dropdown's rule, deliberately: RowSelectField
+      // renders a value its rows no longer offer as an empty field, so nulling
+      // it would just lose the operator's stored port to a radio switched off
+      // mid-edit — and Save would write the loss.
+      var unplugged = false;
+      Map<String, dynamic>? submitted;
+      List<Map<String, dynamic>> elements() => [
+            {
+              'type': 'field',
+              'fieldType': 'select',
+              'key': 'port',
+              'label': 'Port',
+              'options': [
+                const {'value': 'COM1', 'label': 'FT232R', 'trailing': 'usbserial-A1'},
+                if (!unplugged) const {'value': 'COM9', 'label': 'CP2105', 'trailing': 'usbserial-B2'},
+              ],
+            },
+          ];
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                submitted = await showFormPane(
+                  context,
+                  formDefinition: {'title': 'Radio', 'elements': elements()},
+                  initialState: const {'port': 'COM9'},
+                  refreshElements: (every: const Duration(seconds: 1), build: () async => elements()),
+                );
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      unplugged = true;
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submitted?['port'], 'COM9', reason: 'a port gone for a moment is not a port the operator cleared');
+    });
+
+    testWidgets('a ROW select opens on a stored value its rows do not offer', (tester) async {
+      // The radio is switched off and the operator opens its editor to change
+      // the baud rate. Dropped at mount — as a plain select's seeded value is,
+      // for a vocabulary that genuinely changed — the port would be cleared on
+      // a field they never touched, and Save refused for a missing port.
+      Map<String, dynamic>? submitted;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                submitted = await showFormPane(
+                  context,
+                  formDefinition: const {
+                    'title': 'Radio',
+                    'elements': [
+                      {
+                        'type': 'field',
+                        'fieldType': 'select',
+                        'key': 'port',
+                        'label': 'Port',
+                        'options': [
+                          {'value': 'COM1', 'label': 'FT232R', 'trailing': 'usbserial-A1'},
+                        ],
+                      },
+                    ],
+                  },
+                  initialState: const {'port': 'COM9'},
+                );
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submitted?['port'], 'COM9');
+    });
+
+    testWidgets('arrow keys skip an isAction option instead of committing it', (tester) async {
+      // The keyboard is the third way into a select, and it bypasses both tap
+      // handlers — so "Add a USB device…" is reachable by arrow key and would
+      // be written into the field as if it were a port.
+      Map<String, dynamic>? submitted;
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () async {
+                submitted = await showFormPane(
+                  context,
+                  formDefinition: const {
+                    'title': 'Radio',
+                    'elements': [
+                      {
+                        'type': 'field',
+                        'fieldType': 'select',
+                        'key': 'port',
+                        'label': 'Port',
+                        'options': [
+                          {'value': 'COM1', 'label': 'COM1'},
+                          {'value': 'grant', 'label': 'Add a device…', 'isAction': true, 'method': 'requestDevice'},
+                        ],
+                      },
+                    ],
+                  },
+                  initialState: const {'port': 'COM1'},
+                  onAction: (_, _, _) async => null,
+                );
+              },
+              child: const Text('Open'),
+            ),
+          ),
+        ),
+      ));
+
+      await tester.tap(find.text('Open'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButtonFormField<dynamic>));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('COM1').last);
+      await tester.pumpAndSettle();
+
+      // Down from the only real option wraps back onto itself, never onto the
+      // action sitting after it.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      expect(submitted?['port'], 'COM1');
+    });
+
+    testWidgets('a select option marked emphasis is drawn bold', (tester) async {
+      // The port a radio's own definition names has to LOOK picked-out; a
+      // "[suggested]" that reads like the rest of the list is the thing this
+      // exists to avoid.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: FormRenderer(
+            formDefinition: const {
+              'elements': [
+                {
+                  'type': 'field',
+                  'fieldType': 'select',
+                  'key': 'port',
+                  'label': 'Port',
+                  'options': [
+                    {'value': 'COM1', 'label': 'COM1 [suggested]', 'emphasis': true},
+                    {'value': 'COM2', 'label': 'COM2'},
+                  ],
+                },
+              ],
+            },
+            initialState: const {'port': 'COM2'},
+            onSubmit: (_) {},
+            onCancel: () {},
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(DropdownButtonFormField<dynamic>));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<Text>(find.text('COM1 [suggested]').last).style?.fontWeight, FontWeight.bold);
+      // Pinned to normal, not merely left alone: dropdown items are drawn in
+      // titleMedium (w500), against which bold is a difference nobody sees.
+      expect(tester.widget<Text>(find.text('COM2').last).style?.fontWeight, FontWeight.normal);
+    });
+
     testWidgets('every footer verb is disabled while a submit is in flight', (tester) async {
       // Secondary is the one that gets missed, because it is the only slot
       // whose action does not close the form — so nothing about it looks

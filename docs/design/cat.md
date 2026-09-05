@@ -269,6 +269,65 @@ bridges — and the picker then offers only that port of a split device, under a
 restriction acts only on ports the transport split itself and never hides one the OS named, so on
 desktop the model notes keep saying which port to pick.
 
+**A picker entry reads as hardware.** The port field is not a `DropdownButtonFormField` but a
+`RowSelectField` (halo_widgets), reached by any `select` whose options carry a `trailing` or `tags`:
+one string per item cannot give a column of near-identical device nodes anything to be scanned down.
+Each row is the hardware's name in bold, then its tags, then the node hard right — `CP2105
+Dual USB to UART · [suggested] · usbserial-00F8E1EB0`, with `/dev/` and macOS' `cu.` taken off. A
+port whose descriptors are unreadable, or whose description is only its own node again (macOS answers
+that for `Bluetooth-Incoming-Port` and `debug-console`), gets a name made from the node — separators
+out, words capitalised — and then no node column, because a name derived from the node says nothing
+the node did not. The flat one-line form survives as
+`SerialPortOption.label` for the equipment report, and inverts on Windows — `COM3 — Silicon Labs
+CP2105` — because there the COM number is the identifier the operator sets in every other program.
+
+The control is a `MenuAnchor`, which buys two things a `DropdownButton` cannot: the menu is part of
+the field's own tree, so a refresh WHILE IT IS OPEN adds the port that was just plugged in, and a
+value that vanishes from the rows renders as an empty field instead of asserting "there should be
+exactly one item with [DropdownButton]'s value" — which is what unplugging a cable with the list down
+used to do.
+
+**macOS names a bridge's ports after the device, which is enough to pair them.** That platform
+appends the port index to the device's serial number — a CP2105 presents `cu.usbserial-00F8E1EB0` and
+`…EB1` — so two names differing only in a final digit, under one description, are two ports of one
+device (`SerialTransportConfig.withInferredSiblings`). That is the only thing on that platform that
+says so: the USB ids do not read, and the OS named the ports separately. The rows then carry the same
+"port N of M" Android's split does, and a radio's declared `index` narrows its SUGGESTION to the one
+port. It never hides the sibling there: the restriction's vendor gate cannot be checked without the
+ids, and the OS named both ports itself — suggesting is a claim the operator can ignore, hiding is
+not. Deliberately macOS-only: Linux's `ttyUSB0`/`ttyUSB1` have the identical shape and are usually two
+separate adapters, and that platform reads the ids that say what is really one device.
+
+**The picker ranks what it cannot narrow.** Where the ports are siblings only the operator can see —
+desktop, where the restriction above has nothing to act on — the same `port` restriction may carry a
+`suggest` clause instead: `{'usb': [{'vendorId':…, 'productId':…}], 'match': [<regexp>]}`. Either
+clause matching puts that port first, in bold, tagged `[suggested]`. Both describe the same chip on
+purpose, because neither works everywhere: on macOS libserialport cannot read `vendorId`/`productId`
+at all — they throw per port, per field — while `description` answers in full, so there the pattern
+is the clause that bites and the exact ids are the one that bites everywhere else. A malformed clause
+suggests nothing rather than throwing — this is catalogue data rendering a picker — and a
+registry-wide test pins its shape so a typo is caught in the suite instead of silently switching the
+rule off.
+
+**And it says which port just appeared.** No platform exposes a plug-in timestamp, so
+`SerialPortSightings` remembers what each enumeration saw: a port absent from the FIRST look and seen
+under five minutes ago is marked `✨ … [just now]` and sorts ahead of the rest. The baseline is what
+does the suppressing, not the clock — with the window alone the whole thing would stay silent for
+five minutes after launch, which is exactly when a cable gets plugged in. A sighting is forgotten
+when its port goes, so unplugging and replugging reads as new again. A suggested port outranks a
+recent one: what the radio's own definition knows beats what happened to be plugged in last.
+
+The equipment editor re-enumerates every three seconds while it is open (`showFormPane`'s
+`refreshElements`) and republishes the form only when the element list actually differs — an
+unchanged republish rebuilds every field, which would close an open dropdown under the operator's
+cursor. Descriptor reads are cached per port name for the same reason they are not repeated on a
+timer: reading them means opening the port, and doing that every three seconds would poke a port a
+live CAT session is holding — including the ones that refuse to open, since those ARE the busy ones.
+The cache expires after 30 seconds, because a port name does not identify hardware: Windows hands
+`COM3` to whatever is plugged in next, and cached for the session an adapter swapped for another
+would wear the old one's description and USB ids — which is what a `suggest` pattern matches on and
+what an equipment report quotes.
+
 Platform cost, none of it optional:
 
 - `com.apple.security.device.serial` in **both** macOS entitlement files. A sandbox relaxation, not

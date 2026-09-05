@@ -3,6 +3,8 @@
 
 import 'dart:async';
 
+import 'package:collection/collection.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -11,6 +13,7 @@ import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'mdi_icons.g.dart';
 import 'modal_pane.dart';
+import 'row_select_field.dart';
 import 'secret_text_field.dart';
 import 'section_header.dart';
 import 'spacing.dart';
@@ -58,6 +61,23 @@ String _templateString(String template, Map<String, dynamic> item) {
 /// functions (same convention as LoggingControls' `spotSelfLabel` etc.) so
 /// the class stays const-constructible — null falls back to the English
 /// composition at the call site.
+/// A `select` option carrying `emphasis: true` is drawn bold — the option
+/// list is saying one entry is the one to pick, not merely that it exists.
+/// The serial port picker's suggestion for a radio whose bridge chip the
+/// catalogue names is what this exists for; nothing about that vocabulary
+/// reaches here, only the weight.
+///
+/// The rest of the list is then pinned to normal weight, which is the half
+/// that makes it read: `DropdownButton` draws its items in `titleMedium`,
+/// already w500, so bold against the default is a difference an operator
+/// scanning a list of near-identical device names does not see. Only lists
+/// that declare an emphasis are touched — every other dropdown in the app
+/// keeps the weight it has.
+TextStyle? optionEmphasisStyle(Map<String, dynamic> option, List<Map<String, dynamic>> options) {
+  if (!options.any((o) => o['emphasis'] == true)) return null;
+  return TextStyle(fontWeight: option['emphasis'] == true ? FontWeight.bold : FontWeight.normal);
+}
+
 class FormRendererLabels {
   final String cancel;
   final String save;
@@ -421,6 +441,16 @@ class FormRendererState extends State<FormRenderer> {
     }
   }
 
+  /// Whether a `select` element's options have STRUCTURE — an identifier of
+  /// their own, tags, an icon, a second line — and so are rendered as rows
+  /// rather than as a dropdown's one-string items.
+  static bool _isRowSelect(Map<String, dynamic> el) {
+    if (el['fieldType'] != 'select' || el['options'] is! List) return false;
+    return (el['options'] as List).any((opt) =>
+        opt is Map &&
+        (opt['trailing'] != null || opt['tags'] != null || opt['icon'] != null || opt['subtitle'] != null));
+  }
+
   static List<Map<String, dynamic>> _fieldsIn(Map<String, dynamic> definition) => (definition['elements'] as List? ?? const [])
       .cast<Map<String, dynamic>>()
       .where((el) => el['type'] == 'field')
@@ -456,6 +486,27 @@ class FormRendererState extends State<FormRenderer> {
         changes[key] = newVal;
       }
     }
+    // A select whose OPTIONS changed under a value that is still the same —
+    // the port picker refreshing while the operator holds the dropdown open
+    // and pulls the cable. `DropdownButton` asserts its value is exactly one
+    // of its items, so leaving it would throw where the form should simply
+    // stop claiming a port that is gone. Same rule [_initializeField] applies
+    // to a seeded value, for the same reason, one definition later.
+    for (final field in _fields) {
+      if (field['fieldType'] != 'select') continue;
+      // ONLY where the control would otherwise throw. A [RowSelectField]
+      // renders a value its rows no longer offer as an empty field, so
+      // nulling it there would be pure loss: the port picker refreshes every
+      // few seconds, and a radio switched off mid-edit would have its stored
+      // port replaced by null on the next tick and written away on Save.
+      if (_isRowSelect(field)) continue;
+      final key = field['key'] as String;
+      if (_values[key] == null || changes.containsKey(key)) continue;
+      final options = (field['options'] as List?)?.cast<Map>() ?? const [];
+      if (options.isNotEmpty && !options.any((opt) => opt['value'] == _values[key])) {
+        changes[key] = null;
+      }
+    }
     if (changes.isEmpty && newFields.isEmpty) return;
     setState(() {
       for (final entry in changes.entries) {
@@ -482,7 +533,13 @@ class FormRendererState extends State<FormRenderer> {
     final key = field['key'] as String;
     final fieldType = field['fieldType'] as String;
     var val = widget.initialState[key] ?? field['value'];
-    if (fieldType == 'select' && val != null) {
+    // `!_isRowSelect`, the same exemption the refresh path takes and for the
+    // same reason: that control renders a value its rows do not offer rather
+    // than asserting on it. Dropped here instead, an operator opening the
+    // editor of a radio that is switched off — to rename it, or change its
+    // baud rate — would find its port silently cleared and Save refused on a
+    // field they never touched.
+    if (fieldType == 'select' && val != null && !_isRowSelect(field)) {
       // The state a field is seeded from OUTLIVES the options it is offered.
       // An extension's option list can depend on the rest of the form — State
       // Parks offers Texas three power classes and Ohio two — while the value
@@ -565,7 +622,13 @@ class FormRendererState extends State<FormRenderer> {
     // event cannot arrive — that is asserted in form_renderer_test.dart, and
     // it is exactly the kind of thing a Flutter upgrade changes quietly.
     if (field['disabled'] == true) return KeyEventResult.ignored;
-    final options = (field['options'] as List?)?.cast<Map<String, dynamic>>() ?? const <Map<String, dynamic>>[];
+    // Actionable options are not values, so they are not part of the cycle:
+    // arrowing onto the web serial transport's "Add a USB device…" would
+    // write the ACTION's key into the field and commit it below, which is
+    // the very thing both tap handlers take care to refuse.
+    final options = ((field['options'] as List?)?.cast<Map<String, dynamic>>() ?? const <Map<String, dynamic>>[])
+        .where((opt) => opt['isAction'] != true)
+        .toList();
     if (options.isEmpty) return KeyEventResult.ignored;
 
     final delta = logicalKey == LogicalKeyboardKey.arrowDown ? 1 : -1;
@@ -974,6 +1037,54 @@ class FormRendererState extends State<FormRenderer> {
       case 'account':
         return _buildAccountField(el, theme);
       case 'select':
+        // An option list whose entries have STRUCTURE — an identifier of
+        // their own, short tags — cannot be said in the one string a
+        // DropdownMenuItem takes. The serial port picker is the case: a
+        // column of near-identical device names is unscannable inline, and
+        // has to be a column. Every other select is untouched.
+        if (_isRowSelect(el)) {
+          return RowSelectField(
+            label: label,
+            value: _values[key],
+            focusNode: _focusNodes[key],
+            errorText: errorText,
+            placeholder: placeholder,
+            labelColor: devModeColor,
+            enabled: !_isSubmitting && el['disabled'] != true,
+            rows: [
+              for (final opt in options)
+                SelectRow(
+                  value: opt['value'],
+                  name: opt['label'] as String? ?? '',
+                  tags: ((opt['tags'] as List?) ?? const []).cast<String>(),
+                  trailing: opt['trailing'] as String?,
+                  icon: opt['icon'] as String?,
+                  subtitle: opt['subtitle'] as String?,
+                  emphasis: opt['emphasis'] == true,
+                ),
+            ],
+            onChanged: (val) {
+              // The same `isAction` contract the dropdown honours below: the
+              // web serial transport's "Add a USB device…" lives IN the port
+              // list, and picking it must run `requestPort()` rather than
+              // become the field's value. Missed here, the form stores the
+              // action's key as the port and Save writes that into the
+              // config — and only on a browser with a device already granted,
+              // since it takes one structured option to reach this branch at
+              // all.
+              final picked = options.firstWhere((o) => o['value'] == val, orElse: () => const {});
+              if (picked['isAction'] == true) {
+                unawaited(_runAction(val as String, picked['method'] as String? ?? ''));
+                return;
+              }
+              setState(() {
+                _values[key] = val;
+                _errors.remove(key);
+              });
+              _handleFieldBlurOrInteraction(key, val);
+            },
+          );
+        }
         return DropdownButtonFormField<dynamic>(
           // See _actionGeneration: forces a remount from the true
           // _values[key] after any action runs, since this widget
@@ -995,7 +1106,7 @@ class FormRendererState extends State<FormRenderer> {
             for (final opt in options)
               DropdownMenuItem(
                 value: opt['value'],
-                child: Text(opt['label'] as String),
+                child: Text(opt['label'] as String, style: optionEmphasisStyle(opt, options)),
               )
           ],
           // Greyed rather than hidden, same as the text field's and the
@@ -2377,6 +2488,16 @@ Future<Map<String, dynamic>?> showFormPane(
   /// radio and then decides not to report it must find their edits where they
   /// left them. So whatever the callback opens has to be a route of its own.
   ({String label, VoidCallback onPressed})? secondaryAction,
+
+  /// Rebuilds the element list on a timer while the pane is open, for a form
+  /// describing something that changes underneath it — the serial port
+  /// picker, whose options are whatever is plugged in this second.
+  ///
+  /// The result is pushed only when it DIFFERS from what is on screen. An
+  /// unchanged list must not be republished: it rebuilds every field, which
+  /// closes an open dropdown menu under the operator's cursor — so a picker
+  /// nobody has touched a cable for stays perfectly still.
+  ({Duration every, Future<List<Map<String, dynamic>>> Function() build})? refreshElements,
 }) {
   final formKey = GlobalKey<FormRendererState>();
   final submittingNotifier = ValueNotifier<bool>(false);
@@ -2421,7 +2542,13 @@ Future<Map<String, dynamic>?> showFormPane(
           Flexible(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
-              child: ValueListenableBuilder<List<Map<String, dynamic>>>(
+              child: _PeriodicElements(
+                // Owned by a widget rather than started beside the route:
+                // the timer then dies with the tree that shows the form,
+                // whichever way that tree goes away.
+                refresh: refreshElements,
+                elements: elementsNotifier,
+                child: ValueListenableBuilder<List<Map<String, dynamic>>>(
                 valueListenable: elementsNotifier,
                 builder: (context, elements, _) => FormRenderer(
                   key: formKey,
@@ -2442,6 +2569,7 @@ Future<Map<String, dynamic>?> showFormPane(
                   submittingNotifier: submittingNotifier,
                   onSubmit: (values) => Navigator.of(context).pop(values),
                   onCancel: () => Navigator.of(context).pop(null),
+                ),
                 ),
               ),
             ),
@@ -2479,8 +2607,73 @@ Future<Map<String, dynamic>?> showFormPane(
       ),
     ),
   );
+
 }
 
+
+/// Rebuilds [elements] on a timer for as long as this is in the tree — see
+/// [showFormPane]'s `refreshElements`. A widget rather than a timer started
+/// beside the route, so it is the TREE's life that bounds it: a pane popped
+/// normally and a test tearing the tree down both end it, and neither leaves
+/// a timer enumerating hardware for a form nobody is looking at.
+class _PeriodicElements extends StatefulWidget {
+  final ({Duration every, Future<List<Map<String, dynamic>>> Function() build})? refresh;
+  final ValueNotifier<List<Map<String, dynamic>>> elements;
+  final Widget child;
+
+  const _PeriodicElements({required this.refresh, required this.elements, required this.child});
+
+  @override
+  State<_PeriodicElements> createState() => _PeriodicElementsState();
+}
+
+class _PeriodicElementsState extends State<_PeriodicElements> {
+  Timer? _timer;
+  var _refreshing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final refresh = widget.refresh;
+    if (refresh == null) return;
+    _timer = Timer.periodic(refresh.every, (_) => unawaited(_tick(refresh.build)));
+  }
+
+  Future<void> _tick(Future<List<Map<String, dynamic>>> Function() build) async {
+    // A tick landing while the previous build is still out would enumerate
+    // twice over; skipping is right rather than queueing, since the next tick
+    // asks the same question again anyway.
+    if (_refreshing) return;
+    _refreshing = true;
+    try {
+      final rebuilt = await build();
+      // Only once it DIFFERS. An unchanged republish rebuilds every field,
+      // which closes an open dropdown menu under the operator's cursor — so a
+      // picker nobody has plugged a cable for stays perfectly still.
+      if (mounted && !const DeepCollectionEquality().equals(rebuilt, widget.elements.value)) {
+        widget.elements.value = rebuilt;
+      }
+    } catch (e) {
+      // Skip the tick, keep the timer. The callback enumerates real hardware
+      // and reads live equipment state, so it can throw — and without this
+      // every throw is an unhandled async error, repeating for as long as the
+      // pane stays open with nothing to stop it. The form goes on showing
+      // what it last had, which is the right answer for one missed look.
+      debugPrint('[form] periodic element refresh failed: $e');
+    } finally {
+      _refreshing = false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
 
 /// A collapsible markdown section: an [ExpansionTile] with an MDI chevron
 /// (the framework's default trailing is a Material glyph in an MDI app).
@@ -2576,7 +2769,7 @@ class _SelectDialogBodyState extends State<_SelectDialogBody> {
             itemBuilder: (context, i) {
               final opt = visible[i];
               return ListTile(
-                title: Text(opt['label'] as String),
+                title: Text(opt['label'] as String, style: optionEmphasisStyle(opt, widget.options)),
                 trailing: opt['value'] == widget.current ? const Icon(MdiIcons.check) : null,
                 onTap: () => Navigator.pop(context, [opt['value']]),
                 mouseCursor: SystemMouseCursors.click,

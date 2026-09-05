@@ -58,14 +58,15 @@ class Ft891Driver extends EquipmentDriver {
   /// CP2105 on SiLabs' own default VID/PID (confirmed on hardware via
   /// `ioreg`).
   ///
-  /// DEAD ON macOS, though: libserialport cannot read vendorId or productId
-  /// there either — the same EAGAIN/ENOENT that defeats `description`, which
-  /// per-field probing in serial_transport_io.dart made visible. So this
-  /// only suggests a driver on Linux and Windows. Doing it on macOS needs
-  /// IOKit rather than libserialport, and matters because the CP2105 is a
-  /// DUAL bridge: it presents two ports differing by one trailing digit,
-  /// one carrying CAT and one PTT, and choosing wrong looks exactly like a
-  /// dead cable.
+  /// DEAD ON macOS: libserialport cannot read vendorId or productId there,
+  /// which the per-field probing in serial_transport_io.dart makes visible
+  /// as a throw per port per field. `description` is NOT dead there, though
+  /// — it answers "CP2105 Dual USB to UART Bridge Controller" — so on that
+  /// platform a port is recognised by [cp2105CatPort]'s `match` pattern
+  /// rather than by these ids. Which matters because the CP2105 is a DUAL
+  /// bridge: it presents two ports differing by one trailing digit, one
+  /// carrying CAT and one PTT, and choosing wrong looks exactly like a dead
+  /// cable.
   static const cp2105VendorId = 0x10C4;
   static const cp2105ProductId = 0xEA70;
 
@@ -74,7 +75,29 @@ class Ft891Driver extends EquipmentDriver {
   /// serial transport: where the platform can tell the two apart, the
   /// picker offers only the first, and only on a Silicon Labs bridge —
   /// a radio reached through some other adapter's two ports gets both.
-  static const cp2105CatPort = {'index': 0, 'vendorId': cp2105VendorId};
+  ///
+  /// Where it cannot — desktop, where the OS named both ports itself and
+  /// nothing knows they are siblings — `suggest` is all that is left: the
+  /// bridge is named rather than hidden, so the picker puts it first and
+  /// says so. Both clauses describe the same chip, because neither works
+  /// everywhere: the USB pair is exact but unreadable on macOS, and the
+  /// pattern is what carries that platform, where the description reads
+  /// back in full. Neither tells the bridge's two ports apart on its own —
+  /// what does is the sibling inference in `serial_transport_config.dart`,
+  /// which reads macOS' own naming (the device serial with the port index
+  /// appended) and lets `index` narrow the suggestion to port 0. Where that
+  /// cannot see siblings, both ports are suggested and the notes below are
+  /// what says which one.
+  static const cp2105CatPort = {
+    'index': 0,
+    'vendorId': cp2105VendorId,
+    'suggest': {
+      'usb': [
+        {'vendorId': cp2105VendorId, 'productId': cp2105ProductId},
+      ],
+      'match': [r'CP2105'],
+    },
+  };
 
   /// What the radio's CAT menu ships set to. It is also the one polo
   /// hardcoded, which its own notes call out as a silent-failure mode — a
@@ -91,6 +114,8 @@ class Ft891Driver extends EquipmentDriver {
   @override
   bool get hardwareVerified => true;
 
+  /// The same claim [cp2105CatPort]'s `suggest` clause makes, for a caller
+  /// holding the ids rather than a port.
   static bool matchesUsbIds({int? vendorId, int? productId}) =>
       vendorId == cp2105VendorId && productId == cp2105ProductId;
 
