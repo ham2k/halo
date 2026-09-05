@@ -259,6 +259,21 @@ class ErrorPolicy {
       matches: _isCatEquipmentUnreachable,
     ),
     ErrorRule(
+      id: 'keychain-locked',
+      reason: 'the keychain refused an operation (errSecInteractionNotAllowed) — it cannot serve '
+          'one without an unlock it has no way to ask for. Usually a locked device with the app '
+          'still working behind it, reading or writing a secret nobody asked it to touch just '
+          'then: the CAT idle-retry loop reopening a radio, an extension fetching an account. '
+          'That case resolves on the next unlock; a macOS session that can never prompt is '
+          'refused for the length of the process, and neither is something the operator can act '
+          'on mid-activation. Uploaded rather than dropped, because the rate is what says how '
+          'often the app reaches for a secret it cannot have; never noticed, because the notice '
+          'fires once per SESSION and would be spent on a background retry, leaving the next real '
+          'error to arrive silently',
+      disposition: ErrorDisposition.report,
+      matches: _isKeychainLocked,
+    ),
+    ErrorRule(
       id: 'network-unreachable-while-offline',
       reason: 'a network call failed to get an answer while the device is offline (no route, or '
           'nothing answering over the one there is); in the field that is the session\'s normal '
@@ -583,6 +598,30 @@ class ErrorPolicy {
     final cause = error.cause;
     return cause is PlatformException || cause is FileSystemException || cause is TimeoutException;
   }
+
+  /// Apple's `errSecInteractionNotAllowed`, on any keychain operation the app
+  /// makes — a read, and equally the writes behind [SettingsService]'s
+  /// equipment secrets and an extension's stored session.
+  static const _errSecInteractionNotAllowed = -25308;
+
+  /// The one `code` flutter_secure_storage_darwin gives EVERY keychain
+  /// failure, both of its throw sites. It carries no information about which
+  /// failure this is — the `OSStatus` in `details` does that — but it is the
+  /// only field tying the exception to the keychain at all, so matching it
+  /// keeps another plugin's -25308 out. Should the plugin ever reword the
+  /// literal, this rule stops matching and the error goes back to notifying,
+  /// which is the safe direction to break in.
+  static const _keychainFailureCode = 'Unexpected security result code';
+
+  static bool _isKeychainLocked(Object error, FlutterErrorDetails? details) =>
+      error is PlatformException &&
+      error.code == _keychainFailureCode &&
+      // `details` is dynamic and Dart reads -25308.0 == -25308 as true, so
+      // the type comes first — on the VM. Web reads an integral double as an
+      // int too, which costs nothing here: no web build has a keychain to
+      // refuse anything.
+      error.details is int &&
+      error.details == _errSecInteractionNotAllowed;
 
   static bool _isCatEquipmentUnreachable(Object error, FlutterErrorDetails? details) {
     if (error is! CatConnectFailure) return false;

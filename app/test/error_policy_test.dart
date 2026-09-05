@@ -610,6 +610,69 @@ void main() {
     });
   });
 
+  group('a keychain locked by the device', () {
+    // Verbatim from flutter_secure_storage_darwin, both its throw sites: one
+    // generic `code` for every keychain failure, the OSStatus in `details`,
+    // and the status rendered again into the message. A rule reading the
+    // message, or reading `details` as anything but an int, matches nothing a
+    // device ever sends — and this reconstruction is the only thing standing
+    // between that mistake and a green suite.
+    PlatformException keychainFailure(int status, String message) => PlatformException(
+          code: 'Unexpected security result code',
+          message: 'Code: $status, Message: $message',
+          details: status,
+        );
+
+    // The trap: catching a keychain refusal at the call site does NOT keep it
+    // quiet. Both call sites that meet this one (SettingsService's equipment
+    // secret, the extension host's account) already catch it and hand it to
+    // report(), which raises no notice of its own — but in a dist build
+    // Sentry's beforeSend re-runs the policy over every captured exception
+    // and notifies there, so an unclassified refusal still spends the
+    // session's one notice on a background retry.
+    test('is reported, never noticed', () {
+      final error = keychainFailure(-25308, 'User interaction is not allowed.');
+      expect(ErrorPolicy.decide(error).rule?.id, 'keychain-locked');
+      expect(dispositionFor(error), ErrorDisposition.report);
+    });
+
+    // The rule has to stay a hole exactly one status wide. -34018 is a
+    // missing entitlement — our signing, our bug, and the one keychain
+    // failure a broadened match would swallow while looking correct.
+    test('a missing entitlement stays loud', () {
+      final error = keychainFailure(-34018, "A required entitlement isn't present.");
+      expect(ErrorPolicy.decide(error).rule, isNull);
+      expect(dispositionFor(error), ErrorDisposition.notify);
+    });
+
+    test('a PlatformException carrying no status stays loud', () {
+      expect(dispositionFor(PlatformException(code: 'error', message: 'boom')), ErrorDisposition.notify);
+    });
+
+    // The `code` is what ties the exception to the keychain at all: -25308 is
+    // only errSecInteractionNotAllowed coming from Security.framework, and
+    // another plugin numbering its own failures must not inherit the
+    // exemption by landing on the same integer.
+    test("another plugin's -25308 stays loud", () {
+      expect(dispositionFor(PlatformException(code: 'error', details: -25308)), ErrorDisposition.notify);
+    });
+
+    // `details` is dynamic and Dart reads -25308.0 == -25308 as true, so the
+    // rule checks the type before the value. A double is the only shape that
+    // can prove it — a String would be rejected by the `==` alone, and would
+    // pass just as well with the type check deleted.
+    //
+    // Sound to assert here only because this file runs on the VM: `is int`
+    // answers true for an integral double on web, and scripts/test.sh's
+    // browser step compiles one named file, which is not this one.
+    test('a double that merely equals the status stays loud', () {
+      expect(
+        dispositionFor(PlatformException(code: 'Unexpected security result code', details: -25308.0)),
+        ErrorDisposition.notify,
+      );
+    });
+  });
+
   group('map errors while offline', () {
     // The offline stamp is the whole discriminator: a device without
     // coverage fails every style and tile fetch as a matter of course (the
