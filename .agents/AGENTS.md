@@ -112,10 +112,8 @@ Use for: classification, drafting, summarization, extraction.
 Do NOT use for: routing, retries, deterministic transforms.
 If code can answer, code answers.
 
-## Rule 6 — Token budgets are not advisory
-Per-task: 4,000 tokens. Per-session: 30,000 tokens.
-If approaching budget, summarize and start fresh.
-Surface the breach. Do not silently overrun.
+## Rule 6 — The one about token budgets
+We no longer use this rule. We expect agent harnesses to have figured this out by now.
 
 ## Rule 7 — Surface conflicts, don't average them
 If two patterns contradict, pick one (more recent / more tested).
