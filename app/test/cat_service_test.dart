@@ -255,6 +255,12 @@ class _FakeDriver extends EquipmentDriver {
   @override
   bool get canKeyCw => true;
 
+  /// Off by default, like a radio that can be asked its own speed; the
+  /// remembering tests flip it.
+  @override
+  bool get remembersKeyerSpeed => remembersSpeed;
+  bool remembersSpeed = false;
+
   final List<String> log;
   final sessions = <_FakeSession>[];
   var teardownThrows = false;
@@ -1664,6 +1670,49 @@ void main() {
 
       expect(cat.stateFor(node.uuid).keyerSpeed, 22);
       expect(cat.keyerSpeed, 22);
+    });
+
+    test('an explicit speed set is remembered on the node, for equipment that cannot be asked', () async {
+      driver.remembersSpeed = true;
+      final node = await addRadio();
+      await connectAndLand(node);
+
+      expect(cat.setKeyerSpeed(32), isTrue);
+      await pumpEventQueue();
+
+      expect(cat.nodes.firstWhere((n) => n.uuid == node.uuid).config[keyerSpeedConfigKey], 32);
+    });
+
+    test('a REPORTED speed is never remembered, so an absent pot cannot write itself to disk', () async {
+      // The trap: remembering reports as well as sets. A speed report is
+      // also how a pot answers — and on a keyer whose pot is absent, how its
+      // floating ADC answers — so storing one hands that reading back on
+      // every connect afterwards, permanently.
+      driver.remembersSpeed = true;
+      final node = await addRadio();
+      await connectAndLand(node);
+
+      driver.sessions.single.sink.reportKeyerSpeed(7);
+      await pumpEventQueue();
+
+      expect(cat.stateFor(node.uuid).keyerSpeed, 7, reason: 'it is still shown');
+      expect(
+        cat.nodes.firstWhere((n) => n.uuid == node.uuid).config[keyerSpeedConfigKey],
+        isNull,
+        reason: 'but never written to the node',
+      );
+    });
+
+    test('equipment that can be asked its speed stores nothing', () async {
+      // A radio reads its own keyer menu, so a copy stored beside it would
+      // only go stale against the front panel.
+      final node = await addRadio();
+      await connectAndLand(node);
+
+      expect(cat.setKeyerSpeed(32), isTrue);
+      await pumpEventQueue();
+
+      expect(cat.nodes.firstWhere((n) => n.uuid == node.uuid).config[keyerSpeedConfigKey], isNull);
     });
 
     test('sendCw and stopCw reach radio1\'s session, and are no-ops without one', () async {

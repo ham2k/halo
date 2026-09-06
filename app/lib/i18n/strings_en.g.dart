@@ -3854,6 +3854,21 @@ class Translations$settings$station$en {
 	/// en: 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe'
 	String get flexNoSlices => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe';
 
+	/// en: 'Key output'
+	String get winkeyerKeyPort => 'Key output';
+
+	/// en: 'Which of the keyer's two output jacks your radio is plugged into.'
+	String get winkeyerKeyPortDescription => 'Which of the keyer\'s two output jacks your radio is plugged into.';
+
+	/// en: 'Port ${n}'
+	String winkeyerKeyPortLabel({required Object n}) => 'Port ${n}';
+
+	/// en: 'Use the keyer's PTT'
+	String get winkeyerPtt => 'Use the keyer\'s PTT';
+
+	/// en: 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.'
+	String get winkeyerPttDescription => 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.';
+
 	/// en: 'No WinKeyer answered on this port'
 	String get winkeyerNoAnswer => 'No WinKeyer answered on this port';
 
@@ -7058,6 +7073,11 @@ extension on Translations {
 			'settings.station.channelNotInUse' => 'not in use',
 			'settings.station.channelHeldByUnknown' => 'in use by another program',
 			'settings.station.flexNoSlices' => 'This radio has not reported any slices — check that SmartSDR is running and that this client may subscribe',
+			'settings.station.winkeyerKeyPort' => 'Key output',
+			'settings.station.winkeyerKeyPortDescription' => 'Which of the keyer\'s two output jacks your radio is plugged into.',
+			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'Port ${n}',
+			'settings.station.winkeyerPtt' => 'Use the keyer\'s PTT',
+			'settings.station.winkeyerPttDescription' => 'Key the PTT line on the same jack, for an amplifier or a radio that needs it. Leave off for a radio keyed on its key jack.',
 			'settings.station.winkeyerNoAnswer' => 'No WinKeyer answered on this port',
 			'settings.station.winkeyerStoppedAnswering' => 'The WinKeyer stopped answering while sending; the message was dropped',
 			'settings.station.radioUser' => 'Radio username',
@@ -7543,13 +7563,13 @@ extension on Translations {
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'This file records an activation of ${refs}.',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.addActivation' => 'Add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
 			'adifImport.oneFileOnly' => 'Drop one ADIF file at a time — the order files are imported in decides which data wins.',
 			'offline.statusOffline' => 'Internet: OFFLINE',
-			_ => null,
-		} ?? switch (path) {
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',
 			'offline.unreachable' => 'The network is up, but nothing is answering — often a sign-in page waiting in a browser.',

@@ -12,6 +12,15 @@
 // here is what the keyer reports, not the estimate the CAT drivers pace by,
 // and the send is throttled by the keyer's XOFF rather than by arithmetic.
 //
+// The keyer's OUTPUT ROUTING is ours to set, not the box's to remember. A
+// WinKeyer has two key/PTT jacks and a PINCFG register saying which one is
+// live; host mode does not restore it, and a host that leaves it alone
+// inherits whatever the last program wrote. Leave PTT enabled there with no
+// key output and the keyer holds PTT down for a whole message and keys
+// nothing — a dead carrier, exactly as long as the text, through the word
+// spaces (WK3 datasheet, PTT Functionality). So [_pinConfig] is written on
+// every connect.
+//
 // From the K1EL WK2/WK3 host interface documents, not from a keyer: nothing
 // here has met hardware. See [WinkeyerDriver.hardwareVerified].
 
@@ -29,10 +38,15 @@ const _adminHostClose = 0x03;
 
 /// Immediate commands.
 const _cmdSetSpeed = 0x02;
+const _cmdSetWeight = 0x03;
+const _cmdSetPttTiming = 0x04;
 const _cmdSetPotRange = 0x05;
 const _cmdClearBuffer = 0x0A;
 const _cmdSetMode = 0x0E;
 const _cmdGetSpeedPot = 0x07;
+const _cmdSetPinConfig = 0x09;
+const _cmdSetKeyComp = 0x11;
+const _cmdSetRatio = 0x17;
 const _cmdRequestStatus = 0x15;
 
 /// Set Mode bit: serial echoback — the keyer echoes each character as it
@@ -41,10 +55,51 @@ const _cmdRequestStatus = 0x15;
 /// with no autospace; the keyer's standalone settings are not read first.
 const _modeSerialEchoback = 0x04;
 
+/// PINCFG bits, which pick which jack the keyer drives:
+/// 3 KeyOut 1, 2 KeyOut 2, 1 sidetone, 0 PTT. The upper nibble is ultimatic
+/// priority and paddle hang time, left at zero.
+const _pinKeyPort1 = 0x08;
+const _pinKeyPort2 = 0x04;
+const _pinPtt = 0x01;
+
+/// Config keys for the two PINCFG choices the operator has to make: which
+/// jack their rig is on, and whether this keyer drives its PTT line.
+const winkeyerKeyPortConfigKey = 'winkeyerKeyPort';
+const winkeyerPttConfigKey = 'winkeyerPtt';
+
+/// Key port for an entry that has never been edited. A node stored before
+/// these fields existed reads as port 1 as well — which is the port a
+/// single-rig setup is plugged into, and the value the WK docs' own
+/// examples use.
+const winkeyerDefaultKeyPort = 1;
+
+/// Timing left deliberately neutral, and WRITTEN rather than assumed: these
+/// registers persist in the keyer, so what another program last set is what
+/// an unwritten one keys with. Weight and ratio are the "no adjustment"
+/// midpoints from the WK docs, and key compensation is off.
+const _weightNeutral = 50;
+const _ratioNeutral = 50;
+const _keyCompNone = 0;
+
+/// The PTT delays, which are only reached with [WinkeyerSession.ptt] on.
+/// Zero tail is NOT zero delay — the keyer's tail is three dit times plus
+/// this setting — but zero lead-in does key the first element in the same
+/// instant PTT asserts, which an amplifier's relay may not have closed by.
+/// Both reference clients ship 0/0; exposing them is the follow-up, and
+/// until then this is the value an operator turning PTT on inherits.
+const _pttLeadIn = 0;
+const _pttTail = 0;
+
 /// Speed-pot range the session asks for: reports come as `0x80 | position`,
-/// position 0..range, WPM being [_potMinWpm] + position.
+/// position 0..range, WPM being [_potMinWpm] + position. The position is a
+/// SIX bit field — a pot report is `0x80`-`0xBF` and the status range does
+/// not start until `0xC0` — and the keyer sends the pot's WPM less
+/// [_potMinWpm], so a range wider than 32 still reports a position above 31.
+/// Masking any narrower folds the top of the pot's travel back onto the
+/// bottom.
 const _potMinWpm = 5;
 const _potRange = 40;
+const _potValueMask = 0x3F;
 
 /// What `0x02` accepts.
 const winkeyerSpeedMin = 5;
@@ -60,7 +115,8 @@ const _statusBusy = 0x04;
 const _potMask = 0x80;
 
 /// How many characters go to the keyer in one burst while it is not saying
-/// XOFF. Its buffer holds 128 and it raises XOFF at two thirds; a burst goes
+/// XOFF. Its buffer holds 128 on WK2 and 160 on WK3 — the smaller is what
+/// this is sized against — and it raises XOFF at two thirds; a burst goes
 /// out per echo as well as per status, and each echo is a slot freed, so
 /// the buffer holds at most a burst past the XOFF mark and never overruns.
 const _burst = 24;
@@ -95,8 +151,80 @@ class WinkeyerDriver extends EquipmentDriver {
   @override
   bool get canKeyCw => true;
 
+  /// Nothing to ask: a WinKeyer with no speed pot cannot report a speed it
+  /// was never told, so an unremembered one resets to the default on every
+  /// reconnect — mid-contest, that is a CQ going out slow with no notice.
   @override
-  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => WinkeyerSession(sink);
+  bool get remembersKeyerSpeed => true;
+
+  /// Which jack the rig is on, and whether to drive its PTT line. Neither is
+  /// discoverable — the keyer cannot say what is plugged into it — and
+  /// getting the first wrong is silence while getting the second wrong keys
+  /// a transmitter, so both are asked rather than guessed.
+  @override
+  List<Map<String, dynamic>> configElements({
+    Map<String, dynamic> overrides = const {},
+    Map<String, dynamic> restrictions = const {},
+  }) =>
+      [
+        // An overridden key is pinned by the entry and never the operator's
+        // to answer, so it shows no field — the contract every other driver
+        // with a config field keeps.
+        if (!overrides.containsKey(winkeyerKeyPortConfigKey)) {
+          'type': 'field',
+          'fieldType': 'select',
+          'key': winkeyerKeyPortConfigKey,
+          'label': t.settings.station.winkeyerKeyPort,
+          'description': t.settings.station.winkeyerKeyPortDescription,
+          'options': [
+            {'value': '1', 'label': t.settings.station.winkeyerKeyPortLabel(n: 1)},
+            {'value': '2', 'label': t.settings.station.winkeyerKeyPortLabel(n: 2)},
+          ],
+        },
+        if (!overrides.containsKey(winkeyerPttConfigKey)) {
+          'type': 'field',
+          'fieldType': 'checkbox',
+          'key': winkeyerPttConfigKey,
+          'label': t.settings.station.winkeyerPtt,
+          'description': t.settings.station.winkeyerPttDescription,
+        },
+      ];
+
+  @override
+  EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => WinkeyerSession(
+        sink,
+        keyPort: winkeyerKeyPortFromConfig(config),
+        ptt: winkeyerPttFromConfig(config),
+        speed: winkeyerSpeedFromConfig(config),
+      );
+}
+
+/// The speed the operator last picked on this keyer, or [defaultCwSpeedWpm]
+/// for one they have never set. Read straight out of the config rather than
+/// through a field: it is remembered state, not a setting to edit.
+int winkeyerSpeedFromConfig(Map<String, dynamic> config) {
+  final raw = config[keyerSpeedConfigKey];
+  final wpm = raw is num ? raw.toInt() : int.tryParse('$raw'.trim());
+  return wpm == null ? defaultCwSpeedWpm : wpm.clamp(winkeyerSpeedMin, winkeyerSpeedMax);
+}
+
+/// Whether to drive the keyer's PTT line. Reads the string spellings too:
+/// an entry that PINS this in its overrides carries whatever the catalogue
+/// wrote, and the catalogue writes config values as strings.
+bool winkeyerPttFromConfig(Map<String, dynamic> config) => switch (config[winkeyerPttConfigKey]) {
+      final bool on => on,
+      'true' => true,
+      'false' => false,
+      _ => false,
+    };
+
+/// The stored key port, or [winkeyerDefaultKeyPort] for anything that isn't
+/// one of the two the hardware has — an entry saved before the field
+/// existed, or a value hand-edited into the config blob.
+int winkeyerKeyPortFromConfig(Map<String, dynamic> config) {
+  final raw = config[winkeyerKeyPortConfigKey];
+  final port = raw is num ? raw.toInt() : int.tryParse('$raw'.trim());
+  return port == 1 || port == 2 ? port! : winkeyerDefaultKeyPort;
 }
 
 /// One message as queued: its id for the progress report, and its text.
@@ -109,7 +237,23 @@ class _Message {
 class WinkeyerSession implements CwKeyerSession {
   final EquipmentSink _sink;
 
-  WinkeyerSession(this._sink);
+  /// Which of the keyer's two key/PTT jacks to drive, and whether its PTT
+  /// line is used at all. See [_pinConfig].
+  final int keyPort;
+  final bool ptt;
+
+  WinkeyerSession(
+    this._sink, {
+    this.keyPort = winkeyerDefaultKeyPort,
+    this.ptt = false,
+    int speed = defaultCwSpeedWpm,
+  }) : _speed = speed;
+
+  /// The PINCFG byte this session asserts. Sidetone stays off: the boxes
+  /// that have a speaker are keyed next to the operator's own rig, and a
+  /// second sidetone against the radio's is worse than none.
+  int get _pinConfig =>
+      (keyPort == 2 ? _pinKeyPort2 : _pinKeyPort1) | (ptt ? _pinPtt : 0);
 
   int _nextId = 1;
   final _pending = <_Message>[];
@@ -127,7 +271,9 @@ class WinkeyerSession implements CwKeyerSession {
   /// which is the firmware version rather than an echo or a status.
   bool _awaitingVersion = false;
 
-  int? _speed;
+  /// Seeded from the node's remembered speed, so a reconnect keys at the
+  /// speed the operator chose rather than the default.
+  int _speed;
 
   Timer? _pollTimer;
   Timer? _answerTimer;
@@ -140,15 +286,33 @@ class WinkeyerSession implements CwKeyerSession {
 
   void _send(List<int> bytes) => _sink.send(bytes);
 
-  /// Any byte at all is the keyer on the port: the no-answer watch stands
-  /// down, and a problem it or the send watchdog raised is withdrawn.
+  /// A byte that is not the version says something is ON the port, never
+  /// that host mode is OPEN — so it must not stand the open watch down. A
+  /// keyer the last program left open pushes a status or a pot report before
+  /// it answers ours, and taking that as the answer would cancel the watch
+  /// on a keyer that then never opens: [_configure] would never run, and the
+  /// operator would be told nothing while the keyer keys on whatever routing
+  /// it was left with.
   void _answered() {
+    if (_awaitingVersion) return;
+    _withdrawProblem();
+  }
+
+  void _withdrawProblem() {
+    if (!_problemShown) return;
+    _problemShown = false;
+    _sink.reportProblem(null);
+  }
+
+  /// Host mode is open — the one byte that proves it. The watch stands down
+  /// and the keyer gets told what it is.
+  void _hostOpened(int version) {
+    _awaitingVersion = false;
     _answerTimer?.cancel();
     _answerTimer = null;
-    if (_problemShown) {
-      _problemShown = false;
-      _sink.reportProblem(null);
-    }
+    _withdrawProblem();
+    _sink.reportDiagnostic('WinKeyer v${version ~/ 10}.${version % 10}');
+    _configure();
   }
 
   @override
@@ -164,8 +328,7 @@ class WinkeyerSession implements CwKeyerSession {
     // below 0x80 that is not an echo. A status or pot report left over from
     // a session that never closed can precede it, and is never a version.
     if (_awaitingVersion && byte < _potMask) {
-      _awaitingVersion = false;
-      _sink.reportDiagnostic('WinKeyer v${byte ~/ 10}.${byte % 10}');
+      _hostOpened(byte);
       return;
     }
     if (byte & _statusMask == _statusMask) {
@@ -184,14 +347,12 @@ class WinkeyerSession implements CwKeyerSession {
       }
       if (_statusRequested) {
         _statusRequested = false;
-        // A keyer restating its speed is a keyer that is answering; one
-        // whose speed is still unknown is asked for its pot instead, and
-        // that answer says the same.
-        if (_speed != null) {
-          refreshKeyerSpeed();
-        } else {
-          _send([_cmdGetSpeedPot]);
-        }
+        // A keyer restating its speed is a keyer that is answering. There is
+        // always a speed to restate once host mode is open — [_configure]
+        // sets one rather than inheriting the box's — so a poll answered
+        // before then is the only silent case, and asking a keyer that has
+        // not finished opening for its pot would not fill it.
+        refreshKeyerSpeed();
       }
       if (!_xoff) _pump();
       // Idle again: the message is over once everything has been handed
@@ -202,7 +363,7 @@ class WinkeyerSession implements CwKeyerSession {
       return;
     }
     if (byte & _potMask != 0) {
-      final wpm = _potMinWpm + (byte & 0x3F);
+      final wpm = _potMinWpm + (byte & _potValueMask);
       _speed = wpm;
       _sink.reportKeyerSpeed(wpm);
       return;
@@ -220,9 +381,15 @@ class WinkeyerSession implements CwKeyerSession {
   }
 
   /// Hands the keyer as much of the current message as it will take.
+  ///
+  /// Nothing goes out before host mode is open. A keyer that never answered
+  /// ours may still be open from the LAST program, and would key this text
+  /// on that program's routing — the dead carrier, reached through the send
+  /// path rather than the connect path. The message stays queued; if the
+  /// version never comes, the send watchdog gives up and says so.
   void _pump() {
     final current = _current;
-    if (current == null || _xoff) return;
+    if (current == null || _xoff || _awaitingVersion) return;
     if (_handed >= current.text.length) return;
     final end = (_handed + _burst).clamp(0, current.text.length);
     _send(current.text.substring(_handed, end).codeUnits);
@@ -252,7 +419,7 @@ class WinkeyerSession implements CwKeyerSession {
     _echoed = 0;
     // Once per message, not per echo: the timeline only changes with the
     // message or the speed.
-    _currentEnds = cwCharacterEnds(_current!.text, _speed ?? defaultCwSpeedWpm);
+    _currentEnds = cwCharacterEnds(_current!.text, _speed);
     _armSendWatchdog();
     _reportCurrent();
     _pump();
@@ -348,20 +515,56 @@ class WinkeyerSession implements CwKeyerSession {
   /// Nothing to ask the keyer for: it reports the pot as it moves, and a
   /// set is what the app last said. Re-reports what is known.
   @override
-  void refreshKeyerSpeed() {
-    final speed = _speed;
-    if (speed != null) _sink.reportKeyerSpeed(speed);
+  void refreshKeyerSpeed() => _sink.reportKeyerSpeed(_speed);
+
+  /// Everything the keyer must be TOLD, sent once the version byte says host
+  /// mode is open.
+  ///
+  /// Every register here persists in the keyer between sessions, so a value
+  /// this driver does not write is one the last program to touch the box
+  /// chose. That is not a theoretical worry: a PINCFG with PTT enabled and
+  /// no key output makes the keyer hold a dead carrier for the length of
+  /// every message and key nothing.
+  ///
+  /// Written as individual commands rather than the `<0F>` Load Defaults
+  /// block the manual recommends, DELIBERATELY: that block is not portable
+  /// across firmware. Slot 9 is 1st Extension on WK2 but X2 Mode on WK3, and
+  /// slot 15 is unused on WK2 but X1 Mode on WK3 — so one block sent to the
+  /// wrong generation loads a millisecond count into a register whose bits
+  /// are SO2R mode, paddle mute and paddle-status reporting. These commands
+  /// mean the same thing on both.
+  void _configure() {
+    _send([_cmdSetMode, _modeSerialEchoback]);
+    _send([_cmdSetPinConfig, _pinConfig]);
+    _send([_cmdSetWeight, _weightNeutral]);
+    _send([_cmdSetRatio, _ratioNeutral]);
+    _send([_cmdSetKeyComp, _keyCompNone]);
+    _send([_cmdSetPttTiming, _pttLeadIn, _pttTail]);
+    _send([_cmdSetPotRange, _potMinWpm, _potRange, 0x00]);
+    // A speed of our own, not the one the box came up with: on a keyer whose
+    // speed is pot-locked and whose pot is absent (WKmini has none) an
+    // unwritten speed is whatever the ADC floats at. The service builds a
+    // NEW session per connect, so this is the remembered speed the node was
+    // built with — see [EquipmentDriver.remembersKeyerSpeed].
+    setKeyerSpeed(_speed);
+    // The pot, where there is one, outranks that as soon as it reports — and
+    // on a keyer with no pot, whatever the absent ADC answers outranks it
+    // too, which is the cost of asking.
+    _send([_cmdGetSpeedPot]);
+    // A message pressed while the open was still outstanding was held by
+    // [_pump] rather than keyed on the last program's routing; now it can go.
+    _pump();
   }
 
   @override
   void startUpdates() {
     _awaitingVersion = true;
+    // ONLY the open goes out here. "The host must wait for this return code
+    // before any other commands or data can be sent" (WK2 and WK3 manuals,
+    // Admin:Host Open) — until the version byte lands the keyer is still
+    // closed and accepting admin commands only, so anything sent alongside
+    // is read against the wrong state. [_configure] is the rest.
     _send([_admin, _adminHostOpen]);
-    _send([_cmdSetMode, _modeSerialEchoback]);
-    _send([_cmdSetPotRange, _potMinWpm, _potRange, 0x00]);
-    // The pot is the keyer's speed until the app sets one; asked once, so
-    // the speed is known from connect rather than from the first turn.
-    _send([_cmdGetSpeedPot]);
     _answerTimer?.cancel();
     _answerTimer = Timer(winkeyerAnswerTimeout, () {
       _answerTimer = null;
@@ -389,7 +592,14 @@ class WinkeyerSession implements CwKeyerSession {
   Duration? get expectedUpdateInterval => null;
 
   /// Cleared and closed, so the keyer goes back to keying standalone from
-  /// its paddle with nothing of ours left in its buffer.
+  /// its paddle with nothing of ours left in its BUFFER.
+  ///
+  /// Its registers are another matter: PINCFG and the rest persist, and this
+  /// cannot put back what was there — WK3 answers 0 to Get Values, so there
+  /// was never anything to read first. So a connect permanently rewrites the
+  /// operator's routing, and an operator whose amplifier keys off the PTT
+  /// line will find it stops doing so under the paddle once HaLo has
+  /// connected with PTT unchecked.
   @override
   void teardown() {
     stopUpdates();

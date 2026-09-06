@@ -327,6 +327,12 @@ const maxVoiceMemories = 8;
 /// developer mode on the generics.
 const cwKeyerConfigKey = 'cwKeyer';
 
+/// Where a keyer's speed is remembered for the equipment that cannot say
+/// what its own speed is — see [EquipmentDriver.remembersKeyerSpeed]. Stored
+/// in the node's config but never a FIELD: it is what the operator last
+/// picked, not something to edit in a form.
+const keyerSpeedConfigKey = 'keyerSpeed';
+
 /// [voiceMemoriesConfigKey]'s value as a count, or [fallback] when absent —
 /// a number field stores a num, a pinned override an int, and a value typed
 /// into a text-shaped form arrives as a String.
@@ -532,6 +538,20 @@ abstract class EquipmentDriver {
   /// of them.
   Set<String> get recognizedConfigKeys =>
       configElements().where((e) => e['type'] == 'field').map((e) => e['key'] as String).toSet();
+
+  /// Whether the app must REMEMBER this keyer's speed, because the equipment
+  /// cannot be asked what it is.
+  ///
+  /// False for a radio: `refreshKeyerSpeed` reads its keyer menu, so the RIG
+  /// is the record and a copy stored beside it would only go stale against
+  /// the front panel. True for a keyer with nothing to read back — a
+  /// WinKeyer with no speed pot — where an unremembered speed is silently
+  /// replaced by a default on every reconnect.
+  ///
+  /// [CatService] writes [keyerSpeedConfigKey] into the node's config on an
+  /// explicit set when this holds, and the driver reads it at
+  /// [createSession].
+  bool get remembersKeyerSpeed => false;
 
   /// The config field that picks which of the equipment's channels this
   /// node tracks, for equipment that has more than one — `slice` on a

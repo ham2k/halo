@@ -1827,6 +1827,11 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get channelNotInUse => 'sin usar';
 	@override String get channelHeldByUnknown => 'en uso por otro programa';
 	@override String get flexNoSlices => 'Esta radio no ha informado de ningún slice — comprueba que SmartSDR esté activo y que este cliente pueda suscribirse';
+	@override String get winkeyerKeyPort => 'Salida de manipulación';
+	@override String get winkeyerKeyPortDescription => 'En cuál de los dos conectores de salida del manipulador está enchufada tu radio.';
+	@override String winkeyerKeyPortLabel({required Object n}) => 'Puerto ${n}';
+	@override String get winkeyerPtt => 'Usar el PTT del manipulador';
+	@override String get winkeyerPttDescription => 'Activa la línea PTT del mismo conector, para un amplificador o una radio que lo necesite. Déjalo desactivado para una radio manipulada por su conector de manipulación.';
 	@override String get winkeyerNoAnswer => 'Ningún WinKeyer respondió en este puerto';
 	@override String get winkeyerStoppedAnswering => 'El WinKeyer dejó de responder mientras enviaba; el mensaje se descartó';
 	@override String get radioUser => 'Usuario de la radio';
@@ -3906,6 +3911,11 @@ extension on TranslationsEs {
 			'settings.station.channelNotInUse' => 'sin usar',
 			'settings.station.channelHeldByUnknown' => 'en uso por otro programa',
 			'settings.station.flexNoSlices' => 'Esta radio no ha informado de ningún slice — comprueba que SmartSDR esté activo y que este cliente pueda suscribirse',
+			'settings.station.winkeyerKeyPort' => 'Salida de manipulación',
+			'settings.station.winkeyerKeyPortDescription' => 'En cuál de los dos conectores de salida del manipulador está enchufada tu radio.',
+			'settings.station.winkeyerKeyPortLabel' => ({required Object n}) => 'Puerto ${n}',
+			'settings.station.winkeyerPtt' => 'Usar el PTT del manipulador',
+			'settings.station.winkeyerPttDescription' => 'Activa la línea PTT del mismo conector, para un amplificador o una radio que lo necesite. Déjalo desactivado para una radio manipulada por su conector de manipulación.',
 			'settings.station.winkeyerNoAnswer' => 'Ningún WinKeyer respondió en este puerto',
 			'settings.station.winkeyerStoppedAnswering' => 'El WinKeyer dejó de responder mientras enviaba; el mensaje se descartó',
 			'settings.station.radioUser' => 'Usuario de la radio',
@@ -4391,13 +4401,13 @@ extension on TranslationsEs {
 			'offline.reachable' => 'Todos los servicios responden con normalidad.',
 			'offline.whatStops' => 'Las búsquedas, los spots y los archivos de datos están en pausa. El registro y la sincronización cercana, no.',
 			'offline.servicesTitle' => 'Servicios',
+			_ => null,
+		} ?? switch (path) {
 			'offline.noServices' => 'Todavía no ha respondido nada.',
 			'offline.lastSuccess' => ({required Object when}) => 'Respondió por última vez hace ${when}',
 			'offline.neverSucceeded' => 'Todavía no ha respondido',
 			'offline.nextAttempt' => ({required Object when}) => 'Próximo intento en ${when}',
 			'offline.nextAttemptNow' => 'Próximo intento pendiente',
-			_ => null,
-		} ?? switch (path) {
 			'offline.retry' => 'Reintentar ahora',
 			'offline.retrying' => 'Intentando…',
 			'offline.retryReached' => 'Conexión restablecida.',

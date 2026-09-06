@@ -826,15 +826,37 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// explicit ask — and neither radio announces a front-panel knob turn,
   /// so the last value the app saw is not the value the radio is on.
   bool setKeyerSpeed(int wpm) {
+    final uuid = _cwKeyerUuid;
     final session = _cwKeyer;
-    if (session == null) return false;
+    if (uuid == null || session == null) return false;
     try {
       session.setKeyerSpeed(wpm);
     } catch (e, st) {
       ErrorReportingService.report(e, st, context: 'cat:set-keyer-speed');
       return false;
     }
+    _rememberKeyerSpeed(uuid, wpm);
     return true;
+  }
+
+  /// Stores the speed on the node, for equipment that cannot be asked what
+  /// its speed is ([EquipmentDriver.remembersKeyerSpeed]).
+  ///
+  /// From the OPERATOR'S set only, never from [EquipmentSink.reportKeyerSpeed].
+  /// A report is also how a speed pot answers — and on a keyer whose pot is
+  /// absent, how its floating ADC answers — so remembering reports would
+  /// write that reading to disk and hand it back on every connect after.
+  /// What is worth keeping is the speed somebody chose.
+  void _rememberKeyerSpeed(String uuid, int wpm) {
+    final node = _nodes[uuid];
+    if (node == null) return;
+    if (typeFor(node)?.driver.remembersKeyerSpeed != true) return;
+    if (node.config[keyerSpeedConfigKey] == wpm) return;
+    unawaited(
+      updateNode(node.copyWith(config: {...node.config, keyerSpeedConfigKey: wpm})).catchError(
+        (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'cat:remember-keyer-speed'),
+      ),
+    );
   }
 
   /// Asks the key in use for its keyer speed again — for a surface about to show it,

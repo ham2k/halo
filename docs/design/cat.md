@@ -889,6 +889,36 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
   throttled by its XOFF rather than by arithmetic, and `stopCw` clears its buffer. The speed pot
   reports as it moves; a set is reported as taken since the keyer does not echo it. Host mode is
   closed on teardown so the paddle keys standalone again. From the host-interface documents alone.
+
+  **The keyer's own registers are ours to write, every connect.** They persist in the box between
+  sessions, so one this driver leaves alone keys with whatever the operator's last program chose.
+  PINCFG is the one that bites: it selects which of the two key/PTT jacks is live, and a value
+  holding PTT with no key output makes the keyer sit on a dead carrier for exactly the length of
+  every message and key nothing (HALO-524 — the giveaway is that it stays down through the WORD
+  spaces, which no keying parameter on the chip can do). So `_configure()` writes PINCFG, mode,
+  weight, ratio, key compensation, the PTT delays and a speed, and it runs only once the version
+  byte has come back: until then the keyer is still closed and takes admin commands only, which is
+  why the host open goes out ALONE. The two PINCFG choices nothing can discover — which jack the rig
+  is on, and whether to drive its PTT — are config fields, defaulting to port 1 with PTT off.
+
+  **The speed is remembered on the node, because this keyer cannot be asked for it.** Every other
+  keyer here is a radio, and the radio owns its speed — `refreshKeyerSpeed` reads its keyer menu, so
+  the rig is the record. A WinKeyer with no speed pot has nothing to read back, so an unremembered
+  speed resets to the default on every reconnect, which mid-contest is a CQ going out slow with no
+  notice. `EquipmentDriver.remembersKeyerSpeed` marks the equipment that needs this; `CatService`
+  writes `keyerSpeedConfigKey` into the node's config, and the driver reads it at `createSession`.
+  Stored in the config but never a FIELD — remembered state, not a setting to edit, the same way the
+  IC-705's controller address is read straight out of the map.
+
+  Written only from the OPERATOR'S set, never from a reported speed. A report is also how a pot
+  answers — and on a keyer whose pot is absent, how its floating ADC answers — so remembering
+  reports would write that reading to disk and hand it back on every connect afterwards.
+
+  Written as individual commands rather than the `<0F>` Load Defaults block the manual recommends,
+  deliberately: that block is not portable across firmware. Slot 9 is 1st Extension on WK2 but X2
+  Mode on WK3, and slot 15 is unused on WK2 but X1 Mode on WK3, so one block sent to the wrong
+  generation loads a millisecond count into a register whose bits are SO2R mode, paddle mute and
+  paddle-status reporting.
 - **Kenwood CAT** (`kenwood_driver.dart`, on the entries that name a `cwDialect`) is `KY` in two
   shapes: the Kenwood line proper wants `KY ` and the text padded with spaces to a fixed 28-byte
   command, and `KY0;` empties its buffer — from hamlib's account of the TS-590, no Kenwood document

@@ -1324,6 +1324,10 @@ const winkeyerModel = EquipmentModel(
       // field), while an override is merged into every target and takes
       // the baud picker off the form.
       overrides: {'baudRate': 1200, 'stopBits': 2},
+      // The key port IS a prefill: the form must show the port the driver
+      // will key, or the operator reads an empty picker while port 1 goes
+      // out on the wire.
+      defaultConfig: {winkeyerKeyPortConfigKey: '1'},
     ),
   ],
 );
