@@ -3911,6 +3911,9 @@ class Translations$settings$station$en {
 	/// en: 'Equipment Inventory'
 	String get equipmentInventory => 'Equipment Inventory';
 
+	/// en: 'Equipment in Use'
+	String get equipmentInUse => 'Equipment in Use';
+
 	/// en: 'None'
 	String get noTransceiver => 'None';
 
@@ -7097,6 +7100,7 @@ extension on Translations {
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',
+			'settings.station.equipmentInUse' => 'Equipment in Use',
 			'settings.station.noTransceiver' => 'None',
 			'settings.station.peerTransceiver' => ({required Object radio, required Object device}) => '${radio} on ${device}',
 			'settings.station.peerTransceiverUnavailable' => ({required Object radio, required Object device}) => '${radio} on ${device} (not available)',
@@ -7535,9 +7539,9 @@ extension on Translations {
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',
 			'offline.unreachable' => 'The network is up, but nothing is answering — often a sign-in page waiting in a browser.',
-			'offline.reachable' => 'All services responding as expected.',
 			_ => null,
 		} ?? switch (path) {
+			'offline.reachable' => 'All services responding as expected.',
 			'offline.whatStops' => 'Lookups, spots and data files are paused. Logging and nearby sync are not.',
 			'offline.servicesTitle' => 'Services',
 			'offline.noServices' => 'Nothing has reported in yet.',

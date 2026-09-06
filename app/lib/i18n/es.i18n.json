@@ -1336,6 +1336,7 @@
       "currentConfiguration": "Configuración actual",
       "transceiverForMainVfo": "Transceptor para el VFO principal",
       "equipmentInventory": "Inventario de equipos",
+      "equipmentInUse": "Equipos en uso",
       "noTransceiver": "Ninguno",
       "peerTransceiver": "${radio} en ${device}",
       "peerTransceiverUnavailable": "${radio} en ${device} (no disponible)",

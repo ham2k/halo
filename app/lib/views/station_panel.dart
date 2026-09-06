@@ -1057,10 +1057,11 @@ class StationPanel extends StatelessWidget {
             if (keyerExperiment && _cat.canPlayVoice)
               _voiceKeyerRow(context, inset: rowInset),
 
-            // What the station is made OF. Compact shows only the rig
-            // driving the main VFO — a quick-glance connect/status row, not
-            // the whole catalogue Add Equipment and the other radios imply.
-            SectionHeader(st.equipmentInventory),
+            // What the station is made OF. Compact shows only what is in use
+            // — the rig driving the main VFO, and the key if it is a device
+            // of its own — as quick-glance connect/status rows, not the whole
+            // catalogue Add Equipment and the other radios imply.
+            SectionHeader(compact ? st.equipmentInUse : st.equipmentInventory),
             if (compact) ...[
               if (_cat.radio1 case final uuid?)
                 if (_cat.nodeFor(uuid) case final node?)
@@ -1077,21 +1078,23 @@ class StationPanel extends StatelessWidget {
                     onDisconnect: () => _cat.disconnect(node.uuid),
                   ),
               // And the keyer in use, when it is a device of its own: the
-              // row above is where it gets connected.
+              // row above is where it gets connected, so a radio keying
+              // through its own CAT session must not draw a second row.
               if (keyerExperiment)
                 if (_cat.designatedKeyerNode case final keyer?)
-                  _EquipmentTile(
-                    node: keyer,
-                    type: _cat.typeFor(keyer),
-                    state: _cat.stateFor(keyer.uuid),
-                    developerMode: services.settings.developerMode,
-                    displayName: _displayName(keyer),
-                    isMainVfo: false,
-                    onEdit: () => _editEquipment(context, keyer),
-                    onRemoveUnknown: () => _removeEquipment(context, keyer),
-                    onConnect: () => _cat.connect(keyer.uuid),
-                    onDisconnect: () => _cat.disconnect(keyer.uuid),
-                  ),
+                  if (!_cat.isRadio1(keyer.uuid))
+                    _EquipmentTile(
+                      node: keyer,
+                      type: _cat.typeFor(keyer),
+                      state: _cat.stateFor(keyer.uuid),
+                      developerMode: services.settings.developerMode,
+                      displayName: _displayName(keyer),
+                      isMainVfo: false,
+                      onEdit: () => _editEquipment(context, keyer),
+                      onRemoveUnknown: () => _removeEquipment(context, keyer),
+                      onConnect: () => _cat.connect(keyer.uuid),
+                      onDisconnect: () => _cat.disconnect(keyer.uuid),
+                    ),
             ] else ...[
               if (nodes.isEmpty) ListTile(title: Text(st.none)),
               for (final node in nodes)

@@ -9,10 +9,12 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
@@ -101,6 +103,47 @@ void main() {
       expect(find.widgetWithText(TextButton, 'Messages'), findsOneWidget, reason: 'the messages are settings, editable without a radio');
       expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull, reason: 'no area to show for a keyer that is not connected');
       expect(find.text('CAT Keyer in Bench Rig'), findsOneWidget, reason: 'a radio in the key pick is its keyer');
+    });
+
+    testWidgets('a radio keying through its own CAT session draws ONE equipment row', (tester) async {
+      await services.settings.setExperimentEnabled('keyer', true);
+      // One rig, auto-designated both as radio1 and as the key in use — the
+      // trap is drawing it a second time as "the keyer in use", which reads
+      // as a shack with two identical radios on one address.
+      await services.cat.addNode(
+        typeKey: 'placeholder-radio',
+        name: 'Bench Rig',
+        config: placeholderRadioModel.variants.single.defaultConfig,
+      );
+      expect(services.cat.designatedKeyerNode?.uuid, services.cat.radio1, reason: 'sanity: one node fills both roles');
+
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+
+      // Once as the Main VFO dropdown's value, once as its equipment row —
+      // the key pick names it as 'CAT Keyer in Bench Rig', not a bare match.
+      expect(find.text('Bench Rig'), findsNWidgets(2));
+    });
+
+    testWidgets('a keyer that is NOT the current rig keeps its own row', (tester) async {
+      await services.settings.setExperimentEnabled('keyer', true);
+      // The keyer added first, the rig second so the rig is radio1. The row
+      // is this keyer's only reachable connect button in compact, so the
+      // one-row rule above must narrow to the shared node and no further.
+      final keyer = await services.cat.addNode(
+        typeKey: 'placeholder-radio',
+        name: 'Bench Keyer',
+        config: placeholderRadioModel.variants.single.defaultConfig,
+      );
+      await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
+      await services.cat.setDesignated(kCategoryKey, keyer.uuid);
+      expect(services.cat.isRadio1(keyer.uuid), isFalse, reason: 'sanity: the rig, not the keyer, drives the main VFO');
+
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Bench Keyer'), findsOneWidget, reason: 'its equipment row; the key pick names it as CAT Keyer in ...');
+      expect(find.byIcon(MdiIcons.powerPlugOff), findsNWidgets(2), reason: 'rig and keyer each connect from their own row');
     });
 
     testWidgets('a connected keyer-capable radio enables the pick at the speed the radio reported', (tester) async {

@@ -1847,6 +1847,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get currentConfiguration => 'Configuración actual';
 	@override String get transceiverForMainVfo => 'Transceptor para el VFO principal';
 	@override String get equipmentInventory => 'Inventario de equipos';
+	@override String get equipmentInUse => 'Equipos en uso';
 	@override String get noTransceiver => 'Ninguno';
 	@override String peerTransceiver({required Object radio, required Object device}) => '${radio} en ${device}';
 	@override String peerTransceiverUnavailable({required Object radio, required Object device}) => '${radio} en ${device} (no disponible)';
@@ -3952,6 +3953,7 @@ extension on TranslationsEs {
 			'settings.station.currentConfiguration' => 'Configuración actual',
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
+			'settings.station.equipmentInUse' => 'Equipos en uso',
 			'settings.station.noTransceiver' => 'Ninguno',
 			'settings.station.peerTransceiver' => ({required Object radio, required Object device}) => '${radio} en ${device}',
 			'settings.station.peerTransceiverUnavailable' => ({required Object radio, required Object device}) => '${radio} en ${device} (no disponible)',
@@ -4391,9 +4393,9 @@ extension on TranslationsEs {
 			'offline.retry' => 'Reintentar ahora',
 			'offline.retrying' => 'Intentando…',
 			'offline.retryReached' => 'Conexión restablecida.',
-			'offline.retryUnreachable' => 'Sigue sin responder.',
 			_ => null,
 		} ?? switch (path) {
+			'offline.retryUnreachable' => 'Sigue sin responder.',
 			'offline.retryNotAttempted' => 'No hay nada que enviar ahora mismo.',
 			'offline.retryThrottled' => 'Acabas de intentarlo — espera un momento.',
 			'offline.retryDisabled' => 'La sincronización está desactivada, así que no hay con qué sondear.',
