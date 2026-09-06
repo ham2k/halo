@@ -2813,19 +2813,16 @@ class OperationSheetState extends State<OperationSheet> {
             onHeaderColor: onAccordionColor,
             trailing: TextButton.icon(
               onPressed: () async {
-                final isTwoPane = ShirtSize.of(context).isTwoPane;
                 await showModalPane<void>(
                   context,
                   title: t.manageExtensions,
                   closeLabel: context.t.common.close,
+                  // The list scrolls; the footer stays pinned under it and its
+                  // Done is the way out — so no X in the header (see
+                  // haloDialogFooterBand).
                   scrollable: false,
-                  trailing: isTwoPane
-                      ? TextButton(
-                          onPressed: () => Navigator.of(context).maybePop(),
-                          child: Text(context.t.common.done),
-                        )
-                      : null,
-                  builder: (_) => ExtensionsPanel(services: widget.services),
+                  closeButton: false,
+                  builder: (_) => ExtensionsPanel(services: widget.services, footer: true),
                 );
                 if (mounted) {
                   _debounce?.cancel();

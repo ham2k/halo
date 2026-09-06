@@ -1497,8 +1497,12 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
                         context,
                         title: context.t.activitiesView.manageExtensions,
                         closeLabel: context.t.common.close,
+                        // The list scrolls; the footer stays pinned under it
+                        // and its Done is the way out — so no X in the header
+                        // (see haloDialogFooterBand).
                         scrollable: false,
-                        builder: (_) => ExtensionsPanel(services: dockServices, onlyHook: 'panel'),
+                        closeButton: false,
+                        builder: (_) => ExtensionsPanel(services: dockServices, onlyHook: 'panel', footer: true),
                       );
                       await dockServices.panels.refreshExtensionPanels();
                       bumpSheet();

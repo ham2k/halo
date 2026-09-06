@@ -62,7 +62,13 @@ class ExtensionsPanel extends StatefulWidget {
   /// more panels is not handed the whole catalog to search through.
   final String? onlyHook;
 
-  const ExtensionsPanel({super.key, required this.services, this.onlyHook});
+  /// Ends the panel in its own Done footer band — for the modal-pane
+  /// presentations, which drop the header's X in exchange
+  /// ([haloDialogFooterBand]). Off inside the Settings view, where the panel
+  /// is the page and there is nothing to be done with.
+  final bool footer;
+
+  const ExtensionsPanel({super.key, required this.services, this.onlyHook, this.footer = false});
 
   @override
   State<ExtensionsPanel> createState() => ExtensionsPanelState();
@@ -167,7 +173,13 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
     // rows' own content inset explicitly — the ambient ListTileTheme, which
     // already carries the grab-strip clearance (layouts.md) and the pane's
     // centering. Anything else and the field is wider than what it filters.
-    final rowInset = ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
+    //
+    // A modal pane publishes no such theme, and zero there puts the field
+    // flush against the pane's edges: fall back to the settings-list inset
+    // and publish it, so the rows below line up with the field rather than
+    // each taking a default of their own.
+    final rowInset =
+        ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: settingsRowInset);
     final query = _searchController.text.trim().toLowerCase();
 
     return ListenableBuilder(
@@ -254,7 +266,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
 
         final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
 
-        final body = Column(
+        final content = Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
@@ -284,7 +296,24 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 ignoring: _applying,
                 child: rows.isEmpty
                     ? Center(child: Text(t.extensionsPanel.noMatches))
-                    : ListView(padding: const EdgeInsets.only(bottom: Space.md), children: rows),
+                    : ListView(
+                        // Keyed by WHICH extensions are listed. On web the
+                        // accessibility DOM places every row in a scrollable
+                        // element layered over the canvas, and those elements
+                        // are what a click actually hits; refiltering a live
+                        // list leaves them a row's height away from what is
+                        // painted, so the click toggles the extension ABOVE
+                        // the one under the pointer. A new key builds a fresh
+                        // scrollable, whose nodes are positioned from scratch.
+                        // Keyed by the row set rather than the query because
+                        // an uninstall, an install and an experiment flip all
+                        // change the rows without touching the query — and a
+                        // toggle changes neither, so the rows keep their
+                        // elements through the applying rebuilds.
+                        key: ValueKey('extensions-list-${[for (final info in visible) info.key].join(',')}'),
+                        padding: const EdgeInsets.only(bottom: Space.md),
+                        children: rows,
+                      ),
               ),
             ),
             // Below the list, not above it: installing is rare next to
@@ -317,8 +346,24 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                   ],
                 ),
               ),
+            if (widget.footer)
+              haloDialogFooterBand(
+                context,
+                // Disabled while applying, like the Install button above: a
+                // pop here resolves the caller's await while the runtime
+                // restart is still in flight, and the caller then re-reads a
+                // half-started runtime.
+                cancel: TextButton(
+                  onPressed: _applying ? null : () => Navigator.of(context).maybePop(),
+                  child: Text(t.common.done),
+                ),
+              ),
           ],
         );
+
+        // Published for the rows and the section bands below, so the field
+        // above them and they take the same inset — see [rowInset].
+        final body = ListTileTheme.merge(contentPadding: rowInset, child: content);
 
         // Dropping a bundle on the panel is the same install as the button —
         // same inspection, same consent screen — reached the way someone who
