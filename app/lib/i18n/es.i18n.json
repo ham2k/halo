@@ -1443,6 +1443,7 @@
       "switchCurrentStateDescription": "En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.",
       "switchWiringHeader": "Cableado",
       "switchPortInhibitedHint": "transmisión inhibida",
+      "autoConnectHeld": "HaLo dejó de responder la última vez que se conectó a esta radio, así que esta vez no se conectó por su cuenta. Pulsa Conectar para intentarlo de nuevo.",
       "antennaTypes": {
         "dipole": "Dipolo",
         "vertical": "Vertical",
@@ -1749,7 +1750,9 @@
     "preferencesRestoredTitle": "Ajustes restaurados desde una copia",
     "preferencesRestored": "No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.",
     "preferencesResetTitle": "Ajustes reiniciados",
-    "preferencesReset": "No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json."
+    "preferencesReset": "No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json.",
+    "autoConnectHeldTitle": "${name} no se conectó automáticamente",
+    "autoConnectHeld": "HaLo dejó de responder la última vez que empezó a conectarse a ${name}, así que esta vez no lo intentó para no repetirlo. Comprueba que la radio esté encendida y su cable conectado, y luego pulsa Conectar en ella dentro de Ajustes."
   },
   "syncAccount": {
     "anonymous": "Cuenta anónima (#${id})",

@@ -1523,10 +1523,25 @@ Settings is always there.
 
 The retry never fights the operator, and that is the whole design. app-polo's auto-reconnect was the
 source of all four of its connection races, because it could not tell "the connect failed" from
-"someone else took this over". So `_connect` returns an outcome — connected, failed, or
-**superseded** — and the loop stops dead on anything but a failure. It also checks before each
+"someone else took this over". So `_connect` returns an outcome — connected, failed,
+**superseded** or **held** — and the loop stops dead on anything but a failure. It also checks before each
 attempt whether the node is already connected *or mid-connect*, so a Connect that lands between
 retries ends the loop instead of being stomped on. Both cases have tests.
+
+And it never repeats a connect that killed the previous launch. The open is synchronous FFI on the
+isolate that pumps the UI, so a wedged serial port does not fail — it stops the launch dead, before
+any window appears, which on Windows leaves the single-instance guard handing every later launch to
+a corpse (HALO-525). So every automatic connect writes the node down before it makes the call and
+erases it when the call returns; a launch that finds a mark still standing leaves that node alone,
+reports it as **held**, and says so in a notice naming the rig. Only a Connect the operator pressed
+lifts a hold — a launch that cleared its own would merely take turns, hanging and starting, which
+nobody could tell from a random fault. See `services/cat/auto_connect_guard.dart`.
+
+The connect itself, and the shutdown at quit, run under a watchdog isolate
+(`services/hang_watchdog.dart`). The mark keeps the *next* launch out of a call that does not return; the
+watchdog ends the process stuck *in* one, so that there is a next launch rather than a corpse
+holding the window. It measures silence from a heartbeat, not elapsed time on the call, so a
+connect waiting out a TCP timeout or a keychain prompt is never mistaken for a wedged isolate.
 
 Not shipped: reconnect after a live connection drops mid-session. That one needs a backoff and a
 superseded sentinel of its own, or a retry storm ends up fighting the user.

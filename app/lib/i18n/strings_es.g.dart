@@ -804,6 +804,8 @@ class _Translations$notices$es extends Translations$notices$en {
 	@override String get preferencesRestored => 'No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.';
 	@override String get preferencesResetTitle => 'Ajustes reiniciados';
 	@override String get preferencesReset => 'No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json.';
+	@override String autoConnectHeldTitle({required Object name}) => '${name} no se conectó automáticamente';
+	@override String autoConnectHeld({required Object name}) => 'HaLo dejó de responder la última vez que empezó a conectarse a ${name}, así que esta vez no lo intentó para no repetirlo. Comprueba que la radio esté encendida y su cable conectado, y luego pulsa Conectar en ella dentro de Ajustes.';
 }
 
 // Path: syncAccount
@@ -1954,6 +1956,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get switchCurrentStateDescription => 'En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.';
 	@override String get switchWiringHeader => 'Cableado';
 	@override String get switchPortInhibitedHint => 'transmisión inhibida';
+	@override String get autoConnectHeld => 'HaLo dejó de responder la última vez que se conectó a esta radio, así que esta vez no se conectó por su cuenta. Pulsa Conectar para intentarlo de nuevo.';
 	@override late final _Translations$settings$station$antennaTypes$es antennaTypes = _Translations$settings$station$antennaTypes$es._(_root);
 	@override late final _Translations$settings$station$keyTypes$es keyTypes = _Translations$settings$station$keyTypes$es._(_root);
 }
@@ -4060,6 +4063,7 @@ extension on TranslationsEs {
 			'settings.station.switchCurrentStateDescription' => 'En qué antena está ahora mismo cada puerto de radio. Los cambios surten efecto de inmediato.',
 			'settings.station.switchWiringHeader' => 'Cableado',
 			'settings.station.switchPortInhibitedHint' => 'transmisión inhibida',
+			'settings.station.autoConnectHeld' => 'HaLo dejó de responder la última vez que se conectó a esta radio, así que esta vez no se conectó por su cuenta. Pulsa Conectar para intentarlo de nuevo.',
 			'settings.station.antennaTypes.dipole' => 'Dipolo',
 			'settings.station.antennaTypes.vertical' => 'Vertical',
 			'settings.station.antennaTypes.yagiBeam' => 'Yagi / Directiva',
@@ -4302,6 +4306,8 @@ extension on TranslationsEs {
 			'notices.preferencesRestored' => 'No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Ajustes reiniciados',
 			'notices.preferencesReset' => 'No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json.',
+			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} no se conectó automáticamente',
+			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo dejó de responder la última vez que empezó a conectarse a ${name}, así que esta vez no lo intentó para no repetirlo. Comprueba que la radio esté encendida y su cable conectado, y luego pulsa Conectar en ella dentro de Ajustes.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Cuenta anónima (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pendiente de confirmación)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pendiente de confirmación - #${id})',
@@ -4390,11 +4396,11 @@ extension on TranslationsEs {
 			'offline.neverSucceeded' => 'Todavía no ha respondido',
 			'offline.nextAttempt' => ({required Object when}) => 'Próximo intento en ${when}',
 			'offline.nextAttemptNow' => 'Próximo intento pendiente',
+			_ => null,
+		} ?? switch (path) {
 			'offline.retry' => 'Reintentar ahora',
 			'offline.retrying' => 'Intentando…',
 			'offline.retryReached' => 'Conexión restablecida.',
-			_ => null,
-		} ?? switch (path) {
 			'offline.retryUnreachable' => 'Sigue sin responder.',
 			'offline.retryNotAttempted' => 'No hay nada que enviar ahora mismo.',
 			'offline.retryThrottled' => 'Acabas de intentarlo — espera un momento.',

@@ -72,6 +72,7 @@ import 'views/station_panel.dart' show equipmentStatusLabel;
 import 'services/error_reporting_backend.dart';
 import 'services/bottom_chrome_squeezed.dart';
 import 'services/error_policy.dart';
+import 'services/hang_watchdog.dart';
 
 import 'services/error_reporting_service.dart';
 import 'services/extension_dev_client.dart';
@@ -1354,10 +1355,29 @@ Future<HaLoServices> bootstrap({
   showPreferencesRecoveryNotice(services, preferencesRecovery);
   await showLogFromNewerBuildNotice(services, await logRefusal);
 
+  // Started before the first thing it guards, and awaited: spawning an isolate
+  // is a few milliseconds, and a watchdog that arrives after the call it
+  // exists for has missed the only moment it matters. OUTSIDE the experiment
+  // gate for the same reason [shutdownOnExit] is — CAT switched on mid-session
+  // would otherwise quit unguarded — and it costs an idle isolate to a session
+  // that never guards anything.
+  await HangWatchdog.start();
+
   // Reconnect the designated radio (docs/design/cat.md). Not awaited: the
   // radio may be off, and boot must not wait on a socket timeout. Gated on
   // the experiment so nothing opens a connection unless CAT is on.
   if (settings.experimentEnabled('gato') /* stored key, see experiments.yaml */ && !kIsWeb) {
+    // Before the reconnect, not after: the notice describes what this launch
+    // is about to NOT do, and the call below is fire-and-forget.
+    showAutoConnectHeldNotice(services);
+    // Taken down again by the Connect the notice asks for — otherwise the
+    // instruction to press it outlives the pressing, and in a two-radio shack
+    // it would go on naming a rig that is connected. Re-posted rather than
+    // simply dismissed, because the other radio may still be held.
+    services.cat.onAutoConnectHoldLifted = () {
+      services.statusBar.dismissNotice(autoConnectHeldNoticeKey);
+      showAutoConnectHeldNotice(services);
+    };
     unawaited(services.cat.reconnectDesignatedRadio());
   }
 
@@ -1569,6 +1589,34 @@ void showPreferencesRecoveryNotice(HaLoServices services, PreferencesRecovery re
   );
 }
 
+/// Tells the operator that a radio was deliberately left alone this launch,
+/// because the previous one stopped existing while connecting it
+/// (services/cat/auto_connect_guard.dart).
+///
+/// Worth a notice rather than only the equipment row's own error, and this is
+/// the reason: what the operator sees otherwise is a rig that simply is not
+/// there — no frequency, no spots following the VFO — with the explanation two
+/// screens away in Settings, on a launch that has just recovered from the app
+/// failing to start at all.
+///
+/// Posted every time it applies, like [showPreferencesRecoveryNotice]: the
+/// hold is still in force on every one of those launches, so a second launch
+/// is a second thing to act on rather than a repeat of the first.
+const autoConnectHeldNoticeKey = 'catAutoConnectHeld';
+
+@visibleForTesting
+void showAutoConnectHeldNotice(HaLoServices services) {
+  final held = services.cat.autoConnectHeldNodes;
+  if (held.isEmpty) return;
+  final names = held.map(services.cat.displayNameFor).join(', ');
+  services.statusBar.showNotice(
+    key: autoConnectHeldNoticeKey,
+    icon: 'radio-off',
+    title: t.notices.autoConnectHeldTitle(name: names),
+    text: t.notices.autoConnectHeld(name: names),
+  );
+}
+
 /// Opens the log, and answers with the refusal if it was written by a build
 /// newer than this one.
 ///
@@ -1692,28 +1740,48 @@ void shutdownOnExit(HaLoServices services) {
       // ErrorPolicy's `database-closed-on-exit` rule reads this to tell the
       // two apart.
       ErrorPolicy.appIsExiting = true;
-      try {
-        // Bounded. shutdown() awaits each node in turn, and while the Icom
-        // path is bounded (600ms ack + 20ms), a serial port wedged mid-write
-        // has no such guarantee. Without a ceiling one stuck radio hangs
-        // Cmd-Q with no window and no feedback, and the force-quit that
-        // follows skips the very disconnect this exists to send.
-        await services.cat.shutdown().timeout(const Duration(seconds: 5));
-      } catch (e, st) {
-        // Never block the user's quit on a radio that will not let go.
-        ErrorReportingService.report(e, st, context: 'cat:shutdown-on-exit');
-      }
-      // After CAT, which writes through the same database on its way out.
-      await closeDatabaseOnExit(services);
-      _reportARefusedExit();
-      return AppExitResponse.exit;
+      // Under the watchdog for the whole of it. Every step of the teardown is
+      // bounded, but only against an await — and the serial close inside
+      // `shutdown()` is synchronous FFI, which a `timeout` cannot reach. A
+      // quit that wedges there leaves a process that never dies and, on
+      // Windows, a window that makes every later launch a silent no-op
+      // (services/hang_watchdog.dart).
+      return HangWatchdog.guard(() => tearDownForExit(services));
     },
     onStateChange: (state) {
-      if (state == AppLifecycleState.detached) unawaited(services.cat.shutdown());
+      // Guarded like the exit hook: this reaches the same synchronous serial
+      // close, and a wedge here leaves the same process that will not die.
+      if (state == AppLifecycleState.detached) {
+        unawaited(HangWatchdog.guard(() => services.cat.shutdown()));
+      }
     },
   );
 }
 
+
+/// Says goodbye to the radios and then to SQLite, in that order, and answers
+/// the framework's question.
+///
+/// Its own function so [shutdownOnExit] reads as what it is — one guarded
+/// teardown — rather than as a block of steps wrapped in a closure.
+@visibleForTesting
+Future<AppExitResponse> tearDownForExit(HaLoServices services) async {
+  try {
+    // Bounded. shutdown() awaits each node in turn, and while the Icom
+    // path is bounded (600ms ack + 20ms), a serial port wedged mid-write
+    // has no such guarantee. Without a ceiling one stuck radio hangs
+    // Cmd-Q with no window and no feedback, and the force-quit that
+    // follows skips the very disconnect this exists to send.
+    await services.cat.shutdown().timeout(const Duration(seconds: 5));
+  } catch (e, st) {
+    // Never block the user's quit on a radio that will not let go.
+    ErrorReportingService.report(e, st, context: 'cat:shutdown-on-exit');
+  }
+  // After CAT, which writes through the same database on its way out.
+  await closeDatabaseOnExit(services);
+  _reportARefusedExit();
+  return AppExitResponse.exit;
+}
 
 /// How long the database step may take, split so the part that must happen
 /// still gets its turn if the part that merely should takes too long.

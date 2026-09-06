@@ -1672,6 +1672,12 @@ class Translations$notices$en {
 
 	/// en: 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app's data folder, named shared_preferences.corrupt-….json.'
 	String get preferencesReset => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.';
+
+	/// en: '${name} was not connected automatically'
+	String autoConnectHeldTitle({required Object name}) => '${name} was not connected automatically';
+
+	/// en: 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.'
+	String autoConnectHeld({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.';
 }
 
 // Path: syncAccount
@@ -4256,6 +4262,9 @@ class Translations$settings$station$en {
 
 	/// en: 'This radio's saved settings could not be read. Open its settings and enter them again, or remove it and add it back.'
 	String get configUnreadable => 'This radio\'s saved settings could not be read. Open its settings and enter them again, or remove it and add it back.';
+
+	/// en: 'HaLo stopped responding the last time it connected to this radio, so it did not connect on its own this time. Press Connect to try again.'
+	String get autoConnectHeld => 'HaLo stopped responding the last time it connected to this radio, so it did not connect on its own this time. Press Connect to try again.';
 }
 
 // Path: settings.offlineData
@@ -7228,6 +7237,7 @@ extension on Translations {
 			'settings.station.switchWiringHeader' => 'Wiring',
 			'settings.station.switchPortInhibitedHint' => 'transmit inhibited',
 			'settings.station.configUnreadable' => 'This radio\'s saved settings could not be read. Open its settings and enter them again, or remove it and add it back.',
+			'settings.station.autoConnectHeld' => 'HaLo stopped responding the last time it connected to this radio, so it did not connect on its own this time. Press Connect to try again.',
 			'settings.offlineData.title' => 'Offline Data',
 			'settings.offlineData.noFiles' => 'No data files',
 			'settings.offlineData.noFilesDescription' => 'Enable activity or lookup extensions to download their offline data here.',
@@ -7459,6 +7469,8 @@ extension on Translations {
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Settings reset',
 			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
+			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
+			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
@@ -7536,11 +7548,11 @@ extension on Translations {
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',
 			'adifImport.oneFileOnly' => 'Drop one ADIF file at a time — the order files are imported in decides which data wins.',
 			'offline.statusOffline' => 'Internet: OFFLINE',
+			_ => null,
+		} ?? switch (path) {
 			'offline.statusOnline' => 'Internet: connected',
 			'offline.noRoute' => 'No network connection at all.',
 			'offline.unreachable' => 'The network is up, but nothing is answering — often a sign-in page waiting in a browser.',
-			_ => null,
-		} ?? switch (path) {
 			'offline.reachable' => 'All services responding as expected.',
 			'offline.whatStops' => 'Lookups, spots and data files are paused. Logging and nearby sync are not.',
 			'offline.servicesTitle' => 'Services',

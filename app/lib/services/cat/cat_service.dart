@@ -20,9 +20,11 @@ import 'package:uuid/uuid.dart';
 
 import '../../i18n/strings.g.dart';
 import '../error_reporting_service.dart';
+import '../hang_watchdog.dart';
 import '../peer/peer_station_radios.dart';
 import '../radio_service.dart';
 import '../settings_service.dart';
+import 'auto_connect_guard.dart';
 import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/meter_calibration.dart';
@@ -54,6 +56,13 @@ const _storageVersion = 2;
 ///
 /// Generous enough that a busy rig or a lost datagram never trips it.
 const catStaleAfter = Duration(seconds: 30);
+
+/// How long either auto-connect mark may take to reach disk.
+///
+/// Bounded like the quit path's own breadcrumb (main.dart's `_markBudget`), and
+/// for the same reason: a wedged platform channel must not hang in FRONT of the
+/// thing the mark describes.
+const _markBudget = Duration(seconds: 2);
 
 /// How hard launch tries before leaving it to the user.
 const _reconnectRetries = 2;
@@ -92,6 +101,13 @@ enum _ConnectOutcome {
   /// Something else took the node over — a manual Connect, or a
   /// Disconnect. Not a failure, and not ours to retry.
   superseded,
+
+  /// The previous launch was in the middle of connecting this node when it
+  /// stopped existing, so nothing automatic goes near it until the operator
+  /// asks for it by hand (auto_connect_guard.dart). Also not a failure, and
+  /// for the same reason not ours to retry: retrying is precisely what turns
+  /// one wedged port into an app that will not start.
+  held,
 }
 
 /// [base], or the first `base N` nobody is using yet.
@@ -189,6 +205,34 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// skew the data toward whoever left a rig switched off.
   final Set<String> _trackedConnected = {};
   final Set<String> _trackedFailed = {};
+
+  /// The nodes nothing automatic may connect this launch, because the previous
+  /// launch was in the middle of connecting them when it stopped existing
+  /// (auto_connect_guard.dart).
+  ///
+  /// A SNAPSHOT of what the last process left, taken lazily — but always
+  /// before this one writes a mark of its own, since every write below is
+  /// reached through a read of this set. Consulting preferences live instead
+  /// would answer "held" for a connect that is merely in flight right now, and
+  /// the idle retry would then treat a node it is actively connecting as one
+  /// that has settled.
+  late final Set<String> _autoConnectHeld = autoConnectMarks(_settings.prefs).toSet();
+
+  /// How many automatic connects are inside a call for each node right now.
+  ///
+  /// A COUNT, not a flag, because the mark on disk is one bit for a node and
+  /// two attempts on that node can overlap: `_connect` sets `connecting` only
+  /// after an await or two, so the guards that read that status let a second
+  /// attempt start, supersede the first, and then watch the first's `finally`
+  /// erase the mark out from under the attempt that is actually inside the FFI
+  /// call. Clearing at zero, and marking only on the way from zero, keeps the
+  /// mark's meaning: something is in there.
+  final Map<String, int> _autoConnectInFlight = {};
+
+  /// Called when a deliberate Connect lifts a hold, so whoever told the
+  /// operator to press it can take that notice down. Set by main.dart; null in
+  /// tests and standalone use.
+  void Function()? onAutoConnectHoldLifted;
 
   CatService(this._settings,
       {EquipmentRegistry? registry,
@@ -296,6 +340,31 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   }
 
   List<EquipmentNode> get nodes => List.unmodifiable(_nodes.values);
+
+  /// The nodes this launch will not connect on its own, and why an operator
+  /// might find a radio they expect to be live sitting disconnected
+  /// (auto_connect_guard.dart). Boot names them in a notice, which is the only
+  /// place that fact is said out loud before they go looking in Settings.
+  ///
+  /// A mark whose node has since been deleted is simply not listed. Nothing
+  /// prunes the stored value: it matches nothing, costs one string, and a
+  /// launch is the wrong moment to start rewriting preferences to tidy up.
+  List<EquipmentNode> get autoConnectHeldNodes => [
+        for (final uuid in _autoConnectHeld)
+          if (_autoConnectTargets.contains(uuid))
+            if (_nodes[uuid] case final node?) node,
+      ];
+
+  /// The nodes an automatic reconnect aims at: radio1, and the key in use when
+  /// it is a device of its own. Both are what the app depends on, and neither
+  /// should wait for a button.
+  Set<String> get _autoConnectTargets {
+    final keyer = designatedFor(kCategoryKey);
+    return {
+      if (_radio1 case final uuid?) uuid,
+      if (keyer != null && _isDesignatedKeyerDevice(keyer)) keyer,
+    };
+  }
 
   EquipmentNode? nodeFor(String uuid) => _nodes[uuid];
 
@@ -1360,17 +1429,98 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     if (notify) notifyListeners();
   }
 
-  Future<void> connect(String uuid) {
+  Future<void> connect(String uuid) async {
     // Asking for it back cancels a previous Disconnect, so the idle retry may
     // resume looking after this node.
     _runtimeFor(uuid).userDisconnected = false;
+    // And it is the way back from a held auto-connect: the operator asking for
+    // this node by hand is both the deliberate act the hold waits for and the
+    // evidence it wants, since a port that opens on request is one worth
+    // opening automatically again. Awaited so the lift outlives this process —
+    // but only when there is something to lift, so an ordinary Connect never
+    // waits on a preferences write.
+    if (_autoConnectHeld.remove(uuid)) {
+      await _writeAutoConnectMark(
+          () => clearAutoConnectMark(_settings.prefs, uuid), 'cat:clear-auto-connect');
+      onAutoConnectHoldLifted?.call();
+    }
     // The backoff belongs to the designated radio's loop, so only that radio's
     // Connect may reset it. Done unconditionally, connecting a SECOND rig
     // would drag radio1's wait from eight minutes back to thirty seconds — an
     // unrelated action re-entering the eager-poking regime the backoff exists
     // to avoid.
     if (isRadio1(uuid)) _idleRetryDelay = idleRetryFirst;
-    return _connect(uuid);
+    // Watched, though not marked. The mark is skipped deliberately — this is
+    // the attempt somebody is watching, and the one that lifts a hold — but the
+    // port it opens is the same port, with the same synchronous FFI behind it,
+    // so pressing Connect on a wedged radio must not be a way to leave a corpse
+    // holding the window.
+    await HangWatchdog.guard(() => _connect(uuid));
+  }
+
+  /// Every connect the app decides on by itself goes through here — the boot
+  /// reconnect, the burst after a drop, the idle ladder — so that the attempt
+  /// is on disk before it is made and gone once it returns
+  /// (auto_connect_guard.dart). A Connect the operator pressed does not: it is
+  /// the one attempt somebody is watching, and the one that lifts a hold.
+  Future<_ConnectOutcome> _autoConnect(String uuid) async {
+    final node = _nodes[uuid];
+    if (node == null) return _ConnectOutcome.failed;
+    if (_autoConnectHeld.contains(uuid)) {
+      _setState(
+        uuid,
+        EquipmentState(status: EquipmentStatus.error, error: t.settings.station.autoConnectHeld),
+      );
+      // Through the same first-failure-per-node de-dup as a real connect
+      // failure: how often this fires in the field is the only measure of how
+      // often a launch is actually dying inside a connect, which is the thing
+      // no crash report can show — the process that hangs never reports.
+      _trackFailure(node, 'auto_connect_held');
+      return _ConnectOutcome.held;
+    }
+    final prefs = _settings.prefs;
+    if ((_autoConnectInFlight[uuid] = (_autoConnectInFlight[uuid] ?? 0) + 1) == 1) {
+      await _writeAutoConnectMark(() => markAutoConnectStarted(prefs, uuid), 'cat:mark-auto-connect');
+    }
+    try {
+      // Under the watchdog as well as the mark: the mark keeps the NEXT launch
+      // out of a call that does not return, and the watchdog ends the one
+      // stuck in it, so that there is a next launch rather than a corpse
+      // holding the window.
+      return await HangWatchdog.guard(() => _connect(uuid));
+    } finally {
+      // Every ordinary ending clears it — connected, refused, superseded, or
+      // thrown. Only a process that never reaches here at all leaves the mark
+      // standing, which is the single case it is written for.
+      if ((_autoConnectInFlight[uuid] = _autoConnectInFlight[uuid]! - 1) <= 0) {
+        _autoConnectInFlight.remove(uuid);
+        await _writeAutoConnectMark(() => clearAutoConnectMark(prefs, uuid), 'cat:clear-auto-connect');
+      }
+    }
+  }
+
+  /// Writes one of the auto-connect marks, and never lets the writing of it
+  /// become the failure.
+  ///
+  /// [_connect] answers with an outcome and never throws, and two callers are
+  /// built on that: the idle ladder's `.then` reschedules itself from there,
+  /// and the boot burst hands over to that ladder on its way out. An exception
+  /// escaping from here — an unwritable preferences file, a wedged platform
+  /// channel — would skip both, and the designated radio would then never
+  /// connect again for the whole session, with nothing on the row and nothing
+  /// in a report to say why. Bounded for the same reason it is caught: the
+  /// mark is worth less than the connect it describes.
+  ///
+  /// So a mark that cannot be written leaves the call UNMARKED and proceeds.
+  /// The alternative — refusing to connect a radio because a breadcrumb could
+  /// not be written — trades a possible hang for a certain loss of the feature,
+  /// on machines whose preference store is already in trouble.
+  Future<void> _writeAutoConnectMark(Future<void> Function() write, String context) async {
+    try {
+      await write().timeout(_markBudget);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: context);
+    }
   }
 
   /// The outcome matters only to [reconnectDesignatedRadio]: a retry loop
@@ -1683,18 +1833,16 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       if (_disposed) return;
       // radio1, and the key in use when it is a device of its own: the two
       // nodes the app depends on, so the two this loop brings back.
-      final keyer = designatedFor(kCategoryKey);
-      final wanted = <String>{
-        if (_radio1 case final uuid?) uuid,
-        if (keyer != null && _isDesignatedKeyerDevice(keyer)) keyer,
-      };
+      final wanted = _autoConnectTargets;
 
       // STOP only for a reason that will not resolve itself: there is nothing
-      // designated, the node is gone, the operator switched it off, or it is
-      // already connected. connect/disconnect and a dropped session restart it.
+      // designated, the node is gone, the operator switched it off, it is held
+      // from a launch that died connecting it, or it is already connected.
+      // connect/disconnect and a dropped session restart it.
       bool settled(String uuid) =>
           !_nodes.containsKey(uuid) ||
           (_runtimes[uuid]?.userDisconnected ?? false) ||
+          _autoConnectHeld.contains(uuid) ||
           stateFor(uuid).status == EquipmentStatus.connected;
       final open = wanted.where((uuid) => !settled(uuid)).toList();
       if (open.isEmpty) {
@@ -1723,7 +1871,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // Double first, so a failure that arrives after this fire still leaves
       // the next wait longer than this one.
       _idleRetryDelay = _idleRetryDelay * 2 > _idleRetryMax ? _idleRetryMax : _idleRetryDelay * 2;
-      unawaited(Future.wait(open.map(_connect)).then((outcomes) {
+      unawaited(Future.wait(open.map(_autoConnect)).then((outcomes) {
         if (outcomes.every((outcome) => outcome == _ConnectOutcome.connected)) {
           _idleRetryDelay = idleRetryFirst;
           // CANCEL, not just forget. There is an async gap above while the
@@ -1791,13 +1939,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   /// radio1, and the key in use when it is a device of its own: both are
   /// what the app depends on, and neither should wait for a button.
-  Future<void> reconnectDesignatedRadio() async {
-    final keyer = designatedFor(kCategoryKey);
-    await Future.wait([
-      _reconnectWithRetries(_radio1),
-      if (keyer != null && keyer != _radio1 && _isDesignatedKeyerDevice(keyer)) _reconnectWithRetries(keyer),
-    ]);
-  }
+  Future<void> reconnectDesignatedRadio() async =>
+      Future.wait(_autoConnectTargets.map(_reconnectWithRetries)).then((_) {});
 
   Future<void> _reconnectWithRetries(String? uuid) async {
     if (uuid == null || !_nodes.containsKey(uuid)) return;
@@ -1814,7 +1957,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // Connected already, or someone is mid-connect — either way, not ours.
       if (status == EquipmentStatus.connected || status == EquipmentStatus.connecting) return;
 
-      final outcome = await _connect(uuid);
+      final outcome = await _autoConnect(uuid);
       if (outcome != _ConnectOutcome.failed) return;
 
       if (attempt == _reconnectRetries) break;

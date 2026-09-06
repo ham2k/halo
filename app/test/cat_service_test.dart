@@ -24,6 +24,7 @@ import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
+import 'package:ham2k_logger/services/cat/auto_connect_guard.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/discovery.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
@@ -31,6 +32,7 @@ import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
 import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 
 // ---------------------------------------------------------------- fakes
 
@@ -87,6 +89,30 @@ class _Attempt {
   final at = DateTime.now();
 
   _Attempt(this.target, this.cancel);
+}
+
+/// A preferences store that reads normally and refuses every write — an
+/// unwritable file, a wedged platform channel.
+class _RefusingWritesStore extends SharedPreferencesStorePlatform {
+  /// Set once the store it wraps exists — `setMockInitialValues` installs a
+  /// fresh one, so this can only be wrapped around what that leaves behind.
+  late SharedPreferencesStorePlatform inner;
+  var refuse = false;
+
+  Future<bool> _refused() => Future.error(StateError('the preferences file is read-only'));
+
+  @override
+  Future<bool> clear() => refuse ? _refused() : inner.clear();
+
+  @override
+  Future<Map<String, Object>> getAll() => inner.getAll();
+
+  @override
+  Future<bool> remove(String key) => refuse ? _refused() : inner.remove(key);
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) =>
+      refuse ? _refused() : inner.setValue(valueType, key, value);
 }
 
 class _FakeTransport extends EquipmentTransport {
@@ -2287,6 +2313,171 @@ void main() {
 
       expect(connection.closeCalled, isFalse);
       expect(service.stateFor(node.uuid).status, EquipmentStatus.connected);
+    });
+  });
+
+  group('a launch that died connecting', () {
+    // HALO-525. The serial open is synchronous FFI on the isolate that pumps
+    // the UI, so a wedged port does not fail — it stops the launch dead, with
+    // no window and nothing reported, and the launch after it makes the same
+    // call for the same reason. The mark on disk is the only evidence that
+    // survives a process which never gets to say anything, and it is evidence
+    // only if it is written BEFORE the call that may never return.
+
+    const heldUuid = 'held-uuid';
+
+    /// A service that boots from stored settings, optionally carrying marks a
+    /// previous launch left behind.
+    Future<CatService> relaunch({List<String> marks = const [], _RefusingWritesStore? refusing}) async {
+      SharedPreferences.setMockInitialValues({
+        'stationEquipment': jsonEncode({
+          'version': 1,
+          'radio1': heldUuid,
+          'nodes': {
+            heldUuid: {
+              'typeKey': 'fake-type',
+              'name': 'Left Radio',
+              'config': {'host': 'a.local'},
+            },
+          },
+        }),
+        if (marks.isNotEmpty) autoConnectInFlightKey: marks,
+      });
+      // Between the mock values and the instance that reads them: the store
+      // this wraps is the one `setMockInitialValues` just installed.
+      if (refusing != null) {
+        refusing.inner = SharedPreferencesStorePlatform.instance;
+        SharedPreferencesStorePlatform.instance = refusing;
+        SharedPreferences.resetStatic();
+      }
+      final service = await makeService();
+      addTearDown(service.dispose);
+      return service;
+    }
+
+    Future<void> failEveryAttempt() async {
+      for (var i = 0; i < 10; i++) {
+        for (final attempt in transport.attempts) {
+          if (!attempt.completer.isCompleted) attempt.completer.completeError(StateError('radio is off'));
+        }
+        await pumpEventQueue();
+      }
+    }
+
+    test('the attempt is on disk while the connect is still in flight', () async {
+      final service = await relaunch();
+      final prefs = await SharedPreferences.getInstance();
+
+      final burst = service.reconnectDesignatedRadio();
+      await pumpEventQueue();
+
+      // The transport has been asked and has not answered: this is the exact
+      // shape of the launch that hangs, and the only moment the mark can be
+      // checked for. Marking after the connect returns would be no mark at all.
+      expect(transport.attempts, isNotEmpty, reason: 'nothing was attempted, so nothing here is being asserted');
+      expect(prefs.getStringList(autoConnectInFlightKey), [heldUuid]);
+
+      await failEveryAttempt();
+      await burst;
+    });
+
+    test('an attempt that comes back clears its own mark', () async {
+      final service = await relaunch();
+      final prefs = await SharedPreferences.getInstance();
+
+      final burst = service.reconnectDesignatedRadio();
+      await pumpEventQueue();
+      await failEveryAttempt();
+      await burst;
+
+      expect(prefs.getStringList(autoConnectInFlightKey), isNull,
+          reason: 'a radio that is merely switched off would hold itself off every launch after this one');
+    });
+
+    test('the node the last launch was holding is left alone, and says why', () async {
+      final service = await relaunch(marks: [heldUuid]);
+
+      await service.reconnectDesignatedRadio();
+      await pumpEventQueue();
+
+      expect(transport.attempts, isEmpty,
+          reason: 'the launch repeated the very call the previous one did not come back from');
+      expect(service.stateFor(heldUuid).status, EquipmentStatus.error);
+      expect(service.stateFor(heldUuid).error, t.settings.station.autoConnectHeld,
+          reason: 'a radio that is simply absent from the panel, with no reason given, is the worse bug');
+      expect(service.autoConnectHeldNodes.single.uuid, heldUuid,
+          reason: 'boot has nothing to name in its notice');
+    });
+
+    test('a second attempt on the same node does not erase the first one\'s mark', () async {
+      // The mark is one bit per node, and two automatic attempts on one node
+      // overlap easily: `_connect` sets `connecting` only after an await or
+      // two, so the guards that read that status let a second in. If the loser
+      // clears the mark on its way out, the attempt still inside the call —
+      // the one that can wedge — is unmarked, and the next launch repeats it.
+      final service = await relaunch();
+      final prefs = await SharedPreferences.getInstance();
+
+      // Back to back, with no pump between them: the window is `_connect`'s
+      // own async prefix, before it sets `connecting` for the status guards to
+      // see.
+      final first = service.reconnectDesignatedRadio();
+      final second = service.reconnectDesignatedRadio();
+      await pumpEventQueue();
+      expect(transport.attempts, hasLength(greaterThan(1)), reason: 'the two attempts did not overlap');
+      expect(prefs.getStringList(autoConnectInFlightKey), [heldUuid]);
+
+      // The first attempt loses and returns; the second is still in there.
+      transport.attempts.first.completer.completeError(StateError('superseded'));
+      await pumpEventQueue();
+      expect(prefs.getStringList(autoConnectInFlightKey), [heldUuid],
+          reason: 'the attempt that returned erased the mark of the one still inside the call');
+
+      await failEveryAttempt();
+      await first;
+      await second;
+      expect(prefs.getStringList(autoConnectInFlightKey), isNull);
+    });
+
+    test('a preferences write that fails does not take the reconnect down with it', () async {
+      // `_connect` answers with an outcome and never throws, and the retry
+      // ladder is built on that: it reschedules itself from a `.then` with no
+      // catchError. An exception escaping the mark write would skip it, and the
+      // designated radio would never be tried again for the whole session —
+      // with nothing on the row and nothing in a report to say why. Which would
+      // be a worse bug than the one the mark prevents.
+      final original = SharedPreferencesStorePlatform.instance;
+      addTearDown(() => SharedPreferencesStorePlatform.instance = original);
+      final refusing = _RefusingWritesStore();
+      final service = await relaunch(refusing: refusing);
+      refusing.refuse = true;
+
+      // The assertion is `await burst` returning at all: an exception out of
+      // the mark write would escape here instead.
+      final burst = service.reconnectDesignatedRadio();
+      await pumpEventQueue();
+      expect(transport.attempts, isNotEmpty, reason: 'a failed breadcrumb stopped the connect itself');
+      await failEveryAttempt();
+      await burst;
+
+      expect(service.stateFor(heldUuid).status, EquipmentStatus.error,
+          reason: 'the node ended in a state nothing describes');
+    });
+
+    test('a Connect the operator pressed lifts the hold, this launch and the next', () async {
+      final service = await relaunch(marks: [heldUuid]);
+      final prefs = await SharedPreferences.getInstance();
+
+      final connecting = service.connect(heldUuid);
+      await pumpEventQueue();
+      expect(transport.attempts, hasLength(1),
+          reason: 'the hold blocked the deliberate act that is meant to be the way out of it');
+      transport.attempts.last.completer.complete(_FakeConnection('c1', log));
+      await connecting;
+
+      expect(service.autoConnectHeldNodes, isEmpty);
+      expect(prefs.getStringList(autoConnectInFlightKey), isNull,
+          reason: 'the hold outlived the Connect that lifted it, and comes back on the next launch');
     });
   });
 }

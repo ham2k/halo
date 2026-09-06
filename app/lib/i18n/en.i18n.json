@@ -1468,7 +1468,8 @@
       "switchCurrentStateDescription": "Which antenna each radio port is on right now. Changes take effect immediately.",
       "switchWiringHeader": "Wiring",
       "switchPortInhibitedHint": "transmit inhibited",
-      "configUnreadable": "This radio's saved settings could not be read. Open its settings and enter them again, or remove it and add it back."
+      "configUnreadable": "This radio's saved settings could not be read. Open its settings and enter them again, or remove it and add it back.",
+      "autoConnectHeld": "HaLo stopped responding the last time it connected to this radio, so it did not connect on its own this time. Press Connect to try again."
     },
     "offlineData": {
       "title": "Offline Data",
@@ -1760,7 +1761,9 @@
     "preferencesRestoredTitle": "Settings restored from a backup",
     "preferencesRestored": "The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.",
     "preferencesResetTitle": "Settings reset",
-    "preferencesReset": "The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app's data folder, named shared_preferences.corrupt-….json."
+    "preferencesReset": "The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app's data folder, named shared_preferences.corrupt-….json.",
+    "autoConnectHeldTitle": "${name} was not connected automatically",
+    "autoConnectHeld": "HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings."
   },
   "syncAccount": {
     "anonymous": "Anonymous Account (#${id})",
