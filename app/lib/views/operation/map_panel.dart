@@ -223,16 +223,29 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
           styleUrlDark: glStyleUrlDark,
           zoomController: _zoomController);
     } else if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android) {
-      // No zoom controller: mobile zooms by pinch, and the buttons
-      // themselves are hidden there (see hasZoomButtons below).
-      map = MapboxWebviewMapView(
-          markers: markers,
-          lines: lines,
-          shapes: shapes,
-          projection: _projection,
-          isDark: isDark,
-          styleUrl: glStyleUrl,
-          styleUrlDark: glStyleUrlDark);
+      // Nothing until the pane has actually been opened once. macOS/Windows
+      // get here only through `webviewSupported`, which already waits for
+      // that; mobile has no such gate of its own, so without this a Map pane
+      // mounted hidden inside a dock group builds a full webview on launch —
+      // GL script, style, a screen of tiles — for a map nobody has asked to
+      // see. Logs docks unconditionally, and the operation view does once
+      // layout customization is on; the fixed tab arrangement inflates its
+      // tabs lazily and never gets here hidden in the first place.
+      //
+      // `expand`, not `shrink`: the placeholder stands in a pane sized by the
+      // group, and a shrink-wrapping one would resize it.
+      map = paneEverVisible
+          // No zoom controller: mobile zooms by pinch, and the buttons
+          // themselves are hidden there (see hasZoomButtons below).
+          ? MapboxWebviewMapView(
+              markers: markers,
+              lines: lines,
+              shapes: shapes,
+              projection: _projection,
+              isDark: isDark,
+              styleUrl: glStyleUrl,
+              styleUrlDark: glStyleUrlDark)
+          : const SizedBox.expand();
     } else if ((defaultTargetPlatform == TargetPlatform.macOS || defaultTargetPlatform == TargetPlatform.windows) &&
         webviewSupported) {
       // Named platform by platform, and through `defaultTargetPlatform` rather

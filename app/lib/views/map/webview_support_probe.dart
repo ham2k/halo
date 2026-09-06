@@ -39,6 +39,21 @@ mixin WebviewSupportProbe<T extends StatefulWidget> on State<T> {
 
   bool get webviewSupported => _webviewSupported;
 
+  /// Whether this pane has been on screen at least once — the gate a backend
+  /// with a real webview in it waits for on EVERY platform, where
+  /// [webviewSupported] only ever answers for macOS/Windows.
+  ///
+  /// A dock group's `IndexedStack` mounts and lays out every pane in it, so a
+  /// map built from a bare `initState` is a whole webview — the GL script off
+  /// a CDN, a style, and a screen's worth of tiles — fetched for a pane
+  /// nobody has opened.
+  ///
+  /// Latched, not live: once the operator has looked at the map it stays
+  /// built, so switching between panes in a group doesn't tear the map down
+  /// and re-fetch all of that on the way back.
+  bool get paneEverVisible => _paneEverVisible;
+  bool _paneEverVisible = false;
+
   /// Kept only as a call site for symmetry with [maybeProbeWebviewSupport];
   /// deliberately does nothing. Reading the cached availability here used to
   /// set [webviewSupported] unconditionally — which meant a pane mounted
@@ -61,6 +76,12 @@ mixin WebviewSupportProbe<T extends StatefulWidget> on State<T> {
   /// `DockPaneVisibility.of` answers true immediately, so this still fires
   /// on the same frame `initState` used to.
   void maybeProbeWebviewSupport() {
+    // Before the platform gate, and unconditionally: this is what registers
+    // the dependency on `DockPaneVisibility`, which is what calls
+    // didChangeDependencies again when the pane is finally opened. Read only
+    // inside the gate below, it would never be read at all on iOS/Android —
+    // and [paneEverVisible] would stay false for the life of the pane.
+    if (!_paneEverVisible && DockPaneVisibility.of(context)) _paneEverVisible = true;
     if (_probed) return;
     if (kIsWeb || (defaultTargetPlatform != TargetPlatform.macOS && defaultTargetPlatform != TargetPlatform.windows)) {
       return;

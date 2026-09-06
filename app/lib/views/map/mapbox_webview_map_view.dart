@@ -25,11 +25,13 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/error_reporting_service.dart';
 import '../../services/windows_webview.dart';
 import '../../services/map_error_reporter.dart';
 import 'map_gl_script.dart';
+import 'map_ready_watchdog.dart';
 import 'map_unavailable_state.dart';
 import 'map_marker_data.dart';
 import 'map_zoom_controller.dart';
@@ -76,7 +78,7 @@ class MapboxWebviewMapView extends StatefulWidget {
   State<MapboxWebviewMapView> createState() => _MapboxWebviewMapViewState();
 }
 
-class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
+class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with WidgetsBindingObserver {
   InAppWebViewController? _controller;
   bool _mapReady = false;
 
@@ -84,12 +86,14 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   /// page reporting in — a map that recovers must not keep the empty state.
   bool _unavailable = false;
 
-  /// Covers the window before the page's own error channel exists: if
-  /// maplibre-gl.js never loads (offline at map open, DNS, a proxy) or WebGL
-  /// init throws, the inline script dies before `create()` installs the
-  /// watchdog, `poloMapReady` never fires, and without this timer the pane
-  /// is blank with no evidence anywhere.
-  Timer? _readyWatchdog;
+  /// The two ready horizons and everything that decides between them — see
+  /// [MapReadyWatchdog], which owns them so that the 'ready-late' arrival can
+  /// be tested without a platform view.
+  late final _readyWatchdog = MapReadyWatchdog(
+    onUnavailable: () {
+      if (mounted) setState(() => _unavailable = true);
+    },
+  );
 
   /// One 'poloMapEvent' call from the page: everything bar 'recovered' goes
   /// to ErrorPolicy through the reporter, and the kinds that leave the pane
@@ -112,8 +116,8 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
     // style that never parsed), and a 'page-error' before ready is the page
     // dying before the map object exists — the same condition the web
     // backend catches synchronously as 'gl-load'. Without the second, that
-    // failure is known within a second and shown only when the 15s
-    // never-ready watchdog gets to it.
+    // failure is known within a second and shown only when the grace timer
+    // gets to it.
     //
     // Deliberately NOT here: 'style-swap-timeout' (the previous style is
     // still up with the data restored onto it — a working map), and a
@@ -126,16 +130,41 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     widget.zoomController
       ?..onZoomIn = _zoomIn
       ..onZoomOut = _zoomOut
       ..onMoveTo = _moveTo;
-    _readyWatchdog = Timer(const Duration(seconds: 15), () {
-      if (!mounted || _mapReady) return;
-      setState(() => _unavailable = true);
-      MapErrorReporter.report(
-          backend: 'webview', kind: 'never-ready', message: 'the map page never reported ready');
-    });
+  }
+
+  /// Both halves of "is this map being painted", ANDed the way every other
+  /// visibility-gated pane in the app does it (website, spots, solar,
+  /// weather, remote screen): a pane can stop being painted because its tab
+  /// was deselected OR because the whole app went away, and MapLibre's `load`
+  /// is equally impossible either way. Without the second half, a screen that
+  /// locks while the style is still fetching reports a map that was never
+  /// given a frame to draw in.
+  bool _appVisible = true;
+  bool _dockVisible = false;
+
+  static bool _visibleIn(AppLifecycleState state) =>
+      state == AppLifecycleState.resumed || state == AppLifecycleState.inactive;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final visible = _visibleIn(state);
+    if (visible == _appVisible) return;
+    _appVisible = visible;
+    _readyWatchdog.setVisible(_dockVisible && _appVisible);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Outside a dock this answers true on the first call and never changes,
+    // so the horizons start on the same frame the pane is first built.
+    _dockVisible = DockPaneVisibility.of(context);
+    _readyWatchdog.setVisible(_dockVisible && _appVisible);
   }
 
   @override
@@ -150,7 +179,8 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
     if (identical(controller?.onZoomIn, _zoomIn)) controller?.onZoomIn = null;
     if (identical(controller?.onZoomOut, _zoomOut)) controller?.onZoomOut = null;
     if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
-    _readyWatchdog?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _readyWatchdog.dispose();
     // The last thing this app's own code knows before the native platform
     // view underneath actually tears down (HALO-290) — a subsequent native
     // crash carries no Dart stack of its own to say so.
@@ -234,10 +264,10 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> {
           handlerName: 'poloMapReady',
           callback: (args) {
             _mapReady = true;
-            _readyWatchdog?.cancel();
-            // An empty state raised by the watchdog is stale the moment the
-            // page reports in; the style watchdog re-raises it if the map is
-            // ready but its style is stuck.
+            _readyWatchdog.markReady();
+            // An empty state raised by the grace horizon is stale the moment
+            // the page reports in; the style watchdog re-raises it if the map
+            // is ready but its style is stuck.
             if (mounted && _unavailable) setState(() => _unavailable = false);
             _applyProjection();
             // Dark mode is picked at creation (see _html/create's initialDark)

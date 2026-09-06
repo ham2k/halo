@@ -6,9 +6,14 @@
 // indistinguishable from an operation with no locatable QSOs.
 //
 // It states the condition and nothing else. The causes reaching it
-// ('style-timeout', 'never-ready', a page or WebGL failure) are evidence for
+// ('style-timeout', a page or WebGL failure, or the map simply not having
+// drawn within MapReadyWatchdog's grace horizon) are evidence for
 // ErrorPolicy, not for the operator: they name machinery no operator can act
-// on. It names no remedy either, the connection least of all — a device that
+// on. Raising this is not itself a report — the grace horizon tells the
+// operator and reports nothing, because at that point a slow map and a
+// broken one are still the same picture.
+//
+// It names no remedy either, the connection least of all — a device that
 // is offline stamps its MapErrors offline (ConnectivityService, read by
 // ErrorPolicy's map-offline rule), so what reaches this state is the failures
 // a working connection still produces.

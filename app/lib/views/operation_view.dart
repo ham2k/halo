@@ -326,6 +326,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// the wrong tab means the hidden panel scrolls and the visible one doesn't.
   static const int _kSpotsTabIndex = 1;
 
+  /// Map is the last tab in both arrangements. Like [_kSpotsTabIndex] it has
+  /// to move with any reorder: it decides whether the map thinks it is being
+  /// PAINTED, and a webview that is only laid out never renders — which is
+  /// the one thing MapLibre's `load` waits for, and the whole input to the
+  /// map's ready horizons (see MapReadyWatchdog).
+  static const int _kMapTabIndex = _kTabCount - 1;
+
   /// Whether the Spots TAB is the selected one, for [SpotsPanel.visible].
   /// Only half the answer — in the dock arrangement the pane's own
   /// `DockPaneVisibility` is the other half, and the panel ANDs the two. This
@@ -3042,7 +3049,21 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             ),
           if (isTwoPane) infoPanel,
           spotsPanel,
-          mapPanel,
+          // The map's half of the same problem the logging panel has above,
+          // and the reason it needs telling at all: `_LazyTab` keeps the pane
+          // alive behind the other tabs, where it is neither laid out nor
+          // painted, so its webview cannot render and cannot report ready.
+          // Left unsaid, the pane reads the absence of a frame it was never
+          // going to get as a map that failed to load. The dock arrangement
+          // publishes this for itself; this is the fixed one's half.
+          ListenableBuilder(
+            listenable: _tabController!,
+            builder: (context, child) => DockPaneVisibility(
+              visible: _tabController!.index == _kMapTabIndex,
+              child: child!,
+            ),
+            child: mapPanel,
+          ),
         ];
 
         final tabBar = TabBar(

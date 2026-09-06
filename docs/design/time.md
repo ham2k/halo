@@ -85,6 +85,7 @@ clock is the entire point of the feature.
 | `peer_service.dart` — beacon `lastSeenMillis` and the stale-peer cutoff | Both sides of one elapsed-time comparison |
 | `peer_ble_transport.dart` — the link keepalive cutoff (`PeerBleLink.now`), candidate `lastSeenMillis` and dial cooldowns, link uptime | Protocol timeouts and rate limiting a real radio. The keepalive's clock is behind a default argument so a test can drive it; the DEFAULT is the contract, and `peer_ble_transport_test.dart` pins it |
 | `weather_panel.dart` — fetch-attempt throttle | Rate limiting a real request |
+| `map_ready_watchdog.dart` — the visible-time the map's give-up horizon accumulates (`MapReadyWatchdog.now`) | Its remainder becomes a `Timer` duration. Behind a default argument so a test can put it on the same timeline as those timers; the DEFAULT is the contract, and `map_ready_watchdog_test.dart` pins it |
 
 A `Timer` fires on real time and knows nothing about travel, so any duration
 handed to one has to be measured on the same clock it will be counted on.
@@ -452,7 +453,7 @@ Each layer is tested where its failure would actually appear:
 | The `Date` substitution's whole surface | `extensions/sdk/src/appClock.test.ts` |
 | Ordinary rounds running while travelled, and the destructive pair still refusing | `packages/halo_core/test/sync_engine_test.dart` |
 | **The write gate** — what a travelled session may author, and its escape hatches | `packages/halo_core/test/travel_write_gate_test.dart` |
-| **A clock seam's default** — that an injected real-clock read does not follow travel (§7) | `app/test/peer_ble_transport_test.dart` |
+| **A clock seam's default** — that an injected real-clock read does not follow travel (§7) | `app/test/peer_ble_transport_test.dart`, `app/test/map_ready_watchdog_test.dart` |
 
 The sandbox test runs the real kernel and the real clock-dashboard bundle
 deliberately. Replacing a global `Date` either works completely or fails

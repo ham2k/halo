@@ -349,6 +349,54 @@ void main() {
     });
   });
 
+  testWidgets('the Map tab builds no webview for a mobile pane hidden in a dock group', (tester) async {
+    // The mobile counterpart of the WebView2 deferral below: mobile reaches
+    // the webview through no support gate at all, so without this a Map pane
+    // behind another tab in a dock group builds a whole webview — GL script
+    // off a CDN, style, tiles — for a map nobody has opened. An IndexedStack
+    // lays that pane out but never paints it, so MapLibre's `load` (which
+    // waits for the first render) cannot fire, and the pane reads the absence
+    // of a frame it was never going to get as a map that failed.
+    final settings = await _mapSettings();
+
+    await on(TargetPlatform.iOS, () async {
+      await _pumpMapPanel(tester, settings, dockVisible: false);
+
+      expect(find.byType(MapboxWebviewMapView), findsNothing,
+          reason: 'a pane behind another tab in its dock group must not build a webview');
+      // Nothing thrown is the second half of the claim: no platform view was
+      // reached at all, rather than one built and quietly failing.
+      expect(tester.takeException(), isNull);
+
+      // The dock selects this pane's tab — same pane, now on screen.
+      await _pumpMapPanel(tester, settings, dockVisible: true);
+
+      expect(find.byType(MapboxWebviewMapView), findsOneWidget,
+          reason: 'once actually on screen the pane must build its map, or mobile never gets one');
+      expect(tester.takeException(), isNotNull);
+    });
+  });
+
+  testWidgets('a mobile Map pane keeps its map once built, when its tab is left', (tester) async {
+    // The gate is a latch, not live visibility. Tearing the map down on the
+    // way out of the tab would re-fetch the GL script, the style and a
+    // screen of tiles on every return — and drop the camera the operator had
+    // just positioned.
+    final settings = await _mapSettings();
+
+    await on(TargetPlatform.iOS, () async {
+      await _pumpMapPanel(tester, settings, dockVisible: true);
+      expect(find.byType(MapboxWebviewMapView), findsOneWidget);
+      expect(tester.takeException(), isNotNull);
+
+      await _pumpMapPanel(tester, settings, dockVisible: false);
+
+      expect(find.byType(MapboxWebviewMapView), findsOneWidget,
+          reason: 'a map already built stays built behind another tab');
+      expect(tester.takeException(), isNotNull);
+    });
+  });
+
   testWidgets('the Map tab does not spawn WebView2 for a pane hidden in a dock group', (tester) async {
     // HALO-260: a dock group's IndexedStack builds every pane in it up front,
     // so probing from initState spawns the WebView2 browser process for a Map
