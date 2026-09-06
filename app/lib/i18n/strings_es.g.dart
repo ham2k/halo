@@ -1844,6 +1844,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override late final _Translations$settings$station$transports$es transports = _Translations$settings$station$transports$es._(_root);
 	@override String get troubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
 	@override String get ft891Troubleshooting => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.';
+	@override String get yaesuBinaryTroubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
+	@override String get yaesuBinaryTroubleshooting => 'Esta radio habla el CAT antiguo de Yaesu, de cinco bytes, y no responde absolutamente nada cuando algo no encaja. Casi siempre es una de estas:\n\n- **El cable tiene que convertir niveles.** El conector CAT de la parte trasera no es RS-232 ni USB: necesita un CT-62 o un adaptador equivalente. Un cable de audio o de datos normal no lleva CAT.\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio (**#14** en un FT-817, **#19** en un FT-857 o un FT-897). Si no coincide, la radio no responde nada, y nunca da un error.\n- **Nada debe activar RTS ni DTR en este puerto.** En casi todos los cables para estas radios esas líneas son el PTT y el manipulador.\n- **Puede que otro programa tenga el puerto abierto**: WSJT-X, fldigi y rigctld lo mantienen ocupado.\n\nEste controlador se escribió a partir de la documentación CAT publicada por Yaesu y no se ha probado contra una de estas radios. Si funciona a medias, merece la pena avisar.';
 	@override String get yaesuTroubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
 	@override String get yaesuTroubleshooting => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.';
 	@override String get elecraftTroubleshootingTitle => 'Si la radio conecta pero no muestra frecuencia';
@@ -1900,6 +1902,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get voiceMemoriesDescription => 'Cuántas memorias de voz reproduce la radio por CAT. 0 si ninguna.';
 	@override String get voiceMemoriesInvalid => 'Un número entero, 0 o más';
 	@override String get yaesuMeterCapture => 'Capturar lecturas de medidores';
+	@override String get yaesuBinaryMeterCaptureDescription => 'Lee el medidor de potencia de salida y el indicador de ROE alta de la radio mientras transmite y escribe los valores en bruto en el registro. Sirve para construir la escala que Yaesu no publica; los valores no se muestran como medidores.';
 	@override String get yaesuMeterCaptureDescription => 'Lee los medidores PO, ROE y ALC de la radio mientras transmite y escribe los valores en bruto en el registro. Sirve para construir la escala que Yaesu no publica; los valores no se muestran como medidores.';
 	@override String get telemetryInterval => 'Intervalo de lectura de medidores (ms)';
 	@override String get telemetryIntervalDescription => 'Cada cuánto se leen los medidores de la radio mientras transmite. Déjalo en blanco para lo más rápido que admita esta conexión, hasta 200 ms.';
@@ -2744,6 +2747,9 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get ft891 => 'Yaesu FT-891';
 	@override String get ft710 => 'Yaesu FT-710';
 	@override String get ftdx10 => 'Yaesu FTDX10';
+	@override String get ft817 => 'Yaesu FT-817 / FT-818';
+	@override String get ft857 => 'Yaesu FT-857';
+	@override String get ft897 => 'Yaesu FT-897';
 	@override String get yaesuGeneric => 'Yaesu - Genérico';
 	@override String get icomGeneric => 'Icom - Genérico';
 	@override String get kenwoodGeneric => 'Kenwood - Genérico';
@@ -3928,6 +3934,9 @@ extension on TranslationsEs {
 			'settings.station.models.ft891' => 'Yaesu FT-891',
 			'settings.station.models.ft710' => 'Yaesu FT-710',
 			'settings.station.models.ftdx10' => 'Yaesu FTDX10',
+			'settings.station.models.ft817' => 'Yaesu FT-817 / FT-818',
+			'settings.station.models.ft857' => 'Yaesu FT-857',
+			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Genérico',
 			'settings.station.models.icomGeneric' => 'Icom - Genérico',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Genérico',
@@ -3956,6 +3965,8 @@ extension on TranslationsEs {
 			'settings.station.transports.simulated' => 'Simulada',
 			'settings.station.troubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.ft891Troubleshooting' => 'La radio recibe los comandos pero no responde. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio** (FT-891 menú **05-08**). Si está activado, la radio espera una línea de control que la app nunca activa a propósito: en un Digirig, SignaLink o la mayoría de cables caseros esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión.\n- **La velocidad debe coincidir** con el CAT RATE de la radio (menú **05-06**). Si no coincide, responde con datos ilegibles, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
+			'settings.station.yaesuBinaryTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
+			'settings.station.yaesuBinaryTroubleshooting' => 'Esta radio habla el CAT antiguo de Yaesu, de cinco bytes, y no responde absolutamente nada cuando algo no encaja. Casi siempre es una de estas:\n\n- **El cable tiene que convertir niveles.** El conector CAT de la parte trasera no es RS-232 ni USB: necesita un CT-62 o un adaptador equivalente. Un cable de audio o de datos normal no lleva CAT.\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio (**#14** en un FT-817, **#19** en un FT-857 o un FT-897). Si no coincide, la radio no responde nada, y nunca da un error.\n- **Nada debe activar RTS ni DTR en este puerto.** En casi todos los cables para estas radios esas líneas son el PTT y el manipulador.\n- **Puede que otro programa tenga el puerto abierto**: WSJT-X, fldigi y rigctld lo mantienen ocupado.\n\nEste controlador se escribió a partir de la documentación CAT publicada por Yaesu y no se ha probado contra una de estas radios. Si funciona a medias, merece la pena avisar.',
 			'settings.station.yaesuTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
 			'settings.station.yaesuTroubleshooting' => 'La radio recibe los comandos pero no responde nada. Casi siempre es una de estas:\n\n- **CAT RTS debe estar en OFF en la radio.** Con esa opción activada, la radio espera una línea de handshake que la aplicación nunca activa a propósito: en un Digirig, un SignaLink o casi cualquier cable casero esa misma línea es el PTT, así que activarla pondría tu equipo en transmisión. Dónde está esa opción depende del modelo (menú **05-08** en un FT-891).\n- **La velocidad debe coincidir** con el menú CAT RATE de la radio. Si no coincide, responde con basura, o con nada, y nunca con un error.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.\n- **Los modos siguen la tabla del FT-891.** Casi toda la línea Yaesu coincide, pero una radio que numere sus modos de otra forma mostrará — y ajustará — el modo equivocado en esos casos. La frecuencia no se ve afectada.',
 			'settings.station.elecraftTroubleshootingTitle' => 'Si la radio conecta pero no muestra frecuencia',
@@ -4012,6 +4023,7 @@ extension on TranslationsEs {
 			'settings.station.voiceMemoriesDescription' => 'Cuántas memorias de voz reproduce la radio por CAT. 0 si ninguna.',
 			'settings.station.voiceMemoriesInvalid' => 'Un número entero, 0 o más',
 			'settings.station.yaesuMeterCapture' => 'Capturar lecturas de medidores',
+			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Lee el medidor de potencia de salida y el indicador de ROE alta de la radio mientras transmite y escribe los valores en bruto en el registro. Sirve para construir la escala que Yaesu no publica; los valores no se muestran como medidores.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Lee los medidores PO, ROE y ALC de la radio mientras transmite y escribe los valores en bruto en el registro. Sirve para construir la escala que Yaesu no publica; los valores no se muestran como medidores.',
 			'settings.station.telemetryInterval' => 'Intervalo de lectura de medidores (ms)',
 			'settings.station.telemetryIntervalDescription' => 'Cada cuánto se leen los medidores de la radio mientras transmite. Déjalo en blanco para lo más rápido que admita esta conexión, hasta 200 ms.',
@@ -4395,14 +4407,14 @@ extension on TranslationsEs {
 			'adifImport.busy' => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.',
 			'adifImport.oneFileOnly' => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.',
 			'offline.statusOffline' => 'Internet: SIN CONEXIÓN',
+			_ => null,
+		} ?? switch (path) {
 			'offline.statusOnline' => 'Internet: conectado',
 			'offline.noRoute' => 'No hay ninguna conexión de red.',
 			'offline.unreachable' => 'La red está activa, pero nada responde — a menudo una página de acceso sin completar.',
 			'offline.reachable' => 'Todos los servicios responden con normalidad.',
 			'offline.whatStops' => 'Las búsquedas, los spots y los archivos de datos están en pausa. El registro y la sincronización cercana, no.',
 			'offline.servicesTitle' => 'Servicios',
-			_ => null,
-		} ?? switch (path) {
 			'offline.noServices' => 'Todavía no ha respondido nada.',
 			'offline.lastSuccess' => ({required Object when}) => 'Respondió por última vez hace ${when}',
 			'offline.neverSucceeded' => 'Todavía no ha respondido',

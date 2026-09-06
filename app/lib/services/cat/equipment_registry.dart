@@ -37,6 +37,7 @@ import 'drivers/icom_civ_driver.dart';
 import 'drivers/civ_codec.dart' show civVoiceMemoryCount;
 import 'drivers/kenwood_cat_codec.dart' show kxVoiceMemoryCount;
 import 'drivers/yaesu_cat_codec.dart' show yaesuVoiceMemoryCount;
+import 'drivers/yaesu_binary_driver.dart';
 import 'drivers/kenwood_driver.dart';
 import 'drivers/key_driver.dart';
 import 'drivers/rigctld_driver.dart';
@@ -403,6 +404,9 @@ const _ft710SerialKey = 'ft710-serial';
 const _ftdx10SerialKey = 'ftdx10-serial';
 const _icomGenericSerialKey = 'icom-generic-serial';
 const _yaesuSerialKey = 'yaesu-serial';
+const _ft817SerialKey = 'ft817-serial';
+const _ft857SerialKey = 'ft857-serial';
+const _ft897SerialKey = 'ft897-serial';
 const _kenwoodSerialKey = 'kenwood-serial';
 const _qmxSerialKey = 'qmx-serial';
 const _elecraftSerialKey = 'elecraft-serial';
@@ -621,6 +625,95 @@ const ftdx10Model = EquipmentModel(
 );
 
 String _ftdx10Name() => t.settings.station.models.ftdx10;
+
+/// Yaesu FT-817, FT-817ND and FT-818 over their CAT jack.
+///
+/// A different protocol from every other Yaesu in this catalogue
+/// ([YaesuBinaryDriver]): five binary bytes per command, no framing, and no
+/// auto-information, so a dial turn is only ever seen by polling. Written
+/// from Yaesu's own CAT chart and run against no radio, which is what
+/// [YaesuBinaryDriver.hardwareVerified] says.
+///
+/// One entry for all three because CAT does not distinguish them — the ND
+/// and the 818 answer the same chart the original does.
+const ft817Model = EquipmentModel(
+  key: 'ft817',
+  manufacturer: 'Yaesu',
+  category: kCategoryTransceiver,
+  name: _ft817Name,
+  variants: [
+    EquipmentVariant(
+      key: _ft817SerialKey,
+      driver: YaesuBinaryDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': yaesuBinaryDefaultBaudRate},
+      // The failure this driver produces is silence, and every cause is a
+      // setting or a cable outside the app — so the editor, which is where
+      // an operator with a connected row and no frequency will come
+      // looking, is where it is worth saying.
+      notes: _yaesuBinarySerialNotes,
+    ),
+  ],
+);
+
+String _ft817Name() => t.settings.station.models.ft817;
+
+/// Yaesu FT-857 and FT-857D, on the same protocol and driver as
+/// [ft817Model].
+///
+/// Its own entry rather than a line in the 817's notes because of
+/// [yaesuBinaryNarrowFmConfigKey]: this radio takes a narrow-FM set code the
+/// FT-817 has no parameter for, and a radio told to use one it does not have
+/// changes mode to something nobody asked for.
+const ft857Model = EquipmentModel(
+  key: 'ft857',
+  manufacturer: 'Yaesu',
+  category: kCategoryTransceiver,
+  name: _ft857Name,
+  variants: [
+    EquipmentVariant(
+      key: _ft857SerialKey,
+      driver: YaesuBinaryDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': yaesuBinaryDefaultBaudRate},
+      overrides: {yaesuBinaryNarrowFmConfigKey: true},
+      notes: _yaesuBinarySerialNotes,
+    ),
+  ],
+);
+
+String _ft857Name() => t.settings.station.models.ft857;
+
+/// Yaesu FT-897 and FT-897D. Same protocol, driver and narrow-FM code as
+/// [ft857Model].
+const ft897Model = EquipmentModel(
+  key: 'ft897',
+  manufacturer: 'Yaesu',
+  category: kCategoryTransceiver,
+  name: _ft897Name,
+  variants: [
+    EquipmentVariant(
+      key: _ft897SerialKey,
+      driver: YaesuBinaryDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': yaesuBinaryDefaultBaudRate},
+      overrides: {yaesuBinaryNarrowFmConfigKey: true},
+      notes: _yaesuBinarySerialNotes,
+    ),
+  ],
+);
+
+String _ft897Name() => t.settings.station.models.ft897;
+
+List<Map<String, dynamic>> _yaesuBinarySerialNotes() => [
+      {
+        'type': 'markdown',
+        'collapsible': true,
+        'title': t.settings.station.troubleshootingNotes,
+        'text': '**${t.settings.station.yaesuBinaryTroubleshootingTitle}**\n\n'
+            '${t.settings.station.yaesuBinaryTroubleshooting}',
+      },
+    ];
 
 /// Any Yaesu speaking CAT over a serial port — the entry for a radio with no
 /// definition of its own.
@@ -1344,6 +1437,9 @@ const _defaultModels = [
   ft891Model,
   ft710Model,
   ftdx10Model,
+  ft817Model,
+  ft857Model,
+  ft897Model,
   yaesuGenericModel,
   ic705Model,
   ic7300Model,

@@ -3903,6 +3903,12 @@ class Translations$settings$station$en {
 	String get ft891Troubleshooting => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.';
 
 	/// en: 'If the radio connects but shows no frequency'
+	String get yaesuBinaryTroubleshootingTitle => 'If the radio connects but shows no frequency';
+
+	/// en: 'This radio speaks Yaesu's older five-byte CAT, and it answers nothing at all when something is off. Almost always one of: - **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB — it needs a CT-62 or an equivalent adapter. A plain audio or data cable carries no CAT. - **Speed must match** the radio's CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). A mismatch answers with nothing, and never with an error. - **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. This driver was written from Yaesu's published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.'
+	String get yaesuBinaryTroubleshooting => 'This radio speaks Yaesu\'s older five-byte CAT, and it answers nothing at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB — it needs a CT-62 or an equivalent adapter. A plain audio or data cable carries no CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). A mismatch answers with nothing, and never with an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.';
+
+	/// en: 'If the radio connects but shows no frequency'
 	String get yaesuTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
 	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891). - **Speed must match** the radio's CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Modes follow the FT-891's table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.'
@@ -4145,6 +4151,9 @@ class Translations$settings$station$en {
 
 	/// en: 'Capture meter readings'
 	String get yaesuMeterCapture => 'Capture meter readings';
+
+	/// en: 'Reads the radio's power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.'
+	String get yaesuBinaryMeterCaptureDescription => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.';
 
 	/// en: 'Reads the radio's PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.'
 	String get yaesuMeterCaptureDescription => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.';
@@ -5762,6 +5771,15 @@ class Translations$settings$station$models$en {
 	/// en: 'Yaesu FTDX10'
 	String get ftdx10 => 'Yaesu FTDX10';
 
+	/// en: 'Yaesu FT-817 / FT-818'
+	String get ft817 => 'Yaesu FT-817 / FT-818';
+
+	/// en: 'Yaesu FT-857'
+	String get ft857 => 'Yaesu FT-857';
+
+	/// en: 'Yaesu FT-897'
+	String get ft897 => 'Yaesu FT-897';
+
 	/// en: 'Yaesu - Generic'
 	String get yaesuGeneric => 'Yaesu - Generic';
 
@@ -7090,6 +7108,9 @@ extension on Translations {
 			'settings.station.models.ft891' => 'Yaesu FT-891',
 			'settings.station.models.ft710' => 'Yaesu FT-710',
 			'settings.station.models.ftdx10' => 'Yaesu FTDX10',
+			'settings.station.models.ft817' => 'Yaesu FT-817 / FT-818',
+			'settings.station.models.ft857' => 'Yaesu FT-857',
+			'settings.station.models.ft897' => 'Yaesu FT-897',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Generic',
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Generic',
@@ -7119,6 +7140,8 @@ extension on Translations {
 			'settings.station.transports.simulated' => 'Simulated',
 			'settings.station.troubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
+			'settings.station.yaesuBinaryTroubleshootingTitle' => 'If the radio connects but shows no frequency',
+			'settings.station.yaesuBinaryTroubleshooting' => 'This radio speaks Yaesu\'s older five-byte CAT, and it answers nothing at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB — it needs a CT-62 or an equivalent adapter. A plain audio or data cable carries no CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). A mismatch answers with nothing, and never with an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
 			'settings.station.elecraftTroubleshootingTitle' => 'If the radio connects but shows no frequency',
@@ -7213,6 +7236,7 @@ extension on Translations {
 			'settings.station.voiceMemoriesDescription' => 'How many voice memories the radio plays over CAT. 0 for none.',
 			'settings.station.voiceMemoriesInvalid' => 'A whole number, 0 or more',
 			'settings.station.yaesuMeterCapture' => 'Capture meter readings',
+			'settings.station.yaesuBinaryMeterCaptureDescription' => 'Reads the radio\'s power-output meter and high-SWR flag while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.yaesuMeterCaptureDescription' => 'Reads the radio\'s PO, SWR and ALC meters while transmitting and prints the raw values to the log. For building the scale Yaesu does not publish — the values are not shown as meters.',
 			'settings.station.telemetryInterval' => 'Meter reading interval (ms)',
 			'settings.station.telemetryIntervalDescription' => 'How often to read the radio\'s meters while it is transmitting. Leave blank for the fastest this connection can carry, up to 200 ms.',
@@ -7557,14 +7581,14 @@ extension on Translations {
 			'adifImport.confirm' => 'Import',
 			'adifImport.importing' => ({required Object filename}) => 'Importing ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} contact from ${filename}', other: 'Imported ${formatted} contacts from ${filename}', ), 
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} does not look like an ADIF file',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warning: this ADIF has QSOs from ${calls}, but they will be imported as ${station} if you continue.',
 			'adifImport.stationCallJoin' => ' and ',
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} has no date and cannot be imported', other: '${formatted} have no date and cannot be imported', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'This file records an activation of ${refs}.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.addActivation' => 'Add it to this operation',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Only ${written} of ${planned} could be applied — the log changed while you were deciding.',
 			'adifImport.busy' => 'An import is already running. Wait for it to finish before starting another.',

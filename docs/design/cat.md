@@ -242,6 +242,45 @@ The FT-891 is the first driver on a second transport, and it is what proves the 
 ASCII terminated by `;` over a serial port, FlexRadio is a different text protocol over a socket, and
 neither driver nor transport had to learn anything about the other.
 
+The **older** Yaesu portables — FT-817/818, FT-857, FT-897 — are on a serial port too and share
+nothing else with that: five binary bytes per command, four parameters then an opcode
+(`yaesu_binary_codec.dart`). One manufacturer, two protocols, one transport, and the split is what
+lets the second cost a codec and a driver rather than a rework.
+
+### A protocol with no framing at all
+
+Every other protocol here delimits its messages — `;` for Yaesu ASCII and Kenwood, `FE FE … FD` for
+CI-V, a newline for FlexRadio. This one has **nothing**: no preamble, no terminator, no length, and
+no echo of the command. A reply is bare bytes, and the only thing that says what they mean is which
+question is outstanding.
+
+So `YaesuBinarySession` sends **one command at a time** and reads back exactly that command's reply
+length, which the codec carries on the command itself. A whole exchange is ten bytes — 21 ms at 4800
+baud — so serialising costs nothing, and it is what keeps a one-byte status answer from being read as
+the head of a five-byte frequency.
+
+Three rules hold it together, and each exists for a failure that is otherwise silent:
+
+- **The deadline is between BYTES, not around the answer.** Yaesu's own chart allows 200 ms between
+  the bytes of a command, so a five-byte answer may legitimately take 800 ms; a whole-answer deadline
+  abandons a radio that is answering perfectly well, every time.
+- **Giving up on an answer starts a resync, not the next command.** The abandoned reply's remaining
+  bytes are still coming and are indistinguishable from the next one's, so nothing is sent until the
+  line has been quiet and everything arriving meanwhile is dropped. Skip this and a stalled `01 42 34`
+  hands its late `56` to the following TX-status read, where bit 7 clear reports a *receiving* radio
+  as keyed — a reading that gates antenna relays.
+- **A byte arriving with nothing outstanding is discarded, never buffered.** Keeping it offsets every
+  later reply by one for the life of the connection.
+
+What the chart does not settle is recorded where it is read rather than worked around: whether Set
+Frequency acknowledges (tolerated either way, so a guess cannot desynchronise anything), and the
+polarity of the PTT bit, which Note 4 labels and never defines — taken as `0 = keyed`, the only
+reading under which a receiving radio's idle `0xFF` is not also a high-SWR alarm.
+
+These three radios have no auto-information either, so the poll is not a backstop the way it is on
+the ASCII line: it is the only way a dial turn is ever seen, which is why the TX watch's own answers
+never defer it.
+
 Serial is `flutter_libserialport` (FFI, the same shape as the existing `halo_quickjs` plugin), behind
 the same conditional-export barrel as TCP. Android goes through the `usb_serial` plugin instead
 (`UsbManager` over a MethodChannel, with a runtime permission flow), and iOS has no USB host API at
@@ -1048,6 +1087,7 @@ generic Yaesu entry names none.
 | rigctld | `+t` | `RFPOWER_METER_WATTS`, `SWR`, `ALC`, `VD_METER` |
 | FlexRadio | `interlock state=`, PUSHED — costs nothing | none: SmartSDR's meters ride a VITA-49 stream, a project of its own |
 | Yaesu (FT-891) | `TX;`, polled | power out, SWR, ALC, volts — for a radio whose entry names a table |
+| Yaesu (FT-817/857/897) | bit 7 of `F7`, polled | none: the PO meter is a 0-15 nibble and HI SWR is one bit, neither with a published scale |
 | Kenwood | the flag in `IF`, one place ahead of the mode | none — see below |
 
 Two things are still deliberately missing:
@@ -1234,6 +1274,7 @@ pushing (Yaesu `AI1;`, Icom transceive) cannot be read back:
 |---|---|---|
 | flrig, rigctld | poll only — these servers push nothing at all | `AdaptivePoller.interval` |
 | FT-891 | `AI1;` pushes, poll is the backstop | `AdaptivePoller.interval` |
+| FT-817/857/897 | poll only — this protocol has no auto-information at all | `AdaptivePoller.interval` |
 | Icom CI-V | transceive pushes, the 5 s poll is the backstop | 5 s **until an unsolicited frame arrives**, null after |
 | FlexRadio | streams; the 60 s resync is the backstop | null |
 
