@@ -21,6 +21,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../config/dev_flags.dart';
+import '../i18n/strings.g.dart';
 import '../config/user_agent.dart';
 import 'error_reporting_service.dart';
 
@@ -33,6 +34,86 @@ ThemeMode toggledThemeMode(ThemeMode current, Brightness platformBrightness) {
   final showingDark =
       current == ThemeMode.dark || (current == ThemeMode.system && platformBrightness == Brightness.dark);
   return showingDark ? ThemeMode.light : ThemeMode.dark;
+}
+
+/// One named set of CW messages: eight templates and eight labels, the same
+/// eight function keys under a name the operator picked. Sets are the
+/// STORAGE — `SettingsService.cwMessage` reads the active one, so every
+/// surface that names a message by its key (All Settings, SET) moves with
+/// the set in use rather than addressing a ninth, hidden copy.
+///
+/// Immutable: the messages dialog edits a draft list and writes it whole on
+/// Save, and a set that could be mutated in place would let a Cancel leave
+/// half its edits behind.
+class CwMessageSet {
+  final String name;
+
+  /// Always [SettingsService.cwMessageCount] long — [fromJson] pads a short
+  /// list rather than leaving a key with nothing to read.
+  final List<String> messages;
+  final List<String> labels;
+
+  const CwMessageSet({required this.name, required this.messages, required this.labels});
+
+  static List<String> _padded(dynamic value) {
+    final list = value is List ? [for (final entry in value) entry is String ? entry : ''] : <String>[];
+    return [
+      for (var i = 0; i < SettingsService.cwMessageCount; i++) i < list.length ? list[i] : '',
+    ];
+  }
+
+  factory CwMessageSet.fromJson(Map<String, dynamic> json) => CwMessageSet(
+        name: (json['name'] as String?)?.trim().isNotEmpty == true ? json['name'] as String : '?',
+        messages: _padded(json['messages']),
+        labels: _padded(json['labels']),
+      );
+
+  Map<String, dynamic> toJson() => {'name': name, 'messages': messages, 'labels': labels};
+
+  String message(int n) => n >= 1 && n <= messages.length ? messages[n - 1] : '';
+
+  String label(int n) => n >= 1 && n <= labels.length ? labels[n - 1] : '';
+
+  CwMessageSet withMessage(int n, String value) => CwMessageSet(
+        name: name,
+        messages: [for (var i = 0; i < messages.length; i++) i == n - 1 ? value : messages[i]],
+        labels: labels,
+      );
+
+  CwMessageSet withLabel(int n, String value) => CwMessageSet(
+        name: name,
+        messages: messages,
+        labels: [for (var i = 0; i < labels.length; i++) i == n - 1 ? value : labels[i]],
+      );
+
+  CwMessageSet renamed(String value) => CwMessageSet(name: value, messages: messages, labels: labels);
+
+  /// What an install with nothing stored is offered: a Default worth keying
+  /// as it stands, and a POTA that differs from it only in the CQ — which is
+  /// what duplicating a set produces, and the shape the operator will make
+  /// the next one in. [saved] is the pre-sets F1-F8 where there were any; it
+  /// goes FIRST and is therefore the active one, so an upgrade changes
+  /// nothing about what the function keys send.
+  static List<CwMessageSet> seeded(CwMessageSet? saved) {
+    final m = t.settings.radio.cwMessages;
+    List<String> pad(Map<int, String> entries) => [
+          for (var n = 1; n <= SettingsService.cwMessageCount; n++) entries[n] ?? '',
+        ];
+    final defaults = CwMessageSet(
+      name: m.setDefault,
+      messages: pad({1: 'CQ DE {{op.call}} K', 2: '{{qso.call}} UR 5NN TU', 4: '{{op.call}}'}),
+      labels: pad({1: 'CQ', 2: '5NN', 4: '{{op.call}}'}),
+    );
+    return [
+      if (saved != null) saved,
+      defaults,
+      CwMessageSet(
+        name: m.setPota,
+        messages: defaults.withMessage(1, 'CQ POTA DE {{op.call}} K').messages,
+        labels: defaults.labels,
+      ),
+    ];
+  }
 }
 
 class SettingsService extends ChangeNotifier implements SyncSettings {
@@ -1044,6 +1125,9 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   static const cwMessageCount = 8;
 
   /// The stored key of message [n] (1-based) — also its settings field key.
+  /// It addresses a message WITHIN the active set: the sets are the storage
+  /// (`cwMessageSets`), and these keys are what All Settings and SET name a
+  /// message by, so both surfaces move with the set the operator picked.
   static String cwMessageKey(int n) => 'cwMessage$n';
 
   /// Liquid templates (docs/extensions/templates.md), one per function
@@ -1051,17 +1135,98 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// nothing. One set for the app rather than per operation: the
   /// placeholders are what make the same eight messages serve a POTA
   /// activation and a contest alike.
-  String cwMessage(int n) => (settingValue(radioGroup, cwMessageKey(n)) as String?) ?? '';
+  String cwMessage(int n) => activeCwMessageSet.message(n);
 
-  Future<void> setCwMessage(int n, String value) => setSettingValue(radioGroup, cwMessageKey(n), value);
+  Future<void> setCwMessage(int n, String value) => _editActiveCwMessageSet((set) => set.withMessage(n, value));
 
   /// An optional name for message [n] — what the editor's row shows beside
   /// the key, since a template is not always readable at a glance.
   static String cwMessageLabelKey(int n) => 'cwMessageLabel$n';
 
-  String cwMessageLabel(int n) => (settingValue(radioGroup, cwMessageLabelKey(n)) as String?) ?? '';
+  String cwMessageLabel(int n) => activeCwMessageSet.label(n);
 
-  Future<void> setCwMessageLabel(int n, String value) => setSettingValue(radioGroup, cwMessageLabelKey(n), value);
+  Future<void> setCwMessageLabel(int n, String value) => _editActiveCwMessageSet((set) => set.withLabel(n, value));
+
+  /// The stored key of the SETS, and of the name of the one in use. Both in
+  /// the radio group, beside everything else the keyer reads.
+  static const cwMessageSetsKey = 'cwMessageSets';
+  static const cwMessageSetKey = 'cwMessageSet';
+
+  /// Every set the operator has, in the order they are offered. Never empty:
+  /// an install with nothing stored is answered with the seeds, and one whose
+  /// F1-F8 were written before sets existed keeps them as a set of their own
+  /// ([CwMessageSet.seeded]) rather than losing them to the seeds.
+  ///
+  /// Derived rather than persisted at startup: a getter that seeds and a
+  /// setter that writes cannot disagree, while a migration that runs once at
+  /// launch fails silently on the install where it threw.
+  List<CwMessageSet> get cwMessageSets {
+    final stored = settingValue(radioGroup, cwMessageSetsKey);
+    if (stored is List && stored.isNotEmpty) {
+      final sets = [for (final entry in stored) if (entry is Map) CwMessageSet.fromJson(entry.cast<String, dynamic>())];
+      if (sets.isNotEmpty) return sets;
+    }
+    return CwMessageSet.seeded(_legacyCwMessageSet());
+  }
+
+  /// The pre-sets messages as a set, or null when there were none — every
+  /// field empty is an install that never wrote one, not a set of blanks.
+  CwMessageSet? _legacyCwMessageSet() {
+    final messages = [
+      for (var n = 1; n <= cwMessageCount; n++) (settingValue(radioGroup, cwMessageKey(n)) as String?) ?? '',
+    ];
+    final labels = [
+      for (var n = 1; n <= cwMessageCount; n++) (settingValue(radioGroup, cwMessageLabelKey(n)) as String?) ?? '',
+    ];
+    if (messages.every((text) => text.trim().isEmpty)) return null;
+    return CwMessageSet(name: t.settings.radio.cwMessages.setSaved, messages: messages, labels: labels);
+  }
+
+  /// The name of the set F1-F8 key. Falls back to the first set rather than
+  /// to a name: a stored name whose set was renamed away would otherwise
+  /// leave the keys with nothing to send.
+  String get cwMessageSetName {
+    final sets = cwMessageSets;
+    final stored = settingValue(radioGroup, cwMessageSetKey) as String?;
+    if (stored != null && sets.any((set) => set.name == stored)) return stored;
+    return sets.first.name;
+  }
+
+  CwMessageSet get activeCwMessageSet {
+    final name = cwMessageSetName;
+    return cwMessageSets.firstWhere((set) => set.name == name, orElse: () => cwMessageSets.first);
+  }
+
+  /// Writes the sets and, when given, which one is in use — one write, so a
+  /// pick that arrives with edits cannot land half-applied.
+  Future<void> setCwMessageSets(List<CwMessageSet> sets, {String? active}) async {
+    if (sets.isEmpty) return;
+    final name = active != null && sets.any((set) => set.name == active) ? active : sets.first.name;
+    await updateSettingsGroup(radioGroup, {
+      cwMessageSetsKey: [for (final set in sets) set.toJson()],
+      cwMessageSetKey: name,
+    });
+  }
+
+  Future<void> _editActiveCwMessageSet(CwMessageSet Function(CwMessageSet) edit) {
+    final name = cwMessageSetName;
+    final sets = [for (final set in cwMessageSets) set.name == name ? edit(set) : set];
+    return setCwMessageSets(sets, active: name);
+  }
+
+  /// The delays message 1 may repeat at, in seconds — `'0'` being off.
+  /// Strings, like every other option list here, so a stored value names an
+  /// item of the picker that set it.
+  static const cwRepeatDelayOptions = ['0', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
+
+  /// How long after message 1 finishes keying before it goes again, or
+  /// [Duration.zero] for no repeat. Only message 1 repeats: it is the CQ,
+  /// and a repeating exchange or report would key over the contact it is
+  /// answering (docs/design/cat.md § CW keying).
+  Duration get cwRepeatDelay =>
+      Duration(seconds: int.tryParse((settingValue(radioGroup, 'cwRepeatDelay') as String?) ?? '') ?? 0);
+
+  Future<void> setCwRepeatDelay(int seconds) => setSettingValue(radioGroup, 'cwRepeatDelay', '$seconds');
 
   /// How many voice memory labels there are: one per function key, like
   /// the CW messages — the most any radio here has (an Icom's T1-T8). A
@@ -1077,6 +1242,34 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   String voiceMessageLabel(int n) => (settingValue(radioGroup, voiceMessageLabelKey(n)) as String?) ?? '';
 
   Future<void> setVoiceMessageLabel(int n, String value) => setSettingValue(radioGroup, voiceMessageLabelKey(n), value);
+
+  /// How long memory [n] plays for, in MILLISECONDS — timed off the radio's
+  /// own end-of-play report (CatService.playVoiceMemory), never guessed.
+  /// Zero means unmeasured, which is what a memory stays until it is played
+  /// once. Milliseconds rather than seconds because the measurement has
+  /// them: a 4.2-second memory rounded to 5 paces a progress bar that
+  /// finishes late every time.
+  static String voiceMessageDurationKey(int n) => 'voiceMessageDurationMs$n';
+
+  int voiceMessageDuration(int n) => (settingValue(radioGroup, voiceMessageDurationKey(n)) as num?)?.round() ?? 0;
+
+  Future<void> setVoiceMessageDuration(int n, int millis) =>
+      setSettingValue(radioGroup, voiceMessageDurationKey(n), millis);
+
+  /// Whether the logging panel's keyer area is showing. A setting rather
+  /// than session state: an operator who opened the strip wants it there
+  /// tomorrow too, and one who closed it does not want it back at the next
+  /// launch.
+  bool get keyerAreaShown => settingValue(radioGroup, 'keyerAreaShown') == true;
+
+  Future<void> setKeyerAreaShown(bool value) => setSettingValue(radioGroup, 'keyerAreaShown', value);
+
+  /// The voice counterpart of [cwRepeatDelay], and the same rule: only
+  /// memory 1 repeats, because it is the CQ.
+  Duration get voiceRepeatDelay =>
+      Duration(seconds: int.tryParse((settingValue(radioGroup, 'voiceRepeatDelay') as String?) ?? '') ?? 0);
+
+  Future<void> setVoiceRepeatDelay(int seconds) => setSettingValue(radioGroup, 'voiceRepeatDelay', '$seconds');
 
   /// Smart VFO Snap's feel, as four numbers the operator can turn.
   ///

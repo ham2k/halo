@@ -987,8 +987,11 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
 row — the keyer area (`KeyerArea`, through `LoggingControls.aboveEntryRow`): the message with its sent characters
 set apart, a bar pacing through it, and what waits behind it, behind a pill with the keyer speed
 that opens a quick speed dialog. The strip slides down with the first message; a message leaves it
-the moment it ends (or is stopped), the pill lingers a minute after the last one, then the strip
-slides back up (or sooner, from the X at its end). The pill's dialog also takes a free-text message.
+the moment it ends (or is stopped), and the strip itself STAYS — it goes away when the operator
+sends it away (the X, `KEYER`, the Station dialog's switch), never on a timer, since the buttons on
+it are what the next message is sent from and a strip that vanished mid-QSO is one the operator has
+to summon back before they can key at all. That switch is a setting (`keyerAreaShown`), so the strip
+an operator opened is there at the next launch. The pill's dialog also takes a free-text message.
 While nothing is keying the area offers a button per message — the function keys for a mouse — and
 `KEYER` (or `MACROS`) in the call field, like the Station dialog's toggle, brings the area up without
 sending anything; the Station dialog's keyer row carries a switch bound to the same `keyerAreaShown`
@@ -997,12 +1000,39 @@ flag. The queue reports each message as it starts (`EquipmentSink.reportCwProgre
 uses — the radio reports nothing about its progress, so the indicator is an estimate that is right
 to the extent the pacing is, and a paddle-stop at the rig is invisible to it.
 
+**Messages come in SETS.** `CwMessageSet` (settings_service.dart) is a name plus the eight templates
+and their labels; `cwMessageSets` holds them all and `cwMessageSet` names the one in use, which is
+what `cwMessage(n)` reads and what the function keys send. The keys address a message WITHIN the
+active set, so All Settings and `SET` follow the operator's pick rather than editing a ninth hidden
+copy — `RadioSettingsGroup.commit` routes those keys into the set. An install with nothing stored is
+seeded with a Default worth keying and a POTA that differs from it only in the CQ; one whose F1-F8
+were written before sets existed keeps them as a set of its own, placed first and therefore active,
+so an upgrade never changes what the keys send. The editor is a DRAFT of every set at once: its
+header picks one, its rows hand their edits up rather than storing them, and Save writes the sets
+and the pick together — so Cancel abandons work in a set the operator has already left, which a
+dialog that stored as it went could not do. New Set duplicates what is on screen, edits included.
+
+**Message 1 can repeat**, and only message 1: it is the CQ, and a repeating exchange would key over
+the contact it is answering. `cwRepeatDelay` (and `voiceRepeatDelay` for the memories) is the wait
+between the message ENDING and it going again — from the end, not from the keypress, or a chain
+would key over its own message. One engine serves both keyers (`CatService.armKeyerRepeat`): the
+send is supplied by whoever armed it, since rendering a template against the draft is the operation
+view's job while a voice memory needs nothing prepared. The keyer area shows the wait as a bar that
+EMPTIES, with the buttons down for the whole chain — including the render-long gap between a wait
+ending and the next message reaching the radio, which is why `keyerRepeatActive` is a notifier and
+not a getter. A chain ends on any keypress (an operator typing a call has come back to the radio),
+on Escape or a stop, on a tap of the countdown, on another message, on the setting going to No, and
+in any case after five minutes — an unattended CQ that keys forever is a transmitter nobody is
+watching. Every send that keys NOTHING cancels too (a failed render, a dead runtime, a message that
+sanitizes away, a radio gone between repeats): the wait starts on the message ending, so a chain
+armed with nothing running would wait for an end that never comes.
+
 Whether either radio actually TRANSMITS is its own break-in setting; with break-in off both key only
 the sidetone. Deliberately not touched from here — an app that flips break-in on so its message goes
 out has put RF on the air from a radio the operator set up not to.
 
-None of this has met hardware yet; both drivers say so in their headers, and `hardwareVerified`
-still reflects only the frequency/mode path.
+The CW path has still not met hardware; both drivers say so in their headers, and `hardwareVerified`
+still reflects only the frequency/mode path. The VOICE path has — see below.
 
 ## Telemetry: what the radio is doing
 
@@ -1192,10 +1222,18 @@ the question mark away (a radio can need more than a second to key up), and the 
 sends the stop too — a stop to an idle radio costs nothing, and a memory on the air behind a cleared
 strip would be one the operator cannot stop. A ceiling stop leaves a developer diagnostic on the
 node, since a memory that keeps ending at fifteen seconds is an entry missing its length.
-The keyer area shows the memory playing with no bar, deliberately: a bar pacing a duration the app
-does not know would be a guess dressed as a measurement.
+The keyer area paces a memory with a bar once it knows how long it runs, and an INDETERMINATE bar
+until then: a bar pacing a duration the app guessed would be a guess dressed as a measurement.
+It learns the duration by timing an ordinary play — the command out, the radio's own end signal in
+(`voiceMessageDurationMs1..8`, milliseconds because a length rounded to the second finishes visibly
+early or late). Every play measures, so a memory is measured the first time it is used and there is
+nothing to press; three plays are not measurements, though — one the radio DOUBTED (a refused
+memory, whose "length" would be the doubt linger), one the ceiling stopped (that timed the app's own
+limit), and one the operator stopped (it never reached its end). Recording is timed by nobody: that
+would measure how long a button was held.
 
-Per dialect, from the manuals and hamlib; **none of it has met hardware**:
+Per dialect. The **Yaesu path has met hardware** (an FT-891 and an FTDX10) and cost this section
+most of what it says; every other dialect is still from the manuals and hamlib:
 
 - **Icom CI-V**: `0x28 0x00 nn` (01-08) transmits T1-T8, `0x28 0x00 0x00` stops. Documented on the
   IC-7300MK2 and IC-7610, reported working on the IC-7300 and IC-705 whose guides omit it. A play
@@ -1206,8 +1244,21 @@ Per dialect, from the manuals and hamlib; **none of it has met hardware**:
   pins its `voiceMemories` (eight on the modern line, zero on the IC-706 and the X6100); an absent
   key is a generic entry's node and means none.
 - **Yaesu** (FT-891, FT-710, FT-991A, FTDX10/101 — hamlib lists both commands valid on all of them):
-  `PB0n;` plays, `PB00;` stops; `LM0n;` starts recording into channel n and `LM00;` stops it, so
-  the dialog's Record works. Five memories, pinned on the named entries; absent means none.
+  `PB0n;` plays, `PB00;` stops — but `PB` only starts the DVS, it does NOT key the transmitter, so
+  a play is `TX1;` first (an unkeyed radio plays the memory into the monitor and nothing reaches
+  the air). **Nothing is polled.** Both DVS reads lie on this radio: `PB0;` answers `PB00;` while a
+  memory plays in transmit, and `LM0;` answers `LM00;` while the panel blinks REC — each read as a
+  refused activity, each stopping a real one about two seconds in. All of this is hardware, against
+  the manual, which documents a channel answer for both.
+
+  What ends a play is the radio's OWN `TX0;`: it unkeys itself when the memory finishes, and
+  Auto-Information pushes that unsolicited (`BY10;` … `TX0;` at the end of a capture). So the app
+  keys, sends `PB0n;`, and waits — no reads at all — with the ceiling behind it, and every end
+  unkeys whatever the app keyed, since a radio left transmitting with an open microphone is the one
+  outcome worse than a message cut short. That `TX0;` is also what TIMES a memory
+  (`voiceMessageDuration`, § below). Recording does not key: `LM0n;` records from the microphone off
+  the air and `LM00;` stops it; its ceiling and the operator's stop are what end one, which is what
+  ends a recording anyway. The frequency/mode/power poll stands down for any voice activity. Five memories, pinned on the named entries; absent means none.
 - **Kenwood CAT**, by dialect, which a developer picks on the generic entries: `pb` — `PBn;`/`PB0;`,
   the TS-590 generation (the TS-890/990 speak a different `PB`, a message list to open first, and
   are not a dialect yet); `k4` — `PBn;` (an alias of `DAMPn;`) plays, `DA0;`

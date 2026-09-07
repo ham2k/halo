@@ -215,6 +215,13 @@ class HaloDialog extends StatelessWidget {
 
   final Widget? content;
 
+  /// A band between the title and [content] that does NOT scroll with the
+  /// rows — a picker naming what those rows are, say. Handed the card's whole
+  /// width, unlike [title], which the header band insets: a band here paints
+  /// its own inset and reaches the card's edges, the way a settings section
+  /// band does.
+  final Widget? header;
+
   /// The footer band's buttons, laid out end-aligned and wrapping when narrow.
   final List<Widget> actions;
 
@@ -270,6 +277,7 @@ class HaloDialog extends StatelessWidget {
     super.key,
     this.title,
     this.content,
+    this.header,
     this.actions = const [],
     this.cancel,
     this.destructive,
@@ -347,6 +355,7 @@ class HaloDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (title != null) HaloDialogHeader(title: title),
+            if (header != null) header!,
             // Flexible, not Expanded: a short dialog still shrink-wraps.
             if (body != null) Flexible(child: body),
             if (actions.isNotEmpty || cancel != null || destructive != null || secondary != null)

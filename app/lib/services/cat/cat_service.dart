@@ -180,6 +180,21 @@ String uniqueEquipmentName(String base, Iterable<String> taken) {
   return '$base $n';
 }
 
+/// A repeat's wait: how long until message 1 goes again, and what went out
+/// last time — the keyer area's countdown runs on the first and labels
+/// itself with the second. [memory] names a VOICE memory instead, whose
+/// label the strip resolves itself, since what is repeating there is audio
+/// in the radio rather than text the app rendered.
+class KeyerRepeatWait {
+  final Duration delay;
+  final String text;
+
+  /// Null for a CW message; the memory number for a voice one.
+  final int? memory;
+
+  const KeyerRepeatWait({required this.delay, required this.text, this.memory});
+}
+
 class CatService extends ChangeNotifier implements PeerStationRadios {
   final SettingsService _settings;
   final EquipmentRegistry registry;
@@ -798,18 +813,130 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// Whether the keyer area is shown — the logging panel's strip follows
   /// it, the Station dialog's toggle and the KEYER command set it, and the
   /// area's own X and its linger clear it.
-  final keyerAreaShown = ValueNotifier<bool>(false);
+  late final keyerAreaShown = ValueNotifier<bool>(_settings.keyerAreaShown);
 
   /// Bumped by every [showKeyerArea], shown already or not: the area's
   /// linger has to end on an explicit ask even when the flag does not move.
   final keyerShowRequests = ValueNotifier<int>(0);
 
   void showKeyerArea() {
+    // Only when it MOVES: a message starting shows the area, so an
+    // unconditional write would re-encode the whole radio group — the
+    // message sets included — and rebuild every settings listener on each
+    // press of a function key.
+    final moved = !keyerAreaShown.value;
     keyerAreaShown.value = true;
     keyerShowRequests.value++;
+    if (moved) unawaited(_settings.setKeyerAreaShown(true));
   }
 
-  void hideKeyerArea() => keyerAreaShown.value = false;
+  void hideKeyerArea() {
+    if (!keyerAreaShown.value) return;
+    keyerAreaShown.value = false;
+    unawaited(_settings.setKeyerAreaShown(false));
+  }
+
+  /// The wait between message 1 finishing and it being keyed again — non-null
+  /// only while that wait is running, so the keyer area's countdown bar is
+  /// mounted exactly then. [KeyerRepeatWait.text] is what was keyed, since the
+  /// message is re-rendered for each repeat and there is nothing else to show
+  /// while nothing is on the air.
+  final keyerRepeat = ValueNotifier<KeyerRepeatWait?>(null);
+
+  /// Whether a chain is running at all — armed, keying, waiting, or in the
+  /// gap between the wait ending and the next message reaching the radio.
+  /// Its own notifier rather than [keyerRepeating]: the strip has to REBUILD on
+  /// the gap's edges, and a getter notifies nobody — the buttons would
+  /// flash back for the length of a template render.
+  final keyerRepeatActive = ValueNotifier<bool>(false);
+
+  /// Keys message 1 again — supplied by whoever armed the repeat, since
+  /// rendering a template against the draft contact is the operation view's
+  /// job, not this service's.
+  void Function()? _repeatSend;
+  Duration _repeatDelay = Duration.zero;
+  String _repeatText = '';
+
+  /// The voice memory repeating, or null for a CW message — so the wait is
+  /// started by the right keyer's end and not by the other one's.
+  int? _repeatMemory;
+  Timer? _repeatTimer;
+
+  /// When the repeats stop whatever else happens, as real milliseconds: a
+  /// deadline whose remainder becomes a Timer duration must not travel with
+  /// the app clock (docs/design/time.md).
+  int? _repeatUntil;
+
+  /// How long a chain of repeats may run before it stops on its own — an
+  /// unattended CQ that keys forever is a transmitter nobody is watching.
+  static const keyerRepeatLimit = Duration(minutes: 5);
+
+  /// Whether a repeat is armed or counting down.
+  bool get keyerRepeating => _repeatSend != null;
+
+  /// Every stop here is one the operator makes in the app — a key, Escape,
+  /// a tap, the setting. The radio keying on its own (a mic or a paddle
+  /// during the wait) does NOT stop the chain, because nothing reports
+  /// transmit state upward: no driver has a TX read wired to a sink, so
+  /// there is no signal to listen to. Adding one is a driver capability,
+  /// not a check that belongs here.
+
+  /// Arms message 1 to go again [delay] after the one now keying finishes.
+  /// Re-arming inside a chain keeps the deadline the chain started with, so
+  /// five minutes is five minutes from the first send and not a limit that
+  /// each repeat pushes further away.
+  void armKeyerRepeat({
+    required Duration delay,
+    required String text,
+    required void Function() send,
+    int? memory,
+  }) {
+    if (delay <= Duration.zero) return;
+    _repeatTimer?.cancel();
+    _repeatTimer = null;
+    _repeatSend = send;
+    _repeatDelay = delay;
+    _repeatText = text;
+    _repeatMemory = memory;
+    _repeatUntil ??= realNowMillis() + keyerRepeatLimit.inMilliseconds;
+    keyerRepeat.value = null;
+    keyerRepeatActive.value = true;
+  }
+
+  /// Ends the chain — every stop the operator can make lands here.
+  void cancelKeyerRepeat() {
+    _repeatTimer?.cancel();
+    _repeatTimer = null;
+    _repeatSend = null;
+    _repeatMemory = null;
+    _repeatUntil = null;
+    if (keyerRepeat.value != null) keyerRepeat.value = null;
+    keyerRepeatActive.value = false;
+  }
+
+  /// The message the repeat was armed on has stopped keying: either the wait
+  /// starts, or the chain has run its five minutes.
+  void _startRepeatWait() {
+    final send = _repeatSend;
+    if (send == null || _repeatTimer != null) return;
+    if ((_repeatUntil ?? 0) <= realNowMillis()) {
+      cancelKeyerRepeat();
+      return;
+    }
+    keyerRepeat.value = KeyerRepeatWait(delay: _repeatDelay, text: _repeatText, memory: _repeatMemory);
+    _repeatTimer = Timer(_repeatDelay, () {
+      _repeatTimer = null;
+      keyerRepeat.value = null;
+      // The deadline is checked again HERE, not only above: a wait that
+      // started inside the five minutes can end outside them.
+      if (_repeatSend == null) return;
+      if ((_repeatUntil ?? 0) <= realNowMillis()) {
+        cancelKeyerRepeat();
+        return;
+      }
+      send();
+    });
+  }
 
   /// Keys [text] on the key in use — a no-op, not an error, when nothing can key:
   /// the surfaces that call this only exist while [canKeyCw], so reaching
@@ -828,6 +955,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// Stops whatever [sendCw] still has to send — see [CwKeyerSession.stopCw]
   /// for how much of what is already on the radio this can reach.
   void stopCw() {
+    // A stop is a stop: the operator who cut this message short did not ask
+    // for it again in five seconds.
+    cancelKeyerRepeat();
     final session = _cwKeyer;
     if (session == null) return;
     try {
@@ -932,6 +1062,24 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// § Voice keying lists which can).
   bool get canRecordVoice => _voiceKeyer?.canRecordVoice ?? false;
 
+  /// How to record a memory on radio1, where the radio needs saying — see
+  /// [EquipmentModel.recordingHelp]. Null when nothing can record, or when
+  /// the radio's own procedure needs no explaining. Carries the model's NAME
+  /// with it: the note is about one rig's front panel, and the operator has
+  /// to know which rig is being described.
+  ({String model, String text})? get voiceRecordingHelp {
+    if (_voiceKeyer?.canRecordVoice != true) return null;
+    // The LOCAL node: a peer's rig has a front panel nobody here can reach.
+    final uuid = _localRadio1;
+    if (uuid == null) return null;
+    final node = nodeFor(uuid);
+    if (node == null) return null;
+    final model = typeFor(node)?.model;
+    final text = model?.recordingHelp;
+    if (model == null || text == null) return null;
+    return (model: model.name, text: text);
+  }
+
   /// What radio1's voice keyer is doing for the app, or null — for the keyer
   /// area. Its own notifier for the same reason [cwProgress] is.
   final voiceActivity = ValueNotifier<VoiceActivity?>(null);
@@ -940,12 +1088,35 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// play: the surfaces that call this only exist while [canPlayVoice], so
   /// reaching here without one is the radio dropping between the check and
   /// the keypress.
-  void playVoiceMemory(int n) {
+  /// [repeat] is what separates KEYING a memory from auditioning one: the
+  /// editor's Play is the operator listening to what they recorded, and a CQ
+  /// that started repeating from inside a settings dialog would be one
+  /// nobody was watching the air for.
+  void playVoiceMemory(int n, {bool repeat = true}) {
     final session = _voiceKeyer;
     if (session == null) return;
     try {
+      // Message 1 only, the same rule as CW (SettingsService.voiceRepeatDelay).
+      // Armed HERE rather than at the surfaces, because a memory needs no
+      // rendering: the app has nothing to prepare, so every way of playing
+      // one — a key, a button, the dialog — repeats alike. Any OTHER memory
+      // ends a chain: the operator has moved on.
+      cancelKeyerRepeat();
+      _startMeasurement(n);
       session.playVoiceMemory(n);
+      // Armed only once the session has taken it: a throw above would
+      // otherwise leave a chain armed with nothing playing, and nothing
+      // ending to start its next wait.
+      if (repeat && n == 1 && _settings.voiceRepeatDelay > Duration.zero) {
+        armKeyerRepeat(
+          delay: _settings.voiceRepeatDelay,
+          text: '',
+          memory: n,
+          send: () => playVoiceMemory(n),
+        );
+      }
     } catch (e, st) {
+      cancelKeyerRepeat();
       ErrorReportingService.report(e, st, context: 'cat:play-voice-memory');
     }
   }
@@ -961,8 +1132,62 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     }
   }
 
+  /// Real milliseconds at the play that is being timed, and which memory it
+  /// is — real, because the length of a message must not stretch with the
+  /// app clock (docs/design/time.md). Null while nothing is being timed.
+  int? _playStart;
+  int? _playMemory;
+
+  /// Whether the radio ever DOUBTED this play — answered "not going" before
+  /// it ever answered "going" (voice_activity_tracker.dart). That is what a
+  /// refused memory looks like, and it is not something to measure.
+  bool _playDoubted = false;
+
+  /// Times the play that just started, so ordinary use measures the memory:
+  /// every play is a measurement, and no operator has to ask for one. Safe
+  /// on any radio, since it times what the radio itself reports rather than
+  /// anything it is told.
+  void _startMeasurement(int n) {
+    _playStart = realNowMillis();
+    _playMemory = n;
+    _playDoubted = false;
+  }
+
+  /// Stores what the play lasted, when the radio said it was playing at all.
+  /// In milliseconds, as measured: the number paces a progress bar, and a
+  /// value rounded to the second finishes visibly early or late.
+  ///
+  /// Three plays are NOT measurements. One the radio DOUBTED: "idle" before
+  /// ever "going" is a refused memory, and storing its doubt linger as a
+  /// length invents one. One the CEILING stopped: that timed the app's own
+  /// limit, not the audio. And a recording, which times how long the
+  /// operator held the button — [stopVoice] drops the timing outright, since
+  /// a play the operator cut short did not reach its end either.
+  Future<void> _endMeasurement() async {
+    final memory = _playMemory;
+    final start = _playStart;
+    final doubted = _playDoubted;
+    _playMemory = null;
+    _playStart = null;
+    _playDoubted = false;
+    if (memory == null || start == null || doubted) return;
+    final elapsed = realNowMillis() - start;
+    final ceiling = _voiceKeyer?.voiceMemoryCeiling ?? voiceActivityCeiling;
+    if (elapsed >= ceiling.inMilliseconds) return;
+    if (elapsed <= 0) return;
+    await _settings.setVoiceMessageDuration(memory, elapsed);
+  }
+
   /// Stops whatever radio1's voice keyer is playing or recording.
   void stopVoice() {
+    // A stop is a stop, the same as [stopCw]'s.
+    cancelKeyerRepeat();
+    // And what it stopped is NOT a measurement: the memory did not play to
+    // its end, so timing it would store a length shorter than the audio and
+    // pace every later bar to finish early.
+    _playMemory = null;
+    _playStart = null;
+    _playDoubted = false;
     final session = _voiceKeyer;
     if (session == null) return;
     try {
@@ -1763,7 +1988,11 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         // reasoning at onSwitchState.
         _noteAlive(uuid, runtime);
         // Only the designated key keys for the app, so only it is shown.
-        if (uuid == _cwKeyerUuid) cwProgress.value = progress;
+        if (uuid == _cwKeyerUuid) {
+          cwProgress.value = progress;
+          // Nothing left keying is where a CW repeat's wait begins.
+          if (progress == null && _repeatMemory == null) _startRepeatWait();
+        }
       },
       onKeyerSpeed: (wpm) {
         if (runtime.connection != connection) return;
@@ -1777,7 +2006,26 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         // off the radio, so it says nothing about the link. The poll answers
         // that end one feed the watch through the normal reading path.
         // Only radio1's memories play for the app, so only its are shown.
-        if (uuid == _localRadio1) voiceActivity.value = activity;
+        // `_localRadio1`, not `_radio1`: radio1 can now be a PEER's rig, and
+        // a peer's memories are not this station's to play or time.
+        if (uuid != _localRadio1) return;
+        voiceActivity.value = activity;
+        if (_playMemory == null) return;
+        // These same reports time the play: a doubtful one is the radio
+        // never confirming, and the end is what the clock stops at.
+        if (activity == null) {
+          unawaited(_endMeasurement());
+        } else if (activity.doubtful) {
+          // The radio said "not going" before it ever said "going": a
+          // refused memory, whose "length" would be the doubt linger rather
+          // than any audio. Watched rather than asked about, because a
+          // confirmed play reports nothing new to see (the tracker only
+          // re-reports an activity whose doubt it is WITHDRAWING).
+          _playDoubted = true;
+        }
+        // The memory ending is where a voice repeat's wait begins — the
+        // counterpart of cwProgress going null for a message.
+        if (activity == null && _repeatMemory != null) _startRepeatWait();
       },
       onProblem: (message) {
         if (runtime.connection != connection) return;
@@ -2488,7 +2736,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     }
     // After the teardowns, whose synchronous prefix clears cwProgress for
     // the designated radio — a notifier disposed first would be notified.
+    cancelKeyerRepeat();
     cwProgress.dispose();
+    keyerRepeat.dispose();
+    keyerRepeatActive.dispose();
     voiceActivity.dispose();
     keyerAreaShown.dispose();
     keyerShowRequests.dispose();

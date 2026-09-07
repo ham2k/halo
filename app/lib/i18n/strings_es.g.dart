@@ -1884,7 +1884,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get statusError => 'Fallo de conexión';
 	@override String get currentRadioSettings => 'Ajustes de la radio actual';
 	@override String get cwKeyerNotAvailable => 'Conecta una radio que pueda manipular CW para enviar mensajes desde aquí.';
-	@override String get cwMessagesButton => 'Mensajes';
+	@override String get keyerRowLabel => 'Manipulador:';
+	@override String get cwMessagesButton => 'Mensajes de CW';
 	@override String get voiceMessagesButton => 'Mensajes de voz';
 	@override String voiceKeyerAvailable({required Object count}) => 'Manipulador de voz: ${count} memorias en la radio';
 	@override String get placeholderConnectDelay => 'Retraso de conexión (ms)';
@@ -2633,6 +2634,19 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 	@override String labelKey({required Object n}) => 'Etiqueta de F${n}';
 	@override String get details => 'Detalles';
 	@override String get empty => '(vacío)';
+	@override String get edit => 'Editar mensajes';
+	@override String get sets => 'Juego de mensajes';
+	@override String get newSet => 'Nuevo juego';
+	@override String get renameSet => 'Renombrar juego';
+	@override String get deleteSet => 'Eliminar juego';
+	@override String get newSetName => 'Nombre';
+	@override String get setDefault => 'Predeterminado';
+	@override String get setPota => 'POTA';
+	@override String get setSaved => 'Mis mensajes';
+	@override String get repeat => 'Repetir mensaje ❶';
+	@override String get repeatOff => 'No';
+	@override String repeatAfter({required Object n}) => 'Tras ${n} segundos';
+	@override String get repeatWait => 'Repitiendo';
 	@override String get custom => 'Mensaje libre';
 	@override String get customField => 'Mensaje';
 	@override String get send => 'Enviar';
@@ -2652,6 +2666,17 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	@override String messageTitle({required Object n}) => 'Memoria de voz (${n})';
 	@override String get labelField => 'Etiqueta';
 	@override String labelKey({required Object n}) => 'Etiqueta de la memoria de voz ${n}';
+	@override String durationSeconds({required Object n}) => '${n} s';
+	@override String get notMeasured => 'Duración desconocida';
+	@override String get playButton => 'Reproducir';
+	@override String get recordButton => 'Grabar';
+	@override String get stopButton => 'Detener';
+	@override String get repeat => 'Repetir mensaje ❶';
+	@override String get repeatOff => 'No';
+	@override String repeatAfter({required Object n}) => 'Tras ${n} segundos';
+	@override String recordHelpTitle({required Object model}) => 'Notas del ${model}:';
+	@override String get recordHelpFtdx10 => 'Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.';
+	@override String get recordHelpFt891 => 'Espera a que el indicador [REC] parpadee al menos cuatro veces, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.';
 	@override String get pill => 'Voz';
 	@override String play({required Object n}) => 'Reproducir la memoria ${n}';
 	@override String get stop => 'Detener';
@@ -2661,8 +2686,6 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	@override String get recording => 'Grabando…';
 	@override String playingMemory({required Object label}) => 'Reproduciendo ${label}';
 	@override String recordingMemory({required Object label}) => 'Grabando ${label}';
-	@override String playingDoubtful({required Object label}) => '¿Reproduciendo ${label}?';
-	@override String recordingDoubtful({required Object label}) => '¿Grabando ${label}?';
 	@override String get doubtful => '¿La radio lo reprodujo? Dijo estar en reposo de inmediato.';
 	@override String get notAvailable => 'Conecta una radio con manipulador de voz para reproducir o grabar desde aquí.';
 	@override String get recordOnRadio => 'Esta radio graba sus memorias desde su propio panel frontal.';
@@ -3653,6 +3676,19 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'Etiqueta de F${n}',
 			'settings.radio.cwMessages.details' => 'Detalles',
 			'settings.radio.cwMessages.empty' => '(vacío)',
+			'settings.radio.cwMessages.edit' => 'Editar mensajes',
+			'settings.radio.cwMessages.sets' => 'Juego de mensajes',
+			'settings.radio.cwMessages.newSet' => 'Nuevo juego',
+			'settings.radio.cwMessages.renameSet' => 'Renombrar juego',
+			'settings.radio.cwMessages.deleteSet' => 'Eliminar juego',
+			'settings.radio.cwMessages.newSetName' => 'Nombre',
+			'settings.radio.cwMessages.setDefault' => 'Predeterminado',
+			'settings.radio.cwMessages.setPota' => 'POTA',
+			'settings.radio.cwMessages.setSaved' => 'Mis mensajes',
+			'settings.radio.cwMessages.repeat' => 'Repetir mensaje ❶',
+			'settings.radio.cwMessages.repeatOff' => 'No',
+			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
+			'settings.radio.cwMessages.repeatWait' => 'Repitiendo',
 			'settings.radio.cwMessages.custom' => 'Mensaje libre',
 			'settings.radio.cwMessages.customField' => 'Mensaje',
 			'settings.radio.cwMessages.send' => 'Enviar',
@@ -3663,6 +3699,17 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Memoria de voz (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Etiqueta',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Etiqueta de la memoria de voz ${n}',
+			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
+			'settings.radio.voiceMessages.notMeasured' => 'Duración desconocida',
+			'settings.radio.voiceMessages.playButton' => 'Reproducir',
+			'settings.radio.voiceMessages.recordButton' => 'Grabar',
+			'settings.radio.voiceMessages.stopButton' => 'Detener',
+			'settings.radio.voiceMessages.repeat' => 'Repetir mensaje ❶',
+			'settings.radio.voiceMessages.repeatOff' => 'No',
+			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
+			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Notas del ${model}:',
+			'settings.radio.voiceMessages.recordHelpFtdx10' => 'Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.',
+			'settings.radio.voiceMessages.recordHelpFt891' => 'Espera a que el indicador [REC] parpadee al menos cuatro veces, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.',
 			'settings.radio.voiceMessages.pill' => 'Voz',
 			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Reproducir la memoria ${n}',
 			'settings.radio.voiceMessages.stop' => 'Detener',
@@ -3672,8 +3719,6 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.recording' => 'Grabando…',
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Reproduciendo ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Grabando ${label}',
-			'settings.radio.voiceMessages.playingDoubtful' => ({required Object label}) => '¿Reproduciendo ${label}?',
-			'settings.radio.voiceMessages.recordingDoubtful' => ({required Object label}) => '¿Grabando ${label}?',
 			'settings.radio.voiceMessages.doubtful' => '¿La radio lo reprodujo? Dijo estar en reposo de inmediato.',
 			'settings.radio.voiceMessages.notAvailable' => 'Conecta una radio con manipulador de voz para reproducir o grabar desde aquí.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Esta radio graba sus memorias desde su propio panel frontal.',
@@ -3875,6 +3920,8 @@ extension on TranslationsEs {
 			'settings.station.report' => 'Informar',
 			'settings.station.reportTitle' => 'Informar sobre esta radio',
 			'settings.station.reportIntro' => 'Cuéntanos qué radio es realmente y qué tal fue. Tu informe se convierte en una ficha que lee el equipo de Ham2K, y lo que escribas sobre cómo hacerla funcionar puede acabar ayudando al siguiente operador con la misma radio.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.reportManufacturer' => 'Fabricante',
 			'settings.station.reportManufacturerDescription' => 'Quién la fabrica — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'Hace falta un fabricante',
@@ -3897,8 +3944,6 @@ extension on TranslationsEs {
 			'settings.station.reportFailed' => ({required Object error}) => 'El informe no se envió: ${error}',
 			'settings.station.unverified' => 'No probado con este hardware',
 			'settings.station.unverifiedShort' => 'sin probar',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.troubleshootingNotes' => 'Notas de resolución de problemas',
 			'settings.station.mainVfo' => 'VFO principal',
 			'settings.station.useAsMainVfo' => 'Usar como VFO principal',
@@ -4009,7 +4054,8 @@ extension on TranslationsEs {
 			'settings.station.statusError' => 'Fallo de conexión',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
 			'settings.station.cwKeyerNotAvailable' => 'Conecta una radio que pueda manipular CW para enviar mensajes desde aquí.',
-			'settings.station.cwMessagesButton' => 'Mensajes',
+			'settings.station.keyerRowLabel' => 'Manipulador:',
+			'settings.station.cwMessagesButton' => 'Mensajes de CW',
 			'settings.station.voiceMessagesButton' => 'Mensajes de voz',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Manipulador de voz: ${count} memorias en la radio',
 			'settings.station.placeholderConnectDelay' => 'Retraso de conexión (ms)',
@@ -4388,6 +4434,8 @@ extension on TranslationsEs {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación', other: '${count} operaciones', ), 
 			'adifImport.title' => 'Importar QSOs desde ADIF',
+			_ => null,
+		} ?? switch (path) {
 			'adifImport.reading' => ({required Object filename}) => 'Leyendo ${filename}…',
 			'adifImport.dropHint' => 'Suelta un archivo ADIF para importarlo',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en este archivo', other: '${formatted} QSOs en este archivo', ), 
@@ -4411,8 +4459,6 @@ extension on TranslationsEs {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} no tiene fecha y no se puede importar', other: '${formatted} no tienen fecha y no se pueden importar', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Este archivo registra una activación de ${refs}.',
 			'adifImport.addActivation' => 'Añadirla a esta operación',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.',
 			'adifImport.busy' => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.',
 			'adifImport.oneFileOnly' => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.',

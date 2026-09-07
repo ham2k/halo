@@ -150,7 +150,11 @@ void main() {
       final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
       expect(pick.onChanged, isNull, reason: 'the speed is the keyer\'s; nothing connected can take one');
       expect(find.text('Connect a radio that can key CW to send messages from here.'), findsOneWidget);
-      expect(find.widgetWithText(TextButton, 'Messages'), findsOneWidget, reason: 'the messages are settings, editable without a radio');
+      expect(find.widgetWithText(TextButton, 'CW Messages'), findsOneWidget,
+          reason: 'the messages are settings, editable without a radio');
+      // Shown even where nothing can play, and disabled there: absent, the
+      // row would look the same as one whose memories have not loaded yet.
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Voice Messages')).onPressed, isNull);
       expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull, reason: 'no area to show for a keyer that is not connected');
       expect(find.text('CAT Keyer in Bench Rig'), findsOneWidget, reason: 'a radio in the key pick is its keyer');
     });

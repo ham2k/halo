@@ -1014,7 +1014,7 @@ class StationPanel extends StatelessWidget {
             // Which antenna/key a QSO's captured station info should credit
             // — only once there's inventory to choose between; both share a
             // row since neither needs the tune button beside the main VFO.
-            if (antennas.isNotEmpty || keys.isNotEmpty)
+            if (antennas.isNotEmpty)
               Padding(
                 padding: EdgeInsets.fromLTRB(rowInset.left, 0, rowInset.right, Space.md),
                 child: Row(
@@ -1031,40 +1031,23 @@ class StationPanel extends StatelessWidget {
                           onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryAntenna, uuid)),
                         ),
                       ),
-                    if (antennas.isNotEmpty && keys.isNotEmpty) const SizedBox(width: Space.md),
-                    if (keys.isNotEmpty)
-                      Expanded(
-                        child: _DesignationDropdown(
-                          key: ValueKey(_cat.designatedFor(kCategoryKey)),
-                          label: st.keyInUse,
-                          nodes: keys,
-                          selected: _cat.designatedFor(kCategoryKey),
-                          // A radio in this list is its keyer, not the radio.
-                          displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver
-                              ? st.keyViaRadio(radio: _displayName(node))
-                              : _displayName(node),
-                          noneLabel: st.noneSelected,
-                          onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
-                        ),
-                      ),
                   ],
                 ),
               ),
 
-            // The CAT keyer: speed on the radio, messages in the app. In BOTH
-            // layouts, unlike the Power field — the speed and the messages
-            // belong to the key picked directly above, so a full page that
-            // named the key and then had nothing to say about it would send
-            // the operator to the compact dialog to finish the job.
-            if (keyerExperiment && _cat.designatedKeyIsKeyer)
-              _cwKeyerRow(context, inset: rowInset),
+            // The key and what it is set to, side by side: the speed is a
+            // fact about the key named beside it, which is why they share a
+            // row rather than sitting one under the other.
+            if (keys.isNotEmpty) _keyRow(context, inset: rowInset, keys: keys),
 
-            // The voice keyer: radio1's own memories, whatever the key in
-            // use — so its row stands on its own, and only while radio1 is
-            // connected and has memories to name (a label is a setting, but
-            // the row that has nowhere to play is not worth the space).
-            if (keyerExperiment && _cat.canPlayVoice)
-              _voiceKeyerRow(context, inset: rowInset),
+            // One keyer row for both keyers: the messages to edit, and the
+            // switch that shows the logging panel's strip. In BOTH layouts,
+            // unlike the Power field — they belong to the key picked
+            // directly above, so a full page that named the key and then had
+            // nothing to say about it would send the operator to the compact
+            // dialog to finish the job.
+            if (keyerExperiment && (_cat.designatedKeyIsKeyer || _cat.canPlayVoice))
+              _keyerRow(context, inset: rowInset),
 
             // What the station is made OF. Compact shows only what is in use
             // — the rig driving the main VFO, and the key if it is a device
@@ -1194,15 +1177,14 @@ class StationPanel extends StatelessWidget {
     );
   }
 
-  /// The keyer speed as a pick over the radio's own range, the way to the CW
-  /// Messages dialog, and the switch that shows the logging panel's keyer
-  /// area. The messages are editable with no radio at all — they are
-  /// settings — but the speed is the radio's, so without one that can key
-  /// the pick is disabled under a line saying why.
+  /// The key in use and, beside it, the speed it runs at — a fact about the
+  /// key named next to it, which is why the two share a row.
   ///
-  /// Drawn in both layouts, directly under the key it describes.
-  Widget _cwKeyerRow(BuildContext context, {required EdgeInsets inset}) {
+  /// The key picker is NOT behind the keyer experiment: choosing which key a
+  /// contact is logged with is ordinary station info. Only the speed is.
+  Widget _keyRow(BuildContext context, {required EdgeInsets inset, required List<EquipmentNode> keys}) {
     final st = context.t.settings.station;
+    final keyerExperiment = services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
     final canKey = _cat.canKeyCw;
     final range = _cat.keyerSpeedRange;
     final speed = _cat.keyerSpeed;
@@ -1215,50 +1197,47 @@ class StationPanel extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<int>(
-                  // Keyed on the value for the same reason the main VFO
-                  // dropdown is: FormFieldState reads initialValue once, and
-                  // the radio's answer arrives after the first build.
-                  key: ValueKey('keyerSpeed:${inRange ? speed : null}:$canKey'),
-                  isExpanded: true,
-                  initialValue: inRange ? speed : null,
-                  icon: dropdownTrailingIcon,
-                  decoration: poloFieldDecoration(context, context.t.settings.radio.keyerSpeed.title),
-                  menuMaxHeight: dropdownMenuMaxHeight(context),
-                  items: [
-                    if (range != null)
-                      for (var wpm = range.min; wpm <= range.max; wpm++)
-                        DropdownMenuItem<int>(value: wpm, child: Text('$wpm ${context.t.settings.radio.keyerSpeed.unit}')),
-                  ],
-                  onChanged: canKey ? (wpm) => wpm == null ? null : _cat.setKeyerSpeed(wpm) : null,
+                child: _DesignationDropdown(
+                  key: ValueKey(_cat.designatedFor(kCategoryKey)),
+                  label: st.keyInUse,
+                  nodes: keys,
+                  selected: _cat.designatedFor(kCategoryKey),
+                  // A radio in this list is its keyer, not the radio.
+                  displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver
+                      ? st.keyViaRadio(radio: _displayName(node))
+                      : _displayName(node),
+                  noneLabel: st.noneSelected,
+                  onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
                 ),
               ),
-              const SizedBox(width: Space.md),
-              TextButton.icon(
-                icon: const Icon(MdiIcons.messageBulleted),
-                label: Text(st.cwMessagesButton),
-                onPressed: () => showCwMessagesDialog(context, services),
-              ),
-              const SizedBox(width: Space.md),
-              // Shows or hides the keyer area in the logging panel — the same
-              // switch KEYER, the area's X and its linger move. Unlabelled:
-              // the row it sits in is already the keyer's, so a caption would
-              // spend the width saying what everything beside it says. The
-              // name lives in Semantics, per docs/design/user-interface.md —
-              // never a tooltip.
-              ValueListenableBuilder<bool>(
-                valueListenable: _cat.keyerAreaShown,
-                builder: (context, shown, _) => Semantics(
-                  label: st.cwKeyerArea,
-                  child: Switch(
-                    value: shown,
-                    onChanged: canKey ? (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea() : null,
+              if (keyerExperiment && _cat.designatedKeyIsKeyer) ...[
+                const SizedBox(width: Space.md),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    // Keyed on the value for the same reason the main VFO
+                    // dropdown is: FormFieldState reads initialValue once, and
+                    // the radio's answer arrives after the first build.
+                    key: ValueKey('keyerSpeed:${inRange ? speed : null}:$canKey'),
+                    isExpanded: true,
+                    initialValue: inRange ? speed : null,
+                    icon: dropdownTrailingIcon,
+                    decoration: poloFieldDecoration(context, context.t.settings.radio.keyerSpeed.title),
+                    menuMaxHeight: dropdownMenuMaxHeight(context),
+                    items: [
+                      if (range != null)
+                        for (var wpm = range.min; wpm <= range.max; wpm++)
+                          DropdownMenuItem<int>(
+                            value: wpm,
+                            child: Text('$wpm ${context.t.settings.radio.keyerSpeed.unit}'),
+                          ),
+                    ],
+                    onChanged: canKey ? (wpm) => wpm == null ? null : _cat.setKeyerSpeed(wpm) : null,
                   ),
                 ),
-              ),
+              ],
             ],
           ),
-          if (!canKey)
+          if (keyerExperiment && _cat.designatedKeyIsKeyer && !canKey)
             Padding(
               padding: const EdgeInsets.only(top: Space.xs),
               child: Text(st.cwKeyerNotAvailable, style: Theme.of(context).textTheme.bodySmall),
@@ -1268,40 +1247,63 @@ class StationPanel extends StatelessWidget {
     );
   }
 
-  /// The way to the Voice Messages dialog, under a line saying whose
-  /// memories they are — the one thing the app has to say about a voice
-  /// keyer, since the speed, the audio and the recording all live in the
-  /// radio.
-  Widget _voiceKeyerRow(BuildContext context, {required EdgeInsets inset}) {
+  /// Both keyers on one line: the way into each message editor, and the
+  /// switch that shows the logging panel's keyer area.
+  ///
+  /// One row rather than two, because an operator has ONE keyer area and the
+  /// switch that shows it cannot sensibly appear twice. Which editors are
+  /// offered still differs: CW messages are the app's own and need only a
+  /// key that keys, while the voice memories are radio1's and are only worth
+  /// opening while it is connected and has some.
+  ///
+  /// Icons, not labelled buttons: the row's own caption already says what
+  /// they are for. No hover tooltips (docs/design/user-interface.md), so the
+  /// accessible name is the only place each is named.
+  Widget _keyerRow(BuildContext context, {required EdgeInsets inset}) {
     final st = context.t.settings.station;
+    final canKey = _cat.canKeyCw;
     return Padding(
       padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
       child: Row(
         children: [
-          Expanded(
-            child: Text(
-              st.voiceKeyerAvailable(count: _cat.voiceMemoryCount),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ),
-          const SizedBox(width: Space.md),
-          TextButton.icon(
-            icon: const Icon(MdiIcons.microphoneMessage),
-            label: Text(st.voiceMessagesButton),
-            onPressed: () => showVoiceMessagesDialog(context, services),
-          ),
-          const SizedBox(width: Space.md),
-          // The same switch the CW row carries — a voice-only radio has no
-          // CW row, and F-keys PLAY, so this is its way to the area idle.
+          // Leading: the switch is what the row is FOR — the editors behind
+          // it are somewhere to go, not the state the row carries. Shows or
+          // hides the keyer area in the logging panel, the same switch KEYER
+          // and the area's X move, and it persists
+          // (SettingsService.keyerAreaShown). The name lives in Semantics,
+          // per docs/design/user-interface.md — never a tooltip.
           ValueListenableBuilder<bool>(
             valueListenable: _cat.keyerAreaShown,
             builder: (context, shown, _) => Semantics(
               label: st.cwKeyerArea,
               child: Switch(
                 value: shown,
-                onChanged: (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea(),
+                onChanged: canKey || _cat.canPlayVoice ? (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea() : null,
               ),
             ),
+          ),
+          const SizedBox(width: Space.sm),
+          Text(
+            st.keyerRowLabel,
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: Space.sm),
+          // The same icon on both: what they open is a list of messages
+          // either way, and the labels are what tell them apart.
+          if (_cat.designatedKeyIsKeyer)
+            TextButton.icon(
+              icon: const Icon(MdiIcons.messageBulleted),
+              label: Text(st.cwMessagesButton),
+              onPressed: () => showCwMessagesDialog(context, services),
+            ),
+          // Shown even where nothing can play, and disabled there: a radio
+          // without voice keying is a fact about the station worth SEEING —
+          // absent, the row looks the same as one on a rig whose memories
+          // simply have not loaded yet.
+          TextButton.icon(
+            icon: const Icon(MdiIcons.messageBulleted),
+            label: Text(st.voiceMessagesButton),
+            onPressed: _cat.canPlayVoice ? () => showVoiceMessagesDialog(context, services) : null,
           ),
         ],
       ),

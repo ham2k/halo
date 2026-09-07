@@ -123,12 +123,16 @@ void main() {
     /// The CW messages live in this group too, but under their own dialog
     /// (`cw-messages`) — they are not tuning knobs, and the note above them
     /// has no key at all. Kept out of the knob tests, and tested on their own.
+    /// The repeat delays belong here too: they are keyer settings under the
+    /// message dialogs' own targets, not tuning knobs.
     bool isCwMessageElement(Map<String, dynamic> el) =>
-        el['key'] == null || (el['key'] as String).startsWith('cwMessage');
+        el['key'] == null || (el['key'] as String).startsWith('cwMessage') || el['key'] == 'cwRepeatDelay';
 
     /// The voice memory labels, the same way, under `voice-messages`.
     bool isVoiceMessageElement(Map<String, dynamic> el) =>
-        el['key'] == null || (el['key'] as String).startsWith('voiceMessage');
+        el['key'] == null ||
+        (el['key'] as String).startsWith('voiceMessage') ||
+        el['key'] == 'voiceRepeatDelay';
 
     bool isMessageElement(Map<String, dynamic> el) => isCwMessageElement(el) || isVoiceMessageElement(el);
 
@@ -218,8 +222,9 @@ void main() {
         for (final el in all)
           if (isCwMessageElement(el) && !elementMatchesTarget(el, 'voice-messages')) el,
       ];
-      // Eight messages, their eight labels, and the note explaining the placeholders.
-      expect(messages.where((el) => el['type'] == 'field'), hasLength(SettingsService.cwMessageCount * 2));
+      // Eight messages, their eight labels, the repeat delay, and the note
+      // explaining the placeholders.
+      expect(messages.where((el) => el['type'] == 'field'), hasLength(SettingsService.cwMessageCount * 2 + 1));
       expect(messages.where((el) => el['type'] == 'markdown'), hasLength(1));
       for (final el in messages) {
         expect(elementMatchesTarget(el, 'cw-messages'), isTrue, reason: '${el['key']} belongs to the messages dialog');
@@ -234,8 +239,10 @@ void main() {
         for (final el in all)
           if (elementMatchesTarget(el, 'voice-messages')) el,
       ];
-      expect(voice.where((el) => el['type'] == 'field').map((el) => el['key']),
-          [for (var n = 1; n <= SettingsService.voiceMessageCount; n++) 'voiceMessageLabel$n']);
+      expect(voice.where((el) => el['type'] == 'field').map((el) => el['key']), [
+        'voiceRepeatDelay',
+        for (var n = 1; n <= SettingsService.voiceMessageCount; n++) 'voiceMessageLabel$n',
+      ]);
       expect(voice.where((el) => el['type'] == 'markdown'), hasLength(1));
       for (final el in voice) {
         expect(elementMatchesTarget(el, 'cw-messages'), isFalse, reason: '${el['key']} is not a CW message');
@@ -246,8 +253,21 @@ void main() {
       // A template is text; a commit path narrowed to bools and option
       // strings would drop it silently.
       await group.commit('cwMessage1', 'CQ CQ DE {{ op.call }} K');
+      // Into the ACTIVE SET, which is where cwMessage reads from: a commit
+      // that wrote the bare key instead would store a message nothing sends.
       expect(settings.cwMessage(1), 'CQ CQ DE {{ op.call }} K');
-      expect(settings.cwMessage(2), '', reason: 'an unset message is empty, which the keys read as nothing to send');
+      expect(settings.activeCwMessageSet.message(1), 'CQ CQ DE {{ op.call }} K');
+      expect(settings.cwMessage(3), '', reason: 'a message the seeds left alone is empty, and sends nothing');
+
+      // Both repeats are settings, so SET and All Settings reach them.
+      final repeats = all.where((el) => el['key'] == 'cwRepeatDelay' || el['key'] == 'voiceRepeatDelay');
+      expect(repeats, hasLength(2));
+      expect(elementMatchesTarget(repeats.first, 'cw-messages'), isTrue);
+      expect(elementMatchesTarget(repeats.last, 'voice-messages'), isTrue);
+      await group.commit('cwRepeatDelay', '5');
+      expect(settings.cwRepeatDelay, const Duration(seconds: 5));
+      await group.commit('voiceRepeatDelay', '3');
+      expect(settings.voiceRepeatDelay, const Duration(seconds: 3));
       expect(await RadioSettingsGroup(await settingsWith(cat: false)).buildElements(), isEmpty,
           reason: 'sanity: still nothing without CAT, messages included');
       // CAT on, keyer off: the radio's own toggles, none of the messages.

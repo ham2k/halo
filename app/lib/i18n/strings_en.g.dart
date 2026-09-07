@@ -4034,8 +4034,11 @@ class Translations$settings$station$en {
 	/// en: 'Connect a radio that can key CW to send messages from here.'
 	String get cwKeyerNotAvailable => 'Connect a radio that can key CW to send messages from here.';
 
-	/// en: 'Messages'
-	String get cwMessagesButton => 'Messages';
+	/// en: 'Keyer:'
+	String get keyerRowLabel => 'Keyer:';
+
+	/// en: 'CW Messages'
+	String get cwMessagesButton => 'CW Messages';
 
 	/// en: 'Voice Messages'
 	String get voiceMessagesButton => 'Voice Messages';
@@ -5573,6 +5576,45 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: '(empty)'
 	String get empty => '(empty)';
 
+	/// en: 'Edit Messages'
+	String get edit => 'Edit Messages';
+
+	/// en: 'Message Set'
+	String get sets => 'Message Set';
+
+	/// en: 'New Set'
+	String get newSet => 'New Set';
+
+	/// en: 'Rename Set'
+	String get renameSet => 'Rename Set';
+
+	/// en: 'Delete Set'
+	String get deleteSet => 'Delete Set';
+
+	/// en: 'Name'
+	String get newSetName => 'Name';
+
+	/// en: 'Default'
+	String get setDefault => 'Default';
+
+	/// en: 'POTA'
+	String get setPota => 'POTA';
+
+	/// en: 'My Messages'
+	String get setSaved => 'My Messages';
+
+	/// en: 'Repeat Message ❶'
+	String get repeat => 'Repeat Message ❶';
+
+	/// en: 'No'
+	String get repeatOff => 'No';
+
+	/// en: 'After $n seconds'
+	String repeatAfter({required Object n}) => 'After ${n} seconds';
+
+	/// en: 'Repeating'
+	String get repeatWait => 'Repeating';
+
 	/// en: 'Custom Message'
 	String get custom => 'Custom Message';
 
@@ -5612,6 +5654,39 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'Voice memory $n label'
 	String labelKey({required Object n}) => 'Voice memory ${n} label';
 
+	/// en: '$n s'
+	String durationSeconds({required Object n}) => '${n} s';
+
+	/// en: 'Unknown length'
+	String get notMeasured => 'Unknown length';
+
+	/// en: 'Play'
+	String get playButton => 'Play';
+
+	/// en: 'Record'
+	String get recordButton => 'Record';
+
+	/// en: 'Stop'
+	String get stopButton => 'Stop';
+
+	/// en: 'Repeat Message ❶'
+	String get repeat => 'Repeat Message ❶';
+
+	/// en: 'No'
+	String get repeatOff => 'No';
+
+	/// en: 'After $n seconds'
+	String repeatAfter({required Object n}) => 'After ${n} seconds';
+
+	/// en: '$model Notes:'
+	String recordHelpTitle({required Object model}) => '${model} Notes:';
+
+	/// en: 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.'
+	String get recordHelpFtdx10 => 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.';
+
+	/// en: 'Wait for the [REC] indicator to blink at least four times, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.'
+	String get recordHelpFt891 => 'Wait for the [REC] indicator to blink at least four times, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.';
+
 	/// en: 'Voice'
 	String get pill => 'Voice';
 
@@ -5638,12 +5713,6 @@ class Translations$settings$radio$voiceMessages$en {
 
 	/// en: 'Recording $label'
 	String recordingMemory({required Object label}) => 'Recording ${label}';
-
-	/// en: 'Playing $label?'
-	String playingDoubtful({required Object label}) => 'Playing ${label}?';
-
-	/// en: 'Recording $label?'
-	String recordingDoubtful({required Object label}) => 'Recording ${label}?';
 
 	/// en: 'Did the radio play it? It said it was idle right away.'
 	String get doubtful => 'Did the radio play it? It said it was idle right away.';
@@ -6835,6 +6904,19 @@ extension on Translations {
 			'settings.radio.cwMessages.labelKey' => ({required Object n}) => 'F${n} label',
 			'settings.radio.cwMessages.details' => 'Details',
 			'settings.radio.cwMessages.empty' => '(empty)',
+			'settings.radio.cwMessages.edit' => 'Edit Messages',
+			'settings.radio.cwMessages.sets' => 'Message Set',
+			'settings.radio.cwMessages.newSet' => 'New Set',
+			'settings.radio.cwMessages.renameSet' => 'Rename Set',
+			'settings.radio.cwMessages.deleteSet' => 'Delete Set',
+			'settings.radio.cwMessages.newSetName' => 'Name',
+			'settings.radio.cwMessages.setDefault' => 'Default',
+			'settings.radio.cwMessages.setPota' => 'POTA',
+			'settings.radio.cwMessages.setSaved' => 'My Messages',
+			'settings.radio.cwMessages.repeat' => 'Repeat Message ❶',
+			'settings.radio.cwMessages.repeatOff' => 'No',
+			'settings.radio.cwMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
+			'settings.radio.cwMessages.repeatWait' => 'Repeating',
 			'settings.radio.cwMessages.custom' => 'Custom Message',
 			'settings.radio.cwMessages.customField' => 'Message',
 			'settings.radio.cwMessages.send' => 'Send',
@@ -6845,6 +6927,17 @@ extension on Translations {
 			'settings.radio.voiceMessages.messageTitle' => ({required Object n}) => 'Voice memory (${n})',
 			'settings.radio.voiceMessages.labelField' => 'Label',
 			'settings.radio.voiceMessages.labelKey' => ({required Object n}) => 'Voice memory ${n} label',
+			'settings.radio.voiceMessages.durationSeconds' => ({required Object n}) => '${n} s',
+			'settings.radio.voiceMessages.notMeasured' => 'Unknown length',
+			'settings.radio.voiceMessages.playButton' => 'Play',
+			'settings.radio.voiceMessages.recordButton' => 'Record',
+			'settings.radio.voiceMessages.stopButton' => 'Stop',
+			'settings.radio.voiceMessages.repeat' => 'Repeat Message ❶',
+			'settings.radio.voiceMessages.repeatOff' => 'No',
+			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
+			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} Notes:',
+			'settings.radio.voiceMessages.recordHelpFtdx10' => 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.',
+			'settings.radio.voiceMessages.recordHelpFt891' => 'Wait for the [REC] indicator to blink at least four times, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.',
 			'settings.radio.voiceMessages.pill' => 'Voice',
 			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Play memory ${n}',
 			'settings.radio.voiceMessages.stop' => 'Stop',
@@ -6854,8 +6947,6 @@ extension on Translations {
 			'settings.radio.voiceMessages.recording' => 'Recording…',
 			'settings.radio.voiceMessages.playingMemory' => ({required Object label}) => 'Playing ${label}',
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Recording ${label}',
-			'settings.radio.voiceMessages.playingDoubtful' => ({required Object label}) => 'Playing ${label}?',
-			'settings.radio.voiceMessages.recordingDoubtful' => ({required Object label}) => 'Recording ${label}?',
 			'settings.radio.voiceMessages.doubtful' => 'Did the radio play it? It said it was idle right away.',
 			'settings.radio.voiceMessages.notAvailable' => 'Connect a radio with a voice keyer to play or record from here.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'This radio records its memories from its own front panel.',
@@ -7057,6 +7148,8 @@ extension on Translations {
 			'settings.station.report' => 'Report',
 			'settings.station.reportTitle' => 'Report this radio',
 			'settings.station.reportIntro' => 'Tell us what radio this really is and how it went. Your report becomes a card the Ham2K team reads, and what you write about getting it working may end up helping the next operator with the same rig.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.reportManufacturer' => 'Manufacturer',
 			'settings.station.reportManufacturerDescription' => 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'A manufacturer is required',
@@ -7079,8 +7172,6 @@ extension on Translations {
 			'settings.station.reportFailed' => ({required Object error}) => 'The report wasn\'t sent: ${error}',
 			'settings.station.unverified' => 'Not tested against this hardware',
 			'settings.station.unverifiedShort' => 'untested',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.troubleshootingNotes' => 'Troubleshooting Notes',
 			'settings.station.mainVfo' => 'Main VFO',
 			'settings.station.useAsMainVfo' => 'Use as Main VFO',
@@ -7196,7 +7287,8 @@ extension on Translations {
 			'settings.station.statusError' => 'Connection failed',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
 			'settings.station.cwKeyerNotAvailable' => 'Connect a radio that can key CW to send messages from here.',
-			'settings.station.cwMessagesButton' => 'Messages',
+			'settings.station.keyerRowLabel' => 'Keyer:',
+			'settings.station.cwMessagesButton' => 'CW Messages',
 			'settings.station.voiceMessagesButton' => 'Voice Messages',
 			'settings.station.voiceKeyerAvailable' => ({required Object count}) => 'Voice keyer: ${count} memories in the radio',
 			'settings.station.antennaBands' => 'Bands',
@@ -7570,6 +7662,8 @@ extension on Translations {
 			'switchAccounts.emailSent' => ({required Object email}) => 'An email was sent to ${email}. Open it and confirm the request to link this device.',
 			'switchAccounts.resendEmail' => 'Resend email',
 			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
 			'switchAccounts.emailRequired' => 'Enter an email address to link.',
 			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'No account found for ${email}.',
@@ -7593,8 +7687,6 @@ extension on Translations {
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'References could not be recovered for ${count} contact', other: 'References could not be recovered for ${formatted} contacts', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${formatted} contacts', ), 
 			'adifImport.stackingTypesUnknown' => 'Combined contacts may lose a reference — the activities could not say which types stack. Cancel and retry to avoid this.',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.nothingToImport' => 'Nothing in this file can be imported',
 			'adifImport.confirm' => 'Import',
 			'adifImport.importing' => ({required Object filename}) => 'Importing ${filename}…',

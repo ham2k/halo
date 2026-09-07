@@ -1007,6 +1007,24 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     if (testerOverlayCovering.value) return false;
     if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return false;
     final services = widget.services;
+    // ANY key ends a repeat, before anything else here decides whether this
+    // one is the keyer's: an operator typing a call has come back to the
+    // radio, and a CQ keying over what they are about to send is the one
+    // thing a repeating CQ must never do. Pressing F1 itself lands here
+    // first and then arms a fresh chain below.
+    services.cat.cancelKeyerRepeat();
+    // And the memory on the air goes with it. Typing is the operator working
+    // the contact, which a CQ still playing over the top of is worse than a
+    // message cut short — so the play is stopped without CLAIMING the key,
+    // which belongs to the field being typed into. Escape is left to the
+    // handler below: it stops the same play but must also answer `true`, or
+    // the same keystroke wipes the logging fields (logging-fields.md).
+    // A recording is never touched: it only runs from a dialog, where this
+    // handler is not the front route at all.
+    final playing = services.cat.voiceActivity.value;
+    if (playing != null && !playing.recording && event.logicalKey != LogicalKeyboardKey.escape) {
+      services.cat.stopVoice();
+    }
     if (!services.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return false;
     if (!services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return false;
     final cat = services.cat;
@@ -1062,6 +1080,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     unawaited(_sendCwMessage(n, template));
   }
 
+  /// A message other than 1 ends a repeat: the operator has moved on to the
+  /// exchange, and message 1 is a CQ nobody wants keyed over it. Called
+  /// where the keyer area's buttons arrive, since a tap reaches no key
+  /// handler.
+  void _sendCwMessageFromArea(int n) {
+    if (n != 1) widget.services.cat.cancelKeyerRepeat();
+    _sendCwMessageNumber(n);
+  }
+
   /// Renders message [n]'s template against the operation and the draft
   /// contact (the same context a panel gets — docs/extensions/templates.md),
   /// then hands the text to the radio. A template that does not parse is
@@ -1090,7 +1117,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     }
     // Leaving the operation while the render was in flight is leaving the
     // message behind too — nothing goes on the air from a view that is gone.
-    if (!mounted) return;
+    if (!mounted) {
+      services.cat.cancelKeyerRepeat();
+      return;
+    }
     if (failure != null) {
       services.statusBar.showNotice(
         key: 'cw-message-$n',
@@ -1098,6 +1128,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         text: context.t.commands.cwMessageError(n: n, error: failure),
         persist: false,
       );
+      services.cat.cancelKeyerRepeat();
       return;
     }
     if (text == null) {
@@ -1109,10 +1140,33 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         text: context.t.commands.cwMessageNotRendered(n: n),
         persist: false,
       );
+      services.cat.cancelKeyerRepeat();
       return;
     }
-    if (text.trim().isEmpty) return;
+    // A chain waits for the message to STOP keying before its next send, so
+    // a send that keys nothing — a failed render, a dead runtime, a message
+    // that sanitizes away, a radio gone between repeats — would leave it
+    // armed with nothing to end it, and the keyer area showing neither
+    // buttons nor a countdown.
+    if (text.trim().isEmpty) {
+      services.cat.cancelKeyerRepeat();
+      return;
+    }
     services.cat.sendCw(text);
+    // Nothing keying after the send is a message the queue dropped (empty
+    // once sanitized) or a radio that went away — either way there is no end
+    // coming to start the next wait on.
+    if (!services.cat.cwSending) {
+      services.cat.cancelKeyerRepeat();
+      return;
+    }
+    // Message 1 only — see SettingsService.cwRepeatDelay. Armed after the
+    // send, so the wait starts from the message ENDING rather than from the
+    // keypress.
+    final delay = services.settings.cwRepeatDelay;
+    if (n == 1 && delay > Duration.zero) {
+      services.cat.armKeyerRepeat(delay: delay, text: text, send: () => _sendCwMessageNumber(1));
+    }
   }
 
   /// Set when a lookup resolves, so the draft carrying its guess skips the
@@ -2845,7 +2899,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             child: LoggingPanel(
             operation: operation,
             services: widget.services,
-            onSendCwMessage: _sendCwMessageNumber,
+            onSendCwMessage: _sendCwMessageFromArea,
             cwTemplateContext: panelRenderContext,
             keyingPhone: _keyingPhone,
             qsos: qsos,

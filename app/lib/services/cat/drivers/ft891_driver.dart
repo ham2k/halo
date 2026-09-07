@@ -306,19 +306,44 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     onProgress: _sink.reportCwProgress,
   );
 
-  /// `PB0;` answers which memory is playing and `LM0;` which is recording,
-  /// so while one is going the matching read goes out every second and the
-  /// activity ends on a 0 — see voice_activity_tracker.dart. From the
-  /// FTDX10 CAT manual; the FT-891, FT-710 and FT-991A list the same two
-  /// commands, none of it yet sent to a radio.
+  /// `PB0;` answers which memory is playing, and a playback ends on a 0 —
+  /// see voice_activity_tracker.dart.
+  ///
+  /// A RECORDING is not polled, and `LM` answers are ignored: the FT-891
+  /// answers `LM0;` with `LM00;` WHILE its front panel blinks REC, so the
+  /// read cannot tell a recording from an idle radio. Trusted, it reads as a
+  /// recording that never started, and the stop that follows is what ends
+  /// the operator's recording two seconds in. The ceiling
+  /// ([voiceMemoryCeiling]) and the operator's own stop are what end a
+  /// recording here — which costs nothing the poll was giving, since a
+  /// recording never ends by itself anyway.
   late final VoiceActivityTracker _voice = VoiceActivityTracker(
-    report: _sink.reportVoiceActivity,
+    report: _reportVoice,
     stop: stopVoice,
     ceiling: () => voiceMemoryCeiling,
     onCeiling: (limit) => _sink.reportDiagnostic('voice memory stopped at the ${limit.inSeconds} s ceiling'),
-    poll: () => _send(_voice.activity?.recording ?? false
-        ? buildReadVoiceRecordingCommand()
-        : buildReadVoicePlaybackCommand()),
+    // Two questions a second while the app holds the radio in transmit for a
+    // memory, because the line answers them differently and neither radio
+    // answers both:
+    //
+    //   `TX;`  — the FT-891 comes out of transmit by itself when the memory
+    //            ends, and says so (it pushes `TX0;` unprompted as well).
+    //            The FTDX10 answers `1` until something unkeys it.
+    //   `PB0;` — the FTDX10's own answer for which memory is playing. The
+    //            FT-891 answers `00` from the first poll while the audio is
+    //            plainly going out, which is why an "idle" answer is only
+    //            believed AFTER one that said a memory was playing
+    //            ([_playbackConfirmed]). Unconfirmed, it is ignored
+    //            entirely — believing it once cut every message short at two
+    //            seconds.
+    //
+    // A recording is neither keyed nor polled: `LM0;` lies the same way, and
+    // there is nothing to unkey.
+    poll: () {
+      if (_voice.activity?.recording ?? true) return;
+      _send(buildReadTransmitStatusCommand());
+      _send(buildReadVoicePlaybackCommand());
+    },
   );
 
   /// See [voiceMemoriesConfigKey]: what the entry pinned, at most the
@@ -435,6 +460,12 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   void _send(String command) => _sink.send(ascii.encode(command));
 
   void _requestFrequencyAndMode() {
+    // Not while the DVS is busy. A recording on the FT-891 ENDS at the next
+    // read — three seconds in, at this poller's own interval — so the reads
+    // that keep the VFO fresh are what cut a message short. Nothing is lost
+    // by holding them: Auto-Information pushes a dial turn anyway, and a
+    // memory lasts seconds.
+    if (_voice.active) return;
     _send(buildReadFrequencyCommand());
     _send(buildReadModeCommand());
     // Documented (PC, see yaesu_cat_codec.dart) but NOT part of the bench
@@ -510,6 +541,11 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
         if (transmitting != null && _telemetry.noteTransmitting(transmitting)) {
           _sink.reportTransmitting(transmitting);
         }
+        // The same answer is a playing memory's clock — see
+        // [_handleVoiceTransmit]. ONE case, because Dart takes the first
+        // match: a second `case 'TX'` further down is unreachable, and the
+        // memory it was meant to end would play to the ceiling instead.
+        _handleVoiceTransmit(command.params);
 
       case 'KS':
         final wpm = parseKeyerSpeedParams(command.params);
@@ -518,14 +554,20 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
           _sink.reportKeyerSpeed(wpm);
         }
 
-      // Answers to [_voice]'s polls: channel 0 is the radio idle again,
-      // any other channel the memory still going.
+      // The memory playing, on a radio that answers honestly — see [_voice].
       case 'PB':
         if (_voice.activity?.recording ?? true) return;
-        _handleVoicePoll(parseVoiceChannelParams(command.params));
-      case 'LM':
-        if (!(_voice.activity?.recording ?? false)) return;
-        _handleVoicePoll(parseVoiceChannelParams(command.params));
+        final channel = parseVoiceChannelParams(command.params);
+        if (channel == null) return;
+        if (channel != 0) {
+          _playbackConfirmed = true;
+          _voice.confirm();
+          return;
+        }
+        // Ends, and the report on the way out is what unkeys the radio: this
+        // radio did not unkey itself, which is the whole reason the DVS is
+        // asked at all.
+        if (_playbackConfirmed) _voice.end();
 
       // What Auto-Information actually pushes. One packet carries both the
       // frequency and the mode, so a dial turn reaches the app immediately
@@ -583,13 +625,23 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
     _send(buildReadKeyerSpeedCommand());
   }
 
-  void _handleVoicePoll(int? channel) {
-    if (channel == null) return;
-    if (channel == 0) {
-      _voice.endFromPoll();
-    } else {
+  /// The radio's own transmit state, pushed by Auto-Information and asked
+  /// for once a second while a memory plays. `TX1;` is the app's own keying
+  /// and `TX2;` the radio's — either way it is transmitting this memory, and
+  /// coming back OUT of transmit afterwards is the memory ending. Before any
+  /// "transmitting" answer a `0` is a rig still keying up, and ending there
+  /// would stop a message that has not started.
+  void _handleVoiceTransmit(String params) {
+    if (_voice.activity?.recording ?? true) return;
+    if (params != '0') {
+      _txConfirmed = true;
       _voice.confirm();
+      return;
     }
+    if (!_txConfirmed) return;
+    // Nothing left to unkey: the radio is already out of transmit.
+    _keyedForVoice = false;
+    _voice.end();
   }
 
   @override
@@ -598,8 +650,43 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
   @override
   bool get canRecordVoice => true;
 
+  /// Whether CAT TX is down for a playback, so the same code path unkeys
+  /// however the playback ends — the poll, the ceiling, a stop, teardown.
+  bool _keyedForVoice = false;
+
+  /// Whether `PB0;` has named a memory as playing since this play started.
+  /// An "idle" answer before that one is the FT-891's, and says nothing.
+  bool _playbackConfirmed = false;
+
+  /// Whether `TX;` has answered "transmitting" since this play started —
+  /// `1` where the app keyed, `2` where the radio keyed itself. Until it
+  /// has, a `0` is a radio that has not started yet rather than one that
+  /// has finished.
+  bool _txConfirmed = false;
+
+  /// Unkeys as the playback ends, on the way to reporting it. `PB` does not
+  /// key the radio and so does not unkey it either (yaesu_cat_codec.dart):
+  /// without this the radio stays in transmit after the memory has played
+  /// out, with an open microphone.
+  void _reportVoice(VoiceActivity? activity) {
+    if (activity == null && _keyedForVoice) {
+      _keyedForVoice = false;
+      _send(buildSetTxCommand(false));
+    }
+    _sink.reportVoiceActivity(activity);
+  }
+
+  /// Keys FIRST: `PB` alone plays the memory into the monitor and nothing
+  /// reaches the air. Whether a Yaesu that keys ITSELF exists is untested —
+  /// the two here both need this, and the `TX` handling below would notice
+  /// one that did (it treats the radio's own transmit, `2`, as this memory
+  /// transmitting).
   @override
   void playVoiceMemory(int n) {
+    _send(buildSetTxCommand(true));
+    _keyedForVoice = true;
+    _playbackConfirmed = false;
+    _txConfirmed = false;
     _send(buildPlayVoiceMemoryCommand(n));
     _voice.start(VoiceActivity(memory: n));
   }

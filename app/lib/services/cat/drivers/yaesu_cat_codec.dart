@@ -94,6 +94,10 @@ int? parsePowerParams(String params) => RegExp(r'^\d{3}$').hasMatch(params) ? in
 /// all, which is why its driver reads the flag out of `IF` instead.)
 String buildReadTransmitStatusCommand() => 'TX;';
 
+/// Also a playing memory's clock: a radio that unkeys itself at the end of
+/// one does not always SAY so unprompted, so a voice play asks this every
+/// second (see [Ft891Session]).
+///
 /// `TX0;` receiving, `TX1;` transmitting from the radio's own PTT, `TX2;`
 /// transmitting because CAT asked. Null for anything else, which is a
 /// radio that does not answer the command rather than one that is
@@ -208,7 +212,16 @@ String buildPlayKeyerMemoryCommand(int memory) => 'KY${(5 + memory).toRadixStrin
 /// records one, both with a fixed `0` ahead of the channel digit.
 const yaesuVoiceMemoryCount = 5;
 
+/// `PB` starts the DVS but does NOT key the transmitter — an unkeyed radio
+/// plays the memory to the monitor only, and nothing goes on the air. The
+/// caller keys first with [buildSetTxCommand]; see [Ft891Session.playVoiceMemory].
 String buildPlayVoiceMemoryCommand(int n) => 'PB0${n.clamp(1, yaesuVoiceMemoryCount)};';
+
+/// `TX1;` transmits under CAT ("RADIO TX OFF / CAT TX ON" in the manual's
+/// P1 table), `TX0;` returns to receive. P1 2 is answer-only — the radio
+/// saying its own PTT is down — so it is never sent.
+String buildSetTxCommand(bool on) => 'TX${on ? 1 : 0};';
+
 
 /// `PB00;` — stops playback.
 String buildStopVoiceMemoryCommand() => 'PB00;';
@@ -224,7 +237,11 @@ String buildRecordVoiceMemoryCommand(int n) => 'LM0${n.clamp(1, yaesuVoiceMemory
 /// `LM00;` — recording stop.
 String buildStopVoiceRecordingCommand() => 'LM00;';
 
-/// `LM0;` — the answer, `LM0n;`, names the channel recording, or 0.
+/// `LM0;` — documented as answering `LM0n;` with the channel recording. The
+/// FT-891 answers `00` while its panel blinks REC, so the read says nothing
+/// about whether a recording is running and no driver here asks it (see
+/// [Ft891Session]'s voice tracker). Kept because the command is real and the
+/// manual's shape is worth stating where the next reader looks for it.
 String buildReadVoiceRecordingCommand() => 'LM0;';
 
 /// `0n` → n, for both `PB` and `LM` answers. Null for anything else.

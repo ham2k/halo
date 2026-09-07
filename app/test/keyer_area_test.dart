@@ -133,7 +133,7 @@ void main() {
     await tester.pump(const Duration(seconds: 62));
   });
 
-  testWidgets('a finished message leaves the strip; the pill lingers a minute, then the strip slides away', (tester) async {
+  testWidgets('a finished message leaves the strip, and the strip STAYS: only the operator sends it away', (tester) async {
     await connectPlaceholder(tester);
     await tester.pumpWidget(host());
     services.cat.sendCw('ET');
@@ -142,16 +142,15 @@ void main() {
     final full = stripHeight(tester);
     expect(messageText, findsNothing, reason: 'the queue drained (ET plus the trailing gap is under a second)');
     expect(find.text('22 wpm'), findsOneWidget);
-    expect(stripHeight(tester), full);
 
-    await tester.pump(const Duration(seconds: 58));
-    expect(find.text('22 wpm'), findsOneWidget, reason: 'still lingering');
-    await tester.pump(const Duration(seconds: 2));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(stripHeight(tester), lessThan(full), reason: 'sliding up');
+    // The trap this test exists for: a timer taking the strip away. The
+    // buttons on it are what the NEXT message is sent from, so a strip that
+    // vanished while the operator read the screen is one they have to summon
+    // back before they can key at all.
+    await tester.pump(const Duration(minutes: 5));
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('22 wpm'), findsNothing);
-    expect(stripHeight(tester), 0);
+    expect(find.text('22 wpm'), findsOneWidget);
+    expect(stripHeight(tester), full);
   });
 
   testWidgets('a message during the linger cancels the hide', (tester) async {
@@ -233,7 +232,7 @@ void main() {
     await tester.tap(find.text('22 wpm'));
     await tester.pumpAndSettle();
 
-    expect(find.bySemanticsLabel('CW Messages'), findsOneWidget, reason: 'the way to the message editor sits by the speed');
+    expect(find.text('Edit Messages'), findsOneWidget, reason: 'the way to the message editor heads the dialog');
     expect(find.text('Custom Message'), findsOneWidget, reason: 'its own section');
     await tester.enterText(find.widgetWithText(TextField, 'Message'), 'hello there');
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Message')).controller!.text, 'HELLO THERE',
@@ -440,7 +439,7 @@ void main() {
     await tester.pump(const Duration(seconds: 62));
   });
 
-  testWidgets('a memory playing brings the strip up by itself, and it lingers after, like a CW message', (tester) async {
+  testWidgets('a memory playing brings the strip up by itself, and it stays after, like a CW message', (tester) async {
     await connectPlaceholder(tester);
     await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
     expect(stripHeight(tester), 0);
@@ -451,14 +450,11 @@ void main() {
     // The placeholder's pretend playback ends on its own.
     await tester.pump(const Duration(seconds: 5));
     expect(find.text('Playing M3'), findsNothing);
-    expect(find.text('Voice'), findsOneWidget, reason: 'lingering');
-    await tester.pump(const Duration(seconds: 62));
-    await tester.pump(const Duration(seconds: 1)); // the slide away
-    await tester.pump();
-    expect(stripHeight(tester), 0);
+    await tester.pump(const Duration(minutes: 5));
+    expect(find.text('Voice'), findsOneWidget, reason: 'the strip stays until the operator closes it');
   });
 
-  testWidgets('a doubtful play asks, with a question mark, in the memory\'s place', (tester) async {
+  testWidgets('a doubtful play reads like any other on the strip: no question mark mid-air', (tester) async {
     await connectPlaceholder(tester);
     await services.settings.setVoiceMessageLabel(2, 'CQ POTA');
     await tester.pumpWidget(host(templateContext: contextFor('N0CALL'), phone: true));
@@ -467,17 +463,21 @@ void main() {
     services.cat.voiceActivity.value = const VoiceActivity(memory: 2, doubtful: true);
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Playing CQ POTA?'), findsOneWidget);
-    expect(find.text('Playing CQ POTA'), findsNothing);
+    // Doubt is real and still stops a refused play; it is not something to
+    // ASK the operator about while audio may be going out, since they cannot
+    // answer it from here. The Voice Messages dialog is where it is said.
+    expect(find.text('Playing CQ POTA'), findsOneWidget);
+    expect(find.text('Playing CQ POTA?'), findsNothing);
     services.cat.voiceActivity.value = null;
-    await tester.pump(const Duration(seconds: 62));
-    await tester.pump(const Duration(seconds: 1));
     await tester.pump();
   });
 
   testWidgets('a CW draft keeps the CW strip, whatever the radio can play', (tester) async {
     await connectPlaceholder(tester);
     await services.settings.setCwMessage(1, 'CQ');
+    // The seeded Default set labels its first message; cleared here so the
+    // button shows its KEY, which is what this test is about.
+    await services.settings.setCwMessageLabel(1, '');
     await tester.pumpWidget(host(templateContext: contextFor('N0CALL')));
     services.cat.showKeyerArea();
     await tester.pump();
@@ -486,6 +486,30 @@ void main() {
     expect(find.text('Voice'), findsNothing);
     expect(find.widgetWithText(InkWell, 'F1'), findsOneWidget);
     expect(find.widgetWithText(InkWell, 'M1'), findsNothing);
+  });
+
+  testWidgets('the buttons stay down for a whole repeat chain, not only for its waits', (tester) async {
+    await connectPlaceholder(tester);
+    await services.settings.setCwMessage(1, 'CQ');
+    await services.settings.setCwMessageLabel(1, '');
+    await tester.pumpWidget(host(templateContext: contextFor('N0CALL')));
+    services.cat.showKeyerArea();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.widgetWithText(InkWell, 'F1').hitTestable(), findsOneWidget);
+
+    // A chain armed with nothing keying and no wait yet: the GAP between a
+    // wait ending and the next message reaching the radio, which is a
+    // template render long. Buttons flashing back for it read as the
+    // repeats having stopped. (Hit-testable, because the row stays mounted
+    // behind a Visibility to keep its rendered labels.)
+    services.cat.armKeyerRepeat(delay: const Duration(seconds: 3), text: 'CQ', send: () {});
+    await tester.pump();
+    expect(find.widgetWithText(InkWell, 'F1').hitTestable(), findsNothing);
+
+    services.cat.cancelKeyerRepeat();
+    await tester.pump();
+    expect(find.widgetWithText(InkWell, 'F1').hitTestable(), findsOneWidget);
   });
 
   testWidgets('a mode flip keeps the CW buttons mounted, so their rendered labels survive it', (tester) async {

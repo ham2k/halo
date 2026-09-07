@@ -88,48 +88,81 @@ void main() {
     expect(find.textContaining('Exchange'), findsOneWidget, reason: 'the list behind shows it');
   });
 
-  testWidgets('with the placeholder radio: its memories, Play starts one and turns into Stop', (tester) async {
+  /// The list names the memories; everything one DOES to a memory lives in
+  /// its own dialog, which is where these tests go.
+  Future<void> openMemory(WidgetTester tester, int n) async {
+    await tester.tap(find.byType(ListTile).at(n - 1));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('with the placeholder radio: its memories, and no buttons on the rows', (tester) async {
     await connectPlaceholder(tester);
     await open(tester);
     expect(find.byType(ListTile), findsNWidgets(placeholderVoiceMemoryCount));
-    expect(find.byIcon(MdiIcons.play), findsNWidgets(placeholderVoiceMemoryCount));
-    expect(find.byIcon(MdiIcons.recordCircleOutline), findsNWidgets(placeholderVoiceMemoryCount),
-        reason: 'the placeholder records too');
+    // The rows are names and lengths. A Play on each was one tap from the
+    // air, in a list an operator opens to RENAME things.
+    expect(find.byIcon(MdiIcons.play), findsNothing);
+    expect(find.byIcon(MdiIcons.recordCircleOutline), findsNothing);
+    expect(find.text('Unknown length'), findsNWidgets(placeholderVoiceMemoryCount));
     expect(find.textContaining('front panel'), findsNothing);
+  });
 
-    await tester.tap(find.byIcon(MdiIcons.play).at(2));
+  testWidgets('the memory dialog plays it: Play becomes Stop, and the length is measured off the play', (tester) async {
+    await connectPlaceholder(tester);
+    await open(tester);
+    await openMemory(tester, 3);
+    // The row behind it says the same thing, hence findsWidgets.
+    expect(find.text('Unknown length'), findsWidgets);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Play'));
     await tester.pump();
     expect(services.cat.voiceActivity.value, const VoiceActivity(memory: 3));
-    expect(find.text('Playing…'), findsOneWidget);
-    expect(find.byIcon(MdiIcons.stop), findsOneWidget, reason: 'only the playing row offers a stop');
-    // The other rows' Play is disabled while one plays — one memory at a time.
-    final otherPlay = tester.widget<IconButton>(find.ancestor(of: find.byIcon(MdiIcons.play).first, matching: find.byType(IconButton)));
-    expect(otherPlay.onPressed, isNull);
+    expect(find.widgetWithText(FilledButton, 'Stop'), findsOneWidget);
+    // Record is disabled while the radio is busy with anything.
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Record')).onPressed, isNull);
 
-    await tester.tap(find.byIcon(MdiIcons.stop));
-    await tester.pump();
+    // The placeholder's pretend playback ends on its own, and the play is
+    // what measures the memory — nothing anywhere asks for a measurement.
+    await tester.pump(placeholderVoicePlayDuration + const Duration(milliseconds: 100));
     expect(services.cat.voiceActivity.value, isNull);
-    expect(find.text('Playing…'), findsNothing);
-    // Past the silence watch the report armed (cat_service.dart's
-    // _staleAfter), which is otherwise a timer left pending.
+    expect(services.settings.voiceMessageDuration(3), greaterThan(0));
+    await tester.pump();
+    // Shown to a tenth, because the measurement has milliseconds in it.
+    expect(find.textContaining(RegExp(r'^\d+\.\d s$')), findsWidgets);
     await tester.pump(const Duration(seconds: 31));
   });
 
-  testWidgets('Record starts a recording that only Stop ends', (tester) async {
+  testWidgets('a play the operator stops is not a measurement', (tester) async {
     await connectPlaceholder(tester);
     await open(tester);
-    await tester.tap(find.byIcon(MdiIcons.recordCircleOutline).at(1));
+    await openMemory(tester, 3);
+    await tester.tap(find.widgetWithText(FilledButton, 'Play'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    await tester.tap(find.widgetWithText(FilledButton, 'Stop'));
+    await tester.pump();
+    // The trap: timing a play that was cut short. Stored, it would pace
+    // every later bar for that memory to finish early.
+    expect(services.settings.voiceMessageDuration(3), 0);
+    await tester.pump(const Duration(seconds: 31));
+  });
+
+  testWidgets('the memory dialog records: Record starts one that only Stop ends', (tester) async {
+    await connectPlaceholder(tester);
+    await open(tester);
+    await openMemory(tester, 2);
+    await tester.tap(find.widgetWithText(FilledButton, 'Record'));
     await tester.pump();
     expect(services.cat.voiceActivity.value, const VoiceActivity(memory: 2, recording: true));
-    expect(find.text('Recording…'), findsOneWidget);
     // Longer than a pretend playback: a recording has no natural end.
     await tester.pump(placeholderVoicePlayDuration * 3);
-    expect(find.text('Recording…'), findsOneWidget);
-    await tester.tap(find.byIcon(MdiIcons.stop));
+    expect(services.cat.voiceActivity.value, const VoiceActivity(memory: 2, recording: true));
+    await tester.tap(find.widgetWithText(FilledButton, 'Stop'));
     await tester.pump();
     expect(services.cat.voiceActivity.value, isNull);
-    // Past the silence watch the report armed (cat_service.dart's
-    // _staleAfter), which is otherwise a timer left pending.
+    // A recording times how long the operator held it, which is not the
+    // memory's length.
+    expect(services.settings.voiceMessageDuration(2), 0);
     await tester.pump(const Duration(seconds: 31));
   });
 }

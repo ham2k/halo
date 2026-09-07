@@ -360,10 +360,11 @@ void main() {
       expect(session.voiceMemoryCount, 5);
       expect(session.canRecordVoice, isTrue);
       session.playVoiceMemory(3);
-      expect(sink.sentAscii, ['PB03;']);
+      // TX first: PB alone plays into the monitor and never reaches the air.
+      expect(sink.sentAscii, ['TX1;', 'PB03;']);
       expect(sink.activities, [playing3]);
       session.stopVoice();
-      expect(sink.sentAscii.last, 'PB00;');
+      expect(sink.sentAscii, ['TX1;', 'PB03;', 'PB00;', 'TX0;']);
       session.recordVoiceMemory(2);
       expect(sink.sentAscii.last, 'LM02;');
       expect(sink.activities.last, recording2);
@@ -374,29 +375,87 @@ void main() {
       expect(sink.activities.last, isNull);
     });
 
-    test('while playing, reads PB0 each second and ends on channel 0', () {
+    test('while playing, asks both TX and PB every second', () {
       fakeAsync((async) {
         session.playVoiceMemory(3);
         async.elapse(const Duration(seconds: 1));
-        expect(sink.sentAscii.last, 'PB0;');
-        feed('PB03;');
-        expect(sink.activities.last, playing3, reason: 'still on channel 3');
-        feed('PB00;');
+        // Both, because the two radios on this driver answer different ones:
+        // the FT-891 comes out of transmit by itself, the FTDX10 answers PB.
+        expect(sink.sentAscii.sublist(sink.sentAscii.length - 2), ['TX;', 'PB0;']);
+      });
+    });
+
+    test('the radio leaving transmit ends the play, and nothing unkeys it twice', () {
+      fakeAsync((async) {
+        session.playVoiceMemory(3);
+        feed('TX1;'); // the FT-891 pushes this unprompted
+        async.elapse(const Duration(seconds: 1));
+        expect(sink.activities.last, playing3);
+        feed('TX0;');
+        expect(sink.activities.last, isNull);
+        // The trap: unkeying a radio that already unkeyed itself. TX0 is the
+        // END of the play here, not a stop the app has to make.
+        expect(sink.sentAscii, isNot(contains('PB00;')));
+        expect(sink.sentAscii.where((c) => c == 'TX0;'), isEmpty);
+      });
+    });
+
+    test('a TX0 before the radio ever answered "transmitting" is a rig still keying up', () {
+      fakeAsync((async) {
+        session.playVoiceMemory(3);
+        // The trap: ending on the first answer. A radio that has not keyed
+        // yet answers 0, and a play stopped there never reaches the air.
+        feed('TX0;');
+        expect(sink.activities.last, playing3, reason: 'not confirmed yet');
+        feed('TX1;');
+        feed('TX0;');
         expect(sink.activities.last, isNull);
       });
     });
 
-    test('while recording, reads LM0 instead, and a PB answer does not end it', () {
+    test('a PB00 is believed only after a PB answer named a memory playing', () {
+      fakeAsync((async) {
+        session.playVoiceMemory(3);
+        // The FT-891 answers 00 from the first poll while the audio is
+        // plainly going out — believing it cut every message short at two
+        // seconds, and is the reason for the confirm-first rule.
+        feed('PB00;');
+        async.elapse(const Duration(seconds: 2));
+        feed('PB00;');
+        expect(sink.activities.last, playing3, reason: 'never confirmed, so never believed');
+
+        // The FTDX10 does name the memory, and then its 0 is the end — and
+        // it does NOT unkey itself, so the end is what sends TX0.
+        feed('PB03;');
+        feed('PB00;');
+        expect(sink.activities.last, isNull);
+        expect(sink.sentAscii.last, 'TX0;');
+      });
+    });
+
+    test('a recording never keys the transmitter', () {
       fakeAsync((async) {
         session.recordVoiceMemory(2);
-        async.elapse(const Duration(seconds: 1));
-        expect(sink.sentAscii.last, 'LM0;');
-        // The trap: PB00 (nothing PLAYING) read as the recording being over.
-        feed('PB00;');
-        expect(sink.activities.last, recording2);
-        feed('LM02;'); // confirmed recording
+        async.elapse(voiceActivityCeiling + const Duration(seconds: 1));
+        expect(sink.sentAscii, isNot(contains('TX1;')));
+        expect(sink.sentAscii, isNot(contains('TX0;')));
+      });
+    });
+
+    test('a recording is never polled, and no answer ends it', () {
+      fakeAsync((async) {
+        session.recordVoiceMemory(2);
+        final sentAfterStart = sink.sentAscii.length;
+        async.elapse(const Duration(seconds: 3));
+        // The trap this test exists for: asking. The FT-891 answers `LM0;`
+        // with `LM00;` while its own panel blinks REC, so a poll here reads
+        // as a recording that never started — and the stop that follows took
+        // the operator's audio with it, two seconds in.
+        expect(sink.sentAscii.length, sentAfterStart, reason: 'nothing is asked while recording');
         feed('LM00;');
-        expect(sink.activities.last, isNull);
+        feed('PB00;');
+        feed('TX0;');
+        expect(sink.activities.last, recording2, reason: 'no answer ends a recording');
       });
     });
 

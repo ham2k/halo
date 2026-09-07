@@ -681,6 +681,19 @@ class RadioSettingsGroup extends SettingsGroup {
       // them are.
       if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) ...[
         {'type': 'markdown', 'text': s.cwMessages.description, 'target': 'cw-messages'},
+        // Message 1 only, which is what the circled 1 in the label says —
+        // see SettingsService.cwRepeatDelay on why the others never repeat.
+        _select(
+          key: 'cwRepeatDelay',
+          label: s.cwMessages.repeat,
+          icon: 'repeat',
+          value: '${settings.cwRepeatDelay.inSeconds}',
+          options: [
+            for (final option in SettingsService.cwRepeatDelayOptions)
+              (label: option == '0' ? s.cwMessages.repeatOff : s.cwMessages.repeatAfter(n: option), value: option),
+          ],
+          target: 'cw-messages',
+        ),
         for (var n = 1; n <= SettingsService.cwMessageCount; n++) ...[
           _text(
             key: SettingsService.cwMessageKey(n),
@@ -700,6 +713,22 @@ class RadioSettingsGroup extends SettingsGroup {
         // The voice memory labels, the same way, under `voice-messages`:
         // the audio is in the radio, so a label is all there is to edit.
         {'type': 'markdown', 'text': s.voiceMessages.description, 'target': 'voice-messages'},
+        // The voice counterpart of the CW repeat, and the same rule: memory
+        // 1 only, which is what the circled 1 in the label says.
+        _select(
+          key: 'voiceRepeatDelay',
+          label: s.voiceMessages.repeat,
+          icon: 'repeat',
+          value: '${settings.voiceRepeatDelay.inSeconds}',
+          options: [
+            for (final option in SettingsService.cwRepeatDelayOptions)
+              (
+                label: option == '0' ? s.voiceMessages.repeatOff : s.voiceMessages.repeatAfter(n: option),
+                value: option
+              ),
+          ],
+          target: 'voice-messages',
+        ),
         for (var n = 1; n <= SettingsService.voiceMessageCount; n++)
           _text(
             key: SettingsService.voiceMessageLabelKey(n),
@@ -761,6 +790,15 @@ class RadioSettingsGroup extends SettingsGroup {
     // strings. Anything else is a build mismatch and is dropped rather than
     // stored for a later parse to fall back from.
     if (value is! bool && value is! String) return;
+    // A message and its label live in the ACTIVE set, not under their own
+    // key: writing the key directly would store a message nothing reads
+    // (SettingsService.cwMessageKey).
+    if (value is String) {
+      for (var n = 1; n <= SettingsService.cwMessageCount; n++) {
+        if (fieldKey == SettingsService.cwMessageKey(n)) return settings.setCwMessage(n, value);
+        if (fieldKey == SettingsService.cwMessageLabelKey(n)) return settings.setCwMessageLabel(n, value);
+      }
+    }
     await settings.setSettingValue(SettingsService.radioGroup, fieldKey, value);
   }
 }

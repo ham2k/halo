@@ -20,6 +20,12 @@
 // need more than one poll to key up), and the doubt expiring stops the
 // radio before clearing — an activity the app no longer shows must never
 // be one it can no longer stop.
+//
+// A RECORDING is never doubted. The FT-891 answers its recording read with
+// "idle" while its own panel blinks REC, so an unconfirmed recording says
+// more about the read than about the radio — and a doubt that stopped one
+// would take the operator's audio with it. A recording ends at its ceiling
+// or when the operator stops it, which is what ends one anyway.
 
 import 'dart:async';
 
@@ -140,6 +146,12 @@ class VoiceActivityTracker {
     // to key up, and something else on the link may be asking the same
     // question far faster than this tracker does.
     if (!_settled) return;
+    // Doubt is about a REFUSED PLAY. A recording that has not yet answered
+    // "still going" is far more likely a radio whose read cannot say so (the
+    // FT-891's `LM` is exactly that), and stopping one costs the operator
+    // the audio they are in the middle of recording — so a recording runs to
+    // its ceiling instead, which is what ends it anyway.
+    if (activity.recording) return;
     // A second "not going" while already in doubt changes nothing: the
     // linger runs its course, so the question mark is seen.
     if (activity.doubtful) return;

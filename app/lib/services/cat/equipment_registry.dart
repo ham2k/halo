@@ -183,6 +183,19 @@ class EquipmentModel {
   /// other radio, so it leaves this false.
   final bool hiddenFromCatalog;
 
+  /// How to record a voice memory on THIS radio, where the CAT command is
+  /// only half the procedure — the FT-891 wants the operator on PTT while
+  /// the DVS records, which no protocol can express and no operator can
+  /// guess. Shown in the memory's dialog, beside Record. Null where the
+  /// radio needs no explanation, which is most of them.
+  ///
+  /// On the MODEL rather than the driver: it describes a radio's front
+  /// panel, and one driver serves a whole line of them. A closure for the
+  /// same live-locale reason as [_nameBuilder].
+  final String Function()? _recordingHelpBuilder;
+
+  String? get recordingHelp => _recordingHelpBuilder?.call();
+
   /// What to call a NEW node of this model, when that is not the model's own
   /// name. Only for a model whose catalogue name is a description rather
   /// than something an operator would call their rig: the placeholder's
@@ -197,9 +210,11 @@ class EquipmentModel {
     required String Function() name,
     required this.variants,
     String Function()? suggestedName,
+    String Function()? recordingHelp,
     this.manufacturer,
     this.hiddenFromCatalog = false,
   })  : _nameBuilder = name,
+        _recordingHelpBuilder = recordingHelp,
         _suggestedNameBuilder = suggestedName;
 
   String get name => _nameBuilder();
@@ -506,6 +521,8 @@ const flrigModel = EquipmentModel(
   ],
 );
 
+String _ft891RecordingHelp() => t.settings.radio.voiceMessages.recordHelpFt891;
+
 String _flrigName() => t.settings.station.models.flrig;
 
 List<Map<String, dynamic>> _flrigTcpNotes() => [
@@ -527,6 +544,10 @@ const ft891Model = EquipmentModel(
   key: 'ft891',
   category: kCategoryTransceiver,
   name: _ft891Name,
+  // `LM0n;` arms the DVS, but the audio comes off the microphone with the
+  // operator on PTT — half the procedure is on the front panel, and nothing
+  // in CAT can say so.
+  recordingHelp: _ft891RecordingHelp,
   variants: [
     EquipmentVariant(
       key: _ft891SerialKey,
@@ -606,6 +627,9 @@ const ftdx10Model = EquipmentModel(
   manufacturer: 'Yaesu',
   category: kCategoryTransceiver,
   name: _ftdx10Name,
+  // The FT-891's procedure without its wait: this radio's REC indicator
+  // does not need watching first.
+  recordingHelp: _ftdx10RecordingHelp,
   variants: [
     EquipmentVariant(
       key: _ftdx10SerialKey,
@@ -714,6 +738,8 @@ List<Map<String, dynamic>> _yaesuBinarySerialNotes() => [
             '${t.settings.station.yaesuBinaryTroubleshooting}',
       },
     ];
+
+String _ftdx10RecordingHelp() => t.settings.radio.voiceMessages.recordHelpFtdx10;
 
 /// Any Yaesu speaking CAT over a serial port — the entry for a radio with no
 /// definition of its own.

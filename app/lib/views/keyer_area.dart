@@ -18,9 +18,11 @@
 // place of the message going out (docs/design/cat.md § Voice keying). A
 // message leaves
 // it the moment it ends — finished or stopped, what went out is not worth
-// re-reading — and the pill stays for [cwSendingLingers] after the last one,
-// which is when a speed change is most often wanted, before the strip slides
-// back up — or the X at its end sends it away sooner.
+// re-reading — but the strip itself STAYS: it goes away when the operator
+// sends it away (the X, KEYER, the Station dialog's toggle) and not on a
+// timer, since the buttons are what the next message is sent from and a
+// strip that vanished while the operator was reading the screen is one they
+// have to summon back before they can key at all.
 //
 // Driven by AnimationControllers rather than a clock: the bar advances per
 // frame for a few seconds and stops with the message, which is neither a
@@ -42,9 +44,6 @@ import '../services/error_reporting_service.dart';
 import '../services/cat/drivers/cw_send_queue.dart';
 import '../services/settings_service.dart';
 import 'operation/extension_panel.dart' show PanelRenderContext, operationHookArgs;
-
-/// How long the strip stays after the last message ends.
-const cwSendingLingers = Duration(seconds: 60);
 
 /// The slide in and out.
 const _revealDuration = Duration(milliseconds: 250);
@@ -100,10 +99,8 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
   late final AnimationController _reveal;
 
   /// Whether the strip is (or is sliding) in — from the first message until
-  /// [_hide] fires after the last.
+  /// the operator sends it away.
   bool _visible = false;
-
-  Timer? _hide;
 
   @override
   void initState() {
@@ -118,12 +115,12 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
   }
 
   /// An explicit ask (KEYER, the toggle) while already shown: the flag does
-  /// not move, but a linger in progress must not carry the area away.
+  /// not move, so nothing else would bring a sliding-away strip back.
   void _onShowRequested() => _show();
 
   /// `CatService.keyerAreaShown` is the one switch: KEYER, the Station
-  /// dialog's toggle and a message starting set it; the X, the linger and
-  /// the toggle clear it. This only follows it in and out.
+  /// dialog's toggle and a message starting set it; the X and the toggle
+  /// clear it. This only follows it in and out.
   void _onShownChanged() {
     if (widget.cat.keyerAreaShown.value) {
       _show();
@@ -134,8 +131,6 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
 
   void _show() {
     if (widget.suppressed) return;
-    _hide?.cancel();
-    _hide = null;
     if (!_visible) setState(() => _visible = true);
     _reveal.forward();
   }
@@ -157,8 +152,6 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     }
     if (widget.suppressed && !old.suppressed) _close();
     if (!widget.suppressed && old.suppressed) {
-      // Shown first, then the progress: a message that ended meanwhile arms
-      // the linger, which a show would otherwise cancel.
       _onShownChanged();
       _onProgress();
     }
@@ -170,7 +163,6 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     widget.cat.voiceActivity.removeListener(_onProgress);
     widget.cat.keyerAreaShown.removeListener(_onShownChanged);
     widget.cat.keyerShowRequests.removeListener(_onShowRequested);
-    _hide?.cancel();
     _reveal.dispose();
     super.dispose();
   }
@@ -187,8 +179,6 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     final progress = widget.cat.cwProgress.value;
     final voice = widget.cat.voiceActivity.value;
     if (progress != null || voice != null) {
-      _hide?.cancel();
-      _hide = null;
       if (progress != null && _shownForMessage != progress.id) {
         _shownForMessage = progress.id;
         // A message starting shows the area through the flag, so the
@@ -201,27 +191,18 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
       }
       return;
     }
+    // Nothing keying leaves the strip exactly where it is: only the
+    // operator takes it away.
     _shownForMessage = null;
     _shownForVoice = null;
-    if (!_visible) return;
-    _hide?.cancel();
-    _hide = Timer(cwSendingLingers, () {
-      _hide = null;
-      widget.cat.hideKeyerArea();
-      // Directly as well: when the X went first the flag is already off and
-      // changes nothing, and nothing else would slide the area away.
-      _close();
-    });
   }
 
   /// Slides the area away. A message still keying keeps going; its next
   /// report brings the area back.
   void _close() {
     if (!mounted) return;
-    _hide?.cancel();
-    _hide = null;
     _reveal.reverse().whenComplete(() {
-      if (mounted && _hide == null && !widget.cat.keyerAreaShown.value) setState(() => _visible = false);
+      if (mounted && !widget.cat.keyerAreaShown.value) setState(() => _visible = false);
     });
   }
 
@@ -249,10 +230,23 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
               const SizedBox(width: Space.md),
               Expanded(
                 child: ListenableBuilder(
-                  listenable: Listenable.merge([widget.cat.cwProgress, widget.cat.voiceActivity]),
+                  listenable: Listenable.merge([
+                    widget.cat.cwProgress,
+                    widget.cat.voiceActivity,
+                    widget.cat.keyerRepeat,
+                    widget.cat.keyerRepeatActive,
+                  ]),
                   builder: (context, _) {
                     final progress = widget.cat.cwProgress.value;
                     final voice = widget.cat.voiceActivity.value;
+                    // A chain is the message's own time, not the buttons':
+                    // the strip shows what is about to go out and nothing
+                    // else, the same as while it is going out. The whole
+                    // chain and not just the wait, because the gap between
+                    // the wait ending and the next message reaching the
+                    // radio is a template render long — and the buttons
+                    // flashing back for it reads as the repeats stopping.
+                    final waiting = widget.cat.keyerRepeatActive.value;
                     return Stack(
                       alignment: AlignmentDirectional.centerStart,
                       children: [
@@ -263,7 +257,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                         // than one slot swapping types: a mode flip must not
                         // remount them either.
                         Visibility(
-                          visible: !widget.phone && progress == null && voice == null,
+                          visible: !widget.phone && progress == null && voice == null && !waiting,
                           maintainState: true,
                           child: _MessageButtons(
                             services: widget.services,
@@ -272,7 +266,7 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                           ),
                         ),
                         Visibility(
-                          visible: widget.phone && progress == null && voice == null,
+                          visible: widget.phone && progress == null && voice == null && !waiting,
                           child: _VoiceButtons(services: widget.services),
                         ),
                         // Keyed on the message's id, so a new one restarts the
@@ -283,6 +277,16 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                           _CwProgressView(key: ValueKey(progress.id), progress: progress, cat: widget.cat),
                         if (voice != null && progress == null)
                           _VoiceActivityView(activity: voice, cat: widget.cat, services: widget.services),
+                        // The wait between a repeat and the next send. Only
+                        // while nothing is keying: the moment the message
+                        // goes again its own bar takes the slot back.
+                        if (progress == null && voice == null)
+                          ValueListenableBuilder<KeyerRepeatWait?>(
+                            valueListenable: widget.cat.keyerRepeat,
+                            builder: (context, wait, _) => wait == null
+                                ? const SizedBox.shrink()
+                                : _CwRepeatView(key: ValueKey(wait), wait: wait, cat: widget.cat, services: widget.services),
+                          ),
                       ],
                     );
                   },
@@ -476,6 +480,13 @@ class _MessageButtonsState extends State<_MessageButtons> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(cwMessageNumberIcons[n - 1], size: 14, color: color),
+                              // Only on 1, because only 1 repeats — the icon
+                              // beside its number is where an operator sees
+                              // that a CQ they press will keep going.
+                              if (n == 1 && settings.cwRepeatDelay > Duration.zero) ...[
+                                const SizedBox(width: Space.xxs),
+                                Icon(MdiIcons.repeat, size: 14, color: color),
+                              ],
                               const SizedBox(width: Space.xs),
                               Text(
                                 _labelFor(n, m.key(n: n)),
@@ -546,6 +557,12 @@ class _VoiceButtons extends StatelessWidget {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(cwMessageNumberIcons[n - 1], size: 14, color: color),
+                              // Only on 1, because only 1 repeats — see the
+                              // CW buttons.
+                              if (n == 1 && settings.voiceRepeatDelay > Duration.zero) ...[
+                                const SizedBox(width: Space.xxs),
+                                Icon(MdiIcons.repeat, size: 14, color: color),
+                              ],
                               const SizedBox(width: Space.xs),
                               Text(
                                 voiceMessageLabelFor(settings, n, m.key(n: n)),
@@ -574,7 +591,13 @@ class _VoiceButtons extends StatelessWidget {
 /// stops it (Esc's other form). No bar — no radio here reports how far
 /// along a memory is, and a bar pacing nothing would be a guess dressed as
 /// a measurement.
-class _VoiceActivityView extends StatelessWidget {
+/// The memory going out, under a bar. A MEASURED memory paces its own bar
+/// (CatService times every play — settings_service.dart's
+/// `voiceMessageDuration`); an unmeasured one shows an indeterminate bar
+/// instead, which says "still going" without claiming to know how far
+/// along. A memory measures itself the first time it is played, so the
+/// second play is the one that gets the real bar.
+class _VoiceActivityView extends StatefulWidget {
   final VoiceActivity activity;
   final CatService cat;
   final HaLoServices services;
@@ -582,19 +605,94 @@ class _VoiceActivityView extends StatelessWidget {
   const _VoiceActivityView({required this.activity, required this.cat, required this.services});
 
   @override
+  State<_VoiceActivityView> createState() => _VoiceActivityViewState();
+}
+
+/// [TickerProviderStateMixin], not the Single one: one activity replaces
+/// another in the same State — a second memory played while the strip is up —
+/// and each length gets a controller of its own.
+class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProviderStateMixin {
+  /// Null while the memory's length is unknown, which is what draws the
+  /// indeterminate bar.
+  AnimationController? _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _pace();
+  }
+
+  @override
+  void didUpdateWidget(_VoiceActivityView old) {
+    super.didUpdateWidget(old);
+    // A re-report of the SAME memory keeps the bar where it is; another
+    // memory, or a play becoming a recording, starts one afresh.
+    if (old.activity.memory != widget.activity.memory || old.activity.recording != widget.activity.recording) {
+      _pace();
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  /// Built HERE rather than in build: a controller is a side effect with a
+  /// ticker attached, and building one per rebuild is what exhausts a
+  /// ticker provider.
+  void _pace() {
+    _controller?.dispose();
+    _controller = null;
+    // A recording has no length to pace: it lasts as long as the operator
+    // holds it, which is what the indeterminate bar says.
+    if (widget.activity.recording) return;
+    final millis = widget.services.settings.voiceMessageDuration(widget.activity.memory);
+    if (millis <= 0) return;
+    _controller = AnimationController(vsync: this, duration: Duration(milliseconds: millis))..forward();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final activity = widget.activity;
+    final cat = widget.cat;
+    final services = widget.services;
     final m = context.t.settings.radio.voiceMessages;
     final theme = Theme.of(context);
     final style = theme.textTheme.bodyMedium ?? const TextStyle();
     final label = voiceMessageLabelFor(services.settings, activity.memory, m.key(n: activity.memory));
-    // Doubtful — the radio said "not going" before ever saying "going" —
-    // asks rather than states: an empty memory must not read as a short one.
-    final text = switch ((activity.recording, activity.doubtful)) {
-      (true, false) => m.recordingMemory(label: label),
-      (true, true) => m.recordingDoubtful(label: label),
-      (false, false) => m.playingMemory(label: label),
-      (false, true) => m.playingDoubtful(label: label),
-    };
+    // Doubt is not shown here. It is a real state — the radio answered
+    // "idle" before ever answering "going" — but a question mark on the
+    // strip asks the operator something they cannot answer while the memory
+    // is going out; the Voice Messages dialog is where it is explained.
+    final text = activity.recording ? m.recordingMemory(label: label) : m.playingMemory(label: label);
+    final color = style.color ?? theme.colorScheme.onSurface;
+    final controller = _controller;
+    final row = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          activity.recording ? MdiIcons.recordCircleOutline : MdiIcons.play,
+          size: 16,
+          color: activity.recording ? theme.colorScheme.error : style.color,
+        ),
+        const SizedBox(width: Space.xs),
+        Flexible(
+          child: Text(
+            text,
+            style: style.copyWith(fontWeight: FontWeight.bold),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            softWrap: false,
+          ),
+        ),
+        // Armed, not merely configured: this says THIS memory goes again.
+        if (cat.keyerRepeating && !activity.recording) ...[
+          const SizedBox(width: Space.xs),
+          Icon(MdiIcons.repeat, size: 14, color: color.withValues(alpha: 0.55)),
+        ],
+      ],
+    );
     return Semantics(
       label: text,
       liveRegion: true,
@@ -602,23 +700,31 @@ class _VoiceActivityView extends StatelessWidget {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: cat.stopVoice,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
+          // The bar is as wide as the text above it and no wider, the same
+          // way the CW message's is — the stack takes its width from the row.
+          child: Stack(
             children: [
-              Icon(
-                activity.recording ? MdiIcons.recordCircleOutline : MdiIcons.play,
-                size: 16,
-                color: activity.recording ? theme.colorScheme.error : style.color,
-              ),
-              const SizedBox(width: Space.xs),
-              Flexible(
-                child: Text(
-                  text,
-                  style: style.copyWith(fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  softWrap: false,
-                ),
+              Padding(padding: const EdgeInsets.only(bottom: Space.xxs * 2), child: row),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: Space.xxs,
+                child: controller == null
+                    ? LinearProgressIndicator(
+                        minHeight: Space.xxs,
+                        backgroundColor: color.withValues(alpha: 0.25),
+                        color: color,
+                      )
+                    : AnimatedBuilder(
+                        animation: controller,
+                        builder: (context, _) => Stack(
+                          children: [
+                            Container(color: color.withValues(alpha: 0.25)),
+                            FractionallySizedBox(widthFactor: controller.value, child: Container(color: color)),
+                          ],
+                        ),
+                      ),
               ),
             ],
           ),
@@ -728,14 +834,23 @@ class _KeyerSpeedPill extends StatelessWidget {
             mouseCursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontFamily: 'RobotoCondensed',
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: foreground,
-                ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // The voice pill's microphone has a counterpart here, so
+                  // the two pills read as the same thing for either keyer.
+                  Icon(MdiIcons.key, size: 14, color: foreground),
+                  const SizedBox(width: Space.xs),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontFamily: 'RobotoCondensed',
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: foreground,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -802,6 +917,7 @@ class _KeyerSpeedDialogState extends State<_KeyerSpeedDialog> {
   Widget build(BuildContext context) {
     final s = context.t.settings.radio.keyerSpeed;
     final m = context.t.settings.radio.cwMessages;
+    final theme = Theme.of(context);
     // The dialog's own content inset is dropped so the section band runs
     // edge to edge, the way it does on the settings screens; the rows take
     // the inset the dialog would have given them (halo_dialog.dart's
@@ -814,11 +930,27 @@ class _KeyerSpeedDialogState extends State<_KeyerSpeedDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // First, and a row of its own: the editor is where the messages
+          // the function keys send are written, which is what an operator
+          // opens this dialog for more often than a speed change. Shaped as
+          // a settings row — leading icon, chevron, the whole row tapping —
+          // since that is what a row leading somewhere else looks like
+          // everywhere in the app (form_renderer.dart's select rows).
+          ListTile(
+            contentPadding: rowInset,
+            leading: const Icon(MdiIcons.messageBulleted),
+            title: Text(m.edit, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold)),
+            trailing: Icon(MdiIcons.chevronRight, color: theme.colorScheme.onSurfaceVariant),
+            onTap: () => showCwMessagesDialog(context, widget.services),
+            mouseCursor: SystemMouseCursors.click,
+          ),
           Padding(
-            padding: rowInset.copyWith(top: Space.xl, bottom: Space.xl),
+            padding: rowInset.copyWith(top: Space.md, bottom: Space.xl),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
+                  flex: 2,
                   child: TextField(
                     controller: _speed,
                     autofocus: true,
@@ -829,11 +961,34 @@ class _KeyerSpeedDialogState extends State<_KeyerSpeedDialog> {
                   ),
                 ),
                 const SizedBox(width: Space.md),
-                IconButton(
-                  // No hover tooltips (docs/design/user-interface.md), so the
-                  // accessible name is the only place this button is named.
-                  icon: Icon(MdiIcons.messageBulleted, semanticLabel: m.title),
-                  onPressed: () => showCwMessagesDialog(context, widget.services),
+                // Only message 1 repeats (SettingsService.cwRepeatDelay),
+                // which is what the label's circled 1 says without a
+                // sentence. Wider than the speed beside it: its longest
+                // option is a phrase, the speed's is two digits.
+                Expanded(
+                  flex: 3,
+                  child: DropdownButtonFormField<String>(
+                    isExpanded: true,
+                    initialValue: '${widget.services.settings.cwRepeatDelay.inSeconds}',
+                    icon: dropdownTrailingIcon,
+                    decoration: poloFieldDecoration(context, m.repeat),
+                    menuMaxHeight: dropdownMenuMaxHeight(context),
+                    items: [
+                      for (final option in SettingsService.cwRepeatDelayOptions)
+                        DropdownMenuItem<String>(
+                          value: option,
+                          child: Text(option == '0' ? m.repeatOff : m.repeatAfter(n: option)),
+                        ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) return;
+                      // Off ends a chain already running: the operator turned
+                      // it off while a CQ was waiting to go again.
+                      if (value == '0') widget.cat.cancelKeyerRepeat();
+                      setState(() {});
+                      unawaited(widget.services.settings.setCwRepeatDelay(int.parse(value)));
+                    },
+                  ),
                 ),
               ],
             ),
@@ -976,6 +1131,16 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
                     child: current,
                   ),
                 ),
+                // Outside `current`, like the queue behind it and for the
+                // same reason: the bar is as wide as the message it paces,
+                // and an icon inside that stack would stretch it past the
+                // text. Armed, not merely configured — this says THIS
+                // message goes again, which is only ever message 1.
+                if (widget.cat.keyerRepeating)
+                  Padding(
+                    padding: const EdgeInsets.only(left: Space.xs, bottom: Space.xxs * 2),
+                    child: Icon(MdiIcons.repeat, size: 14, color: color.withValues(alpha: 0.55)),
+                  ),
                 if (progress.pending.isNotEmpty)
                   Flexible(
                     child: SingleChildScrollView(
@@ -1004,6 +1169,113 @@ class _CwProgressViewState extends State<_CwProgressView> with SingleTickerProvi
               ],
             );
           },
+        ),
+      ),
+    );
+  }
+}
+
+/// The countdown to message 1 going again: the message that will be keyed,
+/// the repeat icon beside it, and nothing else — the buttons stand down for
+/// the wait the same way they do for a message on the air — under a bar
+/// that EMPTIES rather than fills — the wait is running out,
+/// not building up, and the two read differently at a glance. Tapping it
+/// ends the repeats, the same way tapping a message keying stops it.
+class _CwRepeatView extends StatefulWidget {
+  final KeyerRepeatWait wait;
+  final CatService cat;
+  final HaLoServices services;
+
+  const _CwRepeatView({super.key, required this.wait, required this.cat, required this.services});
+
+  @override
+  State<_CwRepeatView> createState() => _CwRepeatViewState();
+}
+
+class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderStateMixin {
+  /// What is waiting to go again: the message for CW, the memory's label for
+  /// voice — resolved here rather than stored on the wait, since a label the
+  /// operator renames mid-chain should read as its new name.
+  String _label(BuildContext context) {
+    final memory = widget.wait.memory;
+    if (memory == null) return widget.wait.text;
+    final m = context.t.settings.radio.voiceMessages;
+    return voiceMessageLabelFor(widget.services.settings, memory, m.key(n: memory));
+  }
+
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: widget.wait.delay)..forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodyMedium ?? const TextStyle();
+    final color = style.color ?? theme.colorScheme.onSurface;
+    return Semantics(
+      label: context.t.settings.radio.cwMessages.repeatWait,
+      liveRegion: true,
+      child: ExcludeSemantics(
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (context, _) => Row(
+            children: [
+              Flexible(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: widget.cat.cancelKeyerRepeat,
+                  child: Stack(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: Space.xxs * 2),
+                        child: Text(
+                          _label(context),
+                          style: style.copyWith(color: color.withValues(alpha: 0.55)),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          softWrap: false,
+                        ),
+                      ),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: Space.xxs,
+                        child: Stack(
+                          children: [
+                            Container(color: color.withValues(alpha: 0.25)),
+                            FractionallySizedBox(
+                              widthFactor: 1 - _controller.value,
+                              child: Container(color: color.withValues(alpha: 0.55)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              // Beside the message rather than inside its stack, so the bar
+              // stays as wide as the text it counts down (the same reason
+              // the keying view puts it here). At full strength while the
+              // message itself is faded: nothing is on the air, and the icon
+              // is the one thing on the strip still saying what happens next.
+              Padding(
+                padding: const EdgeInsets.only(left: Space.xs, bottom: Space.xxs * 2),
+                child: Icon(MdiIcons.repeat, size: 14, color: color),
+              ),
+            ],
+          ),
         ),
       ),
     );
