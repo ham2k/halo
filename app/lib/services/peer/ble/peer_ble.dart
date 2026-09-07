@@ -5,4 +5,4 @@
 // stub: BLE is deliberately out of scope there, and keeping the plugin off
 // that build is what enforces it.
 
-export 'peer_ble_stub.dart' if (dart.library.io) 'peer_ble_io.dart';
+export 'peer_ble_web.dart' if (dart.library.io) 'peer_ble_io.dart';

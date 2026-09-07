@@ -9,4 +9,4 @@
 // `dart:ffi` does not exist on web, so the import itself has to be compiled
 // out rather than merely guarded at runtime.
 
-export 'winsparkle_config_stub.dart' if (dart.library.io) 'winsparkle_config_io.dart';
+export 'winsparkle_config_web.dart' if (dart.library.io) 'winsparkle_config_io.dart';

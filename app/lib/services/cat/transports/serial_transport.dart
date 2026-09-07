@@ -8,6 +8,6 @@
 // use for io/web/stub.
 
 export 'serial_transport_config.dart';
-export 'serial_transport_stub.dart'
+export 'serial_transport_unsupported.dart'
     if (dart.library.io) 'serial_transport_io.dart'
     if (dart.library.js_interop) 'serial_transport_web.dart';

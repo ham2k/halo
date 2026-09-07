@@ -3,7 +3,7 @@
 //
 // The web half of winsparkle_config.dart's conditional export: no `dart:ffi`,
 // no WinSparkle, nothing to configure. Required as the export's default —
-// see serial_transport_stub.dart for the same role.
+// see serial_transport_unsupported.dart for the same role.
 
 /// No-op on web. See the io implementation for the contract.
 bool configureWinSparkleBeforeInit({

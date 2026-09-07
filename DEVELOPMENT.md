@@ -393,6 +393,19 @@ Defined in [`mise.toml`](mise.toml):
 | `docs/` | [Index](docs/README.md), [design/](docs/design/), [extensions/](docs/extensions/README.md), [quirks](docs/quirks.md), [releases](docs/releases.md). |
 | `.github/workflows/`, `codemagic.yaml` | CI (GitHub Actions) and release builds (Codemagic). |
 
+### Platform splits
+
+A feature that exists on only some platforms is one file that exports the
+implementation for the build: `foo.dart` holds
+`export 'foo_web.dart' if (dart.library.io) 'foo_io.dart';` (or the
+condition the other way round), and the two files are named for the platform
+each is compiled into — never for what they do there. The platform a feature
+does not exist on still gets its file, and that file's header says what it
+does instead — nothing, an empty stream, or a throw — and why that answer is
+the honest one for its callers. `serial_transport_unsupported.dart` is the one
+third arm, for a platform with neither `dart:io` nor `dart:js_interop`; nothing
+ships to one, and the conditional export needs a default all the same.
+
 ### Linux arm64
 
 `flutter build linux --target-platform linux-arm64` **refuses to run on an x64

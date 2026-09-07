@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Web has no sockets. Silent-empty rather than throwing, matching
-// udp_broadcast_stub.dart: a browser build has no LAN peers, which is
+// udp_broadcast_web.dart: a browser build has no LAN peers, which is
 // "nothing found" — the same answer a desktop gets on a network with no
 // other devices — not a defect the caller must guard against.
 

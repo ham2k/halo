@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Web fallback. Throws rather than no-opping, per the convention
-// web_download_stub.dart states — reaching it means a platform gate is
+// web_download_io.dart states — reaching it means a platform gate is
 // missing, and a silent no-op would present a radio as merely "not
 // connected" forever.
 

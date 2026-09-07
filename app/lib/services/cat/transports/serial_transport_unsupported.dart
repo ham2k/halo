@@ -4,7 +4,7 @@
 // The fallback for a platform with neither `dart:io` nor `dart:js_interop`
 // — in practice, unreachable: every real target is one or the other. Kept
 // as the conditional export's required default, the same way
-// tcp_transport_stub.dart is. A Chromium web build gets the real
+// tcp_transport_web.dart is. A Chromium web build gets the real
 // implementation in serial_transport_web.dart instead; Safari/Firefox,
 // which have no Web Serial API at all, get the same "no ports here, and
 // connecting throws" behavior this file would give, just from that file

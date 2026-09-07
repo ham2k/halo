@@ -6,4 +6,4 @@
 // shape as web_download.dart: the web build has no sockets at all, so it
 // gets a stub that throws.
 
-export 'tcp_transport_stub.dart' if (dart.library.io) 'tcp_transport_io.dart';
+export 'tcp_transport_web.dart' if (dart.library.io) 'tcp_transport_io.dart';

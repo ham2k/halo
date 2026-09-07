@@ -457,7 +457,7 @@ Icom network transport have no web implementation, so a radio needing either thr
 
 The transport layer sits behind the codebase's conditional-export barrel
 (`export 'x_stub.dart' if (dart.library.io) 'x_io.dart';`) and the socket stubs **throw**, per the
-convention `web_download_stub.dart` states: a silent no-op is the failure mode to avoid.
+convention `web_download_io.dart` states: a silent no-op is the failure mode to avoid.
 
 The one deliberate exception is **discovery**, whose stub returns an empty stream instead. The rule
 exists because a silent no-op turns "this cannot work here" into "this didn't happen to work" — but

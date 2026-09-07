@@ -5,4 +5,4 @@
 // builds read the preview name from window.location; every other platform gets
 // the '' stub. Same conditional-export shape as mapbox_web_map_view.dart.
 
-export 'web_preview_label_stub.dart' if (dart.library.js_interop) 'web_preview_label_web.dart';
+export 'web_preview_label_io.dart' if (dart.library.js_interop) 'web_preview_label_web.dart';

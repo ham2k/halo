@@ -5,4 +5,4 @@
 // stub on every other platform. Same conditional-export shape as
 // web_preview_label.dart / mapbox_web_map_view.dart.
 
-export 'dev_bridge_stub.dart' if (dart.library.js_interop) 'dev_bridge_web.dart';
+export 'dev_bridge_io.dart' if (dart.library.js_interop) 'dev_bridge_web.dart';

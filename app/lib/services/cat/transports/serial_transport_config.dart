@@ -3,7 +3,7 @@
 //
 // The port/baud-rate config section, identical on every platform — only
 // `availableSerialPorts()` and `connect()` differ between
-// serial_transport_io.dart and serial_transport_stub.dart, so this is the
+// serial_transport_io.dart and serial_transport_unsupported.dart, so this is the
 // one place the rest of that logic lives.
 
 import 'package:flutter/foundation.dart';

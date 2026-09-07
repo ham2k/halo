@@ -5,4 +5,4 @@
 // — see `reportWebStorageHealth` in main.dart. Same conditional-export shape
 // as web_download.dart.
 
-export 'web_storage_persistence_stub.dart' if (dart.library.js_interop) 'web_storage_persistence_web.dart';
+export 'web_storage_persistence_io.dart' if (dart.library.js_interop) 'web_storage_persistence_web.dart';

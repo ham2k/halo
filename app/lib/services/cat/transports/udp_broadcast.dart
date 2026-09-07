@@ -5,4 +5,4 @@
 // Same conditional-export shape as tcp_transport.dart — the web build has
 // no sockets of any kind.
 
-export 'udp_broadcast_stub.dart' if (dart.library.io) 'udp_broadcast_io.dart';
+export 'udp_broadcast_web.dart' if (dart.library.io) 'udp_broadcast_io.dart';

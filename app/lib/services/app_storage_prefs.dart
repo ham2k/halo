@@ -5,4 +5,4 @@
 // because the native implementation reaches for `package:win32` (through
 // path_provider_windows), which doesn't compile for web.
 
-export 'app_storage_prefs_stub.dart' if (dart.library.io) 'app_storage_prefs_io.dart';
+export 'app_storage_prefs_web.dart' if (dart.library.io) 'app_storage_prefs_io.dart';

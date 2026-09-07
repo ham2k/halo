@@ -5,4 +5,4 @@
 // everywhere else, which is what keeps `ViewFocusGuard` inert off web. Same
 // conditional-export shape as config/dev_bridge_installer.dart.
 
-export 'document_focus_stub.dart' if (dart.library.js_interop) 'document_focus_web.dart';
+export 'document_focus_io.dart' if (dart.library.js_interop) 'document_focus_web.dart';

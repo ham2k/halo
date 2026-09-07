@@ -4,4 +4,4 @@
 // Same conditional-export shape as udp_broadcast.dart — the web build has no
 // sockets of any kind.
 
-export 'udp_multicast_stub.dart' if (dart.library.io) 'udp_multicast_io.dart';
+export 'udp_multicast_web.dart' if (dart.library.io) 'udp_multicast_io.dart';

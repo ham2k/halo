@@ -3,7 +3,7 @@
 //
 // The host/port config section, identical on every platform — only
 // `connect()` differs between tcp_transport_io.dart and
-// tcp_transport_stub.dart, so this is the one place that logic lives.
+// tcp_transport_web.dart, so this is the one place that logic lives.
 
 import '../../../i18n/strings.g.dart';
 import '../transport.dart';

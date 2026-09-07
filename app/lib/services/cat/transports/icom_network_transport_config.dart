@@ -3,7 +3,7 @@
 //
 // The host/login config section, identical on every platform — only
 // `connect()` differs between icom_network_transport_io.dart and
-// icom_network_transport_stub.dart, so this is the one place that logic
+// icom_network_transport_web.dart, so this is the one place that logic
 // lives.
 
 import '../../../i18n/strings.g.dart';

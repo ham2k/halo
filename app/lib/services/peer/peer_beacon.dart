@@ -4,4 +4,4 @@
 // Same conditional-export shape as udp_broadcast.dart — the web build has no
 // sockets of any kind.
 
-export 'peer_beacon_stub.dart' if (dart.library.io) 'peer_beacon_io.dart';
+export 'peer_beacon_web.dart' if (dart.library.io) 'peer_beacon_io.dart';

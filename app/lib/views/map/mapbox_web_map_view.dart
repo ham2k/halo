@@ -9,4 +9,4 @@
 // builds. map_panel.dart only constructs MapboxWebMapView behind a kIsWeb
 // check.
 
-export 'mapbox_web_map_view_stub.dart' if (dart.library.js_interop) 'mapbox_web_map_view_web.dart';
+export 'mapbox_web_map_view_io.dart' if (dart.library.js_interop) 'mapbox_web_map_view_web.dart';
