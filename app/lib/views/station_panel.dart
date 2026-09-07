@@ -1595,6 +1595,9 @@ class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
                           child: Text(st.noMatches, textAlign: TextAlign.center),
                         )
                       : ListView(
+                          // Filtered per keystroke, and every row picks a
+                          // model on tap (docs/quirks.md).
+                          key: listContentsKey([for (final row in models) row.name]),
                           shrinkWrap: true,
                           padding: const EdgeInsets.only(bottom: Space.md),
                           children: [

@@ -11,6 +11,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
+import 'list_contents_key.dart';
 import 'mdi_icons.g.dart';
 import 'modal_pane.dart';
 import 'row_select_field.dart';
@@ -2764,6 +2765,8 @@ class _SelectDialogBodyState extends State<_SelectDialogBody> {
           // Lazy, unlike the Column this replaces: a full zone vocabulary
           // built 341 ListTiles to show ten of them, on every keystroke.
           child: ListView.builder(
+            // A mis-hit here silently picks the wrong value (docs/quirks.md).
+            key: listContentsKey([for (final opt in visible) opt['value']]),
             shrinkWrap: true,
             itemCount: visible.length,
             itemBuilder: (context, i) {

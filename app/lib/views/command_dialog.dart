@@ -65,6 +65,11 @@ sealed class _Result {
   /// The heading this row groups under.
   String section(Translations t);
 
+  /// What this row IS, for [listContentsKey] — stable across the rebuilds a
+  /// keystroke causes, unlike the instances themselves, which are rebuilt
+  /// every frame and would remount the list continuously.
+  String get identity;
+
   /// Every row type is pickable today; the callsign lookup, which is
   /// information rather than an action, is rendered outside the row list
   /// entirely (see `_callInfo`) rather than as an unselectable row.
@@ -82,6 +87,9 @@ class _CatalogResult extends _Result {
   const _CatalogResult(this.entry, {this.suggestion = false});
 
   String get command => entry['command'] as String;
+
+  @override
+  String get identity => 'catalog:$command';
   String? get params => entry['params'] as String?;
   String get describe => (entry['describe'] as String?) ?? '';
   String? get category => entry['category'] as String?;
@@ -104,6 +112,9 @@ class _TypedResult extends _Result {
   const _TypedResult({required this.text, required this.describe});
 
   @override
+  String get identity => 'typed:$text';
+
+  @override
   String section(Translations t) => t.commandDialog.sectionCommands;
 }
 
@@ -115,6 +126,9 @@ class _NavResult extends _Result {
   const _NavResult({required this.label, required this.icon, required this.go});
 
   @override
+  String get identity => 'nav:$label';
+
+  @override
   String section(Translations t) => t.commandDialog.sectionGoTo;
 }
 
@@ -124,6 +138,9 @@ class _OperationResult extends _Result {
   final String title;
   final String subtitle;
   const _OperationResult({required this.operation, required this.title, required this.subtitle});
+
+  @override
+  String get identity => 'operation:${operation.uuid}';
 
   @override
   String section(Translations t) => t.commandDialog.sectionOperations;
@@ -956,6 +973,9 @@ class _CommandDialogState extends State<CommandDialog> {
     }
 
     return ListView(
+      // Rows change with every keystroke and every lookup that answers, and
+      // each one runs a command on tap (docs/quirks.md).
+      key: listContentsKey([for (final result in results) result.identity]),
       shrinkWrap: true,
       padding: const EdgeInsets.only(bottom: Space.md),
       children: children,

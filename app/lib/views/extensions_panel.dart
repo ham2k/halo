@@ -297,20 +297,14 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 child: rows.isEmpty
                     ? Center(child: Text(t.extensionsPanel.noMatches))
                     : ListView(
-                        // Keyed by WHICH extensions are listed. On web the
-                        // accessibility DOM places every row in a scrollable
-                        // element layered over the canvas, and those elements
-                        // are what a click actually hits; refiltering a live
-                        // list leaves them a row's height away from what is
-                        // painted, so the click toggles the extension ABOVE
-                        // the one under the pointer. A new key builds a fresh
-                        // scrollable, whose nodes are positioned from scratch.
-                        // Keyed by the row set rather than the query because
-                        // an uninstall, an install and an experiment flip all
-                        // change the rows without touching the query — and a
-                        // toggle changes neither, so the rows keep their
-                        // elements through the applying rebuilds.
-                        key: ValueKey('extensions-list-${[for (final info in visible) info.key].join(',')}'),
+                        // Without this the row a click lands on is not the row
+                        // under the pointer — the web's accessibility DOM
+                        // keeps the pre-filter geometry (docs/quirks.md, where
+                        // this was measured). The row set, not the query: an
+                        // uninstall, an install and an experiment flip each
+                        // change the rows with the query untouched, while a
+                        // toggle changes neither and must not remount.
+                        key: listContentsKey([for (final info in visible) info.key]),
                         padding: const EdgeInsets.only(bottom: Space.md),
                         children: rows,
                       ),

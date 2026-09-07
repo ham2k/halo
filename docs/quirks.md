@@ -227,3 +227,62 @@ would put the key beside the data, which is the downgrade
 because the requirement is written down where they can find it.
 
 Add the next one here rather than leaving it to be rediscovered.
+
+## Web: a list rebuilt in place keeps its old accessibility geometry, and clicks land on the wrong row
+
+**Breaks:** a click acts on a row the operator did not click. On the web, with
+the accessibility DOM active, the row under the pointer does nothing and a row
+near it acts instead — a toggle flips the wrong item, a picker chooses the
+wrong entry. Not a logic bug in the list, and it reads exactly like one.
+
+On the web a click never reaches the canvas. Flutter mirrors the widget tree
+into `<flt-semantics>` elements layered over it, and for a scrolling list it
+places every row inside a real scrollable element. Those elements are what the
+browser hit-tests and what dispatches the tap. When a list's contents change
+while the same scrollable stays mounted — a search filter narrowing it, a row
+removed, a re-sort — those elements can keep the previous list's geometry:
+they end up roughly a row's height from what is painted, and the click goes to
+whichever node sits at that pixel.
+
+Measured on Flutter 3.44.6, Manage Extensions filtered to "qso" (3 results):
+
+| clicked (painted) | DOM node actually hit | result |
+| --- | --- | --- |
+| North American QSO Party | "Contests" section header | nothing |
+| Spot History | "Callsign Lookups" header | nothing |
+| Call History | **Spot History** | the wrong extension toggled |
+
+**It is not a rare configuration.** Orca's embedded browser has the
+accessibility DOM on, so it is the standing condition for our own web testing,
+and it is always on for anyone using a screen reader. If `HALO-122` ever
+forces semantics on, it reaches every web user.
+
+**What we do:** give such a list a `key` derived from WHICH rows it holds —
+`listContentsKey` in `halo_widgets` — so a changed row set builds a fresh
+scrollable whose nodes are positioned from scratch. Keyed by the row set
+rather than by the query behind it: a filter is not the only thing that
+changes the rows, and a change that leaves the set alone (toggling a row's
+own switch) must NOT remount, or every list churns its elements on every
+interaction.
+
+**What does not need it:** a list whose rebuild leaves every existing row where
+it was — an append at the END moves nothing below it, so nothing goes stale.
+The trigger is rows MOVING, which is what a filter, a removal, a re-sort and a
+PREPEND all do, and an append does not. A newest-first log prepends on every
+entry, so "it only gains rows" is not the exemption it sounds like.
+
+Identity is a proxy for movement and not a complete one: anything that changes
+a row's HEIGHT moves every row below it while the set is untouched — a locale
+change rewriting every label, a subtitle that wraps at one font scale and not
+another. A list whose rows change height under it needs its own thinking.
+
+**Not testable here.** The Flutter test harness has no web semantics DOM, so a
+widget test cannot fail when this breaks; one would read as coverage and
+assert nothing. Verification is by measurement against a running web build:
+read each row's painted position, ask `document.elementFromPoint` what the DOM
+has at that pixel, and compare. The method and the before/after numbers are on
+`HALO-530`.
+
+**Revisit** on a Flutter upgrade — this is an upstream defect in the engine's
+semantics geometry, not a design decision. When it is fixed, these keys become
+churn on every filter keystroke and should come out together.
