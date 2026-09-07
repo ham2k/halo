@@ -1,0 +1,84 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// One category of the Settings panel — the collapsible band a group's rows
+// sit under — and the identity of the rows in it, which the panel remounts
+// its list on. Shared by the screen and an extension's own panel, so its own
+// file: a panel need not import the screen that builds it.
+
+import 'package:flutter/material.dart';
+import 'package:halo_widgets/halo_widgets.dart';
+
+import '../accordion_section.dart';
+
+import 'settings_pane_width.dart';
+import '../settings_view.dart';
+
+/// WHICH rows a category currently holds, hashed — the same identity
+/// `listContentsKey` is built from, and for the same reason: the panel
+/// remounts its scroll view when rows move, and a group that grows or drops
+/// elements moves every row below it (docs/quirks.md).
+///
+/// An element's own key where it has one, its type otherwise: headers and
+/// dividers carry no key, and two of them in a row are interchangeable for
+/// this purpose — what matters is that one appeared or went away.
+int settingsRowIdentity(List<Map<String, dynamic>> elements) =>
+    Object.hashAll([for (final el in elements) el['key'] ?? el['type']]);
+
+/// One CATEGORY of the Settings panel — a declared group, an extension's
+/// whole panel, or Common Settings — as a collapsible band of rows.
+///
+/// A category heads itself with the filled band the app's sections have
+/// always used, precisely so it does not read as one of the headings a
+/// panel's own `style: 'section'` headers put INSIDE it (docs/extensions/
+/// forms.md) — those are the accent title over a hairline, on no ground.
+/// One is the shelf, the other names a group of rows on it.
+///
+/// With no [onToggle] the rows are headed by a plain section heading and
+/// always show — how a group's contribution to Common Settings appears,
+/// where rows drawn from a dozen groups need saying which group each came
+/// from, and the collapsible category above owns them all.
+///
+/// [hidden] takes the whole category out of view without unmounting it —
+/// what the search does to one that matches nothing. Unmounting it
+/// disposes every FocusNode and TextEditingController its FormRenderer
+/// owns, and on web that teardown takes the browser's text-input element
+/// with it: focus falls back to the route's scope and the next keystrokes
+/// are swallowed, so the query loses characters as it is typed. macOS has
+/// no DOM and shows no symptom.
+///
+/// `maintainState` is what keeps the State (and its nodes) alive; the
+/// ExcludeFocus is what keeps unreachable fields — hidden or merely
+/// collapsed — out of the Tab order, which Visibility alone does not do.
+Widget settingsCategory(
+  BuildContext context, {
+  required String title,
+  required bool expanded,
+  required VoidCallback? onToggle,
+  required Widget child,
+  bool hidden = false,
+}) {
+  final rows = ExcludeFocus(excluding: hidden || (onToggle != null && !expanded), child: child);
+  final theme = Theme.of(context);
+  final accent = SectionHeader.titleStyle(context).color ?? theme.colorScheme.onSurface;
+  // The centring only: the band runs to the pane's edges like every row
+  // does, while the chevron and title follow the pane's centring so they
+  // land beside the rows below rather than out in the gutter of a wide
+  // window.
+  final centering = settingsRowCentering(settingsPaneWidth(context));
+  return Visibility(
+    visible: !hidden,
+    maintainState: true,
+    child: onToggle == null
+        ? Column(mainAxisSize: MainAxisSize.min, children: [SectionHeader(title), rows])
+        : AccordionSection(
+            title: Text(title, style: SectionHeader.titleStyle(context)),
+            expanded: expanded,
+            onToggle: onToggle,
+            headerColor: haloDialogBandColorAt(context),
+            onHeaderColor: accent,
+            headerInset: EdgeInsets.symmetric(horizontal: centering),
+            child: rows,
+          ),
+  );
+}

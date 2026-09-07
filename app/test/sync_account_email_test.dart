@@ -22,6 +22,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/pusher_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
+import 'package:ham2k_logger/views/settings/sync_panel.dart';
 
 import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
 

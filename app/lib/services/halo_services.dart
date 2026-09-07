@@ -29,6 +29,7 @@ import '../tools/operation_title.dart';
 import '../views/operation_dialogs.dart';
 import '../views/operation/operation_location_screen.dart';
 import '../views/settings_view.dart';
+import '../views/settings/accounts_panel.dart';
 import '../views/notice_actions.dart';
 import '../config/experiments.dart';
 import '../config/secrets.dart';
@@ -800,7 +801,7 @@ class HaLoServices {
   );
 
   /// Status-bar item key for backfill progress; the Sync settings panel
-  /// renders the same item inline (see `settings_view.dart`).
+  /// renders the same item inline (see `views/settings/sync_panel.dart`).
   static const syncProgressStatusKey = 'sync_backfill_progress';
 
   /// Stable key so a later rejection replaces rather than stacks, and a

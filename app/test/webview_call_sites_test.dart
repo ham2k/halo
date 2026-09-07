@@ -35,7 +35,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// file in the widget package reads as `../packages/halo_widgets/lib/…`.
 ///
 /// OAuth is deliberately NOT among them: the sign-in page opens in the
-/// operator's own browser on every platform, so `settings_view.dart` builds no
+/// operator's own browser on every platform, so `settings/accounts_panel.dart` builds no
 /// web view at all (oauth_browser_login.dart).
 const _expectedCallSites = {
   'lib/views/operation/panel_content_view.dart', // the HTML extension panel

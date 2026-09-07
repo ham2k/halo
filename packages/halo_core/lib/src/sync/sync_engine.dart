@@ -23,7 +23,8 @@ import 'dart:async';
 
 import '../app_clock.dart';
 import '../models/models.dart';
-import '../repo/repositories.dart';
+import '../repo/operations_repository.dart';
+import '../repo/qsos_repository.dart';
 
 /// Calls the highest-priority `syncTransport` hook's `method` with `args`
 /// and returns its JSON result. Implemented by the app layer (wrapping

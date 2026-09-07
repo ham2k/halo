@@ -5,7 +5,7 @@
 // dismissed), most-recent-first, as read-only post-it cards — the history
 // view app-polo's NoticesSettingsScreen inspired. Status messages/progress
 // bars aren't included; only notices are persisted (StatusBarService). This
-// is a panel body (not its own Scaffold) — settings_view.dart's About panel
+// is a panel body (not its own Scaffold) — settings/about_panel.dart's AboutPanel
 // opens it in a Modal Pane, which supplies the surrounding title/chrome.
 
 import 'package:flutter/material.dart';

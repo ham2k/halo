@@ -61,7 +61,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import '../repo/repositories.dart';
+import '../repo/operations_repository.dart';
+import '../repo/qsos_repository.dart';
 import 'peer_link.dart';
 import 'peer_protocol.dart';
 import 'peer_trust.dart';

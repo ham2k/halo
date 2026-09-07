@@ -213,7 +213,7 @@ class CliHostCalls {
         // "no log access" vs "no match" distinction as `getQsos` above.
         if (log.qsos == null) return const <Map<String, Object?>>[];
         // trim(), not just toUpperCase() — matches historyForCall's own
-        // normalization (repositories.dart); the sole caller today already
+        // normalization (qsos_repository.dart); the sole caller today already
         // trims first, but this shouldn't depend on that.
         final historyCall = (params['call'] as String?)?.trim().toUpperCase();
         if (historyCall == null) return const <Map<String, Object?>>[];

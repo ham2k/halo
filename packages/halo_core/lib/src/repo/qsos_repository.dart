@@ -1,892 +1,27 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Repositories are the only writers to the database. Every write keeps the
-// indexed columns derived from the JSON `data`, marks rows dirty for sync
-// (`synced = false`), and maintains the operation's cached counters. Reads
-// for the UI are reactive drift streams — the database is the source of
-// truth and, later, the multi-window bus (DESIGN.md §8).
+// Contacts: the only writer to the `qsos` table — local edits, batch
+// imports, and the merge paths sync and peers arrive through. The contract
+// every repository keeps is stated in repo_support.dart.
 
 import 'dart:convert';
-import 'dart:isolate';
 import 'dart:math' as math;
 
 import 'package:drift/drift.dart';
-import 'package:uuid/uuid.dart';
 
 import '../app_clock.dart';
 import '../db/database.dart';
 import 'sequences.dart';
 import '../dev_log.dart';
 import '../models/models.dart';
-import '../models/operation_operator.dart';
 import '../models/qso_merge.dart';
 import '../models/segments.dart';
 import '../models/qson_values.dart';
 import 'write_policy.dart';
 
-const _uuidGenerator = Uuid();
-
-/// Encodes a QSO's QSON for storage, normalizing wrong-typed fields on the
-/// way — see [normalizeQsoQson]. Storage is the one chokepoint every write
-/// path already passes through, and normalizing here is what lets a bad
-/// value heal instead of being handed to the next reader: the getters coerce
-/// on read, but only a write puts the corrected value back.
-///
-/// The indexed columns are derived from these same fields, so normalizing
-/// here is also what keeps a record from aborting the transaction that
-/// writes it: without it, a `bool` mode throws out of `_companionFor`,
-/// rolls back the whole `mergeFromSync` round, and the server serves the
-/// identical record again next round, forever.
-String _encodeQsoData(Map<String, dynamic> data, String context) =>
-    jsonEncode(_normalizedReporting(data, normalizeQsoQson, context));
-
-/// [_encodeQsoData] for an operation.
-String _encodeOperationData(Map<String, dynamic> data, String context) =>
-    jsonEncode(_normalizedReporting(data, normalizeOperationQson, context));
-
-Map<String, dynamic> _normalizedReporting(
-  Map<String, dynamic> data,
-  Map<String, dynamic> Function(Map<String, dynamic>, {List<QsonTypeViolation>? violations}) normalize,
-  String context,
-) {
-  final violations = <QsonTypeViolation>[];
-  final normalized = normalize(data, violations: violations);
-  for (final violation in violations) {
-    onQsonTypeViolation?.call(context, violation);
-  }
-  return normalized;
-}
-
-/// Whether an inbound sync record should be skipped in favor of the local
-/// row it would overwrite. Both sides carry a revision stamp
-/// (`updatedAtMillis`, written on every local edit and round-tripped through
-/// the server inside the record's JSON): when both stamps exist, the inbound
-/// record only wins if it is strictly newer — same rule as app-polo's
-/// `mergeSyncQSOs`. Without unconditional-overwrite protection here, a pull
-/// racing a local edit (or a "combine" backfill pulling this device's own
-/// older copies back down) silently reverts local changes and marks them
-/// synced. When the inbound record has no stamp (pre-stamp history), only
-/// local rows with unpushed edits (`synced == false`) are protected; clean
-/// rows accept it.
-/// Rewrites app-polo's older `*OnMillis` spellings to the `*AtMillis` ones
-/// this app reads, in place, the way polo's own `operationsDB.js` does on
-/// read. Inbound sync can carry either, and the merge below compares
-/// revisions BEFORE anything goes through the model's getters — so without
-/// this a legacy record looks revision-less and loses every comparison.
-void _normalizeLegacyStamps(Map<String, dynamic> data) {
-  for (final (legacy, current) in const [
-    ('createdOnMillis', 'createdAtMillis'),
-    ('updatedOnMillis', 'updatedAtMillis'),
-  ]) {
-    final value = data.remove(legacy);
-    if (value != null) data.putIfAbsent(current, () => value);
-  }
-}
-
-bool _inboundIsStale({
-  required int? existingUpdatedAtMillis,
-  required bool existingSynced,
-  required int? incomingUpdatedAtMillis,
-}) {
-  if (existingUpdatedAtMillis != null && incomingUpdatedAtMillis != null) {
-    return existingUpdatedAtMillis >= incomingUpdatedAtMillis;
-  }
-  return incomingUpdatedAtMillis == null && !existingSynced;
-}
-
-/// Tracks the min/max `syncedAtMillis` seen while merging one inbound sync
-/// batch — see `OperationsRepository.mergeFromSync`.
-class SyncWatermark {
-  int? earliestSyncedAtMillis;
-  int? latestSyncedAtMillis;
-
-  void include(int? syncedAtMillis) {
-    if (syncedAtMillis == null) return;
-    if (earliestSyncedAtMillis == null || syncedAtMillis < earliestSyncedAtMillis!) {
-      earliestSyncedAtMillis = syncedAtMillis;
-    }
-    if (latestSyncedAtMillis == null || syncedAtMillis > latestSyncedAtMillis!) {
-      latestSyncedAtMillis = syncedAtMillis;
-    }
-  }
-}
-
-class OperationsRepository {
-  final HaLoDatabase db;
-
-  /// Notified after every local write so the sync engine can debounce a
-  /// small-batch round (DESIGN.md §4) — kept as a plain callback rather than
-  /// a direct dependency so this repository doesn't need to know the sync
-  /// engine's type.
-  final void Function()? onChange;
-
-  /// Runs after every LOCAL data write ([saveData]) with the stored row as
-  /// it was and the operation as saved. The segments model needs it: a
-  /// `break`/`start` override replaces the base rather than tracking it, so
-  /// an edit to what the latest segment restates (refs, location) has to be
-  /// written onto that segment too, or the current stretch keeps the values
-  /// from before the edit. Sync-received revisions go through
-  /// `mergeFromSync` and never reach this — they carry their own event rows.
-  final Future<void> Function(Operation? before, Operation after)? onLocalSave;
-
-  OperationsRepository(this.db, {this.onChange, this.onLocalSave});
-
-  /// Creating is never refused while the clock is travelled — the station call
-  /// is marked instead, by [markedForTravel]. A refusal here would be
-  /// unescapable: an operation is judged test data by its stored callsign, and
-  /// there is nothing stored yet to judge.
-  Future<Operation> create({required String stationCall, String userTitle = ''}) async {
-    final operation = Operation(
-      uuid: _uuidGenerator.v4(),
-      data: {
-        'stationCall': markedForTravel(stationCall.toUpperCase()),
-        'userTitle': userTitle,
-        // The creation DATE is what the operator reads, so it travels; the
-        // revision stamp is what another device compares against, so it does
-        // not (realNowMillis's doc comment, docs/design/time.md §1).
-        'createdAtMillis': nowMillis(),
-        'updatedAtMillis': realNowMillis(),
-      },
-    );
-    await db.into(db.operations).insert(OperationsCompanion.insert(
-          uuid: operation.uuid,
-          data: Value(_encodeOperationData(operation.data, 'operations:create')),
-          // The column mirrors the revision stamp inside `data`, so it reads
-          // the same real clock.
-          updatedAtMillis: Value(asQsonNum(operation.data['updatedAtMillis'])!.toInt()),
-        ));
-    onChange?.call();
-    return operation;
-  }
-
-  Stream<List<Operation>> watchAll() {
-    // Sorting falls back to fields within the JSON data blob (like
-    // createdAtMillis) for operations with no QSOs, so the sort happens
-    // in Dart rather than SQL.
-    final query = (db.select(db.operations)
-      ..where((op) => op.deleted.equals(false)));
-    return query.watch().map((rows) {
-      final list = rows.map(_operationFromRow).toList();
-      list.sort((a, b) {
-        final aTime = a.startAtMillisMax ?? a.createdAtMillis ?? 0;
-        final bTime = b.startAtMillisMax ?? b.createdAtMillis ?? 0;
-        final cmp = bTime.compareTo(aTime);
-        if (cmp != 0) return cmp;
-
-        // Tie-breaker: createdAtMillis DESC (most recently created first)
-        final aCreated = a.createdAtMillis ?? 0;
-        final bCreated = b.createdAtMillis ?? 0;
-        return bCreated.compareTo(aCreated);
-      });
-      return list;
-    });
-  }
-
-  Future<Operation?> get(String uuid) async {
-    final row = await (db.select(db.operations)..where((op) => op.uuid.equals(uuid))).getSingleOrNull();
-    return row == null ? null : _operationFromRow(row);
-  }
-
-  /// Reactive single-operation query — emits the current row and every later
-  /// version (counter refreshes, detail/activity/location edits, and the
-  /// `localData` scoring summary a rescore writes). Lets views bind the
-  /// operation instead of manually re-fetching after each mutating action, so
-  /// there's no stale copy or hand-rolled `localData` merge to keep in sync.
-  /// Emits null if the operation doesn't exist (or is hard-deleted).
-  Stream<Operation?> watchOperation(String uuid) {
-    return (db.select(db.operations)..where((op) => op.uuid.equals(uuid)))
-        .watchSingleOrNull()
-        .map((row) => row == null ? null : _operationFromRow(row));
-  }
-
-  /// Throws [WriteRefused] while the clock is travelled unless BOTH the stored
-  /// operation and the edit are test data — see [WritePolicy].
-  Future<void> saveData(Operation operation) async {
-    final now = realNowMillis();
-    final data = {...operation.data, 'updatedAtMillis': now};
-    // Read before anything is written, and judged on the STORED row: an edit
-    // that adds /TEST to a real operation must not be the thing that lets
-    // itself through.
-    final existing = await get(operation.uuid);
-    final refusal = WritePolicy.forOperation(existing) ??
-        WritePolicy.forOperationStayingTest(Operation(uuid: operation.uuid, data: data));
-    if (refusal != null) throw refusal;
-    var companion = OperationsCompanion(
-      data: Value(_encodeOperationData(data, 'operations:saveData')),
-      synced: const Value(false),
-      updatedAtMillis: Value(now),
-    );
-    // A pending purge only makes sense while the operation still reads as a
-    // Test Operation. If the station call was just edited away from /T or
-    // /TEST — fixing a misclassification, or received an update via sync
-    // that no longer flags it — cancel the purge rather than let a now-real
-    // operation's QSOs get hard-deleted out from under the edit. Checked
-    // against the row rather than the in-memory [operation] snapshot: this
-    // must key off whatever `purged` state the DATABASE currently holds.
-    //
-    // Clears `deleted` too, not just `purged`/`purgedLocally`: a purged row
-    // is always also tombstoned (`_writeDeleted`, `mergeFromSync`), and
-    // `watchOperation` doesn't filter on `deleted` — an operation view left
-    // open on this uuid can still reach this save. Leaving `deleted: true`
-    // here would "fix" the misclassification while still losing the
-    // operation from every list that DOES filter on it, with no path back.
-    if (existing != null && existing.purged && !Operation(uuid: operation.uuid, data: data).isTestOperation) {
-      companion = companion.copyWith(
-        deleted: const Value(false),
-        purged: const Value(false),
-        purgedLocally: const Value(false),
-      );
-    }
-    await (db.update(db.operations)..where((op) => op.uuid.equals(operation.uuid))).write(companion);
-    // The row is already committed, so the change HAS to be announced —
-    // without this, a throw out of the callback leaves the edit saved and
-    // both the sync engine and the peer outbox unaware of it until some
-    // later, unrelated write happens to wake them.
-    try {
-      await onLocalSave?.call(existing, Operation(uuid: operation.uuid, data: data));
-    } finally {
-      onChange?.call();
-    }
-  }
-
-  Future<void> softDelete(String uuid) => _writeDeleted(uuid, purged: false);
-
-  /// Deletes a Test Operation for real: soft-deletes with `purged: true`
-  /// and `purgedLocally: true` (same tombstone `softDelete` writes, so it
-  /// disappears from every `deleted.equals(false)` query immediately), which
-  /// then pushes through the normal dirty-row sync pipeline. Once that push
-  /// is acknowledged, [SyncEngine] hard-deletes the row (and its QSOs, via
-  /// `QsosRepository.purgeForOperation`) — see `Operations.purged`/
-  /// `purgedLocally`'s docs. Deliberately not offered for a non-test
-  /// operation: an unrecoverable delete is the whole point of a Test
-  /// Operation existing, not a general replacement for [softDelete].
-  ///
-  /// The caller (the delete-confirmation dialog, or PURGETESTS) is what
-  /// makes this "confirmed" — `purgedLocally: true` records that a human
-  /// said yes to it ON THIS DEVICE, which is what lets [hardDeletePurged]
-  /// act on it without asking again.
-  Future<void> purge(String uuid) => _writeDeleted(uuid, purged: true);
-
-  /// Shared by [softDelete] and [purge]. Re-stamps `data.updatedAtMillis`
-  /// too (not just the flags): the delete must sync as a revision newer than
-  /// the record it tombstones, or other devices' merge comparison would
-  /// discard it as stale.
-  Future<void> _writeDeleted(String uuid, {required bool purged}) async {
-    final now = realNowMillis();
-    final operation = await get(uuid);
-    // Deleting a real operation is a write to real data like any other, so it
-    // is refused while travelling. The Test Operation purge flow is unaffected
-    // — everything it touches is test data by definition.
-    final refusal = WritePolicy.forOperation(operation);
-    if (refusal != null) throw refusal;
-    var companion = OperationsCompanion(
-      deleted: const Value(true),
-      purged: Value(purged),
-      purgedLocally: Value(purged),
-      synced: const Value(false),
-      updatedAtMillis: Value(now),
-    );
-    if (operation != null) {
-      companion = companion.copyWith(
-          data: Value(_encodeOperationData({...operation.data, 'updatedAtMillis': now}, 'operations:delete')));
-    }
-    await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(companion);
-    onChange?.call();
-  }
-
-  /// The deferred half of a locally-confirmed [purge]: physically removes
-  /// every row that is `purged`, `synced`, AND `purgedLocally` — called by
-  /// [SyncEngine] after every successful round, not scoped to whatever that
-  /// round just pushed. Scoping it to the round's own batch would leave a
-  /// row stranded forever the moment the app dies between `markSynced`
-  /// committing `synced: true` and this running: a row that isn't dirty
-  /// never appears in a future batch again, so a batch-scoped sweep would
-  /// have no path back to it. An unconditional sweep instead catches it on
-  /// the very next round that succeeds at all.
-  ///
-  /// `purgedLocally` is the whole reason this can run with no further
-  /// confirmation: it's only ever set by [purge] on THIS device, which
-  /// already went through the delete-confirmation dialog or PURGETESTS. A
-  /// row this device only received via `mergeFromSync` has `purgedLocally:
-  /// false` and is never touched here — see [watchReceivedPurgesPending].
-  Future<List<String>> hardDeletePurged() async {
-    final rows = await (db.select(db.operations)
-          ..where((op) => op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(true)))
-        .get();
-    if (rows.isEmpty) return const [];
-    final purgedUuids = rows.map((r) => r.uuid).toList();
-    await (db.delete(db.operations)..where((op) => op.uuid.isIn(purgedUuids))).go();
-    return purgedUuids;
-  }
-
-  /// Operations flagged `purged` that arrived via sync rather than being
-  /// purged on this device (`purgedLocally: false`) — candidates for the
-  /// "these were removed elsewhere" confirmation prompt, never acted on
-  /// without the operator saying so here too. Row-shaped like every other
-  /// read: `deleted` stays true on these (a purged operation is tombstoned
-  /// like any other delete on receipt), so this deliberately does NOT filter
-  /// on `deleted` the way [watchAll] does.
-  Stream<List<Operation>> watchReceivedPurgesPending() {
-    final query = (db.select(db.operations)
-      ..where((op) => op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(false)));
-    return query.watch().map((rows) => rows.map(_operationFromRow).toList());
-  }
-
-  /// Received purges with nothing left for the operator to decide about:
-  /// this device holds no QSO of the operation, and the operation row
-  /// itself is a tombstone nothing displays, so confirming the prompt
-  /// would delete nothing anyone can see. Removing the row silently is what
-  /// keeps a purge for an operation this device never really had from
-  /// raising the "removed on another device" notice on every sync round,
-  /// forever. [mergeFromSync] and [mergeFromPeer]'s create guards keep new
-  /// ones from appearing; this clears whatever a build without them left
-  /// behind.
-  ///
-  /// `deleted` and `isTestOperation` are checked even though [purge] never
-  /// writes `purged` without both: on the inbound paths the two flags are
-  /// independent fields off the wire, so a record carrying `purged: true`
-  /// with no `deleted` — an older build, a peer on another dialect — leaves
-  /// a row `watchAll` still SHOWS. This is the one purge path with no human
-  /// in front of it, so it refuses anything that is visible or is not test
-  /// data rather than hard-deleting on a flag a peer controls.
-  ///
-  /// Counts EVERY QSO row of the operation, tombstones included: a purge is
-  /// what `confirmReceivedTestOperationPurges` would hard-delete, and a
-  /// device still holding rows of any kind has something real to be asked
-  /// about. Transactional, unlike [hardDeletePurged] — that one is followed
-  /// straight away by `hardDeletePurgedForOperation`, so a QSO written into
-  /// its window is still reclaimable, while a QSO written into this one is
-  /// not `purged` and [QsosRepository.hardDeletePurgedOrphans] can never
-  /// reach it again.
-  ///
-  /// Returns the uuids removed, which the caller logs: this is the only
-  /// irreversible delete in a sync round that no operator confirmed.
-  Future<List<String>> hardDeleteEmptyReceivedPurges() async {
-    return db.transaction(() async {
-      final rows = await (db.select(db.operations)
-            ..where((op) =>
-                op.purged.equals(true) &
-                op.synced.equals(true) &
-                op.purgedLocally.equals(false) &
-                op.deleted.equals(true)))
-          .get();
-      if (rows.isEmpty) return const <String>[];
-      final uuids = [for (final r in rows) if (_operationFromRow(r).isTestOperation) r.uuid];
-      if (uuids.isEmpty) return const <String>[];
-      final held = await (db.selectOnly(db.qsos)
-            ..addColumns([db.qsos.operation])
-            ..where(db.qsos.operation.isIn(uuids))
-            ..groupBy([db.qsos.operation]))
-          .get();
-      final withQsos = {for (final r in held) r.read(db.qsos.operation)};
-      final empty = [for (final uuid in uuids) if (!withQsos.contains(uuid)) uuid];
-      if (empty.isEmpty) return const <String>[];
-      await (db.delete(db.operations)..where((op) => op.uuid.isIn(empty))).go();
-      return empty;
-    });
-  }
-
-  /// The operator confirmed removing [uuids] after seeing them in the
-  /// "removed elsewhere" prompt — which of them are still real candidates.
-  /// Re-checks `purged`/`synced`/`purgedLocally` against the database rather
-  /// than trusting the caller's list: a row [saveData] un-marked in the
-  /// meantime (the callsign-edit escape hatch) must not be deleted just
-  /// because it was still on screen when the operator tapped confirm.
-  ///
-  /// Read-only, deliberately: it does NOT delete anything itself. The
-  /// caller (`HaLoServices.confirmReceivedTestOperationPurges`) deletes each
-  /// operation's QSOs first, then its row, one uuid at a time — if this
-  /// method deleted every row up front instead, a QSO-deletion failure for
-  /// ANY uuid would stand its operation row already gone while its QSOs
-  /// stayed behind, with no operation left for `watchReceivedPurgesPending`
-  /// to ever surface again. [hardDeleteOperation] is the second half.
-  Future<List<String>> eligibleReceivedPurges(Iterable<String> uuids) async {
-    final list = uuids.toList();
-    if (list.isEmpty) return const [];
-    final rows = await (db.select(db.operations)
-          ..where((op) =>
-              op.uuid.isIn(list) & op.purged.equals(true) & op.synced.equals(true) & op.purgedLocally.equals(false)))
-        .get();
-    return rows.map((r) => r.uuid).toList();
-  }
-
-  /// Physically removes operation [uuid] — see [eligibleReceivedPurges]'s
-  /// doc for why the caller must delete this operation's QSOs BEFORE
-  /// calling this, never after.
-  Future<void> hardDeleteOperation(String uuid) async {
-    await (db.delete(db.operations)..where((op) => op.uuid.equals(uuid))).go();
-  }
-
-  /// Up to `limit` dirty operations, most-recently-active first — the same
-  /// selection app-polo's sync loop uses for its "large batch" round
-  /// (`sync.js`'s `queryOperations('WHERE synced IS false ...')`).
-  Future<List<Operation>> unsyncedBatch(int limit, {Set<String> excluding = const {}}) async {
-    final query = (db.select(db.operations)
-      ..where((op) => excluding.isEmpty
-          ? op.synced.equals(false)
-          : op.synced.equals(false) & op.uuid.isNotIn(excluding.toList()))
-      ..orderBy([
-        (op) => OrderingTerm(expression: op.startAtMillisMax, mode: OrderingMode.desc, nulls: NullsOrder.first),
-      ])
-      ..limit(limit));
-    return (await query.get()).map(_operationFromRow).toList();
-  }
-
-  /// Fetches specific operations by uuid (e.g. the parents of a QSO batch),
-  /// optionally narrowed to ones still unsynced.
-  Future<List<Operation>> byUuids(List<String> uuids, {bool onlyUnsynced = false}) async {
-    if (uuids.isEmpty) return const [];
-    final query = db.select(db.operations)..where((op) => op.uuid.isIn(uuids));
-    if (onlyUnsynced) query.where((op) => op.synced.equals(false));
-    return (await query.get()).map(_operationFromRow).toList();
-  }
-
-  Future<bool> hasUnsynced() async {
-    final row =
-        await (db.select(db.operations)..where((op) => op.synced.equals(false))..limit(1)).getSingleOrNull();
-    return row != null;
-  }
-
-  /// Flips the sent rows to `synced = true` — but only those whose revision
-  /// stamp still matches what was actually sent. A row edited while the
-  /// sync round's network call was in flight has a newer stamp (and
-  /// `synced = false` again); marking it unconditionally would silently
-  /// swallow that edit forever.
-  Future<void> markSynced(Iterable<Operation> sent) async {
-    final list = sent.toList();
-    if (list.isEmpty) return;
-    await db.transaction(() async {
-      for (final o in list) {
-        final stamp = o.updatedAtMillis;
-        await (db.update(db.operations)
-              ..where((op) =>
-                  op.uuid.equals(o.uuid) &
-                  (stamp == null ? op.updatedAtMillis.isNull() : op.updatedAtMillis.equals(stamp))))
-            .write(const OperationsCompanion(synced: Value(true)));
-      }
-    });
-  }
-
-  /// Total and pending-sync counts, reported in the sync payload's `meta`
-  /// (mirrors `getSyncCounts()` in app-polo's `sync.js`).
-  ///
-  /// `total` is what this device HOLDS, so tombstones don't count — they're
-  /// records that no longer exist as far as the user is concerned. `pending`
-  /// is what it still owes the server, so tombstones DO count: a delete only
-  /// reaches other devices by being pushed.
-  Future<({int total, int pending})> syncCounts() async {
-    final count = db.operations.uuid.count();
-    Future<int> countWhere(Expression<bool> predicate) async {
-      final query = db.selectOnly(db.operations)
-        ..addColumns([count])
-        ..where(predicate);
-      return (await query.getSingle()).read(count) ?? 0;
-    }
-
-    return (
-      total: await countWhere(db.operations.deleted.equals(false)),
-      pending: await countWhere(db.operations.synced.equals(false)),
-    );
-  }
-
-  /// The operations side of `QsosRepository.unsyncedContactCount` — what this
-  /// device still owes the server, counting only operations it still HOLDS.
-  ///
-  /// Distinct from [syncCounts]'s `pending`, which counts every dirty row
-  /// including tombstones because it answers the sync loop's "anything to
-  /// push?". An operator reading "N operations waiting to upload" beside a
-  /// total that excludes deleted ones would see the pending figure overtake
-  /// the total after a few offline deletions, which is not a thing that can
-  /// be true.
-  Future<int> unsyncedOperationCount() async {
-    final count = db.operations.uuid.count();
-    final query = db.selectOnly(db.operations)
-      ..addColumns([count])
-      ..where(db.operations.synced.equals(false) & db.operations.deleted.equals(false));
-    return (await query.getSingle()).read(count) ?? 0;
-  }
-
-  /// The revision stamp a repaired record goes back out under: this device's
-  /// real clock, but never below the stamp it is rejecting. A sender whose
-  /// clock runs ahead would otherwise get a repair that compares OLDER than
-  /// what it sent, and `_inboundIsStale` drops it on arrival — the seat's own
-  /// operator would be corrected here and nowhere else. Real clock, not the
-  /// app's: a revision stamp persists, so it must not travel (time.md §1).
-  int _repairedStamp(int? incomingUpdatedAtMillis) {
-    final now = realNowMillis();
-    if (incomingUpdatedAtMillis == null || incomingUpdatedAtMillis < now) return now;
-    return incomingUpdatedAtMillis + 1;
-  }
-
-  /// [data] with this device's own operator restored, when the device sits in
-  /// an operating position and [existing] already names somebody in it.
-  ///
-  /// An operation's `data` merges whole-blob, last writer wins: two seats that
-  /// name their operators inside one sync window each push a full copy built
-  /// from their own snapshot, and the later push carries the other seat's slot
-  /// as it was BEFORE that seat was filled. Whoever loses that race would find
-  /// their own seat empty again, and every contact logged afterwards stamped
-  /// with nobody. Who is at THIS key is the one thing this device knows better
-  /// than any record arriving from elsewhere, so it survives the merge.
-  ///
-  /// Only the seat this device occupies, and only where the stored row HAS
-  /// that slot — presence, not a non-empty value, exactly as `operatorCallFor`
-  /// reads it. Every other seat is somebody else's to state, a device that has
-  /// never named its own has nothing to defend and takes what the record
-  /// brings, and a seat deliberately emptied here stays empty rather than
-  /// having the name it just removed pushed back onto it.
-  ///
-  /// Returns the same map, unchanged and identical, when nothing was defended
-  /// — the callers compare by identity to decide whether the row now differs
-  /// from what the sender has.
-  Map<String, dynamic> _keepingOwnSeatOperator(Map<String, dynamic> data, OperationRow? existing) {
-    if (existing == null || existing.localData == null) return data;
-    final Object? localData;
-    try {
-      localData = jsonDecode(existing.localData!);
-    } catch (_) {
-      return data;
-    }
-    if (localData is! Map) return data;
-    final position = normalizedMultiIdentifier(asQsonString(localData['multiIdentifier']) ?? '');
-    if (position.isEmpty) return data;
-    final key = operatorCallKeyFor(position);
-    final existingData = jsonDecode(existing.data);
-    if (existingData is! Map || !existingData.containsKey(key)) return data;
-    final ours = existingData[key];
-    if (data.containsKey(key) && data[key] == ours) return data;
-    return {...data, key: ours};
-  }
-
-  /// Upserts operations received from the sync server. Leaves the locally
-  /// derived counters (`qsoCount`, `startAtMillisMin/Max`) alone — they get
-  /// recomputed from this device's own QSOs once any of this operation's
-  /// QSOs are merged in too, and shouldn't be clobbered by the server's view
-  /// of them in the meantime.
-  ///
-  /// Returns the min/max `syncedAtMillis` seen in this batch — a server-side
-  /// watermark distinct from `startAtMillis`, carried on every inbound
-  /// record — so `SyncEngine` can track "synced since" for the next pull,
-  /// mirroring app-polo's `mergeSyncOperations`.
-  Future<SyncWatermark> mergeFromSync(List<Map<String, dynamic>> operations) async {
-    final watermark = SyncWatermark();
-    // Whether anything in this batch came out of the merge differing from
-    // what the sender sent — see the seat-operator splice below.
-    var repaired = false;
-    final incomingUuids = [for (final m in operations) m['uuid']].whereType<String>().toList();
-    await db.transaction(() async {
-      final existingRows = incomingUuids.isEmpty
-          ? const <OperationRow>[]
-          : await (db.select(db.operations)..where((op) => op.uuid.isIn(incomingUuids))).get();
-      final existingByUuid = {for (final r in existingRows) r.uuid: r};
-
-      for (final incoming in operations) {
-        final uuid = asQsonString(incoming['uuid']);
-        if (uuid == null) continue;
-        final data = Map<String, dynamic>.from(incoming)..remove('uuid');
-        final deleted = data.remove('deleted') == true;
-        // Carried through for informational parity with the sending
-        // device's row, but never acted on here: this device never
-        // hard-deletes on receipt of a sync record, purged or not — only
-        // the device that itself purged the operation ever removes the row
-        // (`SyncEngine`, after its own push is acknowledged).
-        final purged = data.remove('purged') == true;
-        _normalizeLegacyStamps(data);
-        watermark.include(asQsonNum(data['syncedAtMillis'])?.toInt());
-
-        final existing = existingByUuid[uuid];
-        // A purge tombstone for an operation this device doesn't have
-        // describes nothing to remove, so it must never CREATE a row. The
-        // server keeps a purged record for good and re-delivers it (its
-        // `syncedAtMillis` lands within a millisecond of the watermark
-        // tracked for the next pull), so inserting one resurrects the very
-        // operation whose removal the operator just confirmed here — a
-        // notice that comes back every sync round, forever. It would also
-        // ask a device that never had the operation to confirm removing
-        // it. Updating an EXISTING row is still right: that is what raises
-        // the prompt in the first place.
-        if (existing == null && purged) continue;
-        if (existing != null &&
-            _inboundIsStale(
-              existingUpdatedAtMillis: existing.updatedAtMillis,
-              existingSynced: existing.synced,
-              incomingUpdatedAtMillis: asQsonNum(data['updatedAtMillis'])?.toInt(),
-            )) {
-          continue;
-        }
-
-        // A defended seat operator is a CHANGE this device is making to the
-        // record the sender holds, not a copy of it: written `synced: true`
-        // it would never reach `pendingOperations`, so the server and every
-        // other device would keep naming the operator this device just
-        // rejected — for good, and into their exports. It goes out as this
-        // device's own newer revision instead, which is what the stamp bump
-        // says (a revision stamp reads the real clock — time.md §1).
-        final merged = _keepingOwnSeatOperator(data, existing);
-        final defended = !identical(merged, data);
-        if (defended) merged['updatedAtMillis'] = _repairedStamp(asQsonNum(data['updatedAtMillis'])?.toInt());
-        repaired = repaired || defended;
-        await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
-              uuid: Value(uuid),
-              data: Value(_encodeOperationData(merged, 'operations:mergeFromSync')),
-              deleted: Value(deleted),
-              purged: Value(purged),
-              synced: Value(!defended),
-              updatedAtMillis: Value(asQsonNum(merged['updatedAtMillis'])?.toInt()),
-            ));
-      }
-    });
-    // Only when a row came out dirty: everything merged untouched is already
-    // marked synced, and there is nothing new for the outbound side to react
-    // to (which is why this path stays silent in the ordinary case).
-    if (repaired) onChange?.call();
-    return watermark;
-  }
-
-  /// Applies operation records received from a peer device over the direct
-  /// LAN/BLE/relay channel (HALO-310) — sibling to [mergeFromSync], NOT a
-  /// caller of it: same uuid-keyed upsert and [_inboundIsStale] staleness
-  /// gate, but left `synced: false` and DOES fire [onChange]. A record a
-  /// peer originated has not reached the LoFi server from ANY device yet —
-  /// the device that logged it may never regain internet access itself, so
-  /// this device must still offer to push it once its own turn to sync
-  /// comes, which is exactly what LoFi cloud sync's dirty-flag machinery
-  /// already does for free once `synced` is false here too.
-  Future<void> mergeFromPeer(List<Map<String, dynamic>> operations) async {
-    final incomingUuids = [for (final m in operations) m['uuid']].whereType<String>().toList();
-    await db.transaction(() async {
-      final existingRows = incomingUuids.isEmpty
-          ? const <OperationRow>[]
-          : await (db.select(db.operations)..where((op) => op.uuid.isIn(incomingUuids))).get();
-      final existingByUuid = {for (final r in existingRows) r.uuid: r};
-
-      for (final incoming in operations) {
-        final uuid = asQsonString(incoming['uuid']);
-        if (uuid == null) continue;
-        final data = Map<String, dynamic>.from(incoming)..remove('uuid');
-        final deleted = data.remove('deleted') == true;
-        // Same as mergeFromSync: informational only, never acted on by a
-        // receiving device — only the device that itself purged the
-        // operation ever removes the row.
-        final purged = data.remove('purged') == true;
-        _normalizeLegacyStamps(data);
-
-        final existing = existingByUuid[uuid];
-        // Never create a row from a purge tombstone, same as [mergeFromSync]
-        // — and load-bearing here for a reason of its own: a row this path
-        // creates starts `synced: false`, so it is invisible to
-        // [watchReceivedPurgesPending] until this device's own next push
-        // flips it true, and only THEN does an operation this device never
-        // had start asking the operator to confirm removing it, every round,
-        // forever.
-        if (existing == null && purged) continue;
-        if (existing != null &&
-            _inboundIsStale(
-              existingUpdatedAtMillis: existing.updatedAtMillis,
-              existingSynced: existing.synced,
-              incomingUpdatedAtMillis: asQsonNum(data['updatedAtMillis'])?.toInt(),
-            )) {
-          continue;
-        }
-
-        // The row already goes out dirty on this path, but a DEFENDED seat
-        // still needs its own revision stamp: left at the sender's, this
-        // device's version compares equal everywhere it lands, and
-        // `_inboundIsStale` (>=) drops it — the repair would never leave here.
-        final merged = _keepingOwnSeatOperator(data, existing);
-        if (!identical(merged, data)) {
-          merged['updatedAtMillis'] = _repairedStamp(asQsonNum(data['updatedAtMillis'])?.toInt());
-        }
-        await db.into(db.operations).insertOnConflictUpdate(OperationsCompanion(
-              uuid: Value(uuid),
-              data: Value(_encodeOperationData(merged, 'operations:mergeFromPeer')),
-              deleted: Value(deleted),
-              purged: Value(purged),
-              synced: const Value(false),
-              updatedAtMillis: Value(asQsonNum(merged['updatedAtMillis'])?.toInt()),
-            ));
-      }
-    });
-    onChange?.call();
-  }
-
-  /// Marks every operation dirty, deleted ones included — used when
-  /// "combining" local data into a newly linked account (DESIGN.md's sync
-  /// reconciliation flow): the account has no idea this device's data
-  /// exists yet, so all of it needs to go out, not just whatever changed
-  /// since the last (different-account) sync. Mirrors app-polo's
-  /// `resetSyncedStatus`.
-  Future<void> resetSyncedStatus() async {
-    await db.update(db.operations).write(const OperationsCompanion(synced: Value(false)));
-  }
-
-  /// Copies every operation (deleted ones included) into `OperationsBackup`
-  /// under `backupId`, then deletes all of them from the live table — used
-  /// when "replacing" local data with a different account's, or by the
-  /// `SYNCALL` command. Mirrors app-polo's `clearAllOperationData`, but as a
-  /// portable copy-then-delete instead of its SQLite-specific `ALTER TABLE
-  /// RENAME` trick.
-  Future<void> backupAndClearAll(String backupId) async {
-    final now = nowMillis();
-    await db.transaction(() async {
-      final rows = await db.select(db.operations).get();
-      for (final row in rows) {
-        await db.into(db.operationsBackup).insert(OperationsBackupCompanion.insert(
-              backupId: backupId,
-              backupAtMillis: now,
-              uuid: row.uuid,
-              data: row.data,
-              startAtMillisMin: Value(row.startAtMillisMin),
-              startAtMillisMax: Value(row.startAtMillisMax),
-              qsoCount: Value(row.qsoCount),
-              deleted: Value(row.deleted),
-            ));
-      }
-      await db.delete(db.operations).go();
-    });
-  }
-
-  /// Normalizes on the way out as well as on the way in ([_encodeOperationData]):
-  /// a row stored before the writers coerced anything still holds whatever
-  /// type it was given, and the writers cannot reach a row nothing writes to.
-  ///
-  /// NOT every reader comes through here — `_operationFor`, `sequences.dart`
-  /// and `peer_outbox.dart` each decode the same blob raw, so a record can
-  /// still be seen un-normalized by those. They survive on the model's
-  /// probing getters rather than on this.
-  ///
-  /// `localData` is device-local rather than QSON, so it is decoded as-is.
-  Operation _operationFromRow(OperationRow row) {
-    // Never off-isolate, unlike the QSO decoder, so it reports in place.
-    final violations = <QsonTypeViolation>[];
-    final operation = _operationRowToModel(row, violations);
-    for (final violation in violations) {
-      onQsonTypeViolation?.call('operations:read', violation);
-    }
-    return operation;
-  }
-
-  Operation _operationRowToModel(OperationRow row, List<QsonTypeViolation> violations) => Operation(
-        uuid: row.uuid,
-        data: normalizeOperationQson(jsonDecode(row.data) as Map<String, dynamic>, violations: violations),
-        qsoCount: row.qsoCount,
-        startAtMillisMin: row.startAtMillisMin,
-        startAtMillisMax: row.startAtMillisMax,
-        deleted: row.deleted,
-        synced: row.synced,
-        purged: row.purged,
-        localData: row.localData == null ? const {} : jsonDecode(row.localData!) as Map<String, dynamic>,
-      );
-
-  /// Merges [patch] into this operation's device-local, never-synced state
-  /// (e.g. `ScoringService` writing its `scoring` summary blob under that
-  /// key). Never touches `synced` — `localData` isn't part of what syncs.
-  Future<void> updateLocalData(String uuid, Map<String, dynamic> patch) async {
-    await db.transaction(() async {
-      final operation = await get(uuid);
-      if (operation == null) return;
-      final merged = {...operation.localData, ...patch};
-      await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(
-        OperationsCompanion(localData: Value(jsonEncode(merged))),
-      );
-    });
-  }
-}
-
-/// Normalizing here, not only in [_encodeQsoData], is what reaches a record
-/// that was already stored: the writers cannot heal a row nothing writes to.
-/// It also settles what the rest of the app is handed, because `data` is the
-/// map itself — `SyncEngine._buildPayload` and `ExportService` both spread
-/// it, so without this an export's ADIF hook reads the raw wrong-typed value
-/// while the QSO list beside it shows the coerced one, and a push carries
-/// the bad value back out to every other device.
-///
-/// The scan costs about 2.5µs against `jsonDecode`'s 3.4µs on a typical QSO,
-/// and returns the same map untouched when there is nothing to fix — which
-/// is every row but the rare bad one.
-///
-/// Reporting what it heals is not optional here: healing a stored record
-/// hands the write path a clean map, so an operator editing that record
-/// would otherwise stop reporting it too — losing the signal rather than
-/// merely declining to add one. [violations] carries what was found back to
-/// a caller that can report it.
-///
-/// `jsonDecode(...) as Map` is deliberately still a cast: a blob that is not
-/// a JSON object is a corrupt row, not a wrong-typed field, and coercing it
-/// would swallow real database corruption.
-Qso _qsoFromRow(QsoRow row, {List<QsonTypeViolation>? violations}) => Qso(
-      uuid: row.uuid,
-      operationUuid: row.operation,
-      data: normalizeQsoQson(jsonDecode(row.data) as Map<String, dynamic>, violations: violations),
-      deleted: row.deleted,
-      purged: row.purged,
-      scoreCache: row.scoreCache,
-    );
-
-/// How many violations one decode batch carries back. A log with thousands
-/// of bad rows would otherwise build a list the size of the damage and hand
-/// every entry to the reporter, when the question being answered — WHICH
-/// fields arrive wrong-typed — is settled by the first few. Sampling here
-/// rather than at the reporter keeps the cost off the isolate hop too.
-const _readViolationSampleLimit = 16;
-
-/// The rows plus what healing them found, because a violation cannot report
-/// itself from inside an isolate: `onQsonTypeViolation` is a top-level
-/// global, so it is null in a spawned isolate and a report there would
-/// simply vanish. Carrying them back as DATA is what keeps coverage uniform
-/// — reporting in place would fire for small batches and silently not for
-/// large ones, which reads as sampling rather than as a hole.
-class _DecodedQsos {
-  const _DecodedQsos(this.qsos, this.violations);
-  final List<Qso> qsos;
-  final List<QsonTypeViolation> violations;
-}
-
-_DecodedQsos _decodeQsos(List<QsoRow> rows) {
-  final violations = <QsonTypeViolation>[];
-  final qsos = [
-    for (final row in rows)
-      _qsoFromRow(row, violations: violations.length < _readViolationSampleLimit ? violations : null),
-  ];
-  return _DecodedQsos(qsos, violations);
-}
-
-/// Below this, decoding inline is cheaper than an isolate's spawn cost;
-/// above it, [_qsoFromRow]'s per-row `jsonDecode` is real enough CPU work
-/// (not the framework's usual sub-millisecond synchronous calls) that
-/// running it on the UI isolate blocks that isolate's frame pump for long
-/// enough to read as a stall rather than a stutter — moving it off-isolate
-/// trades a slightly later result for a UI thread that stays free to
-/// animate the transition while it waits.
-const _qsoRowDecodeIsolateThreshold = 200;
-
-/// Reports on THIS isolate whatever the decode healed, wherever it ran —
-/// see [_DecodedQsos] for why the violations travel as data.
-List<Qso> _reportedQsos(_DecodedQsos decoded) {
-  for (final violation in decoded.violations) {
-    onQsonTypeViolation?.call('qsos:read', violation);
-  }
-  return decoded.qsos;
-}
-
-Future<List<Qso>> _qsosFromRows(List<QsoRow> rows) async {
-  if (rows.length < _qsoRowDecodeIsolateThreshold) return _reportedQsos(_decodeQsos(rows));
-  try {
-    return _reportedQsos(await Isolate.run(() => _decodeQsos(rows)));
-  } catch (_) {
-    // Isolate.spawn doesn't exist on web (dart2js/DDC) — halo_core is pure
-    // Dart with no Flutter dependency, so there's no `kIsWeb` to branch on
-    // up front — and any other isolate-infrastructure failure (spawn
-    // refused under memory pressure, etc.) deserves the same recovery:
-    // `watchForOperation`'s callers `.listen()` this without an `onError`,
-    // so an error here would otherwise silently kill live rescoring instead
-    // of just costing a slower decode. A genuinely malformed row still
-    // throws the same way it did before this existed — inline decoding
-    // doesn't change what a bad row does, only where a healthy one runs.
-    return _reportedQsos(_decodeQsos(rows));
-  }
-}
+import 'operations_repository.dart';
+import 'repo_support.dart';
 
 /// SQLite's default bound-variable limit is 999. [historyForCalls]'s query
 /// binds a few more params alongside the `IN` clause itself (the `deleted`/
@@ -949,7 +84,7 @@ class QsosRepository {
     if (!AppClock.instance.isTravelling) return;
     final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(uuid))).getSingleOrNull();
     if (row == null) return;
-    final stored = _qsoFromRow(row);
+    final stored = qsoFromRow(row);
     final refusal = WritePolicy.forQso(
       operation: await _operationFor(stored.operationUuid),
       ourCall: stored.operationUuid.isEmpty ? stored.ourCall : '',
@@ -1033,7 +168,7 @@ class QsosRepository {
   }) async {
     final data = Map<String, dynamic>.from(qsoData);
     data['startAtMillis'] ??= nowMillis();
-    data['uuid'] ??= _uuidGenerator.v4();
+    data['uuid'] ??= uuidGenerator.v4();
     data['updatedAtMillis'] = realNowMillis();
 
     var qso = Qso(uuid: data['uuid'] as String, operationUuid: operationUuid, data: data);
@@ -1113,7 +248,7 @@ class QsosRepository {
 
   Future<Qso?> get(String uuid) async {
     final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(uuid))).getSingleOrNull();
-    return row == null ? null : _qsoFromRow(row);
+    return row == null ? null : qsoFromRow(row);
   }
 
   /// Writes a whole batch — new contacts inserted, existing ones updated — in
@@ -1178,7 +313,7 @@ class QsosRepository {
       // this data came out of a file: `as String?` would throw on a numeric
       // uuid rather than falling back.
       final supplied = data['uuid'];
-      final uuid = supplied is String && supplied.isNotEmpty ? supplied : _uuidGenerator.v4();
+      final uuid = supplied is String && supplied.isNotEmpty ? supplied : uuidGenerator.v4();
       toInsert.add(Qso(
         uuid: uuid,
         operationUuid: operationUuid,
@@ -1302,7 +437,7 @@ class QsosRepository {
             final planned = stampedByUuid[row.uuid]!;
             final Qso current;
             try {
-              current = _qsoFromRow(row);
+              current = qsoFromRow(row);
             } catch (_) {
               // A corrupt stored blob can't be merged with — write the
               // planned update as-is, which replaces the bad blob.
@@ -1414,12 +549,12 @@ class QsosRepository {
     await db.transaction(() async {
       final row = await (db.select(db.qsos)..where((q) => q.uuid.equals(qso.uuid))).getSingleOrNull();
       if (row == null) return; // hard-deleted since selection — nothing to flip
-      final stamped = _restamped(_qsoFromRow(row));
+      final stamped = _restamped(qsoFromRow(row));
       await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(
         QsosCompanion(
           deleted: Value(deleted),
           synced: const Value(false),
-          data: Value(_encodeQsoData(stamped.data, 'qsos:writeDeleted')),
+          data: Value(encodeQsoData(stamped.data, 'qsos:writeDeleted')),
           updatedAtMillis: Value(stamped.updatedAtMillis),
         ),
       );
@@ -1445,7 +580,7 @@ class QsosRepository {
     final rows = await (db.select(db.qsos)
           ..where((q) => q.operation.equals('') & q.purged.equals(false)))
         .get();
-    return (await _qsosFromRows(rows)).where((qso) => isTestCall(qso.ourCall)).toList();
+    return (await qsosFromRows(rows)).where((qso) => isTestCall(qso.ourCall)).toList();
   }
 
   /// Tombstones [uuids] as purged, the same two-step [purgeForOperation]
@@ -1477,15 +612,15 @@ class QsosRepository {
         // may sit on indefinitely, and sync rounds run while travelling now,
         // so an inbound edit can give a row an operation — or a real call —
         // in between. A purge is unrecoverable and invisible once done.
-        final stored = _qsoFromRow(row);
+        final stored = qsoFromRow(row);
         if (stored.operationUuid.isNotEmpty || !isTestCall(stored.ourCall)) continue;
-        final stamped = _restamped(_qsoFromRow(row));
+        final stamped = _restamped(qsoFromRow(row));
         await (db.update(db.qsos)..where((q) => q.uuid.equals(uuid))).write(
           QsosCompanion(
             deleted: const Value(true),
             purged: const Value(true),
             synced: const Value(false),
-            data: Value(_encodeQsoData(stamped.data, 'qsos:purge')),
+            data: Value(encodeQsoData(stamped.data, 'qsos:purge')),
             updatedAtMillis: Value(stamped.updatedAtMillis),
           ),
         );
@@ -1511,13 +646,13 @@ class QsosRepository {
         // `updatedAtMillis`, not a separately-captured timestamp — a
         // divergence here is exactly what makes `markSynced`'s stamp
         // comparison fail forever and the row re-push in a loop.
-        final stamped = _restamped(_qsoFromRow(row));
+        final stamped = _restamped(qsoFromRow(row));
         await (db.update(db.qsos)..where((q) => q.uuid.equals(stamped.uuid))).write(
           QsosCompanion(
             deleted: const Value(true),
             purged: const Value(true),
             synced: const Value(false),
-            data: Value(_encodeQsoData(stamped.data, 'qsos:purge')),
+            data: Value(encodeQsoData(stamped.data, 'qsos:purge')),
             updatedAtMillis: Value(stamped.updatedAtMillis),
           ),
         );
@@ -1603,7 +738,7 @@ class QsosRepository {
   }
 
   Stream<List<Qso>> watchForOperation(String operationUuid, {bool includeDeleted = false}) {
-    return _forOperationQuery(operationUuid, includeDeleted: includeDeleted).watch().asyncMap(_qsosFromRows);
+    return _forOperationQuery(operationUuid, includeDeleted: includeDeleted).watch().asyncMap(qsosFromRows);
   }
 
   /// The same rows as [watchForOperation], read once. For a one-off read
@@ -1611,7 +746,7 @@ class QsosRepository {
   /// .first`: a drift stream's first value never arrives inside a widget
   /// test's fake-async zone, so a caller awaiting it there hangs.
   Future<List<Qso>> forOperation(String operationUuid, {bool includeDeleted = false}) async {
-    return _qsosFromRows(await _forOperationQuery(operationUuid, includeDeleted: includeDeleted).get());
+    return qsosFromRows(await _forOperationQuery(operationUuid, includeDeleted: includeDeleted).get());
   }
 
   /// Rewrites the override on the operation's latest `start`/`break` row to
@@ -1716,7 +851,7 @@ class QsosRepository {
     final query = db.select(db.qsos)
       ..where((q) => q.operation.equals(operationUuid) & q.deleted.equals(false) & q.band.equals('event'))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis)]);
-    return _qsosFromRows(await query.get());
+    return qsosFromRows(await query.get());
   }
 
   /// When the operation's earliest real contact was, or null for a log with
@@ -1773,7 +908,7 @@ class QsosRepository {
     if (limit != null) query.limit(limit);
     final rows = await query.get();
     return [
-      for (final row in rows.map((r) => _qsoFromRow(r.readTable(db.qsos))))
+      for (final row in rows.map((r) => qsoFromRow(r.readTable(db.qsos))))
         if (!row.isEvent) row,
     ];
   }
@@ -1833,11 +968,11 @@ class QsosRepository {
             db.qsos.deleted.equals(false) &
             (db.operations.deleted.equals(false) | db.operations.uuid.isNull()));
       final rows = await query.get();
-      // `_qsosFromRows`, not a bare `.map(_qsoFromRow)` — a chunk from an
+      // `qsosFromRows`, not a bare `.map(qsoFromRow)` — a chunk from an
       // established callsign can itself clear the isolate-offload
       // threshold, and this runs while the import's progress dialog is
       // animating.
-      final decoded = await _qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
+      final decoded = await qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
       results.addAll(decoded.where((qso) => !qso.isEvent));
       // A caller's progress UI throwing (a disposed notifier, a formatting
       // edge case) must not fail the lookup itself, or discard whatever
@@ -1905,7 +1040,7 @@ class QsosRepository {
           (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
       ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis)]);
     return query.watch().asyncMap((rows) async {
-      final decoded = await _qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
+      final decoded = await qsosFromRows([for (final row in rows) row.readTable(db.qsos)]);
       // Same exclusion `historyForCall` applies — an event marker is not a
       // QSO, and this view has no concept of one to render or edit.
       return decoded.where((qso) => !qso.isEvent).toList();
@@ -1926,7 +1061,7 @@ class QsosRepository {
           : q.synced.equals(false) & q.uuid.isNotIn(excluding.toList()))
       ..orderBy([(q) => OrderingTerm(expression: q.startAtMillis, mode: OrderingMode.desc)])
       ..limit(limit));
-    return (await query.get()).map(_qsoFromRow).toList();
+    return (await query.get()).map(qsoFromRow).toList();
   }
 
   Future<bool> hasUnsynced() async {
@@ -2077,7 +1212,7 @@ class QsosRepository {
         // See OperationsRepository.mergeFromSync: carried through, never
         // acted on by a receiving device.
         final purged = data.remove('purged') == true;
-        _normalizeLegacyStamps(data);
+        normalizeLegacyStamps(data);
         watermark.include(asQsonNum(data['syncedAtMillis'])?.toInt());
 
         final existing = existingByUuid[uuid];
@@ -2089,7 +1224,7 @@ class QsosRepository {
         // a test contact belonging to no operation.
         if (existing == null && purged) continue;
         if (existing != null &&
-            _inboundIsStale(
+            inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,
               existingSynced: existing.synced,
               incomingUpdatedAtMillis: asQsonNum(data['updatedAtMillis'])?.toInt(),
@@ -2153,7 +1288,7 @@ class QsosRepository {
         final data = Map<String, dynamic>.from(incoming)..remove('operation');
         final deleted = data.remove('deleted') == true;
         final purged = data.remove('purged') == true;
-        _normalizeLegacyStamps(data);
+        normalizeLegacyStamps(data);
 
         final existing = existingByUuid[uuid];
         // See [mergeFromSync] and `OperationsRepository.mergeFromPeer`: a
@@ -2161,7 +1296,7 @@ class QsosRepository {
         // worth keeping.
         if (existing == null && purged) continue;
         if (existing != null &&
-            _inboundIsStale(
+            inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,
               existingSynced: existing.synced,
               incomingUpdatedAtMillis: asQsonNum(data['updatedAtMillis'])?.toInt(),
@@ -2228,7 +1363,7 @@ class QsosRepository {
     });
   }
 
-  /// [context] names the write path for [_encodeQsoData]'s violation
+  /// [context] names the write path for [encodeQsoData]'s violation
   /// reports. Required rather than defaulted: a single shared label would
   /// make a wrong-typed field arriving from a peer indistinguishable from one
   /// our own importer wrote, which is the only question those reports exist
@@ -2241,7 +1376,7 @@ class QsosRepository {
         band: Value(qso.band),
         mode: Value(qso.mode),
         startAtMillis: Value(qso.startAtMillis),
-        data: Value(_encodeQsoData(qso.data, context)),
+        data: Value(encodeQsoData(qso.data, context)),
         synced: const Value(false),
         updatedAtMillis: Value(qso.updatedAtMillis),
       );
@@ -2284,233 +1419,5 @@ class QsosRepository {
         ),
       );
     });
-  }
-}
-
-/// Escapes SQLite LIKE metacharacters (`%`, `_`) in [input] so a search term
-/// containing either is matched literally rather than as a wildcard —
-/// pass `escapeChar: r'\'` on every `.like()` built from the result.
-String _escapeLikePattern(String input) => input.replaceAll(r'\', r'\\').replaceAll('%', r'\%').replaceAll('_', r'\_');
-
-class LookupRepository {
-  final HaLoDatabase db;
-
-  LookupRepository(this.db);
-
-  /// Performs a bulk insert or replace of lookup rows inside a single transaction.
-  Future<void> insertLookupBatch(List<LookupRow> rows) async {
-    await db.transaction(() async {
-      await db.batch((batch) {
-        for (final row in rows) {
-          batch.insert(
-            db.lookups,
-            row,
-            mode: InsertMode.insertOrReplace,
-          );
-        }
-      });
-    });
-  }
-
-  /// Deletes all lookups within a specific category.
-  Future<void> deleteCategory(String category) async {
-    await (db.delete(db.lookups)..where((l) => l.category.equals(category))).go();
-  }
-
-  /// Deletes all lookups in a category that do not have the specified updated flag value (stale data).
-  Future<void> deleteCategoryStale(String category, int updatedValue) async {
-    await (db.delete(db.lookups)
-          ..where((l) => l.category.equals(category) & l.updated.equals(updatedValue).not()))
-        .go();
-  }
-
-  /// Retrieves a single lookup row by category and key.
-  Future<LookupRow?> getLookup(String category, String key) async {
-    return await (db.select(db.lookups)
-          ..where((l) => l.category.equals(category) & l.key.equals(key)))
-        .getSingleOrNull();
-  }
-
-  /// A row this program has NOT retired: `flags` 0 is the one value that means
-  /// retired, which every activity's data-file mapper writes for a reference
-  /// its program has delisted.
-  ///
-  /// The null arm is load-bearing, not defensive. `flags` is nullable and most
-  /// mappers never set it, and SQL's `flags != 0` is NULL — therefore false —
-  /// for those rows, so the obvious predicate would silently hide every lookup
-  /// row that simply never said. Unknown is not retired.
-  Expression<bool> _notRetired($LookupsTable l) => l.flags.isNull() | l.flags.equals(0).not();
-
-  /// Searches lookups in a category by matching query prefix on key or name.
-  ///
-  /// [subCategory], when given, filters IN THIS QUERY rather than left to the
-  /// caller: a common word ("trail") can match thousands of rows worldwide,
-  /// and this query only returns the first 100 it finds. A caller that
-  /// narrows by country AFTER fetching (POTA's `suggest` hook, scoping to the
-  /// operator's own DXCC entity) can end up filtering an already-truncated
-  /// 100 down to nothing even though a real match exists — "Appalachian
-  /// Trail National Scenic Trail" searched as "trail" is exactly this:
-  /// plenty of non-US "trail" rows fill the cap before SQLite (with no ORDER
-  /// BY) happens to reach it. Filtering here means the limit applies to the
-  /// already-narrowed set instead. Exact-equals only — SOTA scopes by entity
-  /// too but needs a prefix match, so it still filters after fetching and
-  /// still has this bug (extensions/activities/sota/src/index.ts).
-  ///
-  /// Key-prefix and name-prefix hits are also ordered first, for the rest —
-  /// the ones a [relevanceForMatch]-style ranking would call most relevant —
-  /// so those are what a full 100 rows displaces last.
-  ///
-  /// [activeOnly] drops rows a program has RETIRED, and belongs in the query
-  /// for the same reason [subCategory] does. POTA keeps a retired park in its
-  /// parks file rather than dropping it, so retirements arrive in bulk and
-  /// CLUSTER: a program delists a whole class of reference at once, and a
-  /// search for a word those share ("Wildlife Management Area" in an entity
-  /// whose WMAs were swept) can fill all 100 rows with retired ones. Filtered
-  /// afterward, in the caller, that search returns almost nothing while the
-  /// active matches sit just past the cap.
-  ///
-  /// [query] is escaped via [_escapeLikePattern] before it's built into any
-  /// pattern — a literal `%` or `_` in a searched name (e.g. a park with one
-  /// in its title) would otherwise be read as a SQL wildcard instead of the
-  /// character it is.
-  Future<List<LookupRow>> queryLookups(
-    String category,
-    String query, {
-    String? subCategory,
-    bool activeOnly = false,
-  }) async {
-    final escaped = _escapeLikePattern(query);
-    final keyPrefixMatch = db.lookups.key.like('$escaped%', escapeChar: r'\');
-    final namePrefixMatch = db.lookups.name.like('$escaped%', escapeChar: r'\');
-    return await (db.select(db.lookups)
-          ..where((l) =>
-              l.category.equals(category) &
-              (l.key.like('%$escaped%', escapeChar: r'\') | l.name.like('%$escaped%', escapeChar: r'\')) &
-              (subCategory == null ? const Constant(true) : l.subCategory.equals(subCategory)) &
-              (activeOnly ? _notRetired(l) : const Constant(true)))
-          ..orderBy([
-            (l) => OrderingTerm(expression: keyPrefixMatch, mode: OrderingMode.desc),
-            (l) => OrderingTerm(expression: namePrefixMatch, mode: OrderingMode.desc),
-          ])
-          ..limit(100))
-        .get();
-  }
-
-  /// Searches lookups in a category by proximity to a lat/lon coordinate
-  /// within a delta, closest first. Ordering (by squared distance, cheaper
-  /// than a real Haversine and fine for ranking within this small bounding
-  /// box) has to happen before the `limit` — otherwise the cap keeps
-  /// whichever 100 rows the query planner happens to hit first rather than
-  /// the 100 actually nearest to the caller, and a close-by entry can be
-  /// dropped in favor of farther ones.
-  ///
-  /// [activeOnly] as in [queryLookups] — and for the same reason it precedes
-  /// the `limit` here too, since a swept class of reference is as likely to
-  /// be clustered in SPACE as in name.
-  Future<List<LookupRow>> queryLookupsByLocation(
-    String category,
-    double lat,
-    double lon,
-    double delta, {
-    bool activeOnly = false,
-  }) async {
-    final latDelta = db.lookups.lat - Variable(lat);
-    final lonDelta = db.lookups.lon - Variable(lon);
-    final distanceSquared = latDelta * latDelta + lonDelta * lonDelta;
-    return await (db.select(db.lookups)
-          ..where((l) =>
-              l.category.equals(category) &
-              l.lat.isBetweenValues(lat - delta, lat + delta) &
-              l.lon.isBetweenValues(lon - delta, lon + delta) &
-              (activeOnly ? _notRetired(l) : const Constant(true)))
-          ..orderBy([(l) => OrderingTerm.asc(distanceSquared)])
-          ..limit(100))
-        .get();
-  }
-}
-
-/// The QSON [row] carried, decoded from its stored blob. See `InboundCaptures`.
-extension InboundCaptureRowQson on InboundCaptureRow {
-  Map<String, dynamic> get qso => (jsonDecode(data) as Map).cast<String, dynamic>();
-}
-
-/// See `InboundCaptures` — QSOs captured from another logging program
-/// ("Listen for other apps"), buffered until the operator decides whether to
-/// add them to an operation's log.
-class InboundCaptureRepository {
-  final HaLoDatabase db;
-  final void Function()? onChange;
-
-  InboundCaptureRepository(this.db, {this.onChange});
-
-  /// Records a capture, unless [dedupeKey] already exists — a program that
-  /// broadcasts the same contact twice (a resend, a second listener sharing
-  /// the port) must not queue it twice. Returns the stored row either way,
-  /// so the caller doesn't need to care which happened.
-  ///
-  /// `insertOrIgnore` against the table's unique `dedupeKey` index, not a
-  /// preceding `SELECT`: two datagrams for the same contact land through two
-  /// independent socket callbacks (`InboundQsoListenerService`'s handlers
-  /// fire-and-forget via `unawaited`), so a check-then-insert has a real race
-  /// window between them — the index is what actually makes this atomic.
-  Future<InboundCaptureRow> capture({
-    required String source,
-    required String dedupeKey,
-    required Map<String, dynamic> qsoData,
-  }) async {
-    final uuid = _uuidGenerator.v4();
-    await db.into(db.inboundCaptures).insert(
-          InboundCapturesCompanion.insert(
-            uuid: uuid,
-            source: source,
-            dedupeKey: dedupeKey,
-            // Deliberately NOT normalized (unlike every other QSON write
-            // here): this table stages what a peer app actually sent, and
-            // repairing it in place would destroy the evidence of what
-            // arrived. Normalization happens when a capture is promoted into
-            // a real QSO.
-            data: jsonEncode(qsoData),
-            receivedAtMillis: nowMillis(),
-          ),
-          mode: InsertMode.insertOrIgnore,
-        );
-    // By dedupeKey, not [uuid]: a conflict means [uuid] was never written,
-    // and the winner (whichever insert the unique index actually accepted)
-    // is what the caller needs back either way. Whether OUR insert was the
-    // winner is decided by comparing uuids, not `insert()`'s return value —
-    // that's `sqlite3`'s `last_insert_rowid()`, which only changes on a
-    // successful insert ANYWHERE on the connection, so it stays nonzero
-    // (and useless as a "did this call insert anything" signal) the moment
-    // any row has ever been inserted at all.
-    final row = await (db.select(db.inboundCaptures)..where((c) => c.dedupeKey.equals(dedupeKey))).getSingle();
-    if (row.uuid == uuid) onChange?.call();
-    return row;
-  }
-
-  /// Every capture not yet added to any operation, oldest first — across all
-  /// sources: "Listen for other apps" is one feature to the operator, not
-  /// one per protocol, so its pending list is one list, not one per source.
-  /// [source] survives on the row (and the dedupe key) purely as metadata.
-  Stream<List<InboundCaptureRow>> watchPending() => (db.select(db.inboundCaptures)
-        ..where((c) => c.addedToOperation.isNull())
-        ..orderBy([(c) => OrderingTerm.asc(c.receivedAtMillis)]))
-      .watch();
-
-  /// Marks [uuids] as added to [operationUuid]. Kept rather than deleted, so
-  /// a re-arriving duplicate broadcast is still recognized by its dedupe key
-  /// instead of being queued a second time.
-  Future<void> markAdded(Iterable<String> uuids, String operationUuid) async {
-    if (uuids.isEmpty) return;
-    await (db.update(db.inboundCaptures)..where((c) => c.uuid.isIn(uuids)))
-        .write(InboundCapturesCompanion(addedToOperation: Value(operationUuid)));
-    onChange?.call();
-  }
-
-  /// Discards [uuids] without adding them — the operator dismissing a bad
-  /// capture (wrong station, a garbled datagram).
-  Future<void> discard(Iterable<String> uuids) async {
-    if (uuids.isEmpty) return;
-    await (db.delete(db.inboundCaptures)..where((c) => c.uuid.isIn(uuids))).go();
-    onChange?.call();
   }
 }

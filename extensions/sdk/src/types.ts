@@ -2104,7 +2104,7 @@ export interface SettingsPanelDescriptor {
 
   /// Defaults false. Set true to also show this panel as a row in the Data
   /// Files screen's own "Extensions" section
-  /// (app/lib/views/settings_view.dart's `_dataFileScopedPanels`) — for a
+  /// (app/lib/views/settings/data_files_panel.dart's `_dataFileScopedPanels`) — for a
   /// data-file-management panel (e.g. enabling/disabling individual note
   /// sources) that belongs there instead of, or in addition to, the
   /// top-level nav. This is the ONLY host-recognized alternate surface

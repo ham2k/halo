@@ -435,7 +435,7 @@ const AdifImportHook = activityAdifImport({
 // --- SOTA SSO (OAuth2 via Keycloak) -----------------------------------------
 //
 // The host runs the whole PKCE flow itself (see `_doOAuth` in
-// app/lib/views/settings_view.dart) and stores the resulting accessToken/
+// app/lib/views/settings/accounts_panel.dart) and stores the resulting accessToken/
 // refreshToken/idToken as this account's credentials. Refreshed tokens go
 // into the account *session* (the one credential store extensions can
 // write), so `currentTokens` overlays session over credentials.
@@ -470,7 +470,7 @@ const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: st
 // The relay is one fixed URL (HALO-65/66) shared by
 // every edition and every client, registered with SOTA as a literal exact
 // string, no wildcard: https://lofi.ham2k.net/v1/webhooks/client/oauth. The
-// host (`_doOAuth`, settings_view.dart) picks which of `redirectUrl` /
+// host (`_doOAuth`, settings/accounts_panel.dart) picks which of `redirectUrl` /
 // `webhookRedirectUrl` to actually use per `oauthUsesWebhookRelay()|
 // (oauth_browser_login.dart) — the client is told apart via the OAuth `state`
 // param in that case, not the URL (state is the only thing every compliant

@@ -32,7 +32,7 @@ import 'package:ham2k_logger/services/deep_link_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/oauth_browser_login.dart';
-import 'package:ham2k_logger/views/settings_view.dart';
+import 'package:ham2k_logger/views/settings/accounts_panel.dart';
 
 import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
 

@@ -23,7 +23,7 @@ import '../services/update_check_service.dart';
 /// Whether [UpdateCheckRow] will show anything at all for this build —
 /// public so the About panel can decide, ahead of building the row itself,
 /// whether to show the divider that separates it from the version row above
-/// (see settings_view.dart's _AboutPanel). That divider has to live outside
+/// (see settings/about_panel.dart's AboutPanel). That divider has to live outside
 /// this widget's own `centered()`-wrapped content to span the pane's full
 /// width like every other divider in the panel — if it were nested inside
 /// here instead, it would get capped to idealPaneWidth along with the row

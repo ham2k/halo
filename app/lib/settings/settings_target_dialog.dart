@@ -37,7 +37,7 @@ import '../i18n/strings.g.dart';
 import '../services/halo_services.dart';
 import '../services/link_opener.dart';
 import '../tools/form_chrome_labels.dart';
-import '../views/settings_view.dart' show showAccountDialogByKey;
+import '../views/settings/accounts_panel.dart' show showAccountDialogByKey;
 import 'settings_registry.dart';
 import 'settings_scan.dart';
 
@@ -249,7 +249,7 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
   // (fieldKey, value) on every edit — cache the one real validate call so an
   // extension field's edit doesn't cost two bridge round trips, or risk the
   // two calls disagreeing. Same pattern as _ExtensionSettingsPanel's own
-  // _validate in settings_view.dart.
+  // _validate in views/settings/extension_settings_panel.dart.
   String? _lastValidatedFieldKey;
   dynamic _lastValidatedValue;
   String? _lastValidationError;
@@ -349,8 +349,8 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
   /// dialog's combined `_values` map, which mixes bare core keys with every
   /// scanned panel's `<panelKey>.`-namespaced ones. Strips the prefix and
   /// drops everything that isn't [panelKey]'s own, so a hook sees exactly
-  /// what a single-panel form (e.g. [_ExtensionSettingsPanel] in
-  /// settings_view.dart) would give it.
+  /// what a single-panel form (e.g. `ExtensionSettingsPanel` in
+  /// views/settings/extension_settings_panel.dart) would give it.
   Map<String, dynamic> _panelState(Map<String, dynamic> state, String panelKey) {
     final prefix = '$panelKey.';
     return {

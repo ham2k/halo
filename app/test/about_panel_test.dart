@@ -129,7 +129,7 @@ void main() {
     expect(find.widgetWithText(ListTile, 'Notices & Messages'), findsOneWidget);
 
     // Tapping the preview opens the same title as a Modal Pane — the
-    // clipped/faded preview never scrolls itself (see settings_view.dart),
+    // clipped/faded preview never scrolls itself (see views/settings/about_panel.dart),
     // so a tap must be the only way to read the rest.
     await tester.tap(find.byKey(const Key('aboutReleaseNotesPreview')));
     await tester.pumpAndSettle();
@@ -205,7 +205,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // VersionLabel renders SelectableText, which owns its own tap recognizer
-    // for cursor placement — an IgnorePointer around it (settings_view.dart)
+    // for cursor placement — an IgnorePointer around it (views/settings/about_panel.dart)
     // is what lets a tap anywhere on the row reach the ListTile's onTap
     // instead of being consumed as a text-selection tap.
     await tester.tap(find.ancestor(of: find.byType(VersionLabel), matching: find.byType(ListTile)));

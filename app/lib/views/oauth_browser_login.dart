@@ -112,7 +112,7 @@ class OAuthBrowserLoginBody extends StatefulWidget {
   /// [expectedState] is the exact `state` this login's authorization request
   /// was sent with — every compliant OAuth provider echoes it back unmodified,
   /// so an exact string match is what ties an incoming webhook event to this
-  /// attempt (see settings_view.dart's `_doOAuth` for how it's built: a nonce
+  /// attempt (see settings/accounts_panel.dart's `_doOAuth` for how it's built: a nonce
   /// plus this device's signed webhook-relay token).
   final String? expectedState;
 
