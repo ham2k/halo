@@ -16,12 +16,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
+import 'package:crypto/crypto.dart' show sha256;
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb, visibleForTesting;
 import 'package:path/path.dart' as p;
 import 'package:pub_semver/pub_semver.dart';
 
 import 'app_storage.dart';
 import 'error_reporting_service.dart';
+import 'extension_geo.dart';
 import 'extension_service.dart';
 
 /// The extension API this build speaks. A bundle declares the one it was built
@@ -35,8 +37,52 @@ const kInstalledExtensionsDirName = 'extensions';
 
 /// The prefix reserved for Ham2K's own extensions. Refused to an installed
 /// bundle: there is no signing, so anyone could claim it, and the key is what
-/// the app shows when it says where a hook came from.
+/// the app shows when it says where a hook came from. The one exception is a
+/// bundle whose bytes were hash-verified against the extension catalog's
+/// listing ([BundleProvenance.isCatalog]) — the catalog only serves a
+/// `ham2k-` key to Ham2K's own publishers.
 const kReservedKeyPrefix = 'ham2k-';
+
+/// The extension catalog's host — the one source whose bundles may claim a
+/// `ham2k-` key. Baked into every install, exactly like the updates host:
+/// nothing typed or discovered at runtime can name it.
+const kCatalogHost = 'catalog.ham2k.net';
+
+/// The catalog every install talks to, derived from [kCatalogHost] so the two
+/// cannot drift: the only other address the app will read is the developer
+/// override (`SettingsService.catalogBaseUrl`), typed by hand under developer
+/// mode.
+const kCatalogBaseUrl = 'https://$kCatalogHost';
+
+/// Where a bundle's bytes came from, when that was the extension catalog and
+/// they were verified against its listing — the sha256 the listing promised
+/// and the version it named. Persisted per key as
+/// `SettingsService.extensionInstalledFrom`; a bundle from a file or an
+/// arbitrary link carries none.
+class BundleProvenance {
+  final String host;
+  final String sha256;
+  final String version;
+
+  const BundleProvenance({required this.host, required this.sha256, required this.version});
+
+  /// Whether this record waives the `ham2k-` refusal: only the catalog's.
+  bool get isCatalog => host == kCatalogHost;
+
+  Map<String, String> toJson() => {'host': host, 'sha256': sha256, 'version': version};
+
+  static BundleProvenance? fromJson(Map<String, String>? json) {
+    if (json == null) return null;
+    final host = json['host'];
+    final sha256 = json['sha256'];
+    final version = json['version'];
+    if (host == null || sha256 == null || version == null) return null;
+    return BundleProvenance(host: host, sha256: sha256, version: version);
+  }
+}
+
+/// The lowercase hex sha256 of [bytes] — what a catalog listing promises.
+String sha256Hex(List<int> bytes) => sha256.convert(bytes).toString();
 
 /// The entries a bundle may hold, mirroring the packer's format.
 const kManifestEntry = 'manifest.json';
@@ -70,6 +116,16 @@ enum BundleRejection {
   /// More than [kMaxUnpackedBytes] once decompressed. A few hundred bytes of
   /// zip can name gigabytes, and this is decided before anything is written.
   tooLarge,
+
+  /// The bytes a catalog handed over are not the bytes its listing
+  /// described. Decided before the zip is opened: nothing about a bundle
+  /// that fails this is worth reading.
+  hashMismatch,
+
+  /// The bytes never arrived: the host answered something other than 200,
+  /// or could not be reached at all. A sentence about this link, never a
+  /// defect — the same footing as an unreadable file.
+  downloadFailed,
 
   /// Installing is not supported here (web has no store).
   unsupportedPlatform,
@@ -107,7 +163,11 @@ class InspectedBundle {
   final Map<String, dynamic> manifest;
   final Archive archive;
 
-  InspectedBundle({required this.manifest, required this.archive});
+  /// Set only when [InstalledExtensions.inspect] verified the bytes against
+  /// a catalog listing; what the install records, or clears, for the key.
+  final BundleProvenance? provenance;
+
+  InspectedBundle({required this.manifest, required this.archive, this.provenance});
 
   String get key => manifest['key'] as String;
   String get name => (manifest['name'] as String?) ?? key;
@@ -135,7 +195,17 @@ class InstalledExtensions {
     required this.builtInKeys,
     required this.hostSharedModules,
     this.rootOverride,
-  });
+    bool Function(String key)? catalogInstalled,
+  }) : _catalogInstalled = catalogInstalled ?? _never;
+
+  static bool _never(String key) => false;
+
+  /// Whether [key]'s installed bytes are on record as hash-verified from the
+  /// catalog (`SettingsService.extensionInstalledFrom`). Consulted on EVERY
+  /// read, not only at install: the waiver it grants to a `ham2k-` key has to
+  /// die with the record, or a file install of the same key afterwards would
+  /// inherit it.
+  final bool Function(String key) _catalogInstalled;
 
   /// Keys the app itself ships. An installed bundle may not claim one: hook
   /// identity has to stay unambiguous, and secret visibility is by key prefix,
@@ -167,11 +237,19 @@ class InstalledExtensions {
   /// that it is an archive of the right shape, that the key is usable here, and
   /// that this build can satisfy what it declares.
   ///
+  /// [provenance] is the catalog listing the bytes are claimed to match. The
+  /// hash is re-checked HERE, before the zip is even sniffed, so the `ham2k-`
+  /// waiver it buys hinges on the bytes in hand and never on a caller's word.
+  ///
   /// Throws [BundleException]; writes nothing.
-  Future<InspectedBundle> inspect(List<int> bytes) async {
+  Future<InspectedBundle> inspect(List<int> bytes, {BundleProvenance? provenance}) async {
     if (!isSupported) {
       throw BundleException(
           BundleRejection.unsupportedPlatform, 'Installing extensions is not supported on the web.');
+    }
+    if (provenance != null && sha256Hex(bytes) != provenance.sha256.toLowerCase()) {
+      throw BundleException(BundleRejection.hashMismatch,
+          'That download is not the extension the catalog described, so it was not opened.');
     }
     // Sniffed, not trusted from the name: Android's file picker hands back a
     // cache copy whose extension the platform rewrote from the MIME type, so
@@ -210,12 +288,24 @@ class InstalledExtensions {
     }
 
     _checkEntries(archive);
-    _checkKey(manifest['key']);
+    _checkKey(manifest['key'], fromCatalog: provenance?.isCatalog ?? false);
     _checkApi(manifest['api']);
     _checkDisplayFields(manifest);
     _checkSharedDependencies(manifest['sharedDependencies']);
-    return InspectedBundle(manifest: manifest, archive: archive);
+    // The version the listing named is the one the bundle must carry, or the
+    // provenance record would vouch for a version the catalog never served.
+    if (provenance != null && manifest['version'] != provenance.version) {
+      throw BundleException(BundleRejection.hashMismatch,
+          'That download calls itself version ${manifest['version']}, not the ${provenance.version} the catalog listed.');
+    }
+    return InspectedBundle(manifest: manifest, archive: archive, provenance: provenance);
   }
+
+  /// The key checks alone, for a caller that knows the key before it has the
+  /// bytes — a catalog install refuses a built-in key before downloading
+  /// anything. The same refusals [inspect] makes, with the same messages.
+  void checkKeyInstallable(String key, {BundleProvenance? provenance}) =>
+      _checkKey(key, fromCatalog: provenance?.isCatalog ?? false);
 
   /// Every entry must be one the format allows, sit inside the extension's own
   /// directory, and the whole thing must be a plausible size.
@@ -274,14 +364,29 @@ class InstalledExtensions {
     if (domains != null && (domains is! List || domains.any((d) => d is! String))) {
       throw BundleException(BundleRejection.malformed, "That bundle's manifest has an unreadable 'domains' list.");
     }
+    // `geo` reads as "does not gate" wherever the matcher cannot parse it, so
+    // a malformed one would install as worldwide rather than as a mistake —
+    // and a value outside the vocabulary would install as relevant to
+    // nobody. The packer's rules, applied again at the door.
+    final geo = manifest['geo'];
+    if (geo != null) {
+      final problems = ExtensionGeo.validate(geo);
+      if (problems.isNotEmpty) {
+        throw BundleException(BundleRejection.malformed, "That bundle's manifest has an unreadable 'geo': ${problems.first}");
+      }
+    }
   }
 
-  void _checkKey(Object? raw) {
+  /// [fromCatalog] waives the reserved prefix and nothing else: the built-in
+  /// collision below stands whatever the source, because hook identity and
+  /// secret visibility are keyed by name and the catalog cannot un-ship an
+  /// extension this app carries.
+  void _checkKey(Object? raw, {required bool fromCatalog}) {
     final key = raw is String ? raw : '';
     if (key.isEmpty || !kSafeKeyPattern.hasMatch(key)) {
       throw BundleException(BundleRejection.invalidKey, 'That bundle has no usable extension key.');
     }
-    if (key.startsWith(kReservedKeyPrefix)) {
+    if (key.startsWith(kReservedKeyPrefix) && !fromCatalog) {
       throw BundleException(BundleRejection.reservedKey,
           'That bundle claims the name "$key". Names beginning "ham2k-" are reserved for Ham2K\'s own extensions.');
     }
@@ -449,7 +554,7 @@ class InstalledExtensions {
         // and the point of checking at all is to refuse at the door rather
         // than fail inside a hook.
         try {
-          _checkKey(key);
+          _checkKey(key, fromCatalog: _catalogInstalled(key));
           _checkApi(manifest['api']);
           _checkSharedDependencies(manifest['sharedDependencies']);
         } on BundleException catch (e) {

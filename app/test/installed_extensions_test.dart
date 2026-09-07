@@ -32,11 +32,16 @@ void main() {
 
   tearDown(() => root.deleteSync(recursive: true));
 
-  InstalledExtensions store({Set<String> builtIn = const {'pota', 'sota'}, Map<String, String>? shared}) =>
+  InstalledExtensions store({
+    Set<String> builtIn = const {'pota', 'sota'},
+    Map<String, String>? shared,
+    bool Function(String key)? catalogInstalled,
+  }) =>
       InstalledExtensions(
         builtInKeys: builtIn,
         hostSharedModules: shared ?? const {'i18next': '23.11.5', '@ham2k/lib-callsigns': '1.0.2'},
         rootOverride: root,
+        catalogInstalled: catalogInstalled,
       );
 
   /// The fixture with its manifest rewritten — for the cases the packer would
@@ -110,6 +115,46 @@ void main() {
       );
     });
 
+    test('the reserved prefix is waived for bytes the catalog vouched for, and for nothing else', () async {
+      // The waiver hinges on the BYTES matching the listing's hash, not on a
+      // caller's word: a provenance naming the catalog over the wrong hash is
+      // refused as a mismatch before the key is even read, and a matching
+      // hash from any other host still meets the reserved-prefix refusal.
+      final bytes = rebuilt((m) => {...m, 'key': 'ham2k-clock'});
+      final hash = sha256Hex(bytes);
+      BundleProvenance provenance({String host = kCatalogHost, String sha256 = '', String version = '1.2.3'}) =>
+          BundleProvenance(host: host, sha256: sha256.isEmpty ? hash : sha256, version: version);
+
+      final bundle = await store().inspect(bytes, provenance: provenance());
+      expect(bundle.key, 'ham2k-clock');
+      expect(bundle.provenance?.isCatalog, isTrue);
+
+      await expectLater(
+        store().inspect(bytes, provenance: provenance(host: 'mirror.example.org')),
+        throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.reservedKey)),
+      );
+      await expectLater(
+        store().inspect(bytes, provenance: provenance(sha256: 'f' * 64)),
+        throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.hashMismatch)),
+      );
+      // The listing named one version and the bundle carries another: the
+      // record would otherwise vouch for a version the catalog never served.
+      await expectLater(
+        store().inspect(bytes, provenance: provenance(version: '9.9.9')),
+        throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.hashMismatch)),
+      );
+      // Not a waiver of the built-in collision: hook identity and secret
+      // visibility are keyed by name whatever the source.
+      await expectLater(
+        store(builtIn: const {'ham2k-clock'}).inspect(bytes, provenance: provenance()),
+        throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.collidesWithBuiltIn)),
+      );
+      expect(
+        () => store(builtIn: const {'ham2k-clock'}).checkKeyInstallable('ham2k-clock', provenance: provenance()),
+        throwsA(isA<BundleException>().having((e) => e.reason, 'reason', BundleRejection.collidesWithBuiltIn)),
+      );
+    });
+
     test('a key the runtime could not carry', () async {
       for (final key in ['UPPER', 'has space', 'semi;colon', '']) {
         await expectLater(
@@ -158,6 +203,46 @@ void main() {
       expect(listed.single.domains, ['time.example.org']);
       expect(await s.sourceFor('ki2d-my-clock'), contains('defineExtension'));
       expect(File(p.join(root.path, 'ki2d-my-clock', 'assets', 'note.txt')).existsSync(), isTrue);
+    });
+
+    test('an installed ham2k- key is listed only while its provenance record vouches for it', () async {
+      // Re-judged on EVERY read: the record is what waives the prefix, so a
+      // read after the record is gone (an uninstall, a file install of the
+      // same key) must refuse the directory that is still on disk. A waiver
+      // that stuck once granted would hand a sideloaded bundle Ham2K's name.
+      final bytes = rebuilt((m) => {...m, 'key': 'ham2k-clock'});
+      final vouched = <String>{'ham2k-clock'};
+      final s = store(catalogInstalled: vouched.contains);
+      await s.install(await s.inspect(bytes,
+          provenance: BundleProvenance(host: kCatalogHost, sha256: sha256Hex(bytes), version: '1.2.3')));
+
+      expect((await s.list()).map((i) => i.key), ['ham2k-clock']);
+      vouched.clear();
+      expect(await s.list(), isEmpty);
+      // The directory is untouched — refused on read, not deleted.
+      expect(Directory(p.join(root.path, 'ham2k-clock')).existsSync(), isTrue);
+    });
+
+    test('version and geo travel from the manifest on disk to the listing', () async {
+      // An update check compares `version` and the panel ranks by `geo`, both
+      // for an extension that may be DISABLED — so both must come off the
+      // manifest on disk, not out of a running bundle.
+      final s = store();
+      await s.install(await s.inspect(rebuilt((m) => {
+            ...m,
+            'version': '4.5.6',
+            'geo': {
+              'entities': ['CE'],
+              'ituRegions': [2],
+            },
+          })));
+
+      final listed = (await s.list()).single;
+      expect(listed.version, '4.5.6');
+      expect(listed.geo!.entities, ['CE']);
+      expect(listed.geo!.ituRegions, [2]);
+      expect(listed.geo!.matches(entityPrefix: 'CE', ituRegion: 2), isTrue);
+      expect(listed.geo!.matches(entityPrefix: 'K', ituRegion: 2), isFalse);
     });
 
     test('a bundle carrying a path-traversing entry is REFUSED, not quietly installed', () async {
@@ -271,11 +356,44 @@ void main() {
     // by whoever wrote it — unchecked, they throw out of a widget build
     // instead of being turned away. `domains` matters most: it is the fetch
     // allowlist itself, not a description of one.
+    // `geo` reads as "does not gate" wherever it cannot be parsed, so each of
+    // its shapes below would otherwise install as WORLDWIDE, not as a
+    // mistake — and a value outside the vocabulary (the last three) would
+    // install as relevant to NOBODY, ranked last for every operator forever.
     for (final bad in [
       {'domains': 'evil.example.org'},
       {'domains': [1, 2]},
       {'name': 7},
       {'version': 3},
+      {'geo': 'CE'},
+      {
+        'geo': {'entities': 'CE'}
+      },
+      {
+        'geo': {
+          'entity': ['CE']
+        }
+      },
+      {
+        'geo': {
+          'ituRegions': ['2']
+        }
+      },
+      {
+        'geo': {
+          'continents': ['North America']
+        }
+      },
+      {
+        'geo': {
+          'countries': ['USA']
+        }
+      },
+      {
+        'geo': {
+          'ituRegions': [7]
+        }
+      },
     ]) {
       test('$bad', () async {
         await expectLater(

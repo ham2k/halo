@@ -65,6 +65,41 @@ then misbehave where you cannot see it. Extension keys are `<callsign>-<name>`
 — the namespace every author of this software already holds, so two people who
 never met cannot ship the same key.
 
+## Publishing to the catalog
+
+```sh
+export H2K_CATALOG_TOKEN=h2kc_…
+npx h2kext-publish build --channel prod --notes "What changed"
+```
+
+Uploads a bundle to the [Ham2K extension catalog](https://catalog.ham2k.net),
+where the app finds it. Sign in there and make a token under
+[/publish](https://catalog.ham2k.net/publish); the command reads it from
+`H2K_CATALOG_TOKEN` and from nowhere else — there is no flag for it, because a
+flag lands in your shell history — and stores it nowhere. Publishing needs a
+grant for your callsign prefix, which the same page is where you ask for.
+
+A directory is packaged first, exactly as `h2kext-pack` would; a `.h2kext`
+you already made is sent as it is. A bundle must be 16 MiB or smaller: the
+app never downloads more than that, the catalog refuses more than that, and
+the command refuses it before sending a byte. A version's bytes are frozen
+the first time a reviewer approves them: from then on the same version with
+different bytes is refused, so a fix is a new version.
+
+Release notes go up in a second request, once the upload is accepted. If
+that request is refused, the version is still published — the command says
+so and exits 1, and you can write the notes on the site, where they can be
+edited at any time.
+
+The result line reads `published w7abc-notes 1.2.3 → prod (pending review)`.
+"Pending review" means a Ham2K reviewer has not looked yet — the version is
+stored, but nobody can install it until they approve it, and your dashboard on
+the site shows the outcome and any note. Every refusal prints the catalog's
+reason and exits 1; nothing is retried.
+
+Channels are the app editions — `dev`, `next` and `prod` — so a release can
+reach testers before it reaches everyone.
+
 ## License
 
 MPL-2.0

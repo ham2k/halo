@@ -22,6 +22,7 @@ import 'package:halo_extension_host/halo_extension_host.dart' as priority;
 import 'package:halo_core/halo_core.dart';
 import 'connectivity_service.dart';
 import 'error_reporting_service.dart';
+import 'extension_info.dart';
 import 'installed_extensions.dart';
 import 'location_service.dart';
 import 'panel_service.dart';
@@ -45,6 +46,9 @@ import '../tools/backoff.dart';
 import '../tools/form_chrome_labels.dart';
 import '../tools/activity_suggestions.dart';
 import '../tools/qso_patch.dart';
+
+// The types callers pair with the runtime: one import serves both.
+export 'extension_info.dart';
 
 /// This device's LoFi identity: the Pusher channel to subscribe
 /// to, and the signed token a webhook-relayed OAuth login embeds in its
@@ -1722,9 +1726,44 @@ class ExtensionService implements PanelExtensionSource {
   /// The consent the operator gave belongs to the caller — this is the commit,
   /// and by here the asking has happened.
   Future<void> installBundle(InspectedBundle bundle) async {
-    await _requireInstalledStore().install(bundle);
+    final store = _requireInstalledStore();
+    // Asked BEFORE the write: afterwards the key is always there.
+    final fresh = !await store.isInstalled(bundle.key);
+    await store.install(bundle);
+    await _recordInstall(bundle, fresh: fresh);
     _availableExtensions = null;
     await restartRuntime();
+  }
+
+  /// The settings an install touches. The provenance record is written for
+  /// catalog bytes and cleared for any other: a file install of a key the
+  /// catalog once served must not inherit the `ham2k-` waiver. A revocation
+  /// of another version is over. And a catalog install of a key the store
+  /// did not have — the built-in that moved to the catalog, switched off by
+  /// the operator while it was built in — drops the operator's override and
+  /// the disabled-since stamp so it runs; an UPDATE keeps both, because a
+  /// switch the operator turned off is not a newer version's to turn on.
+  Future<void> _recordInstall(InspectedBundle bundle, {required bool fresh}) async {
+    final currentSettings = settings;
+    if (currentSettings == null) return;
+    final records = {...currentSettings.extensionInstalledFrom};
+    final provenance = bundle.provenance;
+    if (provenance == null) {
+      if (records.remove(bundle.key) != null) await currentSettings.setExtensionInstalledFrom(records);
+    } else {
+      records[bundle.key] = provenance.toJson();
+      await currentSettings.setExtensionInstalledFrom(records);
+    }
+    final revoked = currentSettings.extensionRevoked;
+    if (revoked[bundle.key] != null && revoked[bundle.key]!['version'] != bundle.version) {
+      revoked.remove(bundle.key);
+      await currentSettings.setExtensionRevoked(revoked);
+    }
+    if (provenance == null || !fresh) return;
+    final overrides = currentSettings.extensionOverrides;
+    if (overrides.remove(bundle.key) != null) await currentSettings.setExtensionOverrides(overrides);
+    final disabledSince = currentSettings.extensionDisabledSince;
+    if (disabledSince.remove(bundle.key) != null) await currentSettings.setExtensionDisabledSince(disabledSince);
   }
 
   /// Removes an installed extension and reboots without it.
@@ -1803,6 +1842,10 @@ class ExtensionService implements PanelExtensionSource {
         ? (_installed ??= InstalledExtensions(
             builtInKeys: {for (final info in fromAssets) info.key},
             hostSharedModules: _hostSharedModules,
+            // Read live, not captured: the record is written by installBundle
+            // and cleared by uninstall, and the store outlives both.
+            catalogInstalled: (key) =>
+                BundleProvenance.fromJson(settings?.extensionInstalledFrom[key])?.isCatalog ?? false,
           ))
         : null;
     // A damaged store must not cost the operator the app's own extensions.
@@ -1930,12 +1973,22 @@ class ExtensionService implements PanelExtensionSource {
   Stream<Map<String, dynamic>> get commandInterpretationUpdates => _interpretationUpdates.stream;
 
   /// Core extensions are always on; the rest follow the user's override,
-  /// falling back to the build index's default. A null [settings] (tests,
-  /// benches) resolves to defaults. Enabled is the user's intent only —
-  /// whether the extension actually loads also requires
+  /// falling back to the build index's default — except a release the
+  /// catalog revoked, which is off whatever the override says: the switch is
+  /// the operator's intent, and the revocation is not theirs to undo. A null
+  /// [settings] (tests, benches) resolves to defaults. Enabled is the user's
+  /// intent only — whether the extension actually loads also requires
   /// [isExtensionAvailable].
   bool isExtensionEnabled(ExtensionInfo info) =>
-      info.core || (settings?.extensionOverrides[info.key] ?? info.enabledByDefault);
+      info.core || (!isExtensionRevoked(info) && (settings?.extensionOverrides[info.key] ?? info.enabledByDefault));
+
+  /// Whether the INSTALLED version of [info] is one the catalog revoked
+  /// (`SettingsService.extensionRevoked`). Judged by version, so the record
+  /// stops mattering the moment another version is installed.
+  bool isExtensionRevoked(ExtensionInfo info) {
+    final version = info.version;
+    return version != null && settings?.extensionRevoked[info.key]?['version'] == version;
+  }
 
   /// Whether [info] is offered at all: every experiment its manifest
   /// declares (experiments.yaml keys) must be enabled. An unavailable
@@ -3945,35 +3998,6 @@ class RefLink {
   final String? label;
 }
 
-/// Where an extension's code came from. Not cosmetic: [maySeeBuildSecrets]
-/// hangs off it, and so does whether the loader reads the source from the
-/// app's assets, the installed store, or a dev server.
-enum ExtensionSource {
-  /// Shipped inside the app.
-  asset,
-
-  /// Installed by the operator from a `.h2kext` (HALO-422).
-  installed,
-
-  /// Served by a dev server (HALO-118, docs/extensions/development.md).
-  dev;
-
-  /// Only what the app shipped. An extension that arrived any other way gets
-  /// nothing, whatever key it claims — see [visibleSecretsFor].
-  bool get maySeeBuildSecrets => this == ExtensionSource.asset;
-
-  /// Reads the provenance an index entry carries. Absent means [asset]: the
-  /// app's own `index.json` says nothing, because everything in it shipped
-  /// with the app.
-  static ExtensionSource fromJson(Map<String, dynamic> json) {
-    return switch (json['source'] as String?) {
-      'installed' => ExtensionSource.installed,
-      'dev' => ExtensionSource.dev,
-      _ => ExtensionSource.asset,
-    };
-  }
-}
-
 /// Whether a dev-loop reload of one extension can be swapped into the running
 /// runtime, or whether the runtime has to be restarted around it.
 ///
@@ -4037,150 +4061,4 @@ List<ExtensionInfo> mergeDevExtensions(List<ExtensionInfo> fromAssets, List<Exte
     for (final info in fromAssets) byKey[info.key] ?? info,
     for (final key in unplaced) byKey[key]!,
   ];
-}
-
-/// One entry of the build index (assets/extensions/index.json) — the static,
-/// user-facing metadata the extensions build emits so the app can describe every
-/// extension (including disabled ones whose bundles never load). Core
-/// entries are always enabled and never listed in the Extensions panel;
-/// versions deliberately live only in the runtime (see listActiveExtensions).
-class ExtensionInfo {
-  final String key;
-  final String file;
-  final List<String> domains;
-
-
-  /// Whether this extension may set its own `User-Agent` on host.fetch
-  /// (the manifest's `allowUserAgentOverride`). Off by default: the host stamps
-  /// HaLo's canonical UA — see docs/design/network.md.
-  final bool allowUserAgentOverride;
-
-  /// Whether this extension may call the `getLocation` host call (the manifest's
-  /// `requiresLocation`) — the device's raw GPS fix. Off by default,
-  /// same allowlist shape as [domains].
-  final bool requiresLocation;
-
-  final bool core;
-  final String name;
-  final String? shortName;
-  final String? category;
-  final bool enabledByDefault;
-
-  /// Experiment keys (experiments.yaml) gating this extension's very
-  /// availability — see [ExtensionService.isExtensionAvailable].
-  final List<String> experiments;
-
-  /// MDI icon name (resolveIconName), mirroring the icon the extension's
-  /// own hooks use (e.g. POTA's 'pine-tree'); null falls back to a
-  /// category icon in the panel.
-  final String? icon;
-  final String? description;
-
-  /// The extension's brand accent as a #RRGGBB hex string (manifest.json
-  /// `accentColor`, e.g. POTA's green) — informational, for hosts that
-  /// want to tint extension UI.
-  final String? accentColor;
-
-  /// Extra Extensions-panel search terms beyond name/description.
-  final List<String> keywords;
-
-  /// The hook categories the extension's manifest declares. The runtime
-  /// learns actual hooks from registerHook, and reads nothing else here — but
-  /// the `ref:<type>` entries are load-bearing for the host: they are how an
-  /// operation ref no loaded extension handles finds the switched-off
-  /// extension to offer (docs/extensions/README.md).
-  final List<String> hooks;
-
-  /// Per-locale overrides for [name]/[description] plus extra localized
-  /// search [keywords] (manifest.json `translations`, baked into index.json
-  /// so they're readable without running any JS, same as the base
-  /// metadata). Keyed by language code; a missing locale or field falls
-  /// back to the English base value.
-  final Map<String, Map<String, Object?>> translations;
-
-  /// Where this extension's code came from.
-  ///
-  /// It decides two things: where the source is read from, and — the part that
-  /// matters — whether any build secret is visible to it. Only extensions that
-  /// ship inside the app get those, whatever key a bundle claims (HALO-425).
-  final ExtensionSource source;
-
-  /// Installed from a `.h2kext` the operator chose (HALO-422). Like a
-  /// dev-served one, it is code the app did not ship.
-  bool get isInstalled => source == ExtensionSource.installed;
-
-  const ExtensionInfo({
-    required this.key,
-    required this.file,
-    this.source = ExtensionSource.asset,
-    this.domains = const [],
-    this.allowUserAgentOverride = false,
-    this.requiresLocation = false,
-    required this.core,
-    required this.name,
-    this.shortName,
-    this.category,
-    this.enabledByDefault = true,
-    this.experiments = const [],
-    this.icon,
-    this.description,
-    this.accentColor,
-    this.keywords = const [],
-    this.hooks = const [],
-    this.translations = const {},
-  });
-
-  String get effectiveShortName => shortName ?? name;
-
-  String nameFor(String locale) => (translations[locale]?['name'] as String?) ?? name;
-  String? descriptionFor(String locale) => (translations[locale]?['description'] as String?) ?? description;
-
-  /// The base [keywords] plus the locale's extra ones — localized keywords
-  /// add to the English set (both stay searchable), they don't replace it.
-  List<String> keywordsFor(String locale) => [
-        ...keywords,
-        ...((translations[locale]?['keywords'] as List?) ?? const []).cast<String>(),
-      ];
-
-  /// Whether a user's search text should surface this extension. Matches the
-  /// key, the name and description in BOTH the given locale and English (so
-  /// either spelling finds it), and the keywords. [query] is expected
-  /// already trimmed; an empty one matches nothing, since "show everything"
-  /// is the caller's decision, not a match.
-  bool matchesSearch(String query, {required String locale}) {
-    if (query.isEmpty) return false;
-    final needle = query.toLowerCase();
-    return key.toLowerCase().contains(needle) ||
-        name.toLowerCase().contains(needle) ||
-        nameFor(locale).toLowerCase().contains(needle) ||
-        (description ?? '').toLowerCase().contains(needle) ||
-        (descriptionFor(locale) ?? '').toLowerCase().contains(needle) ||
-        keywordsFor(locale).any((keyword) => keyword.toLowerCase().contains(needle));
-  }
-
-  factory ExtensionInfo.fromJson(Map<String, dynamic> json) => ExtensionInfo(
-        key: json['key'] as String,
-        file: json['file'] as String? ?? '${json['key']}.js',
-        source: ExtensionSource.fromJson(json),
-        domains: ((json['domains'] as List?) ?? const []).cast<String>(),
-        allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
-        requiresLocation: json['requiresLocation'] as bool? ?? false,
-        // A stale index without metadata degrades to "everything core" —
-        // the fail-safe: nothing gets silently disabled.
-        core: json['core'] as bool? ?? true,
-        name: json['name'] as String? ?? json['key'] as String,
-        shortName: json['shortName'] as String?,
-        category: json['category'] as String?,
-        enabledByDefault: json['enabledByDefault'] as bool? ?? true,
-        experiments: ((json['experiments'] as List?) ?? const []).cast<String>(),
-        icon: json['icon'] as String?,
-        description: json['description'] as String?,
-        accentColor: json['accentColor'] as String?,
-        keywords: ((json['keywords'] as List?) ?? const []).cast<String>(),
-        hooks: ((json['hooks'] as List?) ?? const []).cast<String>(),
-        translations: {
-          for (final entry in ((json['translations'] as Map?) ?? const {}).entries)
-            entry.key as String: (entry.value as Map).cast<String, Object?>(),
-        },
-      );
 }

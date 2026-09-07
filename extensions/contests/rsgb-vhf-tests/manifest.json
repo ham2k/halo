@@ -19,6 +19,17 @@
     "rsgb",
     "ukac"
   ],
+  "geo": {
+    "entities": [
+      "G",
+      "GM",
+      "GW",
+      "GI",
+      "GD",
+      "GU",
+      "GJ"
+    ]
+  },
   "hooks": [
     "activity",
     "adifFields",

@@ -20,6 +20,11 @@
     "ospota",
     "cabrillo"
   ],
+  "geo": {
+    "countries": [
+      "us"
+    ]
+  },
   "hooks": [
     "activity",
     "adifFields",

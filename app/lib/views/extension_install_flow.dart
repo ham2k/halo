@@ -18,7 +18,9 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
+import '../services/catalog_service.dart' show CatalogRelease;
 import '../services/error_reporting_service.dart';
+import '../services/halo_services.dart';
 import '../services/installed_extensions.dart';
 
 /// The file types the picker offers.
@@ -64,16 +66,21 @@ Future<String?> installExtensionFromFile(
 /// filesystem — a host, for a link. Shown on the consent screen, because
 /// "which file did I just agree to" is a question a link cannot otherwise
 /// answer.
+///
+/// [provenance] is the catalog listing the bytes must match; the store
+/// re-checks the hash before opening them, and the record is what the
+/// install writes for the key.
 Future<String?> installExtensionFromBytes(
   BuildContext context, {
   required InstalledExtensions store,
   required Future<void> Function(InspectedBundle) commit,
   required Future<List<int>> Function() read,
   String? from,
+  BundleProvenance? provenance,
 }) async {
   final InspectedBundle bundle;
   try {
-    bundle = await store.inspect(await read());
+    bundle = await store.inspect(await read(), provenance: provenance);
   } catch (e, stack) {
     // A BundleException is a sentence about this file and nothing more needs
     // saying. Anything else is a defect — a picker handing back a file that
@@ -88,7 +95,7 @@ Future<String?> installExtensionFromBytes(
       debugPrint('[extensions] install failed after the panel closed: $e');
       return null;
     }
-    await _showRefusal(context, e is BundleException ? e.message : '$e');
+    await showInstallRefusal(context, e is BundleException ? e.message : '$e');
     return null;
   }
 
@@ -112,10 +119,59 @@ Future<String?> installExtensionFromBytes(
     // Saying which one, and that it may need reinstalling, is the least this
     // owes the operator — a bare zone notice names nothing.
     ErrorReportingService.report(e, stack, context: 'extension-install:commit');
-    if (context.mounted) await _showRefusal(context, context.t.extensionsPanel.installIncomplete(name: bundle.name));
+    if (context.mounted) await showInstallRefusal(context, context.t.extensionsPanel.installIncomplete(name: bundle.name));
     return null;
   }
   return bundle.name;
+}
+
+/// Install or Update from the catalog — the panel's button and a catalog deep
+/// link take this one path. The same consent screen as a file, over bytes the
+/// service matches to the listing's sha256 before the store re-checks them,
+/// with the provenance the store records for the key; a built-in key is
+/// refused before any download, with the sentence a file with that key gets.
+/// Returns the installed extension's name, or null if nothing was installed.
+///
+/// [commit] is [ExtensionService.installBundle], or a wrapper that also
+/// drives a caller's own "applying" state around it.
+Future<String?> installFromCatalog(
+  BuildContext context, {
+  required HaLoServices services,
+  required CatalogRelease release,
+  required Future<void> Function(InspectedBundle) commit,
+}) async {
+  final store = services.extensions.installed;
+  // A press that did nothing at all, with no message and no log, is the one
+  // outcome nobody could report.
+  if (store == null) {
+    debugPrint('[extensions] catalog install of ${release.key} before the installed store was ready');
+    return null;
+  }
+  final catalog = services.catalog;
+  final provenance = BundleProvenance(host: catalog.host, sha256: release.sha256, version: release.version);
+  try {
+    store.checkKeyInstallable(release.key, provenance: provenance);
+  } on BundleException catch (e) {
+    await showInstallRefusal(context, e.message);
+    return null;
+  }
+  if (!context.mounted) return null;
+  final name = await installExtensionFromBytes(
+    context,
+    store: store,
+    read: () => catalog.download(release),
+    from: catalog.host,
+    provenance: provenance,
+    commit: commit,
+  );
+  if (name == null) return null;
+  services.catalogUpdateCheck.noteInstalled(release.key, release.version);
+  // No per-key event: the catalog's keys are whatever anyone published,
+  // which is unbounded cardinality and leaks what the operator uses (the
+  // same reason settings_view reports every extension panel as one).
+  services.track('extension_installed', {});
+  services.statusBar.setMessage(key: 'extensions:installed', text: t.extensionsPanel.installedMessage(name: name));
+  return name;
 }
 
 /// Whether [bundle] is replacing something, which is only how the screen is
@@ -130,7 +186,10 @@ Future<bool> _isInstalled(InstalledExtensions store, InspectedBundle bundle) asy
   }
 }
 
-Future<void> _showRefusal(BuildContext context, String message) => showDialog<void>(
+/// Why an install did not happen, in the install flow's own dialog — for a
+/// refusal decided before the flow starts (a catalog key that is built in)
+/// as much as for one it decides itself.
+Future<void> showInstallRefusal(BuildContext context, String message) => showDialog<void>(
       context: context,
       builder: (context) => HaloDialog(
         title: Text(context.t.extensionsPanel.installFailed),
@@ -300,7 +359,7 @@ class _ExtensionDropTargetState extends State<ExtensionDropTarget> {
         // screens in a row, which is the shape people click through — and
         // picking one silently is worse.
         if (details.files.length > 1) {
-          if (mounted) await _showRefusal(context, context.t.extensionsPanel.dropOneOnly);
+          if (mounted) await showInstallRefusal(context, context.t.extensionsPanel.dropOneOnly);
           return;
         }
         final file = details.files.firstOrNull;

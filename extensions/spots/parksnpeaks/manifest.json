@@ -16,6 +16,12 @@
     "vk",
     "zl"
   ],
+  "geo": {
+    "entities": [
+      "VK",
+      "ZL"
+    ]
+  },
   "hooks": [
     "account",
     "spots"

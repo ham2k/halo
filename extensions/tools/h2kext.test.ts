@@ -14,7 +14,7 @@ import { join } from "node:path"
 
 // @ts-ignore — deliberately plain JS: this module is meant to be lifted into a
 // published package unchanged, so it carries no TypeScript build of its own.
-import { sharedPackages } from "../build-config.mjs"
+import { indexEntryFor, sharedPackages, validateManifest as validateBuiltInManifest } from "../build-config.mjs"
 import {
   H2KEXT_API_VERSION,
   sharedModulesFor,
@@ -23,6 +23,7 @@ import {
   pack,
   PackError,
   RESERVED_PREFIX,
+  validateGeo,
   validateManifest,
 } from "./h2kext.mjs"
 
@@ -257,4 +258,89 @@ test("declaring a package the host does not carry is refused", () => {
 test("a shared dependency needs a range, not just a name", () => {
   assert.match(validateManifest({ ...validManifest, sharedDependencies: { i18next: "" } }).join(), /needs a version range/)
   assert.match(validateManifest({ ...validManifest, sharedDependencies: ["i18next"] }).join(), /must be an object/)
+})
+
+test("geo: every valid shape passes, and none at all is worldwide", () => {
+  for (const geo of [
+    undefined,
+    {},
+    { entities: ["K", "VE"], countries: ["us"], continents: ["NA"], ituRegions: [2] },
+    // Case is the matcher's job, and WAE-style stars and slashed prefixes
+    // are prefixes too.
+    { entities: ["ce", "*TA1", "4u1v", "vp8/h"] },
+    { countries: ["CL"] },
+    { continents: ["sa", "AN"] },
+    { ituRegions: [1, 2, 3] },
+    // An empty list does not gate; it is not a mistake.
+    { entities: [] },
+  ]) {
+    assert.deepEqual(validateGeo(geo), [], `expected ${JSON.stringify(geo)} to be accepted`)
+  }
+})
+
+test("geo: a shape the matcher would misread is refused", () => {
+  // The matcher reads a key it cannot parse as "does not gate": each of the
+  // shape errors here would ship as WORLDWIDE rather than as the author's
+  // mistake. The vocabulary errors are the opposite — a value that can never
+  // match anyone.
+  const bad: [unknown, RegExp][] = [
+    [null, /must be an object/],
+    ["K", /must be an object/],
+    [["K"], /must be an object/],
+    [{ entities: "K" }, /'geo\.entities' must be a list/],
+    [{ entities: null }, /must be a list/],
+    [{ entity: ["K"] }, /unknown key 'entity'/],
+    [{ exceptEntities: ["K"] }, /unknown key/],
+    [{ entities: [""] }, /non-empty string/],
+    [{ entities: [7] }, /non-empty string/],
+    [{ entities: ["K 1"] }, /entity prefix/],
+    [{ countries: ["usa"] }, /two-letter/],
+    [{ countries: ["u1"] }, /two-letter/],
+    [{ continents: ["EUR"] }, /not a continent/],
+    [{ ituRegions: [4] }, /not an ITU region/],
+    [{ ituRegions: ["2"] }, /not an ITU region/],
+    [{ ituRegions: [2.5] }, /not an ITU region/],
+  ]
+  for (const [geo, message] of bad) {
+    const problems = validateGeo(geo)
+    assert.ok(problems.length > 0, `expected ${JSON.stringify(geo)} to be refused`)
+    assert.match(problems.join(" | "), message, `for ${JSON.stringify(geo)}`)
+  }
+})
+
+test("geo: the packer reports every problem in it, alongside the rest", () => {
+  const problems = validateManifest({ ...validManifest, geo: { entities: [""], continents: ["EUR"], bogus: [] } })
+  assert.equal(problems.length, 3, problems.join(" | "))
+  assert.deepEqual(validateManifest({ ...validManifest, geo: { entities: ["CE"] } }), [])
+})
+
+test("geo: the built-in build applies the same rules, by importing them", () => {
+  // build-config.mjs imports validateGeo rather than restating it, so there
+  // is no second copy to drift. What can still drift is the WIRING: a build
+  // that stopped calling it would ship a malformed geo into index.json, where
+  // the host reads it as worldwide.
+  const manifest = { key: "x", name: "X", version: "1.0.0", description: "d", geo: { continents: ["EUR"] } }
+  assert.throws(() => validateBuiltInManifest(manifest, "x", new Set(), "x/manifest.json"), /invalid 'geo'.*EUR/)
+  assert.doesNotThrow(() =>
+    validateBuiltInManifest({ ...manifest, geo: { continents: ["EU"] } }, "x", new Set(), "x/manifest.json"))
+})
+
+test("index.json carries version for every extension, and geo when declared", () => {
+  // `version` is what an update check compares, and it has to be readable
+  // for an extension that is installed but DISABLED — whose bundle never
+  // runs, so the kernel's listExtensions cannot supply it. Core entries
+  // carry it too: one shape, not two. `geo` is what ranks an entry, and the
+  // panel ranks disabled entries as well.
+  const core = indexEntryFor({ key: "adif", manifest: { key: "adif", name: "ADIF", version: "0.3.1", description: "d" } })
+  assert.equal(core.version, "0.3.1")
+  assert.equal(core.core, true)
+  assert.ok(!("geo" in core), "an extension with no geo must not gain an empty one")
+
+  const geo = { entities: ["CE"], ituRegions: [2] }
+  const listed = indexEntryFor({
+    key: "x",
+    manifest: { key: "x", name: "X", version: "2.0.0", description: "d", category: "activity", geo },
+  })
+  assert.equal(listed.version, "2.0.0")
+  assert.deepEqual(listed.geo, geo)
 })

@@ -16,6 +16,11 @@
     "distance",
     "cabrillo"
   ],
+  "geo": {
+    "continents": [
+      "NA"
+    ]
+  },
   "hooks": [
     "activity",
     "adifFields",

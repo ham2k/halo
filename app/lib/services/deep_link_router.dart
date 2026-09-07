@@ -16,8 +16,8 @@ import '../views/confirm_device_dialog.dart';
 import '../views/operation_view.dart';
 import '../views/extension_install_flow.dart';
 import '../views/settings_view.dart';
-import 'package:http/http.dart' as http;
 
+import 'catalog_service.dart';
 import 'deep_link_service.dart';
 
 import 'error_reporting_service.dart';
@@ -419,61 +419,62 @@ void openInstallExtension(HaLoServices services, Uri source, {int attemptsLeft =
   // asks for nothing new goes through without a second dialog. Only a bundle
   // fetched from a link is attributed.
   final local = source.isScheme('file');
+  // The catalog's own bundle URLs take the verified path: the listing's
+  // sha256 is what the bytes are checked against, and what the install
+  // records. Every other host keeps the plain download's rules. Not behind
+  // the `catalog` experiment, unlike the panel's section: a link is opened
+  // on purpose, and gating this branch would only send the same link down
+  // the plain download below — strictly less checked, not less reachable.
+  if (!local && services.catalog.isCatalogUrl(source)) {
+    unawaited(_installFromCatalogLink(services, context, store, source));
+    return;
+  }
   unawaited(installExtensionFromBytes(
     context,
     store: store,
-    read: local ? () => File(source.toFilePath()).readAsBytes() : () => _downloadBundle(source),
+    read: local ? () => File(source.toFilePath()).readAsBytes() : () => services.catalog.downloadBundle(source),
     from: local ? null : source.host,
     commit: services.extensions.installBundle,
-  ).then((name) {
-    if (name == null) return;
-    services.track('extension_installed', {});
-    services.statusBar.setMessage(key: 'extensions:installed', text: t.extensionsPanel.installedMessage(name: name));
-  }));
+  ).then((name) => _installedFromLink(services, name)));
 }
 
-/// Fetches a bundle, refusing anything implausibly large before it is held in
-/// memory — the link naming it is not one this app chose to trust.
-Future<List<int>> _downloadBundle(Uri source) async {
-  final client = http.Client();
-  try {
-    var target = source;
-    // Redirects followed by hand, because the point of demanding https is
-    // that nobody on the path can rewrite what the consent screen describes —
-    // and a client following redirects for us will happily walk https into
-    // http and hand back the result as though it were the URL we asked for.
-    for (var hop = 0; hop < 5; hop++) {
-      final request = http.Request('GET', target)..followRedirects = false;
-      final response = await client.send(request).timeout(const Duration(seconds: 30));
-      final location = response.headers['location'];
-      if (response.statusCode >= 300 && response.statusCode < 400 && location != null) {
-        final next = target.resolve(location);
-        if (next.scheme != 'https') {
-          throw BundleException(BundleRejection.notAnArchive, t.extensionsPanel.downloadNotSecure);
-        }
-        target = next;
-        continue;
-      }
-      if (response.statusCode != 200) {
-        throw BundleException(BundleRejection.notAnArchive,
-            t.extensionsPanel.downloadFailed(source: target.host, status: response.statusCode));
-      }
-      // Counted as it arrives. Reading the whole body first and measuring it
-      // afterwards is a cap that has already let the thing it refuses into
-      // memory.
-      final bytes = <int>[];
-      await for (final chunk in response.stream) {
-        bytes.addAll(chunk);
-        if (bytes.length > kMaxDownloadBytes) {
-          throw BundleException(BundleRejection.tooLarge, t.extensionsPanel.downloadTooLarge);
-        }
-      }
-      return bytes;
-    }
-    throw BundleException(BundleRejection.notAnArchive, t.extensionsPanel.downloadFailed(source: source.host, status: 310));
-  } finally {
-    client.close();
+/// A `.../extensions/<key>/versions/<version>/bundle` link on the catalog:
+/// the version's sha256 comes from the extension's listing — re-read past
+/// the service's cache when a cached page lacks the version, since a link
+/// can name a release younger than that cache — and from there the install
+/// is the panel's (installFromCatalog): the bytes refused unless they hash
+/// to it, a built-in key refused before anything is fetched.
+Future<void> _installFromCatalogLink(
+    HaLoServices services, BuildContext context, InstalledExtensions store, Uri source) async {
+  final catalog = services.catalog;
+  final ref = CatalogService.parseBundleUrl(source);
+  if (ref == null) {
+    await showInstallRefusal(context, t.extensionsPanel.catalogLinkUnknown);
+    return;
   }
+  final listing = await catalog.fetchExtension(ref.key, expecting: ref.version);
+  final version = listing?.versionNamed(ref.version);
+  if (!context.mounted) return;
+  if (version == null) {
+    await showInstallRefusal(
+        context,
+        listing == null
+            ? t.extensionsPanel.catalogUnreachable
+            : t.extensionsPanel.catalogVersionUnknown(key: ref.key, version: ref.version));
+    return;
+  }
+  await installFromCatalog(
+    context,
+    services: services,
+    release: (key: ref.key, version: version.version, sha256: version.sha256, bundleUrl: source),
+    commit: services.extensions.installBundle,
+  );
+}
+
+void _installedFromLink(HaLoServices services, String? name) {
+  if (name == null) return;
+  services.track('extension_installed', {});
+  services.statusBar.setMessage(key: 'extensions:installed', text: t.extensionsPanel.installedMessage(name: name));
 }
 
 /// Opens the pane once there is a navigator to open it onto.

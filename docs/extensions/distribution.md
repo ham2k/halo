@@ -58,6 +58,35 @@ understanding why:
   A key the host doesn't define hides the extension permanently, with nothing
   in the UI to explain it.
 
+### Geographic relevance
+
+`geo` says where the extension is relevant. The catalog ranks its listing by
+it, for the operators the extension was written for, and the Extensions
+panel's Catalog section shows the catalog's rows in that order; nothing
+hides an extension over it, and a manifest without one is worldwide. The
+build index carries `geo` for the catalog and for later use; the panel does
+not rank the app's own extensions by it.
+
+```json
+"geo": { "entities": ["CE"], "continents": ["SA"] }
+```
+
+Four lists, each an allowlist over the operator's own callsign: `entities`
+(DXCC prefixes as the country file names them: `K`, `VE`, `CE`), `countries`
+(ISO alpha-2: `us`, `cl`), `continents` (`AF AS EU NA OC SA AN`) and
+`ituRegions` (`1`, `2`, `3`). A missing or empty list does not gate; values
+within a list are ORed, the lists ANDed; case is the matcher's job. These are
+the geo keys of HaLo's notices, rule for rule. The packer refuses:
+
+- a `geo` that is not an object, or a key inside it other than those four;
+- a list that is not a list, or an element that is not a non-empty string;
+- a continent outside `AF AS EU NA OC SA AN`, or an ITU region outside `1`–`3`;
+- a country that is not two letters, or an entity prefix that is not letters,
+  digits and `/` (with an optional leading `*`).
+
+The matcher reads a key it cannot parse as "does not gate", so each of the
+shape errors would otherwise ship the bundle as worldwide.
+
 ## Using the host's libraries
 
 The host carries a set of libraries and hands every extension the same
@@ -262,6 +291,47 @@ from whoever it claims; it is not worth it while a key is all there is.
 
 Removing an extension removes what it stored with it.
 
+### Installing from a link
+
+A web page can hand the app a bundle to install:
+
+```
+com.ham2k.logger:///install_extension?url=https://example.org/my-ext.h2kext
+```
+
+Every edition of Ham2K Logger answers that scheme, so on a device with more
+than one installed the platform decides which one opens; the catalog keeps a
+plain download link beside its install button for that reason. The
+edition-specific `com.ham2k.logger.dev` / `.next` / `.prod` schemes exist
+but a link should not need them. The URL must be `https`, redirects are followed by hand and refused the
+moment one leaves `https`, and the consent screen names the host the bytes
+came from. Nothing is written until the operator agrees.
+
+### Installing from the catalog
+
+**Settings → Extensions → Catalog** lists what [catalog.ham2k.net](https://catalog.ham2k.net)
+publishes for this edition's channel, in the catalog's own order for the
+operator's callsign (`geo`, above). Install and Update go through the same consent screen as a
+file, over bytes that must hash to the sha256 the listing gives — a mismatch
+is refused before the zip is opened. A bundle that arrived this way is
+recorded as such (`extensionInstalledFrom`: host, sha256, version), and that
+record is what lets it carry a `ham2k-` key: the rule that refuses the prefix
+to a file stands, waived on every read only for a key whose record names
+`catalog.ham2k.net`, and cleared by an uninstall or by a file install of the
+same key. A key the app ships stays refused whatever the catalog says. The
+catalog's own bundle links (`…/api/v1/extensions/<key>/versions/<version>/bundle`)
+take this verified path when they arrive as a deep link; every other host
+takes the plain one above.
+
+At most once every six hours — on launch and on resume — the app asks the
+catalog whether anything installed has a newer release, and says so in the
+status bar and on the row; the notice comes down with the last update taken.
+It never installs unasked. A release the catalog has revoked is put on record
+(`extensionRevoked`: version and note) and stops loading on the spot,
+whatever the operator's own switch says — the row shows "Revoked" with the
+note and no switch, and the record dies with an install of another version
+or an uninstall.
+
 ## What is checked at install
 
 Beyond what the packer already refused:
@@ -269,6 +339,8 @@ Beyond what the packer already refused:
 - the key is not one the app ships, and does not begin `ham2k-`;
 - the `api` version is one this build speaks;
 - every `sharedDependencies` range is satisfied by what this build carries;
+- `geo`, if present, passes the packer's rules — the shape the matcher reads
+  and its vocabulary — applied again by `ExtensionGeo.validate`;
 - entry names are sanitised on extract, so `../` in one writes nothing.
 
 Each has its own message. A bundle that cannot be installed says why.

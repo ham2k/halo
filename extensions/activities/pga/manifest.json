@@ -13,6 +13,11 @@
     "poland",
     "activation"
   ],
+  "geo": {
+    "entities": [
+      "SP"
+    ]
+  },
   "hooks": [
     "activity",
     "adifFields",

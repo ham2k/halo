@@ -57,6 +57,7 @@ keep these tables complete, because they are what an audit greps against:
 | `switch_accounts_dialog.dart` — the challenge clock | Compared against the server's `challenge_expires_at` |
 | `peer_trust.dart` — `pairedAtMillis`, `lastSeenAtMillis` | Per-peer, and outlives the session that paired |
 | `extension_service.dart` — `extensionDisabledSince` | Persists; it gates a 7-day purge grace window |
+| `catalog_service.dart` — `catalogUpdateCheckedAt` | Persists; it throttles the unattended catalog check to once per six hours, and a travelled stamp would either spam the catalog or silence the check for the length of the offset |
 | `geoshape_service.dart` — the cached shape's stamp | Persists, and outlives the travel that wrote it |
 
 This is the case that bites hardest, and no bar on *running* sync ever covered
@@ -85,6 +86,7 @@ clock is the entire point of the feature.
 | `peer_service.dart` — beacon `lastSeenMillis` and the stale-peer cutoff | Both sides of one elapsed-time comparison |
 | `peer_ble_transport.dart` — the link keepalive cutoff (`PeerBleLink.now`), candidate `lastSeenMillis` and dial cooldowns, link uptime | Protocol timeouts and rate limiting a real radio. The keepalive's clock is behind a default argument so a test can drive it; the DEFAULT is the contract, and `peer_ble_transport_test.dart` pins it |
 | `weather_panel.dart` — fetch-attempt throttle | Rate limiting a real request |
+| `catalog_service.dart` — the listing cache's TTL | A staleness timeout mirroring the catalog's own `max-age`, which is real seconds; travelled, a listing fetched under `DEVTT` would expire at once or never |
 | `map_ready_watchdog.dart` — the visible-time the map's give-up horizon accumulates (`MapReadyWatchdog.now`) | Its remainder becomes a `Timer` duration. Behind a default argument so a test can put it on the same timeline as those timers; the DEFAULT is the contract, and `map_ready_watchdog_test.dart` pins it |
 
 A `Timer` fires on real time and knows nothing about travel, so any duration

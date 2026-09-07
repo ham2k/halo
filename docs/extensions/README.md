@@ -50,9 +50,21 @@ that imports it and calls `defineExtension`:
   "keywords": ["parks", "activation", "hunting"],
   "hooks": ["activity", "dataFile", "lookup", "ref:pota", "spots"],
   "domains": ["api.pota.app", "pota.app"],  // host.fetch allowlist
+  "geo": { "entities": ["K", "VE"] },       // where it is relevant; omit for
+                               // worldwide (see below)
   "translations": { "es": { "description": "Referencias de parques…" } }
 }
 ```
+
+`geo` says where the extension is relevant. The catalog ranks its listing by
+it for the operator's own callsign — and the Extensions panel's Catalog
+section shows the catalog's rows in that order — while nothing hides an
+extension over it. The build index carries it for the catalog's use; the
+panel does not rank the app's own extensions by it. Its four lists
+(`entities`, `countries`, `continents`, `ituRegions`) are allowlists: a
+missing or empty list does not gate, values within a list are ORed, and the
+lists are ANDed; case is the matcher's job, not the author's. They are the geo keys of HaLo's notices, rule for rule, and
+the packer's rules for them are in [distribution.md](distribution.md).
 
 ### Secrets
 

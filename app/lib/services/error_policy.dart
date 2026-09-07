@@ -18,7 +18,7 @@
 // docs/design/error-reporting.md is the overview.
 
 import 'dart:async' show TimeoutException;
-import 'dart:io' show FileSystemException, SocketException;
+import 'dart:io' show FileSystemException, IOException, SocketException;
 
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb, visibleForTesting;
 import 'package:flutter/services.dart' show PlatformException;
@@ -37,6 +37,7 @@ import 'package:http/http.dart' show ClientException;
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'connectivity_service.dart' show ConnectivityService;
+import 'catalog_service.dart' show CatalogUnreachable;
 import 'extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
@@ -307,6 +308,14 @@ class ErrorPolicy {
           'retries on its own schedule',
       disposition: ErrorDisposition.report,
       matches: _isHttpClientConnectionTransient,
+    ),
+    ErrorRule(
+      id: 'catalog-unreachable',
+      reason: 'the extension catalog did not answer (a connection failure or the request timeout) '
+          'on a check the operator did not ask for; the service reports it only as a failure '
+          'streak, so a dead catalog is seen in aggregate and a captive portal is not noticed',
+      disposition: ErrorDisposition.report,
+      matches: _isCatalogUnreachable,
     ),
     ErrorRule(
       id: 'map-offline',
@@ -716,6 +725,17 @@ class ErrorPolicy {
   /// ClientException there as a rejected CORS preflight, worth a same-call
   /// retry; a timeout is neither of those things).
   static bool _isHttpClientConnectionTransient(Object error, FlutterErrorDetails? details) => error is ClientException;
+
+  /// [CatalogUnreachable] wrapping the transport failure CatalogService
+  /// caught — a `ClientException`, the `TimeoutException` its own
+  /// `.timeout()` threw, or a `dart:io` [IOException] IOClient hands up
+  /// unwrapped (a TLS handshake refused, a socket reset). The wrapper is
+  /// what keeps this narrow: a bare TimeoutException stays loud everywhere
+  /// else (see [_isHttpClientConnectionTransient]), and a catalog response
+  /// that arrived and could not be read is never wrapped in it.
+  static bool _isCatalogUnreachable(Object error, FlutterErrorDetails? details) =>
+      error is CatalogUnreachable &&
+      (error.cause is ClientException || error.cause is TimeoutException || error.cause is IOException);
 
   /// A [MapError] stamped offline at arrival. The stamp is the whole match:
   /// with no network there is nothing a map backend can fetch, so every

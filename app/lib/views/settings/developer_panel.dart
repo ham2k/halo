@@ -83,6 +83,10 @@ class DeveloperPanel extends StatelessWidget {
             // and above the patch track because an author reaches for it far
             // more often.
             if (settings.developerMode) _ExtensionDevServerSection(services: services),
+            // Not behind the `catalog` experiment, unlike the panel's
+            // section: developer mode already gates it, and pointing the
+            // app at a local catalog is how the catalog itself is worked on.
+            if (settings.developerMode) _CatalogOverrideSection(services: services),
             // Shorebird over-the-air patch track (docs/releases.md §4.3). Only
             // shown when the Shorebird engine is actually present — i.e. a
             // `shorebird release` build, not a local/debug/web one — so it's
@@ -418,5 +422,88 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
           ],
         );
     }
+  }
+}
+
+/// Settings → Developer → Extension Catalog: read the catalog from another
+/// address — a local one, for working on the catalog itself. Only the
+/// address is typed here; CatalogService honours it under developer mode
+/// alone, and an empty field is the real catalog.
+class _CatalogOverrideSection extends StatefulWidget {
+  final HaLoServices services;
+
+  const _CatalogOverrideSection({required this.services});
+
+  @override
+  State<_CatalogOverrideSection> createState() => _CatalogOverrideSectionState();
+}
+
+class _CatalogOverrideSectionState extends State<_CatalogOverrideSection> {
+  late final TextEditingController _url = TextEditingController(text: widget.services.settings.catalogBaseUrl);
+  final _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    // Saved on leaving the field as well as on Enter: a developer who types
+    // an address and clicks straight into the Extensions panel expects it
+    // to be in force there.
+    _focus.addListener(() {
+      if (!_focus.hasFocus) unawaited(_save());
+    });
+  }
+
+  @override
+  void dispose() {
+    _focus.dispose();
+    _url.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final settings = widget.services.settings;
+    if (_url.text.trim() == settings.catalogBaseUrl) return;
+    await settings.setCatalogBaseUrl(_url.text);
+    // The cached listings belong to the previous catalog.
+    widget.services.catalog.invalidate();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final t = context.t.settings.developer;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SectionHeader(t.catalog),
+        _sectionBody(context, [
+          Padding(
+            padding: const EdgeInsets.only(bottom: Space.md),
+            child: Text(
+              t.catalogDescription,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
+          ),
+          TextField(
+            controller: _url,
+            focusNode: _focus,
+            autocorrect: false,
+            keyboardType: TextInputType.url,
+            decoration: InputDecoration(
+              labelText: t.catalogAddress,
+              hintText: t.catalogHint,
+              // Hand-built decorations render their hint at full opacity
+              // without this, which reads as a filled-in value.
+              hintStyle: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.38),
+              ),
+              border: const OutlineInputBorder(),
+              isDense: true,
+            ),
+            onSubmitted: (_) => unawaited(_save()),
+          ),
+        ]),
+      ],
+    );
   }
 }

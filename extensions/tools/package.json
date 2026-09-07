@@ -18,13 +18,15 @@
   },
   "bin": {
     "h2kext-init": "./h2kext-init.mjs",
-    "h2kext-pack": "./h2kext-pack.mjs"
+    "h2kext-pack": "./h2kext-pack.mjs",
+    "h2kext-publish": "./h2kext-publish.mjs"
   },
   "files": [
     "h2kext.mjs",
     "h2kext-build.mjs",
     "h2kext-init.mjs",
     "h2kext-pack.mjs",
+    "h2kext-publish.mjs",
     "README.md"
   ],
   "engines": {

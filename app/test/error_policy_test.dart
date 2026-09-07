@@ -11,7 +11,7 @@
 // where, what the operator sees) is error_reporting_test.dart's job.
 
 import 'dart:async' show TimeoutException;
-import 'dart:io' show FileSystemException, SocketException;
+import 'dart:io' show FileSystemException, HandshakeException, SocketException;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
@@ -21,6 +21,7 @@ import 'package:halo_extension_host/halo_extension_host.dart'
 import 'package:http/http.dart' show ClientException;
 
 import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure;
+import 'package:ham2k_logger/services/catalog_service.dart' show CatalogUnreachable;
 // The io implementations directly, as cat_ic705_network_test.dart does: the
 // conditional export resolves to the web stub under the analyzer, and these
 // exceptions — the concrete CatUnreachable implementations this rule has to
@@ -533,6 +534,35 @@ void main() {
       final decision = ErrorPolicy.decide(ExtensionHostException('LoFi request failed: HTTP 503'));
       expect(decision.rule, isNull);
       expect(decision.disposition, ErrorDisposition.notify);
+    });
+  });
+
+  group('catalog unreachable', () {
+    // CatalogService reports a dead catalog through a failure streak, and the
+    // streak's third strike lands here. Its own wrapper type is what lets a
+    // TimeoutException stay quiet on THIS path while the bare one stays loud
+    // everywhere else (the sibling test in the http-client group).
+    final url = Uri.parse('https://catalog.ham2k.net/api/v1/updates');
+
+    test('a connection failure, a timeout, or a dart:io failure on the catalog is reported, not noticed', () {
+      // IOClient hands a TLS handshake or socket failure up unwrapped, so
+      // the cause is not always a ClientException; matched on
+      // ClientException alone, a refused handshake on the six-hourly check
+      // would notify the operator about a server they never asked about.
+      for (final cause in [
+        ClientException('connection refused'),
+        TimeoutException('5s'),
+        HandshakeException('tls'),
+        const SocketException('reset'),
+      ]) {
+        final decision = ErrorPolicy.decide(CatalogUnreachable(url, cause));
+        expect(decision.rule?.id, 'catalog-unreachable', reason: '$cause');
+        expect(decision.disposition, ErrorDisposition.report, reason: '$cause');
+      }
+    });
+
+    test('the wrapper does not launder anything else — a non-transport cause stays loud', () {
+      expect(dispositionFor(CatalogUnreachable(url, const FormatException('not json'))), ErrorDisposition.notify);
     });
   });
 

@@ -195,6 +195,22 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String downloadFailed({required Object source, required Object status}) => '${source} respondió ${status} para esa extensión.';
 	@override String get downloadTooLarge => 'Esa descarga es demasiado grande para ser una extensión.';
 	@override String get downloadNotSecure => 'Esa descarga redirigió a un sitio no seguro.';
+	@override String get catalogSection => 'Catálogo';
+	@override String get catalogLoading => 'Cargando el catálogo…';
+	@override String get catalogUnreachable => 'Catálogo inaccesible';
+	@override String get builtIn => 'Incluida';
+	@override String get updateAvailableBadge => 'Actualización disponible';
+	@override String get updatesAvailableTitle => 'Actualizaciones de extensiones';
+	@override String updateAvailableFor({required Object name}) => 'Hay una actualización disponible para ${name}.';
+	@override String updatesAvailable({required Object count}) => 'Hay ${count} actualizaciones de extensiones disponibles.';
+	@override String revokedTitle({required Object name}) => 'Se retiró ${name}';
+	@override String get revokedBody => 'El catálogo retiró esta versión, así que fue desactivada.';
+	@override String get downloadHashMismatch => 'Esa descarga no es la extensión que describe el catálogo.';
+	@override String catalogVersionUnknown({required Object version, required Object key}) => 'El catálogo no tiene la versión ${version} de ${key}.';
+	@override String get catalogLinkUnknown => 'Ese enlace del catálogo no indica una versión de extensión.';
+	@override String get revokedBadge => 'Retirada';
+	@override String get downloadNotHttps => 'Esa descarga no usa una conexión segura.';
+	@override String downloadUnreachable({required Object source}) => 'No se pudo contactar a ${source} para esa extensión.';
 }
 
 // Path: home
@@ -2079,6 +2095,10 @@ class _Translations$settings$developer$es extends Translations$settings$develope
 		other: '${count} extensiones con errores de compilación',
 	);
 	@override String get extDevServerNoSecrets => 'Las extensiones de desarrollo nunca reciben claves de compilación, así que las funciones que las necesitan quedan inactivas.';
+	@override String get catalog => 'Catálogo de extensiones';
+	@override String get catalogDescription => 'Leer el catálogo desde otro servidor — uno local mientras se trabaja en el catálogo mismo. Vacío significa catalog.ham2k.net.';
+	@override String get catalogAddress => 'Dirección del catálogo';
+	@override String get catalogHint => 'http://localhost:8787';
 }
 
 // Path: settings.about
@@ -2970,6 +2990,22 @@ extension on TranslationsEs {
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} respondió ${status} para esa extensión.',
 			'extensionsPanel.downloadTooLarge' => 'Esa descarga es demasiado grande para ser una extensión.',
 			'extensionsPanel.downloadNotSecure' => 'Esa descarga redirigió a un sitio no seguro.',
+			'extensionsPanel.catalogSection' => 'Catálogo',
+			'extensionsPanel.catalogLoading' => 'Cargando el catálogo…',
+			'extensionsPanel.catalogUnreachable' => 'Catálogo inaccesible',
+			'extensionsPanel.builtIn' => 'Incluida',
+			'extensionsPanel.updateAvailableBadge' => 'Actualización disponible',
+			'extensionsPanel.updatesAvailableTitle' => 'Actualizaciones de extensiones',
+			'extensionsPanel.updateAvailableFor' => ({required Object name}) => 'Hay una actualización disponible para ${name}.',
+			'extensionsPanel.updatesAvailable' => ({required Object count}) => 'Hay ${count} actualizaciones de extensiones disponibles.',
+			'extensionsPanel.revokedTitle' => ({required Object name}) => 'Se retiró ${name}',
+			'extensionsPanel.revokedBody' => 'El catálogo retiró esta versión, así que fue desactivada.',
+			'extensionsPanel.downloadHashMismatch' => 'Esa descarga no es la extensión que describe el catálogo.',
+			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'El catálogo no tiene la versión ${version} de ${key}.',
+			'extensionsPanel.catalogLinkUnknown' => 'Ese enlace del catálogo no indica una versión de extensión.',
+			'extensionsPanel.revokedBadge' => 'Retirada',
+			'extensionsPanel.downloadNotHttps' => 'Esa descarga no usa una conexión segura.',
+			'extensionsPanel.downloadUnreachable' => ({required Object source}) => 'No se pudo contactar a ${source} para esa extensión.',
 			'home.title' => 'Registrador Portátil',
 			'home.newOperation' => 'Nueva operación',
 			'home.stationCallsign' => 'Indicativo de la estación',
@@ -3389,6 +3425,8 @@ extension on TranslationsEs {
 			'activitiesView.reference' => 'Referencia',
 			'activitiesView.invalidReference' => 'Referencia no válida',
 			'activitiesView.duplicateReference' => 'Ya añadida',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.searchHint' => 'Busca por nombre, referencia o cualquier otra cosa…',
 			'activitiesView.noSuggestions' => 'Sin coincidencias',
 			'activitiesView.noSuggestionsHint' => 'Busca por nombre o número de referencia arriba',
@@ -3405,8 +3443,6 @@ extension on TranslationsEs {
 			'activitiesView.locationSettingsUnavailable' => 'Permite el acceso a la ubicación en los ajustes del sistema',
 			'activitiesView.locationGrantRefused' => 'Sigue sin ubicación — el sistema volvió a negarlo',
 			'activitiesView.searchUnavailableTitle' => 'Búsqueda de actividades no disponible',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.searchUnavailableReason' => 'Ninguna extensión de actividades pudo responder. Inténtalo de nuevo en un momento.',
 			'activitiesView.emptySheet' => 'Usa las sugerencias y la búsqueda abajo para añadir una',
 			'activitiesView.exports' => 'Exportar',
@@ -3903,6 +3939,8 @@ extension on TranslationsEs {
 			'settings.station.edit' => 'Editar equipo',
 			'settings.station.name' => 'Nombre',
 			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transport' => 'Conexión',
 			'settings.station.transportDescription' => 'Cómo llega la aplicación a esta radio. Cada una tiene sus propios ajustes.',
 			'settings.station.host' => 'Dirección',
@@ -3919,8 +3957,6 @@ extension on TranslationsEs {
 			'settings.station.report' => 'Informar',
 			'settings.station.reportTitle' => 'Informar sobre esta radio',
 			'settings.station.reportIntro' => 'Cuéntanos qué radio es realmente y qué tal fue. Tu informe se convierte en una ficha que lee el equipo de Ham2K, y lo que escribas sobre cómo hacerla funcionar puede acabar ayudando al siguiente operador con la misma radio.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportManufacturer' => 'Fabricante',
 			'settings.station.reportManufacturerDescription' => 'Quién la fabrica — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'Hace falta un fabricante',
@@ -4215,6 +4251,10 @@ extension on TranslationsEs {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Última recarga: ${key} a las ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} extensión con errores de compilación', other: '${count} extensiones con errores de compilación', ), 
 			'settings.developer.extDevServerNoSecrets' => 'Las extensiones de desarrollo nunca reciben claves de compilación, así que las funciones que las necesitan quedan inactivas.',
+			'settings.developer.catalog' => 'Catálogo de extensiones',
+			'settings.developer.catalogDescription' => 'Leer el catálogo desde otro servidor — uno local mientras se trabaja en el catálogo mismo. Vacío significa catalog.ham2k.net.',
+			'settings.developer.catalogAddress' => 'Dirección del catálogo',
+			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.about.notices' => 'Avisos y mensajes',
 			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			'settings.about.releaseNotes' => 'Notas de la versión',
@@ -4413,6 +4453,8 @@ extension on TranslationsEs {
 			'switchAccounts.enterEmailPrompt' => 'Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.',
 			'switchAccounts.emailAddress' => 'Dirección de email',
 			'switchAccounts.linkAccount' => 'Vincular cuenta',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.copiedCode' => 'Código copiado al portapapeles',
 			'switchAccounts.copyCode' => 'Copiar código',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:',
@@ -4433,8 +4475,6 @@ extension on TranslationsEs {
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación', other: '${count} operaciones', ), 
 			'adifImport.title' => 'Importar QSOs desde ADIF',
 			'adifImport.reading' => ({required Object filename}) => 'Leyendo ${filename}…',
-			_ => null,
-		} ?? switch (path) {
 			'adifImport.dropHint' => 'Suelta un archivo ADIF para importarlo',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en este archivo', other: '${formatted} QSOs en este archivo', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} ya está en tu registro', other: '${formatted} ya están en tu registro', ), 

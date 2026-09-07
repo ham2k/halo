@@ -350,6 +350,54 @@ class Translations$extensionsPanel$en {
 
 	/// en: 'That download redirected somewhere insecure.'
 	String get downloadNotSecure => 'That download redirected somewhere insecure.';
+
+	/// en: 'Catalog'
+	String get catalogSection => 'Catalog';
+
+	/// en: 'Loading the catalog…'
+	String get catalogLoading => 'Loading the catalog…';
+
+	/// en: 'Catalog unreachable'
+	String get catalogUnreachable => 'Catalog unreachable';
+
+	/// en: 'Built in'
+	String get builtIn => 'Built in';
+
+	/// en: 'Update available'
+	String get updateAvailableBadge => 'Update available';
+
+	/// en: 'Extension updates'
+	String get updatesAvailableTitle => 'Extension updates';
+
+	/// en: 'An update is available for ${name}.'
+	String updateAvailableFor({required Object name}) => 'An update is available for ${name}.';
+
+	/// en: '${count} extension updates are available.'
+	String updatesAvailable({required Object count}) => '${count} extension updates are available.';
+
+	/// en: '${name} was withdrawn'
+	String revokedTitle({required Object name}) => '${name} was withdrawn';
+
+	/// en: 'The catalog withdrew this version, so it has been disabled.'
+	String get revokedBody => 'The catalog withdrew this version, so it has been disabled.';
+
+	/// en: 'That download is not the extension the catalog described.'
+	String get downloadHashMismatch => 'That download is not the extension the catalog described.';
+
+	/// en: 'The catalog has no version ${version} of ${key}.'
+	String catalogVersionUnknown({required Object version, required Object key}) => 'The catalog has no version ${version} of ${key}.';
+
+	/// en: 'That catalog link does not name an extension version.'
+	String get catalogLinkUnknown => 'That catalog link does not name an extension version.';
+
+	/// en: 'Revoked'
+	String get revokedBadge => 'Revoked';
+
+	/// en: 'That download is not over a secure connection.'
+	String get downloadNotHttps => 'That download is not over a secure connection.';
+
+	/// en: '${source} could not be reached for that extension.'
+	String downloadUnreachable({required Object source}) => '${source} could not be reached for that extension.';
 }
 
 // Path: home
@@ -4535,6 +4583,18 @@ class Translations$settings$developer$en {
 
 	/// en: 'Dev extensions never receive build secrets, so features that need one are inactive.'
 	String get extDevServerNoSecrets => 'Dev extensions never receive build secrets, so features that need one are inactive.';
+
+	/// en: 'Extension Catalog'
+	String get catalog => 'Extension Catalog';
+
+	/// en: 'Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.'
+	String get catalogDescription => 'Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.';
+
+	/// en: 'Catalog address'
+	String get catalogAddress => 'Catalog address';
+
+	/// en: 'http://localhost:8787'
+	String get catalogHint => 'http://localhost:8787';
 }
 
 // Path: settings.about
@@ -6196,6 +6256,22 @@ extension on Translations {
 			'extensionsPanel.downloadFailed' => ({required Object source, required Object status}) => '${source} answered ${status} for that extension.',
 			'extensionsPanel.downloadTooLarge' => 'That download is far too large to be an extension.',
 			'extensionsPanel.downloadNotSecure' => 'That download redirected somewhere insecure.',
+			'extensionsPanel.catalogSection' => 'Catalog',
+			'extensionsPanel.catalogLoading' => 'Loading the catalog…',
+			'extensionsPanel.catalogUnreachable' => 'Catalog unreachable',
+			'extensionsPanel.builtIn' => 'Built in',
+			'extensionsPanel.updateAvailableBadge' => 'Update available',
+			'extensionsPanel.updatesAvailableTitle' => 'Extension updates',
+			'extensionsPanel.updateAvailableFor' => ({required Object name}) => 'An update is available for ${name}.',
+			'extensionsPanel.updatesAvailable' => ({required Object count}) => '${count} extension updates are available.',
+			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} was withdrawn',
+			'extensionsPanel.revokedBody' => 'The catalog withdrew this version, so it has been disabled.',
+			'extensionsPanel.downloadHashMismatch' => 'That download is not the extension the catalog described.',
+			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'The catalog has no version ${version} of ${key}.',
+			'extensionsPanel.catalogLinkUnknown' => 'That catalog link does not name an extension version.',
+			'extensionsPanel.revokedBadge' => 'Revoked',
+			'extensionsPanel.downloadNotHttps' => 'That download is not over a secure connection.',
+			'extensionsPanel.downloadUnreachable' => ({required Object source}) => '${source} could not be reached for that extension.',
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => 'New operation',
 			'home.stationCallsign' => 'Station callsign',
@@ -6615,6 +6691,8 @@ extension on Translations {
 			'activitiesView.reference' => 'Reference',
 			'activitiesView.invalidReference' => 'Not a valid reference',
 			'activitiesView.duplicateReference' => 'Already added',
+			_ => null,
+		} ?? switch (path) {
 			'activitiesView.searchHint' => 'Search by name, reference or anything else…',
 			'activitiesView.noSuggestions' => 'No matches',
 			'activitiesView.noSuggestionsHint' => 'Search by reference name or number above',
@@ -6631,8 +6709,6 @@ extension on Translations {
 			'activitiesView.locationSettingsUnavailable' => 'Allow location access in your system settings',
 			'activitiesView.locationGrantRefused' => 'Still no location — the system said no again',
 			'activitiesView.searchUnavailableTitle' => 'Activity search unavailable',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.searchUnavailableReason' => 'No activity extension could answer. Try again in a moment.',
 			'activitiesView.emptySheet' => 'Use suggestions & search below to add one',
 			'activitiesView.exports' => 'Exports',
@@ -7129,6 +7205,8 @@ extension on Translations {
 			'settings.station.edit' => 'Edit equipment',
 			'settings.station.name' => 'Name',
 			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.station.transport' => 'Connection',
 			'settings.station.transportDescription' => 'How the app reaches this radio. Each one has its own settings.',
 			'settings.station.host' => 'Address',
@@ -7145,8 +7223,6 @@ extension on Translations {
 			'settings.station.report' => 'Report',
 			'settings.station.reportTitle' => 'Report this radio',
 			'settings.station.reportIntro' => 'Tell us what radio this really is and how it went. Your report becomes a card the Ham2K team reads, and what you write about getting it working may end up helping the next operator with the same rig.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.reportManufacturer' => 'Manufacturer',
 			'settings.station.reportManufacturerDescription' => 'Who makes it — Icom, Yaesu, Kenwood, Elecraft…',
 			'settings.station.reportManufacturerRequired' => 'A manufacturer is required',
@@ -7449,6 +7525,10 @@ extension on Translations {
 			'settings.developer.extDevServerLastReload' => ({required Object key, required Object time}) => 'Last reload: ${key} at ${time}',
 			'settings.developer.extDevServerBuildErrors' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension failing to build', other: '${count} extensions failing to build', ), 
 			'settings.developer.extDevServerNoSecrets' => 'Dev extensions never receive build secrets, so features that need one are inactive.',
+			'settings.developer.catalog' => 'Extension Catalog',
+			'settings.developer.catalogDescription' => 'Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.',
+			'settings.developer.catalogAddress' => 'Catalog address',
+			'settings.developer.catalogHint' => 'http://localhost:8787',
 			'settings.about.notices' => 'Notices & Messages',
 			'settings.about.noticesDescription' => 'Announcements and status messages',
 			'settings.about.releaseNotes' => 'Release Notes',
@@ -7639,6 +7719,8 @@ extension on Translations {
 			'confirmDevice.needsSyncText' => 'Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.',
 			'confirmDevice.malformedRequest' => 'The sync server sent a request this app could not read. Ask the other device to try again.',
 			'confirmDevice.linkIt' => 'Link Device',
+			_ => null,
+		} ?? switch (path) {
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
 			'switchAccounts.otherAccounts' => 'Other accounts',
@@ -7659,8 +7741,6 @@ extension on Translations {
 			'switchAccounts.resendEmail' => 'Resend email',
 			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
 			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.emailRequired' => 'Enter an email address to link.',
 			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'No account found for ${email}.',
 			'switchAccounts.serverRejected' => ({required Object error}) => 'The sync server rejected the request: ${error}',

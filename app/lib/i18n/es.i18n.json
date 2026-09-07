@@ -84,7 +84,23 @@
     "dropOneOnly": "Suelta una extensión a la vez.",
     "downloadFailed": "${source} respondió ${status} para esa extensión.",
     "downloadTooLarge": "Esa descarga es demasiado grande para ser una extensión.",
-    "downloadNotSecure": "Esa descarga redirigió a un sitio no seguro."
+    "downloadNotSecure": "Esa descarga redirigió a un sitio no seguro.",
+    "catalogSection": "Catálogo",
+    "catalogLoading": "Cargando el catálogo…",
+    "catalogUnreachable": "Catálogo inaccesible",
+    "builtIn": "Incluida",
+    "updateAvailableBadge": "Actualización disponible",
+    "updatesAvailableTitle": "Actualizaciones de extensiones",
+    "updateAvailableFor": "Hay una actualización disponible para ${name}.",
+    "updatesAvailable": "Hay ${count} actualizaciones de extensiones disponibles.",
+    "revokedTitle": "Se retiró ${name}",
+    "revokedBody": "El catálogo retiró esta versión, así que fue desactivada.",
+    "downloadHashMismatch": "Esa descarga no es la extensión que describe el catálogo.",
+    "catalogVersionUnknown": "El catálogo no tiene la versión ${version} de ${key}.",
+    "catalogLinkUnknown": "Ese enlace del catálogo no indica una versión de extensión.",
+    "revokedBadge": "Retirada",
+    "downloadNotHttps": "Esa descarga no usa una conexión segura.",
+    "downloadUnreachable": "No se pudo contactar a ${source} para esa extensión."
   },
   "home": {
     "title": "Registrador Portátil",
@@ -1578,7 +1594,11 @@
         "one": "${count} extensión con errores de compilación",
         "other": "${count} extensiones con errores de compilación"
       },
-      "extDevServerNoSecrets": "Las extensiones de desarrollo nunca reciben claves de compilación, así que las funciones que las necesitan quedan inactivas."
+      "extDevServerNoSecrets": "Las extensiones de desarrollo nunca reciben claves de compilación, así que las funciones que las necesitan quedan inactivas.",
+      "catalog": "Catálogo de extensiones",
+      "catalogDescription": "Leer el catálogo desde otro servidor — uno local mientras se trabaja en el catálogo mismo. Vacío significa catalog.ham2k.net.",
+      "catalogAddress": "Dirección del catálogo",
+      "catalogHint": "http://localhost:8787"
     },
     "about": {
       "notices": "Avisos y mensajes",

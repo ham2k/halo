@@ -19,6 +19,11 @@
     "contest",
     "cabrillo"
   ],
+  "geo": {
+    "entities": [
+      "LA"
+    ]
+  },
   "hooks": ["activity", "adifFields", "export", "ref:nrrl-nfd", "scoring"],
   "translations": {
     "es": {

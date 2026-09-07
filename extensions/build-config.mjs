@@ -17,6 +17,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { buildOptionsFor as extensionBuildOptions } from './tools/h2kext-build.mjs'
+import { validateGeo } from './tools/h2kext.mjs'
 
 export const root = dirname(fileURLToPath(import.meta.url))
 export const outDir = resolve(root, '../app/assets/extensions')
@@ -90,9 +91,12 @@ export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((
 // drift. index.json carries the manifest fields because the Extensions
 // settings panel must list DISABLED extensions, whose bundles are never
 // evaluated — the metadata has to be readable without running any JS.
-// Versions are NOT copied into index.json (they stay runtime-only, via the
-// kernel's listExtensions). Manifests without a `category` are core:
-// always enabled, never listed in the panel.
+// `version` is copied too, for the same reason: an extension that is
+// installed but disabled has no running bundle for the kernel's
+// listExtensions to report, and an update check needs its version anyway.
+// `geo` (where the extension is relevant) likewise, so the panel and the
+// catalog can rank a disabled entry. Manifests without a `category` are
+// core: always enabled, never listed in the panel.
 export const bundles = [
   { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
   { key: 'adif', entry: 'core/adif/src/index.ts', kind: 'extension' },
@@ -211,6 +215,14 @@ export function validateManifest(manifest, bundleKey, knownExperiments, manifest
         `manifest for '${bundleKey}' gates on experiment '${experiment}', which is not a key in app/experiments.yaml (${manifestPath})`)
     }
   }
+  // `geo` is copied into index.json as-is and read there by the host's
+  // matcher, which treats a key it cannot parse as "does not gate" — so a
+  // malformed one would ship as worldwide. The rules are the format's
+  // (tools/h2kext.mjs), imported rather than restated.
+  const geoProblems = validateGeo(manifest.geo)
+  if (geoProblems.length) {
+    throw new Error(`manifest for '${bundleKey}' has an invalid 'geo': ${geoProblems.join('; ')} (${manifestPath})`)
+  }
 }
 
 /// Loads and validates every extension's manifest, attaching it to the bundle
@@ -260,10 +272,12 @@ export function indexEntryFor({ key, manifest: m }) {
   return {
     key,
     file: `${key}.js`,
+    version: m.version,
     domains: m.domains ?? [],
     ...(m.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),
     ...(m.requiresLocation ? { requiresLocation: true } : {}),
     ...(m.experiments?.length ? { experiments: m.experiments } : {}),
+    ...(m.geo ? { geo: m.geo } : {}),
     core: !m.category,
     ...(m.category
       ? {

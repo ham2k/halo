@@ -335,6 +335,18 @@ Future<HaLoServices> bootstrap({
     debugPrint('[boot] failed to initialize data files: $e');
   }));
 
+  // The unattended catalog update check, once the runtime is up — on its own
+  // chain like the flags refresh below, not at the tail of the data-files one:
+  // a data-file step throwing must not leave the check unregistered for the
+  // session, and a check the operator did not ask for must not delay a step
+  // they did. It asks only about the installed store's extensions, and the
+  // service keeps a dead catalog to a console line and a failure streak.
+  unawaited(extensions.start().then((_) {
+    services.catalogUpdateCheck.start();
+  }).catchError((Object e) {
+    debugPrint('[boot] failed to start the catalog update check: $e');
+  }));
+
   // Settled BEFORE the flags refresh below, not merely before `return`: the
   // notice environment reads this global to report `appCodePush`, and a
   // `codePushes` rule that evaluated against a not-yet-resolved value would

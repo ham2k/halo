@@ -24,6 +24,7 @@ import '../config/dev_flags.dart';
 import '../i18n/strings.g.dart';
 import '../config/user_agent.dart';
 import 'error_reporting_service.dart';
+import 'extension_store_settings.dart';
 
 const _uuidGenerator = Uuid();
 
@@ -116,7 +117,7 @@ class CwMessageSet {
   }
 }
 
-class SettingsService extends ChangeNotifier implements SyncSettings {
+class SettingsService extends ChangeNotifier with ExtensionStoreSettings implements SyncSettings {
   static const _themeModeKey = 'themeMode';
   static const _profilesKey = 'profiles';
   static const _activeProfileKey = 'activeProfile';
@@ -226,41 +227,11 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
             iOptions: IOSOptions(accountName: 'Ham2K Logger'),
           );
 
+  @override
   SharedPreferences get prefs => _prefs;
 
   static Future<SettingsService> load() async {
     return SettingsService(await SharedPreferences.getInstance());
-  }
-
-  /// Per-extension enable/disable overrides ({key: bool}), consulted against
-  /// each extension's `enabledByDefault` from the build index (see
-  /// ExtensionService.isExtensionEnabled). Deliberately a TOP-LEVEL pref,
-  /// outside the `settings.*` group system: it is app infrastructure, not a
-  /// setting — and being top-level keeps it out of the extension-facing
-  /// getSettings view ([extensionSettingsGroups] only scans group keys).
-  static const _extensionOverridesKey = 'extensionOverrides';
-
-  Map<String, bool> get extensionOverrides =>
-      {for (final e in _jsonMapPref(_extensionOverridesKey).entries) if (e.value is bool) e.key: e.value as bool};
-
-  Future<void> setExtensionOverrides(Map<String, bool> overrides) async {
-    await _prefs.setString(_extensionOverridesKey, jsonEncode(overrides));
-    notifyListeners();
-  }
-
-  /// When each currently-disabled extension was disabled ({key: epochMillis}).
-  /// A disabled extension's downloaded data (data files) is KEPT so a
-  /// re-enable is instant; only after it's been disabled for the grace
-  /// period does DataFileManager purge that data. Stamped/cleared by
-  /// ExtensionService as extensions toggle; an entry vanishes on re-enable.
-  static const _extensionDisabledSinceKey = 'extensionDisabledSince';
-
-  Map<String, int> get extensionDisabledSince =>
-      {for (final e in _jsonMapPref(_extensionDisabledSinceKey).entries) if (e.value is int) e.key: e.value as int};
-
-  Future<void> setExtensionDisabledSince(Map<String, int> disabledSince) async {
-    await _prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
-    notifyListeners();
   }
 
   // ---------------------------------------------------------------------
@@ -280,7 +251,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   String _groupPrefsKey(String group) => 'settings.$group';
 
-  Map<String, dynamic> settingsGroup(String group) => _jsonMapPref(_groupPrefsKey(group));
+  Map<String, dynamic> settingsGroup(String group) => jsonMapPref(_groupPrefsKey(group));
 
   dynamic settingValue(String group, String key) => settingsGroup(group)[key];
 
@@ -303,7 +274,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
     const prefix = 'settings.extension_';
     return {
       for (final prefsKey in _prefs.getKeys())
-        if (prefsKey.startsWith(prefix)) prefsKey.substring('settings.'.length): _jsonMapPref(prefsKey),
+        if (prefsKey.startsWith(prefix)) prefsKey.substring('settings.'.length): jsonMapPref(prefsKey),
     };
   }
 
@@ -325,16 +296,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
         await _prefs.remove(prefsKey);
       }
     }
-    final overrides = extensionOverrides;
-    if (overrides.remove(key) != null) {
-      await _prefs.setString(_extensionOverridesKey, jsonEncode(overrides));
-    }
-    // Otherwise a reinstall inherits a disabled-since stamp from an extension
-    // that no longer exists, and the data purge counts from the wrong day.
-    final disabledSince = extensionDisabledSince;
-    if (disabledSince.remove(key) != null) {
-      await _prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
-    }
+    await forgetExtensionRecords(key);
     notifyListeners();
   }
 
@@ -379,7 +341,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// read profile data through [activeProfile] rather than a scalar pref.
   static const defaultProfileId = 'default';
 
-  Map<String, dynamic> get _profilesData => _jsonMapPref(_profilesKey);
+  Map<String, dynamic> get _profilesData => jsonMapPref(_profilesKey);
 
   /// Which profile is active — the default profile until multi-profile
   /// support lands.
@@ -738,7 +700,8 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   /// A JSON map stored under one prefs key. Corrupt or missing data reads
   /// as empty — callers own their defaults.
-  Map<String, dynamic> _jsonMapPref(String key) {
+  @override
+  Map<String, dynamic> jsonMapPref(String key) {
     try {
       // getString INSIDE the try, not before it: it is a cast over the
       // plugin's cache, so a prefs file holding a number (or an object) under
@@ -756,7 +719,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// overrides) — see the design note in DESIGN.md §6: this is a handful of
   /// scalars, not per-row data, so it lives here rather than in a drift
   /// table.
-  Map<String, dynamic> get syncState => _jsonMapPref(_syncStateKey);
+  Map<String, dynamic> get syncState => jsonMapPref(_syncStateKey);
 
   Future<void> setSyncState(Map<String, dynamic> state) async {
     await _prefs.setString(_syncStateKey, jsonEncode(state));
@@ -766,7 +729,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// The Spots Panel's persisted band/mode/age/sources/continents/sort/
   /// group filters — device-wide, like [syncState], for the same reason:
   /// a handful of viewing-preference scalars, not per-row data.
-  Map<String, dynamic> get spottingFilters => _jsonMapPref(_spottingFiltersKey);
+  Map<String, dynamic> get spottingFilters => jsonMapPref(_spottingFiltersKey);
 
   Future<void> setSpottingFilters(Map<String, dynamic> filters) async {
     await _prefs.setString(_spottingFiltersKey, jsonEncode(filters));
@@ -801,7 +764,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// physical equipment is per-shack. Only what the user configured is
   /// stored — nothing about a live connection, so a stale "connected" can't
   /// survive a restart and lie about the radio.
-  Map<String, dynamic> get stationEquipment => _jsonMapPref(_stationEquipmentKey);
+  Map<String, dynamic> get stationEquipment => jsonMapPref(_stationEquipmentKey);
 
   Future<void> setStationEquipment(Map<String, dynamic> equipment) async {
     await _prefs.setString(_stationEquipmentKey, jsonEncode(equipment));
@@ -812,7 +775,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// `{enabled: bool, firstEnabledAtMillis: int, lastDisabledAtMillis: int}`.
   /// Entries whose definition has since left the catalog are deliberately
   /// KEPT (never pruned) — a returning experiment picks its old state up.
-  Map<String, dynamic> get experimentStates => _jsonMapPref(_experimentsKey);
+  Map<String, dynamic> get experimentStates => jsonMapPref(_experimentsKey);
 
   bool experimentEnabled(String key) {
     final state = experimentStates[key];
@@ -860,7 +823,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// toward (`.newOperation` counts operations opened, not times a nudge
   /// showed) it's whatever [recordOnboardingShown] is called for. A missing
   /// entry reads as never shown (count 0).
-  Map<String, dynamic> get onboardingStates => _jsonMapPref(_onboardingKey);
+  Map<String, dynamic> get onboardingStates => jsonMapPref(_onboardingKey);
 
   int onboardingShownCount(String flow) {
     final state = onboardingStates[flow];
@@ -922,7 +885,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// null. Cached because layouts read this from build methods that rerun
   /// on every window-resize frame; only [setLayoutDimension] changes it.
   double? layoutDimension(String key) {
-    final value = (_layoutCache ??= _jsonMapPref(_layoutKey))[key];
+    final value = (_layoutCache ??= jsonMapPref(_layoutKey))[key];
     return value is num ? value.toDouble() : null;
   }
 
@@ -931,7 +894,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// A structured layout value (the dock-layout prototype's arrangement
   /// tree) riding in the same per-key layout map as the scalar dimensions.
   Map<String, dynamic>? layoutData(String key) {
-    final value = (_layoutCache ??= _jsonMapPref(_layoutKey))[key];
+    final value = (_layoutCache ??= jsonMapPref(_layoutKey))[key];
     return value is Map<String, dynamic> ? value : null;
   }
 
@@ -940,7 +903,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
   /// The one writer of the layout map: cache first (build methods read the
   /// cache synchronously), then persist the whole map, then notify.
   Future<void> _setLayoutValue(String key, Object value) async {
-    final updated = {...(_layoutCache ??= _jsonMapPref(_layoutKey)), key: value};
+    final updated = {...(_layoutCache ??= jsonMapPref(_layoutKey)), key: value};
     _layoutCache = updated;
     await _prefs.setString(_layoutKey, jsonEncode(updated));
     notifyListeners();

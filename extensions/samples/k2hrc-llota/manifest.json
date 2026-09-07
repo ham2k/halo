@@ -12,6 +12,7 @@
   "keywords": ["lakes", "activation", "hunting", "sample"],
   "hooks": ["activity", "adifFields", "adifImport", "dataFile", "ref:k2hrcLlota", "ref:k2hrcLlotaActivation", "scoring"],
   "domains": ["llota.app"],
+  "geo": { "continents": ["SA"] },
   "sharedDependencies": {
     "@ham2k/lib-callsigns": "^1.0.0",
     "@ham2k/lib-country-files": "^1.0.0",

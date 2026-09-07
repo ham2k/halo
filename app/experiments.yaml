@@ -81,3 +81,17 @@ experiments:
     description: Show a screen or window from one of your other devices in a panel.
     aliases: [screens, screenshare]
     private: true
+
+  # The extension catalog: the Catalog section of Manage Extensions — browse,
+  # install and update from catalog.ham2k.net — and the unattended update
+  # check behind its "Update available" badge and notice (the gate sits at
+  # `CatalogUpdateCheck.check`, so nothing is asked and nothing is stamped).
+  #
+  # Gated because the catalog is not live yet: without the gate the section
+  # reads "Catalog unreachable" to every tester, and the check asks a host
+  # with nothing to say every six hours. Outside the gate, on purpose: a
+  # catalog link opened by hand (deep_link_router.dart) and the Developer
+  # address field (developer_panel.dart) — each says why.
+  - key: catalog
+    name: Extension Catalog
+    description: Browse, install and update extensions from catalog.ham2k.net in Manage Extensions.

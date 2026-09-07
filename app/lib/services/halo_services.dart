@@ -35,6 +35,7 @@ import '../views/notice_actions.dart';
 import '../config/experiments.dart';
 import '../config/secrets.dart';
 
+import 'catalog_service.dart';
 import 'deep_link_service.dart';
 import 'export_service.dart';
 import 'connectivity_service.dart';
@@ -521,17 +522,41 @@ class HaLoServices {
   /// via [setOperatorCall] — not per operation. The callsign is annotated
   /// through the extension runtime's offline lookup to derive the DXCC entity
   /// used to pick per-entity/per-call flag files.
-  late final FlagsService flags = FlagsService(
+  /// Injectable like [_exportsOverride]: the real one fetches from the flags
+  /// server on every refresh, and a widget test of what the operator's
+  /// callsign ranks (the catalog section) needs `operatorGeo` without that.
+  final FlagsService? _flagsOverride;
+  late final FlagsService flags = _flagsOverride ??
+      FlagsService(
+        statusBar: statusBar,
+        annotate: (call) async {
+          final result = await extensions.lookupCall(call, qso: const {}, operation: const {}, online: false);
+          final guess = result?['guess'];
+          return guess is Map ? guess.cast<String, dynamic>() : null;
+        },
+        onNoticeAction: handleNoticeAction,
+        prefs: settings.prefs,
+        onTrack: track,
+        staleness: staleness,
+      );
+
+  /// The extension catalog (services/catalog_service.dart). Lazy: nothing
+  /// asks it until the Extensions panel opens or the update check runs.
+  /// Injectable like [_exportsOverride], so a test hands in one over a
+  /// MockClient rather than reaching catalog.ham2k.net.
+  final CatalogService? _catalogOverride;
+  late final CatalogService catalog = _catalogOverride ?? CatalogService(settings: settings);
+
+  /// The unattended "is anything installed out of date" check, started once
+  /// the runtime is up (bootstrap) and re-run on resume. Only ever tells —
+  /// every install still asks — except for a revoked release, which it puts
+  /// on record and unloads, apart from the operator's own switch.
+  late final CatalogUpdateCheck catalogUpdateCheck = CatalogUpdateCheck(
+    catalog: catalog,
+    settings: settings,
     statusBar: statusBar,
-    annotate: (call) async {
-      final result = await extensions.lookupCall(call, qso: const {}, operation: const {}, online: false);
-      final guess = result?['guess'];
-      return guess is Map ? guess.cast<String, dynamic>() : null;
-    },
-    onNoticeAction: handleNoticeAction,
-    prefs: settings.prefs,
-    onTrack: track,
-    staleness: staleness,
+    installed: () => extensions.availableExtensions,
+    applyAvailability: extensions.applyExtensionAvailability,
   );
 
   /// Decides whether this install is out of date and, if so, says it exactly
@@ -954,7 +979,11 @@ class HaLoServices {
     InboundQsoListenerService? inboundQsos,
     PeerService? peerService,
     DeepLinkService? deepLinks,
+    CatalogService? catalog,
+    FlagsService? flags,
   })  : _catOverride = cat,
+        _catalogOverride = catalog,
+        _flagsOverride = flags,
         _deepLinksOverride = deepLinks,
         _peerServiceOverride = peerService,
         _inboundQsosOverride = inboundQsos,

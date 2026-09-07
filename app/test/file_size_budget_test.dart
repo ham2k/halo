@@ -35,7 +35,7 @@ const _slack = 100;
 /// the file shrinks; never raise one.
 const _ceilings = <String, int>{
   '../packages/halo_widgets/lib/src/logging_controls.dart': 9842,
-  'lib/services/extension_service.dart': 4182,
+  'lib/services/extension_service.dart': 4060,
   'lib/views/operation/spots_panel.dart': 3647,
   'lib/views/operation_view.dart': 3662,
   'lib/views/operation/activities_view.dart': 3071,
@@ -49,7 +49,7 @@ const _ceilings = <String, int>{
   '../packages/halo_widgets/lib/src/dock_layout.dart': 1817,
   'lib/views/home_view.dart': 1684,
   '../packages/halo_core/lib/src/sync/sync_engine.dart': 1553,
-  'lib/services/settings_service.dart': 1727,
+  'lib/services/settings_service.dart': 1690,
   'lib/services/cat/equipment_registry.dart': 1555,
 };
 

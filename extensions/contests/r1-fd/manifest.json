@@ -17,6 +17,11 @@
     "contest",
     "cabrillo"
   ],
+  "geo": {
+    "ituRegions": [
+      1
+    ]
+  },
   "hooks": ["activity", "adifFields", "export", "ref:r1-fd", "scoring"],
   "translations": {
     "es": {

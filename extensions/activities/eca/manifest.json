@@ -13,6 +13,11 @@
     "england",
     "activation"
   ],
+  "geo": {
+    "entities": [
+      "G"
+    ]
+  },
   "hooks": [
     "activity",
     "adifFields",

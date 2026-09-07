@@ -38,6 +38,19 @@ void main() {
     expect(parse('com.ham2k:///install_extension?url=not%20a%20url'), isNull);
   });
 
+  test('the catalog\'s install links resolve under every edition\'s scheme', () {
+    // The catalog site writes `com.ham2k.logger[.<edition>]:///install_extension`
+    // so the link reaches the one app it names (HALO-526). The URL is the
+    // catalog's own bundle path, which deep_link_router.dart then routes through the
+    // hash-verified download rather than the plain one.
+    const bundle = 'https://catalog.ham2k.net/api/v1/extensions/k2hrc-llota/versions/1.2.0/bundle';
+    for (final scheme in ['com.ham2k.logger', 'com.ham2k.logger.next', 'com.ham2k.logger.dev']) {
+      final target = parse('$scheme:///install_extension?url=${Uri.encodeComponent(bundle)}');
+      expect(target?.host, 'catalog.ham2k.net', reason: scheme);
+      expect(target?.path, '/api/v1/extensions/k2hrc-llota/versions/1.2.0/bundle', reason: scheme);
+    }
+  });
+
   test('ignores links that are not this one', () {
     expect(parse('com.ham2k:///link_client?id=a&token=b'), isNull);
     expect(parse('https://example.org/install_extension?url=https://example.org/a.h2kext'), isNull,

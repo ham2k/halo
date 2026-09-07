@@ -1653,6 +1653,28 @@ export interface ActivationApi {
   hostCall(method: string, params: Record<string, unknown>): Promise<unknown>
 }
 
+/// Where an extension is relevant (docs/extensions/distribution.md). Every
+/// key is an allowlist over the OPERATOR's own callsign: a missing or empty
+/// key does not gate; the values within one key are ORed, the keys themselves
+/// ANDed. Case is the matcher's job — `entities` and `continents` compare
+/// uppercased, `countries` lowercased, `ituRegions` as integers — so an
+/// author writes whatever reads well. There are no negation keys, and a
+/// manifest with no `geo` at all is worldwide.
+///
+/// Mirrors the geo filters of HaLo's notices (app/lib/services/notices.dart)
+/// key for key and rule for rule: two engines with different rule sets would
+/// drift, and an author who learned one would misread the other.
+export interface ExtensionGeo {
+  /// DXCC entity prefixes as the country file names them: `K`, `VE`, `CE`.
+  entities?: string[]
+  /// ISO 3166-1 alpha-2 codes: `us`, `cl`.
+  countries?: string[]
+  /// One of `AF AS EU NA OC SA AN`.
+  continents?: string[]
+  /// `1`, `2` or `3`.
+  ituRegions?: number[]
+}
+
 /// The static, public identity of an extension — everything about it that
 /// can be known without running its code. Lives in the package's
 /// manifest.json (single source: extensions import it and spread it into
@@ -1694,6 +1716,10 @@ export interface ExtensionManifest {
   /// Extensions panel and its bundle never loads. The user's enable/disable
   /// choice is kept while hidden, so it comes back when the experiment does.
   experiments?: string[]
+  /// Where this extension is relevant — see [ExtensionGeo]. Relevance, not
+  /// access: the catalog and the Extensions panel rank by it for the
+  /// operator's own callsign, and nothing hides an extension over it.
+  geo?: ExtensionGeo
   /// Per-locale overrides for name/description plus extra localized search
   /// keywords, keyed by language code. Localized keywords ADD to the base
   /// `keywords` (both are searchable), they don't replace them.

@@ -34,6 +34,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../config/user_agent.dart';
 import '../config/version.dart';
 import '../i18n/strings.g.dart';
+import 'extension_geo.dart';
 import 'notices.dart';
 import 'staleness_service.dart';
 import 'status_bar_service.dart';
@@ -170,6 +171,14 @@ class FlagsService extends ChangeNotifier {
   /// redundant refresh when the callsign hasn't changed.
   String? _lastFetchedCall;
 
+  OperatorGeo? _operatorGeo;
+
+  /// What the last [refreshForCall] derived about the operator's own
+  /// callsign — the values the notice rules were matched against, for the
+  /// catalog to rank by. Null until a callsign has been annotated, or when
+  /// the annotation could say nothing about it.
+  OperatorGeo? get operatorGeo => _operatorGeo;
+
   bool _refreshing = false;
 
   /// A callsign whose refresh was requested while another was in flight — run
@@ -200,6 +209,18 @@ class FlagsService extends ChangeNotifier {
       final continent = guess?['continent'] as String?;
       final countryCode = guess?['countryCode'] as String?;
       final ituRegion = (guess?['ituRegion'] as num?)?.toInt();
+      // Taken BEFORE the fetch, and announced on its own: the snapshot is
+      // about the callsign, and an offline launch must not leave the catalog
+      // ranking against nothing — the early return below, on a fetch that
+      // failed, would otherwise keep the Extensions panel from ever hearing
+      // that the callsign resolved.
+      final geo = entityPrefix == null && continent == null && countryCode == null && ituRegion == null
+          ? null
+          : OperatorGeo(entityPrefix: entityPrefix, countryCode: countryCode, continent: continent, ituRegion: ituRegion);
+      if (geo != _operatorGeo) {
+        _operatorGeo = geo;
+        notifyListeners();
+      }
 
       final merged = await _fetchAndMerge(normalizedCall, baseCall: baseCall, entityPrefix: entityPrefix);
 

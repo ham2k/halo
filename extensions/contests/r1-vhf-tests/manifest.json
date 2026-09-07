@@ -18,6 +18,11 @@
     "edi",
     "iaru"
   ],
+  "geo": {
+    "ituRegions": [
+      1
+    ]
+  },
   "hooks": [
     "activity",
     "adifFields",

@@ -15,6 +15,11 @@
     "lakes",
     "activation"
   ],
+  "geo": {
+    "entities": [
+      "ZL"
+    ]
+  },
   "hooks": [
     "activity",
     "adifFields",

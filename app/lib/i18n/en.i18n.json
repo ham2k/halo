@@ -84,7 +84,23 @@
     "dropOneOnly": "Drop one extension at a time.",
     "downloadFailed": "${source} answered ${status} for that extension.",
     "downloadTooLarge": "That download is far too large to be an extension.",
-    "downloadNotSecure": "That download redirected somewhere insecure."
+    "downloadNotSecure": "That download redirected somewhere insecure.",
+    "catalogSection": "Catalog",
+    "catalogLoading": "Loading the catalog…",
+    "catalogUnreachable": "Catalog unreachable",
+    "builtIn": "Built in",
+    "updateAvailableBadge": "Update available",
+    "updatesAvailableTitle": "Extension updates",
+    "updateAvailableFor": "An update is available for ${name}.",
+    "updatesAvailable": "${count} extension updates are available.",
+    "revokedTitle": "${name} was withdrawn",
+    "revokedBody": "The catalog withdrew this version, so it has been disabled.",
+    "downloadHashMismatch": "That download is not the extension the catalog described.",
+    "catalogVersionUnknown": "The catalog has no version ${version} of ${key}.",
+    "catalogLinkUnknown": "That catalog link does not name an extension version.",
+    "revokedBadge": "Revoked",
+    "downloadNotHttps": "That download is not over a secure connection.",
+    "downloadUnreachable": "${source} could not be reached for that extension."
   },
   "home": {
     "title": "Portable Logger",
@@ -1586,7 +1602,11 @@
         "one": "${count} extension failing to build",
         "other": "${count} extensions failing to build"
       },
-      "extDevServerNoSecrets": "Dev extensions never receive build secrets, so features that need one are inactive."
+      "extDevServerNoSecrets": "Dev extensions never receive build secrets, so features that need one are inactive.",
+      "catalog": "Extension Catalog",
+      "catalogDescription": "Read the catalog from another server — a local one while working on the catalog itself. Empty means catalog.ham2k.net.",
+      "catalogAddress": "Catalog address",
+      "catalogHint": "http://localhost:8787"
     },
     "about": {
       "notices": "Notices & Messages",
