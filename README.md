@@ -23,9 +23,12 @@ and bridge, declarative UI catalog, sync, spots, map, scoring, and exports.
 Remaining gaps are tracked in [docs/backlog.md](docs/backlog.md).
 
 ```sh
-cd extensions && npm install && npm run build   # extension bundles → app assets
-cd app && flutter run -d macos               # flutter provided via mise
+mise install && mise trust && mise run setup   # tools, extension bundles, JS engine, deps
+cd app && flutter run -d macos
 ```
+
+`mise run setup` is idempotent; [DEVELOPMENT.md](DEVELOPMENT.md#first-time-setup)
+says what it does and how to do each step by hand.
 
 ### Building locally on macOS or iOS
 

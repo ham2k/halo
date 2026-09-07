@@ -2,8 +2,9 @@
 
 `halo-ext` boots the **real** extension runtime — the same QuickJS host, the
 same built bundles, the same hooks — outside the app, and lets you call any
-hook with JSON and read back what it returned. No Flutter, no simulator, no
-log to set up.
+hook with JSON and read back what it returned. No app, no simulator, no log
+to set up — though the package still resolves against the Flutter SDK, since
+the host it boots is a Flutter FFI plugin.
 
 It exists to answer the questions a debugger can't: *what does POTA's
 `decorateRef` actually return for this park, today, over the real API? which
@@ -21,11 +22,16 @@ app's own data are separate, later tools that will live beside it in
 
 ## Getting it running
 
-The bundles have to exist — `halo-ext` reads `app/assets/extensions`, the same
-files the app ships:
+Three things have to exist, and `mise run setup` makes all of them once per
+checkout: the bundles (`halo-ext` reads `app/assets/extensions`, the same
+files the app ships), the host build of the JS engine
+(`packages/halo_quickjs/tool/build_host.sh` — the same library `flutter test`
+loads, since neither runs a platform build), and `packages/halo_cli`'s
+dependencies, resolved with `flutter pub get`. After that only the bundles
+go stale:
 
 ```sh
-cd extensions && npm run build
+cd extensions && npm run build     # after every extension change
 ```
 
 Run it from anywhere in the repo (it walks up for the bundle directory), or

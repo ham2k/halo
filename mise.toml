@@ -11,6 +11,10 @@ flutter = {
 }
 
 [tasks]
+setup = {
+  run = "./scripts/setup.sh",
+  description = "First-run setup, idempotent: git hooks, secrets template, extension bundles, host JS engine, pub get"
+}
 deploy-web = {
   run = "./scripts/deploy-web.sh",
   description = "Build extensions and web app, then deploy to Cloudflare Pages"

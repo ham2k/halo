@@ -46,22 +46,20 @@ runtime — so **the extensions must be built before the app will run**.
 ## First-time setup
 
 ```sh
-# 1. Tools
-mise install && mise trust
-
-# 2. Build the extension bundles (required before the app runs)
-cd extensions
-npm install
-npm run build            # → app/assets/extensions/*.js + index.json  (gitignored)
-cd ..
-
-# 3. Build-time secrets (optional — every consumer degrades without them)
-cp app/lib/config/secrets.dart.example app/lib/config/secrets.dart
-#   the Map tab needs none of these: MapLibre + OpenFreeMap need no token.
-
-# 4. Run it
+mise install && mise trust     # the pinned Flutter, and trust this repo's mise config once
+mise run setup                 # scripts/setup.sh — everything below, idempotent
 cd app && flutter run -d macos
 ```
+
+`setup` does, in order: points git at the tracked hooks (`.githooks/`, the
+guard on pushes to `main`); copies the blank `secrets.dart` template if none
+exists (optional — every consumer degrades without its key, and the Map tab
+needs none: MapLibre and OpenFreeMap take no token); runs `npm ci` and
+`npm run build` in `extensions/` (the bundles are gitignored, and the app is
+nothing without them); builds the host copy of the JS engine that
+`flutter test` and `halo-ext` load; and runs `flutter pub get` for the app
+and every first-party package. Re-run it after pulling — each step is a
+no-op once done.
 
 Notes:
 - **Extension bundles are gitignored** (`app/assets/extensions/`) and only
