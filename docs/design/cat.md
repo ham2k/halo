@@ -139,7 +139,7 @@ and what makes a second device a map lookup rather than a rewrite.
 
 `CatService` is the only writer of CAT-sourced state.
 
-The sink carries five kinds of report, and the differences between them are load-bearing:
+The sink carries twelve kinds of report, and the differences between them are load-bearing:
 
 | Report | Lands on | Says |
 |---|---|---|
@@ -148,6 +148,13 @@ The sink carries five kinds of report, and the differences between them are load
 | `reportDiagnostic` | `.diagnostic` | what the driver worked out, developer mode only |
 | `reportProblem` | `.problem` | connected, answering, and unable to do what was configured |
 | `reportChannels` | `.channels` | every channel the equipment offers, for equipment with several |
+| `reportTransmitting` | `.telemetry.transmitting` | keyed or not; gates relays and the snap, so "receiving" and "nobody asked" must differ, and a driver that cannot tell never calls it |
+| `reportMeter` | `.telemetry.meters` | one meter's reading, stamped; readings expire rather than clear, so an unkeyed radio keeps its last panel |
+| `reportKeyerSpeed` | `.keyerSpeed` | the radio's WPM as it reports it, only from a `CwKeyerSession` |
+| `reportCwProgress` | `CatService.cwProgress` | what the keyer is sending on the app's behalf, null when idle |
+| `reportVoiceActivity` | `CatService.voiceActivity` | what the voice keyer is playing or recording for the app, null when idle |
+| `reportSwitchState` | `.switchAntennas`, `.switchPorts` | what an antenna switch routes where — both lists together, since a port names its antenna by key |
+| `reportAlive` | `.stale` (re-armed) | the equipment answered with nothing about its state; only for something the radio sent on the readings' own path |
 
 **A problem is not a connection error.** `EquipmentStatus.error` feeds the retry ladder, and the
 conditions that belong there are ones a retry can clear — a radio switched off, a port held by
@@ -792,7 +799,7 @@ Power travels with the radio exactly as frequency and mode do, and takes the sam
 `RadioService.setVfo('vfoA', power:)`, and `CatService._onVfoChanged` forwards an operator's write to
 `radio1`'s session. There are four such surfaces — Station Configuration's compact Power field, the
 optional Power logging control, the More pane's Power field, and the POWER command (`extensions/core/radio-commands`'s
-`PowerCommand`, e.g. "5W" typed into the call field, dispatched through `main.dart`'s
+`PowerCommand`, e.g. "5W" typed into the call field, dispatched through `HaLoServices`'s
 `handleCommandAction` `setPower` case because it has no QSO-scoped widget state to touch, unlike
 BAND/MODE/frequency) — and one value is what keeps them agreeing.
 

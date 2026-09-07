@@ -50,7 +50,7 @@ keep these tables complete, because they are what an audit greps against:
 
 | Site | Why |
 |---|---|
-| `repositories.dart` — `updatedAtMillis` on operations and QSOs | The sync revision stamp |
+| `operations_repository.dart`, `qsos_repository.dart` — `updatedAtMillis` | The sync revision stamp |
 | `sequences.dart` — `updatedAtMillis` | Same |
 | `sync_engine.dart` — `backfillFrom` | Leaves as `syncedUntilMillis`; the server pages backwards from it |
 | `data_file_manager.dart` — `data_file_updated_*` | Persists, and outlives the travel that wrote it |
@@ -79,7 +79,7 @@ clock is the entire point of the feature.
 | `cat_service.dart` — auto-reconnect cooldown, knob-speed clock | Rate limiting a real radio; real-world physics |
 | `extension_panel.dart` — render throttle | Its remainder becomes a `Timer` duration |
 | `sync_engine.dart` — debounce window | Same |
-| `main.dart` — panel-catalog boot budget, DEVHAMMER's run length | Real work, real seconds |
+| `bootstrap.dart` — panel-catalog boot budget; `halo_services.dart` — DEVHAMMER's run length | Real work, real seconds |
 | `dev_log.dart` — event timestamps | Read against the operator's own wall clock |
 | `peer_outbox.dart` — scan debounce window | Its remainder becomes a `Timer` duration |
 | `peer_service.dart` — beacon `lastSeenMillis` and the stale-peer cutoff | Both sides of one elapsed-time comparison |

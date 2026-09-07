@@ -1,6 +1,6 @@
 # Backlog
 
-Known gaps and planned work not yet turned into GitHub issues. Architectural
+Known gaps and planned work not yet turned into CaBo cards. Architectural
 *risks* (things that could invalidate the design) stay in
 [DESIGN.md](../DESIGN.md) §11; this file tracks incomplete features and
 unverified platforms.
@@ -150,6 +150,7 @@ tracked only here:
   `minCatalog`-style negotiation exists for the OTA channel, and the `Hook`
   type's `| Record<string, unknown>` arm erases misspelled-method errors.
   Also a third-party-channel prerequisite.
-- **`LoggingControls` decomposition.** The ~2,600-line widget mixes keyboard
+- **`LoggingControls` decomposition.** The ~9,800-line widget (as of 2026-09; its State class alone is ~8,600
+  lines, behind 129 constructor fields) mixes keyboard
   shortcuts, command dispatch, VFO mirroring, undo, and form building; a
   structural refactor with no behavior change, deserving its own pass.

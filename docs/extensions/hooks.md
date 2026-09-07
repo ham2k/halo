@@ -1263,7 +1263,7 @@ and optional OAuth2, surfaced in `SettingsView`'s Accounts panel via
 platform keychain, keyed by the account's `kvKey`. Implemented by: `qrz`
 (username/password) and `sota` (OAuth2 via Keycloak — `sso.sota.org.uk`; the
 host runs the whole PKCE flow itself, see `_doOAuth` in
-`app/lib/views/settings_view.dart`).
+`app/lib/views/settings/accounts_panel.dart`).
 
 **`label` / `description` / `fields`** — each either a plain value, or a
 function `(args, ctx) => value` called the same way any other hook method is,

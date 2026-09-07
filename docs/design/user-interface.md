@@ -237,7 +237,7 @@ button without displaying anything, and flips with state where the icon does
 Flutter's own built-ins (`BackButton`, `CloseButton`, `PopupMenuButton`, a
 `Chip`'s delete icon) supply a tooltip from `MaterialLocalizations` and take no
 parameter to turn it off, so the app root wraps everything in
-`TooltipVisibility(visible: false)` (`main.dart`). That is what actually
+`TooltipVisibility(visible: false)` (`views/app_shell/halo_app.dart`). That is what actually
 enforces the rule; not setting `tooltip:` in our own code is the other half.
 Both halves are guarded by `app/test/no_hover_tooltips_test.dart`.
 
@@ -485,7 +485,7 @@ text. Escape, a click outside, or a second ⌘K dismisses it.
 On iOS, plain ⌘K is reserved by the OS itself (it shows/hides the software
 keyboard) and never reaches the app on a hardware keyboard, and ⌘⇧K is
 reserved too (at least on the Simulator) — ⌘⌥K is the chord that actually
-opens the dialog there (main.dart's `_handleKeyEvent` and AppDelegate.swift's
+opens the dialog there (halo_app.dart's `_handleKeyEvent` and AppDelegate.swift's
 `keyCommands` both accept ⌘⇧K and ⌘⌥K as alternates everywhere).
 
 The field's placeholder is set in the regular face — it's prose — while what

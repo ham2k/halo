@@ -53,7 +53,7 @@ User-Agent.** Concretely:
 - **Dart app core** — there is no shared HTTP wrapper; call sites use
   `package:http` directly. Add `'User-Agent': await ham2kUserAgent()` to the
   request headers. Current call sites: the OIDC OAuth flow in
-  `settings_view.dart` and downloads in `data_file_manager.dart`.
+  `views/settings/accounts_panel.dart` and downloads in `data_file_manager.dart`.
 - **Extensions** — you get this for free. Every `host.fetch` is stamped with the
   canonical UA by the extension host
   ([`packages/halo_extension_host/lib/halo_extension_host.dart`](../../packages/halo_extension_host/lib/halo_extension_host.dart),

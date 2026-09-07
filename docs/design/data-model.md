@@ -1,6 +1,9 @@
 # The Ham2K Logger Ideal Data Model
 
 This document is not conclusive or perfect, but it sets a general direction to how we want to represent the world in
+
+Where a section describes something not yet built, a *Status* line under it
+says so; everything else is what the code does today.
 the Ham2K Logger code and databases.
 
 ## The Context
@@ -34,6 +37,10 @@ Each user profile consists of a callsign (might be the same over multiple profil
 
 Along these identifiers it includes a set of data values for the user preferences, which is combined with the data values in the default profile and the preference definition defaults to provide the full picture of user settings. When the app wants to update a preference value, it is stored in the current profile unless explicitly requested to be stored in the default profile.
 
+*Status: partial. A profile is a callsign with personal details
+(`SettingsService.activeProfile`); preferences are not yet layered per
+profile over the defaults.*
+
 A profile also includes a selected station configuration, along with the attributes that define the state of that station configuration.
 
 ## The Log Data
@@ -46,9 +53,17 @@ An operation also moves through a lifecycle, recorded as an attribute of the ope
 
 On a shared operation, only the owner changes the state. Ownership is an account: the operation records the account it was created under, and a device may only write the status when that matches the account it is signed in to. A device that receives an operation from a peer on another account contributes contacts to it but never starts, pauses, ends or archives it, because it cannot know when the operator whose log it is considers the work done, and a guest's guess would travel back to the owner as if the owner had made it. An operation created by a device signed in to no account has no owner, and any device may change its state.
 
+*Status: planned — [HALO-460](https://cabo.ham2k.com/halo/c/460). The model
+records no lifecycle or owner yet: `Operation` has no status field, and any
+device may write any operation it holds.*
+
 ## Stations
 
 A station is a collection of equipment (radios, antennas, switches, etc) used by one or more operators to make radio contacts.
+
+*Status: built — `app/lib/services/cat/equipment.dart`,
+`equipment_registry.dart` and the Station Configuration dialog. The
+configuration and its state persist as one settings blob, not a table.*
 
 Each piece of equipment has
 - uuid
@@ -65,6 +80,10 @@ A station definition the includes which equipment is active, and how one equipme
 Some equipment represents mere placeholders, like "headset" and "20m dipole" with no state, but other components can include complex state and behavior, such as a rotator with its current azimuth and elevation, or a transceiver with its current frequency and mode.
 
 Finally, some of these ports connect to specific "operating positions", each with controls for VFO, audio, mic, ptt and key
+
+*Status: not built. A contact records the operator and position it was
+logged from (`our.operatorCall`, `our.multiIdentifier`); nothing models a
+position's controls.*
 
 The app has a global list of known equipment that has been configured, or automatically detected. There's also a global list of Station Configurations, which is where the user can define which equipment is active, and how each piece connects with each other.
 

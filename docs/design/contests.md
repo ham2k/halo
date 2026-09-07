@@ -344,8 +344,8 @@ column. **Rejected** — `qso.data` is the synced record of truth, and three
 mechanisms make derived scoring actively harmful there:
 
 1. **Write amplification.** Every `data` write goes through `_restamped`
-   (`repositories.dart:437-443`, bumps `updatedAtMillis`) and `_companionFor`
-   (`:642-655`, sets `synced: false`). A rescore rewrites verdicts for *every*
+   (`qsos_repository.dart`, bumps `updatedAtMillis`) and `_companionFor`
+   (same file, sets `synced: false`). A rescore rewrites verdicts for *every*
    QSO in the operation, so logging one QSO into a 500-QSO contest would restamp
    and re-push 500 records.
 2. **Self-triggering rescore loop.** The live-rescore fingerprint is
@@ -361,7 +361,7 @@ mechanisms make derived scoring actively harmful there:
    into app-polo, which persists whole QSO objects but has no code that reads or
    refreshes a scoring field.
 
-By contrast `updateScoreCache` (`repositories.dart:622-633`) writes only the
+By contrast `updateScoreCache` (`qsos_repository.dart`) writes only the
 `score_cache` column — no `data`, no `synced`, no `updatedAtMillis`, and it
 deliberately doesn't fire the sync `onChange`. The naming states the intent:
 `score_cache` is *"cached … so list rendering never waits on the plugin

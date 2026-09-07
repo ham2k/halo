@@ -18,7 +18,7 @@ pixels and scales for free.**
 There is exactly one scaling primitive:
 [`UiScale`](../../packages/halo_widgets/lib/src/ui_scale.dart), applied once in
 `MaterialApp.builder`
-([`app/lib/main.dart`](../../app/lib/main.dart) — search `UiScale(`)). It wraps
+([`app/lib/views/app_shell/halo_app.dart`](../../app/lib/views/app_shell/halo_app.dart) — search `UiScale(`)). It wraps
 the whole app. Everything below it lives in a single **logical coordinate
 space** that is the real window divided by the scale factor, and a transform
 paints that space back up to fill the window.
@@ -79,7 +79,7 @@ font sizes, or icon sizes by the font scale anywhere in widget or theme code.
 that element and reintroduces exactly the proportion drift this design
 eliminates. If you find yourself reaching for `settings.fontScale.scaleFactor`
 in a layout, stop — that's the bug. (The setting is read in exactly one place:
-`main.dart`'s builder, to feed `UiScale`.)
+`halo_app.dart`'s builder, to feed `UiScale`.)
 
 **2. Write everything in plain logical pixels.** A row that should be 44pt tall
 is `height: 44`. It will render at `44 * scale` on screen. That's the whole
@@ -157,7 +157,7 @@ Two rules when using it:
   off-grid *far* edge even when its near edge is snapped, which seams it
   against the next pane just the same (`SolidPaneDivider.extent`).
 
-The AppBar is snapped **once, app-wide**: `main.dart`'s builder rounds the
+The AppBar is snapped **once, app-wide**: `halo_app.dart`'s builder rounds the
 theme's `toolbarHeight` to the grid and pushes it into an overriding `Theme`,
 so every header in the app inherits an on-grid bottom edge instead of each
 view having to remember. That snapped height is also what
@@ -233,7 +233,7 @@ draw.
 | Piece | File |
 |---|---|
 | The scaling widget, and `PixelGrid` | `packages/halo_widgets/lib/src/ui_scale.dart` |
-| Applied once at the root | `app/lib/main.dart` (`MaterialApp.builder`) |
+| Applied once at the root | `app/lib/views/app_shell/halo_app.dart` (`MaterialApp.builder`) |
 | Font-scale factors | `app/lib/services/settings_service.dart` (`enum FontScale`) |
 | Window-chrome clearance helpers, caption buttons, header gestures | `packages/halo_widgets/lib/src/platform_chrome.dart` |
 | Window-chrome bridge (Dart, both platforms) | `app/lib/services/window_chrome_service.dart` |

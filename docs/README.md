@@ -53,7 +53,7 @@
 ## Work tracking
 
 - [backlog.md](backlog.md) — known issues, planned features, and larger TODOs
-  not yet turned into GitHub issues.
+  not yet turned into [CaBo](https://cabo.ham2k.com/halo) cards.
 
 ## History
 

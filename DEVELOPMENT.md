@@ -13,8 +13,8 @@ runtime — so **the extensions must be built before the app will run**.
 
 ## Prerequisites
 
-- **Flutter** — pinned to the version in [`mise.toml`](mise.toml) (currently
-  `3.44.4`). The easiest way to get it is [mise](https://mise.jdx.dev):
+- **Flutter** — pinned to the version in [`mise.toml`](mise.toml). The
+  easiest way to get it is [mise](https://mise.jdx.dev):
   ```sh
   mise install          # installs the pinned Flutter (Dart ships inside it)
   ```
@@ -157,6 +157,11 @@ assets) widens to the whole app suite, and build/CI infrastructure changes get
 a loud "run the full gate". Subset runs are a convenience, **not** the gate:
 they skip analyze, dependent packages, and the browser-platform step. The full
 `./scripts/test.sh` is still what counts before a merge.
+
+A full run takes about six minutes on an Apple-silicon Mac (measured
+2026-09-07: 333–386 s, of which the app suite is about four minutes and the
+extension bundle build plus the package suites the rest). A subset run of one
+small app group is about 20 s.
 
 Run pieces directly while iterating:
 
@@ -379,7 +384,9 @@ Defined in [`mise.toml`](mise.toml):
 | Path | What |
 |---|---|
 | `app/` | The Flutter app. |
-| `packages/` | Local Dart packages: `halo_core`, `halo_widgets`, `halo_extension_host`, `halo_build_tools`. |
+| `packages/` | Local Dart packages. First-party: `halo_core` (pure Dart — models, database, sync engine, peer protocol), `halo_widgets` (the widget catalog and the modules built from it), `halo_extension_host` (the QuickJS bridge and extension manifests), `halo_quickjs` (the QuickJS-NG FFI plugin), `halo_cli` (`halo-ext`, hooks outside the app), `halo_build_tools` (editions and version stamping). Vendored, each with a `PATCH.md` saying what it changes and why ([quirks](docs/quirks.md)): `flutter_inappwebview_macos_patched`, `flutter_inappwebview_windows_patched`, `flutter_inappwebview_linux_stub`, `usb_serial_patched`, `universal_ble_patched`. |
+| `app_dist/` | The private distribution layer — the store, update and telemetry services the open-source app stubs out. Absent from the public mirror by design. |
+| `workers/` | Cloudflare Workers: the dev-preview proxy. |
 | `extensions/` | TypeScript extensions. `build.mjs` bundles them into `app/assets/extensions/`; `dev-server.mjs` (`npm run dev`) rebuilds on save and reloads one in a running app ([docs/extensions/development.md](docs/extensions/development.md)); both build from `build-config.mjs`. |
 | `scripts/` | `test.sh`, `deploy-web.sh`, `apply-web-edition.sh`, and the Linux arm64 cross-build (`build-linux-arm64.sh`, `aarch64-linux-gnu.cmake` — see below). |
 | `docs/` | [Index](docs/README.md), [design/](docs/design/), [extensions/](docs/extensions/README.md), [quirks](docs/quirks.md), [releases](docs/releases.md). |

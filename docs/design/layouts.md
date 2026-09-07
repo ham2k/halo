@@ -1151,10 +1151,12 @@ not add it.
 | A panel's render loop and refresh budget | `app/lib/views/operation/extension_panel.dart` |
 | Add a Panel sheet | `app/lib/views/operation/layout_sheet.dart` |
 | The pane a missing extension leaves behind | `app/lib/views/operation/missing_panel_pane.dart` |
-| Dock definition, dock state, and the drop model | `packages/halo_widgets/lib/src/dock_layout.dart` |
+| Dock definition and dock state | `packages/halo_widgets/lib/src/dock_model.dart` |
+| The drop model: regions and drop geometry | `packages/halo_widgets/lib/src/dock_regions.dart` |
+| The dock view — tabs, drags, drops and edit-mode paint | `packages/halo_widgets/lib/src/dock_layout.dart`, with `dock_tab.dart`, `dock_drop_targets.dart`, `dock_chrome.dart` |
 | Shirt sizes, ideal pane width, animation constants | `packages/halo_widgets/lib/src/layout.dart` |
 | Layout density, its metrics and the operator's preference | `packages/halo_widgets/lib/src/density.dart` |
-| The root density scope, and the header's snap | `app/lib/main.dart` (`_LayoutDensityFromWindow`) |
+| The root density scope, and the header's snap | `app/lib/views/app_shell/halo_app.dart` (`_LayoutDensityFromWindow`) |
 | Resizable split with draggable divider | `packages/halo_widgets/lib/src/resizable_split_view.dart` |
 | Modal Panes (`showModalPane`) | `packages/halo_widgets/lib/src/modal_pane.dart` |
 | Persisted pane widths (`layoutDimension`) | `app/lib/services/settings_service.dart` |

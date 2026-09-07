@@ -2,12 +2,12 @@
 
 *Ham2K Portable Logger, next generation: a Flutter core with TypeScript extensions.*
 
-Status: **living document.** Steps 1–2 of the plan in §10 are complete
-**except ADIF import, which has a parser but no user-facing path** (the
-largest remaining parity gap — [docs/parity.md](docs/parity.md) §1); steps
-3–5 are largely built; steps 6–7 remain. Open work is tracked in
+Status: **living document.** The plan in §10 is built through step 5.
+Step 6's tear-off windows are still out of scope (§8), and of step 7 the
+extension ports are done and sideloaded `.h2kext` bundles exist, while the
+registry and its update channel do not. Open work is tracked in
 [docs/backlog.md](docs/backlog.md) and [CaBo](https://cabo.ham2k.com/halo).
-Last updated: 2026-08-05
+Last updated: 2026-09-07
 
 ---
 
@@ -267,15 +267,19 @@ batch sizes/delay) turned out to be a handful of scalars, not per-row data —
 implemented as a JSON blob in `SettingsService` (SharedPreferences) instead
 of a drift table, alongside `syncEnabled`/`syncDeviceKey`/`operatorCall`. See
 `packages/halo_core/lib/src/sync/sync_engine.dart`'s `SyncSettings`
-interface and `app/lib/main.dart`'s `_SettingsSyncAdapter`.
+interface, which `app/lib/services/settings_service.dart`'s `SettingsService`
+implements directly.
 
 - **drift** for typed SQL, versioned migrations, and reactive streams; runs on
   all six platforms via `sqlite3` FFI (wasm on web later).
 - Reactive queries feed the UI directly: the QSO list is a
   `Stream<List<QsoRow>>`. This is also the backbone of multi-window (§8).
-- **Riverpod** for app state, kept thin — the database is the source of truth.
-  (app-polo already moved this way; Redux there is mostly a cache over
-  SQLite.)
+- **Constructor injection** for app state, kept thin — the database is the
+  source of truth. One lazily built service graph (`HaLoServices`,
+  `app/lib/services/halo_services.dart`) is handed to every screen by
+  constructor; there is no container, and none is planned until one earns
+  its machinery. (app-polo already moved this way; Redux there is mostly a
+  cache over SQLite.)
 - The **sync engine** is a Dart service implementing exactly the design in
   `app-polo/src/store/sync/README.md`: dirty flags, small-batch on change,
   large-batch on loop, server-tunable parameters. Only the transport call goes
@@ -329,31 +333,29 @@ multi-window API. Tear-off windows stay **out of the v1 critical path**.
 
 ## 9. Repository layout
 
-```
-app-halo/
-  app/                    # Flutter app (thin: wiring + distro config)
-  packages/
-    halo_core/            # Dart: models, db, sync engine, services
-    halo_widgets/         # Dart: widget catalog + modules
-    halo_extension_host/     # Dart: QuickJS binding, bridge, manifests
-  extensions/                # TypeScript workspace
-    sdk/                  # @ham2k/extension-sdk — hook types + host API
-    activities/           # pota, sota, wwff, ...
-    contests/             # naqp, qp, cqwpx, ...
-    lookups/              # qrz, hamdb, hamqth
-    spots/
-    sync/                 # ham2k-lofi
-  tools/                  # extension bundler, manifest validator, dev server
-  docs/
-```
+The map is the *Where things live* table in
+[DEVELOPMENT.md](DEVELOPMENT.md#where-things-live), kept in one place so it
+cannot drift from itself. What this section states is the shape it has to
+keep: `app/` is the Flutter app and its platform shells; `packages/` holds
+the Dart packages the app is built from — `halo_core` (pure Dart: models,
+database, sync engine, peer protocol), `halo_widgets` (the widget catalog and
+the modules built from it), `halo_extension_host` (the QuickJS bridge) and
+the rest — plus vendored copies of third-party plugins, each with a
+`PATCH.md`; `extensions/` is the TypeScript workspace (`sdk/`, `activities/`,
+`contests/`, `lookups/`, `spots/`, `sync/`, `core/`) with its bundler, dev
+server and packaging tools beside it; `app_dist/` is the private distribution
+layer. Domain knowledge stays in `extensions/`; the app knows no program by
+name (§2).
 
 ### Extension developer experience
 
-- `polo extension dev`: a watcher that rebundles and hot-reloads an extension into a
-  running app. The runtime re-evaluates the bundle and re-registers hooks —
-  the activate/deactivate lifecycle already supports this.
-- A headless test harness so extension authors run their hooks against fixture
-  QSOs in vitest, with no Flutter involved.
+- `npm run dev` ([docs/extensions/development.md](docs/extensions/development.md)):
+  a watcher that rebundles and hot-reloads one extension into a running app.
+  The runtime re-evaluates the bundle and re-registers hooks — the
+  activate/deactivate lifecycle supports this.
+- `halo-ext` ([docs/extensions/cli.md](docs/extensions/cli.md)) runs hooks
+  outside the app, and the extensions' own unit tests run under `npm test`
+  with no Flutter involved.
 
 ---
 
