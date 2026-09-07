@@ -1,7 +1,7 @@
 # Contest Extensions — Porting Design (RFC)
 
-**Status:** In progress — **M0–M8 and M11 are shipped** (12 of the 15
-contest-shaped extensions); M9–M10 and M12 remain, see §7. · **Scope:** port
+**Status:** In progress — **M0–M8, M10 and M11 are shipped** (13 of the 15
+contest-shaped extensions); M9 and M12 remain, see §7. · **Scope:** port
 app-polo's 12 contest extensions, plus `fd`, `wfd` and `colonies`, to HaLo
 · **Issue:** #149
 
@@ -1062,6 +1062,12 @@ already exists and adds no sync surface.
 > against a scoring payload that carries the whole log on every pass, so the cost
 > the registered form exists to avoid is not measurable here. Build it when a
 > party's 3,478 counties arrive, and measure first.
+>
+> **Measured at M10, and still deferred.** No call ever carries 3,478 codes: a
+> descriptor carries the SELECTED party's list, narrowed by the entity of the
+> station being worked, so the worst case is one party's counties plus the fifty
+> states — ~470 entries, about 15KB, once per callsign resolution. Inline it is,
+> and this is the consumer to revisit it for.
 
 **Shared datasets live in a new core extension: `operation-data`.** Rather than
 each contest vendoring its own copy of the US states table, one always-on core
@@ -1897,7 +1903,7 @@ log** to settle checkpoint granularity (§5.2).
 | **M7** ✅ | Great-circle distance scoring + rover our-grid from segments (no new input kind — see below) | `arrl-vhf-tests` |
 | **M8** ✅ | REG1TEST/EDI export writer | `r1-vhf-tests`, `rsgb-vhf-tests` |
 | **M9** | Cross-extension POTA ref synthesis | `georgia-pota` |
-| **M10** | Stateful rolling-location scoring, county-line N×M, bonuses | full `qp` rules |
+| **M10** ✅ | Stateful rolling-location scoring, county-line N×M, bonuses; multi-value exchange input | full `qp` rules (50 party files, 49 operable) |
 | **M11** ✅ | ARRL/RAC section table duplicated into each extension; power multiplier + bonus in setup (§5.9) | `fd`, `wfd` |
 | **M12** | Cross-operation callsign search, if §5.9's option B is chosen | `colonies` |
 
@@ -1911,6 +1917,27 @@ extensions is [parity.md](../parity.md) §1, not this table.
 Per §5.6, `qp` and `stateparks` each stay a **single extension** whose individual
 events are offered through the activity `suggest` search, so #149's discovery
 goal is met without a per-event bundle explosion.
+
+**What M10 turned out to need, and not need.** Rolling location needed *nothing*:
+`refs` is one of the keys a segment restates (`segments.dart`), and
+`OperationsRepository.onLocalSave` already restamps the latest segment when an
+operation edit changes one — so a rover types BREAK, edits the county in setup,
+and every later QSO is scored against it. The one piece of new infrastructure is
+§5.3's **`multiValue`** on `kind: 'options'` (the county line, `ORDES/JEF`):
+per-value matching, per-value validation, and a SPACE that accepts into the
+value the cursor is in without rewriting the others.
+
+**§5.6's registered `optionSet` is still not needed, and now there is the
+measurement it asked for.** Only the SELECTED party's codes reach a
+`loggingControls` call, and the descriptor is narrowed further by who is being
+worked — a Canadian station in a US party can only send a province — so the
+largest list that crosses the bridge is ~470 codes at roughly 15KB (7QP, NEQP
+and Indiana, for a US station), against a scoring payload that already carries
+the whole log. That is the one consumer that would justify the registered form,
+and it is still an order of magnitude short of needing it. The 164KB of
+party data is a BUNDLE-size question (qp.js is 311KB against ~88KB for the
+other contests), not a per-call one, and an extension that is off by default
+pays it only when enabled.
 
 **Amended at M5.** `qp` moved out of M5 in full: multi-value per-token feedback
 (a county line, `ORDES/JEF`) is a QSO-party need and nothing in `stateparks`

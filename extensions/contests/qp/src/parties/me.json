@@ -1,0 +1,64 @@
+{
+  "key": "ME",
+  "name": "Maine QSO Party",
+  "short": "MEQP",
+  "url": "http://www.ws1sm.com/MEQP.html",
+  "start": "2026-9-26 12:00Z",
+  "end": "2026-9-27 12:00Z",
+  "cabrilloName": "ME-QSO-PARTY",
+  "lastUpdated": "2026-09-06 12:00Z",
+  "status": "Added from the sponsor’s rules (2026); scoring not yet verified against a submitted log",
+  "options": {
+    "dcCountsAsMaryland": true,
+    "stateCountsForInState": true,
+    "countyLine": false,
+    "selfSpotting": false,
+    "dxIsMultiplier": false,
+    "dxEntityIsMultiplier": true,
+    "multsPerBandMode": true,
+    "pointsWhenTheyAreOutOfParty": 1
+  },
+  "points": {
+    "PHONE": 2,
+    "CW": 2
+  },
+  "counties": {
+    "AND": "Androscoggin",
+    "ARO": "Aroostook",
+    "CBL": "Cumberland",
+    "FRA": "Franklin",
+    "HAN": "Hancock",
+    "KEN": "Kennebec",
+    "KNO": "Knox",
+    "LIN": "Lincoln",
+    "OXF": "Oxford",
+    "PEN": "Penobscot",
+    "PSQ": "Piscataquis",
+    "SAG": "Sagadahoc",
+    "SOM": "Somerset",
+    "WAL": "Waldo",
+    "WAS": "Washington",
+    "YOR": "York"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE",
+      "MULTI-UNLIMITED"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5 watts",
+      "LOW": "100 watts",
+      "HIGH": ">100 watts"
+    }
+  }
+}

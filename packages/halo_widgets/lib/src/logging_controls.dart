@@ -1359,6 +1359,63 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             if (ExchangeOption.fromMap(raw.cast<String, dynamic>()) case final option?) option,
       ];
 
+  /// The separator a `kind: 'options'` control accepts several values with —
+  /// a QSO party's county line, `ORDES/JEF` — or `''` for the single-value
+  /// fields every other contest declares.
+  String _optionSeparatorFor(Map control) {
+    final separator = ((control['input'] as Map?)?['multiValue'] as Map?)?['separator'];
+    return separator is String ? separator : '';
+  }
+
+  /// What the operator is typing RIGHT NOW in [control] — the whole field for a
+  /// single-value one, and the value the cursor is in for a multi-value one.
+  ///
+  /// The cursor comes from the controller rather than being tracked in state, so
+  /// the SPACE handler and the accept read it at the moment they act and cannot
+  /// disagree about which county the operator is in.
+  ///
+  /// The suggestion LINE is repainted by the ordinary rebuilds — a keystroke, a
+  /// focus change — and nothing listens to the caret on its own, so moving it
+  /// back into an earlier value leaves the offers showing for the value just
+  /// left until the next keystroke. Accepting one is still correct, because the
+  /// accept recomputes; the alternative is a listener that rebuilds the whole
+  /// panel on every caret move, mid-QSO, for a line the operator is not reading.
+  String _typedOptionValue(Map control) {
+    final key = control['key'] as String;
+    final text = _controlTextValues[key] ?? '';
+    final separator = _optionSeparatorFor(control);
+    if (separator.isEmpty) return text;
+    final controller = _textControllerFor(key);
+    final cursor = controller.selection.baseOffset;
+    return exchangeValueAt(text, cursor < 0 ? text.length : cursor, separator);
+  }
+
+  /// What the value being typed might be SHORT for, where a control lets a later
+  /// value borrow the first one's prefix — `JEF` after `ORDES/` may mean
+  /// `ORJEF`. Null when there is no such reading.
+  ///
+  /// Offered ALONGSIDE the literal reading, never instead of it: the suggestion
+  /// line searches for what was typed first and falls back to this only when
+  /// that finds nothing, so typing a code out in full suggests as it always did.
+  String? _inheritedOptionValue(Map control) {
+    final inherit = _optionInheritPrefixFor(control);
+    final separator = _optionSeparatorFor(control);
+    if (inherit <= 0 || separator.isEmpty) return null;
+    final key = control['key'] as String;
+    final text = _controlTextValues[key] ?? '';
+    final typed = _typedOptionValue(control);
+    final values = splitExchangeValues(text, separator);
+    if (values.length < 2 || typed.isEmpty || values.first == typed) return null;
+    return inheritedCandidate(values.first, typed, inherit);
+  }
+
+  /// How many of the first value's characters a later one may borrow — the
+  /// multi-state QSO parties' county-line shorthand, 0 everywhere else.
+  int _optionInheritPrefixFor(Map control) {
+    final value = ((control['input'] as Map?)?['multiValue'] as Map?)?['inheritPrefix'];
+    return value is int ? value : 0;
+  }
+
   /// The `kind: 'options'` control that currently has focus, if any.
   ///
   /// Read straight from the focus map rather than tracked in state: the
@@ -1397,7 +1454,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final options = _optionsFor(control);
     if (options.isEmpty) return const [];
 
-    final typed = _controlTextValues[control['key']] ?? '';
+    final typed = _typedOptionValue(control);
     final minChars = input['minCharsForSuggestions'];
     if (minChars is int && typed.trim().length < minChars) return const [];
 
@@ -1405,15 +1462,34 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       for (final m in (input['matchOn'] as List?) ?? const ['code', 'name'])
         if (m is String) m,
     };
-    return matchExchangeOptions(
-      typed,
-      options,
-      matchOn: matchOn.isEmpty ? const {'code', 'name'} : matchOn,
-      preferred: [
-        for (final c in (input['preferredCodes'] as List?) ?? const [])
-          if (c is String) c,
-      ],
-    );
+    final preferred = [
+      for (final c in (input['preferredCodes'] as List?) ?? const [])
+        if (c is String) c,
+    ];
+    final on = matchOn.isEmpty ? const {'code', 'name'} : matchOn;
+    final matches = matchExchangeOptions(typed, options, matchOn: on, preferred: preferred);
+
+    // What the value may be SHORT for, where a later value borrows the first
+    // one's prefix. When that reading names a real code it goes FIRST — ahead
+    // of anything the literal text matched.
+    //
+    // Consulting it only when the literal matched nothing was the bug: in 7QP,
+    // `ORDES/JEF` matches `IDJEF`, `MTJEF`, `ORJEF` and `WAJEF` by NAME
+    // ("Jefferson …"), so the literal always matched and Space took the first —
+    // logging Idaho's Jefferson for a shorthand that unambiguously means
+    // Oregon's. The shorthand is not a guess: the first value says which state.
+    final inherited = _inheritedOptionValue(control);
+    if (inherited == null) return matches;
+    final exact = options.where((o) => o.code.toUpperCase() == inherited.toUpperCase()).toList();
+    if (exact.isEmpty) {
+      return matches.isNotEmpty
+          ? matches
+          : matchExchangeOptions(inherited, options, matchOn: on, preferred: preferred);
+    }
+    return [
+      ...exact,
+      ...matches.where((o) => o.code.toUpperCase() != inherited.toUpperCase()),
+    ];
   }
 
   /// Which suggestion the operator has walked to with the arrow keys, or null
@@ -1486,7 +1562,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (suggestions.isEmpty) return false;
 
     final key = control['key'] as String;
-    final typed = _controlTextValues[key] ?? '';
+    final typed = _typedOptionValue(control);
     final chosen = suggestions[(index ?? _selectedOptionIndex(suggestions.length)).clamp(0, suggestions.length - 1)];
 
     if (!explicit) {
@@ -1504,15 +1580,42 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         for (final m in (input['matchOn'] as List?) ?? const ['code', 'name'])
           if (m is String) m,
       };
-      if (!isAcceptableExchangeMatch(typed, chosen, matchOn: matchOn.isEmpty ? const {'code', 'name'} : matchOn)) {
-        return false;
-      }
+      // The typed text, or what it may be short for: the suggestion line offers
+      // `ORJEF` for a typed `JEF` (a borrowed county-line prefix), and testing
+      // only the literal text refused every one of those — the menu showed a
+      // row that Space could never take.
+      final on = matchOn.isEmpty ? const {'code', 'name'} : matchOn;
+      final inherited = _inheritedOptionValue(control);
+      final acceptable = isAcceptableExchangeMatch(typed, chosen, matchOn: on) ||
+          (inherited != null && isAcceptableExchangeMatch(inherited, chosen, matchOn: on));
+      if (!acceptable) return false;
     }
 
     if (typed == chosen.code) return false;
 
-    _controlTextValues[key] = chosen.code;
-    _textControllerFor(key).text = chosen.code;
+    // A multi-value field keeps the values the operator has already entered:
+    // only the one the cursor is in is replaced, and the cursor lands at the
+    // end of it so typing the separator carries straight on to the next.
+    final separator = _optionSeparatorFor(control);
+    final controller = _textControllerFor(key);
+    if (separator.isEmpty) {
+      _controlTextValues[key] = chosen.code;
+      controller.text = chosen.code;
+    } else {
+      final text = _controlTextValues[key] ?? '';
+      final cursor = controller.selection.baseOffset;
+      final replaced = replaceExchangeValueAt(
+        text,
+        cursor < 0 ? text.length : cursor,
+        separator,
+        chosen.code,
+      );
+      _controlTextValues[key] = replaced.text;
+      controller.value = TextEditingValue(
+        text: replaced.text,
+        selection: TextSelection.collapsed(offset: replaced.cursor),
+      );
+    }
     _touchedTextControls.add(key);
     // The menu closes on the accepted value, so the highlight it belonged to
     // goes with it.
@@ -6149,7 +6252,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final isOptions = input['kind'] == 'options';
     final options = isOptions ? _optionsFor(control) : const <ExchangeOption>[];
     if (isOptions && value.isNotEmpty && input['allowFreeform'] != true && options.isNotEmpty) {
-      isInvalid = isInvalid || !isKnownExchangeOption(value, options);
+      // Every value, not just the last one: a county line whose second county
+      // is a typo claims a multiplier that isn't there, and the field is the
+      // only place that can say so while the QSO is still in front of the
+      // operator.
+      isInvalid = isInvalid || !areKnownExchangeOptions(
+        value,
+        options,
+        separator: _optionSeparatorFor(control),
+        inheritPrefix: _optionInheritPrefixFor(control),
+      );
     }
     final uppercase = !isSerial && input['uppercase'] != false;
     final transforms = [

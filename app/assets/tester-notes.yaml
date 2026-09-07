@@ -14,6 +14,7 @@ upcoming:
     - "The Radio panel shows TX, power out, SWR and supply volts while you transmit, and warns above 1.8 SWR"
     - "The serial port picker suggests your radio's port, flags one just plugged in, and refreshes while open"
     - "A WinKeyer now asks which of its two jacks your radio is on, and no longer dead-keys"
+    - "New QSO Parties extension: 49 state and provincial parties, with counties, county lines and Cabrillo"
 
 "162":
   changes:

@@ -137,3 +137,113 @@ bool isKnownExchangeOption(String value, List<ExchangeOption> options) {
   if (needle.isEmpty) return false;
   return options.any((option) => option.code.toUpperCase() == needle);
 }
+
+/// Where the value the cursor sits in begins and ends, in a field holding
+/// several separated values — a QSO party's county line, `ORDES/JEF`.
+///
+/// The cursor decides, not the end of the text: an operator who goes back to
+/// fix the first county must be offered counties for THAT one, and accepting a
+/// suggestion must not rewrite the second.
+///
+/// A cursor sitting just AFTER a separator is in the value that follows it,
+/// which is empty until something is typed — so the moment the operator types
+/// the separator, the suggestion line stops offering the county they have just
+/// finished and waits for the next one.
+({int start, int end}) exchangeValueSpan(String text, int cursor, String separator) {
+  if (separator.isEmpty) return (start: 0, end: text.length);
+  final at = cursor.clamp(0, text.length);
+  var start = text.lastIndexOf(separator, at > 0 ? at - 1 : 0);
+  start = start < 0 ? 0 : start + separator.length;
+  if (start > at) start = at;
+  var end = text.indexOf(separator, at);
+  if (end < 0) end = text.length;
+  return (start: start, end: end);
+}
+
+/// The value the cursor is in.
+String exchangeValueAt(String text, int cursor, String separator) {
+  final span = exchangeValueSpan(text, cursor, separator);
+  return text.substring(span.start, span.end);
+}
+
+/// [text] with the value the cursor is in replaced by [value], and where the
+/// cursor ends up — at the end of what was just written, so the operator can
+/// type the separator and carry straight on.
+({String text, int cursor}) replaceExchangeValueAt(
+  String text,
+  int cursor,
+  String separator,
+  String value,
+) {
+  final span = exchangeValueSpan(text, cursor, separator);
+  final replaced = text.replaceRange(span.start, span.end, value);
+  return (text: replaced, cursor: span.start + value.length);
+}
+
+/// Every value in [text], in order, with the empty ones dropped — what a
+/// multi-value field actually holds. A trailing separator is a value not yet
+/// typed, not an empty one.
+List<String> splitExchangeValues(String text, String separator) {
+  if (separator.isEmpty) {
+    final single = text.trim();
+    return single.isEmpty ? const [] : [single];
+  }
+  return [
+    for (final part in text.split(separator))
+      if (part.trim().isNotEmpty) part.trim(),
+  ];
+}
+
+/// What a later value in a multi-value field might be short for, or null.
+///
+/// The multi-state QSO parties let a county line be typed `ORDES/JEF` for
+/// `ORDES/ORJEF`, and the scorer and the Cabrillo both read it that way — so
+/// the field has to recognize it too, or it paints a perfectly good exchange
+/// invalid and offers no suggestions for the second county.
+///
+/// This answers a CANDIDATE rather than a replacement, and nothing is ever
+/// rewritten in the field: after `IDADA/`, `IDA` is either Idaho county's
+/// shorthand (`IDIDA`) or the first three characters of `IDIDA` being typed,
+/// and `IDIDA`, `UTUTA`, `WAWAH` and `WAWAL` are all real 7QP counties. Only
+/// the operator knows which they meant, so both readings are accepted and
+/// neither is forced on screen.
+String? inheritedCandidate(String first, String value, int prefixLength) {
+  if (prefixLength <= 0 || first.length <= prefixLength || value.isEmpty) return null;
+  final full = first.length - prefixLength;
+  if (value.length > full) return null;
+  return '${first.substring(0, prefixLength)}$value';
+}
+
+/// Every value in [text], each paired with what it might be short for.
+List<(String, String?)> exchangeValueCandidates(
+  String text,
+  String separator, {
+  int inheritPrefix = 0,
+}) {
+  final values = splitExchangeValues(text, separator);
+  return [
+    for (final (index, value) in values.indexed)
+      (value, index == 0 ? null : inheritedCandidate(values.first, value, inheritPrefix)),
+  ];
+}
+
+/// Whether every value in [text] is one of [options]' codes.
+///
+/// All of them, not just the last: a county line whose second county is a typo
+/// claims a multiplier that isn't there, and the operator can still fix it
+/// while the QSO is in front of them. A field with nothing typed is not
+/// invalid — it is unanswered.
+bool areKnownExchangeOptions(
+  String text,
+  List<ExchangeOption> options, {
+  String separator = '',
+  int inheritPrefix = 0,
+}) {
+  final values = exchangeValueCandidates(text, separator, inheritPrefix: inheritPrefix);
+  if (values.isEmpty) return true;
+  // EITHER reading counts: a value that is a county on its own is valid, and so
+  // is one that becomes a county once it borrows the first value's prefix.
+  return values.every((entry) =>
+      isKnownExchangeOption(entry.$1, options) ||
+      (entry.$2 != null && isKnownExchangeOption(entry.$2!, options)));
+}

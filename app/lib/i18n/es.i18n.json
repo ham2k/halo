@@ -730,6 +730,8 @@
       "noticeInvalidExchange": "Intercambio Inválido",
       "noticeUnknownEvent": "Evento Desconocido",
       "noticeOurGrid": "Configure Nuestro Grid",
+      "noticeRareCounty": "¡Condado Raro!",
+      "noticeOurLocation": "Configure Nuestro Condado",
       "noticeShortGrid": "Grid Muy Corto"
     }
   },

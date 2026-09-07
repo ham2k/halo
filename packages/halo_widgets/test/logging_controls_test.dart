@@ -3380,6 +3380,122 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.textContaining('Cuyahoga'), findsWidgets, reason: 'focus alone paints the offer');
     });
+
+    group('several values in one field — a county line', () {
+      // A QSO party's station may be on a county line and send both counties as
+      // one exchange. Every value is checked, and the suggestion line and Space
+      // act on the one the cursor is in — accepting a suggestion for the second
+      // county must never rewrite the first, which the operator typed.
+      Widget lineHost() => host(extra: const {'multiValue': {'separator': '/'}});
+
+      testWidgets('both values are checked, not just the last', (tester) async {
+        await tester.pumpWidget(lineHost());
+        InputDecoration decoration() =>
+            tester.widget<TextField>(find.widgetWithText(TextField, 'County')).decoration!;
+
+        await tester.enterText(find.widgetWithText(TextField, 'County'), 'CUY/WAS');
+        await tester.pump();
+        expect(decoration().enabledBorder, isNull, reason: 'both counties are in the set');
+
+        // A typo in the FIRST value is the case a last-value-only check misses,
+        // and it costs a multiplier just as surely.
+        await tester.enterText(find.widgetWithText(TextField, 'County'), 'ZZ/WAS');
+        await tester.pump();
+        final errorColor = Theme.of(tester.element(find.widgetWithText(TextField, 'County'))).colorScheme.error;
+        expect((decoration().enabledBorder as UnderlineInputBorder).borderSide.color, errorColor);
+      });
+
+      testWidgets('the suggestion line answers for the value being typed', (tester) async {
+        await tester.pumpWidget(lineHost());
+        await tester.tap(find.widgetWithText(TextField, 'County'));
+        await tester.pump();
+        await tester.enterText(find.widgetWithText(TextField, 'County'), 'CUY/AS');
+        await tester.pump();
+
+        // Matches for "AS", not for the whole string — which matches nothing at
+        // all, so without this the menu simply never appears on a county line.
+        expect(find.textContaining('Ashland'), findsWidgets);
+      });
+
+      testWidgets('Space completes the second county and leaves the first alone', (tester) async {
+        await tester.pumpWidget(lineHost());
+        await tester.tap(find.widgetWithText(TextField, 'County'));
+        await tester.pump();
+        await tester.enterText(find.widgetWithText(TextField, 'County'), 'CUY/WA');
+        await tester.pump();
+
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await tester.pumpAndSettle();
+
+        expect(
+          tester.widget<TextField>(find.widgetWithText(TextField, 'County')).controller?.text,
+          'CUY/WAS',
+        );
+      });
+
+      testWidgets('a borrowed prefix beats a same-named county in another state', (tester) async {
+        // 7QP's `ORDES/JEF` means Oregon's Jefferson — the first county says
+        // which state. But `JEF` matches `IDJEF`, `MTJEF`, `ORJEF` and `WAJEF`
+        // by NAME, so the literal reading always matched and Space took the
+        // first of them: Idaho's Jefferson, silently, for an unambiguous
+        // shorthand.
+        const jeffersons = [
+          {'code': 'IDJEF', 'name': 'Jefferson ID'},
+          {'code': 'MTJEF', 'name': 'Jefferson MT'},
+          {'code': 'ORDES', 'name': 'Deschutes OR'},
+          {'code': 'ORJEF', 'name': 'Jefferson OR'},
+        ];
+        await tester.pumpWidget(MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              radioService: tunedRadio,
+              operation: running(['qp']),
+              qsosRepository: qsos,
+              activityControls: [
+                {
+                  'key': 'qp/county',
+                  'label': 'County',
+                  'input': {
+                    'kind': 'options',
+                    'refType': 'qp',
+                    'field': 'county',
+                    'options': jeffersons,
+                    'multiValue': {'separator': '/', 'inheritPrefix': 2},
+                  },
+                },
+              ],
+            ),
+          ),
+        ));
+
+        await tester.tap(find.widgetWithText(TextField, 'County'));
+        await tester.pump();
+        await tester.enterText(find.widgetWithText(TextField, 'County'), 'ORDES/JEF');
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.space);
+        await tester.pumpAndSettle();
+
+        expect(
+          tester.widget<TextField>(find.widgetWithText(TextField, 'County')).controller?.text,
+          'ORDES/ORJEF',
+          reason: 'the shorthand names Oregon, and no other Jefferson may be written for it',
+        );
+      });
+
+      testWidgets('the whole line is what gets logged', (tester) async {
+        await tester.pumpWidget(lineHost());
+        await tester.enterText(find.widgetWithText(TextField, 'County'), 'CUY/WAS');
+        await tester.pump();
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+        await tester.pump();
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+        final logged = await waitForQsos(tester, 1);
+        expect(logged.single.refs, [
+          {'type': 'qp', 'county': 'CUY/WAS'},
+        ]);
+      });
+    });
   });
 
   group('a refresh that could not fetch', () {

@@ -1,0 +1,106 @@
+{
+  "key": "WV",
+  "name": "West Virginia QSO Party",
+  "start": "2026-6-20 16:00Z",
+  "end": "2026-6-21 03:59Z",
+  "url": "https://www.qsl.net/wvqp/",
+  "cabrilloName": "WVQP",
+  "notes": "Mobile operation bonus not included in score. Counties entered by W1GRL and rules by W1BOY",
+  "internalNotes": "",
+  "lastUpdated": "2026-04-21 12:00Z",
+  "status": "Updated for 2026, but not verified",
+  "options": {
+    "dcCountsAsMaryland": true,
+    "countyLine": true,
+    "selfSpotting": true,
+    "dxEntityIsMultiplier": true,
+    "stateCountsForInState": true,
+    "bonusPerBandMode": true,
+    "bonusPostMultiplier": true
+  },
+  "points": {
+    "PHONE": 1,
+    "CW": 2,
+    "DATA": 2
+  },
+  "bonusStations": {
+    "W8WVA": 100
+  },
+  "counties": {
+    "BAR": "Barbour",
+    "BER": "Berkeley",
+    "BOO": "Boone",
+    "BRA": "Braxton",
+    "BRO": "Brooke",
+    "CAB": "Cabell",
+    "CAL": "Calhoun",
+    "CLA": "Clay",
+    "DOD": "Doddridge",
+    "FAY": "Fayette",
+    "GIL": "Gilmer",
+    "GRA": "Grant",
+    "GRE": "Greenbrier",
+    "HAM": "Hampshire",
+    "HAN": "Hancock",
+    "HDY": "Hardy",
+    "HAR": "Harrison",
+    "JAC": "Jackson",
+    "JEF": "Jefferson",
+    "KAN": "Kanawha",
+    "LEW": "Lewis",
+    "LIN": "Lincoln",
+    "LOG": "Logan",
+    "MRN": "Marion",
+    "MAR": "Marshall",
+    "MAS": "Mason",
+    "MCD": "McDowell",
+    "MER": "Mercer",
+    "MIN": "Mineral",
+    "MGO": "Mingo",
+    "MON": "Monongalia",
+    "MRO": "Monroe",
+    "MOR": "Morgan",
+    "NIC": "Nicholas",
+    "OHI": "Ohio County",
+    "PEN": "Pendleton",
+    "PLE": "Pleasants",
+    "POC": "Pocahontas",
+    "PRE": "Preston",
+    "PUT": "Putnam",
+    "RAL": "Raleigh",
+    "RAN": "Randolph",
+    "RIT": "Ritchie",
+    "ROA": "Roane",
+    "SUM": "Summers",
+    "TAY": "Taylor",
+    "TUC": "Tucker",
+    "TYL": "Tyler",
+    "UPS": "Upshur",
+    "WAY": "Wayne",
+    "WEB": "Webster",
+    "WET": "Wetzel",
+    "WIR": "Wirt",
+    "WOO": "Wood",
+    "WYO": "Wyoming County"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-UNLIMITED"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5 watts CW, 10 watts phone",
+      "LOW": "100 watts",
+      "HIGH": ">100 watts"
+    }
+  }
+}

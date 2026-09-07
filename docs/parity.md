@@ -56,15 +56,16 @@ fixes to ground HaLo already covers; the sweep's movement is on the HaLo side.
   deep-link bridge, but it serves the same WSJT-X case by another route.
 
 New on PoLo's side since 26.7.3, and open here: **Ham2K File Stash export**
-(`c4838811`, `fd657e23`), **QSO Party scoring** work (still M10), and two
-more locales (Italian, Korean).
+(`c4838811`, `fd657e23`) and two more locales (Italian, Korean). PoLo's QSO
+Party scoring work is closed on this side by M10 (§1), which ports it and
+fixes four rules it carries but never awards.
 
 ## 1. Structural gaps (biggest leverage)
 
 | Gap | PoLo has | HaLo status |
 | --- | --- | --- |
 | **Import** | Per-operation "Add QSOs from ADIF" + global "Import History from ADIF" feeding worked-before detection; QSON import with merge/dedup (`mergeQSOs`) | 🟡 **Per-operation import landed** (HALO-173) and **PoLo's separate "history-only" import isn't needed** — the Logs view's own ADIF import (`logs_view.dart`, `AdifImportService`) writes real QSOs into an operation, same as the per-operation path, so any worked-before detection (Call History, HALO-304) already sees them; there is no reason to duplicate that as a second, history-only store. The parser (HALO-166) turns ADIF into QSON against a ten-logger corpus, with same-band/supermode/5-minute merging, station-call rewriting and activation hoisting. `adifImport` recovers references for every activity except `custom` — see hooks.md for why it has none. Missing: QSON import |
-| **Contest breadth** | 12 contest extensions + Field Day + Winter Field Day + 13 Colonies (15 total) | 🟡 **12 of the 15 ported** (+M7 ARRL VHF and M8 R1/RSGB VHF since the last sweep, with ARRL 10 GHz scored inside `arrl-vhf-tests`), plus **CWT**, a 13th extension PoLo lacks. Missing: **GAPOTA (M9)**, **full QSO Parties (M10)** — PoLo kept fixing its county/state scoring through 26.7.6 — and **13 Colonies (M12)**. Next per RFC §7: **M9/M10** |
+| **Contest breadth** | 12 contest extensions + Field Day + Winter Field Day + 13 Colonies (15 total) | 🟡 **13 of the 15 ported** (+M7 ARRL VHF and M8 R1/RSGB VHF since the last sweep, with ARRL 10 GHz scored inside `arrl-vhf-tests`), plus **CWT**, an extension PoLo lacks. **QSO Parties (M10)** ships 49 operable parties (50 files; NSARA is disabled by its own sponsor's data), including Maine and Arizona, which PoLo does not have, with county-line N×M scoring, rolling rover location off segments, and several rules PoLo documents but does not award (power multipliers, the bonus-station sweep, the DX-entity cap, `DIGI` points). Missing: **GAPOTA (M9)** and **13 Colonies (M12)**. Next per RFC §7: **M9** |
 | **Export breadth** | 29 ADIF variants, 11 Cabrillo, QSON, REG1TEST/EDI; user-editable Handlebars templates for filename **and title and ADIF notes/comments/QSL message**, per-export-type overrides; "ignore lookup data" toggle; Wavelog upload with station selection; **Ham2K File Stash export** (new in 26.7.3) | 🟡 whole-log + per-activity + per-contest ADIF, **Cabrillo**, **REG1TEST/EDI** (HALO-296), a **hunter/chaser export** (HALO-274) PoLo has no equivalent of, segment-sliced exports, private-data switch, QSON dump (dev-mode only, `export_service.dart`). HaLo now emits `APP_HAM2K_*` fields (`APP_HAM2K_POSITION`) and **templating exists** (HALO-201: one renderer behind the `template` hook, driving filenames, panels and ADIF text). Missing: **Wavelog**, **Ham2K File Stash** (new in 26.7.3), per-export-type template overrides in the UI, ignore-lookup-data, user-facing QSON |
 | **Activity catalog** | 21 activity dirs + WAB (under `other/`) | 🟡 **18 ported — the catalog is effectively closed.** `fd`/`wfd` shipped as contests; only **13 Colonies** (contest thread, M12) and **WAB squares** remain |
 | **Lookup providers** | QRZ, HamQTH, QRZCALL.EU, HamDB, **Call History** (worked-before from own log + imported ADIF history), Spot History; call-notes with user-added custom note files | 🟡 QRZ + call-notes (**custom files now done**, HALO-53) + spot-history (now also yielding activity refs; 30-min window vs PoLo's 10) + **Call History** (HALO-304, HALO-453 — identity/location fields, dropping a portable/prefixed location; registered last of every lookup source, so the log fills only what nothing live answered, a manually-typed field included; "imported ADIF history" needs no separate mechanism — see the Import row above, an ADIF import from the Logs view is already ordinary QSOs) + **Ham2K Lookup Service** (HaLo-only, not in PoLo — free, US/Canada/Germany, `services.ham2k.net`). HamDB was ported then removed in favor of Ham2K Lookup Service, which covers the same 3 countries and, like HamDB, answers a US or Canadian record with a grid; the residual gap is the lat/lon pair, which HamDB supplied and Ham2K Lookup Service does not return for any record (nor a grid for a German one). Missing providers: HamQTH (a sample extension only, `extensions/samples/k2hrc-hamqth`), QRZCALL.EU. Lookup caching explicitly deferred (`lookup_queue_service.dart`) |
@@ -297,8 +298,8 @@ HaLo has, PoLo lacks: `DEVSTATUS`/`DEVPROGRESS` (status-bar exercisers),
 5. Consume **fields-on-top**, the last dead logging setting — already
    stored, surfaced and published; only the view is missing. (Country flags
    is done.)
-6. Remaining contests **M9 (GAPOTA)**, **M10 (QSO Parties)** and 13 Colonies
-   (M12); WAB. (M7 and M8 are done.)
+6. Remaining contests **M9 (GAPOTA)** and 13 Colonies (M12); WAB. (M7, M8
+   and M10 are done.)
 7. Per-export-type template overrides + Wavelog + File Stash (+ user-facing
    QSON). REG1TEST/EDI is done.
 8. ~~Multi-station / operator model~~ — done (HALO-370, HALO-279). What is

@@ -144,6 +144,7 @@ export const bundles = [
   { key: 'r1-fd', entry: 'contests/r1-fd/src/index.ts', kind: 'extension' },
   { key: 'nrrl-nfd', entry: 'contests/nrrl-nfd/src/index.ts', kind: 'extension' },
   { key: 'cwt', entry: 'contests/cwt/src/index.ts', kind: 'extension' },
+  { key: 'qp', entry: 'contests/qp/src/index.ts', kind: 'extension' },
   { key: 'parksnpeaks', entry: 'spots/parksnpeaks/src/index.ts', kind: 'extension' },
   { key: 'custom-text', entry: 'dashboard/custom-text/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },

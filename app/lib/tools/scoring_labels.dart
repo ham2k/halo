@@ -45,6 +45,11 @@ String scoreNoticeLabel(BuildContext context, String key) {
     // being lost silently unless the operator is told (M4).
     'missingExchange' => t.noticeMissingExchange,
     'invalidExchange' => t.noticeInvalidExchange,
+    // A QSO party's rare county (NC), worth several times an ordinary contact.
+    'rareCounty' => t.noticeRareCounty,
+    // The operation carries no county yet — a QSO party scores every contact as
+    // ours × theirs, so until the operator says where they are, nothing counts.
+    'ourLocation' => t.noticeOurLocation,
     // The operation carries no grid yet — a distance-scoring contest
     // (arrl-vhf-tests) can't score anything until the operator sets one.
     'ourGrid' => t.noticeOurGrid,

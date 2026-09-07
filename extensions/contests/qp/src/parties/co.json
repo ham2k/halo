@@ -1,0 +1,126 @@
+{
+  "key": "CO",
+  "name": "Colorado QSO Party",
+  "start": "2026-9-12 14:00Z",
+  "end": "2026-9-13 03:59Z",
+  "url": "https://coloradoqsoparty.org/",
+  "cabrilloName": "COQP",
+  "notes": "",
+  "internalNotes": "",
+  "lastUpdated": "2026-08-07 12:00Z",
+  "status": "Updated for 2026. Mixed mode scoring will not be accurate.",
+  "exchange": [
+    "Location"
+  ],
+  "options": {
+    "dcCountsAsMaryland": true,
+    "stateCountsForInState": true,
+    "selfSpotting": true,
+    "countyLine": true,
+    "dxIsMultiplier": true,
+    "multsPerBandMode": false,
+    "multsPerMode": true,
+    "bonusPostMultiplier": true
+  },
+  "points": {
+    "PHONE": 2,
+    "CW": 2
+  },
+  "bonus": {
+    "perActivatedCounty": 500,
+    "perActivatedCountyMinimumCount": 15,
+    "perActivatedCountyRoverOnly": true
+  },
+  "counties": {
+    "ADA": "Adams",
+    "ALA": "Alamosa",
+    "ARA": "Arapahoe",
+    "ARC": "Archuleta",
+    "BAC": "Baca",
+    "BEN": "Bent",
+    "BOU": "Boulder",
+    "BRO": "Broomfield",
+    "CHA": "Chaffee",
+    "CHE": "Cheyenne",
+    "CLC": "Clear Creek",
+    "CON": "Conejos",
+    "COS": "Costilla",
+    "CRO": "Crowley",
+    "CUS": "Custer",
+    "DEL": "Delta",
+    "DEN": "Denver",
+    "DOL": "Dolores",
+    "DOU": "Douglas",
+    "EAG": "Eagle",
+    "ELP": "El Paso",
+    "ELB": "Elbert",
+    "FRE": "Fremont",
+    "GAR": "Garfield",
+    "GIL": "Gilpin",
+    "GRA": "Grand",
+    "GUN": "Gunnison",
+    "HIN": "Hinsdale",
+    "HUE": "Huerfano",
+    "JAC": "Jackson",
+    "JEF": "Jefferson",
+    "KIO": "Kiowa",
+    "KIC": "Kit Carson",
+    "LAK": "Lake",
+    "LAP": "La Plata",
+    "LAR": "Larimer",
+    "LAA": "Las Animas",
+    "LIN": "Lincoln",
+    "LOG": "Logan",
+    "MES": "Mesa",
+    "MIN": "Mineral",
+    "MOF": "Moffat",
+    "MON": "Montezuma",
+    "MOT": "Montrose",
+    "MOR": "Morgan",
+    "OTE": "Otero",
+    "OUR": "Ouray",
+    "PAR": "Park",
+    "PHI": "Phillips",
+    "PIT": "Pitkin",
+    "PRO": "Prowers",
+    "PUE": "Pueblo",
+    "RIB": "Rio Blanco",
+    "RIG": "Rio Grande",
+    "ROU": "Routt",
+    "SAG": "Saguache",
+    "SAJ": "San Juan",
+    "SAM": "San Miguel",
+    "SED": "Sedgwick",
+    "SUM": "Summit",
+    "TEL": "Teller",
+    "WAS": "Washington County",
+    "WEL": "Weld",
+    "YUM": "Yuma"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE",
+      "PORTABLE"
+    ],
+    "mode": [
+      "CW",
+      "PHONE",
+      "MIXED"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5 watts",
+      "LOW": "100 watts",
+      "HIGH": ">100 watts"
+    }
+  }
+}

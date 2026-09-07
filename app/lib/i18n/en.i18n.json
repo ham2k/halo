@@ -730,6 +730,8 @@
       "noticeInvalidExchange": "Bad Exchange",
       "noticeUnknownEvent": "Unknown Event",
       "noticeOurGrid": "Set Our Grid",
+      "noticeRareCounty": "Rare County!",
+      "noticeOurLocation": "Set Our County",
       "noticeShortGrid": "Grid Too Short"
     }
   },

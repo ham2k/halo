@@ -1,0 +1,58 @@
+{
+  "key": "NJ",
+  "name": "New Jersey QSO Party",
+  "start": "2026-9-12 14:00Z",
+  "end": "2026-9-13 02:00Z",
+  "status": "Dates verified for 2026 against the sponsor’s rules; scoring rules not yet verified",
+  "counties": {
+    "ATLA": "Atlantic",
+    "BERG": "Bergen",
+    "BURL": "Burlington",
+    "CAPE": "Cape May",
+    "CMDN": "Camden",
+    "CUMB": "Cumberland",
+    "ESSE": "Essex",
+    "GLOU": "Gloucester",
+    "SALE": "Salem",
+    "SUSS": "Sussex",
+    "WRRN": "Warren",
+    "HUDS": "Hudson",
+    "HUNT": "Hunterdon",
+    "MERC": "Mercer",
+    "MIDD": "Middlesex",
+    "MONM": "Monmouth",
+    "MORR": "Morris",
+    "OCEA": "Ocean",
+    "PASS": "Passaic",
+    "SOME": "Somerset",
+    "UNIO": "Union"
+  },
+  "url": "https://sites.google.com/view/k2td-bcrc/nj-qp/rules",
+  "lastUpdated": "2026-09-06 12:00Z",
+  "cabrilloName": "NJQP",
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE",
+      "PORTABLE",
+      "ROVER"
+    ],
+    "overlay": [
+      "ROOKIE"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5W",
+      "LOW": "",
+      "HIGH": "150W or greater"
+    }
+  }
+}

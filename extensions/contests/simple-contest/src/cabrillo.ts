@@ -62,8 +62,21 @@ export interface CabrilloOptions {
   headers: [string, string | undefined][]
   /// The exchange columns for one QSO, after frequency/mode/date/time — e.g.
   /// `[ourCall, ourRst, ourExchange, theirCall, theirRst, theirExchange]`.
-  qsoParts: (qso: Record<string, JSONValue>) => string[]
+  ///
+  /// May answer with SEVERAL rows, which a QSO party's county line needs: a
+  /// station operating from two counties submits one line per pairing, because
+  /// each pairing is what the checker matches against the other station's log.
+  /// Answering with no rows drops the contact from the file — how a contest
+  /// declines to claim a QSO it cannot express.
+  qsoParts: (qso: Record<string, JSONValue>) => string[] | string[][]
   createdBy?: string
+}
+
+/// One row, or several. A row is a list of strings; several rows are a list of
+/// those — told apart by looking at the first element, since an empty answer
+/// means "no rows" either way.
+function rowsOf(parts: string[] | string[][]): string[][] {
+  return Array.isArray(parts[0]) ? (parts as string[][]) : parts.length > 0 ? [parts as string[]] : []
 }
 
 export function qsonToCabrillo(
@@ -80,14 +93,15 @@ export function qsonToCabrillo(
     // Event rows (breaks/starts) and deleted records aren't contacts.
     if (qso.band === 'event' || qso.deleted === true) continue
     const at = Number(qso.startAtMillis ?? qso.endAtMillis ?? 0)
-    const columns = [
+    const prefix = [
       cabrilloFreq(qso).padEnd(5, ' '),
       cabrilloMode(qso).padEnd(2, ' '),
       fmtCabrilloDate(at).padEnd(10, ' '),
       fmtCabrilloTime(at).padEnd(4, ' '),
-      qsoParts(qso).join(' '),
     ]
-    lines.push(`QSO: ${columns.join(' ')}`)
+    for (const row of rowsOf(qsoParts(qso))) {
+      lines.push(`QSO: ${[...prefix, row.join(' ')].join(' ')}`)
+    }
   }
 
   lines.push('END-OF-LOG:')

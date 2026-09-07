@@ -2875,6 +2875,12 @@ class Translations$loggingControls$info$en {
 	/// en: 'Set Our Grid'
 	String get noticeOurGrid => 'Set Our Grid';
 
+	/// en: 'Rare County!'
+	String get noticeRareCounty => 'Rare County!';
+
+	/// en: 'Set Our County'
+	String get noticeOurLocation => 'Set Our County';
+
 	/// en: 'Grid Too Short'
 	String get noticeShortGrid => 'Grid Too Short';
 }
@@ -6659,6 +6665,8 @@ extension on Translations {
 			'loggingControls.info.noticeInvalidExchange' => 'Bad Exchange',
 			'loggingControls.info.noticeUnknownEvent' => 'Unknown Event',
 			'loggingControls.info.noticeOurGrid' => 'Set Our Grid',
+			'loggingControls.info.noticeRareCounty' => 'Rare County!',
+			'loggingControls.info.noticeOurLocation' => 'Set Our County',
 			'loggingControls.info.noticeShortGrid' => 'Grid Too Short',
 			'formChrome.untitled' => '(untitled)',
 			'formChrome.showMore' => 'Show more',
@@ -7071,10 +7079,10 @@ extension on Translations {
 			'settings.station.reportFailed' => ({required Object error}) => 'The report wasn\'t sent: ${error}',
 			'settings.station.unverified' => 'Not tested against this hardware',
 			'settings.station.unverifiedShort' => 'untested',
-			'settings.station.troubleshootingNotes' => 'Troubleshooting Notes',
-			'settings.station.mainVfo' => 'Main VFO',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.troubleshootingNotes' => 'Troubleshooting Notes',
+			'settings.station.mainVfo' => 'Main VFO',
 			'settings.station.useAsMainVfo' => 'Use as Main VFO',
 			'settings.station.serialPort' => 'Serial port',
 			'settings.station.serialPortDescription' => 'The port the radio\'s CAT interface appears on.',
@@ -7585,10 +7593,10 @@ extension on Translations {
 			'adifImport.missingRefs' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'References could not be recovered for ${count} contact', other: 'References could not be recovered for ${formatted} contacts', ), 
 			'adifImport.partialRefs' => ({required num count, required Object programs, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${programs} references may be incomplete for ${count} contact', other: '${programs} references may be incomplete for ${formatted} contacts', ), 
 			'adifImport.stackingTypesUnknown' => 'Combined contacts may lose a reference — the activities could not say which types stack. Cancel and retry to avoid this.',
-			'adifImport.nothingToImport' => 'Nothing in this file can be imported',
-			'adifImport.confirm' => 'Import',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.nothingToImport' => 'Nothing in this file can be imported',
+			'adifImport.confirm' => 'Import',
 			'adifImport.importing' => ({required Object filename}) => 'Importing ${filename}…',
 			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} contact from ${filename}', other: 'Imported ${formatted} contacts from ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',

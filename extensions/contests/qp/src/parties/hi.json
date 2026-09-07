@@ -1,0 +1,59 @@
+{
+  "key": "HI",
+  "name": "Hawaii QSO Party",
+  "start": "2026-8-22 16:00Z",
+  "end": "2026-8-23 01:59Z",
+  "url": "https://www.hawaiiqsoparty.org/",
+  "cabrilloName": "HI-QSO-PARTY",
+  "notes": "Multipliers for out-of-state will not be accurate. Contributed by W1GRL & W1BOY",
+  "internalNotes": "HI stations mults not per band, non-HI stations mults are per band",
+  "lastUpdated": "2026-04-21 12:00Z",
+  "status": "Updated for 2026, but not verified",
+  "options": {
+    "dcCountsAsMaryland": false,
+    "stateCountsForInState": true,
+    "countyLine": false,
+    "dxEntityIsMultiplier": true,
+    "selfSpotting": true,
+    "multsPerBandMode": true,
+    "inStateMultsPerBand": true
+  },
+  "points": {
+    "PHONE": 2,
+    "CW": 3,
+    "DATA": 3
+  },
+  "counties": {
+    "KAU": "Kauai",
+    "NII": "Niihau",
+    "KAL": "Kalawao",
+    "HON": "Honolulu",
+    "LHN": "Leeward",
+    "PRL": "Pearl Harbor Area",
+    "WHN": "Windward",
+    "LNI": "Lana'i",
+    "MAU": "Maui",
+    "MOL": "Molokai",
+    "HIL": "Hilo",
+    "KOH": "Kohala",
+    "KON": "Kona",
+    "VOL": "Volcano Park"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE",
+      "MULTI-UNLIMITED"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5 watts",
+      "LOW": "100 watts",
+      "HIGH": "1500 watts"
+    }
+  }
+}

@@ -1373,6 +1373,8 @@ class _Translations$loggingControls$info$es extends Translations$loggingControls
 	@override String get noticeInvalidExchange => 'Intercambio Inválido';
 	@override String get noticeUnknownEvent => 'Evento Desconocido';
 	@override String get noticeOurGrid => 'Configure Nuestro Grid';
+	@override String get noticeRareCounty => '¡Condado Raro!';
+	@override String get noticeOurLocation => 'Configure Nuestro Condado';
 	@override String get noticeShortGrid => 'Grid Muy Corto';
 }
 
@@ -3481,6 +3483,8 @@ extension on TranslationsEs {
 			'loggingControls.info.noticeInvalidExchange' => 'Intercambio Inválido',
 			'loggingControls.info.noticeUnknownEvent' => 'Evento Desconocido',
 			'loggingControls.info.noticeOurGrid' => 'Configure Nuestro Grid',
+			'loggingControls.info.noticeRareCounty' => '¡Condado Raro!',
+			'loggingControls.info.noticeOurLocation' => 'Configure Nuestro Condado',
 			'loggingControls.info.noticeShortGrid' => 'Grid Muy Corto',
 			'formChrome.untitled' => '(sin título)',
 			'formChrome.showMore' => 'Mostrar más',
@@ -3893,10 +3897,10 @@ extension on TranslationsEs {
 			'settings.station.reportFailed' => ({required Object error}) => 'El informe no se envió: ${error}',
 			'settings.station.unverified' => 'No probado con este hardware',
 			'settings.station.unverifiedShort' => 'sin probar',
-			'settings.station.troubleshootingNotes' => 'Notas de resolución de problemas',
-			'settings.station.mainVfo' => 'VFO principal',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.troubleshootingNotes' => 'Notas de resolución de problemas',
+			'settings.station.mainVfo' => 'VFO principal',
 			'settings.station.useAsMainVfo' => 'Usar como VFO principal',
 			'settings.station.serialPort' => 'Puerto serie',
 			'settings.station.serialPortDescription' => 'El puerto donde aparece la interfaz CAT de la radio.',
@@ -4407,10 +4411,10 @@ extension on TranslationsEs {
 			'adifImport.noDate' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} no tiene fecha y no se puede importar', other: '${formatted} no tienen fecha y no se pueden importar', ), 
 			'adifImport.activationFound' => ({required Object refs}) => 'Este archivo registra una activación de ${refs}.',
 			'adifImport.addActivation' => 'Añadirla a esta operación',
-			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.',
-			'adifImport.busy' => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.',
+			'adifImport.busy' => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.',
 			'adifImport.oneFileOnly' => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.',
 			'offline.statusOffline' => 'Internet: SIN CONEXIÓN',
 			'offline.statusOnline' => 'Internet: conectado',

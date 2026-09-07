@@ -553,6 +553,23 @@ export interface OptionsInputDescriptor {
   /// because a location guess is wrong often enough to be annoying, and an
   /// exact code the operator typed in full is never displaced by it.
   preferredCodes?: string[]
+  /// Several values in one field, separated by [separator] — a QSO party's
+  /// county line, `ORDES/JEF`. Every token is matched, validated and shown
+  /// against the same option set; the suggestion line and the SPACE shortcut
+  /// act on the token the cursor is in, so accepting one never rewrites the
+  /// ones already typed.
+  ///
+  /// The separator has to be a character the field accepts: `numeric` and any
+  /// `pattern` still apply to the whole field, so a numeric multi-value field
+  /// would strip a `/` as it was typed.
+  ///
+  /// `inheritPrefix` lets a later value borrow the first one's opening
+  /// characters — the multi-state QSO parties let `ORDES/JEF` stand for
+  /// `ORDES/ORJEF`. It is applied when MATCHING and VALIDATING, never by
+  /// rewriting the field: which of the two a half-typed `IDA` is (Idaho county,
+  /// or the first letters of `IDIDA`) cannot be known until the operator stops
+  /// typing, so a field that rewrote as you typed would corrupt one of them.
+  multiValue?: { separator: string; inheritPrefix?: number }
   /// Hold the suggestion line back until this many characters are typed.
   ///
   /// SPACE never acts on less than one character either way: with no minimum, an

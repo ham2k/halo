@@ -152,4 +152,82 @@ void main() {
     expect(ExchangeOption.fromMap({'name': 'no code'}), isNull);
     expect(ExchangeOption.fromMap({'code': 42}), isNull);
   });
+
+  group('several values in one field — a QSO party county line', () {
+    // The cursor decides which county the suggestion line is answering for, so
+    // an operator going back to fix the first one is not offered matches for
+    // the second.
+    test('the value under the cursor is the one being typed', () {
+      expect(exchangeValueAt('CUY/WAS', 3, '/'), 'CUY');
+      expect(exchangeValueAt('CUY/WAS', 7, '/'), 'WAS');
+      // Just after the separator: the next value, still empty — which is what
+      // stops the line from re-offering the county just finished.
+      expect(exchangeValueAt('CUY/', 4, '/'), '');
+      // No separator declared: the field is one value, whatever the cursor.
+      expect(exchangeValueAt('CUY/WAS', 3, ''), 'CUY/WAS');
+    });
+
+    test('accepting a suggestion rewrites only the value the cursor is in', () {
+      // Accepting on the second county must not touch the first: the operator
+      // typed it, and a suggestion is never a licence to rewrite what is
+      // already there.
+      final second = replaceExchangeValueAt('CUY/WA', 6, '/', 'WAS');
+      expect(second.text, 'CUY/WAS');
+      expect(second.cursor, 7, reason: 'the cursor lands ready for the next character');
+
+      final first = replaceExchangeValueAt('CU/WAS', 2, '/', 'CUY');
+      expect(first.text, 'CUY/WAS');
+      expect(first.cursor, 3);
+    });
+
+    test('a trailing separator is a value not yet typed, not an empty one', () {
+      expect(splitExchangeValues('CUY/WAS', '/'), ['CUY', 'WAS']);
+      expect(splitExchangeValues('CUY/', '/'), ['CUY']);
+      expect(splitExchangeValues('', '/'), <String>[]);
+    });
+
+    test('a later value may borrow the first one\'s prefix', () {
+      // The multi-state QSO parties let `ORDES/JEF` stand for `ORDES/ORJEF`,
+      // and the scorer and the Cabrillo both read it that way — so the field
+      // has to accept it rather than tint a valid exchange.
+      expect(inheritedCandidate('ORDES', 'JEF', 2), 'ORJEF');
+      // A value already at full length is not short for anything…
+      expect(inheritedCandidate('ORDES', 'ORJEF', 2), isNull);
+      // …while one that starts with its own state's letters still is. `IDIDA`,
+      // `UTUTA`, `WAWAH` and `WAWAL` are real 7QP counties, and a rewrite
+      // guarded on the prefix refused all four of them.
+      expect(inheritedCandidate('IDADA', 'IDA', 2), 'IDIDA');
+      // Short codes lend no prefix, and neither does an undeclared rule.
+      expect(inheritedCandidate('ALB', 'ERI', 2), isNull);
+      expect(inheritedCandidate('ORDES', 'JEF', 0), isNull);
+    });
+
+    test('EVERY value is checked, not just the last', () {
+      // A county line whose second county is a typo claims a multiplier that
+      // isn't there, and the field is the only place that can say so while the
+      // QSO is still in front of the operator.
+      expect(areKnownExchangeOptions('CUY/WAS', _counties, separator: '/'), isTrue);
+      expect(areKnownExchangeOptions('ZZ/WAS', _counties, separator: '/'), isFalse);
+      expect(areKnownExchangeOptions('CUY/ZZ', _counties, separator: '/'), isFalse);
+      // Nothing typed is unanswered, not invalid.
+      expect(areKnownExchangeOptions('', _counties, separator: '/'), isTrue);
+      // Half-typed second value: invalid until it resolves, which is what tints
+      // the field as the operator types — the same as a single-value field.
+      expect(areKnownExchangeOptions('CUY/W', _counties, separator: '/'), isFalse);
+    });
+
+    test('a borrowed prefix is honoured when validating', () {
+      final party = [
+        const ExchangeOption(code: 'ORDES', name: 'Deschutes OR'),
+        const ExchangeOption(code: 'ORJEF', name: 'Jefferson OR'),
+      ];
+      expect(areKnownExchangeOptions('ORDES/ORJEF', party, separator: '/', inheritPrefix: 2), isTrue);
+      expect(areKnownExchangeOptions('ORDES/JEF', party, separator: '/', inheritPrefix: 2), isTrue);
+      // Without the rule declared, the shorthand is exactly the unknown value
+      // it looks like — which is what painted a valid county line invalid.
+      expect(areKnownExchangeOptions('ORDES/JEF', party, separator: '/'), isFalse);
+      // And a shorthand for a county that does not exist is still wrong.
+      expect(areKnownExchangeOptions('ORDES/ZZZ', party, separator: '/', inheritPrefix: 2), isFalse);
+    });
+  });
 }

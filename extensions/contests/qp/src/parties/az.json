@@ -1,0 +1,72 @@
+{
+  "key": "AZ",
+  "name": "Arizona QSO Party",
+  "short": "AZQP",
+  "start": "2026-10-10 15:00Z",
+  "end": "2026-10-11 05:00Z",
+  "status": "Added from the sponsor’s rules (2026); scoring not yet verified against a submitted log",
+  "url": "https://www.azqp.org/",
+  "cabrilloName": "AZ-QSO-PARTY",
+  "lastUpdated": "2026-09-06 12:00Z",
+  "options": {
+    "dcCountsAsMaryland": true,
+    "countyLine": true,
+    "selfSpotting": true,
+    "dxEntityIsMultiplier": true,
+    "multsPerMode": true,
+    "outOfStateMultsPerBand": true,
+    "countiesCountForInState": false
+  },
+  "points": {
+    "PHONE": 1,
+    "CW": 2
+  },
+  "bonusStations": {
+    "K7A": 100
+  },
+  "counties": {
+    "APH": "Apache",
+    "CHS": "Cochise",
+    "CNO": "Coconino",
+    "GLA": "Gila",
+    "GHM": "Graham",
+    "GLE": "Greenlee",
+    "LPZ": "La Paz",
+    "MCP": "Maricopa",
+    "MHV": "Mohave",
+    "NVO": "Navajo",
+    "PMA": "Pima",
+    "PNL": "Pinal",
+    "SCZ": "Santa Cruz",
+    "YVP": "Yavapai",
+    "YMA": "Yuma"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE",
+      "MULTI-UNLIMITED"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE",
+      "EXPEDITION",
+      "COUNTY-LINE"
+    ],
+    "mode": [
+      "CW",
+      "PHONE",
+      "MIXED"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5 watts",
+      "LOW": "100 watts",
+      "HIGH": ">100 watts"
+    }
+  }
+}

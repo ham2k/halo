@@ -1,0 +1,171 @@
+{
+  "key": "MN",
+  "name": "Minnesota QSO Party",
+  "short": "MNQP",
+  "url": "https://www.w0aa.org/mn-qso-party/",
+  "start": "2026-2-7 14:00Z",
+  "end": "2026-2-7 23:59Z",
+  "cabrilloName": "MN-QSO-PARTY",
+  "notes": "",
+  "lastUpdated": "2026-01-20 15:00Z",
+  "status": "Revised for 2026",
+  "exchange": [
+    "Name",
+    "Location"
+  ],
+  "options": {
+    "dcCountsAsMaryland": false,
+    "stateCountsForInState": false,
+    "roversAddCountySuffix": true,
+    "countyLine": false,
+    "multsPerBandMode": false,
+    "dxIsMultiplier": true
+  },
+  "entry": {
+    "In State": {
+      "Category": {
+        "SOMIX": "Single Operator Mixed (100 W or less)",
+        "SOMIXQRP": "Single Operator Mixed QRP (5 W or less)",
+        "SOPHONE": "Single Operator Phone (100 W or less)",
+        "SOCW": "Single Operator CW (100 W of less)",
+        "MO": "Multi Operator, one or two transmitters (100 W or less)",
+        "MB": "Mobile, single transmitter, any ops (100 W or less)",
+        "RV": "Rover, single transmitter, any ops (100 W or less)"
+      }
+    },
+    "USA / Canada": {
+      "Category": {
+        "SOMIXLP": "Single Operator Mixed Low Power (100 W or less)",
+        "SOMIXHP": "Single Operator Mixed High Power (1500 W or less)",
+        "SOMIXQRP": "Single Operator Mixed QRP (5 W or less)",
+        "SOPHONE": "Single Operator Phone (1500 W or less)",
+        "MO": "Multi Operator, one or two transmitters (1500 W or less)"
+      }
+    },
+    "DX": {
+      "Category": {
+        "DXUNL": "DX Unlimited"
+      }
+    }
+  },
+  "points": {
+    "PHONE": 2,
+    "CW": 2,
+    "DATA": 2
+  },
+  "counties": {
+    "AIT": "Aitkin",
+    "ANO": "Anoka",
+    "BEC": "Becker",
+    "BEL": "Beltrami",
+    "BEN": "Benton",
+    "BIG": "Big Stone",
+    "BLU": "Blue Earth",
+    "BRO": "Brown",
+    "CAS": "Cass",
+    "CHP": "Chippewa",
+    "CHS": "Chisago",
+    "CLA": "Clay",
+    "CLE": "Clearwater",
+    "COO": "Cook",
+    "COT": "Cottonwood",
+    "CRL": "Carlton",
+    "CRO": "Crow Wing",
+    "CRV": "Carver",
+    "DAK": "Dakota",
+    "DOD": "Dodge",
+    "DOU": "Douglas",
+    "FAI": "Faribault",
+    "FIL": "Fillmore",
+    "FRE": "Freeborn",
+    "GOO": "Goodhue",
+    "GRA": "Grant",
+    "HEN": "Hennepin",
+    "HOU": "Houston",
+    "HUB": "Hubbard",
+    "ISA": "Isanti",
+    "ITA": "Itasca",
+    "JAC": "Jackson",
+    "KIT": "Kittson",
+    "KNB": "Kanabec",
+    "KND": "Kandiyohi",
+    "KOO": "Koochiching",
+    "LAC": "Lac Qui Parle",
+    "LAK": "Lake",
+    "LES": "Le Sueur",
+    "LIN": "Lincoln",
+    "LKW": "Lake of the Woods",
+    "LYO": "Lyon",
+    "MAH": "Mahnomen",
+    "MCL": "McLeod",
+    "MEE": "Meeker",
+    "MIL": "Mille Lacs",
+    "MOR": "Morrison",
+    "MOW": "Mower",
+    "MRS": "Marshall",
+    "MRT": "Martin",
+    "MUR": "Murray",
+    "NIC": "Nicollet",
+    "NOB": "Nobles",
+    "NOR": "Norman",
+    "OLM": "Olmsted",
+    "OTT": "Ottertail",
+    "PEN": "Pennington",
+    "PIN": "Pine",
+    "PIP": "Pipestone",
+    "POL": "Polk",
+    "POP": "Pope",
+    "RAM": "Ramsey",
+    "RDL": "Red Lake",
+    "RDW": "Redwood",
+    "REN": "Renville",
+    "RIC": "Rice",
+    "ROC": "Rock",
+    "ROS": "Roseau",
+    "SCO": "Scott",
+    "SHE": "Sherburne",
+    "SIB": "Sibley",
+    "STE": "Steele",
+    "STL": "St Louis",
+    "STR": "Stearns",
+    "STV": "Stevens",
+    "SWI": "Swift",
+    "TOD": "Todd",
+    "TRA": "Traverse",
+    "WAB": "Wabasha",
+    "WAD": "Wadena",
+    "WAT": "Watonwan",
+    "WIL": "Wilkin",
+    "WIN": "Winona",
+    "WRI": "Wright",
+    "WSC": "Waseca",
+    "WSH": "Washington County",
+    "YEL": "Yellow Medicine"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE",
+      "ROVER"
+    ],
+    "mode": [
+      "CW",
+      "PHONE",
+      "MIXED"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5 watts",
+      "LOW": "100 watts",
+      "HIGH": "1500 watts"
+    }
+  }
+}

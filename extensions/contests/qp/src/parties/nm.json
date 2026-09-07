@@ -1,0 +1,80 @@
+{
+  "key": "NM",
+  "name": "New Mexico QSO Party",
+  "short": "NMQP",
+  "url": "https://www.newmexicoqsoparty.org",
+  "start": "2026-4-11 14:00Z",
+  "end": "2026-4-12 01:59Z",
+  "cabrilloName": "NM-QSO-PARTY",
+  "internalNotes": "Power multiplier and Mobile Operations Bonus needs to be implemented",
+  "lastUpdated": "2026-03-22 22:00Z",
+  "status": "Updated for 2026, but not yet verified. Power multiplier and mobile bonus not implemented",
+  "options": {
+    "dcCountsAsMaryland": true,
+    "stateCountsForInState": true,
+    "countyLine": true,
+    "multsPerBandMode": false,
+    "dxEntityIsMultiplier": true,
+    "selfSpotting": true
+  },
+  "points": {
+    "PHONE": 1,
+    "CW": 2,
+    "DIGI": 2
+  },
+  "counties": {
+    "BER": "Bernalillo",
+    "CAT": "Catron",
+    "CHA": "Chaves",
+    "CIB": "Cibola",
+    "COL": "Colfax",
+    "CUR": "Curry",
+    "DEB": "De Baca",
+    "DON": "Dona Ana",
+    "EDD": "Eddy",
+    "GRA": "Grant",
+    "GUA": "Guadalupe",
+    "HAR": "Harding",
+    "HID": "Hidalgo",
+    "LEA": "Lea",
+    "LIN": "Lincoln",
+    "LOS": "Los Alamos",
+    "LUN": "Luna",
+    "MCK": "McKinley",
+    "MOR": "Mora",
+    "OTE": "Otero",
+    "QUA": "Quay",
+    "RIO": "Rio Arriba",
+    "ROO": "Roosevelt",
+    "SJU": "San Juan",
+    "SMI": "San Miguel",
+    "SAN": "Sandoval",
+    "SFE": "Santa Fe",
+    "SIE": "Sierra",
+    "SOC": "Socorro",
+    "TAO": "Taos",
+    "TOR": "Torrance",
+    "UNI": "Union",
+    "VAL": "Valencia"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5 watts",
+      "LOW": "150 watts",
+      "HIGH": ">150 watts"
+    }
+  }
+}

@@ -1,0 +1,105 @@
+{
+  "key": "WA",
+  "name": "Washington Salmon Run",
+  "short": "WAQP",
+  "url": "https://salmonrun.wwdxc.org/",
+  "start": "2026-9-19 16:00Z",
+  "end": "2026-9-20 07:00Z",
+  "secondStart": "2026-9-20 16:00Z",
+  "secondEnd": "2026-9-20 23:59Z",
+  "cabrilloName": "WA-SALMON-RUN",
+  "internalNotes": "",
+  "lastUpdated": "2026-09-06 12:00Z",
+  "notes": "Contributed by K5EM",
+  "status": "Dates verified for 2026 against the sponsor’s rules",
+  "bonusStations": {
+    "W7DX": 500
+  },
+  "points": {
+    "PHONE": 2,
+    "CW": 3
+  },
+  "options": {
+    "dcCountsAsMaryland": true,
+    "dxLocationIsPrefix": true,
+    "selfSpotting": true,
+    "countyLine": true,
+    "stateCountsForInState": false,
+    "bonusPostMultiplier": true,
+    "dxIsMultiplier": false,
+    "dxEntityIsMultiplier": true,
+    "dxEntityMultiplierMax": 10,
+    "bonusPerMode": true,
+    "multsPerBandMode": false
+  },
+  "counties": {
+    "ADA": "Adams",
+    "ASO": "Asotin",
+    "BEN": "Benton",
+    "CHE": "Chelan",
+    "CLAL": "Clallam",
+    "CLAR": "Clark",
+    "COL": "Columbia",
+    "COW": "Cowlitz",
+    "DOU": "Douglas",
+    "FER": "Ferry",
+    "FRA": "Franklin",
+    "GAR": "Garfield",
+    "GRAN": "Grant",
+    "GRAY": "Grays Harbor",
+    "ISL": "Island",
+    "JEFF": "Jefferson",
+    "KING": "King",
+    "KITS": "Kitsap",
+    "KITT": "Kittitas",
+    "KLI": "Klickitat",
+    "LEW": "Lewis",
+    "LIN": "Lincoln",
+    "MAS": "Mason",
+    "OKA": "Okanogan",
+    "PAC": "Pacific",
+    "PEND": "Pend Oreille",
+    "PIE": "Pierce",
+    "SAN": "San Juan",
+    "SKAG": "Skagit",
+    "SKAM": "Skamania",
+    "SNO": "Snohomish",
+    "SPO": "Spokane",
+    "STE": "Stevens",
+    "THU": "Thurston",
+    "WAH": "Wahkiakum",
+    "WAL": "Walla Walla",
+    "WHA": "Whatcom",
+    "WHI": "Whitman",
+    "YAK": "Yakima"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE",
+      "MULTI-TWO",
+      "MULTI-UNLIMITED"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE",
+      "EXPEDITION",
+      "CLUB"
+    ],
+    "mode": [
+      "CW",
+      "PHONE",
+      "MIXED"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5 watts",
+      "LOW": "100 watts",
+      "HIGH": ">100 watts"
+    }
+  }
+}

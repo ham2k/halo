@@ -1,0 +1,62 @@
+{
+  "key": "NH",
+  "name": "New Hampshire QSO Party",
+  "short": "NHQP",
+  "url": "https://w1wqm.org/nh-qso-party/",
+  "start": "2026-9-19 16:00Z",
+  "end": "2026-9-20 04:00Z",
+  "cabrilloName": "NH-QSO-PARTY",
+  "status": "Verified for 2025; DX entity multipliers corrected against the sponsor’s rules (2026-09)",
+  "lastUpdated": "2025-09-04 12:00Z",
+  "options": {
+    "selfSpotting": true,
+    "dcCountsAsMaryland": true,
+    "dxLocationIsPrefix": false,
+    "dxIsMultiplier": true,
+    "dxEntityIsMultiplier": true,
+    "dxEntityMultiplierMax": 10,
+    "multsPerBandMode": false,
+    "outOfStateMultsPerBand": true,
+    "stateCountsForInState": false,
+    "countyLine": false
+  },
+  "points": {
+    "PHONE": 1,
+    "CW": 2,
+    "DIGI": 2
+  },
+  "counties": {
+    "BEL": "Belknap",
+    "CAR": "Carroll",
+    "CHE": "Cheshire",
+    "COO": "Coos",
+    "GRA": "Grafton",
+    "HIL": "Hillsborough",
+    "MER": "Merrimack",
+    "ROC": "Rockingham",
+    "STR": "Strafford",
+    "SUL": "Sullivan"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE",
+      "MULTI-UNLIMITED"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE",
+      "PORTABLE"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5 watts",
+      "LOW": "100 watts",
+      "HIGH": ">100 watts"
+    }
+  }
+}

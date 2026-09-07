@@ -1,0 +1,28 @@
+{
+  "key": "NV",
+  "name": "Nevada QSO Party",
+  "start": "2026-10-10 03:00Z",
+  "end": "2026-10-11 21:00Z",
+  "status": "Dates DERIVED from the sponsor’s standing rule (second weekend in October); their site still shows 2025",
+  "counties": {
+    "NVCAR": "Carson City",
+    "NVCHU": "Churchill",
+    "NVCLA": "Clark",
+    "NVDOU": "Douglas",
+    "NVELK": "Elko",
+    "NVESM": "Esmeralda",
+    "NVEUR": "Eureka",
+    "NVHUM": "Humboldt",
+    "NVLAN": "Lander",
+    "NVLIN": "Lincoln",
+    "NVLYO": "Lyon",
+    "NVMIN": "Mineral",
+    "NVNYE": "Nye",
+    "NVPER": "Pershing",
+    "NVSTO": "Storey",
+    "NVWAS": "Washoe",
+    "NVWHI": "White Pine"
+  },
+  "url": "http://nvqso.com/contest-rules/",
+  "lastUpdated": "2026-09-06 12:00Z"
+}

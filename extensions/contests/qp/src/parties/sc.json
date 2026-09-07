@@ -1,0 +1,112 @@
+{
+  "key": "SC",
+  "name": "South Carolina QSO Party",
+  "url": "https://scqso.com/",
+  "short": "SCQP",
+  "start": "2026-2-28 15:00Z",
+  "end": "2026-3-1 01:59Z",
+  "lastUpdated": "2026-09-06 12:00Z",
+  "status": "Dates verified for 2026 against the sponsor’s rules",
+  "cabrilloName": "SC-QSO-PARTY",
+  "notes": "FT8/FT4 is allowed, but not supported in PoLo.",
+  "bonusStations": {
+    "W4CAE": 350,
+    "WW4SF": 250,
+    "K4YTZ": 250
+  },
+  "options": {
+    "dcCountsAsMaryland": false,
+    "stateCountsForInState": true,
+    "selfSpotting": true,
+    "countyLine": true,
+    "inStateToOutOfStatePointsDouble": true,
+    "bonusPerBandMode": true,
+    "multsPerBandMode": true,
+    "dxIsMultiplier": false
+  },
+  "entry": {
+    "In State": {},
+    "Out of State": {}
+  },
+  "points": {
+    "PHONE": 2,
+    "CW": 2,
+    "DATA": 2
+  },
+  "counties": {
+    "ABBE": "Abbeville",
+    "AIKE": "Aiken",
+    "ALLE": "Allendale",
+    "ANDE": "Anderson",
+    "BAMB": "Bamberg",
+    "BARN": "Barnwell",
+    "BEAU": "Beaufort",
+    "BERK": "Berkeley",
+    "CHOU": "Calhoun",
+    "CHAR": "Charleston",
+    "CHES": "Chester",
+    "CHFD": "Chesterfield",
+    "CKEE": "Cherokee",
+    "CLRN": "Clarendon",
+    "COLL": "Colleton",
+    "DARL": "Darlington",
+    "DILL": "Dillon",
+    "DORC": "Dorchester",
+    "EDGE": "Edgefield",
+    "FAIR": "Fairfield",
+    "FLOR": "Florence",
+    "GEOR": "Georgetown",
+    "GRWD": "Greenwood",
+    "GVIL": "Greenville",
+    "HAMP": "Hampton",
+    "HORR": "Horry",
+    "JASP": "Jasper",
+    "KERS": "Kershaw",
+    "LAUR": "Laurens",
+    "LEE": "Lee",
+    "LEXI": "Lexington",
+    "LNCS": "Lancaster",
+    "MARI": "Marion",
+    "MARL": "Marlboro",
+    "MCOR": "McCormick",
+    "NEWB": "Newberry",
+    "OCON": "Oconee",
+    "ORNG": "Orangeburg",
+    "PICK": "Pickens",
+    "RICH": "Richland",
+    "SALU": "Saluda",
+    "SPAR": "Spartanburg",
+    "SUMT": "Sumter",
+    "UNIO": "Union",
+    "WILL": "Williamsburg",
+    "YORK": "York"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE",
+      "MULTI-UNLIMITED"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE",
+      "EXPEDITION"
+    ],
+    "mode": [
+      "CW",
+      "PHONE",
+      "DIGITAL",
+      "MIXED"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5W",
+      "LOW": "100W",
+      "HIGH": ">100W"
+    }
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "key": "QC",
+  "name": "Quebec QSO Party",
+  "url": "https: //quebecqsoparty.org/",
+  "start": "2026-4-19 13:00Z",
+  "end": "2026-4-19 23:59Z",
+  "status": "Updated for 2026, but not yet verified. Mobile station bonuses not implemented yet.",
+  "cabrilloName": "QC-QSO-PARTY",
+  "notes": "Contributed by W1GRL & W1BOY",
+  "lastUpdated": "2026-03-18 12:00Z",
+  "options": {
+    "countyLine": true,
+    "dcCountsAsMaryland": true,
+    "stateCountsForInState": true,
+    "multsPerBandMode": false,
+    "multsPerBand": true,
+    "dxIsMultiplier": true,
+    "selfSpotting": true,
+    "entity": "VE"
+  },
+  "points": {
+    "PHONE": 1,
+    "CW": 2
+  },
+  "bonusStations": {
+    "VE2CRO": 10
+  },
+  "counties": {
+    "BSA": "Bas Saint-Laurent",
+    "SLS": "Saguenay-Lac-Saint-Jean",
+    "QUE": "National Capital",
+    "MAU": "Mauricie",
+    "ETE": "Estrie",
+    "MTL": "Montreal",
+    "OTS": "Outaouais",
+    "ATE": "Abitibi-Temiscamingue",
+    "CND": "Cote-Nord",
+    "NDQ": "Nord-du-Quebec",
+    "GIM": "Gaspesie-îles-de-la-Madeleine",
+    "CAS": "Chaudiere-Appalaches",
+    "LVL": "Laval",
+    "LDE": "Lanaudiere",
+    "LNS": "Laurentides",
+    "MEE": "Monteregie",
+    "CDQ": "Centre-du-Quebec"
+  },
+  "entryClasses": {
+    "operator": [
+      "SINGLE-OP",
+      "MULTI-ONE"
+    ],
+    "station": [
+      "FIXED",
+      "MOBILE"
+    ],
+    "mode": [
+      "CW",
+      "PHONE",
+      "MIXED"
+    ],
+    "power": [
+      "QRP",
+      "LOW",
+      "HIGH"
+    ],
+    "powerLimits": {
+      "QRP": "5W",
+      "LOW": "100W",
+      "HIGH": ">100W"
+    }
+  }
+}
