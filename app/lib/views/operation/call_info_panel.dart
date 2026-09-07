@@ -15,7 +15,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
 
 import '../../i18n/strings.g.dart';
-import '../../main.dart';
+import '../../services/halo_services.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';

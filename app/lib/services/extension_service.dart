@@ -39,7 +39,7 @@ import '../config/user_agent.dart';
 import '../config/version.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart';
+import '../config/navigation.dart';
 import 'link_opener.dart';
 import '../tools/backoff.dart';
 import '../tools/form_chrome_labels.dart';

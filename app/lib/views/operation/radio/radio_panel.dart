@@ -19,7 +19,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../services/cat/cat_service.dart';
 import '../../../services/cat/equipment.dart';
-import '../../../main.dart';
+import '../../../services/halo_services.dart';
 import '../../../settings/settings_target_dialog.dart';
 import '../clock/clock_faces.dart' show lcdPalette;
 import 'radio_faces.dart';

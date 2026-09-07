@@ -12,8 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/experiments.dart';
-import '../main.dart';
-
+import '../services/halo_services.dart';
 class ExperimentsPane extends StatelessWidget {
   final HaLoServices services;
 

@@ -21,7 +21,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart' show navigatorKey;
+import '../config/navigation.dart';
 import '../services/link_opener.dart';
 
 void handleNoticeAction(String noticeKey, Map<String, dynamic> action) {

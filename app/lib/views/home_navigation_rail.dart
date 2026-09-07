@@ -6,7 +6,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart';
+import '../services/halo_services.dart';
+import 'app_shell/home_rail_state.dart';
 import 'ham2k_logo.dart';
 import 'home_view.dart';
 

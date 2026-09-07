@@ -18,7 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../../i18n/strings.g.dart';
-import '../../../main.dart';
+import '../../../services/halo_services.dart';
 import '../../../services/peer/peer_screen_views.dart';
 import '../../screen_source_tile.dart';
 import 'remote_screen_panel.dart';

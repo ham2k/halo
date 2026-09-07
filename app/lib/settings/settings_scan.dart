@@ -19,7 +19,7 @@
 // never misroute a commit or an action dispatch; core-group elements stay
 // bare-keyed.
 
-import '../main.dart';
+import '../services/halo_services.dart';
 import 'settings_registry.dart';
 
 /// Where an extension-sourced field routes on validate/commit. [field] is the

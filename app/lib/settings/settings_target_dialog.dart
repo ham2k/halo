@@ -34,7 +34,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart';
+import '../services/halo_services.dart';
 import '../services/link_opener.dart';
 import '../tools/form_chrome_labels.dart';
 import '../views/settings_view.dart' show showAccountDialogByKey;

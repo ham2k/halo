@@ -24,7 +24,9 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/dev_bridge.dart';
 import '../i18n/strings.g.dart';
-import '../main.dart';
+import '../config/navigation.dart';
+import '../services/command_actions.dart';
+import '../services/halo_services.dart';
 import '../services/settings_service.dart';
 import '../tools/operation_title.dart';
 import 'command_engine.dart';

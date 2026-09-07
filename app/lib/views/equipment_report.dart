@@ -25,7 +25,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart';
+import '../services/halo_services.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/transports/serial_transport_config.dart';

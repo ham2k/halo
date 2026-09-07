@@ -19,7 +19,8 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/release_notes.dart';
 import '../i18n/strings.g.dart';
-import '../main.dart';
+import '../config/navigation.dart';
+import '../services/halo_services.dart';
 import '../services/error_reporting_service.dart';
 import '../services/settings_service.dart';
 import 'package:halo_core/halo_core.dart';

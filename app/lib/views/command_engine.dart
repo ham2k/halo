@@ -22,8 +22,7 @@ import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../main.dart';
-
+import '../services/halo_services.dart';
 /// What the two command fields do to each keystroke.
 ///
 /// Positional, never interpreted: nothing here may wait on `interpret`. Its

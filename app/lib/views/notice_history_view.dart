@@ -12,8 +12,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart';
-
+import '../services/halo_services.dart';
 class NoticeHistoryView extends StatelessWidget {
   final HaLoServices services;
 

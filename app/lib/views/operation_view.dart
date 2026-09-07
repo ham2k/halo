@@ -17,7 +17,8 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/dev_bridge.dart';
-import '../main.dart';
+import '../services/command_actions.dart';
+import '../services/halo_services.dart';
 import '../services/error_reporting_service.dart';
 import '../services/cat/zero_beat.dart';
 import '../services/extension_service.dart' show TemplateError;

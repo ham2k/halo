@@ -15,7 +15,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_extension_host/halo_extension_host.dart';
 
-import '../../main.dart';
+import '../../services/halo_services.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/extension_service.dart';
 import '../../services/location_service.dart';

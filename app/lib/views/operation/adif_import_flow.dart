@@ -28,8 +28,7 @@ import '../../services/error_reporting_service.dart';
 import '../../services/extension_service.dart' show ExtensionInfo;
 import '../../services/status_bar_service.dart';
 import '../../tools/operation_title.dart';
-import '../../main.dart' show HaLoServices;
-
+import '../../services/halo_services.dart';
 /// Extensions ADIF files are written with. `.adi` is the format this parses;
 /// `.adif` appears in the wild for the same thing.
 const _adifExtensions = ['adi', 'adif'];

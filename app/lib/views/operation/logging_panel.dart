@@ -11,7 +11,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
 
 import '../../config/dev_bridge.dart';
-import '../../main.dart';
+import '../../services/halo_services.dart';
 import '../../i18n/strings.g.dart';
 import '../../services/cat/equipment.dart';
 import '../../services/error_reporting_service.dart';

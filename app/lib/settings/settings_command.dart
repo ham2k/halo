@@ -23,7 +23,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart';
+import '../services/halo_services.dart';
 import 'settings_catalog.dart';
 import 'settings_registry.dart';
 import 'settings_fuzzy.dart';

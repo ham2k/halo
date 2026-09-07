@@ -27,7 +27,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../main.dart';
+import '../../services/halo_services.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import '../../services/error_reporting_service.dart';

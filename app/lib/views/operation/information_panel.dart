@@ -8,7 +8,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
 
 import '../../i18n/strings.g.dart';
-import '../../main.dart';
+import '../../services/halo_services.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_summaries.dart';
 import 'call_info_panel.dart';

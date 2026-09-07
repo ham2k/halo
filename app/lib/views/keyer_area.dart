@@ -33,7 +33,7 @@ import 'package:flutter/services.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart';
+import '../services/halo_services.dart';
 import 'cw_messages_dialog.dart';
 import 'voice_messages_dialog.dart';
 import '../services/cat/cat_service.dart';

@@ -15,7 +15,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart' show HaLoServices;
+import '../services/halo_services.dart';
 import '../services/auto_update_service.dart';
 import '../services/error_reporting_service.dart';
 import '../services/update_check_service.dart';

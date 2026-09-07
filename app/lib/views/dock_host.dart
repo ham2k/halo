@@ -20,7 +20,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart';
+import '../services/halo_services.dart';
 import '../services/cat/cat_service.dart';
 import '../services/cat/equipment.dart';
 import '../services/panel_service.dart';

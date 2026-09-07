@@ -21,8 +21,7 @@ import '../services/error_reporting_service.dart';
 import '../services/extension_service.dart';
 import '../services/installed_extensions.dart';
 import 'extension_install_flow.dart';
-import '../main.dart';
-
+import '../services/halo_services.dart';
 /// Category display order; anything unrecognized lands in "other". Public
 /// because the Accounts panel groups by the same categories, and two lists in
 /// two orders would present the same extensions differently in each.

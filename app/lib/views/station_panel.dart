@@ -18,7 +18,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
-import '../main.dart';
+import '../services/halo_services.dart';
 import 'accordion_section.dart';
 import '../settings/settings_target_dialog.dart';
 import '../services/cat/discovery.dart';
