@@ -8,21 +8,13 @@
 // it is posted a hundred-odd boot steps after the repair decided it, so it
 // is worth proving the value actually survives the trip.
 
-import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/app_storage.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'support/halo_test_support.dart';
 
-Future<HaLoServices> _services() async {
-  SharedPreferences.setMockInitialValues({});
-  final db = HaLoDatabase(NativeDatabase.memory());
-  addTearDown(db.close);
-  return HaLoServices(db, SettingsService(await SharedPreferences.getInstance()));
-}
+Future<HaLoServices> _services() async => (await makeHaLoServices()).services;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

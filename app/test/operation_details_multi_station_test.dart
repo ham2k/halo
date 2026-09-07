@@ -10,7 +10,6 @@
 // the operation's synced data — while the operator beside it does travel, in
 // the slot the position names.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -19,27 +18,24 @@ import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation_dialogs.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  late HaLoDatabase db;
   late SettingsService settings;
   late HaLoServices services;
   late OperationsRepository operations;
   late Operation operation;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    settings = SettingsService(await SharedPreferences.getInstance());
-    db = HaLoDatabase(NativeDatabase.memory());
-    services = HaLoServices(db, settings);
+    final harness = await makeHaLoServices();
+    settings = harness.settings;
+    services = harness.services;
     operations = services.operations;
     operation = await operations.create(stationCall: 'KI2D', userTitle: 'Field day');
   });
-
-  tearDown(() async => db.close());
 
   /// Opens the real dialog the way OperationView does, and returns the
   /// Operation it handed back once the dialog is dismissed.

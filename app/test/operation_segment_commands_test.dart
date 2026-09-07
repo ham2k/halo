@@ -10,17 +10,14 @@
 // EARLIER contact to the new one. `SegmentedOperation` is the judge here,
 // not the row contents.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -29,14 +26,10 @@ void main() {
   late Operation operation;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
     // An empty host: the Location screen waits on a runtime for its
     // controls, and a service with none would keep it waiting forever.
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    services = HaLoServices(db, settings, extensions: extensions);
+    final harness = await makeHaLoServices();
+    services = harness.services;
 
     final created = await services.operations.create(stationCall: 'N0DEV');
     operation = Operation(uuid: created.uuid, data: {...created.data, 'grid': 'FN31pr'});
@@ -106,7 +99,7 @@ void main() {
     final throwing = HaLoServices(
       services.db,
       services.settings,
-      extensions: ExtensionServiceWithMockHost(const _ThrowingTitleHost()),
+      extensions: ExtensionServiceWithFakeHost(_ThrowingTitleHost()),
     );
     await throwing.operations.saveData(Operation(uuid: operation.uuid, data: {
       ...operation.data,
@@ -127,7 +120,7 @@ void main() {
     final throwing = HaLoServices(
       services.db,
       services.settings,
-      extensions: ExtensionServiceWithMockHost(const _ThrowingTitleHost()),
+      extensions: ExtensionServiceWithFakeHost(_ThrowingTitleHost()),
     );
     await throwing.operations.saveData(Operation(uuid: operation.uuid, data: {
       ...operation.data,
@@ -254,8 +247,8 @@ void main() {
 /// A host whose `suggestOperationTitle` throws — the failure the
 /// description guard exists for, which an ordinary mock (answering null)
 /// cannot express.
-class _ThrowingTitleHost extends MockExtensionHost {
-  const _ThrowingTitleHost() : super(const {});
+class _ThrowingTitleHost extends FakeExtensionHost {
+  _ThrowingTitleHost();
 
   @override
   Future<dynamic> invokeHook(

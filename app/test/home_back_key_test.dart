@@ -13,28 +13,22 @@
 // and a press absorbed there would do nothing at all rather than
 // backgrounding the app the way a press on Home does.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/logs_view.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
+import 'support/halo_test_support.dart';
+
 Future<HaLoServices> _services(WidgetTester tester) async {
-  SharedPreferences.setMockInitialValues({});
-  final settings = SettingsService(await SharedPreferences.getInstance());
-  final db = HaLoDatabase(NativeDatabase.memory());
-  addTearDown(db.close);
-  return HaLoServices(db, settings);
+  return (await makeHaLoServices()).services;
 }
 
 /// Records what the app asks of the platform — `SystemNavigator.pop` is the
@@ -66,11 +60,7 @@ Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Siz
 /// A BOUNDED pump. Never `pumpAndSettle`: Settings loads extensions and
 /// accounts asynchronously and has no settled state to wait for, so a test
 /// that asks for one gets the 10-minute timeout.
-Future<void> _settle(WidgetTester tester) async {
-  for (var i = 0; i < 12; i++) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
-}
+Future<void> _settle(WidgetTester tester) => settleFrames(tester);
 
 /// Every destination the rail publishes, in order. A departing pane answering
 /// a press it did not block shows up here as a destination nobody asked for,

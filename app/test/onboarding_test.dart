@@ -31,8 +31,7 @@ import 'package:ham2k_logger/views/settings_view.dart';
 import 'package:ham2k_logger/views/splash_view.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import 'fake_secure_storage.dart';
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 // WCAG 2.1 contrast ratio — the focus-indicator test below pins an actual
 // accessibility threshold rather than a specific color.
@@ -51,7 +50,7 @@ Future<HaLoServices> makeServices({
   SharedPreferences.setMockInitialValues(prefs);
   final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
   final db = HaLoDatabase(NativeDatabase.memory());
-  final effectiveExtensions = extensions ?? (ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings);
+  final effectiveExtensions = extensions ?? (ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings);
   if (extensions != null) {
     extensions.settings = settings;
   }
@@ -642,12 +641,12 @@ void main() {
   });
 }
 
-class MockExtensionService extends ExtensionServiceWithMockHost {
+class MockExtensionService extends ExtensionServiceWithFakeHost {
   Map<String, dynamic>? mockAccountData;
   Map<String, dynamic>? Function(String?)? onLinkClient;
   Map<String, dynamic>? Function(String)? onLinkClientWithEmail;
 
-  MockExtensionService() : super(const MockExtensionHost({}));
+  MockExtensionService() : super(FakeExtensionHost({}));
 
   @override
   Future<Map<String, dynamic>?> syncAccountData() async => mockAccountData;
@@ -667,8 +666,8 @@ class MockExtensionService extends ExtensionServiceWithMockHost {
 
 /// Simulates a runtime-restart failure (e.g. disposing the outgoing host)
 /// from onboarding's extension-enable step.
-class ThrowingExtensionService extends ExtensionServiceWithMockHost {
-  ThrowingExtensionService() : super(const MockExtensionHost({}));
+class ThrowingExtensionService extends ExtensionServiceWithFakeHost {
+  ThrowingExtensionService() : super(FakeExtensionHost({}));
 
   @override
   Future<void> setExtensionsEnabled(Map<String, bool> changes) async {

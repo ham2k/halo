@@ -62,7 +62,7 @@ import 'package:ham2k_logger/views/operation/panel_content_view.dart';
 import 'package:ham2k_logger/views/operation/website/website_panel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'fake_panel_extensions.dart';
+import 'support/fake_panel_extensions.dart';
 
 /// A Windows probe that answers, and answers no.
 ///

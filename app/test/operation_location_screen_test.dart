@@ -1,32 +1,24 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/operation_location_screen.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('a suggested-location ref from an unsupported extension shows a pale-red tile and question mark (issue #261)',
       (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
     // Empty host: no activity control is ever registered, so any ref type
     // is "unknown" — same setup as activities_disabled_extension_test.dart.
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services) = await makeHaLoServices();
 
     final operation = Operation(
       uuid: 'op-123',
@@ -58,11 +50,7 @@ void main() {
 
   testWidgets('does not flash the unknown-type treatment on the very first frame, before controls finish loading',
       (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services) = await makeHaLoServices();
 
     final operation = Operation(
       uuid: 'op-123',
@@ -107,11 +95,7 @@ void main() {
     // search quietly loses its location while every control claims one is set.
     // The operator sees "No suggestions" and believes there is nothing nearby.
     Future<Map<String, dynamic>?> saveGrid(WidgetTester tester, String typed) async {
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
-      final db = HaLoDatabase(NativeDatabase.memory());
-      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-      final services = HaLoServices(db, settings, extensions: extensions);
+      final HaLoHarness(:services) = await makeHaLoServices();
       final operation = Operation(uuid: 'op-1', data: const {'refs': []});
 
       Map<String, dynamic>? popped;
@@ -179,11 +163,7 @@ void main() {
 
     Future<void> open(WidgetTester tester, Operation operation) async {
       popped = null;
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
-      final db = HaLoDatabase(NativeDatabase.memory());
-      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-      final services = HaLoServices(db, settings, extensions: extensions);
+      final HaLoHarness(:services) = await makeHaLoServices();
 
       await tester.pumpWidget(TranslationProvider(
         child: MaterialApp(

@@ -17,19 +17,19 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/tools/distance_format.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  // suggestActivities() needs a live extension host (MockExtensionHost yields
+  // suggestActivities() needs a live extension host (FakeExtensionHost yields
   // empty controls/suggestions here — see activities_disabled_extension_test),
   // so instead of mocking the search, we add a ref with a distance and remove
   // it: _deleteRef resurfaces the exact same map as a Suggestion, which drives
   // the same distance Text() this bug is in.
   Future<void> pumpSuggestionList(WidgetTester tester, SettingsService settings) async {
     final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
     final operation = Operation(
       uuid: 'op-123',

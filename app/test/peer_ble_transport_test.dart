@@ -28,7 +28,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/peer/ble/peer_ble_gateway.dart';
 import 'package:ham2k_logger/services/peer/ble/peer_ble_transport.dart';
 
-import 'peer_ble_fakes.dart';
+import 'support/peer_ble_fakes.dart';
 
 /// Polls until [condition] holds — same rationale as peer_service_test.
 Future<void> waitFor(

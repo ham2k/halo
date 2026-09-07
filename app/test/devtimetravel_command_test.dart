@@ -18,7 +18,6 @@
 //    non-developer app is stranded on a fake clock with no way to type its way
 //    out (the command doesn't even match without developer mode).
 
-import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -27,7 +26,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -39,17 +38,13 @@ void main() {
     bool syncEnabled = false,
     Map<String, dynamic>? currentAccount,
   }) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.setDeveloperMode(developerMode);
     if (syncEnabled) await settings.setSyncEnabled(true);
     if (currentAccount != null) {
       await settings.setSyncState({'accountData': {'current_account': currentAccount}});
     }
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    addTearDown(db.close);
-    return HaLoServices(db, settings, extensions: extensions);
+    return services;
   }
 
   /// What the call field would show after running the command.

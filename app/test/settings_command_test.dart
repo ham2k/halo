@@ -15,14 +15,13 @@
 // or retired setting shows up here as a failure rather than as a command that
 // silently stops working.
 
-import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -31,17 +30,15 @@ void main() {
   late SettingsService settings;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    settings = SettingsService(await SharedPreferences.getInstance());
     // RadioSettingsGroup contributes nothing at all without the Station
     // Configuration experiment, so the zero-beat settings these tests name
     // would simply not be in the catalog — which is itself the behaviour
     // 'a group that declines to contribute' below pins down.
-    await settings.setExperimentEnabled('gato', true);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
     final extensions = ExtensionService();
-    services = HaLoServices(db, settings, extensions: extensions);
+    final harness = await makeHaLoServices(extensions: extensions);
+    services = harness.services;
+    settings = harness.settings;
+    await settings.setExperimentEnabled('gato', true);
     await extensions.start();
   });
 

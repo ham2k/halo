@@ -11,26 +11,20 @@
 // it everywhere costs a 360px phone a third of its width silently — the labels
 // simply appear, and nothing throws.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
+import 'support/halo_test_support.dart';
+
 Future<HaLoServices> _services(WidgetTester tester) async {
-  SharedPreferences.setMockInitialValues({});
-  final settings = SettingsService(await SharedPreferences.getInstance());
-  final db = HaLoDatabase(NativeDatabase.memory());
-  addTearDown(db.close);
-  return HaLoServices(db, settings);
+  return (await makeHaLoServices()).services;
 }
 
 Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Size size, ThemeData? theme}) async {
@@ -66,11 +60,7 @@ Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Siz
 /// loads extensions and accounts asynchronously on screen, and it has no
 /// settled state to wait for — the default 10-minute timeout is what a test
 /// that asks for one actually gets.
-Future<void> _settle(WidgetTester tester) async {
-  for (var i = 0; i < 12; i++) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
-}
+Future<void> _settle(WidgetTester tester) => settleFrames(tester);
 
 /// The width the rail actually OCCUPIES — its clip, not the widget inside it.
 ///

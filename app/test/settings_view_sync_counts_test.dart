@@ -21,14 +21,14 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
-/// [ExtensionServiceWithMockHost] only overrides the `host` getter, while
+/// [ExtensionServiceWithFakeHost] only overrides the `host` getter, while
 /// `syncAccountData` reads the private field behind it — so the payload has to
 /// be stubbed at the method, not at the mock host's hook table.
-class _ExtensionsWithAccountData extends ExtensionServiceWithMockHost {
+class _ExtensionsWithAccountData extends ExtensionServiceWithFakeHost {
   final Future<Map<String, dynamic>?> Function() fetch;
-  _ExtensionsWithAccountData(this.fetch) : super(const MockExtensionHost({}));
+  _ExtensionsWithAccountData(this.fetch) : super(FakeExtensionHost({}));
 
   @override
   Future<Map<String, dynamic>?> syncAccountData() => fetch();

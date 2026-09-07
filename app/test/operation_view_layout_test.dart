@@ -12,7 +12,6 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,6 +22,8 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
+import 'support/halo_test_support.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -30,12 +31,7 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services) = await makeHaLoServices();
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -118,12 +114,7 @@ void main() {
     tester.view.physicalSize = const Size(430, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services) = await makeHaLoServices();
     const longTitle = 'A Very Long Operation Title That Would Have Been Ellipsized Before';
     final operation = await services.operations.create(stationCall: 'KI2D', userTitle: longTitle);
 
@@ -152,12 +143,7 @@ void main() {
     tester.view.physicalSize = const Size(430, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services) = await makeHaLoServices();
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -191,15 +177,10 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
     // Otherwise the 'operation-sheet' onboarding flow auto-opens the sheet
     // on mount (issue #348), which would race with the tap below.
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -227,14 +208,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -262,16 +237,11 @@ void main() {
     tester.view.physicalSize = const Size(430, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
     // Otherwise the 'operation-sheet' onboarding flow auto-opens the sheet
     // on mount (issue #348), which sits over the whole header/tab area and
     // swallows every tap below it.
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -333,14 +303,8 @@ void main() {
       tester.view.physicalSize = const Size(430, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
+      final HaLoHarness(:services, :settings) = await makeHaLoServices();
       await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-      final db = HaLoDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
-      final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-      final services = HaLoServices(db, settings, extensions: extensions);
       final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
       await tester.pumpWidget(TranslationProvider(
@@ -393,14 +357,8 @@ void main() {
       tester.view.physicalSize = const Size(430, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
+      final HaLoHarness(:services, :settings) = await makeHaLoServices();
       await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-      final db = HaLoDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
-      final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-      final services = HaLoServices(db, settings, extensions: extensions);
       final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
       await tester.pumpWidget(TranslationProvider(
@@ -435,14 +393,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -504,14 +456,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -563,14 +509,8 @@ void main() {
     tester.view.physicalSize = const Size(500, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     // A stub root beneath it, not `home: OperationView(...)` directly —
@@ -673,13 +613,7 @@ void main() {
     Future<void> pumpAt(double width) async {
       tester.view.physicalSize = Size(width, 800);
       tester.view.devicePixelRatio = 1.0;
-
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
-      final db = HaLoDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
-      final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-      final services = HaLoServices(db, settings, extensions: extensions);
+      final HaLoHarness(:services) = await makeHaLoServices();
       final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
       await tester.pumpWidget(TranslationProvider(
@@ -732,7 +666,7 @@ void main() {
     // fan-out key: 'ref:<type>:<key>:<method>', key null here since the hook
     // call passes none) with an "at" fragment — the same shape a real
     // activity extension (e.g. POTA) returns.
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({
       'ref:pota/activation:null:suggestOperationTitle': {'at': 'K-1234'},
     }))
       ..settings = settings;
@@ -782,13 +716,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -825,13 +754,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -878,13 +802,8 @@ void main() {
     tester.view.physicalSize = const Size(600, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -918,14 +837,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices(extensions: _SuggestingExtensions());
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = _SuggestingExtensions()..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -965,12 +878,12 @@ void main() {
   });
 }
 
-/// The shared MockExtensionHost only overrides the public `host` getter while
+/// The shared fake host only reaches the public `host` getter while
 /// the sheet's own calls read the private field, so suggestions would come
 /// back empty and there would be no activity to add. Overrides the two
 /// methods this test depends on instead.
-class _SuggestingExtensions extends ExtensionServiceWithMockHost {
-  _SuggestingExtensions() : super(const MockExtensionHost({}));
+class _SuggestingExtensions extends ExtensionServiceWithFakeHost {
+  _SuggestingExtensions();
 
   @override
   Future<ControlsResult> operationControls(
@@ -1002,51 +915,4 @@ class _SuggestingExtensions extends ExtensionServiceWithMockHost {
         ],
         allSourcesFailed: false
       );
-}
-
-class MockExtensionHost implements ExtensionHost {
-  final Map<String, dynamic> mockHookResults;
-  const MockExtensionHost(this.mockHookResults);
-
-  @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
-    return mockHookResults['$category:$key:$method'];
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> invokeHookAll(
-    String category, {
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-    bool partialOnTimeout = false,
-  }) async {
-    final res = mockHookResults['$category:*:$method'];
-    return res == null ? const [] : (res as List).cast<Map<String, dynamic>>();
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class ExtensionServiceWithMockHost extends ExtensionService {
-  final MockExtensionHost mockHost;
-  ExtensionServiceWithMockHost(this.mockHost);
-
-  @override
-  ExtensionHost? get host => mockHost;
-
-  @override
-  Future<void> start() async {}
-
-  // The real one pushes into the extension host's KV store, which the mock
-  // host doesn't implement.
-  @override
-  Future<void> setSyncCredentials({required String deviceKey, required String operatorCall}) async {}
 }

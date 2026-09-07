@@ -15,17 +15,14 @@
 // home_bottom_inset_test.dart). What this pins is the plumbing — that the FAB
 // reads a real inset where there is one to read.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_view.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -42,12 +39,7 @@ void main() {
     // enough that mistaking it for 0 is unmistakable in the assertion below.
     tester.view.padding = const FakeViewPadding(bottom: 40, right: 30);
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings);
+    final HaLoHarness(:services) = await makeHaLoServices();
 
     await tester.pumpWidget(
       TranslationProvider(child: MaterialApp(home: HomeView(services: services))),

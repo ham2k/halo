@@ -6,23 +6,17 @@
 // cat_power_command_dispatch_test.dart. Unlike power there is no app-side
 // value to land in: the keyer is the radio's, so what this pins is that
 // the action FAILS OUT LOUD with nothing connected rather than confirming.
-import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<HaLoServices> buildServices() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    return HaLoServices(db, settings);
+    return (await makeHaLoServices()).services;
   }
 
   test('with no radio that can key, setKeyerSpeed reports failure instead of confirming', () async {

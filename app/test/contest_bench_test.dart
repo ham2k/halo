@@ -17,7 +17,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/services/scoring_service.dart';
 import 'package:ham2k_logger/tools/contest_bench.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 /// A phase with its per-band costs already measured, so the verdict logic can
 /// be exercised without running anything.
@@ -182,14 +182,14 @@ void main() {
       final db = HaLoDatabase(NativeDatabase.memory());
       final operations = OperationsRepository(db);
       final qsos = QsosRepository(db, sequences: SequencesRepository(db));
-      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}));
+      final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}));
       return (qsos, operations, ScoringService(extensions: extensions, qsos: qsos, operations: operations), db);
     }
 
     test('a run that cannot start still removes its operation', () async {
       // The refusal here comes from there being NO host at all:
       // `getScoringScopes` reads the private `_host`, which
-      // ExtensionServiceWithMockHost never sets — it overrides the `host`
+      // ExtensionServiceWithFakeHost never sets — it overrides the `host`
       // getter only. So this covers the refusal path and the cleanup that
       // follows it, and NOT the measurement loop, which needs a real engine.
       // Without the `finally` a refused run leaves an empty Test Operation in
@@ -202,7 +202,7 @@ void main() {
         runContestBench(
           qsos: qsos,
           operations: operations,
-          extensions: ExtensionServiceWithMockHost(const MockExtensionHost({})),
+          extensions: ExtensionServiceWithFakeHost(FakeExtensionHost({})),
           scoring: scoring,
           qsoCount: 10,
           purge: (uuid) async => purged.add(uuid),
@@ -228,7 +228,7 @@ void main() {
         runContestBench(
           qsos: qsos,
           operations: operations,
-          extensions: ExtensionServiceWithMockHost(const MockExtensionHost({})),
+          extensions: ExtensionServiceWithFakeHost(FakeExtensionHost({})),
           scoring: scoring,
           qsoCount: 10,
           purge: (uuid) async => throw StateError('database locked'),

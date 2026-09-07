@@ -19,7 +19,7 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 const _sotaInfo = ExtensionInfo(
   key: 'sota',
@@ -65,8 +65,8 @@ const _sotaControl = <String, dynamic>{
   'input': {'kind': 'refList', 'refType': 'sotaActivation'},
 };
 
-class _NoActivityExtensions extends ExtensionServiceWithMockHost {
-  _NoActivityExtensions() : super(const MockExtensionHost({}));
+class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
+  _NoActivityExtensions() : super(FakeExtensionHost({}));
 
   /// What `operationControls` answers — empty until an enable flips it.
   List<Map<String, dynamic>> controls = const [];

@@ -17,8 +17,8 @@ import 'package:ham2k_logger/services/peer/ble/peer_ble_transport.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 import 'package:ham2k_logger/services/peer/serial_claims.dart';
 
-import 'peer_ble_fakes.dart';
-import 'peer_network_fakes.dart';
+import 'support/peer_ble_fakes.dart';
+import 'support/peer_network_fakes.dart';
 
 Future<void> waitFor(
   String what,

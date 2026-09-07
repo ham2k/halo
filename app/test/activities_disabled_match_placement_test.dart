@@ -23,7 +23,7 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 const _potaInfo = ExtensionInfo(
   key: 'pota',
@@ -42,8 +42,8 @@ List<ExtensionInfo> _manyParks(int count) => [
         ExtensionInfo(key: 'parks$i', file: 'parks$i.js', core: false, name: 'Parks Number $i', enabledByDefault: false),
     ];
 
-class _NoActivityExtensions extends ExtensionServiceWithMockHost {
-  _NoActivityExtensions() : super(const MockExtensionHost({}));
+class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
+  _NoActivityExtensions() : super(FakeExtensionHost({}));
 
   @override
   Future<ControlsResult> operationControls(

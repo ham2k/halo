@@ -1,11 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/config/release_notes.dart';
@@ -14,8 +12,7 @@ import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
-import 'fake_secure_storage.dart';
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -367,10 +364,7 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       setReleaseNotesForTesting(const []);
       setTesterNotesForTesting(const []);
-      final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
-      final db = HaLoDatabase(NativeDatabase.memory());
-      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-      final services = HaLoServices(db, settings, extensions: extensions);
+      final HaLoHarness(:services, :settings) = await makeHaLoServices(prefs: null);
 
       await tester.pumpWidget(TranslationProvider(child: HaLoApp(services: services)));
       await tester.pumpAndSettle();
@@ -445,11 +439,8 @@ void main() {
       SharedPreferences.setMockInitialValues({});
       setReleaseNotesForTesting(const []);
       setTesterNotesForTesting(const []);
-      final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
+      final HaLoHarness(:services, :settings) = await makeHaLoServices(prefs: null);
       await settings.setFontScale(FontScale.smaller);
-      final db = HaLoDatabase(NativeDatabase.memory());
-      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-      final services = HaLoServices(db, settings, extensions: extensions);
 
       await tester.pumpWidget(TranslationProvider(child: HaLoApp(services: services)));
       await tester.pumpAndSettle();

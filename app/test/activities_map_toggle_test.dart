@@ -6,22 +6,18 @@
 // underneath), tapping a marker reveals the reference rather than adding it
 // outright, and only the reveal card's own Add button writes the ref.
 
-import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/map/map_popup.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 const _parkControl = {
   'key': 'pota/activation',
@@ -38,8 +34,8 @@ const _parkSuggestion = {
   'grid': 'FN21ab',
 };
 
-class _MapToggleExtensions extends ExtensionServiceWithMockHost {
-  _MapToggleExtensions() : super(const MockExtensionHost({}));
+class _MapToggleExtensions extends ExtensionServiceWithFakeHost {
+  _MapToggleExtensions() : super(FakeExtensionHost({}));
 
   @override
   Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
@@ -61,11 +57,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('map toggle swaps the list for a map; a marker reveals, Add writes the ref', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = _MapToggleExtensions()..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services) = await makeHaLoServices(extensions: _MapToggleExtensions());
     final operation = Operation(uuid: 'op-1', data: const {'refs': []});
     Operation? latest;
 
@@ -124,11 +116,7 @@ void main() {
   });
 
   testWidgets('toggling to the map keeps Current Activities visible, not just the results', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = _MapToggleExtensions()..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services) = await makeHaLoServices(extensions: _MapToggleExtensions());
     // A ref already on the operation, distinct from the search suggestion —
     // proves the row surviving the toggle is the CURRENT ACTIVITIES one, not
     // a coincidental match against the suggestion's own text.

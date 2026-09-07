@@ -13,7 +13,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 
-import 'error_reporting_test.dart' show FakeErrorReportingBackend, withErrorHooks;
+import 'support/error_reporting_fakes.dart';
 
 /// Records every hook invocation so a test can assert on the arguments, not
 /// just the result.

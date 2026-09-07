@@ -7,7 +7,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'fake_secure_storage.dart';
+import 'support/fake_secure_storage.dart';
 
 /// Secure storage that fails every call the way a locked/absent libsecret does
 /// on Linux — the crash test users hit (`PlatformException(KeyringLocked)`).

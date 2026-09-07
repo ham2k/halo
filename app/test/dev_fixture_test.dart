@@ -1,14 +1,13 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/dev_fixture.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -35,11 +34,7 @@ void main() {
   });
 
   test('resetDevFixture wipes existing state, seeds the fixture, and resets known settings', () async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings);
+    final HaLoHarness(:services, :db, :settings) = await makeHaLoServices();
 
     // Pre-existing clutter + non-default UI state the reset must clear.
     final stale = await services.operations.create(stationCall: 'OLD', userTitle: 'Stale');

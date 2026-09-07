@@ -24,6 +24,8 @@ import 'package:ham2k_logger/settings/settings_command.dart';
 import 'package:ham2k_logger/settings/settings_registry.dart';
 import 'package:ham2k_logger/settings/settings_scan.dart';
 
+import 'support/halo_test_support.dart';
+
 /// A group declaring exactly the shapes this file needs to reason about, so
 /// the assertions don't move every time a real settings panel gains a field.
 class _TestGroup extends SettingsGroup {
@@ -166,14 +168,10 @@ void main() {
     const queries = ['rst', 'report', 'grid', 'zerobeat', 'zero beat', 'theme', 'show', 'units', 'numbers'];
 
     test('every setting a command resolves is findable in the search box', () async {
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
       // The radio group declares nothing without this, and it owns the alias
       // that first exposed the mismatch.
+      final HaLoHarness(:services, :settings) = await makeHaLoServices();
       await settings.setExperimentEnabled('gato', true);
-      final db = HaLoDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
-      final services = HaLoServices(db, settings);
 
       // The REAL element maps, as the search box sees them — not rebuilt from
       // catalog entries, which would only prove the reconstruction agrees
@@ -583,11 +581,7 @@ void main() {
 
     test('a write goes through the declaring group commit path', () async {
       final group = _TestGroup([hideDupes]);
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
-      final db = HaLoDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
-      final services = HaLoServices(db, settings);
+      final HaLoHarness(:services, :settings) = await makeHaLoServices();
       services.settingsRegistry.register(group);
 
       expect(await applySettingCommand(services, key: 'hideDupes', value: true), isNull);

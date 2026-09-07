@@ -11,26 +11,21 @@
 // tapping Notices & Messages opens the notice history in one; tapping the
 // version row copies it; tapping the wordmark opens a photo+caption modal.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:package_info_plus/package_info_plus.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/release_notes.dart';
 import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:ham2k_logger/config/version.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/ham2k_logo.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 import 'package:ham2k_logger/views/version_label.dart';
+
+import 'support/halo_test_support.dart';
 
 const _testRelease = ReleaseNotesEntry(
   version: '26.8.0',
@@ -38,39 +33,6 @@ const _testRelease = ReleaseNotesEntry(
   photoCaption: 'M1SDH at GB-4724',
   changes: ['First change', 'Second change'],
 );
-
-class _MockExtensionHost implements ExtensionHost {
-  @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async => null;
-
-  @override
-  Future<List<Map<String, dynamic>>> invokeHookAll(
-    String category, {
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-    bool partialOnTimeout = false,
-  }) async => const [];
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _ExtensionServiceWithMockHost extends ExtensionService {
-  final _MockExtensionHost mockHost = _MockExtensionHost();
-
-  @override
-  ExtensionHost? get host => mockHost;
-
-  @override
-  Future<void> start() async {}
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -103,15 +65,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = _ExtensionServiceWithMockHost()..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
-
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await pumpHaLo(tester, (services) => SettingsView(services: services));
     await tester.pumpAndSettle();
 
     await tester.tap(find.widgetWithText(ListTile, 'About'));
@@ -146,15 +100,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = _ExtensionServiceWithMockHost()..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
-
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await pumpHaLo(tester, (services) => SettingsView(services: services));
     await tester.pumpAndSettle();
 
     // No longer its own sidebar entry.
@@ -181,13 +127,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = _ExtensionServiceWithMockHost()..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
 
     String? copiedText;
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
@@ -232,13 +172,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = _ExtensionServiceWithMockHost()..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services) = await makeHaLoServices();
 
     // The modal's top section reuses ReleaseOverlayView's credits line,
     // which needs a TranslationProvider ancestor.

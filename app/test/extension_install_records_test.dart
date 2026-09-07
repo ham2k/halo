@@ -18,7 +18,7 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/installed_extensions.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
-import 'operation_view_layout_test.dart' show ExtensionServiceWithMockHost, MockExtensionHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -57,7 +57,7 @@ void main() {
       rootOverride: root,
       catalogInstalled: (key) => BundleProvenance.fromJson(settings.extensionInstalledFrom[key])?.isCatalog ?? false,
     );
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))
       ..settings = settings
       ..debugInstalledStore = store
       ..debugSetAvailableExtensions(const []);

@@ -29,7 +29,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:ham2k_logger/views/extensions_panel.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 const _testExtensions = [
   ExtensionInfo(key: 'adif', file: 'adif.js', core: true, name: 'ADIF Export'),
@@ -81,7 +81,7 @@ void main() {
       'extensionOverrides': '{"sota": false, "qrz": true}',
     });
     final settings = SettingsService(await SharedPreferences.getInstance());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
 
     bool enabled(String key) =>
         extensions.isExtensionEnabled(_testExtensions.firstWhere((e) => e.key == key));
@@ -96,7 +96,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(_testExtensions);
     HaLoServices(db, settings, extensions: extensions);
 
@@ -120,7 +120,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     // 'gone' is absent from the index. 'sota' stays disabled throughout (no
     // override, enabledByDefault: false), so its disabledSince entry must
     // survive the prune untouched — isolating what's under test from the
@@ -146,7 +146,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     // No debugSetAvailableExtensions call — availableExtensions is still [].
     HaLoServices(db, settings, extensions: extensions);
 
@@ -167,7 +167,7 @@ void main() {
   test('experiment gating hides the extension but keeps the stored override', () async {
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(_testExtensions);
     final gated = _testExtensions.firstWhere((e) => e.key == 'gated-panel');
 
@@ -195,7 +195,7 @@ void main() {
   });
 
   test('listActiveExtensions surfaces the kernel-info listing', () async {
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({
       'runtime:kernel:listExtensions': [
         {'key': 'pota', 'name': 'Parks on the Air', 'version': '0.0.1'},
       ],
@@ -210,13 +210,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final HaLoHarness(:services, :settings, :extensions) = await makeHaLoServices(catalog: _emptyCatalog());
     extensions.debugSetAvailableExtensions(_testExtensions);
-    final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
@@ -257,13 +252,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final HaLoHarness(:services, :settings, :extensions) = await makeHaLoServices(catalog: _emptyCatalog());
     extensions.debugSetAvailableExtensions(_testExtensions);
-    final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
@@ -295,7 +285,7 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     await settings.setExperimentEnabled('catalog', true);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'Parks on the Air', category: 'activity'),
       ExtensionInfo(
@@ -404,7 +394,7 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     await settings.setExperimentEnabled('catalog', true);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(_testExtensions);
     // The callsign is annotated AFTER the panel is open — a cold launch
     // opens Settings before the runtime that annotates it is up.
@@ -464,7 +454,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
       ExtensionInfo(
           key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
@@ -501,7 +491,7 @@ void main() {
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
     await settings.setExperimentEnabled('catalog', true);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(_testExtensions);
     final answer = Completer<http.Response>();
     final services =
@@ -531,7 +521,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(_testExtensions);
     var requests = 0;
     final catalog = _catalog((_) async {

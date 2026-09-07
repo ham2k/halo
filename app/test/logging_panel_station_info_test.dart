@@ -6,18 +6,17 @@
 // decorateQsoBeforeSave hook — the same seam extensions use to project their
 // own data onto a QSO just before it's written.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/logging_panel.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -26,10 +25,8 @@ void main() {
   late Operation operation;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    services = HaLoServices(db, settings);
+    final harness = await makeHaLoServices();
+    services = harness.services;
     operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
     await services.settings.setExperimentEnabled('gato', true);
   });

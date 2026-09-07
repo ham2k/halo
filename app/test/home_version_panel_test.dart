@@ -8,30 +8,23 @@
 // tree at all" has no signal of its own, and only an assertion catches its
 // absence.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/release_notes.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/release_overlay.dart';
+
+import 'support/halo_test_support.dart';
 
 Future<void> _pumpHome(WidgetTester tester) async {
   tester.view.physicalSize = const Size(1200, 800);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
-  SharedPreferences.setMockInitialValues({});
-  final settings = SettingsService(await SharedPreferences.getInstance());
-  final db = HaLoDatabase(NativeDatabase.memory());
-  addTearDown(db.close);
-  final services = HaLoServices(db, settings);
+  final HaLoHarness(:services) = await makeHaLoServices();
   // Through the shell the ROOT uses, not HomeView bare: the rail is a sibling
   // of the window's chrome now, so a test that pumped the view alone would be
   // exercising a composition that does not ship.
@@ -53,9 +46,7 @@ Future<void> _pumpHome(WidgetTester tester) async {
   addTearDown(() async {
     await _endOfTest(tester);
   });
-  for (var i = 0; i < 12; i++) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
+  await settleFrames(tester);
 }
 
 /// Unmounts the tree and lets Home's timers run out.

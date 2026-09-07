@@ -6,17 +6,15 @@
 // write its `setPower` case makes, exercised the way
 // settings_command_dispatch_test.dart exercises SET/SHOW.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_view.dart';
+
+import 'support/halo_test_support.dart';
 
 /// Returns the POWER command's interpretation for "5W" — the real hook's
 /// shape, without booting a JS engine.
@@ -51,11 +49,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<HaLoServices> buildServices() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    return HaLoServices(db, settings, extensions: _PowerCommandExtensions());
+    return (await makeHaLoServices(extensions: _PowerCommandExtensions())).services;
   }
 
   testWidgets('Enter on a wattage command writes the power to the VFO', (tester) async {

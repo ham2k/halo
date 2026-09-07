@@ -21,7 +21,7 @@ import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -99,14 +99,8 @@ void main() {
       tester.view.physicalSize = const Size(1000, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
+      final HaLoHarness(:services, :settings) = await makeHaLoServices();
       await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
-      final db = HaLoDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
-      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-      final services = HaLoServices(db, settings, extensions: extensions);
 
       // An operation that predates this feature — created WITHOUT the
       // new-operation flow's openActivities, same as any operation logged
@@ -135,17 +129,11 @@ void main() {
       tester.view.physicalSize = const Size(1000, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);
-
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
+      final HaLoHarness(:services, :settings) = await makeHaLoServices();
       await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
       // Already seen, as if from an earlier operation view (or an earlier
       // session entirely).
       await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-      final db = HaLoDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
-      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-      final services = HaLoServices(db, settings, extensions: extensions);
 
       final operation = await services.operations.create(stationCall: 'KI2D');
 

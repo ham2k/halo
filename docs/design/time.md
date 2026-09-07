@@ -437,7 +437,7 @@ same reason — the resource is shared, the timing is not the test's to control,
 and the failure lands on whichever test happens to be running. The answer has
 the same shape: a seam, an in-memory stand-in, and a small number of real
 tests kept to pin what the stand-in assumes.
-`app/test/peer_network_fakes.dart` is the worked example.
+`app/test/support/peer_network_fakes.dart` is the worked example.
 
 ---
 

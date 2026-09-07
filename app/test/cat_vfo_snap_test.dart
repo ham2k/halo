@@ -24,7 +24,7 @@ import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'fake_secure_storage.dart';
+import 'support/fake_secure_storage.dart';
 
 final _t0 = DateTime.utc(2026, 1, 1, 12);
 

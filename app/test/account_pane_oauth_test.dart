@@ -34,7 +34,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/oauth_browser_login.dart';
 import 'package:ham2k_logger/views/settings/accounts_panel.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 const _issuer = 'https://sso.example.org/auth/realms/TEST';
 const _redirect = 'com.ham2k.logger.test.auth://sota';
@@ -177,7 +177,7 @@ class _FakeDeepLinkService extends DeepLinkService {
 
 /// Keeps credentials in memory so Save and the "already connected" read are
 /// real rather than a null "storage unavailable" answer.
-class _AccountExtensionService extends ExtensionServiceWithMockHost {
+class _AccountExtensionService extends ExtensionServiceWithFakeHost {
   _AccountExtensionService(super.mockHost);
   final Map<String, Map<String, String>> store = {};
 
@@ -227,7 +227,7 @@ typedef _Harness = ({
 Future<_Harness> _harness(_OAuthHttpOverrides overrides) async {
   SharedPreferences.setMockInitialValues({});
   final settings = SettingsService(await SharedPreferences.getInstance());
-  final extensions = _AccountExtensionService(MockExtensionHost({
+  final extensions = _AccountExtensionService(FakeExtensionHost({
     'account:*:getDefinition': [_accountDefinition],
   }));
   extensions.settings = settings;

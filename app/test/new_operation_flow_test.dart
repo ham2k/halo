@@ -12,21 +12,17 @@
 // and its save must land on BOTH the profile and the already-created
 // operation — otherwise the operation logs QSOs under an empty identity.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
-import 'fake_secure_storage.dart';
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -35,13 +31,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
 
     // What HomeView._newOperation does — no dialog, just the profile call.
     final operation = await services.operations.create(
@@ -77,14 +68,9 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
     // The fake secure storage keeps setOperatorCall's ensureSyncDeviceKey off
     // the (absent-in-tests) keychain platform channel.
-    final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
 
     final operation = await services.operations.create(
       stationCall: settings.activeProfile.operatorCall,

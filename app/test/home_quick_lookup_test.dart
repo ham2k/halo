@@ -27,6 +27,8 @@ import 'package:ham2k_logger/views/command_engine.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/operation/call_info_panel.dart';
 
+import 'support/halo_test_support.dart';
+
 /// Canned command interpretations — the real runtime's contract, without
 /// booting a JS engine inside a fake-async widget test.
 class _CannedCommandExtensions extends ExtensionService {
@@ -130,12 +132,8 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('an operation-scoped command shows its error and keeps the input; executable ones still run', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
     final extensions = _CannedCommandExtensions();
-    final services = HaLoServices(db, settings, extensions: extensions);
-    addTearDown(db.close);
+    final HaLoHarness(:services, :db, :settings) = await makeHaLoServices(extensions: extensions);
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -178,11 +176,7 @@ void main() {
   });
 
   testWidgets('the field keeps focus after executing a command, so the next one can be typed right away', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final services = HaLoServices(db, settings, extensions: _CannedCommandExtensions());
-    addTearDown(db.close);
+    final HaLoHarness(:services, :db) = await makeHaLoServices(extensions: _CannedCommandExtensions());
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
@@ -217,11 +211,7 @@ void main() {
 
   group('spaces and case in the command field (HALO-156)', () {
     Future<HaLoServices> makeServices() async {
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
-      final db = HaLoDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
-      return HaLoServices(db, settings, extensions: _CannedCommandExtensions());
+      return (await makeHaLoServices(extensions: _CannedCommandExtensions())).services;
     }
 
     Future<void> pumpLookup(WidgetTester tester, HaLoServices services) => tester.pumpWidget(

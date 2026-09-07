@@ -1,18 +1,12 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -29,14 +23,7 @@ void main() {
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
-
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
-      final db = HaLoDatabase(NativeDatabase.memory());
-      final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-      final services = HaLoServices(db, settings, extensions: extensions);
-
-      await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+      final HaLoHarness(:settings) = await pumpHaLo(tester, (services) => SettingsView(services: services));
       await tester.pumpAndSettle();
 
       // The registry's select fields render as icon-row list rows whose

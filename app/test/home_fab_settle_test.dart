@@ -15,17 +15,15 @@
 // the ticker AnimatedSize builds from SingleTickerProviderStateMixin, exactly
 // as a backgrounded tab's dead frame pump would, while Timers keep running.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_view.dart';
+
+import 'support/halo_test_support.dart';
 
 /// Mirrors home_view.dart's own `_fabTransitionDuration + _fabSettleSlack`.
 const _settleDeadline = Duration(milliseconds: 400);
@@ -51,11 +49,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('a FAB collapse interrupted by a stalled ticker still ends at its resting width', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings);
+    final HaLoHarness(:services) = await makeHaLoServices();
 
     // Enough operations that the list actually scrolls, which is what drives
     // the FAB's extend/collapse.
@@ -149,13 +143,7 @@ void main() {
   });
 
   testWidgets('the nudge waits out its delay, then stops rotating the FAB once its bursts are over', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings);
-
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+    await pumpHaLo(tester, (services) => HomeView(services: services));
     await tester.pumpAndSettle();
 
     expect(
@@ -194,11 +182,7 @@ void main() {
   // flight resolves to nothing and the FAB reads as dead. Both of these press
   // the button and hold it across the moment the rebuild lands.
   testWidgets('a press held across the collapse settle still registers as a tap', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings);
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
 
     for (var i = 0; i < 20; i++) {
       await services.operations.create(stationCall: 'N0DEV');
@@ -241,13 +225,7 @@ void main() {
   });
 
   testWidgets('a press held across the nudge settling still registers as a tap', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings);
-
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+    final HaLoHarness(:settings) = await pumpHaLo(tester, (services) => HomeView(services: services));
     await tester.pumpAndSettle();
 
     // Let the nudge fire and run its bursts out, stopping just short of the
@@ -278,13 +256,7 @@ void main() {
   });
 
   testWidgets('a touch during the wait drops the nudge for that visit', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings);
-
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+    await pumpHaLo(tester, (services) => HomeView(services: services));
     await tester.pumpAndSettle();
 
     // Somewhere in the operation list, well clear of the FAB's bottom-right

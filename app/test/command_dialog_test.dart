@@ -23,11 +23,9 @@
 
 import 'dart:async';
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -39,6 +37,8 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/command_dialog.dart';
 import 'package:ham2k_logger/views/command_engine.dart';
 import 'package:ham2k_logger/views/operation/call_info_panel.dart';
+
+import 'support/halo_test_support.dart';
 
 class _CannedExtensions extends ExtensionService {
   @override
@@ -247,10 +247,7 @@ Future<HaLoServices> _services(WidgetTester tester) async {
   // tester gate loads the real tester-notes asset mid-test and mounts a
   // focus-stealing full-screen overlay over the ⌘K assertions.
   setTesterNotesForTesting(const []);
-  final settings = SettingsService(await SharedPreferences.getInstance());
-  final db = HaLoDatabase(NativeDatabase.memory());
-  addTearDown(db.close);
-  return HaLoServices(db, settings, extensions: _CannedExtensions());
+  return (await makeHaLoServices(prefs: null, extensions: _CannedExtensions())).services;
 }
 
 /// Opens the dialog the way ⌘K does — as a route over a host screen — so
@@ -700,7 +697,6 @@ void main() {
     await _unmount(tester);
   });
 
-
   testWidgets('a QSO-scoped command reaches the live logging panel', (tester) async {
     // The bug this pins: the engine only ever handled the APP-scoped actions
     // itself, so "20M" from the dialog interpreted fine, returned
@@ -767,7 +763,6 @@ void main() {
     await _unmount(tester);
   });
 
-
   testWidgets('picking "New operation" actually creates one', (tester) async {
     // The nav rows run their action AFTER the dialog closes itself, so the
     // work happens on an unmounted State — easy to get wrong, and invisible
@@ -789,7 +784,6 @@ void main() {
 
     await _unmount(tester);
   });
-
 
   testWidgets('clearing the field mid-lookup drops the spinner, not just the result', (tester) async {
     // The reported state, exactly: text '' with lookupStage 'searching' — an
@@ -845,7 +839,6 @@ void main() {
     await _unmount(tester);
   });
 
-
   testWidgets('moving the caret re-runs nothing', (tester) async {
     // TextEditingController notifies for SELECTION changes as well as text
     // changes. The engine treated those as edits, so every caret move — a tap
@@ -882,7 +875,6 @@ void main() {
 
     await _unmount(tester);
   });
-
 
   testWidgets('popping a nested operation reveals the one underneath, not nothing', (tester) async {
     // The palette can open operation B from inside operation A, so open

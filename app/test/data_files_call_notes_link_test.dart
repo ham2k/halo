@@ -21,7 +21,7 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 Map<String, dynamic> _panelEntry({
   required String panelKey,
@@ -54,7 +54,7 @@ Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<Stri
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
   addTearDown(db.close);
-  final mockHost = MockExtensionHost({
+  final mockHost = FakeExtensionHost({
     'dataFile:*:getDefinition': [
       {
         'key': 'hams-of-note',
@@ -76,7 +76,7 @@ Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<Stri
       ],
     },
   });
-  final extensions = ExtensionServiceWithMockHost(mockHost)..settings = settings;
+  final extensions = ExtensionServiceWithFakeHost(mockHost)..settings = settings;
   final services = HaLoServices(db, settings, extensions: extensions);
 
   await tester.pumpWidget(TranslationProvider(

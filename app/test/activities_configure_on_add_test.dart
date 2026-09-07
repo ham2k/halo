@@ -20,7 +20,7 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 /// A form-configured contest control, the shape `refTypeIsForm` keys on.
 const _contestControl = {
@@ -62,13 +62,13 @@ const _parkSuggestion = {
   'name': 'Some Park',
 };
 
-/// The shared MockExtensionHost only overrides the public `host` getter, while
+/// The shared FakeExtensionHost only overrides the public `host` getter, while
 /// control collection and `suggestActivities` read the private field — so both
 /// would come back empty and every row this file looks for would be missing.
 /// Overriding the three methods the sheet actually calls says exactly what
 /// these tests depend on.
-class _AddFlowExtensions extends ExtensionServiceWithMockHost {
-  _AddFlowExtensions({required this.controls, required this.suggestions}) : super(const MockExtensionHost({}));
+class _AddFlowExtensions extends ExtensionServiceWithFakeHost {
+  _AddFlowExtensions({required this.controls, required this.suggestions}) : super(FakeExtensionHost({}));
 
   final List<Map<String, dynamic>> controls;
   final List<Map<String, dynamic>> suggestions;

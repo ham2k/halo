@@ -9,12 +9,9 @@
 // them would go red if either gate were deleted, which is the whole reason
 // these exist.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
@@ -24,7 +21,7 @@ import 'package:ham2k_logger/views/operation/layout_sheet.dart';
 import 'package:ham2k_logger/views/operation/missing_panel_pane.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   /// One extension panel, declaring the triggers the test needs. The shape
@@ -47,8 +44,7 @@ void main() {
     Map<String, dynamic> mockHooks = const {},
     List<String> layout = const ['logging', 'info'],
   }) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices(stubs: mockHooks);
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     await settings.setLayoutCustomization(true);
@@ -59,10 +55,7 @@ void main() {
         DockGroup(layout.sublist(1)),
       ], [2, 1]).toJson(),
     );
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(mockHooks))..settings = settings;
-    return HaLoServices(db, settings, extensions: extensions);
+    return services;
   }
 
   /// The view's drift subscriptions schedule their cleanup on a timer, which
@@ -178,8 +171,7 @@ void main() {
   });
 
   testWidgets('a saved arrangement listing a module twice falls back to the default', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     await settings.setLayoutCustomization(true);
@@ -190,9 +182,6 @@ void main() {
         DockGroup(['logging', 'info']),
       ], [2, 1]).toJson(),
     );
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings, extensions: ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings);
 
     // The same module twice means the same widget in two groups, and the
     // logging pane carries a GlobalKey — so this throws on every build, and

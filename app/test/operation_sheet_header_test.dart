@@ -13,20 +13,17 @@
 // under the test font than on a device; these tests pin the ORDER and the
 // invariants, never a pixel width, and sweep widths rather than name one.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
-import 'operation_view_layout_test.dart' show ExtensionServiceWithMockHost, MockExtensionHost;
+import 'support/halo_test_support.dart';
 
 /// Widths from roomy to cramped. The absolute numbers don't matter — what the
 /// tests read is how the header's answer changes ALONG the sweep. It stops at
@@ -52,13 +49,9 @@ void main() {
     String multiIdentifier = '',
     double textScaler = 1.0,
   }) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
     // Otherwise the onboarding flow opens the sheet itself and races the tap.
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(MockExtensionHost(const {}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
     final created = await services.operations.create(stationCall: stationCall, userTitle: userTitle);
     // Every optional pill present, so a sweep starts from the crowded case
     // rather than from a header that had nothing to shed.

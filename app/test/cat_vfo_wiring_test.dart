@@ -25,7 +25,7 @@ import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'fake_secure_storage.dart';
+import 'support/fake_secure_storage.dart';
 
 class _FakeConnection implements EquipmentConnection {
   final _data = StreamController<Uint8List>();

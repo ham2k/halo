@@ -18,7 +18,7 @@ import 'package:ham2k_logger/services/panel_service.dart';
 import 'package:ham2k_logger/views/operation/extension_panel.dart';
 import 'package:ham2k_logger/views/operation/panel_content_view.dart';
 
-import 'error_reporting_test.dart' show FakeErrorReportingBackend, withErrorHooks;
+import 'support/error_reporting_fakes.dart';
 
 void main() {
   /// Never pumpAndSettle here: a panel with no content yet shows a

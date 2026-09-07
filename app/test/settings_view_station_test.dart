@@ -7,22 +7,17 @@
 
 import 'dart:convert';
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
-import 'fake_secure_storage.dart';
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -40,18 +35,16 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    SharedPreferences.setMockInitialValues({
-      if (catEnabled)
-        'experiments': jsonEncode({
-          'gato': {'enabled': true},
-        }),
-      if (equipment != null) 'stationEquipment': jsonEncode(equipment),
-    });
-    final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: secureStorage);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final HaLoHarness(:services) = await makeHaLoServices(
+      prefs: {
+        if (catEnabled)
+          'experiments': jsonEncode({
+            'gato': {'enabled': true},
+          }),
+        if (equipment != null) 'stationEquipment': jsonEncode(equipment),
+      },
+      secureStorage: secureStorage,
+    );
 
     await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();

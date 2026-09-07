@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 import 'package:ham2k_logger/views/operation/radio/radio_faces.dart';
 
-import 'fake_panel_extensions.dart';
+import 'support/fake_panel_extensions.dart';
 
 void main() {
   group('frequency cells', () {

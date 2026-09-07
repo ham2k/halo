@@ -20,7 +20,7 @@ import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/views/switch_accounts_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import 'error_reporting_test.dart' show FakeErrorReportingBackend, withErrorHooks;
+import 'support/error_reporting_fakes.dart';
 
 Map<String, dynamic> accountData({String uuid = 'acct-1', List<Map<String, dynamic>> others = const []}) => {
       'current_account': {'uuid': uuid, 'call': 'N0CALL', 'email': 'me@example.com'},

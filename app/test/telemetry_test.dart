@@ -17,8 +17,7 @@ import 'package:ham2k_logger/services/metrics_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/panel_use_tracker.dart';
 
-import 'fake_secure_storage.dart';
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 class RecordingMetrics implements MetricsService {
   final events = <(String, Map<String, Object?>)>[];
@@ -35,7 +34,7 @@ Future<HaLoServices> makeServices({required bool consent, required MetricsServic
     await settings.setSettingValue(SettingsService.privacyGroup, 'consentAppData', true);
   }
   final db = HaLoDatabase(NativeDatabase.memory());
-  final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+  final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
   return HaLoServices(db, settings, extensions: extensions, metrics: metrics);
 }
 

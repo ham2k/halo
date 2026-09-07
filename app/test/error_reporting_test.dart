@@ -10,43 +10,28 @@
 // concern — see app_dist/test/sentry_error_reporting_backend_test.dart)
 // gets exactly the calls ErrorReportingService promises it: captureException
 // per report(), and updateUserContext kept in step with consent/callsign/
-// account changes. A FakeErrorReportingBackend below stands in for a real
-// one, since ErrorReportingBackend is the only thing this file needs to know
-// about.
+// account changes. The FakeErrorReportingBackend in
+// support/error_reporting_fakes.dart stands in for a real one, since
+// ErrorReportingBackend is the only thing this file needs to know about.
 //
 // The hooks ErrorReportingService.run() installs are global (ErrorWidget.
 // builder, FlutterError.onError, PlatformDispatcher.onError), and the test
 // binding verifies the first two are back to their originals at the END of
 // each test body — before tearDowns run — so every test restores them
-// inline via try/finally rather than addTearDown.
+// inline via try/finally (withErrorHooks) rather than addTearDown.
 
-import 'dart:async';
-import 'dart:ui' show PlatformDispatcher;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/services/error_policy.dart';
-import 'package:ham2k_logger/services/error_reporting_backend.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 import 'package:ham2k_logger/views/error_tile.dart';
 
-Future<void> withErrorHooks(Future<void> Function() body, {ErrorReportingBackend? backend}) async {
-  final previousBuilder = ErrorWidget.builder;
-  final previousOnError = FlutterError.onError;
-  final previousPlatformOnError = PlatformDispatcher.instance.onError;
-  await ErrorReportingService.run(() {}, backend: backend);
-  try {
-    await body();
-  } finally {
-    ErrorWidget.builder = previousBuilder;
-    FlutterError.onError = previousOnError;
-    PlatformDispatcher.instance.onError = previousPlatformOnError;
-  }
-}
+import 'support/error_reporting_fakes.dart';
 
 /// Whether the policy exempts [details] from the loud path — no upload and
 /// no notice. Which exact quiet tier it lands in is asserted per-rule in
@@ -54,84 +39,6 @@ Future<void> withErrorHooks(Future<void> Function() body, {ErrorReportingBackend
 /// exemption as it is applied by the real FlutterError hook.
 bool _isNoise(FlutterErrorDetails details) =>
     !ErrorPolicy.decide(details.exception, details: details).disposition.uploads;
-
-class RecordedException {
-  final Object error;
-  final StackTrace? stackTrace;
-  final String? context;
-  RecordedException(this.error, this.stackTrace, this.context);
-}
-
-class RecordedUserContext {
-  final String? callsign;
-  final String? accountId;
-  RecordedUserContext(this.callsign, this.accountId);
-}
-
-class RecordedBreadcrumb {
-  final String message;
-  final String? category;
-  RecordedBreadcrumb(this.message, this.category);
-}
-
-/// A test double standing in for a real backend (Sentry, in app_dist) —
-/// records what ErrorReportingService sends it, without touching any SDK.
-class FakeErrorReportingBackend implements ErrorReportingBackend {
-  final exceptions = <RecordedException>[];
-  final userContextCalls = <RecordedUserContext>[];
-  final breadcrumbs = <RecordedBreadcrumb>[];
-  final diagnostics = <(String, String)>[];
-
-  /// Simulates the backend's own init failing before it ever calls
-  /// startBody (e.g. a real Sentry init throwing) — the caller must still
-  /// run the app via its own fallback.
-  final bool failsToRun;
-
-  /// Simulates addBreadcrumb throwing synchronously (a real SDK call
-  /// erroring) — ErrorReportingService.breadcrumb() must swallow it, since
-  /// call sites run it right before a dispose()'s own teardown.
-  final bool breadcrumbThrows;
-
-  /// Simulates the diagnostic upload throwing synchronously. The operator is
-  /// waiting on a result when this runs, so a backend that cannot send must
-  /// not take the result down with it.
-  final bool diagnosticThrows;
-
-  FakeErrorReportingBackend({
-    this.failsToRun = false,
-    this.breadcrumbThrows = false,
-    this.diagnosticThrows = false,
-  });
-
-  @override
-  Future<bool> run(FutureOr<void> Function() startBody) async {
-    if (failsToRun) return false;
-    await startBody();
-    return true;
-  }
-
-  @override
-  void captureException(Object error, StackTrace? stackTrace, {String? context}) {
-    exceptions.add(RecordedException(error, stackTrace, context));
-  }
-
-  @override
-  void captureDiagnostic({required String title, required String body}) {
-    if (diagnosticThrows) throw StateError('diagnostic upload failed');
-    diagnostics.add((title, body));
-  }
-
-  @override
-  void updateUserContext({String? callsign, String? accountId}) {
-    userContextCalls.add(RecordedUserContext(callsign, accountId));
-  }
-
-  @override
-  void addBreadcrumb(String message, {String? category}) {
-    if (breadcrumbThrows) throw StateError('backend addBreadcrumb failed');
-    breadcrumbs.add(RecordedBreadcrumb(message, category));
-  }
-}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

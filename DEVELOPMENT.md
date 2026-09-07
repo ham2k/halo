@@ -159,6 +159,24 @@ a loud "run the full gate". Subset runs are a convenience, **not** the gate:
 they skip analyze, dependent packages, and the browser-platform step. The full
 `./scripts/test.sh` is still what counts before a merge.
 
+### Writing an app test
+
+`app/test/support/halo_test_support.dart` is the harness: import it and start
+at the assertion. `makeHaLoServices({prefs, stubs, extensions})` builds prefs,
+settings, an in-memory database and a `HaLoServices` over them (the database
+closes at tearDown); `pumpHaLo(tester, (services) => MyPanel(services:
+services), size: …)` mounts a widget inside the `TranslationProvider` +
+`MaterialApp` pair the app's widgets expect. `stubs` is a
+`{'category:key:method': result}` map answered by one `FakeExtensionHost` —
+a `Function` value is called with the hook's args, an `Exception` value is
+thrown. Prefer `settleFrames` to `pumpAndSettle` wherever a `WallClock`
+ticks in the tree: the settle loop never finds a quiet frame and runs into
+its ten-minute timeout. The same directory holds the larger fakes (secure
+storage, panel extensions, the peer transports, a connected CAT radio) and
+`app/test/flutter_test_config.dart` gives every file an empty prefs store —
+on purpose without the widget binding, which would replace `HttpClient`
+with one answering 400 to the peer transport tests' real sockets.
+
 A full run takes about six minutes on an Apple-silicon Mac (measured
 2026-09-07: 333–386 s, of which the app suite is about four minutes and the
 extension bundle build plus the package suites the rest). A subset run of one

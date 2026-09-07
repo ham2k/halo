@@ -8,16 +8,14 @@
 // wipes on the Enter keystroke with no prompt), and the dialog's count
 // naming rows that are not vanishing contacts (tombstones, event markers).
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
+
+import 'support/halo_test_support.dart';
 
 class _IdleExtensions extends ExtensionService {
   @override
@@ -29,11 +27,7 @@ class _IdleExtensions extends ExtensionService {
 
 void main() {
   testWidgets('SYNCALL asks first, names the unsynced count, and cancel leaves the log untouched', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings, extensions: _IdleExtensions());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices(extensions: _IdleExtensions());
     await settings.setSyncEnabled(true);
 
     await tester.runAsync(() async {
@@ -79,11 +73,7 @@ void main() {
   });
 
   testWidgets('SYNCALL with no dialog context refuses instead of wiping unprompted', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings, extensions: _IdleExtensions());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices(extensions: _IdleExtensions());
     await settings.setSyncEnabled(true);
 
     await tester.runAsync(() async {

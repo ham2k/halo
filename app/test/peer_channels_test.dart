@@ -29,7 +29,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/services/peer/peer_drafts.dart';
 
-import 'peer_network_fakes.dart';
+import 'support/peer_network_fakes.dart';
 
 Future<void> waitFor(
   String what,

@@ -15,31 +15,21 @@
 // `state` scoped to just that element's own panel, not this dialog's
 // combined, cross-panel values.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/settings/settings_target_dialog.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 Future<HaLoServices> _services(Map<String, dynamic> mockHookResults) =>
-    _servicesWithExtensions(ExtensionServiceWithMockHost(MockExtensionHost(mockHookResults)));
+    _servicesWithExtensions(ExtensionServiceWithFakeHost(FakeExtensionHost(mockHookResults)));
 
-Future<HaLoServices> _servicesWithExtensions(ExtensionService extensions) async {
-  SharedPreferences.setMockInitialValues({});
-  final settings = SettingsService(await SharedPreferences.getInstance());
-  extensions.settings = settings;
-  final db = HaLoDatabase(NativeDatabase.memory());
-  return HaLoServices(db, settings, extensions: extensions);
-}
+Future<HaLoServices> _servicesWithExtensions(ExtensionService extensions) async =>
+    (await makeHaLoServices(extensions: extensions)).services;
 
 Map<String, dynamic> _panelEntry({required String panelKey, required String kind}) => {
   'key': panelKey,
@@ -106,7 +96,7 @@ void main() {
 
   testWidgets('a Tier 2 extension field appears and commits without crashing', (tester) async {
     // Tier 2's commit forwards to the extension's own onChangeField — there's
-    // no local Dart storage to assert against (MockExtensionHost.invokeHook
+    // no local Dart storage to assert against (FakeExtensionHost.invokeHook
     // just echoes back a canned response), so this pins "reaches the target
     // dialog, edits without throwing, dialog stays usable" rather than a
     // specific persisted value; the Tier 1 test above is what actually pins
@@ -208,8 +198,40 @@ void main() {
   });
 
   testWidgets("an action's state is scoped to its own panel — no other panel's or core's keys leak in", (tester) async {
-    final host = _StateCapturingHost();
-    final services = await _servicesWithExtensions(_StateCapturingExtensionService(host));
+    // Records the `state` the action call actually received, to pin the
+    // cross-panel scoping fix above.
+    Map<String, dynamic>? capturedState;
+    final services = await _servicesWithExtensions(ExtensionServiceWithFakeHost(FakeExtensionHost({
+      'settingsPanel:*:getPanels': [
+        {
+          'key': 'panelA',
+          'ok': true,
+          'value': {'panelKey': 'panelA', 'hookKey': 'panelA', 'extensionKey': 'panelA', 'title': 'Panel A', 'kind': 'simple', 'order': 0},
+        },
+        {
+          'key': 'panelB',
+          'ok': true,
+          'value': {'panelKey': 'panelB', 'hookKey': 'panelB', 'extensionKey': 'panelB', 'title': 'Panel B', 'kind': 'simple', 'order': 1},
+        },
+      ],
+      'settingsPanel:panelA:getDefinition': {
+        'title': 'Panel A',
+        'elements': [
+          {'type': 'field', 'fieldType': 'checkbox', 'key': 'flagA', 'label': 'Flag A', 'icon': 'flag', 'value': false, 'target': 'logging'},
+        ],
+      },
+      'settingsPanel:panelB:getDefinition': {
+        'title': 'Panel B',
+        'elements': [
+          {'type': 'field', 'fieldType': 'checkbox', 'key': 'flagB', 'label': 'Flag B', 'icon': 'flag', 'value': false, 'target': 'logging'},
+          {'type': 'action', 'key': 'clearCache', 'label': 'Clear Cache', 'method': 'clearCache', 'target': 'logging'},
+        ],
+      },
+      'settingsPanel:panelB:clearCache': (Object? args) {
+        capturedState = (args as Map)['state'] as Map<String, dynamic>;
+        return 'cleared';
+      },
+    })));
 
     await _openDialog(tester, services);
     // Toggle panelA's own field so the dialog's combined _values map holds
@@ -225,7 +247,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      host.capturedState,
+      capturedState,
       {'flagB': false},
       reason: "panelB's action must see its own field bare-keyed and nothing else — not panelA's namespaced "
           'key, not a missing/renamed flagB',
@@ -233,7 +255,7 @@ void main() {
   });
 
   testWidgets('a fieldType: "account" extension element is picked up, not filtered out', (tester) async {
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:*:getPanels': [_panelEntry(panelKey: 'acctext', kind: 'simple')],
       'settingsPanel:acctext:getDefinition': {
         'title': 'Account Extension',
@@ -267,7 +289,7 @@ void main() {
   });
 
   testWidgets('after Connect closes having saved, the account field refreshes on its own — no separate trigger needed', (tester) async {
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:*:getPanels': [_panelEntry(panelKey: 'acctext', kind: 'simple')],
       'settingsPanel:acctext:getDefinition': {
         'title': 'Account Extension',
@@ -461,7 +483,7 @@ void main() {
   });
 }
 
-class _AccountRoundTripExtensionService extends ExtensionServiceWithMockHost {
+class _AccountRoundTripExtensionService extends ExtensionServiceWithFakeHost {
   _AccountRoundTripExtensionService(super.mockHost);
 
   final Map<String, Map<String, String>> _store = {};
@@ -475,87 +497,10 @@ class _AccountRoundTripExtensionService extends ExtensionServiceWithMockHost {
   }
 }
 
-class _AccountAwareExtensionService extends ExtensionServiceWithMockHost {
+class _AccountAwareExtensionService extends ExtensionServiceWithFakeHost {
   _AccountAwareExtensionService(super.mockHost);
 
   @override
   Future<Map<String, String>> getAccountCredentials(String kvKey) async => const {};
 }
 
-/// A hand-rolled [ExtensionHost] (rather than [MockExtensionHost], whose
-/// canned-result map can't see call arguments) that records the `state` an
-/// action call actually received, to pin the cross-panel scoping fix above.
-class _StateCapturingHost implements ExtensionHost {
-  Map<String, dynamic>? capturedState;
-
-  @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
-    if (category == 'settingsPanel' && key == 'panelA' && method == 'getDefinition') {
-      return {
-        'title': 'Panel A',
-        'elements': [
-          {'type': 'field', 'fieldType': 'checkbox', 'key': 'flagA', 'label': 'Flag A', 'icon': 'flag', 'value': false, 'target': 'logging'},
-        ],
-      };
-    }
-    if (category == 'settingsPanel' && key == 'panelB' && method == 'getDefinition') {
-      return {
-        'title': 'Panel B',
-        'elements': [
-          {'type': 'field', 'fieldType': 'checkbox', 'key': 'flagB', 'label': 'Flag B', 'icon': 'flag', 'value': false, 'target': 'logging'},
-          {'type': 'action', 'key': 'clearCache', 'label': 'Clear Cache', 'method': 'clearCache', 'target': 'logging'},
-        ],
-      };
-    }
-    if (category == 'settingsPanel' && key == 'panelB' && method == 'clearCache') {
-      capturedState = (args as Map)['state'] as Map<String, dynamic>;
-      return 'cleared';
-    }
-    return null;
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> invokeHookAll(
-    String category, {
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-    bool partialOnTimeout = false,
-  }) async {
-    if (category == 'settingsPanel' && method == 'getPanels') {
-      return [
-        {
-          'key': 'panelA',
-          'ok': true,
-          'value': {'panelKey': 'panelA', 'hookKey': 'panelA', 'extensionKey': 'panelA', 'title': 'Panel A', 'kind': 'simple', 'order': 0},
-        },
-        {
-          'key': 'panelB',
-          'ok': true,
-          'value': {'panelKey': 'panelB', 'hookKey': 'panelB', 'extensionKey': 'panelB', 'title': 'Panel B', 'kind': 'simple', 'order': 1},
-        },
-      ];
-    }
-    return const [];
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _StateCapturingExtensionService extends ExtensionService {
-  final _StateCapturingHost mockHost;
-  _StateCapturingExtensionService(this.mockHost);
-
-  @override
-  ExtensionHost? get host => mockHost;
-
-  @override
-  Future<void> start() async {}
-}

@@ -15,7 +15,7 @@ import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -32,7 +32,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
 
-    const host = MockExtensionHost({
+    final host = FakeExtensionHost({
       'dataFile:*:getDefinition': [
         {
           'key': 'zeta',
@@ -46,7 +46,7 @@ void main() {
         },
       ],
     });
-    final extensions = ExtensionServiceWithMockHost(host)..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(host)..settings = settings;
     final services = HaLoServices(db, settings, extensions: extensions);
     addTearDown(db.close);
 
@@ -78,7 +78,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
 
     final fake = _FakeDataFiles(
       lookups: LookupRepository(db),
@@ -121,7 +121,7 @@ void main() {
     final settings = SettingsService(await SharedPreferences.getInstance());
     final db = HaLoDatabase(NativeDatabase.memory());
     addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
 
     final fake = _FakeDataFiles(
       lookups: LookupRepository(db),

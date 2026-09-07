@@ -9,20 +9,18 @@
 // is being checked is the wiring between the two — a status built from a
 // count the test itself supplied would pass with nothing behind it.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/peers_panel.dart';
 
-import 'fake_secure_storage.dart';
+
+import 'support/halo_test_support.dart';
 
 /// A peer service whose live links are stated rather than dialled.
 ///
@@ -53,16 +51,14 @@ void main() {
   late HaLoDatabase db;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
     // Peer sync is behind an experiment, and so is the Peers panel this
     // status opens.
+    final harness = await makeHaLoServices();
+    db = harness.db;
+    final settings = harness.settings;
+    services = harness.services;
     await settings.setExperimentEnabled('p2p', true);
-    db = HaLoDatabase(NativeDatabase.memory());
-    services = HaLoServices(db, settings);
   });
-
-  tearDown(() async => db.close());
 
   /// Pairs a device the way the pairing flow does: the store write AND the
   /// service's re-read of it, which is what every surface reading

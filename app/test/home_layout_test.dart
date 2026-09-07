@@ -13,12 +13,9 @@
 //    view scope, and a pane placed there would render against an operation it
 //    knows nothing about.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
@@ -31,12 +28,10 @@ import 'package:ham2k_logger/views/operation/solar/solar_panel.dart';
 import 'package:ham2k_logger/views/operation/weather/weather_panel.dart';
 import 'package:ham2k_logger/views/operation/website/website_panel.dart';
 
+import 'support/halo_test_support.dart';
+
 Future<HaLoServices> _services() async {
-  SharedPreferences.setMockInitialValues({});
-  final settings = SettingsService(await SharedPreferences.getInstance());
-  final db = HaLoDatabase(NativeDatabase.memory());
-  addTearDown(db.close);
-  return HaLoServices(db, settings);
+  return (await makeHaLoServices()).services;
 }
 
 Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Size size}) async {
@@ -63,9 +58,7 @@ Future<void> _pumpHome(WidgetTester tester, HaLoServices services, {required Siz
     await _endOfTest(tester);
   });
   // Bounded, not `pumpAndSettle`: see home_navigation_rail_test for why.
-  for (var i = 0; i < 12; i++) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
+  await settleFrames(tester);
 }
 
 /// Unmounts the tree and lets Home's timers run out.

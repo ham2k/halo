@@ -23,7 +23,7 @@ import 'package:ham2k_logger/views/operation/call_info_panel.dart';
 import 'package:ham2k_logger/views/operation/information_panel.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -52,7 +52,7 @@ void main() {
       );
     }
     final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     services = HaLoServices(db, settings, extensions: extensions);
     operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
   }

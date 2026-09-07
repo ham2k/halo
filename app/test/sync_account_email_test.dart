@@ -24,7 +24,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 import 'package:ham2k_logger/views/settings/sync_panel.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 /// Plays the server's WebSocket end for a real [PusherService], the same
 /// way pusher_service_test does.
@@ -44,7 +44,7 @@ class _FakeSocket {
   void establish() => send('pusher:connection_established', data: {'socket_id': '1.1'});
 }
 
-class _Extensions extends ExtensionServiceWithMockHost {
+class _Extensions extends ExtensionServiceWithFakeHost {
   final Map<String, dynamic>? account;
   final List<String> emailsSet = [];
   var resendCount = 0;
@@ -56,7 +56,7 @@ class _Extensions extends ExtensionServiceWithMockHost {
   int? pendingChallenges;
   bool unreachable = false;
 
-  _Extensions(this.account, {this.pendingChallenges}) : super(const MockExtensionHost({}));
+  _Extensions(this.account, {this.pendingChallenges}) : super(FakeExtensionHost({}));
 
   @override
   Future<Map<String, dynamic>?> syncAccountData() async {

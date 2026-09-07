@@ -10,26 +10,22 @@
 // search results put it on, so the two lists read as one — and on a search
 // result the distance stays inside the button rather than at the row's edge.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 /// Answers `linkForRef` from a table, and nothing else — the real dispatch is
 /// exercised against the real bundles in halo_extension_host's `ref_link_test`.
-class _LinkingExtensionService extends ExtensionServiceWithMockHost {
+class _LinkingExtensionService extends ExtensionServiceWithFakeHost {
   _LinkingExtensionService(this.links, {this.suggestions = const [], this.throwsFor})
-      : super(const MockExtensionHost({}));
+      : super(FakeExtensionHost({}));
 
   final Map<String, RefLink> links;
   final List<Map<String, dynamic>> suggestions;
@@ -62,10 +58,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<void> pumpSheet(WidgetTester tester, ExtensionService extensions) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    extensions.settings = settings;
-    final services = HaLoServices(HaLoDatabase(NativeDatabase.memory()), settings, extensions: extensions);
+    final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions);
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(

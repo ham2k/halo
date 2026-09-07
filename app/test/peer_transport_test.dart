@@ -36,7 +36,7 @@ import 'package:ham2k_logger/services/peer/peer_beacon_types.dart';
 import 'package:ham2k_logger/services/peer/peer_link_io.dart';
 import 'package:ham2k_logger/services/peer/peer_link_types.dart';
 
-import 'peer_network_fakes.dart';
+import 'support/peer_network_fakes.dart';
 
 void main() {
   group('PeerLinkServer + dialPeerLink', () {

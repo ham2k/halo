@@ -29,14 +29,14 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 Future<HaLoServices> makeServices({Map<String, Object> prefs = const {}}) async {
   SharedPreferences.setMockInitialValues({...prefs});
   final settings = SettingsService(await SharedPreferences.getInstance());
   final db = HaLoDatabase(NativeDatabase.memory());
-  final extensions = ExtensionServiceWithMockHost(
-    const MockExtensionHost({
+  final extensions = ExtensionServiceWithFakeHost(
+    FakeExtensionHost({
       'settingsPanel:*:getPanels': [
         {
           'key': 'myext',

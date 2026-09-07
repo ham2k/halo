@@ -11,7 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 
-import 'error_reporting_test.dart' show FakeErrorReportingBackend, withErrorHooks;
+import 'support/error_reporting_fakes.dart';
 
 Map<String, dynamic> ok(String key, List<Object?> value) => {'key': key, 'ok': true, 'value': value};
 

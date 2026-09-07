@@ -8,7 +8,7 @@ import 'package:ham2k_logger/config/dev_flags.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'fake_secure_storage.dart';
+import 'support/fake_secure_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

@@ -7,27 +7,21 @@
 // only when the bridge is actually installed. These pin both: it fires, and it
 // stays inert on native/production where nothing installed the bridge.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/dev_bridge.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_view.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<HaLoServices> makeServices() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    return HaLoServices(db, settings);
+    return (await makeHaLoServices()).services;
   }
 
   Widget wrap(HaLoServices services) => TranslationProvider(

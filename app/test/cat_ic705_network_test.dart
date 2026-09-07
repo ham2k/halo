@@ -26,7 +26,7 @@ import 'package:ham2k_logger/services/cat/transports/icom_network_transport_io.d
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'fake_secure_storage.dart';
+import 'support/fake_secure_storage.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();

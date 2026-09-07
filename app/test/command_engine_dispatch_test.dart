@@ -9,17 +9,13 @@
 // its own regression test; this is the OTHER path, the one taken from ⌘K and
 // the Home bar when no operation is open, and it had none.
 
-import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/command_engine.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -33,12 +29,7 @@ void main() {
   /// panel mounted `services.currentCommandDispatch` swallows the batch first
   /// and none of this code runs.
   Future<(CommandEngine, List<MapEntry<String, Map<String, dynamic>?>>)> engine() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
-    addTearDown(db.close);
+    final HaLoHarness(:services, :db) = await makeHaLoServices();
 
     final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
     lastServices = services;
@@ -151,12 +142,7 @@ void main() {
     // action into the `else` where it is merely printed. syncAll rides along
     // here because it is the other branch keyed on containsKey rather than a
     // Map value, and neither was covered.
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
-    addTearDown(db.close);
+    final HaLoHarness(:services, :db, :settings) = await makeHaLoServices();
 
     final dispatched = <String>[];
     final commandEngine = CommandEngine(
@@ -185,12 +171,7 @@ void main() {
     // what stops the local chain running as well — without it every app-scoped
     // action in the batch fires twice, once per chain, and a SYNCALL from ⌘K
     // starts two syncs.
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
-    addTearDown(db.close);
+    final HaLoHarness(:services, :db) = await makeHaLoServices();
 
     final toPanel = <List<dynamic>>[];
     final entry = services.openOperationContext('op-1');

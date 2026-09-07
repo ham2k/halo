@@ -8,12 +8,9 @@
 // are unit-tested (dock_layout_test, layout_sheet_test); what only the real
 // view can prove is that they are wired to each other.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -21,24 +18,20 @@ import 'package:ham2k_logger/views/operation/activities_view.dart';
 import 'package:ham2k_logger/views/operation/layout_sheet.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 void main() {
   final t = AppLocale.en.buildSync().operation.layout;
   final tabs = AppLocale.en.buildSync().operation.tabs;
 
   Future<HaLoServices> servicesWith(WidgetTester tester, {required bool layoutCustomization}) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     // Suppress the operation sheet's first-run auto-open, which would
     // otherwise cover the header this test is about.
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     if (layoutCustomization) await settings.setLayoutCustomization(true);
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-    return HaLoServices(db, settings, extensions: extensions);
+    return services;
   }
 
   /// The view's drift subscriptions schedule their cleanup on a timer, which

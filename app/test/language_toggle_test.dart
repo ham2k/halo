@@ -3,28 +3,19 @@
 //
 // The ⌘⇧L language hotkey (main.dart) toggles the locale between English and Spanish.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/release_notes.dart';
 import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 
-import 'fake_secure_storage.dart';
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 Future<HaLoServices> makeServices({Map<String, Object> prefs = const {}}) async {
-  SharedPreferences.setMockInitialValues(prefs);
-  final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
-  final db = HaLoDatabase(NativeDatabase.memory());
-  final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-  return HaLoServices(db, settings, extensions: extensions);
+  return (await makeHaLoServices(prefs: prefs)).services;
 }
 
 void main() {

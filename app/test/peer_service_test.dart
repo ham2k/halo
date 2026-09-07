@@ -17,7 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 
-import 'peer_network_fakes.dart';
+import 'support/peer_network_fakes.dart';
 
 /// Polls until [condition] holds, so a test waits on the thing it cares
 /// about rather than on a guessed sleep. Real sockets and timers are

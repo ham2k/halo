@@ -1,13 +1,12 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
-import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -37,10 +36,7 @@ void main() {
     // read Vfo.power directly (the logging control, the More pane) showing
     // nothing while Station Configuration showed it. So it migrates once.
     Future<HaLoServices> services() async {
-      final settings = SettingsService(await SharedPreferences.getInstance());
-      final db = HaLoDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
-      return HaLoServices(db, settings);
+      return (await makeHaLoServices(prefs: null)).services;
     }
 
     test('moves onto the VFO at startup', () async {

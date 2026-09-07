@@ -26,7 +26,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 import 'package:ham2k_logger/views/operation/operation_location_screen.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 /// The real service reaches these states only by being denied an OS permission
 /// or losing a GPS fix, neither of which a widget test can arrange.
@@ -56,8 +56,8 @@ class _FixedLocation extends LocationService {
   void removeListener(VoidCallback listener) {}
 }
 
-class _NoActivityExtensions extends ExtensionServiceWithMockHost {
-  _NoActivityExtensions({this.offersNearby = true, this.allSourcesFail = false}) : super(const MockExtensionHost({}));
+class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
+  _NoActivityExtensions({this.offersNearby = true, this.allSourcesFail = false}) : super(FakeExtensionHost({}));
 
   /// Stands in for every activity hook being broken — the empty list that
   /// means "nobody could answer" rather than "nobody had anything".
@@ -166,9 +166,10 @@ void main() {
     // hands every extension null in production while every test that assigns
     // `extensions.location` itself stays green. `getLocation` then answers null
     // for good, silently, to every extension that asked for a fix.
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final services = HaLoServices(HaLoDatabase(NativeDatabase.memory()), settings);
+    // No `extensions:` on purpose — production passes none, and the
+    // default-built service is the one whose wiring is under test.
+    final HaLoHarness(:db, :settings) = await makeHaLoServices();
+    final services = HaLoServices(db, settings);
     expect(identical(services.extensions.location, services.location), isTrue);
   });
 

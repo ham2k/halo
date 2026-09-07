@@ -22,13 +22,13 @@ import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/operation_location_screen.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 /// One `activity` fan-out answering with [entries], verbatim — the raw
 /// `{key, ok, value|error}` shape `invokeHookAll` produces, so a test can
 /// stage the failures the real host synthesizes.
-ExtensionServiceWithMockHost _serviceAnswering(List<Map<String, dynamic>> entries) =>
-    ExtensionServiceWithMockHost(MockExtensionHost({'activity:*:operationControls': entries}));
+ExtensionServiceWithFakeHost _serviceAnswering(List<Map<String, dynamic>> entries) =>
+    ExtensionServiceWithFakeHost(FakeExtensionHost({'activity:*:operationControls': entries}));
 
 /// A host that models `invokeHookAll`'s real timeout contract: the shared
 /// budget expires with [settled] already in hand, and whether that work is
@@ -76,7 +76,7 @@ class _BootsOnStart extends ExtensionService {
   bool _started = false;
 
   @override
-  ExtensionHost? get host => _started ? MockExtensionHost({'activity:*:operationControls': entries}) : null;
+  ExtensionHost? get host => _started ? FakeExtensionHost({'activity:*:operationControls': entries}) : null;
 
   @override
   Future<void> start() async => _started = true;
@@ -256,7 +256,7 @@ void main() {
   });
 
   group('OperationLocationScreen', () {
-    Future<void> pumpWith(WidgetTester tester, ExtensionServiceWithMockHost extensions) async {
+    Future<void> pumpWith(WidgetTester tester, ExtensionServiceWithFakeHost extensions) async {
       SharedPreferences.setMockInitialValues({});
       final settings = SettingsService(await SharedPreferences.getInstance());
       final db = HaLoDatabase(NativeDatabase.memory());

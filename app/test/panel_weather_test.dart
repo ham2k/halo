@@ -25,7 +25,7 @@ import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/weather/weather_panel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'fake_panel_extensions.dart';
+import 'support/fake_panel_extensions.dart';
 
 void main() {
   final t = AppLocale.en.buildSync().operation.layout.panels;

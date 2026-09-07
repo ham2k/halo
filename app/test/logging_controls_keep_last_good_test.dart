@@ -10,19 +10,15 @@
 
 import 'dart:async';
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 const _exchangeControl = {
   'key': 'c/exchange',
@@ -34,8 +30,8 @@ const _exchangeControl = {
 /// Answers the first `loggingControls` call and fails every one after it —
 /// the runtime restarting mid-session, which is what makes this reachable
 /// without the operator doing anything wrong.
-class _FailsAfterFirst extends ExtensionServiceWithMockHost {
-  _FailsAfterFirst() : super(const MockExtensionHost({}));
+class _FailsAfterFirst extends ExtensionServiceWithFakeHost {
+  _FailsAfterFirst() : super(FakeExtensionHost({}));
 
   int calls = 0;
 
@@ -54,8 +50,8 @@ class _FailsAfterFirst extends ExtensionServiceWithMockHost {
 /// full set (call 2+) — the runtime restart (enabling the new extension)
 /// settling between the failed fetch and the `runtimeGeneration` tick that
 /// follows it.
-class _FailsOnceThenRecovers extends ExtensionServiceWithMockHost {
-  _FailsOnceThenRecovers() : super(const MockExtensionHost({}));
+class _FailsOnceThenRecovers extends ExtensionServiceWithFakeHost {
+  _FailsOnceThenRecovers() : super(FakeExtensionHost({}));
 
   int calls = 0;
 
@@ -88,8 +84,8 @@ const _exchangeControl2 = {
 /// resolve them in whatever order it likes — the only way to actually
 /// construct the race `_loggingControlsRequestId` guards against, rather
 /// than two calls that just happen to resolve in the order they were made.
-class _OutOfOrder extends ExtensionServiceWithMockHost {
-  _OutOfOrder() : super(const MockExtensionHost({}));
+class _OutOfOrder extends ExtensionServiceWithFakeHost {
+  _OutOfOrder() : super(FakeExtensionHost({}));
 
   final List<Completer<ControlsResult>> completers = [];
 
@@ -111,12 +107,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = _OutOfOrder()..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final extensions = _OutOfOrder();
+    final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -171,12 +163,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = _FailsOnceThenRecovers()..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final extensions = _FailsOnceThenRecovers();
+    final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
 
     await tester.pumpWidget(TranslationProvider(
@@ -219,12 +207,8 @@ void main() {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
-
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    final extensions = _FailsAfterFirst()..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    final extensions = _FailsAfterFirst();
+    final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
     await services.operations.saveData(Operation(uuid: operation.uuid, data: {
       ...operation.data,

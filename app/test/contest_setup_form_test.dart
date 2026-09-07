@@ -19,7 +19,7 @@ import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 /// One form-kind operation control, shaped exactly as simple-contest returns it.
 const _setupControl = {
@@ -39,12 +39,12 @@ const _setupControl = {
   },
 };
 
-/// The shared MockExtensionHost only overrides the public `host` getter, while
+/// The shared FakeExtensionHost only overrides the public `host` getter, while
 /// control collection reads the private field — so controls would come back
 /// empty. Overriding the two methods this view actually calls is both simpler
 /// and a tighter statement of what the test depends on.
-class _ContestExtensions extends ExtensionServiceWithMockHost {
-  _ContestExtensions() : super(const MockExtensionHost({}));
+class _ContestExtensions extends ExtensionServiceWithFakeHost {
+  _ContestExtensions() : super(FakeExtensionHost({}));
 
   /// A field the control only offers once the operation carries the ref. Stands
   /// in for the State Parks setup, which asks Ohio for the park it is in, a

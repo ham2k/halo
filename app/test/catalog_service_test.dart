@@ -28,7 +28,7 @@ import 'package:ham2k_logger/services/installed_extensions.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 
-import 'error_reporting_test.dart' show FakeErrorReportingBackend, withErrorHooks;
+import 'support/error_reporting_fakes.dart';
 
 const _sha = 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad'; // sha256("abc")
 

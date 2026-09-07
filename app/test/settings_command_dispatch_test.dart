@@ -10,18 +10,16 @@
 // command can interpret perfectly, describe perfectly, clear the field, print
 // its confirmation — and do nothing at all.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/command_dialog.dart';
 import 'package:ham2k_logger/views/home_view.dart';
+
+import 'support/halo_test_support.dart';
 
 /// Returns the settings-command interpretations for the two typed inputs this
 /// file exercises — the real hook's shapes, without booting a JS engine.
@@ -80,11 +78,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   Future<HaLoServices> buildServices() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    return HaLoServices(db, settings, extensions: _SettingsCommandExtensions());
+    return (await makeHaLoServices(extensions: _SettingsCommandExtensions())).services;
   }
 
   /// The Home quick-lookup bar, inside a MaterialApp wired to the app's own

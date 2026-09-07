@@ -23,18 +23,15 @@ import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/unclean_quit.dart';
 
+import 'support/halo_test_support.dart';
+
 Future<HaLoServices> _services() async {
-  SharedPreferences.setMockInitialValues({});
-  final settings = SettingsService(await SharedPreferences.getInstance());
-  final db = HaLoDatabase(NativeDatabase.memory());
-  return HaLoServices(db, settings);
+  return (await makeHaLoServices()).services;
 }
 
 void main() {

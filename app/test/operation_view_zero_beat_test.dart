@@ -29,7 +29,7 @@ import 'package:ham2k_logger/views/operation/spots_panel.dart';
 import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
-import 'fake_cat_radio.dart';
+import 'support/fake_cat_radio.dart';
 
 const _spotFreqKHz = 14050.0;
 

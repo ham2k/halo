@@ -9,19 +9,16 @@
 // would put `ki2d-pota: ` in the box; resolving the word to one hook would
 // silently search only the stock extension's parks.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
 
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 const _stockPotaControl = <String, dynamic>{
   'key': 'pota/activation',
@@ -66,8 +63,8 @@ const _lookalikeInfo = ExtensionInfo(
   enabledByDefault: false,
 );
 
-class _ScopedExtensions extends ExtensionServiceWithMockHost {
-  _ScopedExtensions({required this.controls}) : super(const MockExtensionHost({}));
+class _ScopedExtensions extends ExtensionServiceWithFakeHost {
+  _ScopedExtensions({required this.controls}) : super(FakeExtensionHost({}));
 
   final List<Map<String, dynamic>> controls;
 
@@ -100,12 +97,9 @@ Future<(HaLoServices, _ScopedExtensions)> _harness(
   required List<Map<String, dynamic>> controls,
   List<ExtensionInfo> available = const [],
 }) async {
-  SharedPreferences.setMockInitialValues({});
-  final settings = SettingsService(await SharedPreferences.getInstance());
-  final db = HaLoDatabase(NativeDatabase.memory());
-  final extensions = _ScopedExtensions(controls: controls)..settings = settings;
+  final extensions = _ScopedExtensions(controls: controls);
+  final HaLoHarness(:services) = await makeHaLoServices(extensions: extensions);
   extensions.debugSetAvailableExtensions(available);
-  final services = HaLoServices(db, settings, extensions: extensions);
   final operation = Operation(uuid: 'op-1', data: const {'refs': []});
 
   await tester.pumpWidget(TranslationProvider(

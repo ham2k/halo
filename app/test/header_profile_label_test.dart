@@ -6,10 +6,8 @@
 // tracks live changes (e.g. switching accounts) via its SettingsService
 // listener — and it's actually wired into the home and Settings headers.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
@@ -19,8 +17,7 @@ import 'package:ham2k_logger/views/header_profile_label.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
-import 'fake_secure_storage.dart';
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 Future<SettingsService> makeSettings(Map<String, Object> prefs) async {
   SharedPreferences.setMockInitialValues(prefs);
@@ -34,12 +31,9 @@ Future<void> pumpLabel(WidgetTester tester, SettingsService settings) {
 }
 
 Future<HaLoServices> makeServices() async {
-  SharedPreferences.setMockInitialValues({});
-  final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
+  final HaLoHarness(:services, :settings) = await makeHaLoServices();
   await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
-  final db = HaLoDatabase(NativeDatabase.memory());
-  final extensions = ExtensionServiceWithMockHost(const MockExtensionHost({}))..settings = settings;
-  return HaLoServices(db, settings, extensions: extensions);
+  return services;
 }
 
 // Tear the tree down and drain the services' debounce timers (lookup, sync)

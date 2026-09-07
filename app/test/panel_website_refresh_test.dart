@@ -23,7 +23,7 @@ import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 import 'package:ham2k_logger/views/operation/website/website_panel.dart';
 
-import 'fake_panel_extensions.dart';
+import 'support/fake_panel_extensions.dart';
 
 void main() {
   // The pane's deadline is read from an injectable clock, because

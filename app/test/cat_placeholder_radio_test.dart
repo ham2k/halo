@@ -12,11 +12,9 @@
 // stores and stays quiet looks exactly like a dead one), and it must be
 // findable in the Add dialog, which is the only way an operator meets it.
 
-import 'package:drift/native.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -32,6 +30,8 @@ import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/telemetry_poller.dart';
 import 'package:ham2k_logger/services/cat/transports/placeholder_transport.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -355,11 +355,8 @@ void main() {
     late HaLoServices services;
 
     setUp(() async {
-      SharedPreferences.setMockInitialValues({});
-      final settings = SettingsService(await SharedPreferences.getInstance());
-      final db = HaLoDatabase(NativeDatabase.memory());
-      addTearDown(db.close);
-      services = HaLoServices(db, settings);
+      final harness = await makeHaLoServices();
+      services = harness.services;
     });
 
     /// Fixed pumps, never `pumpAndSettle`: the Add dialog runs a discovery

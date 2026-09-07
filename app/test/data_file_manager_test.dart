@@ -17,6 +17,8 @@ import 'package:ham2k_logger/services/data_file_manager.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/status_bar_service.dart';
 
+import 'support/halo_test_support.dart';
+
 /// Mirrors the zip the real kernel performs (`extensions/sdk/src/kernel.ts`).
 ///
 /// The host sends CSV rows POSITIONALLY plus one `headers` list per chunk, and
@@ -126,7 +128,7 @@ void main() {
     final statusBar = StatusBarService(prefs);
     final m = TestDataFileManager(
       lookups: lookups,
-      extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
+      extensions: MockExtensionService(FakeExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
       prefs: prefs,
       statusBar: statusBar,
     );
@@ -203,7 +205,7 @@ void main() {
       }
     };
 
-    final mockHost = MockExtensionHost(mockResults);
+    final mockHost = FakeExtensionHost(mockResults);
     final mockExtensions = MockExtensionService(mockHost);
 
     final managerWithMock = TestDataFileManager(
@@ -252,7 +254,7 @@ REF-002,Summit Two,45.56,-122.78
       LookupRow(category: 'fragile_category', key: 'KEEP-1', name: 'Previously imported', updated: 1),
     ]);
 
-    final host = MockExtensionHost({
+    final host = FakeExtensionHost({
       'dataFile:fragile-csv:mapCsvBatch': (args) => {'error': 'mapper blew up'}, // a Map, not a List
     });
     final m = TestDataFileManager(lookups: lookups, extensions: MockExtensionService(host), prefs: prefs)
@@ -295,7 +297,7 @@ REF-002,Summit Two,45.56,-122.78
       }
     };
 
-    final mockHost = MockExtensionHost(mockResults);
+    final mockHost = FakeExtensionHost(mockResults);
     final mockExtensions = MockExtensionService(mockHost);
 
     final managerWithMock = TestDataFileManager(
@@ -365,7 +367,7 @@ REF-002,Summit Two,45.56,-122.78
       },
     };
 
-    final mockHost = MockExtensionHost(mockResults);
+    final mockHost = FakeExtensionHost(mockResults);
     final mockExtensions = MockExtensionService(mockHost);
 
     final managerWithMock = TestDataFileManager(
@@ -472,7 +474,7 @@ REF-002,Summit Two,45.56,-122.78
     // same processDataFile notice fires through THAT path too, not only when
     // called directly (see the test above), closing that coverage gap.
     final statusBar = StatusBarService(prefs);
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'dataFile:*:getDefinition': [
         {
           'key': 'flaky-file',
@@ -517,7 +519,7 @@ REF-002,Summit Two,45.56,-122.78
 
     setUp(() {
       statusBar = StatusBarService(prefs);
-      final mockHost = MockExtensionHost({
+      final mockHost = FakeExtensionHost({
         'dataFile:*:getDefinition': [
           {
             'key': 'sweep-file',
@@ -574,7 +576,7 @@ REF-002,Summit Two,45.56,-122.78
   });
 
   test('DataFileManager: listDataFiles reports definitions sorted by name with last-download time', () async {
-    final host = MockExtensionHost({
+    final host = FakeExtensionHost({
       'dataFile:*:getDefinition': [
         {
           'key': 'zeta',
@@ -611,7 +613,7 @@ REF-002,Summit Two,45.56,-122.78
   // forward and let a refresh stamp itself is one way to get here; a device whose
   // clock was wrong when it last synced is another.
   test('DataFileManager: a future last-updated stamp counts as stale, not as fresh', () async {
-    final host = MockExtensionHost({
+    final host = FakeExtensionHost({
       'dataFile:*:getDefinition': [
         {
           'key': 'future-csv',
@@ -647,7 +649,7 @@ REF-002,Summit Two,45.56,-122.78
   });
 
   test('DataFileManager: refreshDataFile force-fetches one file, stamps its time, and reports unknown keys', () async {
-    final host = MockExtensionHost({
+    final host = FakeExtensionHost({
       'dataFile:*:getDefinition': [
         {
           'key': 'refresh-csv',
@@ -689,7 +691,7 @@ REF-002,Summit Two,45.56,-122.78
     late StatusBarService statusBar;
     Future<TestDataFileManager> syncPotaDataFile() async {
       statusBar = StatusBarService(prefs);
-      final host = MockExtensionHost({
+      final host = FakeExtensionHost({
         'dataFile:*:getDefinition': [
           {
             'key': 'pota-all-parks',
@@ -780,7 +782,7 @@ REF-002,Summit Two,45.56,-122.78
           },
         };
 
-    final host = MockExtensionHost({
+    final host = FakeExtensionHost({
       'dataFile:*:getDefinition': [definitionFor('custom-old')],
       'dataFile:custom-old:mapCsvBatch': (args) => [
             for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
@@ -803,7 +805,7 @@ REF-002,Summit Two,45.56,-122.78
 
     // The user edited the custom file's URL — call-notes re-derives a new
     // identifier and no longer registers the old one, but is still enabled.
-    host.mockHookResults['dataFile:*:getDefinition'] = [definitionFor('custom-new')];
+    host.stubs['dataFile:*:getDefinition'] = [definitionFor('custom-new')];
     await m.syncAllDataFiles();
 
     expect(prefs.getString('data_file_ownership'), isNot(contains('custom-old')),
@@ -833,8 +835,8 @@ REF-002,Summit Two,45.56,-122.78
           },
         };
 
-    Future<(TestDataFileManager, MockExtensionHost, MockExtensionService)> seeded() async {
-      final host = MockExtensionHost({
+    Future<(TestDataFileManager, FakeExtensionHost, MockExtensionService)> seeded() async {
+      final host = FakeExtensionHost({
         'dataFile:*:getDefinition': [definitionFor('custom-old')],
         'dataFile:custom-old:mapCsvBatch': (args) => [
               for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
@@ -858,11 +860,11 @@ REF-002,Summit Two,45.56,-122.78
       // the whole-extension-absent skip does not apply), the old key is
       // missing, and a record FAILED — the missing key could be the failed
       // one (a failed record carries no extensionKey to match it by).
-      host.mockHookResults['dataFile:*:getDefinition'] = [
+      host.stubs['dataFile:*:getDefinition'] = [
         definitionFor('custom-new'),
         {'key': 'broken', 'ok': false, 'error': 'url() threw'},
       ];
-      host.mockHookResults['dataFile:custom-new:mapCsvBatch'] = (args) => [
+      host.stubs['dataFile:custom-new:mapCsvBatch'] = (args) => [
             for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
           ];
       await m.syncAllDataFiles();
@@ -875,8 +877,8 @@ REF-002,Summit Two,45.56,-122.78
       final (m, host, extensions) = await seeded();
       // The extension stays live via a sibling key; only custom-old is gone
       // from the snapshot — exactly the shape the purge exists for.
-      host.mockHookResults['dataFile:*:getDefinition'] = [definitionFor('custom-new')];
-      host.mockHookResults['dataFile:custom-new:mapCsvBatch'] = (args) => [
+      host.stubs['dataFile:*:getDefinition'] = [definitionFor('custom-new')];
+      host.stubs['dataFile:custom-new:mapCsvBatch'] = (args) => [
             for (final r in zipCsvRows(args)) {'key': r['call'], 'name': r['note']},
           ];
       // Boot proceeded past the bounded activation wait: registrations may
@@ -904,7 +906,7 @@ REF-002,Summit Two,45.56,-122.78
     // landing mid-sync must queue ONE follow-up pass, not run concurrently
     // (concurrent passes double-download) and not be dropped (its snapshot
     // may carry registrations the running pass predates).
-    final host = MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]});
+    final host = FakeExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]});
     final extensions = MockExtensionService(host);
     final m = _SyncCountingDataFileManager(
       lookups: lookups,
@@ -1091,7 +1093,7 @@ REF-002,Summit Two,45.56,-122.78
       final offline = StreamController<bool>();
       final m = _SyncCountingDataFileManager(
         lookups: lookups,
-        extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
+        extensions: MockExtensionService(FakeExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
         prefs: prefs,
         offlineChanges: offline.stream,
       );
@@ -1118,7 +1120,7 @@ REF-002,Summit Two,45.56,-122.78
       var offline = true;
       final m = _SyncCountingDataFileManager(
         lookups: lookups,
-        extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
+        extensions: MockExtensionService(FakeExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
         prefs: prefs,
         isOffline: () => offline,
       );
@@ -1140,7 +1142,7 @@ REF-002,Summit Two,45.56,-122.78
       // interleaving the per-pass stale sweeps that delete each other's
       // freshly written rows.
       final offline = StreamController<bool>();
-      final host = MockExtensionHost({
+      final host = FakeExtensionHost({
         'dataFile:*:getDefinition': [
           {
             'ok': true,
@@ -1178,7 +1180,7 @@ REF-002,Summit Two,45.56,-122.78
       final offline = StreamController<bool>();
       final m = _SyncCountingDataFileManager(
         lookups: lookups,
-        extensions: MockExtensionService(MockExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
+        extensions: MockExtensionService(FakeExtensionHost({'dataFile:*:getDefinition': <Map<String, dynamic>>[]})),
         prefs: prefs,
         offlineChanges: offline.stream,
       );
@@ -1200,7 +1202,7 @@ REF-002,Summit Two,45.56,-122.78
     test('a generation tick loads the cache BEFORE syncing', () async {
       final manager = _RecordingDataFileManager(
         lookups: lookups,
-        extensions: MockExtensionService(MockExtensionHost(const {})),
+        extensions: MockExtensionService(FakeExtensionHost(const {})),
         prefs: prefs,
       );
 
@@ -1218,7 +1220,7 @@ REF-002,Summit Two,45.56,-122.78
     test('rapid replacements still coalesce to one follow-up pass', () async {
       final manager = _RecordingDataFileManager(
         lookups: lookups,
-        extensions: MockExtensionService(MockExtensionHost(const {})),
+        extensions: MockExtensionService(FakeExtensionHost(const {})),
         prefs: prefs,
       );
 
@@ -1241,7 +1243,7 @@ REF-002,Summit Two,45.56,-122.78
     test('a failing re-load still lets the sync run, and does not escape', () async {
       final manager = _RecordingDataFileManager(
         lookups: lookups,
-        extensions: MockExtensionService(MockExtensionHost(const {})),
+        extensions: MockExtensionService(FakeExtensionHost(const {})),
         prefs: prefs,
       )..loadThrows = true;
 
@@ -1257,7 +1259,7 @@ REF-002,Summit Two,45.56,-122.78
 
   group('loadRawDataFiles abandons a superseded pass (HALO-429)', () {
     test('a host that died mid-pass stops the loop instead of reporting each file', () async {
-      final host = MockExtensionHost({
+      final host = FakeExtensionHost({
         'dataFile:*:getDefinition': [
           {'ok': true, 'value': {'key': 'one', 'fetchType': 'raw'}},
           {'ok': true, 'value': {'key': 'two', 'fetchType': 'raw'}},
@@ -1336,63 +1338,10 @@ class _BlockingDownloadManager extends DataFileManager {
 
 }
 
-class MockExtensionHost implements ExtensionHost {
-  final Map<String, dynamic> mockHookResults;
-  MockExtensionHost(this.mockHookResults);
-
-  @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
-    final hookKey = '$category:$key:$method';
-    if (mockHookResults.containsKey(hookKey)) {
-      final res = mockHookResults[hookKey];
-      if (res is Function) {
-        return res(args);
-      }
-      return res;
-    }
-    return null;
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> invokeHookAll(
-    String category, {
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-    bool partialOnTimeout = false,
-  }) async {
-    final hookKey = '$category:*:$method';
-    if (mockHookResults.containsKey(hookKey)) {
-      return (mockHookResults[hookKey] as List).cast<Map<String, dynamic>>();
-    }
-    return const [];
-  }
-
-  /// Settable so a test can stand the host down mid-pass, which is what a
-  /// runtime replacement looks like from inside a load already running.
-  bool dead = false;
-
-  @override
-  bool get isDead => dead;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class MockExtensionService extends ExtensionService {
-  final MockExtensionHost mockHost;
-  MockExtensionService(this.mockHost);
+class MockExtensionService extends ExtensionServiceWithFakeHost {
+  MockExtensionService(super.host);
 
   bool activationIncompleteOverride = false;
-
-  @override
-  ExtensionHost? get host => mockHost;
 
   @override
   bool get activationIncomplete => activationIncompleteOverride;

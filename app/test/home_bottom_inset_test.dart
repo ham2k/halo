@@ -15,21 +15,18 @@
 // top edge, since the footer itself is legitimately taller when there is an
 // indicator to clear.
 
-import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 
-import 'fake_secure_storage.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -41,16 +38,11 @@ void main() {
   const indicator = 34.0;
 
   late HaLoServices services;
-  late HaLoDatabase db;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
-    db = HaLoDatabase(NativeDatabase.memory());
-    services = HaLoServices(db, settings);
+    final harness = await makeHaLoServices();
+    services = harness.services;
   });
-
-  tearDown(() async => db.close());
 
   /// The home layer's bottom chrome, measured from the footer's top edge: how
   /// tall Quick Lookup is, and how far the Settings glyph sits above the band —

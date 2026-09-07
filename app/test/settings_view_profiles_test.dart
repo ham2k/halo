@@ -10,24 +10,19 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
-import 'fake_secure_storage.dart';
-import 'operation_view_layout_test.dart' show MockExtensionHost, ExtensionServiceWithMockHost;
+import 'support/halo_test_support.dart';
 
 /// Stubs the panel's one seam. `lookupCall` reads the service's private host
 /// field, which no mock host can reach, so the hook result is faked one level
 /// up — at the method the panel actually calls.
-class _StubLookupExtensionService extends ExtensionServiceWithMockHost {
+class _StubLookupExtensionService extends ExtensionServiceWithFakeHost {
   /// Answers for successive `lookupCall`s, so a test can make the first one
   /// fail and the second succeed — the runtime-still-booting case.
   final List<String?> entityPrefixes;
@@ -39,7 +34,7 @@ class _StubLookupExtensionService extends ExtensionServiceWithMockHost {
 
   int lookupCalls = 0;
 
-  _StubLookupExtensionService(this.entityPrefixes, {this.startGate}) : super(const MockExtensionHost({}));
+  _StubLookupExtensionService(this.entityPrefixes, {this.startGate}) : super(FakeExtensionHost({}));
 
   /// The panel awaits this before looking anything up; the real one is
   /// memoized and idempotent.
@@ -86,20 +81,15 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    SharedPreferences.setMockInitialValues({
-      'profiles': jsonEncode({
-        'default': {'operatorCall': call, ...profileFields},
-      }),
-    });
-    // The callsign editor goes through HaLoServices.setOperatorCall, which
-    // reaches ensureSyncDeviceKey — the real keychain plugin has no platform
-    // channel in a widget test, so saving a callsign would throw.
-    final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    extensions = _StubLookupExtensionService(entityPrefixes ?? [entityPrefix], startGate: startGate)
-      ..settings = settings;
-    final services = HaLoServices(db, settings, extensions: extensions);
+    extensions = _StubLookupExtensionService(entityPrefixes ?? [entityPrefix], startGate: startGate);
+    final HaLoHarness(:services, :settings) = await makeHaLoServices(
+      prefs: {
+        'profiles': jsonEncode({
+          'default': {'operatorCall': call, ...profileFields},
+        }),
+      },
+      extensions: extensions,
+    );
 
     await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();

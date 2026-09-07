@@ -6,56 +6,19 @@
 // reflects the switch, lists what is paired, and that the destructive action
 // asks first.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
 import 'package:ham2k_logger/views/peers_panel.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'peer_network_fakes.dart';
+import 'support/peer_network_fakes.dart';
 
-/// The real ExtensionService boots a JS runtime and leaves timers running,
-/// which a widget test fails on ("A Timer is still pending"). Every other
-/// panel test stubs it the same way — see about_panel_test.dart.
-class _MockExtensionHost implements ExtensionHost {
-  @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async => null;
-
-  @override
-  Future<List<Map<String, dynamic>>> invokeHookAll(
-    String category, {
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-    bool partialOnTimeout = false,
-  }) async => const [];
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _StubExtensionService extends ExtensionService {
-  @override
-  ExtensionHost? get host => _mockHost;
-  final _mockHost = _MockExtensionHost();
-
-  @override
-  Future<void> start() async {}
-}
+import 'support/halo_test_support.dart';
 
 void main() {
   late HaLoDatabase db;
@@ -63,13 +26,11 @@ void main() {
   late HaLoServices services;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    db = HaLoDatabase(NativeDatabase.memory());
-    settings = SettingsService(await SharedPreferences.getInstance());
-    services = HaLoServices(db, settings, extensions: _StubExtensionService()..settings = settings);
+    final harness = await makeHaLoServices(extensions: ExtensionServiceWithFakeHost());
+    services = harness.services;
+    db = harness.db;
+    settings = harness.settings;
   });
-
-  tearDown(() async => db.close());
 
   /// Explicit pumps, never pumpAndSettle: the paired-device list is a
   /// StreamBuilder over a live drift query, which keeps the tree scheduling
@@ -119,7 +80,7 @@ void main() {
         peer.dispose();
       });
       return HaLoServices(db, settings,
-          extensions: _StubExtensionService()..settings = settings, peerService: peer);
+          extensions: ExtensionServiceWithFakeHost()..settings = settings, peerService: peer);
     }
 
     test('with the experiment off, an open operation and the switch on start nothing', () async {

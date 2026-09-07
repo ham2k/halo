@@ -16,7 +16,7 @@ import 'package:ham2k_logger/views/operation/clock/clock_faces.dart';
 import 'package:ham2k_logger/views/operation/clock/clock_panel.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 
-import 'fake_panel_extensions.dart';
+import 'support/fake_panel_extensions.dart';
 
 void main() {
   setUpAll(tz_data.initializeTimeZones);

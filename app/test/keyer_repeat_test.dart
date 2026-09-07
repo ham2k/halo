@@ -12,15 +12,13 @@
 // rule under test is the ENGINE's — when a wait starts, when the next send
 // goes, and what stops it.
 
-import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -29,11 +27,9 @@ void main() {
   late CatService cat;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    services = HaLoServices(db, settings);
+    final harness = await makeHaLoServices();
+    final settings = harness.settings;
+    services = harness.services;
     cat = services.cat;
     await settings.setExperimentEnabled('keyer', true);
   });

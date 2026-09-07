@@ -17,30 +17,20 @@
 // tester.pump() always advances frames explicitly regardless of any
 // simulated visibility state.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ham2k_logger/i18n/strings.g.dart';
-import 'package:ham2k_logger/main.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/home_view.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets('a resumed lifecycle event asks for a fresh frame, to recover from a stalled paint',
       (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    final services = HaLoServices(db, settings);
-
-    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: HomeView(services: services))));
+    await pumpHaLo(tester, (services) => HomeView(services: services));
     await tester.pumpAndSettle();
 
     expect(SchedulerBinding.instance.hasScheduledFrame, isFalse, reason: 'settled — nothing pending beforehand');

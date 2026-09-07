@@ -5,19 +5,17 @@
 // but runs the real send queue and reports a speed like a real rig), so
 // what the strip shows is what the queue reports, not a hand-built stand-in.
 
-import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:halo_core/halo_core.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
-import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/extension_panel.dart';
 import 'package:ham2k_logger/views/keyer_area.dart';
+
+import 'support/halo_test_support.dart';
 
 /// Stands in for the `template` hook without booting a JS engine: only
 /// `{{ qso.call }}` is filled, which is all a label test needs.
@@ -59,11 +57,9 @@ void main() {
   late HaLoServices services;
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-    final settings = SettingsService(await SharedPreferences.getInstance());
-    final db = HaLoDatabase(NativeDatabase.memory());
-    addTearDown(db.close);
-    services = HaLoServices(db, settings, extensions: _TemplateExtensions());
+    final harness = await makeHaLoServices(extensions: _TemplateExtensions());
+    final settings = harness.settings;
+    services = harness.services;
     // A keying radio becomes the key in use only with the experiment on.
     await settings.setExperimentEnabled('keyer', true);
   });

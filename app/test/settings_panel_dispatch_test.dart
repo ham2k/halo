@@ -5,9 +5,10 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+
+import 'support/halo_test_support.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -20,7 +21,7 @@ void main() {
   });
 
   test('getSettingsPanels flattens getPanels entries and sorts by order', () async {
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:*:getPanels': [
         {
           'key': 'pota_spots',
@@ -46,7 +47,7 @@ void main() {
   });
 
   test('getSettingsPanelDefinition overlays stored values for a Tier 1 (simple) panel', () async {
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:pota:getDefinition': {
         'title': 'POTA',
         'elements': [
@@ -74,7 +75,7 @@ void main() {
   });
 
   test('getSettingsPanelDefinition does not overlay values for a Tier 2 (dynamic) panel', () async {
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:lofi:getDefinition': {
         'title': 'LoFi',
         'elements': [
@@ -101,7 +102,7 @@ void main() {
   });
 
   test('getSettingsPanelDefinition never persists fieldType account through settings storage', () async {
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:pota:getDefinition': {
         'title': 'POTA',
         'elements': [
@@ -137,7 +138,7 @@ void main() {
   });
 
   test('getSettingsPanelDefinition resolves fieldType account to {connected: true, label} from account credentials, for either tier', () async {
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:pota:getDefinition': {
         'title': 'POTA',
         'elements': [
@@ -160,7 +161,7 @@ void main() {
   });
 
   test('validateSettingsField: Tier 1 checks pattern locally, no bridge call needed', () async {
-    final mockHost = MockExtensionHost(const {}); // no bridge entries registered — a bridge call would return null and hide a real failure
+    final mockHost = FakeExtensionHost(const {}); // no bridge entries registered — a bridge call would return null and hide a real failure
     final extensions = MockExtensionService(mockHost)..settings = settings;
 
     final field = {'pattern': r'^\d{2}$', 'patternError': 'Exchange must be a 2-digit number'};
@@ -189,7 +190,7 @@ void main() {
   });
 
   test('validateSettingsField: Tier 1 with a malformed pattern returns an error instead of throwing', () async {
-    final mockHost = MockExtensionHost(const {});
+    final mockHost = FakeExtensionHost(const {});
     final extensions = MockExtensionService(mockHost)..settings = settings;
 
     // Unclosed group — RegExp(pattern) throws a FormatException. Must not
@@ -210,7 +211,7 @@ void main() {
   });
 
   test('validateSettingsField: Tier 2 forwards to the validateField hook method', () async {
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:lofi:validateField': 'Invalid endpoint URL',
     });
     final extensions = MockExtensionService(mockHost)..settings = settings;
@@ -228,7 +229,7 @@ void main() {
   });
 
   test('runSettingsAction forwards the action element method and returns the result banner text', () async {
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:qrz:clearCache': 'Cache cleared',
     });
     final extensions = MockExtensionService(mockHost)..settings = settings;
@@ -243,7 +244,7 @@ void main() {
   });
 
   test('commitSettingsFieldValue restarts the runtime when the field is restartOnChange', () async {
-    final mockHost = MockExtensionHost({'settingsPanel:lofi:onChangeField': null});
+    final mockHost = FakeExtensionHost({'settingsPanel:lofi:onChangeField': null});
     final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
 
     await extensions.commitSettingsFieldValue(
@@ -267,7 +268,7 @@ void main() {
     // for commit quiescence before restarting.
     final blockB = Completer<dynamic>();
     var calls = 0;
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:lofi:onChangeField': (_) {
         calls++;
         return calls == 1 ? Future<dynamic>.value() : blockB.future;
@@ -307,7 +308,7 @@ void main() {
   });
 
   test('commitSettingsFieldValue does not restart when restartOnChange is false (the default)', () async {
-    final mockHost = MockExtensionHost({'settingsPanel:lofi:onChangeField': null});
+    final mockHost = FakeExtensionHost({'settingsPanel:lofi:onChangeField': null});
     final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
 
     await extensions.commitSettingsFieldValue(
@@ -327,7 +328,7 @@ void main() {
     // actually saved — restarting anyway would just re-run onActivation
     // against the same stale settings for no benefit, and previously did
     // so unconditionally regardless of this catch block's outcome.
-    final mockHost = MockExtensionHost({'settingsPanel:lofi:onChangeField': Exception('bridge timeout')});
+    final mockHost = FakeExtensionHost({'settingsPanel:lofi:onChangeField': Exception('bridge timeout')});
     final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
 
     await extensions.commitSettingsFieldValue(
@@ -348,7 +349,7 @@ void main() {
     // call resolves to null, same as a Tier 2 hook that never declared
     // transformField at all. Must not let that null silently replace a
     // real value before it reaches onChangeField/commitSettingsFieldValue.
-    final mockHost = MockExtensionHost(const {});
+    final mockHost = FakeExtensionHost(const {});
     final extensions = MockExtensionService(mockHost)..settings = settings;
 
     final result = await extensions.transformSettingsField(
@@ -362,7 +363,7 @@ void main() {
   });
 
   test('transformSettingsField still applies a real transformField result when the hook has one', () async {
-    final mockHost = MockExtensionHost({
+    final mockHost = FakeExtensionHost({
       'settingsPanel:lofi:transformField': 'TRANSFORMED',
     });
     final extensions = MockExtensionService(mockHost)..settings = settings;
@@ -385,60 +386,15 @@ void main() {
   });
 }
 
-class MockExtensionHost implements ExtensionHost {
-  final Map<String, dynamic> mockHookResults;
-  MockExtensionHost(this.mockHookResults);
-
-  @override
-  Future<dynamic> invokeHook(
-    String category, {
-    String? key,
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-  }) async {
-    final hookKey = '$category:$key:$method';
-    if (mockHookResults.containsKey(hookKey)) {
-      final res = mockHookResults[hookKey];
-      if (res is Exception) throw res;
-      if (res is Function) return res(args);
-      return res;
-    }
-    return null;
-  }
-
-  @override
-  Future<List<Map<String, dynamic>>> invokeHookAll(
-    String category, {
-    required String method,
-    Object? args,
-    Duration timeout = const Duration(seconds: 10),
-    bool partialOnTimeout = false,
-  }) async {
-    final hookKey = '$category:*:$method';
-    if (mockHookResults.containsKey(hookKey)) {
-      return (mockHookResults[hookKey] as List).cast<Map<String, dynamic>>();
-    }
-    return const [];
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class MockExtensionService extends ExtensionService {
-  final MockExtensionHost mockHost;
-  MockExtensionService(this.mockHost);
-
-  @override
-  ExtensionHost? get host => mockHost;
+class MockExtensionService extends ExtensionServiceWithFakeHost {
+  MockExtensionService(super.host);
 }
 
 /// Overrides the real, disruptive [restartRuntime] (dispose + rebuild a
 /// live runtime) with a call counter — for pinning that a commit actually
 /// triggers one, without booting a real extension host in a unit test.
 class _RestartTrackingExtensionService extends MockExtensionService {
-  _RestartTrackingExtensionService(super.mockHost);
+  _RestartTrackingExtensionService(super.host);
   int restartCount = 0;
 
   @override
@@ -452,7 +408,7 @@ class _RestartTrackingExtensionService extends MockExtensionService {
 /// actually connected" branch of account-status resolution.
 class AccountStubExtensionService extends MockExtensionService {
   final Map<String, Map<String, String>> credentials;
-  AccountStubExtensionService(super.mockHost, {required this.credentials});
+  AccountStubExtensionService(super.host, {required this.credentials});
 
   @override
   Future<Map<String, String>> getAccountCredentials(String kvKey) async => credentials[kvKey] ?? const {};
