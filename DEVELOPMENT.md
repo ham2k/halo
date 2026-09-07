@@ -146,14 +146,14 @@ stale-bundle problem itself (rebuilding only when `extensions/` is newer than
 the built bundles) and skips `npm ci` / `pub get` / `analyze`:
 
 ```sh
-./scripts/test.sh --list            # see the groups (packages + app/test subsets)
+./scripts/test.sh --list            # see the groups (packages + one directory each under app/test/)
 ./scripts/test.sh spots logging     # named groups; app groups combine into one run
 ./scripts/test.sh widgets           # a whole package
 ./scripts/test.sh --changed         # derive the subset from the diff vs origin/main
 ```
 
 `--changed` maps changed package paths to their package, and `app/lib` files to
-test files sharing their name prefix; what it can't scope (helpers, pubspecs,
+test files sharing their name prefix in any group directory; what it can't scope (helpers, pubspecs,
 assets) widens to the whole app suite, and build/CI infrastructure changes get
 a loud "run the full gate". Subset runs are a convenience, **not** the gate:
 they skip analyze, dependent packages, and the browser-platform step. The full
@@ -161,6 +161,10 @@ they skip analyze, dependent packages, and the browser-platform step. The full
 
 ### Writing an app test
 
+An app test lives in the `app/test/<group>/` directory of the feature it
+covers — a group is a directory, `--list` reads the tree, and a file left
+directly under `app/test/` fails every run. Convention guards that read
+source rather than pump widgets go in `guards/`.
 `app/test/support/halo_test_support.dart` is the harness: import it and start
 at the assertion. `makeHaLoServices({prefs, stubs, extensions})` builds prefs,
 settings, an in-memory database and a `HaLoServices` over them (the database

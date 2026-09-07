@@ -69,7 +69,7 @@ void main() {
 
     test('a landscape phone is dense and an ordinary desktop window is normal', () {
       // The tightest geometry the app actually reaches, per
-      // app/test/status_bar_keyboard_test.dart's device matrix.
+      // app/test/ui/status_bar_keyboard_test.dart's device matrix.
       expect(LayoutDensity.forHeight(390), LayoutDensity.densest);
       expect(LayoutDensity.forHeight(430), LayoutDensity.densest);
       expect(LayoutDensity.forHeight(900), LayoutDensity.normal, reason: 'a laptop window is what normal describes');

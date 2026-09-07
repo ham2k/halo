@@ -71,7 +71,7 @@ block, because `dependency_overrides` apply only in the package being
 resolved as root and do not reach a package that path-depends on `app`.
 Keep the two lists identical.
 
-`app/test/webview_plugin_overrides_test.dart` enforces all of this, so the
+`app/test/platform/webview_plugin_overrides_test.dart` enforces all of this, so the
 warning above is not the only thing standing between a tidy-up and a broken
 release. It asserts against the generated `.flutter-plugins-dependencies`
 that Linux still resolves to the stub with `native_build: false`, that macOS

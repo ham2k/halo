@@ -68,7 +68,7 @@ Add an `ErrorRule` to `ErrorPolicy.rules` with a stable `id`, a one-line
 `reason` (it is what prints to the console), and a matcher. Then keep it
 **narrow** — a rule that matches by message alone will eventually swallow a
 real bug of ours that merely reads the same. Every existing rule has tests in
-`app/test/error_policy_test.dart` asserting both that it matches its target
+`app/test/errors/error_policy_test.dart` asserting both that it matches its target
 *and* that a near-miss stays loud; match that.
 
 Set `logOncePerSession` only for `ignore`-tier noise, where the whole point

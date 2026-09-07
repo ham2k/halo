@@ -37,7 +37,7 @@
 #     WebView2 environment rather than a view, and is guarded by being
 #     Windows-only, so Linux never reaches the call.
 #
-# app/test/webview_call_sites_test.dart asserts that those four files are
+# app/test/guards/webview_call_sites_test.dart asserts that those four files are
 # exactly the set reaching a plugin entry point that needs a registered
 # platform implementation, so a fifth fails the suite rather than quietly
 # joining a list here that no longer matches.

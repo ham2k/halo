@@ -213,7 +213,7 @@ Three rules that are not obvious:
   arrangement, `Space` measures a *gap*. The rungs don't correspond and
   neither derives from the other.
 
-`app/test/spacing_vocabulary_test.dart` enforces this: it parses every
+`app/test/guards/spacing_vocabulary_test.dart` enforces this: it parses every
 `EdgeInsets` argument and every childless single-axis `SizedBox` in both
 packages and fails on a bare literal, the same way
 `no_hover_tooltips_test.dart` enforces the no-tooltip rule. An off-ladder
@@ -239,7 +239,7 @@ Flutter's own built-ins (`BackButton`, `CloseButton`, `PopupMenuButton`, a
 parameter to turn it off, so the app root wraps everything in
 `TooltipVisibility(visible: false)` (`views/app_shell/halo_app.dart`). That is what actually
 enforces the rule; not setting `tooltip:` in our own code is the other half.
-Both halves are guarded by `app/test/no_hover_tooltips_test.dart`.
+Both halves are guarded by `app/test/guards/no_hover_tooltips_test.dart`.
 
 **Animated SWAPS stay out of the semantics tree.** A widget that keeps an
 outgoing subtree mounted beside its replacement and then destroys it —
@@ -298,7 +298,7 @@ mode: there is one behaviour and no call site can opt out of it.
 
 `url_launcher` makes the wrong thing the easy thing — `launchUrl(uri)` with no
 `mode` is `platformDefault`, which IS the in-app browser on both mobile
-platforms — so `app/test/links_leave_the_app_test.dart` scans the source for
+platforms — so `app/test/guards/links_leave_the_app_test.dart` scans the source for
 that omission as well as for an explicit `LaunchMode.platformDefault`.
 
 An embedded web view is for a **pane that shows a site** (the Web Site pane,
@@ -398,7 +398,7 @@ Save from landing on it. Material spaces all its dialog buttons uniformly.
 `cancel` stays a slot of its own rather than being listed first in `actions`,
 even though both now render in the same group: **only that slot gets the gap**,
 so a Cancel passed through `actions` lands flush against Save.
-`app/test/dialog_footer_convention_test.dart` fails the build when one does,
+`app/test/guards/dialog_footer_convention_test.dart` fails the build when one does,
 and when a dialog reaches for a raw `AlertDialog` instead of `HaloDialog`.
 
 ### Which verb

@@ -51,16 +51,27 @@ ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 #
 # Two kinds of groups:
 #   - package groups: one Dart package (or the npm extension workspace) each.
-#   - app groups: filename-prefix subsets of app/test/, where most tests live.
-#     `misc` is COMPUTED as the complement of every other app group, so a new
-#     test file always belongs somewhere — files can never silently fall out
-#     of the subset system. A file may match more than one group; that's fine
-#     (a superset run is safe, a missed file is not).
+#   - app groups: one directory each under app/test/, where most tests live.
+#     A group IS a directory — read from the tree at startup, so a new
+#     directory is a new group and this file has no list to rot. Every
+#     *_test.dart lives in exactly one; a file directly under app/test/ fails
+#     the run (check_app_test_layout), so nothing can fall out of the subset
+#     system. `support/` holds the harness and the fakes, `fixtures/` data;
+#     neither is a group.
 # macOS ships bash 3.2, so no associative arrays: case functions instead.
 # ---------------------------------------------------------------------------
 
 PKG_GROUP_NAMES="extensions core build-tools extension-host quickjs widgets cli app dist"
-APP_GROUP_NAMES="cat settings activities spots logging operation home sync extension commands ui errors guards misc"
+
+app_group_names() {
+  local d
+  for d in "$ROOT_DIR"/app/test/*/; do
+    d="${d%/}"; d="${d##*/}"
+    case "$d" in support | fixtures) continue ;; esac
+    echo "$d"
+  done
+}
+APP_GROUP_NAMES="$(app_group_names | tr '\n' ' ')"
 
 pkg_group_dir() {
   case "$1" in
@@ -74,33 +85,37 @@ pkg_group_dir() {
   esac
 }
 
-app_group_prefixes() {
-  case "$1" in
-    cat) echo "cat_ radio_service equipment_report web_serial" ;;
-    settings) echo "settings_ core_settings density_ font_scale experiments_ theme_ language_ call_notes" ;;
-    activities) echo "activities_ activity_ pota_ sota_ hunted_ scoring_ information_panel contest_" ;;
-    spots) echo "spots_ spot_ zero_beat map_" ;;
-    logging) echo "logging_ annotation_ qso_ call_info hardware_keyboard lookup_" ;;
-    operation) echo "operation_ new_operation adif_ export_" ;;
-    home) echo "home_ header_ onboarding_ edition_" ;;
-    sync) echo "sync_ pusher_ oauth_ account_ switch_accounts no_keyring confirm_device staleness" ;;
-    extension) echo "extension_ extensions_ hook_ report_host" ;;
-    commands) echo "command_ dev_ devonboard devsplash devtester seed_ reload_ report_command exp_" ;;
-    ui) echo "panel_ dialog_ layout_ spacing_ no_hover window_ windows_ about_ notice release_ tester_ update_ version_ flag_ status_bar" ;;
-    errors) echo "error_ telemetry_" ;;
-    *) echo "" ;;
-  esac
+# Every *_test.dart under app/test must be exactly one level down, in a group
+# directory: the full gate runs the tree recursively, but a group is one
+# directory's glob, so a file at the top, in support/ or fixtures/, or nested
+# a level deeper would run only in the full gate and be invisible to every
+# subset, --changed included. Refused on every run, with the names, rather
+# than let the tree grow a layer the groups cannot see. The same pass rejects
+# a directory named like a package group (run_subset dispatches package names
+# first, so `test.sh widgets` would run halo_widgets and never app/test/
+# widgets/) and checks the two group names this script uses by name.
+check_app_test_layout() {
+  local all grouped g
+  all=$(cd "$ROOT_DIR/app/test" && find . -name '*_test.dart' | sed 's|^\./||' | sort)
+  grouped=$(for g in $APP_GROUP_NAMES; do app_group_files "$g"; done | sort)
+  if [[ "$all" != "$grouped" ]]; then
+    echo "❌ app test files outside any group directory — each belongs one level down, in app/test/<group>/ (scripts/test.sh --list):" >&2
+    comm -23 <(echo "$all") <(echo "$grouped") | sed 's|^|  app/test/|' >&2
+    exit 2
+  fi
+  for g in $APP_GROUP_NAMES; do
+    case " $PKG_GROUP_NAMES " in *" $g "*)
+      echo "❌ app/test/$g/ shares its name with the package group '$g' — scripts/test.sh $g would run the package and never the directory; rename it." >&2
+      exit 2 ;;
+    esac
+  done
+  for g in extension guards; do
+    if ! is_app_group "$g"; then
+      echo "❌ scripts/test.sh appends the app group '$g' by name (--changed, --quick) and app/test/$g/ is gone — rename both or neither." >&2
+      exit 2
+    fi
+  done
 }
-
-# The convention guards: app tests that READ source (lib/, the packages, the
-# extensions) and enforce a rule the analyzer has no lint for — no tooltips,
-# the spacing vocabulary, dialog footers, links leaving the app, the file-size
-# budget… Listed by name rather than by prefix because their names say what
-# each protects, not what kind of test it is. What qualifies: it scans files,
-# never pumps a widget, and runs in seconds — which is what lets --quick and
-# --changed afford them on every run. A guard that needs the bundles or a
-# real host belongs in its feature's group instead.
-GUARD_TEST_FILES="no_hover_tooltips_test.dart spacing_vocabulary_test.dart dialog_footer_convention_test.dart links_leave_the_app_test.dart webview_call_sites_test.dart markdown_emoji_font_test.dart scoring_labels_test.dart entry_point_not_imported_test.dart file_size_budget_test.dart"
 
 is_app_group() {
   local g
@@ -114,45 +129,12 @@ is_known_group() {
   return 1
 }
 
-# group -> test file basenames, one per line. Prefix lookups are hoisted out
-# of the per-file loop and matching uses only builtins: a subshell per
-# (file × group) turns the pre-flight of every subset run into seconds.
+# group -> test file paths relative to app/test, one per line.
 app_group_files() {
-  local g="$1" f base p og matched prefixes
-  if [[ "$g" == "guards" ]]; then
-    # A name on the list that no longer exists is a rotted list, not an
-    # empty group: say which, rather than quietly guarding less.
-    for base in $GUARD_TEST_FILES; do
-      if [[ ! -f "$ROOT_DIR/app/test/$base" ]]; then
-        echo "❌ GUARD_TEST_FILES names app/test/$base, which does not exist — fix the list." >&2
-        exit 2
-      fi
-      echo "$base"
-    done
-  elif [[ "$g" == "misc" ]]; then
-    prefixes=""
-    for og in $APP_GROUP_NAMES; do
-      [[ "$og" == "misc" || "$og" == "guards" ]] && continue
-      prefixes="$prefixes $(app_group_prefixes "$og")"
-    done
-    for f in "$ROOT_DIR"/app/test/*_test.dart; do
-      base="${f##*/}"
-      matched=0
-      for p in $prefixes; do
-        if [[ "$base" == "$p"* ]]; then matched=1; break; fi
-      done
-      case " $GUARD_TEST_FILES " in *" $base "*) matched=1 ;; esac
-      [[ "$matched" -eq 0 ]] && echo "$base"
-    done
-  else
-    prefixes=$(app_group_prefixes "$g")
-    for f in "$ROOT_DIR"/app/test/*_test.dart; do
-      base="${f##*/}"
-      for p in $prefixes; do
-        if [[ "$base" == "$p"* ]]; then echo "$base"; break; fi
-      done
-    done
-  fi
+  local f
+  for f in "$ROOT_DIR/app/test/$1"/*_test.dart; do
+    [[ -f "$f" ]] && echo "$1/${f##*/}"
+  done
   return 0
 }
 
@@ -168,7 +150,7 @@ list_groups() {
     esac
   done
   echo
-  echo "App groups (subsets of app/test/ by filename prefix; guards by name):"
+  echo "App groups (one directory each under app/test/):"
   for g in $APP_GROUP_NAMES; do
     n=$(app_group_files "$g" | wc -l | tr -d ' ')
     case "$g" in
@@ -180,14 +162,25 @@ list_groups() {
   echo "Use: scripts/test.sh <group>... | --changed | --list <group>"
 }
 
-# The convention guards under app/test (GUARD_TEST_FILES), as one
-# `flutter test` run from the app package. Needs the app resolved and a
-# secrets file, never the bundles: none of these boots a host. Called from
-# --quick (so the Checks workflow runs them on every push to main) and from
-# --guards; --changed reaches them through the `guards` group instead.
+# The convention guards, app/test/guards/, as one `flutter test` run from the
+# app package: tests that READ source (lib/, the packages, the extensions)
+# and enforce a rule the analyzer has no lint for — no tooltips, the spacing
+# vocabulary, dialog footers, links leaving the app, the file-size budget…
+# What qualifies: it scans files, never pumps a widget, and runs in seconds —
+# which is what lets --quick and --changed afford them on every run. A guard
+# that needs the bundles or a real host belongs in its feature's directory
+# instead. Needs the app resolved and a secrets file, never the bundles.
+# Called from --quick (so the Checks workflow runs them on every push to
+# main) and from --guards; --changed reaches them through the `guards` group.
 run_guard_tests() {
   local files
   files=$(app_group_files guards | sed 's|^|test/|' | tr '\n' ' ')
+  # `flutter test` with no files runs the WHOLE app suite, without the host
+  # library a subset would have built — an empty guards/ must say so instead.
+  if [[ -z "${files// /}" ]]; then
+    echo "❌ app/test/guards/ has no tests — the convention guards are gone, not passing." >&2
+    exit 2
+  fi
   echo "▶ app: convention guards ($(echo "$files" | wc -w | tr -d ' ') files)"
   # shellcheck disable=SC2086
   (cd "$ROOT_DIR/app" && flutter test $files)
@@ -373,7 +366,7 @@ run_browser_tests() {
     || command -v chromium-browser >/dev/null 2>&1 \
     || [[ -x "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" ]]; then
     echo "▶ app: browser-platform tests (web number semantics)"
-    (cd "$ROOT_DIR/app" && flutter test --platform chrome test/settings_fuzzy_test.dart)
+    (cd "$ROOT_DIR/app" && flutter test --platform chrome test/settings/settings_fuzzy_test.dart)
   elif [[ "${BROWSER_REQUIRED:-0}" -eq 1 ]]; then
     echo "❌ browser-platform tests: no Chrome found, and this run requires one." >&2
     exit 1
@@ -475,6 +468,7 @@ $(echo "$EXTRA_APP_FILES" | tr ' ' '\n')"
   # Every subset run, whatever it selected — a package-only subset can introduce
   # a violation just as easily as an app one.
   check_clock_discipline
+  check_app_test_layout
 
   [[ "$need_bundles" == "1" ]] && ensure_bundles
   [[ "$need_hostlib" == "1" ]] && ensure_hostlib
@@ -492,13 +486,14 @@ $(echo "$EXTRA_APP_FILES" | tr ' ' '\n')"
     run_flutter_counted "$pkg"
   done
 
-  # dedupe: a file may belong to several requested groups
+  # dedupe: --changed can hand over guards/x_test.dart as a file AND append
+  # the guards group, so the same path can arrive twice.
   files=$(echo "$app_files" | sed '/^$/d' | sort -u)
   if [[ "$run_all_app" == "1" || -n "$files" ]]; then
     ensure_secrets
     ensure_pub app
     if [[ "$run_all_app" == "1" ]]; then
-      APP_FILES_COUNT=$(ls "$ROOT_DIR"/app/test/*_test.dart | wc -l | tr -d ' ')
+      APP_FILES_COUNT=$(find "$ROOT_DIR/app/test" -name '*_test.dart' | wc -l | tr -d ' ')
       echo "▶ app: all tests (analyze skipped in subset mode)"
       run_flutter_counted app
     else
@@ -533,7 +528,7 @@ $(echo "$EXTRA_APP_FILES" | tr ' ' '\n')"
   fi
   if [[ -n "${empty_groups// /}" ]]; then
     echo
-    echo "❌ requested group(s) matched no test files:${empty_groups} — their prefixes have rotted; fix app_group_prefixes." >&2
+    echo "❌ requested group(s) matched no test files:${empty_groups} — each is an empty or missing directory under app/test/." >&2
     exit 1
   fi
 
@@ -585,8 +580,9 @@ changed_subset() {
       packages/halo_quickjs/*) groups="$groups quickjs" ;;
       packages/halo_widgets/*) groups="$groups widgets" ;;
       packages/halo_cli/*) groups="$groups cli" ;;
-      # None has tests of its own; app/test/webview_plugin_overrides_test
-      # is what covers them, so `app` is the right group: that the overrides
+      # None has tests of its own; app/test/platform/webview_plugin_overrides_test
+      # is what covers them, so `platform` is the group (plus the guards every
+      # scoped run carries, for webview_call_sites_test): that the overrides
       # still resolve where they should, that the stub still registers
       # nothing, that the vendored macOS Package.swift still carries the
       # .macOS("10.15") line without which `flutter build macos` fails, and
@@ -595,14 +591,14 @@ changed_subset() {
       # crash on window close (HALO-290). Nothing here compiles Swift, C++ or
       # configures CMake, so those last two are checks on the SOURCE LINE —
       # the build itself is never exercised.
-      packages/flutter_inappwebview_linux_stub/*) groups="$groups app" ;;
-      packages/flutter_inappwebview_macos_patched/*) groups="$groups app" ;;
-      packages/flutter_inappwebview_windows_patched/*) groups="$groups app" ;;
-      # Same reasoning, for the usb_serial override: app/test/usb_serial_override_test
+      packages/flutter_inappwebview_linux_stub/*) groups="$groups platform" ;;
+      packages/flutter_inappwebview_macos_patched/*) groups="$groups platform" ;;
+      packages/flutter_inappwebview_windows_patched/*) groups="$groups platform" ;;
+      # Same reasoning, for the usb_serial override: app/test/platform/usb_serial_override_test
       # checks the override resolves and that android/build.gradle still
       # carries the AGP-9 fix. Nothing here runs Gradle, so that's a check on
       # the SOURCE LINE — the build itself is never exercised.
-      packages/usb_serial_patched/*) groups="$groups app" ;;
+      packages/usb_serial_patched/*) groups="$groups platform" ;;
       # A package this mapping doesn't know (new or renamed) must not fall
       # into the silent catch-all and read as "docs".
       packages/*)
@@ -610,10 +606,14 @@ changed_subset() {
         exit 2
         ;;
       app_dist/*) groups="$groups dist" ;;
-      app/test/*_test.dart)
+      # The harness, the fakes and the fixtures — can't tell who uses them.
+      # Before the file arm: bash's `*` matches `/`, so a test file under
+      # support/ would otherwise be scoped to itself.
+      app/test/support/* | app/test/fixtures/*) whole_app=1 ;;
+      app/test/*/*_test.dart)
         # deleted test files have nothing to run
-        [[ -f "$ROOT_DIR/$path" ]] && app_test_files="$app_test_files $(basename "$path")" ;;
-      app/test/*) whole_app=1 ;;  # shared fakes/helpers — can't tell who uses them
+        [[ -f "$ROOT_DIR/$path" ]] && app_test_files="$app_test_files ${path#app/test/}" ;;
+      app/test/*) whole_app=1 ;;  # a non-test file inside a group directory, or the test config
       app/lib/*.dart)
         # Progressively trim `_token`s off the stem until some test file's
         # name starts with it (spots_service → spots_service_test.dart;
@@ -622,7 +622,7 @@ changed_subset() {
         stem=$(basename "$path" .dart)
         candidates=""
         while [[ -n "$stem" ]]; do
-          candidates=$(cd "$ROOT_DIR/app/test" && ls "${stem}"*_test.dart 2>/dev/null || true)
+          candidates=$(cd "$ROOT_DIR/app/test" && ls */"${stem}"*_test.dart 2>/dev/null || true)
           [[ -n "$candidates" ]] && break
           [[ "$stem" == *_* ]] || { stem=""; break; }
           stem="${stem%_*}"
@@ -704,12 +704,13 @@ case "${1:-}" in
     if [[ $# -gt 2 ]]; then
       echo "usage: scripts/test.sh --list [group]" >&2; exit 2
     fi
+    check_app_test_layout
     if [[ -n "${2:-}" ]]; then
       if ! is_known_group "$2"; then
         echo "unknown group '$2' — run scripts/test.sh --list" >&2; exit 2
       fi
       case "$2" in
-        app) ls "$ROOT_DIR"/app/test/*_test.dart | sed "s|.*/||" ;;
+        app) (cd "$ROOT_DIR/app/test" && ls */*_test.dart) ;;
         extensions) echo "extensions → TS extension unit tests (npm test)" ;;
         dist) echo "dist → app_dist/halo_dist_tools app_dist" ;;
         *)
@@ -728,6 +729,7 @@ case "${1:-}" in
       echo "--guards takes no further arguments" >&2; exit 2
     fi
     check_clock_discipline
+    check_app_test_layout
     ensure_secrets
     ensure_pub app
     run_guard_tests
@@ -785,6 +787,7 @@ esac
 # First, because it costs a fraction of a second and its failure is a one-line
 # fix — nobody should wait out npm ci and a full analyze to be told about it.
 check_clock_discipline
+check_app_test_layout
 
 if [[ "$QUICK" -eq 1 ]]; then
   echo "▶ extensions: install, typecheck (quick mode: no tests)"

@@ -1,0 +1,230 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// The About panel (Issue #42 restyle): a two-line version row (info icon +
+// VersionLabel(detailed: true)) replaces the old "About the App" paragraph,
+// followed by a "Notices & Messages" entry point and a "Release Notes"
+// preview of the last few releases, in that order. Notices & Messages used
+// to be its own top-level settings panel (#42) but moved back into About,
+// between the version and the release notes (issue #183). Tapping the
+// release-notes preview opens the same content in a Modal Pane, same as
+// tapping Notices & Messages opens the notice history in one; tapping the
+// version row copies it; tapping the wordmark opens a photo+caption modal.
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_widgets/halo_widgets.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+
+import 'package:ham2k_logger/config/release_notes.dart';
+import 'package:ham2k_logger/config/tester_notes.dart';
+import 'package:ham2k_logger/config/version.dart';
+import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:ham2k_logger/views/ham2k_logo.dart';
+import 'package:ham2k_logger/views/settings_view.dart';
+import 'package:ham2k_logger/views/version_label.dart';
+
+import '../support/halo_test_support.dart';
+
+const _testRelease = ReleaseNotesEntry(
+  version: '26.8.0',
+  name: "August '26",
+  photoCaption: 'M1SDH at GB-4724',
+  changes: ['First change', 'Second change'],
+);
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  PackageInfo.setMockInitialValues(
+    appName: 'Ham2K Logger',
+    packageName: 'com.ham2k.halo.prod',
+    version: '0.1.0',
+    buildNumber: '260807291',
+    buildSignature: '',
+  );
+
+  testWidgets('shows the version row and a Release Notes preview; '
+      'tapping the preview opens the full text in a Modal Pane', (tester) async {
+    // Bypasses the real assets/release-notes.yaml load: a widget test that
+    // repeatedly mounts/tears down the full app (database, extension host,
+    // asset channel) across several testWidgets blocks can leave a later
+    // test's real asset load hanging indefinitely even though it resolved
+    // fine on an earlier one — and none of these tests are testing yaml
+    // parsing anyway (release_notes_test.dart covers that). Called from
+    // inside the test body (not setUp()) — flutter_test's per-test Zone
+    // means a Future set up outside it may never notify a FutureBuilder
+    // listening from within it.
+    setReleaseNotesForTesting([_testRelease]);
+    setTesterNotesForTesting(const []);
+
+    // Wide viewport: settings shows sidebar + panel side by side, so
+    // selecting "About" updates the panel in place (no route push needed).
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpHaLo(tester, (services) => SettingsView(services: services));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ListTile, 'About'));
+    await tester.pumpAndSettle();
+
+    // Version row: an info icon plus two lines from VersionLabel(detailed).
+    // The header above no longer repeats it — just the brand mark there now.
+    expect(find.byType(VersionLabel), findsOneWidget);
+
+    // "Release Notes" heading present; "Notices & Messages" sits above it
+    // (issue #183) as its own entry point, not the old "Recent Notices"
+    // inline list.
+    expect(find.text('Release Notes'), findsOneWidget);
+    expect(find.text('Recent Notices'), findsNothing);
+    expect(find.widgetWithText(ListTile, 'Notices & Messages'), findsOneWidget);
+
+    // Tapping the preview opens the same title as a Modal Pane — the
+    // clipped/faded preview never scrolls itself (see views/settings/about_panel.dart),
+    // so a tap must be the only way to read the rest.
+    await tester.tap(find.byKey(const Key('aboutReleaseNotesPreview')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Release Notes'), findsNWidgets(2));
+  });
+
+  testWidgets('Notices & Messages is not a sidebar panel; tapping it in About opens the notice history (issue #183)',
+      (tester) async {
+    setReleaseNotesForTesting([_testRelease]);
+    setTesterNotesForTesting(const []);
+
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    await pumpHaLo(tester, (services) => SettingsView(services: services));
+    await tester.pumpAndSettle();
+
+    // No longer its own sidebar entry.
+    expect(find.widgetWithText(ListTile, 'Notices & Messages'), findsNothing);
+
+    await tester.tap(find.widgetWithText(ListTile, 'About'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ListTile, 'Notices & Messages'));
+    await tester.pumpAndSettle();
+
+    // This mock extension host never starts (see `start()` above), which
+    // itself raises a "settings unavailable" notice — that's already in
+    // history by the time the modal pane opens, so its title proves the
+    // real notice-history list rendered (not just the pane's own title).
+    expect(find.text('Some settings are unavailable'), findsOneWidget);
+  });
+
+  testWidgets('tapping the version row copies the app name and version details to the clipboard', (tester) async {
+    setReleaseNotesForTesting([_testRelease]);
+    setTesterNotesForTesting(const []);
+
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
+
+    String? copiedText;
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
+      if (call.method == 'Clipboard.setData') {
+        copiedText = (call.arguments as Map)['text'] as String?;
+      }
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
+
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ListTile, 'About'));
+    await tester.pumpAndSettle();
+
+    // VersionLabel renders SelectableText, which owns its own tap recognizer
+    // for cursor placement — an IgnorePointer around it (views/settings/about_panel.dart)
+    // is what lets a tap anywhere on the row reach the ListTile's onTap
+    // instead of being consumed as a text-selection tap.
+    await tester.tap(find.ancestor(of: find.byType(VersionLabel), matching: find.byType(ListTile)));
+    await tester.pumpAndSettle();
+
+    // Full app name (platform-dependent: "Ham2K Logger" vs "Ham2K Portable
+    // Logger") plus both VersionLabel(detailed) lines, so it's useful pasted
+    // straight into a bug report — not just the bare version number.
+    expect(copiedText, isNotNull);
+    expect(copiedText, contains(ham2kAppName));
+    expect(copiedText, contains(kVersionName));
+    expect(copiedText, contains(kPublicVersion));
+    // Exactly once: this is a two-pane viewport (1000x800), and each pane owns
+    // its own ScaffoldMessenger, so the toast must not appear in both halves.
+    expect(find.text('Copied version details to clipboard'), findsOneWidget);
+  });
+
+  testWidgets('tapping the wordmark opens a photo+wordmark modal with the caption but no notes or Continue button',
+      (tester) async {
+    setReleaseNotesForTesting([_testRelease]);
+    setTesterNotesForTesting(const []);
+
+    tester.view.physicalSize = const Size(1000, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final HaLoHarness(:services) = await makeHaLoServices();
+
+    // The modal's top section reuses ReleaseOverlayView's credits line,
+    // which needs a TranslationProvider ancestor.
+    await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(ListTile, 'About'));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(Ham2kBrandMark), findsOneWidget);
+
+    // A tap-coordinate hit test here is unreliable in this harness — the
+    // mock extension host's "not ready" status notice (unrelated to this
+    // widget) overlaps the header area — so invoke the wired callback
+    // directly instead of going through hit-testing.
+    final wordmarkTap = tester.widget<GestureDetector>(find.byKey(const Key('aboutWordmark'))).onTap!;
+    wordmarkTap();
+    await tester.pumpAndSettle();
+
+    // The modal adds its own brand mark on top of the header's, laid out
+    // the same as the startup release overlay's top section — brand mark,
+    // "by KI2D and friends" credits, the full version name — plus the photo
+    // credit at the bottom. Unlike that overlay (release_overlay_test.dart),
+    // there's no notes band or Continue button to dismiss.
+    expect(find.byType(Ham2kBrandMark), findsNWidgets(2));
+    // The modal's credit line specifically, matched on its SHAPE — a rich
+    // text whose callsign sits in its own span. The About list behind it
+    // credits KI2D too, on its Credits row, but as a plain Text, so a bare
+    // textContaining would match either and pass with the modal missing it.
+    expect(
+      find.byWidgetPredicate(
+        (w) => w is Text && (w.textSpan?.toPlainText() ?? '').contains('KI2D'),
+        description: 'the modal credits line',
+      ),
+      findsOneWidget,
+    );
+    // The modal shows the release line over its build line, matching the
+    // splash/onboarding — not the shorter release-notes name, and not the whole
+    // kVersionName on one line. The version row behind shows the
+    // edition-qualified name, a different exact string.
+    expect(find.text(kVersionMainName), findsOneWidget);
+    // Guarded on emptiness, not on today's `Patch 1`: the next release cut that
+    // resets the patch to 0 makes versionBuildLine() empty in a Dev test run,
+    // and VersionLabel then renders no second line at all.
+    final buildLine = versionBuildLine();
+    expect(find.text(buildLine), buildLine.isEmpty ? findsNothing : findsOneWidget);
+    expect(find.text(_testRelease.photoCaption), findsOneWidget);
+    expect(find.byType(FilledButton), findsNothing);
+
+    // Tapping the modal dismisses it, same as the release overlay.
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
+    expect(find.byType(Ham2kBrandMark), findsOneWidget);
+  });
+}

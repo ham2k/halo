@@ -110,7 +110,7 @@ bool defaultGroupByBand(String sortBy) => sortBy != 'time';
 
 /// Pass 1: same callsign, close in frequency (0.5kHz) and time (30min) —
 /// merge the second spot's refs into the first instead of listing it again.
-/// Public (not `_`-prefixed) so `app/test/spots_panel_merge_test.dart` can
+/// Public (not `_`-prefixed) so `app/test/spots/spots_panel_merge_test.dart` can
 /// exercise this pure logic directly.
 List<Map<String, dynamic>> mergeSpotsByCallAndFreq(List<Map<String, dynamic>> spots) {
   final sorted = [...spots]..sort((a, b) => _timeOf(b).compareTo(_timeOf(a)));

@@ -153,7 +153,7 @@ across two lines on the version splash. Both build from
 `PublicVersion.displayParts()`, which is what keeps them describing the same
 version: add a component to the version and there is one grammar to update, not
 two — a test pins the two spellings together
-(`app/test/version_label_test.dart`).
+(`app/test/ui/version_label_test.dart`).
 
 ### 2.2 Build/release identity — one build number, per-platform encodings
 

@@ -173,6 +173,6 @@ Copy the new package over this directory (keep dropping `example/` and
 `kNoChannels` in `RegisterWithRegistrar`, `kNoDelegate` plus the `registered_`
 destructor guard in `ui_thread_handler.hpp`, `kNoInit` in the plugin
 constructor), and the two Release-PDB lines.
-`app/test/ble_plugin_overrides_test.dart` asserts each of those is present —
+`app/test/platform/ble_plugin_overrides_test.dart` asserts each of those is present —
 nothing in `./scripts/test.sh` compiles C++, so those assertions are the only
 part of this patch a Dart test can see.

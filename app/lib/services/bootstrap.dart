@@ -62,7 +62,7 @@ import 'peer/peer_pairing_prompt.dart';
 /// present and wrong — truncated, or a build with no flag glyphs — loads
 /// here without complaint, because FontLoader accepts bytes it cannot decode
 /// and `layout()` never throws for a missing glyph. That case is caught
-/// before it ships, by app/test/emoji_font_asset_test.dart reading the
+/// before it ships, by app/test/ui/emoji_font_asset_test.dart reading the
 /// artifact, since at runtime it has no signal at all.
 Future<void> _preloadEmojiFont() async {
   try {

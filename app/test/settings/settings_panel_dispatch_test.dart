@@ -1,0 +1,415 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+
+import 'dart:async';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
+
+import '../support/halo_test_support.dart';
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  late SettingsService settings;
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    settings = SettingsService(await SharedPreferences.getInstance());
+  });
+
+  test('getSettingsPanels flattens getPanels entries and sorts by order', () async {
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:*:getPanels': [
+        {
+          'key': 'pota_spots',
+          'ok': true,
+          'value': {'panelKey': 'pota_spots', 'hookKey': 'pota', 'extensionKey': 'pota', 'title': 'POTA Spots', 'kind': 'dynamic', 'order': 2},
+        },
+        {
+          'key': 'pota',
+          'ok': true,
+          'value': {'panelKey': 'pota', 'hookKey': 'pota', 'extensionKey': 'pota', 'title': 'POTA', 'kind': 'dynamic', 'order': 1},
+        },
+        // A failed entry (e.g. getPanels() threw) must not appear.
+        {'key': 'broken', 'ok': false, 'error': 'boom'},
+      ],
+    });
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    final panels = await extensions.getSettingsPanels();
+
+    expect(panels.length, 2);
+    expect(panels[0]['panelKey'], 'pota'); // order 1 before order 2
+    expect(panels[1]['panelKey'], 'pota_spots');
+  });
+
+  test('getSettingsPanelDefinition overlays stored values for a Tier 1 (simple) panel', () async {
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:pota:getDefinition': {
+        'title': 'POTA',
+        'elements': [
+          {'type': 'field', 'fieldType': 'text', 'key': 'apiKey', 'label': 'API Key', 'value': 'default'},
+        ],
+      },
+    });
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    // Nothing stored yet: the static default from the definition survives.
+    final firstLoad = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple');
+    expect((firstLoad!['elements'] as List).first['value'], 'default');
+
+    // Commit a new value, then re-fetch: the overlay now wins over the static default.
+    await extensions.commitSettingsFieldValue(
+      kind: 'simple',
+      hookKey: 'pota',
+      panelKey: 'pota',
+      fieldKey: 'apiKey',
+      value: 'committed-value',
+      state: const {},
+    );
+    final secondLoad = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple');
+    expect((secondLoad!['elements'] as List).first['value'], 'committed-value');
+  });
+
+  test('getSettingsPanelDefinition does not overlay values for a Tier 2 (dynamic) panel', () async {
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:lofi:getDefinition': {
+        'title': 'LoFi',
+        'elements': [
+          {'type': 'field', 'fieldType': 'text', 'key': 'endpoint', 'label': 'Endpoint', 'value': 'from-extension'},
+        ],
+      },
+    });
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    // Even though Dart storage has a value for this key (as if left over
+    // from another panel), a dynamic panel must never see it — Tier 2 owns
+    // its own persistence entirely.
+    await extensions.commitSettingsFieldValue(
+      kind: 'simple',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'endpoint',
+      value: 'stale-tier1-leftover',
+      state: const {},
+    );
+
+    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'lofi', panelKey: 'lofi', kind: 'dynamic');
+    expect((definition!['elements'] as List).first['value'], 'from-extension');
+  });
+
+  test('getSettingsPanelDefinition never persists fieldType account through settings storage', () async {
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:pota:getDefinition': {
+        'title': 'POTA',
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'account',
+            'key': 'qrzStatus',
+            'label': 'QRZ.com Account',
+            'account': {'key': 'qrz'},
+          },
+        ],
+      },
+    });
+    // No account credentials override in this test — getAccountCredentials
+    // hits real (unmocked) secure storage, which raises MissingPluginException
+    // under `flutter test`. That must not take down the whole panel fetch. It
+    // now also reports `unavailable: true` (#438): a store that could not be
+    // READ is not an account that is disconnected, and the account row renders
+    // differently for the two.
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    await extensions.commitSettingsFieldValue(
+      kind: 'simple',
+      hookKey: 'pota',
+      panelKey: 'pota',
+      fieldKey: 'qrzStatus',
+      value: 'should-never-be-read-back-as-account-status',
+      state: const {},
+    );
+
+    final definition = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: 'simple');
+    expect((definition!['elements'] as List).first['value'], {'connected': false, 'unavailable': true});
+  });
+
+  test('getSettingsPanelDefinition resolves fieldType account to {connected: true, label} from account credentials, for either tier', () async {
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:pota:getDefinition': {
+        'title': 'POTA',
+        'elements': [
+          {
+            'type': 'field',
+            'fieldType': 'account',
+            'key': 'qrzStatus',
+            'label': 'QRZ.com Account',
+            'account': {'key': 'qrz'},
+          },
+        ],
+      },
+    });
+    final extensions = AccountStubExtensionService(mockHost, credentials: {'qrz': {'username': 'KI2D'}})..settings = settings;
+
+    for (final kind in ['simple', 'dynamic']) {
+      final definition = await extensions.getSettingsPanelDefinition(hookKey: 'pota', panelKey: 'pota', kind: kind);
+      expect((definition!['elements'] as List).first['value'], {'connected': true, 'label': 'Connected as KI2D'});
+    }
+  });
+
+  test('validateSettingsField: Tier 1 checks pattern locally, no bridge call needed', () async {
+    final mockHost = FakeExtensionHost(const {}); // no bridge entries registered — a bridge call would return null and hide a real failure
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    final field = {'pattern': r'^\d{2}$', 'patternError': 'Exchange must be a 2-digit number'};
+
+    final ok = await extensions.validateSettingsField(
+      kind: 'simple',
+      hookKey: 'contest',
+      panelKey: 'contest',
+      field: field,
+      fieldKey: 'exchange',
+      value: '42',
+      state: const {},
+    );
+    expect(ok, isNull);
+
+    final error = await extensions.validateSettingsField(
+      kind: 'simple',
+      hookKey: 'contest',
+      panelKey: 'contest',
+      field: field,
+      fieldKey: 'exchange',
+      value: 'abc',
+      state: const {},
+    );
+    expect(error, 'Exchange must be a 2-digit number');
+  });
+
+  test('validateSettingsField: Tier 1 with a malformed pattern returns an error instead of throwing', () async {
+    final mockHost = FakeExtensionHost(const {});
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    // Unclosed group — RegExp(pattern) throws a FormatException. Must not
+    // propagate: FormRenderer's on-blur path has no try/catch around this
+    // call, unlike its submit-batch path.
+    final field = {'pattern': r'(abc', 'patternError': 'Exchange must be a 2-digit number'};
+
+    final error = await extensions.validateSettingsField(
+      kind: 'simple',
+      hookKey: 'contest',
+      panelKey: 'contest',
+      field: field,
+      fieldKey: 'exchange',
+      value: 'anything',
+      state: const {},
+    );
+    expect(error, isNotNull);
+  });
+
+  test('validateSettingsField: Tier 2 forwards to the validateField hook method', () async {
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:lofi:validateField': 'Invalid endpoint URL',
+    });
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    final error = await extensions.validateSettingsField(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      field: const {},
+      fieldKey: 'endpoint',
+      value: 'not-a-url',
+      state: const {},
+    );
+    expect(error, 'Invalid endpoint URL');
+  });
+
+  test('runSettingsAction forwards the action element method and returns the result banner text', () async {
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:qrz:clearCache': 'Cache cleared',
+    });
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    final result = await extensions.runSettingsAction(
+      hookKey: 'qrz',
+      panelKey: 'qrz',
+      method: 'clearCache',
+      state: const {},
+    );
+    expect(result, 'Cache cleared');
+  });
+
+  test('commitSettingsFieldValue restarts the runtime when the field is restartOnChange', () async {
+    final mockHost = FakeExtensionHost({'settingsPanel:lofi:onChangeField': null});
+    final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
+
+    await extensions.commitSettingsFieldValue(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'customFiles',
+      value: [],
+      state: const {},
+      restartOnChange: true,
+    );
+
+    expect(extensions.restartCount, 1, reason: 'a restartOnChange field must restart once its commit reaches the extension');
+  });
+
+  test('a pending debounced restart waits for an in-flight commit before disposing the host', () async {
+    // The race this guards: commit A arms the 400ms timer; commit B's
+    // onChangeField bridge call is still in flight when it fires. Restarting
+    // then would dispose the host under B, completing its pending call with
+    // an exception and silently dropping the edit — so the timer must wait
+    // for commit quiescence before restarting.
+    final blockB = Completer<dynamic>();
+    var calls = 0;
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:lofi:onChangeField': (_) {
+        calls++;
+        return calls == 1 ? Future<dynamic>.value() : blockB.future;
+      },
+    });
+    final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
+
+    final first = extensions.commitSettingsFieldValue(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'customFiles',
+      value: ['https://example.com/one.txt'],
+      state: const {},
+      restartOnChange: true,
+    );
+    // B starts inside A's debounce window and blocks on its bridge call.
+    final second = extensions.commitSettingsFieldValue(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'customFiles',
+      value: ['https://example.com/one.txt', 'https://example.com/two.txt'],
+      state: const {},
+      restartOnChange: true,
+    );
+
+    // Let the timer fire while B is still in flight.
+    await Future<void>.delayed(const Duration(milliseconds: 500));
+    expect(extensions.restartCount, 0, reason: 'the restart must wait for the in-flight commit, not tear the host down under it');
+
+    blockB.complete();
+    await Future.wait([first, second]);
+    await pumpEventQueue();
+    expect(calls, 2, reason: "both commits' persistence calls completed — neither was dropped");
+    expect(extensions.restartCount, 1, reason: 'the burst still coalesces into exactly one restart, after quiescence');
+  });
+
+  test('commitSettingsFieldValue does not restart when restartOnChange is false (the default)', () async {
+    final mockHost = FakeExtensionHost({'settingsPanel:lofi:onChangeField': null});
+    final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
+
+    await extensions.commitSettingsFieldValue(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'endpoint',
+      value: 'https://example.com',
+      state: const {},
+    );
+
+    expect(extensions.restartCount, 0, reason: 'most Tier 2 fields are re-read on their next hook call and need no restart');
+  });
+
+  test('commitSettingsFieldValue does not restart when onChangeField itself threw', () async {
+    // If the extension's own persistence call failed, the value never
+    // actually saved — restarting anyway would just re-run onActivation
+    // against the same stale settings for no benefit, and previously did
+    // so unconditionally regardless of this catch block's outcome.
+    final mockHost = FakeExtensionHost({'settingsPanel:lofi:onChangeField': Exception('bridge timeout')});
+    final extensions = _RestartTrackingExtensionService(mockHost)..settings = settings;
+
+    await extensions.commitSettingsFieldValue(
+      kind: 'dynamic',
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'customFiles',
+      value: [],
+      state: const {},
+      restartOnChange: true,
+    );
+
+    expect(extensions.restartCount, 0, reason: 'a failed commit must not trigger a restart, even with restartOnChange: true');
+  });
+
+  test('transformSettingsField falls back to the original value when the hook has no transformField method', () async {
+    // No 'settingsPanel:core:transformField' entry registered — the bridge
+    // call resolves to null, same as a Tier 2 hook that never declared
+    // transformField at all. Must not let that null silently replace a
+    // real value before it reaches onChangeField/commitSettingsFieldValue.
+    final mockHost = FakeExtensionHost(const {});
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    final result = await extensions.transformSettingsField(
+      hookKey: 'core',
+      panelKey: 'core',
+      fieldKey: 'themeMode',
+      value: 'dark',
+      state: const {},
+    );
+    expect(result, 'dark');
+  });
+
+  test('transformSettingsField still applies a real transformField result when the hook has one', () async {
+    final mockHost = FakeExtensionHost({
+      'settingsPanel:lofi:transformField': 'TRANSFORMED',
+    });
+    final extensions = MockExtensionService(mockHost)..settings = settings;
+
+    final result = await extensions.transformSettingsField(
+      hookKey: 'lofi',
+      panelKey: 'lofi',
+      fieldKey: 'endpoint',
+      value: 'raw',
+      state: const {},
+    );
+    expect(result, 'TRANSFORMED');
+  });
+
+  test('identityFromCredentials picks username, then email, then login, in that order', () {
+    expect(ExtensionService.identityFromCredentials({'username': 'KI2D', 'email': 'x@y.com'}), 'KI2D');
+    expect(ExtensionService.identityFromCredentials({'email': 'x@y.com', 'login': 'other'}), 'x@y.com');
+    expect(ExtensionService.identityFromCredentials({'login': 'ki2d'}), 'ki2d');
+    expect(ExtensionService.identityFromCredentials({}), isNull);
+  });
+}
+
+class MockExtensionService extends ExtensionServiceWithFakeHost {
+  MockExtensionService(super.host);
+}
+
+/// Overrides the real, disruptive [restartRuntime] (dispose + rebuild a
+/// live runtime) with a call counter — for pinning that a commit actually
+/// triggers one, without booting a real extension host in a unit test.
+class _RestartTrackingExtensionService extends MockExtensionService {
+  _RestartTrackingExtensionService(super.host);
+  int restartCount = 0;
+
+  @override
+  Future<void> restartRuntime() async {
+    restartCount++;
+  }
+}
+
+/// Stubs [getAccountCredentials] with canned data instead of hitting real
+/// (unmocked in tests) secure storage — for exercising the "account is
+/// actually connected" branch of account-status resolution.
+class AccountStubExtensionService extends MockExtensionService {
+  final Map<String, Map<String, String>> credentials;
+  AccountStubExtensionService(super.host, {required this.credentials});
+
+  @override
+  Future<Map<String, String>> getAccountCredentials(String kvKey) async => credentials[kvKey] ?? const {};
+}

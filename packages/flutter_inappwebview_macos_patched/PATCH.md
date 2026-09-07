@@ -87,7 +87,7 @@ one-line change if upstream still has it, update the version above and in
 the archive URL, and re-run the diff. Do not hand-merge — this directory is
 a copy, not a maintained fork.
 
-`app/test/webview_plugin_overrides_test.dart` asserts the `.macOS("10.15")`
+`app/test/platform/webview_plugin_overrides_test.dart` asserts the `.macOS("10.15")`
 line is present in this copy's `Package.swift`, so a re-vendor that forgets
 to re-apply it fails the Dart suite rather than a tag-triggered macOS
 release. That line is the only part of this patch a Dart test can see.

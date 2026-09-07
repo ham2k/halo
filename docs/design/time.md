@@ -369,7 +369,7 @@ right and not the other is the whole of this section.
 A timer can fire **late, never early**. So an assertion that something has
 **not happened yet** is safe on the real clock — a loaded machine only makes
 it more true — and a test built that way stays honest with no machinery at
-all. `app/test/peer_ble_transport_test.dart` is written to this rule and says
+all. `app/test/peer/peer_ble_transport_test.dart` is written to this rule and says
 so in its header.
 
 The other direction has no such protection. *Still* alive after a while, it
@@ -449,13 +449,13 @@ Each layer is tested where its failure would actually appear:
 |---|---|
 | The clock's arithmetic, anchoring, monotonicity, label | `packages/halo_core/test/app_clock_test.dart` |
 | The command's grammar | `extensions/core/dev-commands/src/timetravel.test.ts` |
-| The gates, sync interaction, status item, palette absence | `app/test/devtimetravel_command_test.dart` |
+| The gates, sync interaction, status item, palette absence | `app/test/commands/devtimetravel_command_test.dart` |
 | The sandbox really travelling, in the engine that ships | `packages/halo_extension_host/test/sandbox_clock_test.dart` |
 | The UI heartbeat's cadence and floor | `packages/halo_widgets/test/wall_clock_test.dart` |
 | The `Date` substitution's whole surface | `extensions/sdk/src/appClock.test.ts` |
 | Ordinary rounds running while travelled, and the destructive pair still refusing | `packages/halo_core/test/sync_engine_test.dart` |
 | **The write gate** — what a travelled session may author, and its escape hatches | `packages/halo_core/test/travel_write_gate_test.dart` |
-| **A clock seam's default** — that an injected real-clock read does not follow travel (§7) | `app/test/peer_ble_transport_test.dart`, `app/test/map_ready_watchdog_test.dart` |
+| **A clock seam's default** — that an injected real-clock read does not follow travel (§7) | `app/test/peer/peer_ble_transport_test.dart`, `app/test/spots/map_ready_watchdog_test.dart` |
 
 The sandbox test runs the real kernel and the real clock-dashboard bundle
 deliberately. Replacing a global `Date` either works completely or fails

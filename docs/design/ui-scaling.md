@@ -56,7 +56,7 @@ shapes are re-rendered at the effective pixel size.
 > nothing would actually scale. `FittedBox` lays its child out at its natural
 > (divided) size under loose constraints first, *then* scales. This was a real
 > bug in the first draft; there's a widget test guarding it
-> (`app/test/font_scale_test.dart`, "UiScale scales the whole subtree").
+> (`app/test/settings/font_scale_test.dart`, "UiScale scales the whole subtree").
 >
 > **Why the `SizedBox.expand` around it?** `FittedBox` only scales up to the
 > constraints it is *given*. Handed loose ones it shrink-wraps instead, and the
@@ -240,7 +240,7 @@ draw.
 | macOS header-height + button positioning (native) | `app/macos/Runner/MainFlutterWindow.swift` |
 | Windows custom frame + resize/min-size handling (native) | `app/windows/runner/win32_window.cpp` |
 | Windows window-chrome channel (native) | `app/windows/runner/flutter_window.cpp` |
-| Tests | `app/test/font_scale_test.dart`, `packages/halo_widgets/test/platform_chrome_test.dart` |
+| Tests | `app/test/settings/font_scale_test.dart`, `packages/halo_widgets/test/platform_chrome_test.dart` |
 
 ## How to verify a change
 
