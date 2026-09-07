@@ -542,9 +542,9 @@ Because the effective key changes when `radio1` does, every writer of `_radio1`
 owes the outgoing keyer exactly what an explicit pick owes it — stop its
 message, clear `cwProgress`, re-read the new one's speed — or a radio the
 operator has stepped off goes on keying with nothing showing it and the Stop
-control pointing somewhere else. Four paths move it (`setRadio1`,
-`setRemoteRadio1`, `addNode` taking the VFO for the newest transceiver,
-`removeNode` clearing it), and only one of them is about keys at all, so the
+control pointing somewhere else. Three paths move it (`setRadio1`, `addNode`
+taking the VFO for the newest transceiver, `removeNode` clearing it), and
+only one of them is about keys at all, so the
 debt is paid by a wrapper — `_withKeyInUseTidied` — rather than by a line each
 of them has to remember.
 
@@ -616,15 +616,21 @@ inherits the whole two-direction machinery — the origin tag, the per-node
 exchange record, the store's no-op dropping, Smart VFO Snap — where a
 registry node would need a live session injected into a const-constructed
 transport map and the radio1 reconnect loops taught about session lifetimes.
-The accepted cost: a remote radio has no Station-panel inventory row and no
-settings of its own.
+The accepted cost: a remote radio has no equipment record and no settings of
+its own — it is named in the compact dialog's Equipment in Use section, as
+the thing driving the VFO, but there is nothing there to connect or edit.
 
 **A remote radio is picked, never inferred.** A device offers every
 transceiver it has *connected* as a `catOffer`, and the peers list those
 beside their own rigs in the Station panel's one Main VFO dropdown —
-`CatService.remoteRadio1` is the pick, plain stored state beside `radio1`
-and mutually exclusive with it, because `vfoA` is one VFO. It persists like
-`radio1` does: a peer that is away shows as unavailable rather than handing
+`CatService.radio1` is the pick — ONE slot holding a `MainVfo`, a sum of
+`LocalRadio` and `PeerRadio`, because `vfoA` is one VFO. Exclusivity is a
+property of that type rather than a pair of clears each writer remembers, and
+`radio1` means the ROLE throughout the app, filled by a rig here or one on
+another device. Code that needs a session, a runtime or an `EquipmentNode`
+matches `LocalRadio` and gets a uuid; the peer bridge narrows the same pick
+to its own `PeerStationRadios.followedPeerRadio`, which is a device and a
+radio to address a message to. It persists like a local pick does: a peer that is away shows as unavailable rather than handing
 the panel silently back to a local rig, and re-engages by itself when it
 returns. For the same reason, `addNode`'s "newest transceiver wins" rule
 stops at a remote pick — configuring a rig is not reaching for it.

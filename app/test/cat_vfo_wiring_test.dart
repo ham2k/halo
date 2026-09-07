@@ -227,7 +227,7 @@ void main() {
   group('radio1', () {
     test('the first transceiver added drives the logging panel', () async {
       final node = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
-      expect(cat.radio1, node.uuid);
+      expect(cat.radio1, LocalRadio(node.uuid));
       expect(cat.isRadio1(node.uuid), isTrue);
     });
 
@@ -238,14 +238,14 @@ void main() {
       // plain stored state: adding a rig is an action, and the rig you just
       // set up is the one you almost certainly want to drive the panel.
       final first = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
-      expect(cat.radio1, first.uuid);
+      expect(cat.radio1, LocalRadio(first.uuid));
 
       final second = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
-      expect(cat.radio1, second.uuid, reason: 'newest wins');
+      expect(cat.radio1, LocalRadio(second.uuid), reason: 'newest wins');
 
       // And the operator still has the final say.
-      await cat.setRadio1(first.uuid);
-      expect(cat.radio1, first.uuid);
+      await cat.setRadio1(LocalRadio(first.uuid));
+      expect(cat.radio1, LocalRadio(first.uuid));
     });
 
     test('removing the designated radio clears it instead of promoting another', () async {
@@ -257,26 +257,26 @@ void main() {
       // see None in the dropdown and pick.
       final first = await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
       final second = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
-      expect(cat.radio1, second.uuid, reason: 'newest added');
+      expect(cat.radio1, LocalRadio(second.uuid), reason: 'newest added');
 
       await cat.removeNode(second.uuid);
       expect(cat.radio1, isNull, reason: 'the survivor must not be promoted silently');
 
       // Removing a node that is NOT designated leaves the choice untouched.
-      await cat.setRadio1(first.uuid);
+      await cat.setRadio1(LocalRadio(first.uuid));
       final third = await cat.addNode(typeKey: 'fake-type', config: {'host': 'c'});
-      await cat.setRadio1(first.uuid);
+      await cat.setRadio1(LocalRadio(first.uuid));
       await cat.removeNode(third.uuid);
-      expect(cat.radio1, first.uuid);
+      expect(cat.radio1, LocalRadio(first.uuid));
     });
 
     test('the designation survives a restart', () async {
       await cat.addNode(typeKey: 'fake-type', config: {'host': 'a'});
       final second = await cat.addNode(typeKey: 'fake-type', config: {'host': 'b'});
-      await cat.setRadio1(second.uuid);
+      await cat.setRadio1(LocalRadio(second.uuid));
 
       final reloaded = CatService(SettingsService(await SharedPreferences.getInstance()));
-      expect(reloaded.radio1, second.uuid);
+      expect(reloaded.radio1, LocalRadio(second.uuid));
     });
   });
 
@@ -307,7 +307,7 @@ void main() {
       // Adding it made IT radio1 (newest wins), so hand the job back before
       // asserting that a non-designated radio is ignored — otherwise this
       // tests the opposite of what it says.
-      await cat.setRadio1(designated.uuid);
+      await cat.setRadio1(LocalRadio(designated.uuid));
       await cat.connect(other.uuid);
 
       // The second radio's session, reporting while the first is radio1.
@@ -604,7 +604,7 @@ void main() {
       final sessionB = driver.sessions.last;
 
       // B drives the panel and is tuned to 14074 — recorded as sent to it.
-      await cat.setRadio1(b.uuid);
+      await cat.setRadio1(LocalRadio(b.uuid));
       radio.setVfo('vfoA', freq: 14074, mode: 'USB');
       await pumpEventQueue();
       expect(sessionB.commands, contains('freq:14074.0'));
@@ -612,14 +612,14 @@ void main() {
       // The operator switches to A and works there. Nothing reaches B now,
       // and nothing B does is heard — including the operator retuning it at
       // its own front panel, which is the point.
-      await cat.setRadio1(a.uuid);
+      await cat.setRadio1(LocalRadio(a.uuid));
       radio.setVfo('vfoA', freq: 21000, mode: 'CW');
       await pumpEventQueue();
 
       // Back to B. What it was last SENT no longer says anything about
       // where it is, so a guard left over from its previous turn as radio1
       // suppresses this tune — permanently, since it never expires.
-      await cat.setRadio1(b.uuid);
+      await cat.setRadio1(LocalRadio(b.uuid));
       sessionB.commands.clear();
       radio.setVfo('vfoA', freq: 14074, mode: 'USB');
       await pumpEventQueue();

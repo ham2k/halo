@@ -1860,6 +1860,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get noTransceiver => 'Ninguno';
 	@override String peerTransceiver({required Object radio, required Object device}) => '${radio} en ${device}';
 	@override String peerTransceiverUnavailable({required Object radio, required Object device}) => '${radio} en ${device} (no disponible)';
+	@override String get peerRadioNotAvailable => 'No disponible';
+	@override String peerRadioOnDevice({required Object device}) => 'En ${device}';
 	@override String get icomCivTroubleshootingTitle => 'Si aparecen dos puertos serie para la misma radio';
 	@override String get icomCivTroubleshooting => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.';
 	@override String get civAddressTroubleshootingTitle => 'Si la radio nunca responde';
@@ -3981,6 +3983,8 @@ extension on TranslationsEs {
 			'settings.station.noTransceiver' => 'Ninguno',
 			'settings.station.peerTransceiver' => ({required Object radio, required Object device}) => '${radio} en ${device}',
 			'settings.station.peerTransceiverUnavailable' => ({required Object radio, required Object device}) => '${radio} en ${device} (no disponible)',
+			'settings.station.peerRadioNotAvailable' => 'No disponible',
+			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'En ${device}',
 			'settings.station.icomCivTroubleshootingTitle' => 'Si aparecen dos puertos serie para la misma radio',
 			'settings.station.icomCivTroubleshooting' => 'Varias radios Icom — entre ellas la IC-705 — presentan **dos** puertos serie USB a la vez (Icom los llama Puerto A y Puerto B), ambos configurados en CI-V de forma predeterminada. Ni esta app ni tu sistema operativo pueden distinguirlos más allá de eso — el mismo identificador de fabricante/producto USB aparece dos veces, a veces marcado aquí con un sufijo `#2`. **El Puerto A suele ser el correcto** — normalmente el primero que lista tu sistema operativo o navegador. Si los comandos salen y la radio nunca responde, prueba el otro puerto a continuación.',
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
@@ -4405,10 +4409,10 @@ extension on TranslationsEs {
 			'adifImport.addActivation' => 'Añadirla a esta operación',
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.',
 			'adifImport.busy' => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.',
-			'adifImport.oneFileOnly' => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.',
-			'offline.statusOffline' => 'Internet: SIN CONEXIÓN',
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.oneFileOnly' => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.',
+			'offline.statusOffline' => 'Internet: SIN CONEXIÓN',
 			'offline.statusOnline' => 'Internet: conectado',
 			'offline.noRoute' => 'No hay ninguna conexión de red.',
 			'offline.unreachable' => 'La red está activa, pero nada responde — a menudo una página de acceso sin completar.',

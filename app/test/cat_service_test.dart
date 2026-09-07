@@ -1084,37 +1084,90 @@ void main() {
 
     test('the two pointers are exclusive, both ways round', () async {
       final local = await addRadio();
-      expect(cat.radio1, local.uuid);
+      expect(cat.radio1, LocalRadio(local.uuid));
 
-      await cat.setRemoteRadio1(pick);
-      expect(cat.radio1, isNull, reason: 'two things writing one vfoA fight');
-      expect(cat.remoteRadio1, pick);
+      await cat.setRadio1(const PeerRadio(pick));
+      expect(cat.radio1, const PeerRadio(pick), reason: 'two things writing one vfoA fight');
 
-      await cat.setRadio1(local.uuid);
-      expect(cat.remoteRadio1, isNull);
+      await cat.setRadio1(LocalRadio(local.uuid));
+      expect(cat.radio1, LocalRadio(local.uuid), reason: 'the local pick is stored, not merely the peer dropped');
     });
 
     test('picking None while a peer radio is selected clears it', () async {
       // `radio1` is already null here, so the setter's own unchanged-value
       // early return is exactly what would swallow this — and the operator
       // would be left on a remote rig having just asked for nothing.
-      await cat.setRemoteRadio1(pick);
+      await cat.setRadio1(const PeerRadio(pick));
 
       await cat.setRadio1(null);
 
-      expect(cat.remoteRadio1, isNull);
+      expect(cat.radio1, isNull);
     });
 
     test('the pick survives a relaunch, peer present or not', () async {
       // Nothing here can check whether that device exists — it is a fact
       // about another machine. An absent peer is unavailable, not corrupt.
-      await cat.setRemoteRadio1(pick);
+      await cat.setRadio1(const PeerRadio(pick));
 
       final reloaded = await makeService();
       addTearDown(reloaded.dispose);
-      expect(reloaded.remoteRadio1, pick);
-      expect(reloaded.remoteRadio1?.radioName, 'IC-705',
+      expect(reloaded.radio1, const PeerRadio(pick));
+      expect((reloaded.radio1 as PeerRadio).selection.radioName, 'IC-705',
           reason: 'the name is all a picker has to show while the peer is away');
+    });
+
+    test('the main VFO is one slot, holding whichever kind was picked', () async {
+      // The exclusivity the tests above assert is a PROPERTY of the storage,
+      // not a pair of clears each setter remembers to run: two nullable
+      // fields can hold both at once, one slot cannot.
+      final local = await addRadio();
+      expect(cat.radio1, LocalRadio(local.uuid));
+
+      await cat.setRadio1(const PeerRadio(pick));
+      expect(cat.radio1, const PeerRadio(pick));
+
+      await cat.setRadio1(null);
+      expect(cat.radio1, isNull);
+    });
+
+    test('a version 2 blob naming only a peer still loads it', () async {
+      // The shape every build before this one wrote. A peer pick reaching a
+      // new build as None would hand the VFO back to nothing, silently, on
+      // the first launch after an update.
+      SharedPreferences.setMockInitialValues({
+        'stationEquipment': jsonEncode({
+          'version': 2,
+          'radio1': null,
+          'remoteRadio1': {'deviceId': 'device-a', 'radioId': 'rig-1', 'radioName': 'IC-705'},
+          'nodes': <String, dynamic>{},
+        }),
+      });
+      final loaded = await makeService();
+      addTearDown(loaded.dispose);
+
+      expect(loaded.radio1, const PeerRadio(pick));
+      expect((loaded.radio1 as PeerRadio).selection.radioName, 'IC-705');
+    });
+
+    test('what a version 2 blob is read as is written back as one key', () async {
+      SharedPreferences.setMockInitialValues({
+        'stationEquipment': jsonEncode({
+          'version': 2,
+          'remoteRadio1': {'deviceId': 'device-a', 'radioId': 'rig-1', 'radioName': 'IC-705'},
+          'nodes': <String, dynamic>{},
+        }),
+      });
+      final loaded = await makeService();
+      addTearDown(loaded.dispose);
+      // Any write at all rewrites the whole blob; picking the same peer is a
+      // no-op, so move the VFO somewhere and back.
+      await loaded.setRadio1(null);
+      await loaded.setRadio1(const PeerRadio(pick));
+
+      final blob = jsonDecode((await SharedPreferences.getInstance()).getString('stationEquipment')!);
+      expect(blob['mainVfo'], {'peer': {'deviceId': 'device-a', 'radioId': 'rig-1', 'radioName': 'IC-705'}});
+      expect(blob.containsKey('radio1'), isFalse, reason: 'one slot on disk too, or the pair can disagree again');
+      expect(blob.containsKey('remoteRadio1'), isFalse);
     });
 
     test('a stored blob naming BOTH keeps only the local radio', () async {
@@ -1131,20 +1184,18 @@ void main() {
       final loaded = await makeService();
       addTearDown(loaded.dispose);
 
-      expect(loaded.radio1, 'b-uuid');
-      expect(loaded.remoteRadio1, isNull, reason: 'exclusivity is enforced on the way in too');
+      expect(loaded.radio1, LocalRadio('b-uuid'), reason: 'exclusivity is enforced on the way in too');
     });
 
     test('adding a transceiver does not steal the VFO from a peer\'s radio', () async {
       // "Newest wins" is about a shack with no answer yet. Configuring a rig
       // is not the same as reaching for it, and the operator working through
       // a peer's radio must not silently lose it.
-      await cat.setRemoteRadio1(pick);
+      await cat.setRadio1(const PeerRadio(pick));
 
       final added = await addRadio();
 
-      expect(cat.radio1, isNull, reason: 'node ${added.uuid} was silently promoted');
-      expect(cat.remoteRadio1, pick);
+      expect(cat.radio1, const PeerRadio(pick), reason: 'node ${added.uuid} was silently promoted');
     });
 
     test('a renamed peer or radio keeps the pick, and updates what it shows', () async {
@@ -1153,26 +1204,26 @@ void main() {
       // again, so nothing else would catch it. The pick itself must survive:
       // a renamed device is the same device, which is why the selection
       // compares only ids.
-      await cat.setRemoteRadio1(pick);
+      await cat.setRadio1(const PeerRadio(pick));
 
       cat.noteOffer('device-a', 'Shack PC', const [PeerRadioOffer(id: 'rig-1', name: 'IC-7300')]);
 
-      expect(cat.remoteRadio1, pick, reason: 'a rename is not a different radio');
-      expect(cat.remoteRadio1?.deviceName, 'Shack PC');
-      expect(cat.remoteRadio1?.radioName, 'IC-7300');
+      expect(cat.radio1, const PeerRadio(pick), reason: 'a rename is not a different radio');
+      expect((cat.radio1 as PeerRadio).selection.deviceName, 'Shack PC');
+      expect((cat.radio1 as PeerRadio).selection.radioName, 'IC-7300');
 
       final reloaded = await makeService();
       addTearDown(reloaded.dispose);
-      expect(reloaded.remoteRadio1?.deviceName, 'Shack PC', reason: 'written through, not held');
+      expect((reloaded.radio1 as PeerRadio).selection.deviceName, 'Shack PC', reason: 'written through, not held');
     });
 
     test('another peer\'s offer leaves the pick\'s names alone', () async {
-      await cat.setRemoteRadio1(pick);
+      await cat.setRadio1(const PeerRadio(pick));
 
       cat.noteOffer('device-z', 'Someone Else', const [PeerRadioOffer(id: 'rig-1', name: 'FT-891')]);
 
-      expect(cat.remoteRadio1?.deviceName, '');
-      expect(cat.remoteRadio1?.radioName, 'IC-705');
+      expect((cat.radio1 as PeerRadio).selection.deviceName, '');
+      expect((cat.radio1 as PeerRadio).selection.radioName, 'IC-705');
     });
 
     test('only CONNECTED transceivers are offered', () async {
@@ -1196,7 +1247,7 @@ void main() {
       final other = await addRadio(host: 'a.local');
       final designated = await cat.addNode(
           typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
-      expect(cat.radio1, designated.uuid, reason: 'newest wins, so `other` is not radio1');
+      expect(cat.radio1, LocalRadio(designated.uuid), reason: 'newest wins, so `other` is not radio1');
       await connectAndLand(other);
       log.clear();
 
@@ -1268,10 +1319,10 @@ void main() {
 
     test('the newest transceiver added takes the VFO', () async {
       final first = await addRadio(host: 'a.local');
-      expect(cat.radio1, first.uuid, reason: 'a one-radio shack never has to choose');
+      expect(cat.radio1, LocalRadio(first.uuid), reason: 'a one-radio shack never has to choose');
 
       final second = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
-      expect(cat.radio1, second.uuid, reason: 'newest wins');
+      expect(cat.radio1, LocalRadio(second.uuid), reason: 'newest wins');
     });
 
     test('adding a rig after choosing None still takes the VFO', () async {
@@ -1282,7 +1333,7 @@ void main() {
 
       final added = await cat.addNode(typeKey: 'fake-type', name: 'Third', config: {'host': 'c.local'});
 
-      expect(cat.radio1, added.uuid);
+      expect(cat.radio1, LocalRadio(added.uuid));
     });
 
     test('removing the designated radio clears it rather than promoting another', () async {
@@ -1291,7 +1342,7 @@ void main() {
       // surprise this card is about.
       final a = await addRadio(host: 'a.local');
       final b = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
-      await cat.setRadio1(a.uuid);
+      await cat.setRadio1(LocalRadio(a.uuid));
 
       await cat.removeNode(a.uuid);
 
@@ -1301,11 +1352,11 @@ void main() {
     test('removing a node that is NOT the designated one leaves it alone', () async {
       final a = await addRadio(host: 'a.local');
       final b = await cat.addNode(typeKey: 'fake-type', name: 'Right Radio', config: {'host': 'b.local'});
-      expect(cat.radio1, b.uuid);
+      expect(cat.radio1, LocalRadio(b.uuid));
 
       await cat.removeNode(a.uuid);
 
-      expect(cat.radio1, b.uuid);
+      expect(cat.radio1, LocalRadio(b.uuid));
     });
 
     test('a stored radio1 whose node did not load reads as None', () async {
@@ -1408,7 +1459,7 @@ void main() {
       addTearDown(loaded.dispose);
 
       expect(loaded.designatedFor(kCategoryAntenna), 'ant-uuid');
-      await loaded.setRadio1('other-radio');
+      await loaded.setRadio1(LocalRadio('other-radio'));
       expect(loaded.designatedFor(kCategoryAntenna), isNull, reason: 'the other radio\'s own None');
     });
 
@@ -1416,11 +1467,11 @@ void main() {
       // The migration case: every existing configuration has a radio1 key,
       // because the old code persisted auto-designated values too.
       final node = await addRadio();
-      expect(cat.radio1, node.uuid);
+      expect(cat.radio1, LocalRadio(node.uuid));
 
       final reloaded = await makeService();
       addTearDown(reloaded.dispose);
-      expect(reloaded.radio1, node.uuid);
+      expect(reloaded.radio1, LocalRadio(node.uuid));
     });
   });
 
@@ -1443,7 +1494,7 @@ void main() {
 
       await addAntenna();
 
-      expect(cat.radio1, radio.uuid);
+      expect(cat.radio1, LocalRadio(radio.uuid));
       expect(cat.designatedFor(kCategoryKey), key.uuid);
     });
 
@@ -1561,7 +1612,7 @@ void main() {
       // The trap: an `is` check turned into a cast — every keyer surface
       // would crash for the Kenwood/flrig/rigctld operator.
       final node = await cat.addNode(typeKey: 'plain-type', name: 'Plain', config: {'host': 'p.local'});
-      await cat.setRadio1(node.uuid);
+      await cat.setRadio1(LocalRadio(node.uuid));
       await connectAndLand(node);
       expect(cat.stateFor(node.uuid).status, EquipmentStatus.connected, reason: 'sanity');
 
@@ -1594,16 +1645,16 @@ void main() {
       // the radio it was made under — not to the station, and not to the
       // node that was picked.
       await cat.setDesignated(kCategoryKey, first.uuid);
-      await cat.setRadio1(first.uuid);
+      await cat.setRadio1(LocalRadio(first.uuid));
       expect(cat.designatedFor(kCategoryKey), first.uuid, reason: 'first\'s own default');
-      await cat.setRadio1(second.uuid);
+      await cat.setRadio1(LocalRadio(second.uuid));
       expect(cat.designatedFor(kCategoryKey), first.uuid, reason: 'second\'s stored pick, not its default');
 
       // None is an answer, so it outranks the default too — and it is one
       // radio's answer, not the station's.
       await cat.setDesignated(kCategoryKey, null);
       expect(cat.canKeyCw, isFalse, reason: 'no key in use, nothing keys — even with two radios that could');
-      await cat.setRadio1(first.uuid);
+      await cat.setRadio1(LocalRadio(first.uuid));
       expect(cat.canKeyCw, isTrue, reason: 'None was second\'s answer; first still keys for itself');
     });
 
@@ -1618,7 +1669,7 @@ void main() {
       // rig left keying here has no control pointing at it at all.
       driver.sessions.last.cwSending = true;
       log.clear();
-      await cat.setRadio1(first.uuid);
+      await cat.setRadio1(LocalRadio(first.uuid));
       expect(log, contains('stopCw'), reason: 'the radio being stepped off is told to stop');
       driver.sessions.first.sink.reportKeyerSpeed(30);
       expect(cat.keyerSpeed, 30, reason: 'the speed shown is the new key in use\'s');
@@ -1763,7 +1814,7 @@ void main() {
     test('what radio1 is keying reaches cwProgress; another node\'s keying does not', () async {
       final radio1 = await addRadio(host: 'a.local');
       final other = await cat.addNode(typeKey: 'fake-type', name: 'Other', config: {'host': 'b.local'});
-      await cat.setRadio1(radio1.uuid);
+      await cat.setRadio1(LocalRadio(radio1.uuid));
       await connectAndLand(radio1);
       await connectAndLand(other);
       final progress = CwSendProgress(id: 1, text: 'CQ', characterEnds: cwCharacterEnds('CQ', 20));
@@ -1800,7 +1851,7 @@ void main() {
     test('setPower reaches radio1\'s session, and no other', () async {
       final radio1 = await addRadio(host: 'a.local');
       final other = await cat.addNode(typeKey: 'fake-type', name: 'Other', config: {'host': 'b.local'});
-      await cat.setRadio1(radio1.uuid);
+      await cat.setRadio1(LocalRadio(radio1.uuid));
       await connectAndLand(radio1);
       // `other` is deliberately never connected — setPower must not reach
       // into an unconnected node's absent session either.

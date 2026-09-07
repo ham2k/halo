@@ -132,7 +132,12 @@ abstract class PeerStationRadios implements Listenable {
   /// The peer radio this device's `vfoA` follows, or null when `vfoA` is a
   /// local rig's or nothing's. Read fresh on every message: the operator can
   /// change the pick while sessions are up.
-  PeerRadioSelection? get remoteRadio1;
+  ///
+  /// This bridge's own narrowing of the station's one main-VFO pick, in the
+  /// only terms it can act on — a device and a radio to address a message
+  /// to. What the station calls that pick, and what else it can hold, is the
+  /// station's business.
+  PeerRadioSelection? get followedPeerRadio;
 
   /// What a peer is offering, and under what names. Only the names matter
   /// here, and only for the one radio this device picked: they are what

@@ -21,6 +21,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../i18n/strings.g.dart';
 import '../main.dart';
+import '../services/cat/cat_service.dart';
 import '../services/cat/equipment.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
@@ -375,7 +376,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   String _equipmentDescriptorKey() {
     final cat = dockServices.cat;
     return [
-      cat.radio1 ?? '',
+      switch (cat.radio1) { LocalRadio(:final uuid) => uuid, _ => '' },
       for (final node in cat.nodes) '${node.uuid}:${cat.displayNameFor(node)}',
     ].join('|');
   }
@@ -1791,7 +1792,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
     // the radio picker's options and the Automatic option's name current.
     if (dockServices.settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) {
       final cat = dockServices.cat;
-      final designated = cat.radio1 == null ? null : cat.nodeFor(cat.radio1!);
+      final designated = switch (cat.radio1) { LocalRadio(:final uuid) => cat.nodeFor(uuid), _ => null };
       service.registerNative(PanelDefinition(
         id: radioPanelId,
         title: t.tabs.radio,

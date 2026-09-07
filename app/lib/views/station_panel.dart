@@ -838,8 +838,8 @@ class StationPanel extends StatelessWidget {
         radioName: peer.radio.name,
       );
 
-  /// One list, two pointers — see `CatService.remoteRadio1` for why they are
-  /// exclusive.
+  /// One list, because there is one main VFO — see `CatService.radio1`, the
+  /// single slot both kinds of pick are written to.
   ///
   /// The pick is rebuilt from the VALUE rather than looked up in the current
   /// offers, and that is the whole point: a menu's items are captured when it
@@ -849,19 +849,21 @@ class StationPanel extends StatelessWidget {
   /// now names no item at all.
   Future<void> _onMainVfoPicked(String? value) async {
     final picked = peerRadioSelectionFromValue(value);
-    if (picked == null) return _cat.setRadio1(value);
+    if (picked == null) return _cat.setRadio1(value == null ? null : LocalRadio(value));
     // Names from the live offer when there is one, and otherwise from the
     // pick being replaced — which is the same radio when the operator has
     // simply re-tapped an entry that went unavailable under them.
     final offered = services.peerRemoteRadios.find(picked.deviceId, picked.radioId);
-    final current = _cat.remoteRadio1;
-    final kept = current != null && current.matches(picked.deviceId, picked.radioId) ? current : null;
-    return _cat.setRemoteRadio1(PeerRadioSelection(
+    final kept = switch (_cat.radio1) {
+      PeerRadio(:final selection) when selection.matches(picked.deviceId, picked.radioId) => selection,
+      _ => null,
+    };
+    return _cat.setRadio1(PeerRadio(PeerRadioSelection(
       deviceId: picked.deviceId,
       radioId: picked.radioId,
       deviceName: offered?.deviceName ?? kept?.deviceName ?? '',
       radioName: offered?.radio.name ?? kept?.radioName ?? '',
-    ));
+    )));
   }
 
   Widget _buildContent(BuildContext context) {
@@ -898,7 +900,14 @@ class StationPanel extends StatelessWidget {
         // A peer's radio is picked from the same list as this device's own:
         // it drives the same one `vfoA`, so offering a second control for it
         // would be offering two answers to one question (HALO-416).
-        final selection = _cat.remoteRadio1;
+        final selection = switch (_cat.radio1) {
+          PeerRadio(:final selection) => selection,
+          _ => null,
+        };
+        final localRadio1 = switch (_cat.radio1) {
+          LocalRadio(:final uuid) => uuid,
+          _ => null,
+        };
         final peerRadios = services.peerRemoteRadios.all;
         // A selection whose peer is not here stays SHOWN and selected, said
         // to be unavailable — dropping it would silently hand the VFO back
@@ -930,14 +939,14 @@ class StationPanel extends StatelessWidget {
                 // reassigns it behind this panel's back — auto-designating
                 // the first transceiver added, and re-designating when the
                 // current one is removed — and neither would have appeared.
-                      key: ValueKey(_cat.radio1 ?? _peerValue(selection)),
+                      key: ValueKey(localRadio1 ?? _peerValue(selection)),
                       // Without this the button lays its SELECTED item out
                       // unbounded, so ellipsizing the menu entries is not
                       // enough — a name wider than the field overflows the
                       // row rather than truncating.
                       isExpanded: true,
-                      initialValue: transceivers.any((n) => n.uuid == _cat.radio1)
-                          ? _cat.radio1
+                      initialValue: transceivers.any((n) => n.uuid == localRadio1)
+                          ? localRadio1
                           : _peerValue(selection),
                       icon: dropdownTrailingIcon,
                       decoration: poloFieldDecoration(context, st.transceiverForMainVfo),
@@ -1063,7 +1072,14 @@ class StationPanel extends StatelessWidget {
             // catalogue Add Equipment and the other radios imply.
             SectionHeader(compact ? st.equipmentInUse : st.equipmentInventory),
             if (compact) ...[
-              if (_cat.radio1 case final uuid?)
+              // A peer's radio drives the same one `vfoA` a local one does,
+              // so it belongs in this section — which is the only place the
+              // compact dialog names what the logging panel is following.
+              // Nothing to connect or edit here: the session, and the rig,
+              // are the other device's.
+              if (_cat.radio1 case PeerRadio(selection: final peerSelection))
+                _PeerVfoTile(selection: peerSelection, available: absentSelection == null),
+              if (localRadio1 case final uuid?)
                 if (_cat.nodeFor(uuid) case final node?)
                   _EquipmentTile(
                     node: node,
@@ -2044,6 +2060,88 @@ class _DesignationDropdown extends StatelessWidget {
           DropdownMenuItem<String?>(value: node.uuid, child: Text(displayName(node), overflow: TextOverflow.ellipsis)),
       ],
       onChanged: onChanged,
+    );
+  }
+}
+
+/// The peer's radio driving `vfoA`, as a row in Equipment in Use.
+///
+/// Deliberately not an [_EquipmentTile]: there is no [EquipmentNode] behind
+/// it and none of that row's controls apply — a peer's rig is connected,
+/// edited and removed on the device it is plugged into.
+class _PeerVfoTile extends StatelessWidget {
+  final PeerRadioSelection selection;
+
+  /// Whether the peer is offering it right now. False keeps the row, saying
+  /// so: the pick survives the peer walking away and re-engages by itself,
+  /// so a row that vanished would read as a selection that had been dropped.
+  final bool available;
+
+  const _PeerVfoTile({required this.selection, required this.available});
+
+  @override
+  Widget build(BuildContext context) {
+    final st = context.t.settings.station;
+    final theme = Theme.of(context);
+
+    return ListTile(
+      leading: Icon(_iconForCategory(kCategoryTransceiver)),
+      title: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // The same 3:2 split, name-with-pill against address, that
+          // [_EquipmentTile] uses — these rows sit under one another.
+          Flexible(
+            flex: 3,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Falling back to the id like the dropdown does: a pick made
+                // as the peer dropped is stored with empty names, and a row
+                // with a blank title names nothing at all.
+                Flexible(
+                  child: Text(
+                    selection.radioName.isEmpty ? selection.radioId : selection.radioName,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: Space.md),
+                // Always: a peer selection IS the main VFO, or it would not
+                // be stored at all.
+                Flexible(
+                  child: _Pill(
+                    label: st.mainVfo,
+                    background: theme.colorScheme.secondaryContainer,
+                    foreground: theme.colorScheme.onSecondaryContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Flexible(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.only(left: Space.lg),
+              child: Text(
+                // Where it is, in the place a local row states its address:
+                // for a peer's rig that is which device it is plugged into.
+                st.peerRadioOnDevice(
+                  device: selection.deviceName.isEmpty ? selection.deviceId : selection.deviceName,
+                ),
+                textAlign: TextAlign.right,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+              ),
+            ),
+          ),
+        ],
+      ),
+      subtitle: available
+          ? null
+          : Text(
+              st.peerRadioNotAvailable,
+              style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
+            ),
     );
   }
 }

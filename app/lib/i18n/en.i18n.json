@@ -1351,6 +1351,8 @@
       "noTransceiver": "None",
       "peerTransceiver": "${radio} on ${device}",
       "peerTransceiverUnavailable": "${radio} on ${device} (not available)",
+      "peerRadioNotAvailable": "Not available",
+      "peerRadioOnDevice": "On ${device}",
       "antennaInUse": "Antenna in Use",
       "keyInUse": "Key in Use",
       "noneSelected": "None",

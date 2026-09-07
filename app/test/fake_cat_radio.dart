@@ -102,5 +102,5 @@ CatService fakeCatService(SettingsService settings, RadioService radio) =>
 Future<void> connectFakeRadio1(CatService cat) async {
   final node = await cat.addNode(typeKey: 'fake-type', config: {'host': 'radio.local'});
   await cat.connect(node.uuid);
-  await cat.setRadio1(node.uuid);
+  await cat.setRadio1(LocalRadio(node.uuid));
 }

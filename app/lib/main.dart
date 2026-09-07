@@ -81,7 +81,7 @@ import 'services/installed_extensions.dart';
 import 'services/opened_files_service.dart';
 import 'services/geoshape_service.dart';
 import 'services/unclean_quit.dart';
-import 'services/cat/equipment.dart' show kCategoryTransceiver;
+import 'services/cat/equipment.dart' show EquipmentStatus, kCategoryTransceiver;
 import 'services/cat/cat_service.dart';
 import 'services/peer/ble/peer_ble.dart';
 import 'services/peer/peer_channels.dart';
@@ -1986,6 +1986,42 @@ class HaLoServices {
   /// the CAT bridge rides peer sync itself, and an empty holder is exactly
   /// what a build with no peers has.
   late final PeerRemoteRadios peerRemoteRadios = PeerRemoteRadios();
+
+  /// Whether whatever drives `vfoA` will act on a tune right now — a local
+  /// rig with a session up, or a peer that is offering the picked radio.
+  ///
+  /// One place because several surfaces ask it, and a peer answered
+  /// differently by any one of them is a rig the app claims to be following
+  /// and then is not: the Radio chip's red/green, the status bar's radio
+  /// entry, and Avoid Zero Beat, which turns itself off wherever nothing
+  /// will act on the offset. Something DOES act for a peer —
+  /// `PeerChannels._onRadioChanged` forwards an operator's move as `catSet`
+  /// — so a peer reading "not connected" tunes the far rig exactly zero
+  /// beat, which is the failure that setting exists to prevent.
+  ///
+  /// Reads [cat], which builds CatService on first touch: call it behind the
+  /// same experiment gate its callers already have.
+  bool get radio1IsLive => switch (cat.radio1) {
+        LocalRadio(:final uuid) => cat.stateFor(uuid).status == EquipmentStatus.connected,
+        PeerRadio(:final selection) => peerRemoteRadios.find(selection.deviceId, selection.radioId) != null,
+        null => false,
+      };
+
+  /// What to call whatever drives `vfoA`, or null when there is nothing to
+  /// call it — a peer's remembered name is all there is while that device is
+  /// away, and a pick made as a peer dropped carries none at all.
+  ///
+  /// Null rather than the raw id: this is also what a logged QSO's rig field
+  /// is filled from, and an id there is worse than an empty field. A row
+  /// that would otherwise render blank falls back to the id itself.
+  String? get radio1Name => switch (cat.radio1) {
+        LocalRadio(:final uuid) => switch (cat.nodeFor(uuid)) {
+            final node? => cat.displayNameFor(node),
+            null => null,
+          },
+        PeerRadio(:final selection) => selection.radioName.isEmpty ? null : selection.radioName,
+        null => null,
+      };
   /// The producer half of screen sharing (HALO-369). Lazy like the rest, and
   /// for a stronger reason than most: constructing it registers the native
   /// capture channel's handlers, and an install that never turns the
@@ -5303,11 +5339,13 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                 },
               ),
       if (_gatoEnabled) ...[
-        for (final uuid in [widget.services.cat.radio1])
-          if (uuid != null)
-            for (final node in [widget.services.cat.nodeFor(uuid)])
-              if (node != null)
-                StatusBarPermaData(
+        // Whatever drives the VFO, local rig or peer's: the bar is where
+        // "is it talking to me" is answered, and a peer pick going blank
+        // here is that question left unanswered for the one radio the
+        // operator is actually working through.
+        for (final name in [widget.services.radio1Name])
+          if (name != null)
+            StatusBarPermaData(
                   key: 'radio1',
                   icon: MdiIcons.cat,
                   // Name AND state, in the Station panel's own words
@@ -5315,8 +5353,14 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
                   // rig", which is the question the operator already knows the
                   // answer to — "is it talking to me" is the one they open the
                   // bar for.
-                  text: '${widget.services.cat.displayNameFor(node)}: '
-                      '${equipmentStatusLabel(context, widget.services.cat.stateFor(uuid))}',
+                  //
+                  // A peer's rig has no EquipmentState to label, and the
+                  // question is the same one anyway: whether it is there.
+                  text: switch (widget.services.cat.radio1) {
+                    LocalRadio(:final uuid) =>
+                      '$name: ${equipmentStatusLabel(context, widget.services.cat.stateFor(uuid))}',
+                    _ => '$name: ${widget.services.radio1IsLive ? t.settings.station.statusConnected : t.settings.station.peerRadioNotAvailable}',
+                  },
                   // The Radio control's own quick-access pane, not the full
                   // Station Configuration page — the same one tapping the
                   // logging row's Radio chip opens, so the two ways in do not
@@ -5450,6 +5494,10 @@ class _StatusBarOverlayState extends State<StatusBarOverlay> {
         // which change on their own as a link comes up or drops.
         widget.services.peerService,
         if (_gatoEnabled) widget.services.cat,
+        // A peer's rig going away or coming back is this notifier's news
+        // alone — CatService hears nothing of it, so the radio row would
+        // keep saying "Not available" about a rig that is back.
+        if (_gatoEnabled) widget.services.peerRemoteRadios,
       ]),
       builder: (context, _) {
         final statusBar = widget.services.statusBar;

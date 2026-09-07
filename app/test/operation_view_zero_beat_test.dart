@@ -26,6 +26,7 @@ import 'package:ham2k_logger/services/cat/zero_beat.dart';
 import 'package:ham2k_logger/services/radio_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/spots_panel.dart';
+import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/views/operation_view.dart';
 
 import 'fake_cat_radio.dart';
@@ -96,13 +97,46 @@ void main() {
     expect(resolve(_suggestion())['freq'], _spotFreqKHz);
   });
 
+  test("a peer's radio the peer is offering counts, because a move reaches it", () async {
+    // The offset is gated on something acting on it. Something does here:
+    // `PeerChannels._onRadioChanged` forwards an operator's vfoA move to the
+    // peer as `catSet`, so treating a peer pick as "no radio" tunes the far
+    // rig exactly zero beat — the one outcome this setting exists to avoid.
+    await build(connected: false);
+    await cat.setRadio1(const PeerRadio(PeerRadioSelection(
+      deviceId: 'device-a',
+      radioId: 'rig-1',
+      radioName: 'FTDX10',
+    )));
+    services.peerRemoteRadios.setOffers('device-a', "VE1SK's iPad", const [
+      PeerRadioOffer(id: 'rig-1', name: 'FTDX10'),
+    ]);
+
+    final moved = resolve(_suggestion())['freq'] as double;
+    expect(moved, isNot(_spotFreqKHz));
+  });
+
+  test("a peer's radio nobody is offering does not count", () async {
+    // The pick survives the peer walking away — and while it is away nothing
+    // acts on a tune, so an offset would hand the operator digits to dial by
+    // hand and leave the log claiming a frequency they never transmitted on.
+    await build(connected: false);
+    await cat.setRadio1(const PeerRadio(PeerRadioSelection(
+      deviceId: 'device-a',
+      radioId: 'rig-1',
+      radioName: 'FTDX10',
+    )));
+
+    expect(resolve(_suggestion())['freq'], _spotFreqKHz);
+  });
+
   test('a radio connected but not driving the panel does not count', () async {
     // The real shape of it: two rigs, the connected one is NOT radio1. Built
     // out of states the app can actually produce — pointing radio1 at a
     // sentinel would kill the same mutations while modelling nothing.
     await build(connected: true);
     final idle = await cat.addNode(typeKey: 'fake-type', config: {'host': 'second.local'});
-    await cat.setRadio1(idle.uuid);
+    await cat.setRadio1(LocalRadio(idle.uuid));
     expect(cat.stateFor(idle.uuid).status, isNot(EquipmentStatus.connected));
     expect(resolve(_suggestion())['freq'], _spotFreqKHz);
   });

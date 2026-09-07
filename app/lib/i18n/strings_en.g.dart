@@ -3950,6 +3950,12 @@ class Translations$settings$station$en {
 	/// en: '${radio} on ${device} (not available)'
 	String peerTransceiverUnavailable({required Object radio, required Object device}) => '${radio} on ${device} (not available)';
 
+	/// en: 'Not available'
+	String get peerRadioNotAvailable => 'Not available';
+
+	/// en: 'On ${device}'
+	String peerRadioOnDevice({required Object device}) => 'On ${device}';
+
 	/// en: 'Antenna in Use'
 	String get antennaInUse => 'Antenna in Use';
 
@@ -7156,6 +7162,8 @@ extension on Translations {
 			'settings.station.noTransceiver' => 'None',
 			'settings.station.peerTransceiver' => ({required Object radio, required Object device}) => '${radio} on ${device}',
 			'settings.station.peerTransceiverUnavailable' => ({required Object radio, required Object device}) => '${radio} on ${device} (not available)',
+			'settings.station.peerRadioNotAvailable' => 'Not available',
+			'settings.station.peerRadioOnDevice' => ({required Object device}) => 'On ${device}',
 			'settings.station.antennaInUse' => 'Antenna in Use',
 			'settings.station.keyInUse' => 'Key in Use',
 			'settings.station.noneSelected' => 'None',
@@ -7579,10 +7587,10 @@ extension on Translations {
 			'adifImport.stackingTypesUnknown' => 'Combined contacts may lose a reference — the activities could not say which types stack. Cancel and retry to avoid this.',
 			'adifImport.nothingToImport' => 'Nothing in this file can be imported',
 			'adifImport.confirm' => 'Import',
-			'adifImport.importing' => ({required Object filename}) => 'Importing ${filename}…',
-			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} contact from ${filename}', other: 'Imported ${formatted} contacts from ${filename}', ), 
 			_ => null,
 		} ?? switch (path) {
+			'adifImport.importing' => ({required Object filename}) => 'Importing ${filename}…',
+			'adifImport.imported' => ({required num count, required Object filename, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Imported ${count} contact from ${filename}', other: 'Imported ${formatted} contacts from ${filename}', ), 
 			'adifImport.failed' => ({required Object filename, required Object error}) => 'Could not import ${filename}: ${error}',
 			'adifImport.notAdif' => ({required Object filename}) => '${filename} does not look like an ADIF file',
 			'adifImport.stationWarning' => ({required Object calls, required Object station}) => 'Warning: this ADIF has QSOs from ${calls}, but they will be imported as ${station} if you continue.',

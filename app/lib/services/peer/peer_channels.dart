@@ -290,7 +290,7 @@ class PeerChannels {
   }
 
   void _followNewSelection() {
-    final selection = station?.remoteRadio1;
+    final selection = station?.followedPeerRadio;
     if (selection == _appliedSelection) return;
     _appliedSelection = selection;
     if (selection == null) return;
@@ -339,7 +339,7 @@ class PeerChannels {
   /// peer's radio to drive, and only to that peer.
   void _onRadioChanged() {
     final radio = this.radio;
-    final selection = station?.remoteRadio1;
+    final selection = station?.followedPeerRadio;
     if (radio == null || selection == null) return;
     // Only what this OPERATOR did. `lastVfoOrigin` is meaningful exactly
     // here, inside the notification — `radio` origin means this change IS
@@ -398,7 +398,7 @@ class PeerChannels {
       drafts?.forgetPeer(gone);
       claims?.forgetPeer(gone);
       // The selection itself is NOT cleared — a peer walking away must not
-      // undo the operator's pick (`CatService.remoteRadio1`). What goes is
+      // undo the operator's pick (`PeerStationRadios.followedPeerRadio`). What goes is
       // only what it is offering, so the picker says unavailable rather
       // than listing a radio nobody can reach.
       remoteRadios?.forgetPeer(gone);
@@ -476,8 +476,8 @@ class PeerChannels {
       // picked afterwards has to have something to show. See [_peerVfos].
       _peerVfos['$peerDeviceId/${vfo.radioId}'] =
           VfoReading(freqKHz: vfo.freqKHz, mode: vfo.mode);
-      if (station?.remoteRadio1?.matches(peerDeviceId, vfo.radioId) ?? false) {
-        _appliedSelection = station?.remoteRadio1;
+      if (station?.followedPeerRadio?.matches(peerDeviceId, vfo.radioId) ?? false) {
+        _appliedSelection = station?.followedPeerRadio;
         radio?.setVfo('vfoA', freq: vfo.freqKHz, mode: vfo.mode, origin: VfoOrigin.radio);
       }
       return;

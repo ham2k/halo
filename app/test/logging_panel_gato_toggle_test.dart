@@ -17,9 +17,11 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/views/operation/logging_panel.dart';
 
 void main() {
@@ -85,6 +87,49 @@ void main() {
 
     expect(controls().hasConfiguredRadio, isTrue);
     expect(controls().radioName, 'Test Radio');
+  });
+
+  testWidgets("a peer's radio is a configured radio, though this device holds no session", (tester) async {
+    await services.settings.setExperimentEnabled('gato', true);
+    await tester.pumpWidget(wrap(panel()));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    LoggingControls controls() => tester.widget<LoggingControls>(find.byType(LoggingControls));
+    expect(controls().hasConfiguredRadio, isFalse);
+
+    // The role, not locality: the operator picked a rig and the logging
+    // panel follows its VFO. Asking `cat.radio1 != null` here answers "is it
+    // LOCAL", which reads the Radio control as unconfigured while the
+    // Station dialog above it names the rig.
+    await services.cat.setRadio1(const PeerRadio(PeerRadioSelection(
+      deviceId: 'device-a',
+      radioId: 'rig-1',
+      deviceName: "VE1SK's iPad",
+      radioName: 'FTDX10',
+    )));
+    await tester.pump();
+
+    expect(controls().hasConfiguredRadio, isTrue);
+    expect(controls().radioName, 'FTDX10', reason: 'the remembered name is the only one there is while the peer is away');
+    // The two are read as ONE by the chip: configured-but-not-connected is
+    // its red state, so a peer that never reads connected would be a
+    // permanent alarm about a radio that is working fine.
+    expect(controls().radioConnected, isFalse, reason: 'nobody is offering it yet');
+
+    services.peerRemoteRadios.setOffers('device-a', "VE1SK's iPad", const [
+      PeerRadioOffer(id: 'rig-1', name: 'FTDX10'),
+    ]);
+    await tester.pump();
+
+    expect(controls().radioConnected, isTrue);
+
+    // The peer walking away is this notifier's news alone — CatService hears
+    // nothing about it, so a panel listening only to CAT would keep showing
+    // green for a rig that is gone.
+    services.peerRemoteRadios.setOffers('device-a', "VE1SK's iPad", const []);
+    await tester.pump();
+
+    expect(controls().radioConnected, isFalse);
   });
 
   testWidgets('turning the experiment on with no radio ever configured still reveals the button', (tester) async {

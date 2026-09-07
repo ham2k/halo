@@ -230,7 +230,7 @@ void main() {
     // would never fire at all, and would look exactly like a gate that
     // worked in a shack where nobody transmits while testing it.
     final station = await connectedStation();
-    expect(cat.radio1, station.radioNode.uuid);
+    expect(cat.radio1, LocalRadio(station.radioNode.uuid));
     expect(cat.stateFor(station.switchNode.uuid).telemetry.transmitting, isNull);
 
     radioDriver.sessions.single.sink.reportTransmitting(true);

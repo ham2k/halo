@@ -18,7 +18,6 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/dev_bridge.dart';
 import '../main.dart';
-import '../services/cat/equipment.dart';
 import '../services/error_reporting_service.dart';
 import '../services/cat/zero_beat.dart';
 import '../services/extension_service.dart' show TemplateError;
@@ -3577,15 +3576,14 @@ Map<String, dynamic> zeroBeatSuggestionFor(
   // however the setting is left.
   if (!settings.experimentEnabled('gato') /* stored key, see experiments.yaml */) return qso;
   if (!settings.avoidZeroBeat) return qso;
-  final cat = services.cat;
-  // radio1 specifically — the one node the logging panel drives. A rig
-  // connected in the shack but not driving the panel is not going to be
-  // retuned by this suggestion either.
-  final radio1 = cat.radio1;
+  // The main VFO specifically — a rig connected in the shack but not driving
+  // the panel is not going to be retuned by this suggestion either. A PEER's
+  // rig is: an operator's move reaches it as `catSet`, so leaving it out
+  // would tune it exactly zero beat, which is what this prevents.
   return offsetter.apply(
     qso,
     enabled: true,
-    radioConnected: radio1 != null && cat.stateFor(radio1).status == EquipmentStatus.connected,
+    radioConnected: services.radio1IsLive,
     rangeHz: settings.zeroBeatRangeHz,
   );
 }

@@ -97,7 +97,7 @@ class _FakeStation extends ChangeNotifier implements PeerStationRadios {
       notedOffers.add((deviceId: deviceId, deviceName: deviceName, radios: radios));
 
   @override
-  PeerRadioSelection? remoteRadio1;
+  PeerRadioSelection? followedPeerRadio;
 
   /// Every tune request this station was asked to honor, refused ones
   /// included — the refusals are what several of these tests assert on.
@@ -222,7 +222,7 @@ class _Device {
   /// `station.notifyPick()` after it to stand in for the panel's write,
   /// which notifies; setting the field alone is the pre-pairing setup every
   /// other test wants.
-  void control(_Device owner) => station.remoteRadio1 =
+  void control(_Device owner) => station.followedPeerRadio =
       PeerRadioSelection(deviceId: owner.deviceId, radioId: owner.radioId);
 
   final String deviceId;
@@ -410,7 +410,7 @@ void main() {
       // uuids are unique within a station but the pair is not one station,
       // so matching on the device alone would follow the wrong rig here and
       // any peer's rig in the test above.
-      phone.station.remoteRadio1 =
+      phone.station.followedPeerRadio =
           const PeerRadioSelection(deviceId: 'device-a', radioId: 'rig-the-other-one');
       laptop.radio.setVfo('vfoA', freq: 14285.0, mode: 'USB');
       await paired();
@@ -569,7 +569,7 @@ void main() {
       await laptop.service.setEnabled(false);
       await waitFor('the offer to be forgotten', () => phone.remoteRadios.all.isEmpty);
 
-      expect(phone.station.remoteRadio1?.radioId, laptop.radioId);
+      expect(phone.station.followedPeerRadio?.radioId, laptop.radioId);
     });
   });
 

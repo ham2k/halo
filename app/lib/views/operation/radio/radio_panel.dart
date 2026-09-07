@@ -206,7 +206,11 @@ class _RadioPanelState extends State<RadioPanel> {
     // to — would otherwise throw a TypeError out of a frame over one bad
     // settings entry.
     final stored = _config[radioNodeKey];
-    final uuid = stored is! String || stored == radioNodeAuto ? _cat.radio1 : stored;
+    final uuid = stored is! String || stored == radioNodeAuto
+        // The LOCAL rig: this panel is a front panel for a session this
+        // device holds, which a peer's radio is not.
+        ? switch (_cat.radio1) { LocalRadio(:final uuid) => uuid, _ => null }
+        : stored;
     if (uuid == null) return null;
     return _cat.nodeFor(uuid);
   }

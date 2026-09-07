@@ -12,9 +12,11 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/peer/peer_station_radios.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/station_panel.dart';
@@ -68,6 +70,54 @@ void main() {
     expect(find.text('No equipment configured'), findsNothing, reason: 'compact mode never shows this message');
   });
 
+  group("a peer's radio driving the main VFO", () {
+    const pick = PeerRadioSelection(
+      deviceId: 'device-a',
+      radioId: 'rig-1',
+      deviceName: "VE1SK's iPad",
+      radioName: 'FTDX10',
+    );
+
+    testWidgets('gets a row of its own in Equipment in Use', (tester) async {
+      await services.cat.setRadio1(const PeerRadio(pick));
+
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+
+      // The trap the section header names: with the peer listed nowhere, a
+      // section titled "Equipment in Use" sat empty while the dropdown
+      // directly above it named the peer as the rig in use.
+      expect(find.text('Equipment in Use'), findsOneWidget);
+      expect(find.text('FTDX10'), findsOneWidget);
+      expect(find.text("On VE1SK's iPad"), findsOneWidget);
+      // It drives vfoA, so it wears the pill a local rig in that role wears.
+      expect(find.text('Main VFO'), findsOneWidget);
+      // No peer is offering it in this test, and the row says so rather than
+      // disappearing — the pick survives the peer walking away.
+      expect(find.text('Not available'), findsOneWidget);
+    });
+
+    testWidgets('has nothing to connect, edit or unplug', (tester) async {
+      await services.cat.setRadio1(const PeerRadio(pick));
+
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+
+      // Anchored on the peer's own row: with no local radio and the keyer
+      // experiment off, a bare findsNothing for the plug passes just as well
+      // when the row is not built at all.
+      final row = find.ancestor(of: find.text('FTDX10'), matching: find.byType(ListTile));
+      expect(row, findsOneWidget);
+
+      // The rig is plugged into the other device. A plug icon here would
+      // offer a session this app cannot open, and the row is not a local
+      // equipment record to edit or remove either.
+      expect(find.descendant(of: row, matching: find.byIcon(MdiIcons.powerPlugOff)), findsNothing);
+      expect(find.descendant(of: row, matching: find.byIcon(MdiIcons.powerPlug)), findsNothing);
+      expect(find.descendant(of: row, matching: find.byIcon(MdiIcons.trashCanOutline)), findsNothing);
+    });
+  });
+
   group('CW keyer row', () {
     testWidgets('is not there at all without the keyer experiment', (tester) async {
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
@@ -115,7 +165,7 @@ void main() {
         name: 'Bench Rig',
         config: placeholderRadioModel.variants.single.defaultConfig,
       );
-      expect(services.cat.designatedKeyerNode?.uuid, services.cat.radio1, reason: 'sanity: one node fills both roles');
+      expect(services.cat.isRadio1(services.cat.designatedKeyerNode!.uuid), isTrue, reason: 'sanity: one node fills both roles');
 
       await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
       await tester.pumpAndSettle();

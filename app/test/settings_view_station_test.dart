@@ -15,6 +15,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/i18n/strings.g.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -620,7 +621,7 @@ void main() {
 
     await tester.tap(find.text('Right Radio').last);
     await tester.pumpAndSettle();
-    expect(services.cat.radio1, 'radio-2');
+    expect(services.cat.radio1, LocalRadio('radio-2'));
   });
 
   testWidgets('a node whose type no longer exists says so instead of vanishing', (tester) async {

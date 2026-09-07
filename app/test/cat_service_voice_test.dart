@@ -10,6 +10,7 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart';
@@ -79,13 +80,13 @@ void main() {
     final first = await connectPlaceholder('Rig A');
     final second = await connectPlaceholder('Rig B');
     // Adding a transceiver makes it radio1; put A back in charge.
-    await cat.setRadio1(first.uuid);
+    await cat.setRadio1(LocalRadio(first.uuid));
 
     cat.playVoiceMemory(1);
     expect(cat.voiceActivity.value, isNotNull);
     // The trap: a change of radio1 leaving Rig A's "playing" on a strip
     // that now belongs to Rig B.
-    await cat.setRadio1(second.uuid);
+    await cat.setRadio1(LocalRadio(second.uuid));
     expect(cat.voiceActivity.value, isNull);
     // Rig A is still playing for real; its report must not land on B's strip.
     expect(cat.stateFor(first.uuid).status, EquipmentStatus.connected, reason: 'sanity');

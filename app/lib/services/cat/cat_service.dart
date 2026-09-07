@@ -40,7 +40,51 @@ const _uuidGenerator = Uuid();
 ///
 /// 2 — `designated` became per radio (radio → category → uuid). Version 1's
 /// blob is one flat category → uuid map, and [CatService._load] migrates it.
-const _storageVersion = 2;
+///
+/// 3 — the two `radio1` / `remoteRadio1` keys became one `mainVfo`, holding
+/// whichever kind of radio was picked. Older blobs are read from the old
+/// pair by [CatService._load].
+const _storageVersion = 3;
+
+/// What drives `vfoA` — one slot, because there is one VFO.
+///
+/// A sum rather than two nullable fields: the two cases are mutually
+/// exclusive, and a type that cannot hold both is what keeps every writer,
+/// and every hand-edited or newer-build blob, from pointing `vfoA` at two
+/// things at once.
+///
+/// [CatService.radio1] holds one of these, or null for None — `radio1` being
+/// data-model.md's name for the transceiver whose VFO is `vfoA`, which this
+/// makes true of a peer's rig as much as of one plugged in here.
+sealed class MainVfo {
+  const MainVfo();
+}
+
+/// A transceiver in this device's own equipment list.
+class LocalRadio extends MainVfo {
+  final String uuid;
+
+  const LocalRadio(this.uuid);
+
+  @override
+  bool operator ==(Object other) => other is LocalRadio && other.uuid == uuid;
+
+  @override
+  int get hashCode => uuid.hashCode;
+}
+
+/// A radio on another device, reached over a peer link (HALO-416).
+class PeerRadio extends MainVfo {
+  final PeerRadioSelection selection;
+
+  const PeerRadio(this.selection);
+
+  @override
+  bool operator ==(Object other) => other is PeerRadio && other.selection == selection;
+
+  @override
+  int get hashCode => selection.hashCode;
+}
 
 /// How long a connected node may say NOTHING before the row stops
 /// presenting its last reading as current ([EquipmentState.stale]).
@@ -361,17 +405,18 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   Set<String> get _autoConnectTargets {
     final keyer = designatedFor(kCategoryKey);
     return {
-      if (_radio1 case final uuid?) uuid,
+      if (_localRadio1 case final uuid?) uuid,
       if (keyer != null && _isDesignatedKeyerDevice(keyer)) keyer,
     };
   }
 
   EquipmentNode? nodeFor(String uuid) => _nodes[uuid];
 
-  // ----------------------------------------------------------- radio1
+  // ---------------------------------------------------------- main VFO
 
-  /// Which node drives the logging panel — `radio1` in data-model.md's
-  /// terms, the transceiver whose VFO is `vfoA`.
+  /// What drives the logging panel — `radio1` in data-model.md's terms, the
+  /// transceiver whose VFO is `vfoA`, whether it is this device's own or a
+  /// peer's.
   ///
   /// PLAIN STORED STATE. Nothing derives it, and that is the design: three
   /// simple rules, each triggered by something the operator did.
@@ -392,68 +437,55 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// merely-unloadable record look like None, and let the designation move
   /// between launches if a node's driver key stopped resolving. Storing the
   /// value outright removes that whole class of question.
-  String? _radio1;
+  MainVfo? _radio1;
 
-  String? get radio1 => _radio1;
+  MainVfo? get radio1 => _radio1;
 
-  bool isRadio1(String uuid) => _radio1 == uuid;
+  /// The LOCAL node filling the role, or null — which a peer pick also
+  /// answers with null, since this app holds no session to a peer's rig.
+  /// Everything reaching for a runtime, a session or an [EquipmentNode]
+  /// wants this; [radio1] is the role itself.
+  String? get _localRadio1 => switch (_radio1) {
+        LocalRadio(:final uuid) => uuid,
+        _ => null,
+      };
 
-  /// The peer radio driving `vfoA`, when it is not a local one (HALO-416).
+  /// Whether [uuid] is the local node filling the role — a peer pick is no
+  /// node of this station's, so it answers false for every uuid.
+  bool isRadio1(String uuid) => _localRadio1 == uuid;
+
+  /// The peer bridge's own view of the pick: which peer radio this device
+  /// follows, or null when `vfoA` is a local rig's or nothing's.
   ///
-  /// Plain stored state beside [radio1], and MUTUALLY EXCLUSIVE with it:
-  /// `vfoA` is one VFO, so two things writing it fight, and the dropdown
-  /// that sets these is one list for exactly that reason.
-  ///
-  /// Kept across launches and across the peer walking away, like [radio1] is
-  /// — the picker shows it as unavailable and it re-engages by itself when
-  /// that device comes back. Nothing here checks whether the peer is
+  /// A peer pick is kept across launches and across that device walking
+  /// away — the picker shows it as unavailable and it re-engages by itself
+  /// when the peer comes back. Nothing here checks whether the peer is
   /// present: this service cannot see the sessions, and a selection that
   /// erased itself on a dropped link would be gone before the operator
   /// looked up.
-  PeerRadioSelection? _remoteRadio1;
-
   @override
-  PeerRadioSelection? get remoteRadio1 => _remoteRadio1;
+  PeerRadioSelection? get followedPeerRadio => switch (_radio1) {
+        PeerRadio(:final selection) => selection,
+        _ => null,
+      };
 
-  /// Points `vfoA` at a peer's radio, clearing [radio1] — see
-  /// [remoteRadio1] for why the two cannot both be set.
-  Future<void> setRemoteRadio1(PeerRadioSelection? selection) async {
-    if (_remoteRadio1 == selection && (selection == null || _radio1 == null)) return;
+  /// Points `vfoA` at a radio — this device's own, a peer's, or None. One
+  /// setter because there is one slot: every pick is a statement about the
+  /// same VFO, so each displaces whatever filled the role before.
+  Future<void> setRadio1(MainVfo? next) async {
+    if (_radio1 == next) return;
+    final outgoing = _localRadio1;
     // The picks are per radio, so moving `vfoA` moves the key in use with it.
     _withKeyInUseTidied(() {
-      _remoteRadio1 = selection;
-      if (selection != null && _radio1 != null) {
-        // The same two clears [setRadio1] does, and for the same reasons: the
-        // outgoing radio stops being told anything, and a movement measured on
-        // it says nothing about where the peer's rig is sitting.
-        _runtimes[_radio1!]?.lastSent = null;
-        _runtimes[_radio1!]?.lastSentPower = null;
-        cwProgress.value = null;
-        voiceActivity.value = null;
-        _cancelSnap(null);
-        _radio1 = null;
-      }
-    });
-    await _save();
-    notifyListeners();
-  }
-
-  Future<void> setRadio1(String? uuid) async {
-    // Picking a local radio — None included — is a statement about `vfoA`,
-    // which a remote pick also claims. Picking None while a remote radio is
-    // selected is therefore a real change even though `_radio1` is already
-    // null, which is what this has to be checked ahead of the early return.
-    final clearingRemote = _remoteRadio1 != null;
-    if (_radio1 == uuid && !clearingRemote) return;
-    // See [setRemoteRadio1]: the key in use belongs to the radio.
-    _withKeyInUseTidied(() {
-      _remoteRadio1 = null;
       // The echo guard is per-node but only meaningful for whichever node is
       // radio1 — the same reason [_closeSession] clears it. The incoming
       // radio was told nothing while it wasn't driving the panel, and the
       // outgoing one stops being asked, so a stale value on either would
       // suppress the first tune to a frequency that radio happens to be on.
-      for (final id in [_radio1, uuid]) {
+      //
+      // The incoming side is null for a peer pick, and rightly: there is no
+      // local runtime to clear, and the outgoing one still needs clearing.
+      for (final id in [outgoing, switch (next) { LocalRadio(:final uuid) => uuid, _ => null }]) {
         if (id != null) {
           _runtimes[id]?.lastSent = null;
           _runtimes[id]?.lastSentPower = null;
@@ -464,7 +496,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // Same reasoning for the snapper: a movement measured on the outgoing
       // radio says nothing about where the incoming one is sitting.
       _cancelSnap(null);
-      _radio1 = uuid;
+      _radio1 = next;
     });
     await _save();
     notifyListeners();
@@ -482,7 +514,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   @override
   void noteOffer(String deviceId, String deviceName, List<PeerRadioOffer> radios) {
-    final selection = _remoteRadio1;
+    final selection = followedPeerRadio;
     if (selection == null || selection.deviceId != deviceId) return;
     for (final radio in radios) {
       if (radio.id != selection.radioId) continue;
@@ -491,12 +523,12 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // which is why [PeerRadioSelection] compares only the ids. Written
       // through rather than held in memory: the name is wanted precisely
       // when the peer is not here to state it, relaunches included.
-      _remoteRadio1 = PeerRadioSelection(
+      _radio1 = PeerRadio(PeerRadioSelection(
         deviceId: deviceId,
         radioId: radio.id,
         deviceName: deviceName,
         radioName: radio.name,
-      );
+      ));
       unawaited(_save());
       notifyListeners();
       return;
@@ -519,7 +551,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // funnel a local keystroke takes: the logging panel follows it and Smart
     // VFO Snap measures it. Tuning it directly would move the rig with the
     // operator's own app still showing where it was.
-    if (radioId == _radio1) {
+    if (radioId == _localRadio1) {
       _radio?.setVfo('vfoA', freq: freqKHz, mode: mode);
       return;
     }
@@ -551,11 +583,11 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   /// Whose picks [designatedFor] and [setDesignated] are talking about:
   /// whatever is driving `vfoA` right now.
-  String _designationKey() {
-    if (_radio1 case final uuid?) return uuid;
-    if (_remoteRadio1 case final selection?) return peerRadioValue(selection);
-    return _noRadioKey;
-  }
+  String _designationKey() => switch (_radio1) {
+        LocalRadio(:final uuid) => uuid,
+        PeerRadio(:final selection) => peerRadioValue(selection),
+        null => _noRadioKey,
+      };
 
   String? designatedFor(String category) {
     final picks = _designated[_designationKey()];
@@ -573,7 +605,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   String? _defaultDesignation(String category) {
     if (category != kCategoryKey) return null;
     if (!_settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return null;
-    final uuid = _radio1;
+    final uuid = _localRadio1;
     if (uuid == null) return null;
     final node = _nodes[uuid];
     if (node == null) return null;
@@ -608,7 +640,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// EVERY path that moves the key in use goes through this, and most of them
   /// never name a key at all: picking a radio, adding a transceiver (the
   /// newest takes the VFO), removing one. The picks belong to the radio, so
-  /// a writer of `_radio1` is a writer of the key in use whether it meant to
+  /// a writer of `radio1` is a writer of the key in use whether it meant to
   /// be or not — which is why this is a wrapper rather than a line each of
   /// them has to remember.
   void _withKeyInUseTidied(void Function() mutate) {
@@ -650,7 +682,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// consulted would leave the Power logging control and the More pane, which
   /// read [Vfo.power] directly, showing nothing while this showed 100.
   num? get displayedPower {
-    final uuid = _radio1;
+    final uuid = _localRadio1;
     final live = uuid == null ? null : stateFor(uuid).power;
     return live ?? _radio?.vfoA.power;
   }
@@ -660,7 +692,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// [RadioService] ([_onVfoChanged]): several surfaces read and write it,
   /// and one app-wide value is what keeps them agreeing.
   void setPower(num watts) {
-    final uuid = _radio1;
+    final uuid = _localRadio1;
     if (uuid == null) return;
     final runtime = _runtimes[uuid];
     final session = runtime?.session;
@@ -880,7 +912,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// Voice Messages dialog's Play and Record) exists only while this is
   /// non-null.
   VoiceKeyerSession? get _voiceKeyer {
-    final uuid = _radio1;
+    final uuid = _localRadio1;
     if (uuid == null) return null;
     final runtime = _runtimes[uuid];
     if (runtime?.state.status != EquipmentStatus.connected) return null;
@@ -970,7 +1002,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // is right, but a tap that does nothing at all is indistinguishable
       // from a switch that has stopped working — and the operator has no
       // other way to tell those apart.
-      debugPrint('[cat] antenna selection refused: ${_radio1 == null ? 'a radio' : displayNameFor(nodeFor(_radio1!)!)} is transmitting');
+      debugPrint('[cat] antenna selection refused: ${_localRadio1 == null ? 'a radio' : displayNameFor(nodeFor(_localRadio1!)!)} is transmitting');
       return;
     }
     try {
@@ -987,7 +1019,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// otherwise" — a shack whose rigs cannot answer must keep working exactly
   /// as it did before there was any telemetry at all.
   bool get radio1IsTransmitting {
-    final uuid = _radio1;
+    final uuid = _localRadio1;
     if (uuid == null) return false;
     final state = stateFor(uuid);
     // A radio that has gone SILENT is not a radio that is transmitting, even
@@ -1030,15 +1062,40 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // Read, not derived. A stored uuid whose node did not load — a corrupt
     // record, or one written by a newer build — leaves this None rather than
     // silently designating some other radio.
-    final radio1 = stored['radio1'];
-    if (radio1 is String && _nodes.containsKey(radio1)) _radio1 = radio1;
-    // No equivalent of the node check above, and there cannot be one: a peer
-    // radio's existence is a fact about another device, which this one
-    // cannot ask about at load. An absent peer reads as an unavailable
-    // selection, not as a corrupt one. Exclusivity is enforced on the way in
-    // — refusing to load both keeps a hand-edited or newer-build blob from
-    // pointing `vfoA` at two things at once.
-    if (_radio1 == null) _remoteRadio1 = PeerRadioSelection.from(stored['remoteRadio1']);
+    //
+    // There is no equivalent node check for a peer, and there cannot be one:
+    // a peer radio's existence is a fact about another device, which this
+    // one cannot ask about at load. An absent peer reads as an unavailable
+    // selection, not as a corrupt one.
+    //
+    // Version 2 and older wrote the same thing as two keys, which a
+    // hand-edited or newer-build blob could set both of; the local one wins,
+    // as the version that stored them decided. Written back as one key, so a
+    // blob only ever states one.
+    // Told apart by the VERSION the blob was written under, not by whether
+    // the key is there: version 3 writes an explicit null for None, which a
+    // shape probe would read as a version 2 blob and answer out of whatever
+    // `radio1` a future writer happened to leave behind — resurrecting a
+    // pick the operator had cleared. Same rule as `designated` below.
+    final storedVersion = stored['version'];
+    final storedVfo = stored['mainVfo'];
+    if (storedVersion is int && storedVersion >= 3) {
+      if (storedVfo is Map) {
+        final uuid = storedVfo['radio'];
+        if (uuid is String && _nodes.containsKey(uuid)) {
+          _radio1 = LocalRadio(uuid);
+        } else if (PeerRadioSelection.from(storedVfo['peer']) case final selection?) {
+          _radio1 = PeerRadio(selection);
+        }
+      }
+    } else {
+      final legacyRadio1 = stored['radio1'];
+      if (legacyRadio1 is String && _nodes.containsKey(legacyRadio1)) {
+        _radio1 = LocalRadio(legacyRadio1);
+      } else if (PeerRadioSelection.from(stored['remoteRadio1']) case final selection?) {
+        _radio1 = PeerRadio(selection);
+      }
+    }
     final designated = stored['designated'];
     if (designated is Map) {
       // Two shapes, told apart by the version the blob was written under
@@ -1063,7 +1120,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         if (picks is! Map) continue;
         for (final pick in picks.entries) {
           final uuid = pick.value;
-          // A pick whose node did not load is dropped, for [_radio1]'s
+          // A pick whose node did not load is dropped, for [radio1]'s
           // reason. An explicit null is kept: that is the operator having
           // answered None, not a missing node.
           if (uuid != null && !(uuid is String && _nodes.containsKey(uuid))) continue;
@@ -1078,12 +1135,15 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         // Always, null included, so the blob states what is true rather than
         // leaving None to be inferred from a missing key.
         //
-        // NOT load-bearing, and worth saying so: nothing derives radio1, so
-        // an absent key and a stored null both read as None — writing
-        // `if (_radio1 != null)` would behave identically and fail no test,
-        // and that is correct rather than a hole in the tests.
-        'radio1': _radio1,
-        'remoteRadio1': _remoteRadio1?.toJson(),
+        // NOT load-bearing, and worth saying so: nothing derives the main
+        // VFO, so an absent key and a stored null both read as None —
+        // writing `if (_radio1 != null)` would behave identically and fail
+        // no test, and that is correct rather than a hole in the tests.
+        'mainVfo': switch (_radio1) {
+          LocalRadio(:final uuid) => {'radio': uuid},
+          PeerRadio(:final selection) => {'peer': selection.toJson()},
+          null => null,
+        },
         'designated': _designated,
         'nodes': {for (final node in _nodes.values) node.uuid: node.toJson()},
       });
@@ -1139,7 +1199,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // where `vfoA` comes from, and configuring a rig — which is not the same
       // as reaching for it — must not silently take the panel back off the
       // radio they are working through.
-      if (category == kCategoryTransceiver && _remoteRadio1 == null) _radio1 = stored.uuid;
+      if (category == kCategoryTransceiver && _radio1 is! PeerRadio) _radio1 = LocalRadio(stored.uuid);
       // Same rule as radio1, for antenna/key, and for the radio in use: the
       // newest one designated, so adding the antenna this rig runs needs no
       // separate picker visit. Only this rig's, since the picks are per
@@ -1277,7 +1337,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       // Removing the designated radio clears the choice rather than quietly
       // moving the logging panel onto a different rig immediately after a
       // destructive action. The dropdown is right there.
-      if (_radio1 == uuid) _radio1 = null;
+      if (_localRadio1 == uuid) _radio1 = null;
       // Same rule for antenna/key designations — across EVERY radio's picks,
       // not just the selected one's, and the removed radio's own set of picks
       // goes with it. A pick that disappears this way is "never decided"
@@ -1666,7 +1726,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         // `radio` so [_onVfoChanged] doesn't send it straight back. The
         // baseline moves with it: what the radio reports is where the app
         // now is, so the next operator change is measured from there.
-        if (uuid == _radio1) {
+        if (uuid == _localRadio1) {
           _lastSeenVfoPower = watts;
           _radio?.setVfo('vfoA', power: watts, origin: VfoOrigin.radio);
         }
@@ -1717,7 +1777,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         // off the radio, so it says nothing about the link. The poll answers
         // that end one feed the watch through the normal reading path.
         // Only radio1's memories play for the app, so only its are shown.
-        if (uuid == _radio1) voiceActivity.value = activity;
+        if (uuid == _localRadio1) voiceActivity.value = activity;
       },
       onProblem: (message) {
         if (runtime.connection != connection) return;
@@ -2116,7 +2176,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // `radio` is what lets _onVfoChanged recognise the notification it's
     // about to receive as its own, instead of re-tuning the radio to the
     // value the radio just gave it.
-    if (uuid != _radio1) return;
+    if (uuid != _localRadio1) return;
     _radio?.setVfo('vfoA', freq: merged.freqKHz, mode: merged.mode, origin: VfoOrigin.radio);
     _noteSnapReading(merged);
   }
@@ -2170,7 +2230,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// Re-reading it later would chase the back-off the moment the dial stops.
   Duration get _snapQuietPeriod {
     final configured = _settings.smartVfoSnapDebounce;
-    final expected = _runtimes[_radio1]?.session?.expectedUpdateInterval;
+    final expected = _runtimes[_localRadio1]?.session?.expectedUpdateInterval;
     return expected == null ? configured : configured + expected;
   }
 
@@ -2230,7 +2290,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     final powerChanged = radio.vfoA.power != _lastSeenVfoPower;
     _lastSeenVfoPower = radio.vfoA.power;
 
-    final uuid = _radio1;
+    final uuid = _localRadio1;
     if (uuid == null) return;
     if (_runtimes[uuid]?.session == null) {
       // The operator is working the controls of a radio that is not there.
@@ -2375,13 +2435,13 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     runtime.lastSent = null;
     runtime.lastSentPower = null;
     if (identical(_runtimes[designatedFor(kCategoryKey)], runtime)) cwProgress.value = null;
-    if (_radio1 != null && identical(_runtimes[_radio1], runtime)) voiceActivity.value = null;
+    if (_localRadio1 != null && identical(_runtimes[_localRadio1], runtime)) voiceActivity.value = null;
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a
     // fresh resting point, not the continuation of a knob turn. Only for the
     // designated radio — nothing else ever feeds the snapper, and clearing it
     // when some other node disconnects would drop a live knob turn.
-    if (_radio1 != null && identical(_runtimes[_radio1], runtime)) _cancelSnap(null);
+    if (_localRadio1 != null && identical(_runtimes[_localRadio1], runtime)) _cancelSnap(null);
 
     if (subscription != null) await subscription.cancel();
 

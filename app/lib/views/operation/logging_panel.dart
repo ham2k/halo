@@ -269,28 +269,28 @@ class _LoggingPanelState extends State<LoggingPanel> {
   // "no" for an operator without Station Configuration on.
   late bool _hasConfiguredRadio = _computeHasConfiguredRadio();
 
+  // The ROLE, not locality: a peer's radio the operator picked for the main
+  // VFO is a configured radio, whether or not this device holds the session
+  // to it. `_radioConnected` below is where locality is the question.
   bool _computeHasConfiguredRadio() => _gatoEnabled && widget.services.cat.radio1 != null;
 
-  // Whether radio1 is actually connected right now, as opposed to merely
-  // configured — the Station Configuration button's red/green.
+  // Whether the main VFO's radio is actually reachable right now, as opposed
+  // to merely configured — the Station Configuration button's red/green.
+  //
+  // Asked of whichever kind fills the role, because the pair is read as one:
+  // a configured radio that never reads connected is a permanent red alarm,
+  // which is what a peer's rig would be if this only ever asked about a
+  // local session. For a peer that means the peer is offering it right now —
+  // the same fact the Station dialog's row states as availability.
   late bool _radioConnected = _computeRadioConnected();
 
-  bool _computeRadioConnected() {
-    if (!_gatoEnabled) return false;
-    final uuid = widget.services.cat.radio1;
-    return uuid != null && widget.services.cat.stateFor(uuid).status == EquipmentStatus.connected;
-  }
+  bool _computeRadioConnected() => _gatoEnabled && widget.services.radio1IsLive;
 
-  // radio1's display name — the Radio control's own reflection of the same
-  // name station_panel.dart's equipment list shows for it.
+  // The main VFO's display name — the Radio control's own reflection of the
+  // same name station_panel.dart's equipment list shows for it.
   late String? _radioName = _computeRadioName();
 
-  String? _computeRadioName() {
-    if (!_gatoEnabled) return null;
-    final cat = widget.services.cat;
-    final node = cat.radio1 == null ? null : cat.nodeFor(cat.radio1!);
-    return node == null ? null : cat.displayNameFor(node);
-  }
+  String? _computeRadioName() => _gatoEnabled ? widget.services.radio1Name : null;
 
   /// Merges the operator's tracked station-info fields (Station
   /// Configuration's "Track Station Info for each QSO") into a QSO at save
@@ -313,7 +313,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
     final our = {...(qso['our'] as Map?)?.cast<String, dynamic>() ?? <String, dynamic>{}};
     num? power;
     if (tracked.contains('rig')) {
-      final name = nameFor(cat.radio1);
+      // Whatever drives the VFO — a peer's rig is the one the contact was
+      // worked through, and the panel names it two rows up.
+      final name = widget.services.radio1Name;
       if (name != null) our['rig'] = name;
     }
     // Never over a power the entry already states — the Power control's
@@ -371,6 +373,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // keeps this in sync with _gatoEnabled if the experiment flips later.
     if (_gatoEnabled) {
       widget.services.cat.addListener(_onCatChanged);
+      // A peer's rig going away or coming back is this notifier's news
+      // alone — CatService hears nothing, so without this the chip keeps
+      // whatever colour it had when the link dropped.
+      widget.services.peerRemoteRadios.addListener(_onCatChanged);
     }
     // Route the dev bridge's actions to this panel's LoggingControls — only
     // when the bridge is installed (dev/preview web), so nothing runs in
@@ -396,6 +402,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
     widget.services.radio.removeListener(_onRadioChanged);
     if (_gatoEnabled) {
       widget.services.cat.removeListener(_onCatChanged);
+      widget.services.peerRemoteRadios.removeListener(_onCatChanged);
     }
     // Only clear if still ours — a newer logging panel may have taken over.
     if (DevBridge.instance.actionHandler == _devAction) {
@@ -625,8 +632,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
     if (gato != _gatoEnabled) {
       if (gato) {
         widget.services.cat.addListener(_onCatChanged);
+        widget.services.peerRemoteRadios.addListener(_onCatChanged);
       } else {
         widget.services.cat.removeListener(_onCatChanged);
+        widget.services.peerRemoteRadios.removeListener(_onCatChanged);
       }
       // Its own setState — _onCatChanged's below only fires one if the
       // radio-derived fields it owns actually changed, which they don't
