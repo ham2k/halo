@@ -194,8 +194,8 @@ void main() {
           return {
             'key': row['id'],
             'name': row['title'],
-            'lat': double.tryParse(row['latitude'] ?? ''),
-            'lon': double.tryParse(row['longitude'] ?? ''),
+            'lat': double.tryParse(row['latitude'] as String? ?? ''),
+            'lon': double.tryParse(row['longitude'] as String? ?? ''),
             'flags': 1,
             'data': {'note': 'Mapped in test'},
           };

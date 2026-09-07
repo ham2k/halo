@@ -58,7 +58,7 @@ class AsciiCatFramer {
     _residual = parts.removeLast();
     return [
       for (final part in parts)
-        if (parseAsciiCatCommand('$part;') case final command?) command,
+        ?parseAsciiCatCommand('$part;'),
     ];
   }
 

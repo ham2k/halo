@@ -11,8 +11,8 @@ void main() {
   /// that silently stopped working.
   Map<String, dynamic> spot({double? freq = 14050, String? mode = 'CW'}) => {
         'their': {'call': 'N0DX'},
-        if (freq != null) 'freq': freq,
-        if (mode != null) 'mode': mode,
+        'freq': ?freq,
+        'mode': ?mode,
         'refs': const [],
       };
 

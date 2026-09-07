@@ -166,7 +166,7 @@ void main() {
       }
 
       for (final m in _edgeInsets.allMatches(source)) {
-        for (final arg in _args(source, m.end - 1) ?? const []) {
+        for (final arg in _args(source, m.end - 1) ?? const <({String text, int offset})>[]) {
           final value = _value(arg.text);
           if (!_number.hasMatch(value)) continue;
           final n = double.parse(value);

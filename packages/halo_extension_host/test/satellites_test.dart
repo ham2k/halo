@@ -430,7 +430,7 @@ void main() {
         await host.invokeHook('command',
             key: 'satellites-sat',
             method: 'interpret',
-            args: {'input': input, if (qso != null) 'qso': qso},
+            args: {'input': input, 'qso': ?qso},
             timeout: const Duration(seconds: 10)) as Map?;
 
     test('names the bird AND tunes the radio, which a control cannot', () async {

@@ -59,8 +59,8 @@ void main() {
       method: 'interpret',
       args: {
         'input': input,
-        if (operation != null) 'operation': operation,
-        if (qso != null) 'qso': qso,
+        'operation': ?operation,
+        'qso': ?qso,
         if (execute) 'execute': true,
       },
     );

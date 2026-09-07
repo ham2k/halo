@@ -19,9 +19,9 @@ Map<String, dynamic> _spot({
 }) =>
     {
       'their': {'call': call},
-      if (freq != null) 'freq': freq,
-      if (band != null) 'band': band,
-      if (mode != null) 'mode': mode,
+      'freq': ?freq,
+      'band': ?band,
+      'mode': ?mode,
       'refs': refs ?? const <Map<String, dynamic>>[],
       'spot': {'timeInMillis': 1000, 'source': 'test'},
     };

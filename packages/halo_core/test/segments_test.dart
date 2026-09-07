@@ -27,7 +27,7 @@ Qso _event(int atMillis, String kind, {Map<String, dynamic>? operation, bool del
       data: {
         'startAtMillis': atMillis,
         'band': 'event',
-        'event': {'event': kind, if (operation != null) 'operation': operation},
+        'event': {'event': kind, 'operation': ?operation},
       },
     );
 

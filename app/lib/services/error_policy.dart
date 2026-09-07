@@ -459,7 +459,7 @@ class ErrorPolicy {
   /// private Dart field off an instance whose class no longer declares it,
   /// and JavaScript answers `undefined` rather than throwing on the object
   /// itself. What surfaces is a `TypeError: Cannot read properties of
-  /// undefined (reading 'Symbol(<field>)')`, usually from deep inside the
+  /// undefined (reading 'Symbol(…)')`, usually from deep inside the
   /// framework — a stranded `Element` whose `_lifecycleState` has gone
   /// missing, say, which then fails an assert whose own message cannot be
   /// built either.

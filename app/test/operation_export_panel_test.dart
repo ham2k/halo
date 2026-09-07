@@ -14,11 +14,10 @@
 //     built by the extensions, so they can't be patched up locally — WITHOUT
 //     discarding ticks already made.
 
+import 'dart:ui' show CheckedState;
 import 'dart:async';
 
 import 'package:drift/native.dart';
-import 'package:flutter/foundation.dart' show TargetPlatform;
-import 'package:flutter/semantics.dart' show SemanticsFlag;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -323,15 +322,15 @@ void main() {
       await pump(tester);
 
       final node = tester.getSemantics(find.bySemanticsLabel('Share 2026-07-15 N0CALL Test Op Full.adi'));
-      expect(node.hasFlag(SemanticsFlag.isButton), isTrue);
-      expect(node.hasFlag(SemanticsFlag.hasCheckedState), isFalse,
+      expect(node.flagsCollection.isButton, isTrue);
+      expect(node.flagsCollection.isChecked, CheckedState.none,
           reason: 'a checked state here means it merged into the checkbox again');
 
       // The row's tap target is excluded from semantics, so the checkbox is
       // the ONLY thing naming the option to a screen reader. Unlabelled, it
       // would announce as a bare "checkbox" in a column of them.
       final checkbox = tester.getSemantics(find.byType(Checkbox).first);
-      expect(checkbox.hasFlag(SemanticsFlag.hasCheckedState), isTrue);
+      expect(checkbox.flagsCollection.isChecked, isNot(CheckedState.none));
       expect(checkbox.label, 'POTA US-1234');
 
       handle.dispose();

@@ -9,7 +9,8 @@
 // icons, i18n keys, and value-dependent descriptions, minus the
 // getCoreSettings/setCoreSetting host round-trips.
 
-import 'package:flutter/foundation.dart';
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -50,15 +51,15 @@ Map<String, dynamic> _select({
   'key': key,
   'label': label,
   'icon': icon,
-  if (description != null) 'description': description,
-  if (aliases != null) 'aliases': aliases,
+  'description': ?description,
+  'aliases': ?aliases,
   'value': value,
   'options': [
     for (final o in options) {'label': o.label, 'value': o.value},
   ],
   if (common) 'common': true,
-  if (environment != null) 'environment': environment,
-  if (target != null) 'target': target,
+  'environment': ?environment,
+  'target': ?target,
   if (devMode) 'devMode': true,
 };
 
@@ -77,11 +78,11 @@ Map<String, dynamic> _text({
   'key': key,
   'label': label,
   'icon': icon,
-  if (description != null) 'description': description,
-  if (aliases != null) 'aliases': aliases,
+  'description': ?description,
+  'aliases': ?aliases,
   'value': value,
-  if (placeholder != null) 'placeholder': placeholder,
-  if (target != null) 'target': target,
+  'placeholder': ?placeholder,
+  'target': ?target,
 };
 
 Map<String, dynamic> _toggle({
@@ -100,12 +101,12 @@ Map<String, dynamic> _toggle({
   'key': key,
   'label': label,
   'icon': icon,
-  if (description != null) 'description': description,
-  if (aliases != null) 'aliases': aliases,
+  'description': ?description,
+  'aliases': ?aliases,
   'value': value,
   if (common) 'common': true,
-  if (environment != null) 'environment': environment,
-  if (target != null) 'target': target,
+  'environment': ?environment,
+  'target': ?target,
 };
 
 /// Theme, language, font scale, and units — the "User Interface" section.
@@ -279,7 +280,7 @@ class GeneralSettingsGroup extends SettingsGroup {
         if (mode != null) await settings.setThemeMode(mode);
       case 'locale':
         await settings.setLocale(value);
-        LocaleSettings.setLocaleRaw(value);
+        unawaited(LocaleSettings.setLocaleRaw(value));
       case 'fontScale':
         final scale = _enumByNameOrNull(FontScale.values, value);
         if (scale != null) await settings.setFontScale(scale);

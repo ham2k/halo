@@ -214,7 +214,9 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
     // into it, rather than fading in place.
     return SizeTransition(
       sizeFactor: _reveal,
-      axisAlignment: -1,
+      // The start edge on both axes — what axisAlignment -1 meant before
+      // SizeTransition took a full alignment.
+      alignment: AlignmentDirectional.topStart,
       child: SlideTransition(
         position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero).animate(_reveal),
         child: Padding(

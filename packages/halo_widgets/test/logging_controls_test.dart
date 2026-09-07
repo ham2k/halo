@@ -211,7 +211,7 @@ void main() {
           children: [
             const Expanded(child: SizedBox.shrink()),
             controls,
-            if (trailing != null) trailing,
+            ?trailing,
             // The panel no longer draws the numbers row — it publishes it, and
             // the app's StatusBarOverlay draws it below the status footer and
             // directly on the keyboard. This stands in for that, so the tests
@@ -12710,7 +12710,7 @@ void main() {
 /// [add] starts throwing after [addsBeforeFailure] successful inserts — the
 /// disk-full / closed-database stand-in for the write-failure tests.
 class _FailingQsosRepository extends QsosRepository {
-  _FailingQsosRepository(HaLoDatabase db, {this.addsBeforeFailure = 0}) : super(db);
+  _FailingQsosRepository(super.db, {this.addsBeforeFailure = 0});
   final int addsBeforeFailure;
   int _adds = 0;
 

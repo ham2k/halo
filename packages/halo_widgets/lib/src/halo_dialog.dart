@@ -62,7 +62,7 @@ class HaloDialogHeader extends StatelessWidget {
                 child: title ?? const SizedBox.shrink(),
               ),
             ),
-            if (trailing != null) trailing!,
+            ?trailing,
           ],
         ),
       ),
@@ -148,7 +148,7 @@ Widget haloDialogFooterRow({
           spacing: Space.md,
           overflowSpacing: Space.md,
           children: [
-            if (secondary != null) secondary,
+            ?secondary,
             if (cancel != null)
               // The deliberate gap, as padding rather than a sibling spacer:
               // the bar's own `spacing` is uniform, and a spacer child would
@@ -355,7 +355,7 @@ class HaloDialog extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (title != null) HaloDialogHeader(title: title),
-            if (header != null) header!,
+            ?header,
             // Flexible, not Expanded: a short dialog still shrink-wraps.
             if (body != null) Flexible(child: body),
             if (actions.isNotEmpty || cancel != null || destructive != null || secondary != null)

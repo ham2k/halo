@@ -422,7 +422,7 @@ void main() {
         headerlessModules: const {'b'},
         editing: true,
         editingPaneControls: (context, id) =>
-            IconButton(key: Key('opts-' + id), icon: const Icon(Icons.tune), onPressed: () {}),
+            IconButton(key: Key('opts-$id'), icon: const Icon(Icons.tune), onPressed: () {}),
       ));
       await tester.pumpAndSettle();
 

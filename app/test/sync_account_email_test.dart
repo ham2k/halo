@@ -36,7 +36,7 @@ class _FakeSocket {
   void send(String event, {String? channel, Object? data}) {
     _controller.foreign.sink.add(jsonEncode({
       'event': event,
-      if (channel != null) 'channel': channel,
+      'channel': ?channel,
       'data': jsonEncode(data ?? const {}),
     }));
   }

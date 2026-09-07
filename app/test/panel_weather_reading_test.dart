@@ -36,7 +36,7 @@ void main() {
       'timezone_abbreviation': 'GMT-4',
       'current_units': {'temperature_2m': '°F', 'wind_speed_10m': 'mp/h'},
       'current': {
-        if (currentTemperature != null) 'temperature_2m': currentTemperature,
+        'temperature_2m': ?currentTemperature,
         'relative_humidity_2m': 47,
         'wind_speed_10m': 10.6,
         'wind_gusts_10m': 16.1,

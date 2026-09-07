@@ -2436,7 +2436,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
           'band': freqFieldUnparseable ? qso.band : parsedBand,
           'mode': _mode.text.trim().toUpperCase(),
           'notes': _notes.text,
-          if (startAtMillis != null) 'startAtMillis': startAtMillis,
+          'startAtMillis': ?startAtMillis,
         },
         scoreCache: qso.scoreCache,
       );
@@ -2500,7 +2500,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
                     IconButton(
                       icon: Icon(MdiIcons.openInNew, semanticLabel: t.home.logs.openOperation),
                       onPressed: () => Navigator.of(context).push(
-                        slideInFromRight(
+                        slideInFromRight<void>(
                           (_) => OperationView(services: widget.services, operationUuid: widget.qso.operationUuid),
                         ),
                       ),

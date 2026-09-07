@@ -264,7 +264,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     if (keyboardIsOpen) {
       // Wait for the keyboard slide-down and container resize to finish first
       // so the horizontal step slide is clean and stable.
-      await Future.delayed(const Duration(milliseconds: 250));
+      await Future<void>.delayed(const Duration(milliseconds: 250));
     }
 
     if (!mounted) return;
@@ -354,11 +354,11 @@ class _OnboardingContentState extends State<_OnboardingContent> {
 
     if (qsoCount > 0) {
       // Navigate directly to the sync settings screen.
-      navigatorKey.currentState?.push(
-        MaterialPageRoute(
+      unawaited(navigatorKey.currentState?.push(
+        MaterialPageRoute<void>(
           builder: (_) => SettingsView(services: widget.services, initialPanel: 'sync'),
         ),
-      );
+      ));
     } else {
       // Assume the user wants to replace all with server data.
       await widget.services.syncEngine.resolveAccountChange(SyncAccountChoice.replace);
@@ -487,7 +487,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
                                   layoutBuilder: (currentChild, previousChildren) => ClipRect(
                                     child: Stack(
                                       fit: isHeightConstrained ? StackFit.expand : StackFit.loose,
-                                      children: [...previousChildren, if (currentChild != null) currentChild],
+                                      children: [...previousChildren, ?currentChild],
                                     ),
                                   ),
                                   transitionBuilder: (child, animation) {

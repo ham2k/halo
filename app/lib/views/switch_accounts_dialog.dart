@@ -207,7 +207,7 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   }
 
   List<Map<String, dynamic>> get _otherAccounts => ((_accountData?['accounts'] as List?) ?? const [])
-      .whereType<Map>()
+      .whereType<Map<dynamic, dynamic>>()
       .map((a) => a.cast<String, dynamic>())
       .toList();
 

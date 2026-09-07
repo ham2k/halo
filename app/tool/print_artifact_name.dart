@@ -13,6 +13,7 @@
 // wrapper. Edition comes from the first CLI arg (dev|next|prod) so CI can pass
 // the one it is building; it falls back to kEdition for a local run. Pure Dart —
 // runs under `dart run` without Flutter.
+// ignore_for_file: avoid_print — a build script; stdout is the interface.
 
 import 'package:halo_build_tools/halo_build_tools.dart';
 import 'package:ham2k_logger/config/version.dart';

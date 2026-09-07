@@ -16,10 +16,10 @@ Map<String, dynamic> _spot({
 }) =>
     {
       'their': {'call': call},
-      if (freq != null) 'freq': freq,
-      if (band != null) 'band': band,
-      if (mode != null) 'mode': mode,
-      if (refs != null) 'refs': refs,
+      'freq': ?freq,
+      'band': ?band,
+      'mode': ?mode,
+      'refs': ?refs,
       'spot': {'timeInMillis': timeInMillis, 'source': 'test'},
     };
 

@@ -296,11 +296,10 @@ class KenwoodSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     this.declaredModeOffset,
     this.cwDialect,
     this.voiceDialect,
-    int voiceMemories = 0,
+    this._voiceMemories = 0,
     this.voiceMemoryCeiling = voiceActivityCeiling,
     Map<String, dynamic> config = const {},
   })  : _modeOffset = declaredModeOffset,
-        _voiceMemories = voiceMemories,
         // ignore: prefer_initializing_formals
         _config = config;
 

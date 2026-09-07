@@ -589,7 +589,7 @@ class CommandEngine extends ChangeNotifier {
       _lookupGuess = (result['guess'] as Map?)?.cast<String, dynamic>();
       final records = result['lookups'];
       _lookupRecords = records is List
-          ? records.whereType<Map>().map((m) => m.cast<String, dynamic>()).toList()
+          ? records.whereType<Map<dynamic, dynamic>>().map((m) => m.cast<String, dynamic>()).toList()
           : const [];
     }
     _lookupFor = call;

@@ -121,7 +121,7 @@ Future<(HaLoServices, Operation)> _harness(
   extensions.debugSetAvailableExtensions(const []);
   return (
     HaLoServices(db, settings, extensions: extensions, location: _FixedLocation(status)),
-    Operation(uuid: 'op-1', data: {'refs': const [], if (grid != null) 'grid': grid}),
+    Operation(uuid: 'op-1', data: {'refs': const [], 'grid': ?grid}),
   );
 }
 

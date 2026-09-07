@@ -398,7 +398,7 @@ void main() {
     // asymmetric in the spec itself. Both sides land in QSON `city`, and the
     // ORDER of the `_set` calls is what decides a record carrying both
     // spellings. Nothing else pins that, so a reordering would be silent.
-    AdifRecord _only(String record) {
+    AdifRecord only(String record) {
       final log = parseAdifLog('<EOH>\n$record<EOR>\n');
       return log.qsos.single;
     }
@@ -407,7 +407,7 @@ void main() {
       // The round trip HaLo's own exporter needs: it writes QTH from
       // `their.city`, so reading it back anywhere else loses the value —
       // nothing in the app reads a `their.qth`.
-      final r = _only('<CALL:5>W1ABC<QTH:6>Berlin');
+      final r = only('<CALL:5>W1ABC<QTH:6>Berlin');
 
       expect(_their(r)['city'], 'Berlin');
       expect(_their(r).containsKey('qth'), isFalse);
@@ -416,7 +416,7 @@ void main() {
     test('an explicit CITY wins over QTH', () {
       // CITY is not an ADIF field, but software invents it. A file that writes
       // both means the more specific one.
-      final r = _only('<CALL:5>W1ABC<QTH:37>Kralendijk, Bonaire, Dutch Caribbean<CITY:10>Kralendijk');
+      final r = only('<CALL:5>W1ABC<QTH:37>Kralendijk, Bonaire, Dutch Caribbean<CITY:10>Kralendijk');
 
       expect(_their(r)['city'], 'Kralendijk');
     });
@@ -424,33 +424,33 @@ void main() {
     test('MY_CITY wins over MY_QTH, the standard field beating the invention', () {
       // Our side inverts which spelling is the standard one, so the precedence
       // rule is "ADIF's field wins", not "the second one wins".
-      final r = _only('<CALL:5>W1ABC<MY_QTH:8>Woodland<MY_CITY:9>Woodridge');
+      final r = only('<CALL:5>W1ABC<MY_QTH:8>Woodland<MY_CITY:9>Woodridge');
 
       expect(_our(r)['city'], 'Woodridge');
     });
 
     test('MY_QTH alone still lands somewhere readable', () {
-      final r = _only('<CALL:5>W1ABC<MY_QTH:9>Woodridge');
+      final r = only('<CALL:5>W1ABC<MY_QTH:9>Woodridge');
 
       expect(_our(r)['city'], 'Woodridge');
     });
   });
 
   group('power', () {
-    AdifRecord _only(String record) {
+    AdifRecord only(String record) {
       final log = parseAdifLog('<EOH>\n$record<EOR>\n');
       return log.qsos.single;
     }
 
     test('TX_PWR lands top-level, alongside freq/band/mode — not under our', () {
-      final r = _only('<CALL:5>W1ABC<TX_PWR:3>100');
+      final r = only('<CALL:5>W1ABC<TX_PWR:3>100');
 
       expect(r.qso['power'], 100);
       expect(_our(r).containsKey('power'), isFalse);
     });
 
     test('RX_PWR lands under their — the other station\'s power, not ours', () {
-      final r = _only('<CALL:5>W1ABC<RX_PWR:2>50');
+      final r = only('<CALL:5>W1ABC<RX_PWR:2>50');
 
       expect(_their(r)['power'], 50);
       expect(r.qso.containsKey('power'), isFalse);

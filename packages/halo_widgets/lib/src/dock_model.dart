@@ -30,7 +30,7 @@ sealed class DockNode {
         // does not parse is a slot with nothing behind it — dropped, rather
         // than left to render as a missing panel nobody can explain.
         final nested = <String, DockNode>{};
-        if (json['nested'] case final Map raw) {
+        if (json['nested'] case final Map<dynamic, dynamic> raw) {
           for (final entry in raw.entries) {
             final key = entry.key;
             final node = DockNode.fromJson(entry.value);

@@ -108,7 +108,7 @@ class Operation {
   String? get displayGrid => gridForDisplay(lat: data['lat'], lon: data['lon'], grid: grid);
 
   List<Map<String, dynamic>> get refs =>
-      (asQsonList(data['refs']) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
+      (asQsonList(data['refs']) ?? const []).whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()).toList();
 
   /// The ref-derived title/subtitle fragments `OperationTitleService` cached
   /// under `localData['titleSuggestion']` — device-
@@ -335,7 +335,7 @@ class Qso {
   int? get updatedAtMillis => asQsonNum(data['updatedAtMillis'])?.toInt();
 
   List<Map<String, dynamic>> get refs =>
-      (asQsonList(data['refs']) ?? const []).whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
+      (asQsonList(data['refs']) ?? const []).whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()).toList();
 
   /// The QSON key under which a QSO says a contest serial it carries was
   /// also sent by another position (docs/design/contests.md §5.8.1). Set at

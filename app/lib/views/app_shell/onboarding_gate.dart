@@ -185,7 +185,7 @@ class _OnboardingGateState extends State<OnboardingGate> {
     return Stack(
       children: [
         widget.child,
-        if (overlay != null) overlay,
+        ?overlay,
       ],
     );
   }

@@ -54,7 +54,7 @@ class ListCommand extends ExtCommand {
       emit({
         'bundles': runtime.index.directory.path,
         'loaded': [
-          for (final entry in (active as List? ?? const []).cast<Map>())
+          for (final entry in (active as List? ?? const []).cast<Map<dynamic, dynamic>>())
             {
               ...entry.cast<String, Object?>(),
               'hooks': hooksByExtension[entry['key']] ?? const [],

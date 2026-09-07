@@ -351,13 +351,11 @@ class IcomCivSession implements TransceiverSession, CwKeyerSession, VoiceKeyerSe
     required this.controllerAddress,
     this.maxWatts = _assumedMaxWatts,
     this.batteryMaxWatts,
-    int voiceMemories = civVoiceMemoryCount,
+    this._voiceMemories = civVoiceMemoryCount,
     this.voiceMemoryCeiling = voiceActivityCeiling,
     Map<String, dynamic> config = const {},
-    String? meterInfoKey,
-  })  : _voiceMemories = voiceMemories,
-        _config = config,
-        _meterInfoKey = meterInfoKey,
+    this._meterInfoKey,
+  })  : _config = config,
         _baudRate = serialBaudRateOrNull(config);
 
   void _send(List<int> frame) => _sink.send(frame);

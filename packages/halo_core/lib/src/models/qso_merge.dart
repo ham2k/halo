@@ -394,7 +394,7 @@ Map<String, dynamic> _sub(Map<String, dynamic> qso, String key) {
 List<Map<String, dynamic>> _refsOf(Map<String, dynamic> qso) {
   final refs = qso['refs'];
   if (refs is! List) return const [];
-  return refs.whereType<Map>().map((r) => r.cast<String, dynamic>()).toList();
+  return refs.whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()).toList();
 }
 
 String? _text(Object? value) {

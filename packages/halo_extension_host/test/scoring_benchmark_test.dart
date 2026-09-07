@@ -66,7 +66,7 @@ void main() {
         'scoring',
         key: 'core',
         method: 'scoreQsos',
-        args: {'operation': operation, 'qsos': qsos, if (resumeFrom != null) 'resumeFrom': resumeFrom},
+        args: {'operation': operation, 'qsos': qsos, 'resumeFrom': ?resumeFrom},
         timeout: const Duration(seconds: 60),
       ) as Map;
     }

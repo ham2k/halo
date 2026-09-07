@@ -77,7 +77,7 @@ class _OperationRow extends StatelessWidget {
       color: theme.colorScheme.surface,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
-          slideInFromRight((_) => OperationView(services: services, operationUuid: operation.uuid)),
+          slideInFromRight<void>((_) => OperationView(services: services, operationUuid: operation.uuid)),
         ),
         onLongPress: () => confirmDeleteOperation(context, services, operation),
         mouseCursor: SystemMouseCursors.click,
@@ -450,7 +450,7 @@ class _HomeViewState extends State<HomeView>
         unawaited(
           Navigator.of(context)
               .push(
-                slideInFromRight((_) =>
+                slideInFromRight<void>((_) =>
                     OperationView(services: widget.services, operationUuid: operation.uuid, openActivities: true)),
               )
               .whenComplete(() => _creatingOperation = false),

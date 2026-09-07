@@ -43,7 +43,7 @@ class DevLog {
       // travelled clock would silently desynchronize.
       'ms': realNowMillis(),
       'tag': tag,
-      if (data != null) ...data,
+      ...?data,
     };
     _buffer.add(entry);
     if (_buffer.length > capacity) {

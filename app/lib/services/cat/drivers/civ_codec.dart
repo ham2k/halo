@@ -272,7 +272,7 @@ List<int>? buildSetModeFrame({
     to: to,
     from: from,
     command: CivCommand.setMode,
-    data: [code, if (filter != null) filter],
+    data: [code, ?filter],
   );
 }
 

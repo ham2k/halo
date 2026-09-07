@@ -16,7 +16,6 @@
 // as a backgrounded tab's dead frame pump would, while Timers keep running.
 
 import 'package:drift/native.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';

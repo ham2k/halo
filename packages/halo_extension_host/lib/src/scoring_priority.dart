@@ -62,7 +62,7 @@ const kWorkedBeforeAlerts = {'duplicate'};
 ///
 /// `dupe` present — `false` included — is the explicit form: the scorer ran its
 /// duplicate test and is reporting what it concluded.
-bool judgesWorkedBefore(Map verdict) =>
+bool judgesWorkedBefore(Map<dynamic, dynamic> verdict) =>
     verdict.containsKey('dupe') ||
     _stringsIn(verdict['alerts']).any(kWorkedBeforeAlerts.contains) ||
     _stringsIn(verdict['notices']).any(kWorkedBeforeNotices.contains);
@@ -75,7 +75,7 @@ bool judgesWorkedBefore(Map verdict) =>
 /// Every OTHER key is copied through, `value` included — the verdict shape is
 /// open, and a scorer's point contribution is its own bookkeeping, not a claim
 /// about this QSO having been worked before.
-Map<String, dynamic>? withoutWorkedBefore(Map verdict) {
+Map<String, dynamic>? withoutWorkedBefore(Map<dynamic, dynamic> verdict) {
   final kept = <String, dynamic>{
     for (final entry in verdict.entries)
       if (entry.key is String && entry.key != 'dupe') entry.key as String: entry.value,
@@ -139,10 +139,10 @@ List<Scorer> scorersFor(
   Set<String> alsoRefTypes = const {},
 }) {
   final refs = [
-    for (final segment in segmentRefs ?? const []) ...segment,
+    for (final segment in segmentRefs ?? const <List<Map<String, dynamic>>>[]) ...segment,
     if (segmentRefs == null)
       ...((operation['refs'] as List?) ?? const [])
-          .whereType<Map>()
+          .whereType<Map<dynamic, dynamic>>()
           .map((r) => r.cast<String, dynamic>()),
   ];
 

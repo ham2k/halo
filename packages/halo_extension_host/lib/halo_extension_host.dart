@@ -531,7 +531,7 @@ class ExtensionHost {
         // second time — so it is requested only by a caller that will keep it.
         'wantsPartials': partialOnTimeout,
       }, timeout, id: id);
-      return (result as List).cast<Map>().map((e) => e.cast<String, dynamic>()).toList();
+      return (result as List).cast<Map<dynamic, dynamic>>().map((e) => e.cast<String, dynamic>()).toList();
     } on HookTimeoutException {
       // Only a timeout salvages. A runtime that died, or a fan-out the kernel
       // failed wholesale, has nothing trustworthy to hand back — those stay
@@ -1263,7 +1263,7 @@ class _HostCore {
         _handleHostCall(
           (msg['callId'] as num).toInt(),
           msg['method'] as String,
-          ((msg['params'] ?? const {}) as Map).cast<String, dynamic>(),
+          ((msg['params'] ?? const <String, dynamic>{}) as Map).cast<String, dynamic>(),
         );
     }
   }
@@ -1415,7 +1415,7 @@ class _HostCore {
       throw ExtensionHostException('only https URLs are allowed');
     }
     final method = (params['method'] as String? ?? 'GET').toUpperCase();
-    final headers = ((params['headers'] ?? const {}) as Map).cast<String, String>();
+    final headers = ((params['headers'] ?? const <String, dynamic>{}) as Map).cast<String, String>();
 
     // Set last so it wins over anything addAll put in: http.Request.headers
     // is case-insensitive, so this stamps HaLo's canonical UA on every call —
@@ -1467,7 +1467,7 @@ class _HostCore {
         // non-idempotent request (e.g. a sync POST) a second time. Only the
         // original hop is safe to retry.
         if (attempt > 0 || !e.message.startsWith("Failed host lookup: '${uri.host}'")) rethrow;
-        await Future.delayed(Duration(milliseconds: 300 + _retryJitter.nextInt(200)));
+        await Future<void>.delayed(Duration(milliseconds: 300 + _retryJitter.nextInt(200)));
       }
     }
   }

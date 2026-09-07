@@ -3,6 +3,7 @@
 //
 // Prints the app's human version label (kVersionName, e.g. `August '26 ALPHA`)
 // to stdout — for CI to tag release manifests with the human-readable version label.
+// ignore_for_file: avoid_print — a build script; stdout is the interface.
 import 'package:ham2k_logger/config/version.dart';
 
 void main() => print(kVersionName);

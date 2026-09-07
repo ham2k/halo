@@ -339,7 +339,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
       final name = nameFor(uuid);
       if (name != null && node != null && cat.typeFor(node)?.category != kCategoryTransceiver) our['key'] = name;
     }
-    return {...qso, 'our': our, if (power != null) 'power': power};
+    return {...qso, 'our': our, 'power': ?power};
   }
 
   Future<void> _openStationConfigDialog(BuildContext context) =>

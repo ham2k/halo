@@ -159,7 +159,7 @@ void main() {
     // and a test demanding an upcoming one at the top would fail on a date with
     // no code change at all. `./scripts/test.sh` is the only gate, so that
     // would be everyone's gate, red, for a reason nobody had changed.
-    expect(stale.indexOf(true) == -1 || stale.lastIndexOf(false) < stale.indexOf(true), isTrue,
+    expect(!stale.contains(true) || stale.lastIndexOf(false) < stale.indexOf(true), isTrue,
         reason: 'a party waiting for next year\'s dates cannot outrank one about to run');
 
     // Among the stale ones, the most RECENT comes first — which is the half of

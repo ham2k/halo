@@ -168,7 +168,7 @@ class _BootGateState extends State<BootGate> with SingleTickerProviderStateMixin
       alignment: Alignment.topLeft,
       fit: StackFit.expand,
       children: [
-        if (_previousChild != null) _previousChild!,
+        ?_previousChild,
         FadeTransition(opacity: _fadeController, child: _currentChild),
       ],
     );

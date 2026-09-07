@@ -100,11 +100,11 @@ class _HaLoAppState extends State<HaLoApp> {
       case 'localeToggle':
         _toggleLocale();
       case 'zoomIn':
-        widget.services.settings.increaseFontScale();
+        unawaited(widget.services.settings.increaseFontScale());
       case 'zoomOut':
-        widget.services.settings.decreaseFontScale();
+        unawaited(widget.services.settings.decreaseFontScale());
       case 'zoomReset':
-        widget.services.settings.setFontScale(FontScale.normal);
+        unawaited(widget.services.settings.setFontScale(FontScale.normal));
     }
   }
 

@@ -238,7 +238,7 @@ List<Map<String, dynamic>> validSpots(List<Map<String, dynamic>> items) {
 /// cross the bridge stringified and unwrapped, so a dead network arrives here
 /// as `ClientException: Failed host lookup: '<host>'` — or, from IOClient's
 /// own socket-wrapping subclass, `ClientException with Failed host lookup:
-/// '<host>', uri=<uri>` — so both prefixes need matching, same as the
+/// '…', uri=…` — so both prefixes need matching, same as the
 /// ErrorPolicy rule this mirrors.
 bool isTransportFailure(String? error) {
   if (error == null) return false;
@@ -1030,6 +1030,7 @@ class ExtensionService implements PanelExtensionSource {
   /// degrades a menu) and wrong here: a caller reconciling a SAVED LAYOUT
   /// against this would read a failed call as "that panel no longer exists"
   /// and throw the operator's arrangement away.
+  @override
   Future<List<Map<String, dynamic>>?> getExtensionPanels() async {
     // The getter, not the field, like every other hook call here — the field
     // is invisible to a subclass supplying its own host.
@@ -1079,6 +1080,7 @@ class ExtensionService implements PanelExtensionSource {
   /// The timeout is short on purpose: this runs while the operator is
   /// looking at the pane, and a panel that can't answer promptly should say
   /// so rather than hold a repaint.
+  @override
   Future<Map<String, dynamic>?> renderPanel({
     required String hookKey,
     required String panelKey,
@@ -1122,9 +1124,9 @@ class ExtensionService implements PanelExtensionSource {
       method: 'render',
       args: {
         'template': template,
-        if (operation != null) 'operation': operation,
-        if (qso != null) 'qso': qso,
-        if (qsoCount != null) 'qsoCount': qsoCount,
+        'operation': ?operation,
+        'qso': ?qso,
+        'qsoCount': ?qsoCount,
       },
       timeout: const Duration(seconds: 2),
     );
@@ -1151,9 +1153,9 @@ class ExtensionService implements PanelExtensionSource {
       method: 'renderMany',
       args: {
         'templates': templates,
-        if (operation != null) 'operation': operation,
-        if (qso != null) 'qso': qso,
-        if (qsoCount != null) 'qsoCount': qsoCount,
+        'operation': ?operation,
+        'qso': ?qso,
+        'qsoCount': ?qsoCount,
       },
       timeout: const Duration(seconds: 2),
     );
@@ -1167,6 +1169,7 @@ class ExtensionService implements PanelExtensionSource {
   /// A panel's own config values, keyed by field — the same declarative
   /// storage a Tier 1 settings panel's fields use, under the panel's id, so
   /// a panel's form needs no persistence code of its own.
+  @override
   Future<Map<String, dynamic>> readPanelConfig({
     required String panelKey,
     required List<Map<String, dynamic>> fields,
@@ -1430,7 +1433,7 @@ class ExtensionService implements PanelExtensionSource {
       if (!identical(_restartOnChangeCompleter, completer)) return;
       _restartOnChangeCompleter = null;
       _restartOnChangeDebounce?.cancel();
-      restartRuntime().then(completer.complete, onError: completer.completeError);
+      unawaited(restartRuntime().then(completer.complete, onError: completer.completeError));
     });
     return completer.future;
   }
@@ -1522,6 +1525,7 @@ class ExtensionService implements PanelExtensionSource {
   /// what the operator put in it. Secrets go too: leaving a keychain entry
   /// behind for an id that will be handed to the next placement of the same
   /// panel is exactly the resurrection this exists to prevent.
+  @override
   Future<void> forgetPanelConfig({required String panelKey, required List<Map<String, dynamic>> fields}) async {
     for (final field in fields) {
       final key = field['key'] as String?;
@@ -2051,7 +2055,7 @@ class ExtensionService implements PanelExtensionSource {
     try {
       final result = await host.invokeHook('runtime',
           key: 'kernel', method: 'listExtensions', timeout: const Duration(seconds: 2));
-      return result is List ? result.cast<Map>().map((e) => e.cast<String, dynamic>()).toList() : const [];
+      return result is List ? result.cast<Map<dynamic, dynamic>>().map((e) => e.cast<String, dynamic>()).toList() : const [];
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] listActiveExtensions failed: $e');
       return const [];
@@ -2154,13 +2158,13 @@ class ExtensionService implements PanelExtensionSource {
           final credsStr = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
           final sessionStr = await _secureStorage.read(key: 'account_session_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
           return {
-            'credentials': credsStr != null ? jsonDecode(credsStr) : const {},
-            'session': sessionStr != null ? jsonDecode(sessionStr) : const {},
+            'credentials': credsStr != null ? jsonDecode(credsStr) : const <String, dynamic>{},
+            'session': sessionStr != null ? jsonDecode(sessionStr) : const <String, dynamic>{},
           };
         } catch (e, st) {
           debugPrint('[extensions] secure storage unavailable for host getAccount $kvKey: $e');
           ErrorReportingService.report(e, st, context: 'accounts:host-get-account');
-          return {'credentials': const {}, 'session': const {}, 'unavailable': true};
+          return {'credentials': const <String, dynamic>{}, 'session': const <String, dynamic>{}, 'unavailable': true};
         }
       case 'setAccountSession':
         final kvKey = params['kvKey'] as String;
@@ -2626,7 +2630,7 @@ class ExtensionService implements PanelExtensionSource {
     final text = message['text'] as String? ?? '';
     if (message['presentation'] == 'dialog') {
       final actions =
-          ((message['actions'] as List?) ?? const []).whereType<Map>().map((a) => a.cast<String, dynamic>()).toList();
+          ((message['actions'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((a) => a.cast<String, dynamic>()).toList();
       _showMarkdownDialog(title: title, text: text, actions: actions);
     } else {
       statusBar?.setMessage(key: '$ns:resultMessage', icon: message['icon'] as String?, title: title, text: text);
@@ -3604,7 +3608,7 @@ class ExtensionService implements PanelExtensionSource {
       final result = await host.invokeHook(
         'syncTransport',
         method: 'linkClient',
-        args: {if (email != null) 'email': email},
+        args: {'email': ?email},
       );
       return result is Map ? result.cast<String, dynamic>() : null;
     } on ExtensionHostException catch (e) {
@@ -3666,7 +3670,7 @@ class ExtensionService implements PanelExtensionSource {
   }) =>
       _syncTransportCall('approveLinkRequest', {
         'client': clientUuid,
-        if (challengeToken != null) 'challenge_token': challengeToken,
+        'challenge_token': ?challengeToken,
       });
 
   /// Shared shape of the account/linking calls above: null when the runtime
@@ -3740,7 +3744,7 @@ class ExtensionService implements PanelExtensionSource {
       final result = await host.invokeHook('syncTransport', method: 'fetchWebhookEvents', args: const {});
       final events = result is Map ? result['webhook_events'] : null;
       if (events is! List) return const [];
-      return events.whereType<Map>().map((e) => e.cast<String, dynamic>()).toList();
+      return events.whereType<Map<dynamic, dynamic>>().map((e) => e.cast<String, dynamic>()).toList();
     } on ExtensionHostException catch (e) {
       debugPrint('[extensions] fetchLofiWebhookEvents failed: $e');
       return const [];

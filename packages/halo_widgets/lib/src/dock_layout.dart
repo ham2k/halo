@@ -1456,7 +1456,7 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
     // layout options. They are different questions, and edit mode is when
     // only the second one can be answered.
     final action = widget.editing
-        ? (widget.editingPaneControls == null ? null : (ctx) => widget.editingPaneControls!(ctx, id))
+        ? (widget.editingPaneControls == null ? null : (BuildContext ctx) => widget.editingPaneControls!(ctx, id))
         : widget.tabActions?[id];
     // Unwrapped: the two strips wrap it differently — see [_buildGroup].
     return DockTabDropSlot(

@@ -10,6 +10,7 @@
 import 'dart:async';
 
 import 'package:intl/intl.dart';
+import 'package:intl/number_symbols.dart';
 
 import 'package:flutter/foundation.dart'
     show kIsWeb, setEquals;
@@ -824,7 +825,7 @@ class HaLoServices {
         StatusBarAction(
           label: t.settings.syncPanel.openSettings,
           onTap: () => navigatorKey.currentState?.push(
-            MaterialPageRoute(builder: (_) => SettingsView(services: this, initialPanel: 'sync')),
+            MaterialPageRoute<void>(builder: (_) => SettingsView(services: this, initialPanel: 'sync')),
           ),
         ),
       ],
@@ -1030,7 +1031,7 @@ class HaLoServices {
         NumberFormatting.instance.configure(decimal: ',', grouping: '.', locale: 'de_DE');
       case NumberFormatStyle.locale:
         final tag = dart_ui.PlatformDispatcher.instance.locale.toString();
-        dynamic symbols;
+        NumberSymbols? symbols;
         try {
           symbols = NumberFormat.decimalPattern(tag).symbols;
         } catch (e, stack) {
@@ -1056,8 +1057,8 @@ class HaLoServices {
         // the device shows everywhere else.
         final applied = symbols != null &&
             NumberFormatting.instance.configure(
-              decimal: symbols.DECIMAL_SEP as String,
-              grouping: symbols.GROUP_SEP as String,
+              decimal: symbols.DECIMAL_SEP,
+              grouping: symbols.GROUP_SEP,
               locale: tag,
             );
         if (!applied) {
@@ -1556,7 +1557,7 @@ class HaLoServices {
               value: 1.0,
             );
           }
-        }).catchError((e) {
+        }).catchError((Object e) {
           // Belt-and-suspenders: syncAllDataFiles already isolates each data
           // file's own errors, but this still needs to fail loud (not just
           // silently drop the failure) for anything unexpected that slips
@@ -1784,7 +1785,7 @@ class HaLoServices {
   }
 
   /// What a segment row says in the list — polo's `describeOperation`: each
-  /// ref's title fragments, then "at <grid>", joined with " • " ("for ARRL
+  /// ref's title fragments, then "at `<grid>`", joined with " • " ("for ARRL
   /// 10G Sep • POTA: US-1000 • at FN21rm"). Stored on the row rather than
   /// composed at render, so a synced row reads the same on a device without
   /// the extension that named the ref.
@@ -1890,7 +1891,7 @@ class HaLoServices {
     // The hook's confirm already said "now set your new location". Going
     // quiet here would leave the operator holding that promise while the
     // next stretch scores from the old square.
-    if (context == null) return (text: t.commands.couldNotOpenLocation, failed: true);
+    if (context == null || !context.mounted) return (text: t.commands.couldNotOpenLocation, failed: true);
     final patch = await showHaloDialog<Map<String, dynamic>>(
       context: context,
       builder: (_) => OperationLocationScreen(services: this, operation: operation),
@@ -1953,7 +1954,7 @@ class HaLoServices {
       if (result == null) continue;
       anyResult = true;
       if (result['ok'] != true) {
-        failures.add(t.spotting.spotFailed(source: hookKey, message: result['message'] ?? t.spotting.unknownError));
+        failures.add(t.spotting.spotFailed(source: hookKey, message: (result['message'] as Object?) ?? t.spotting.unknownError));
       }
     }
     if (!anyResult) return (text: t.spotting.notSent, failed: true);

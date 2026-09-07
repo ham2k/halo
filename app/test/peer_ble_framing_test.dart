@@ -41,7 +41,7 @@ class _Harness {
 }
 
 /// Two conduits with their packet streams cross-fed until quiescent.
-void pump(_Harness a, _Harness b) {
+void _pump(_Harness a, _Harness b) {
   var moved = true;
   while (moved) {
     moved = false;
@@ -128,7 +128,7 @@ void main() {
     a.conduit.sendHello(40);
     b.conduit.sendHello(40);
     // Handshake only.
-    pump(a, b);
+    _pump(a, b);
 
     // 300 bytes of MSG against a 100-byte window: without B's ACKs the
     // sender must stop at the window, not pour the rest.
@@ -144,7 +144,7 @@ void main() {
     for (final packet in stalled) {
       b.conduit.feed(packet);
     }
-    pump(a, b);
+    _pump(a, b);
     expect(b.messages.single.length, 300);
   });
 
@@ -155,11 +155,11 @@ void main() {
     final b = _Harness(windowBytes: 64, ackStrideBytes: 32);
     a.conduit.sendHello(500);
     b.conduit.sendHello(500);
-    pump(a, b);
+    _pump(a, b);
 
     a.conduit.enqueueMessage(Uint8List(400));
     b.conduit.enqueueMessage(Uint8List(400));
-    pump(a, b);
+    _pump(a, b);
     expect(a.messages.single.length, 400);
     expect(b.messages.single.length, 400);
   });
@@ -188,13 +188,13 @@ void main() {
 
     // The retry: A replays its hello; this time the radio carries it.
     a.conduit.resendHello();
-    pump(a, b);
+    _pump(a, b);
     expect(a.conduit.ready, isTrue);
     expect(b.conduit.ready, isTrue);
 
     // And traffic flows both ways afterwards.
     a.conduit.enqueueMessage(utf8.encode('after the recovery'));
-    pump(a, b);
+    _pump(a, b);
     expect(utf8.decode(b.messages.single), 'after the recovery');
   });
 
@@ -225,14 +225,14 @@ void main() {
     final b = _Harness();
     a.conduit.sendHello(100);
     b.conduit.sendHello(100);
-    pump(a, b);
+    _pump(a, b);
 
     // A future build's frame type, then a normal message. If the unknown
     // frame desynced the parser the message after it would be garbage.
     final unknown = Uint8List.fromList([bleFrameMagic, 0x7E, 3, 0, 0, 0, 9, 9, 9]);
     b.conduit.feed(unknown);
     a.conduit.enqueueMessage(utf8.encode('after'));
-    pump(a, b);
+    _pump(a, b);
     expect(utf8.decode(b.messages.single), 'after');
     expect(b.errors, isEmpty);
   });
@@ -242,10 +242,10 @@ void main() {
     final b = _Harness();
     a.conduit.sendHello(100);
     b.conduit.sendHello(100);
-    pump(a, b);
+    _pump(a, b);
 
     a.conduit.sendPing();
-    pump(a, b);
+    _pump(a, b);
     expect(b.messages, isEmpty);
     expect(b.errors, isEmpty);
   });
@@ -255,7 +255,7 @@ void main() {
     final b = _Harness();
     a.conduit.sendHello(500);
     b.conduit.sendHello(500);
-    pump(a, b);
+    _pump(a, b);
 
     a.conduit.enqueueMessage(utf8.encode('boundary torture'));
     // Re-slice A's outbound stream into 1-byte packets: reassembly must not
@@ -275,11 +275,11 @@ void main() {
     final b = _Harness(windowBytes: 100, ackStrideBytes: 10);
     a.conduit.sendHello(40);
     b.conduit.sendHello(40);
-    pump(a, b);
+    _pump(a, b);
 
     // 80 MSG bytes across, fully ACKed by B's real ACKs.
     a.conduit.enqueueMessage(Uint8List(80));
-    pump(a, b);
+    _pump(a, b);
 
     // A late/reordered ACK carrying an OLD count. Accepting it would wind
     // the window back — the sender then stalls on bytes the peer already
@@ -306,14 +306,14 @@ void main() {
     final b = _Harness();
     a.conduit.sendHello(40);
     b.conduit.sendHello(40);
-    pump(a, b);
+    _pump(a, b);
 
     a.conduit.enqueueMessage(Uint8List(300));
     // Two packets out, so the message is mid-flight, then the keepalive.
     b.conduit.feed(a.conduit.nextPacket()!);
     b.conduit.feed(a.conduit.nextPacket()!);
     a.conduit.sendPing();
-    pump(a, b);
+    _pump(a, b);
 
     expect(b.errors, isEmpty);
     expect(b.messages.single.length, 300);
@@ -324,7 +324,7 @@ void main() {
     final b = _Harness();
     a.conduit.sendHello(40);
     b.conduit.sendHello(40);
-    pump(a, b);
+    _pump(a, b);
 
     final payload = Uint8List.fromList(List.generate(300, (i) => i & 0xFF));
     a.conduit.enqueueMessage(payload);
@@ -393,7 +393,7 @@ void main() {
     final b = _Harness();
     a.conduit.sendHello(40);
     b.conduit.sendHello(40);
-    pump(a, b);
+    _pump(a, b);
 
     a.conduit.enqueueMessage(Uint8List(300));
     final started = [a.conduit.nextPacket()!, a.conduit.nextPacket()!];

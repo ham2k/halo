@@ -1,1 +1,15 @@
 include: package:lints/recommended.yaml
+
+analyzer:
+  language:
+    # An implicit downcast from dynamic, a raw generic, or an inference that
+    # silently lands on dynamic is how a wrong-typed QSON value reaches a
+    # caller without a single line looking wrong.
+    strict-casts: true
+    strict-inference: true
+    strict-raw-types: true
+
+linter:
+  rules:
+    - avoid_dynamic_calls
+    - unawaited_futures

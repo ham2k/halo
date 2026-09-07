@@ -1754,7 +1754,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                                   boxSize: 40,
                                   onPressed: () async {
                                     await sheetKey.currentState?.saveAndClose();
-                                    if (mounted) Navigator.of(context).maybePop();
+                                    if (context.mounted) unawaited(Navigator.of(context).maybePop());
                                   },
                                 ),
                               ),

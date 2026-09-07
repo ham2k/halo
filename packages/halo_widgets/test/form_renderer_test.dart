@@ -2873,7 +2873,7 @@ void main() {
                     'icon': 'earth',
                     'key': 'zone',
                     'label': 'Time Zone',
-                    if (description != null) 'description': description,
+                    'description': ?description,
                     'options': [
                       for (var i = 1; i <= optionCount; i++) {'label': 'Zone $i', 'value': 'z$i'},
                     ],

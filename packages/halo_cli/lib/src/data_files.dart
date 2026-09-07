@@ -226,7 +226,7 @@ class DataFileSync {
       'dataFile',
       key: def.key,
       method: 'rawToJSONData',
-      args: {'body': body, 'url': def.url, 'options': const {}},
+      args: {'body': body, 'url': def.url, 'options': const <String, dynamic>{}},
       timeout: const Duration(seconds: 60),
     );
     final cache = File('${rawCacheDir(store)}/${def.key}.json')
@@ -238,8 +238,8 @@ class DataFileSync {
       key: def.key,
       cachedAt: cache.path,
       entries: switch (processed) {
-        final List list => list.length,
-        final Map map => map.length,
+        final List<dynamic> list => list.length,
+        final Map<dynamic, dynamic> map => map.length,
         _ => null,
       },
     );

@@ -235,7 +235,7 @@ void main() {
           at,
           jsonEncode({
             'their': {'call': call},
-            if (stamp != null) 'updatedAtMillis': stamp,
+            'updatedAtMillis': ?stamp,
           }),
           deleted,
           synced,
@@ -719,7 +719,7 @@ void main() {
         await db.customStatement('PRAGMA user_version = ${currentVersion + 1}');
       });
 
-      final db = HaLoDatabase(await NativeDatabase.createBackgroundConnection(file));
+      final db = HaLoDatabase(NativeDatabase.createBackgroundConnection(file));
       Object? thrown;
       try {
         await db.customSelect('SELECT * FROM operations').get();

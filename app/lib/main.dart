@@ -328,9 +328,9 @@ void _mainBody({
         await Future<void>.delayed(const Duration(milliseconds: 300));
         final operations = await services.operations.watchAll().first;
         if (operations.isNotEmpty) {
-          navigatorKey.currentState?.push(MaterialPageRoute(
+          unawaited(navigatorKey.currentState?.push(MaterialPageRoute<void>(
             builder: (_) => OperationView(services: services, operationUuid: operations.first.uuid),
-          ));
+          )));
         }
       });
     }

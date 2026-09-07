@@ -27,7 +27,7 @@ void main() {
   Future<Map?> linkFor(String type, String? ref) async {
     final host = await startHost();
     final result = await host.invokeHook('ref:$type',
-        method: 'linkForRef', args: {'ref': {'type': type, if (ref != null) 'ref': ref}});
+        method: 'linkForRef', args: {'ref': {'type': type, 'ref': ?ref}});
     return result as Map?;
   }
 

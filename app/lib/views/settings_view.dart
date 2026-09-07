@@ -503,7 +503,7 @@ class _SettingsViewState extends State<SettingsView> {
             });
             if (!isWide) {
               Navigator.of(context).push(
-                MaterialPageRoute(
+                MaterialPageRoute<void>(
                   builder: (context) => _SettingsPanelScreen(panel: panel, services: widget.services),
                 ),
               );

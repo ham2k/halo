@@ -64,7 +64,7 @@ void _showNoticeDialog(Map<String, dynamic> args) {
   final title = args['dialogTitle'] as String?;
   final text = (args['dialogText'] as String?) ?? '';
   final dialogActions =
-      ((args['dialogActions'] as List?) ?? const []).whereType<Map>().map((a) => a.cast<String, dynamic>()).toList();
+      ((args['dialogActions'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((a) => a.cast<String, dynamic>()).toList();
 
   showHaloDialog<void>(
     context: context,

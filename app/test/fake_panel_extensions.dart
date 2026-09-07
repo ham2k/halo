@@ -21,7 +21,7 @@ class FakePanelExtensions implements PanelExtensionSource {
   final Map<String, Map<String, dynamic>> configs;
 
   FakePanelExtensions({Map<String, dynamic>? config, Map<String, Map<String, dynamic>>? configs})
-      : configs = configs ?? {if (config != null) 'clock#1': config};
+      : configs = configs ?? {'clock#1': ?config};
 
   @override
   final ValueNotifier<int> runtimeGeneration = ValueNotifier(0);

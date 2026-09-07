@@ -29,7 +29,7 @@ void main() {
         'refs': [
           {
             'type': 'customActivation',
-            if (program != null) 'mySig': program,
+            'mySig': ?program,
             'mySigInfo': reference,
             if (name.isNotEmpty) 'name': name,
           },

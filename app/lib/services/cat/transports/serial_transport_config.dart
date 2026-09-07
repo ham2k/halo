@@ -215,7 +215,7 @@ mixin SerialTransportConfig implements EquipmentTransport {
                   'value': choice.name,
                   'label': choice.pickerLabel,
                   'tags': choice.pickerTags,
-                  if (choice.pickerSubtitle case final subtitle?) 'subtitle': subtitle,
+                  'subtitle': ?choice.pickerSubtitle,
                   'icon': choice.pickerIcon,
                   // Only where the name came from the DESCRIPTORS. A name
                   // this code derived from the node says nothing the node did

@@ -283,7 +283,7 @@ class StationPanel extends StatelessWidget {
           'fieldType': 'select',
           'key': switchPortRoutingFormKey(port.key),
           'label': st.switchPortLabel(port: port.label),
-          if (_switchPortDetail(port, st) case final detail?) 'description': detail,
+          'description': ?_switchPortDetail(port, st),
           // A keyed port is refused by the driver as well — this only keeps
           // the operator from being offered a control whose answer is going
           // to be "not while you are transmitting".
@@ -649,8 +649,7 @@ class StationPanel extends StatelessWidget {
         // switch just said.
         if (node != null)
           for (final port in _cat.stateFor(node.uuid).switchPorts)
-            if (port.selectedAntennaKey case final selected?)
-              switchPortRoutingFormKey(port.key): selected,
+            switchPortRoutingFormKey(port.key): ?port.selectedAntennaKey,
       },
       // Runs per field on submit, so a bad address blocks the save and says
       // so on the address field rather than failing later at connect time.

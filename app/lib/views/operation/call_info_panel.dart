@@ -533,7 +533,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       if (qso.band != null) qso.band!,
       if (qso.mode != null) qso.mode!,
       _fmtHistoryTime(qso.startAtMillis),
-      if (withCall != null) withCall,
+      ?withCall,
     ].where((s) => s.isNotEmpty);
     final from = _fromLine(qso);
     return Padding(

@@ -28,7 +28,6 @@
 // speed (`KS`) — from the FTDX10 CAT manual, not from a radio.
 
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 
@@ -355,11 +354,10 @@ class Ft891Session implements TransceiverSession, CwKeyerSession, VoiceKeyerSess
 
   Ft891Session(
     this._sink, {
-    int voiceMemories = yaesuVoiceMemoryCount,
+    this._voiceMemories = yaesuVoiceMemoryCount,
     this.voiceMemoryCeiling = voiceActivityCeiling,
     Map<String, dynamic> config = const {},
-  })  : _voiceMemories = voiceMemories,
-        _config = config,
+  })  : _config = config,
         _captureMeters = config[yaesuMeterCaptureConfigKey] == true,
         _meterInfoKey = config[meterInfoConfigKey] as String?;
 

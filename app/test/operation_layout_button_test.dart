@@ -778,7 +778,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules().toSet(),
-          isNot(['logging', 'logging'].toSet()),
+          isNot({'logging'}), // the duplicate spec's one module
           reason: 'any dismissal accepts the default — the notice cannot come back to ask again this session');
 
       await startEditing(tester);
@@ -825,7 +825,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(DockNode.fromJson(services.settings.layoutData(LayoutKeys.operationDock))!.collectModules().toSet(),
-          isNot(['logging', 'logging'].toSet()),
+          isNot({'logging'}), // the duplicate spec's one module
           reason: 'accepting writes the default over the unreadable original');
       expect(services.statusBar.activeNotices.map((n) => n.key), isNot(contains('layout:operation:wide:unreadable')));
 

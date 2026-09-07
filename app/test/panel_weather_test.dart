@@ -51,7 +51,7 @@ void main() {
   String hhmm(DateTime utc) {
     final seconds = utc.millisecondsSinceEpoch ~/ 1000 + offsetSeconds;
     final minutes = (seconds ~/ 60) % 60;
-    return '${(seconds ~/ 3600) % 24}'.padLeft(2, '0') + ':${minutes.toString().padLeft(2, '0')}';
+    return '${'${(seconds ~/ 3600) % 24}'.padLeft(2, '0')}:${minutes.toString().padLeft(2, '0')}';
   }
 
   /// The response, laid out around [now] the way Open-Meteo lays one out:
@@ -133,7 +133,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final service = serviceWith(FakePanelExtensions(configs: {
-      if (config != null) weatherPanelId: config,
+      weatherPanelId: ?config,
     }));
 
     await tester.pumpWidget(TranslationProvider(

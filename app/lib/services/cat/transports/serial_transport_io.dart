@@ -21,7 +21,6 @@
 import 'dart:async';
 import 'dart:ffi' as ffi;
 import 'dart:io' show Platform;
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
@@ -93,7 +92,7 @@ Future<List<int>> androidSerialInterfaces(String deviceName, {required int? vend
 /// interface correctly for all three: CP210x control transfers carry the
 /// interface id, FTDI's carry the id plus one (port A is 1), and CDC's
 /// data endpoints belong to the interface itself.
-List<int> androidSerialInterfaceIndexes({required int? vendorId, required List<Map> interfaces}) {
+List<int> androidSerialInterfaceIndexes({required int? vendorId, required List<Map<dynamic, dynamic>> interfaces}) {
   final bridge = vendorId == _usbVendorFtdi || vendorId == _usbVendorSiliconLabs;
   final portClass = bridge ? _usbClassVendorSpecific : _usbClassCdcData;
   return [

@@ -36,18 +36,14 @@ class StalenessService with WidgetsBindingObserver {
   StalenessService({
     required this.statusBar,
     this.navigatorKey,
-    SharedPreferences? prefs,
-    UpdateService? updates,
-    bool isReleaseBuild = kReleaseMode,
+    this._prefs,
+    this._updates,
+    this._isReleaseBuild = kReleaseMode,
     DateTime Function()? now,
     bool Function()? buildExpired,
-    required void Function(String key, Map<String, dynamic> action)? onNoticeAction,
-  })  : _prefs = prefs,
-        _buildExpired = buildExpired ?? isBuildExpired,
-        _updates = updates,
-        _isReleaseBuild = isReleaseBuild,
-        _now = now ?? nowLocal,
-        _onNoticeAction = onNoticeAction;
+    required this._onNoticeAction,
+  })  : _buildExpired = buildExpired ?? isBuildExpired,
+        _now = now ?? nowLocal;
 
   final StatusBarService statusBar;
   /// Where the nag tier puts its dialog. Null where there is nowhere to put

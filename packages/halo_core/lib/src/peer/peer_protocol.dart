@@ -334,7 +334,7 @@ class PeerMessage {
     // in different operations, and a contact attributed to the wrong one is
     // worse than a block that never appears.
     if (qso is! Map || operationUuid is! String || operationUuid.isEmpty) return null;
-    final row = this.fields['fields'];
+    final row = fields['fields'];
     return PeerQsoDraftPayload(
       qso: qso.cast<String, dynamic>(),
       operationUuid: operationUuid,
@@ -343,11 +343,11 @@ class PeerMessage {
       // controls this one has never heard of, and a block missing one field
       // still says what the position is working.
       fields: row is List
-          ? [for (final raw in row) if (PeerDraftFieldPayload.from(raw) case final field?) field]
+          ? [for (final raw in row) ?PeerDraftFieldPayload.from(raw)]
           : const [],
-      position: this.fields['pos'] is String ? this.fields['pos'] as String : '',
-      operatorCall: this.fields['oper'] is String ? this.fields['oper'] as String : '',
-      left: this.fields['left'] == true,
+      position: fields['pos'] is String ? fields['pos'] as String : '',
+      operatorCall: fields['oper'] is String ? fields['oper'] as String : '',
+      left: fields['left'] == true,
     );
   }
 
@@ -363,7 +363,7 @@ class PeerMessage {
         'opUuid': operationUuid,
         'seq': seq,
         'claims': [for (final claim in claims) claim.toJson()],
-        if (ack != null) 'ack': ack,
+        'ack': ?ack,
       });
 
   /// Null unless this is a well-formed [PeerMessageType.serialClaims]. An
@@ -379,7 +379,7 @@ class PeerMessage {
     return PeerSerialClaimsPayload(
       operationUuid: operationUuid,
       seq: seq,
-      claims: raw is List ? [for (final entry in raw) if (PeerSerialClaim.from(entry) case final claim?) claim] : const [],
+      claims: raw is List ? [for (final entry in raw) ?PeerSerialClaim.from(entry)] : const [],
       ack: ack is int ? ack : null,
     );
   }
@@ -508,7 +508,7 @@ class PeerMessage {
     if (raw is! List) return const [];
     return [
       for (final entry in raw)
-        if (PeerEventPayload.from(entry) case final payload?) payload,
+        ?PeerEventPayload.from(entry),
     ];
   }
 

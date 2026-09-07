@@ -14,7 +14,6 @@
 // row it wants, and the overlay draws it in the one spot that is under the
 // footer and above the keyboard.
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 

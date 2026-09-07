@@ -17,6 +17,7 @@
 // every platform's field (it is capped at 16 bits for Windows/Linux), so all
 // platforms share one value. Pure Dart: version.dart only imports
 // halo_build_tools, so this runs under `dart run` without Flutter.
+// ignore_for_file: avoid_print — a build script; stdout is the interface.
 
 import 'package:halo_build_tools/halo_build_tools.dart';
 import 'package:ham2k_logger/config/version.dart';

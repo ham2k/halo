@@ -16,12 +16,12 @@ void main() {
         uuid: 'u',
         data: {
           'stationCall': 'K2SUL',
-          if (synced != null) 'operatorCall': synced,
-          if (seated != null) operatorCallKeyFor(position ?? ''): seated,
+          'operatorCall': ?synced,
+          operatorCallKeyFor(position ?? ''): ?seated,
         },
         localData: {
-          if (legacyLocal != null) 'operatorCall': legacyLocal,
-          if (position != null) 'multiIdentifier': position,
+          'operatorCall': ?legacyLocal,
+          'multiIdentifier': ?position,
         },
       );
 

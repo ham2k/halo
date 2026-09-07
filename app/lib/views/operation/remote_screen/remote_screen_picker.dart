@@ -274,7 +274,7 @@ class _RemoteScreenSettingsRowState extends State<RemoteScreenSettingsRow> {
     };
   }
 
-  Widget _screenRow(BuildContext context, dynamic t, PeerScreenTarget? target) {
+  Widget _screenRow(BuildContext context, Translations$operation$layout$panels$en t, PeerScreenTarget? target) {
     return ListTile(
       title: Text(t.remoteScreenTarget),
       // The source's own name where it can still be resolved, and the stored

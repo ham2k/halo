@@ -43,8 +43,8 @@ void main() {
         'refs': [
           {
             'type': type,
-            if (theirClass != null) 'class': theirClass,
-            if (section != null) 'location': section,
+            'class': ?theirClass,
+            'location': ?section,
           },
         ],
       };
@@ -399,7 +399,7 @@ void main() {
     Future<List<Map<String, dynamic>>> suggest(String key, String? term) async {
       final host = await hostFor(key);
       final result = await host.invokeHook('activity', key: key, method: 'suggest',
-          args: {if (term != null) 'searchTerm': term},
+          args: {'searchTerm': ?term},
           timeout: const Duration(seconds: 15)) as List;
       return result.map((e) => (e as Map).cast<String, dynamic>()).toList();
     }

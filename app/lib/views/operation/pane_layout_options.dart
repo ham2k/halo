@@ -601,7 +601,7 @@ class _PaneLayoutOptionsBodyState extends State<_PaneLayoutOptionsBody> {
     required ValueChanged<String?> onChanged,
   }) {
     return DropdownButtonFormField<String>(
-      value: value ?? _inherit,
+      initialValue: value ?? _inherit,
       isExpanded: true,
       icon: dropdownTrailingIcon,
       decoration: poloFieldDecoration(context, label),

@@ -29,7 +29,7 @@ class _FakeServer {
   void send(String event, {String? channel, Object? data}) {
     _controller.foreign.sink.add(jsonEncode({
       'event': event,
-      if (channel != null) 'channel': channel,
+      'channel': ?channel,
       'data': data is String ? data : jsonEncode(data ?? const {}),
     }));
   }

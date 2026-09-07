@@ -53,10 +53,10 @@ Future<Map<String, dynamic>> resetDevFixture(HaLoServices services) async {
 
   // Land in the seeded operation, clearing whatever was on the stack (keep the
   // home route beneath so Back still works).
-  navigatorKey.currentState?.pushAndRemoveUntil(
-    MaterialPageRoute(builder: (_) => OperationView(services: services, operationUuid: operation.uuid)),
+  unawaited(navigatorKey.currentState?.pushAndRemoveUntil(
+    MaterialPageRoute<void>(builder: (_) => OperationView(services: services, operationUuid: operation.uuid)),
     (route) => route.isFirst,
-  );
+  ));
 
   // `backupId` lets a caller find the pre-reset data in the backup tables.
   return {'uuid': operation.uuid, 'stationCall': stationCall, 'qsoCount': seeds.length, 'backupId': backupId};

@@ -96,7 +96,7 @@ void listenForDeepLinks(HaLoServices services) {
           StatusBarAction(
             label: t.settings.syncPanel.openSettings,
             onTap: () => navigatorKey.currentState?.push(
-              MaterialPageRoute(builder: (_) => SettingsView(services: services, initialPanel: 'sync')),
+              MaterialPageRoute<void>(builder: (_) => SettingsView(services: services, initialPanel: 'sync')),
             ),
           ),
         ],
@@ -247,13 +247,13 @@ Future<_DeepLinkOutcome> _deliverDeepLinkedQso(
   // unawaited future.
   final target = navigatorKey.currentState;
   if (target == null) return _DeepLinkOutcome.noNavigator;
-  target.push(MaterialPageRoute(
+  unawaited(target.push(MaterialPageRoute<void>(
     builder: (_) => OperationView(
       services: services,
       operationUuid: operations.first.uuid,
       initialSuggestedQso: suggestion,
     ),
-  ));
+  )));
   return _DeepLinkOutcome.delivered;
 }
 
@@ -313,7 +313,7 @@ Future<void> _openDeepLinkedOperation(
   // be deactivated.
   final navigator = navigatorKey.currentState;
   if (navigator == null) return;
-  navigator.push(MaterialPageRoute(builder: (_) => OperationView(services: services, operationUuid: uuid)));
+  unawaited(navigator.push(MaterialPageRoute<void>(builder: (_) => OperationView(services: services, operationUuid: uuid))));
   services.track('deep_link_operation', {
     'created': existing == null,
     'refsDropped': resolved.dropped.length,
@@ -510,7 +510,7 @@ void _openConfirmDevicePane(
       // Re-read rather than reusing the context above: the pane was open
       // across an arbitrary stretch of the operator's attention.
       final messengerContext = navigatorKey.currentContext;
-      if (linked != true || messengerContext == null) return;
+      if (linked != true || messengerContext == null || !messengerContext.mounted) return;
       ScaffoldMessenger.of(messengerContext)
           .showSnackBar(SnackBar(content: Text(t.settings.syncPanel.deviceLinked)));
     }));

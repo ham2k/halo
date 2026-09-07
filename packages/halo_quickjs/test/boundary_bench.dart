@@ -15,6 +15,7 @@
 //
 // `flutter test`, not `dart test` — this imports package:flutter_test, and
 // halo_quickjs has no `test` dev-dependency.
+// ignore_for_file: avoid_print — a bench whose report is its output; stdout is the interface.
 
 import 'dart:convert';
 import 'dart:io';

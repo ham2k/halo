@@ -38,7 +38,7 @@ class TcpTransport extends EquipmentTransport with TcpTransportConfig {
     final completer = Completer<Socket>();
     final pending = Socket.connect(host, port, timeout: _connectTimeout);
 
-    pending.then(
+    unawaited(pending.then(
       (socket) {
         if (completer.isCompleted) {
           socket.destroy();
@@ -49,7 +49,7 @@ class TcpTransport extends EquipmentTransport with TcpTransportConfig {
       onError: (Object error, StackTrace stackTrace) {
         if (!completer.isCompleted) completer.completeError(error, stackTrace);
       },
-    );
+    ));
 
     unawaited(cancel.whenCancelled.then((_) {
       if (!completer.isCompleted) completer.completeError(const CatCancelledException());

@@ -41,7 +41,7 @@ void main() {
             operation: const Operation(uuid: 'op-1', data: {'grid': 'FN31pr'}),
             services: services,
             call: 'W1AW',
-            guess: {if (image != null) 'image': image},
+            guess: {'image': ?image},
           ),
         ),
       ),

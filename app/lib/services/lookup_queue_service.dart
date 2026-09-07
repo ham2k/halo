@@ -203,7 +203,7 @@ class LookupQueueService {
   /// counts here, without this queue needing to know any of those sources
   /// by name.
   bool _hasOnlineLookup(Qso qso) {
-    final lookups = asQsonList(asQsonMap(qso.data['their'])?['lookups'])?.whereType<Map>();
+    final lookups = asQsonList(asQsonMap(qso.data['their'])?['lookups'])?.whereType<Map<dynamic, dynamic>>();
     if (lookups == null) return false;
     return lookups.any((l) =>
         l['online'] == true || (!l.containsKey('online') && _legacySourcesBeforeOnlineFlag.contains(l['source'])));
@@ -374,7 +374,7 @@ class LookupQueueService {
     // annotation entry, so "sources that answered" is the real signal. Only
     // write when the new result covers every source already stored.
     Set<String> sourcesOf(dynamic lookups) => (asQsonList(lookups) ?? const [])
-        .whereType<Map>()
+        .whereType<Map<dynamic, dynamic>>()
         .map((l) => l['source'])
         .whereType<String>()
         .toSet();

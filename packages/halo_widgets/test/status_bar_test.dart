@@ -104,6 +104,10 @@ void main() {
           });
         }
 
+        // Still the deprecated owner: under the test binding the root
+        // pipeline owner the deprecation points at carries no semantics
+        // owner, and the node tree lives on this one.
+        // ignore: deprecated_member_use
         walk(tester.binding.pipelineOwner.semanticsOwner!.rootSemanticsNode!);
         return total;
       }

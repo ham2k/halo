@@ -263,7 +263,7 @@ void main() {
         await host.invokeHook('spots', key: 'gma', method: 'postOtherSpot', args: {
           'qso': {
             'their': {'call': 'M0XYZ'},
-            if (our != null) 'our': our,
+            'our': ?our,
             'freq': 7120,
             'mode': 'SSB',
             'refs': [{'type': 'gma', 'ref': 'DL/AL-001'}],

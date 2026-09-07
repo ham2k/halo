@@ -246,8 +246,8 @@ class WinkeyerSession implements CwKeyerSession {
     this._sink, {
     this.keyPort = winkeyerDefaultKeyPort,
     this.ptt = false,
-    int speed = defaultCwSpeedWpm,
-  }) : _speed = speed;
+    this._speed = defaultCwSpeedWpm,
+  });
 
   /// The PINCFG byte this session asserts. Sidetone stays off: the boxes
   /// that have a speaker are keyed next to the operator's own rig, and a

@@ -193,7 +193,7 @@ class _Device {
     drafts = PeerDrafts(peers: service);
     claims = SerialClaims(
       localDeviceId: deviceId,
-      peek: (_, __) async => 1,
+      peek: (_, _) async => 1,
       livePeers: () => [for (final id in service.peers.keys) if (service.hasSession(id)) id],
       send: (id, message) => service.sendEphemeralTo(id, message, allowBle: true),
     );

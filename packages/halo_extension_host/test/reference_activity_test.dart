@@ -52,8 +52,7 @@ void main() {
   // handler's identity, so a closure rebuilt per call would boot a host per
   // call and defeat the sharing. The table it answers from is `const`, so one
   // host serves every test here.
-  final Future<dynamic> Function(String, Map<String, dynamic>) castleLookups =
-      (method, params) async {
+  Future<dynamic> castleLookups(String method, Map<String, dynamic> params) async {
         switch (method) {
           case 'dbLookupSelectOne':
             return castles[params['key']];
@@ -71,7 +70,7 @@ void main() {
           default:
             return null;
         }
-      };
+      }
 
   Future<ExtensionHost> startHost() => sharedHost(['wca'], onHostCall: castleLookups);
 

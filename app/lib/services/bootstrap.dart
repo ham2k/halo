@@ -139,7 +139,7 @@ Future<HaLoServices> bootstrap({
   // Fire-and-forget, and kicked off before awaiting settings below so these
   // two independent boot steps run concurrently instead of serialized; the
   // core logging loop never waits on the extension runtime either way.
-  extensions.start();
+  unawaited(extensions.start());
   final settings = await SettingsService.load();
   // The previous run's database close, if it left a mark: the quit itself has
   // no time to report one, so this boot is the first moment it can be told.
@@ -153,7 +153,7 @@ Future<HaLoServices> bootstrap({
   // Reads the same "already onboarded" signal, so it must run before
   // onboarding gets a chance to write a callsign.
   await settings.seedSyncEnabledDefault();
-  LocaleSettings.setLocaleRaw(settings.locale);
+  unawaited(LocaleSettings.setLocaleRaw(settings.locale));
   Intl.defaultLocale = settings.locale;
   final services = HaLoServices(
     db,
@@ -217,7 +217,7 @@ Future<HaLoServices> bootstrap({
   // up on a later launch once the keyring is available.
   final syncDeviceKey = await settings.ensureSyncDeviceKey();
   if (syncDeviceKey != null) {
-    services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall);
+    unawaited(services.extensions.setSyncCredentials(deviceKey: syncDeviceKey, operatorCall: settings.activeProfile.operatorCall));
     services.syncEngine.start();
     services.watchReceivedTestOperationPurges();
     // Independent of syncEngine.start() above: this registers device
@@ -276,7 +276,7 @@ Future<HaLoServices> bootstrap({
   // shows the release overlay, "Preferences…" (⌘,) opens the Settings view.
   WindowChromeService.onShowReleaseOverlay = services.devSplashTrigger.trigger;
   WindowChromeService.onOpenSettings = () => navigatorKey.currentState?.push(
-        MaterialPageRoute(builder: (_) => SettingsView(services: services)),
+        MaterialPageRoute<void>(builder: (_) => SettingsView(services: services)),
       );
   WindowChromeService.onCheckForUpdates = () => unawaited(const AutoUpdateService().checkForUpdatesInteractively());
 
@@ -331,7 +331,7 @@ Future<HaLoServices> bootstrap({
     // After the enabled extensions have refreshed their data-file ownership
     // records, drop the data of any extension disabled long enough ago.
     await services.dataFiles.purgeStaleExtensionData(settings.extensionDisabledSince);
-  }).catchError((e) {
+  }).catchError((Object e) {
     debugPrint('[boot] failed to initialize data files: $e');
   }));
 
@@ -349,7 +349,7 @@ Future<HaLoServices> bootstrap({
   // failures leave flags empty and are logged inside the service.
   unawaited(extensions.start().then((_) {
     return services.flags.refreshForCall(settings.activeProfile.operatorCall);
-  }).catchError((e) {
+  }).catchError((Object e) {
     debugPrint('[boot] failed to fetch feature flags: $e');
   }));
 

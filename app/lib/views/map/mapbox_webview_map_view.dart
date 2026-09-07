@@ -282,7 +282,7 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
         );
         controller.addJavaScriptHandler(
           handlerName: 'poloMapEvent',
-          callback: (args) {
+          callback: (List<dynamic> args) {
             if (args.length >= 2) {
               _onMapEvent('${args[0]}', '${args[1]}');
             } else {

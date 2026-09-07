@@ -132,7 +132,7 @@ class EvaluatedNotice {
   /// Action descriptors as raw maps (`{action, label, args, event}`),
   /// interpreted by the notice action handler.
   List<Map<String, dynamic>> get actions =>
-      ((data['actions'] as List?) ?? const []).whereType<Map>().map((a) => a.cast<String, dynamic>()).toList();
+      ((data['actions'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((a) => a.cast<String, dynamic>()).toList();
 }
 
 /// Platform tokens recognized in `-<platform>` key suffixes and the

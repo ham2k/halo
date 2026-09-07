@@ -12,7 +12,6 @@
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 
@@ -54,8 +53,8 @@ void main() {
       'their': {'call': theirCall},
       'our': {
         'call': ourCall,
-        if (operatorCall != null) 'operatorCall': operatorCall,
-        if (position != null) 'multiIdentifier': position,
+        'operatorCall': ?operatorCall,
+        'multiIdentifier': ?position,
       },
       'band': '20m',
       'mode': 'SSB',

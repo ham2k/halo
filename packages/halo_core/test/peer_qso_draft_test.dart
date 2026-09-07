@@ -13,7 +13,7 @@ void main() {
           'call': call,
           'sent': '59',
           'guess': {'name': 'John', 'state': 'NY'},
-          if (lookups != null) 'lookups': lookups,
+          'lookups': ?lookups,
         },
         'our': {'call': 'K2SUL', 'sent': '59'},
         'freq': 14025.0,

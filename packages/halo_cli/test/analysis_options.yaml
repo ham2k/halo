@@ -1,0 +1,15 @@
+# Tests read hook results and QSON as the JSON they are, and poke at them
+# through dynamic maps on purpose — that is what they are checking. The
+# rules that make lib code say its types are noise here, and are relaxed;
+# the two that catch real bugs in a test as surely as in lib — an implicit
+# downcast from dynamic, and a Future dropped on the floor — stay on.
+include: ../analysis_options.yaml
+
+analyzer:
+  language:
+    strict-inference: false
+    strict-raw-types: false
+
+linter:
+  rules:
+    avoid_dynamic_calls: false

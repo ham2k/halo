@@ -702,7 +702,7 @@ class OperationSheetState extends State<OperationSheet> {
       // restart after a failed boot all reload the descriptors — and each
       // one can change what `linkForRef` answers, for refs that never
       // changed.
-      _loadRefLinks();
+      unawaited(_loadRefLinks());
     }
   }
 
@@ -1050,7 +1050,7 @@ class OperationSheetState extends State<OperationSheet> {
     final alreadySuggested = _suggestions.any((s) => s['type'] == ref['type'] && s['ref'] == ref['ref']);
     if (!alreadySuggested) {
       setState(() => _suggestions = [ref, ..._suggestions]);
-      _loadSuggestionLinks();
+      unawaited(_loadSuggestionLinks());
     }
   }
 
@@ -1151,7 +1151,7 @@ class OperationSheetState extends State<OperationSheet> {
         _loadingSuggestions = false;
       });
       // After the assignment, not before: it reads `_suggestions`.
-      _loadSuggestionLinks();
+      unawaited(_loadSuggestionLinks());
     }
   }
 
@@ -2827,7 +2827,7 @@ class OperationSheetState extends State<OperationSheet> {
                 if (mounted) {
                   _debounce?.cancel();
                   await _loadControls();
-                  _search(_searchController.text);
+                  unawaited(_search(_searchController.text));
                 }
               },
               icon: Icon(MdiIcons.toyBrick, size: 18, color: onAccordionColor),

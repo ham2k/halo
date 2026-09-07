@@ -240,8 +240,8 @@ class QsosRepository {
       'startAtMillis': atMillis,
       'event': {
         'event': kind,
-        if (operation != null) 'operation': operation,
-        if (description != null) 'description': description,
+        'operation': ?operation,
+        'description': ?description,
       },
     });
   }

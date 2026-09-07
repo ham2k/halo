@@ -163,13 +163,13 @@ Future<List<SettingsCatalogEntry>> buildSettingsCatalog(
       description: el['description'] is String ? el['description'] as String : null,
       aliases: switch (rawAliases) {
         String s => [s],
-        List l => l.whereType<String>().toList(),
+        List<dynamic> l => l.whereType<String>().toList(),
         _ => const <String>[],
       },
       section: scanned.sectionTitle,
       fieldType: fieldType,
       value: declaredSettingValue(el),
-      options: (el['options'] as List?)?.whereType<Map>().map((o) => o.cast<String, dynamic>()).toList() ?? const [],
+      options: (el['options'] as List?)?.whereType<Map<dynamic, dynamic>>().map((o) => o.cast<String, dynamic>()).toList() ?? const [],
     ));
   }
   return entries;
@@ -192,7 +192,7 @@ List<String> _searchableNames(Map<String, dynamic> el) => [
   if (el['label'] is String) el['label'] as String,
   ...switch (el['aliases']) {
     String alias => [alias],
-    List aliases => aliases.whereType<String>(),
+    List<dynamic> aliases => aliases.whereType<String>(),
     _ => const <String>[],
   },
 ].where((t) => t.isNotEmpty).toList();

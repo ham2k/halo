@@ -784,7 +784,7 @@ class LoggingControls extends StatefulWidget {
   final String? bandOrFreqRequiredLabel;
 
   /// Shown in the info area when a QSO write throws ([_log]'s catch blocks) —
-  /// "Could not save: <error>". Without an explicit in-panel message a failed
+  /// "Could not save: `<error>`". Without an explicit in-panel message a failed
   /// save is near-silent (the global handler's generic notice shows at most
   /// once per session) while the panel keeps looking functional, so an
   /// operator on a full disk loses every QSO from the first failure on
@@ -1183,7 +1183,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Set<String> get _activeRefTypes {
     final current = _segmented.current;
     return {
-      for (final ref in ((current['refs'] as List?) ?? const []).whereType<Map>())
+      for (final ref in ((current['refs'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>())
         if (ref['type'] case final String type) type,
     };
   }
@@ -1353,16 +1353,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The exchange options a `kind: 'options'` control declares, parsed once per
   /// build from the descriptor. Malformed entries are dropped rather than
   /// crashing the entry row — options cross the bridge from third-party code.
-  List<ExchangeOption> _optionsFor(Map control) => [
+  List<ExchangeOption> _optionsFor(Map<dynamic, dynamic> control) => [
         for (final raw in ((control['input'] as Map?)?['options'] as List?) ?? const [])
           if (raw is Map)
-            if (ExchangeOption.fromMap(raw.cast<String, dynamic>()) case final option?) option,
+            ?ExchangeOption.fromMap(raw.cast<String, dynamic>()),
       ];
 
   /// The separator a `kind: 'options'` control accepts several values with —
   /// a QSO party's county line, `ORDES/JEF` — or `''` for the single-value
   /// fields every other contest declares.
-  String _optionSeparatorFor(Map control) {
+  String _optionSeparatorFor(Map<dynamic, dynamic> control) {
     final separator = ((control['input'] as Map?)?['multiValue'] as Map?)?['separator'];
     return separator is String ? separator : '';
   }
@@ -1380,7 +1380,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// left until the next keystroke. Accepting one is still correct, because the
   /// accept recomputes; the alternative is a listener that rebuilds the whole
   /// panel on every caret move, mid-QSO, for a line the operator is not reading.
-  String _typedOptionValue(Map control) {
+  String _typedOptionValue(Map<dynamic, dynamic> control) {
     final key = control['key'] as String;
     final text = _controlTextValues[key] ?? '';
     final separator = _optionSeparatorFor(control);
@@ -1397,7 +1397,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Offered ALONGSIDE the literal reading, never instead of it: the suggestion
   /// line searches for what was typed first and falls back to this only when
   /// that finds nothing, so typing a code out in full suggests as it always did.
-  String? _inheritedOptionValue(Map control) {
+  String? _inheritedOptionValue(Map<dynamic, dynamic> control) {
     final inherit = _optionInheritPrefixFor(control);
     final separator = _optionSeparatorFor(control);
     if (inherit <= 0 || separator.isEmpty) return null;
@@ -1411,7 +1411,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// How many of the first value's characters a later one may borrow — the
   /// multi-state QSO parties' county-line shorthand, 0 everywhere else.
-  int _optionInheritPrefixFor(Map control) {
+  int _optionInheritPrefixFor(Map<dynamic, dynamic> control) {
     final value = ((control['input'] as Map?)?['multiValue'] as Map?)?['inheritPrefix'];
     return value is int ? value : 0;
   }
@@ -1636,7 +1636,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// counter past itself rather than being handed out twice.
   List<SequenceDescriptor> get _serialSequences => [
         for (final control in _textControls)
-          if (_serialDescriptorFor(control) case final descriptor?) descriptor,
+          ?_serialDescriptorFor(control),
       ];
 
   /// Runs `widget.decorateQsoBeforeSave` if wired, so an activity can project
@@ -3020,7 +3020,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _guessedRefsForCall = null;
     _unmatchedRefs = [];
     _clearTextControls();
-    final refs = (asQsonList(data['refs']))?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
+    final refs = (asQsonList(data['refs']))?.whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()) ?? const [];
     for (final ref in refs) {
       String? key;
       for (final control in _effectiveActivityControls) {
@@ -6059,7 +6059,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (widget.editingQso != null || _fieldsLocked || _populating) return false;
     final guess = result?['guess'];
     if (guess is! Map) return false;
-    final proposed = asQsonList(guess['refs'])?.whereType<Map>().map((r) => r.cast<String, dynamic>()) ?? const [];
+    final proposed = asQsonList(guess['refs'])?.whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()) ?? const [];
     if (proposed.isEmpty) return false;
 
     final claimedTypes = <Object?>{
@@ -6997,7 +6997,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           'operation': _spotOperationPayload,
           'target': target,
           if (qso != null) 'qso': qso.data,
-          if (comment != null) 'comment': comment,
+          'comment': ?comment,
           if (qso == null) 'freq': vfo?.freq,
           if (qso == null) 'mode': vfo?.mode,
         });
@@ -7152,7 +7152,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // above: this map is merged over the record, so an omitted key leaves
       // the stored value standing and a wrong power could never be cleared.
       if (_powerShown) 'power': _powerWatts,
-      if (startAtMillis != null) 'startAtMillis': startAtMillis,
+      'startAtMillis': ?startAtMillis,
       ..._currentQsoExtra,
     };
   }
@@ -8070,16 +8070,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   bool _deepEquals(dynamic a, dynamic b) {
     if (_isEmptyish(a) && _isEmptyish(b)) return true;
     if (a is Map || b is Map) {
-      final ma = a is Map ? a : const {};
-      final mb = b is Map ? b : const {};
+      final ma = a is Map ? a : const <dynamic, dynamic>{};
+      final mb = b is Map ? b : const <dynamic, dynamic>{};
       for (final key in {...ma.keys, ...mb.keys}) {
         if (!_deepEquals(ma[key], mb[key])) return false;
       }
       return true;
     }
     if (a is List || b is List) {
-      final la = a is List ? a : const [];
-      final lb = b is List ? b : const [];
+      final la = a is List ? a : const <dynamic>[];
+      final lb = b is List ? b : const <dynamic>[];
       if (la.length != lb.length) return false;
       final sa = la.map(jsonEncode).toList()..sort();
       final sb = lb.map(jsonEncode).toList()..sort();
@@ -8803,7 +8803,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                     alignment: Alignment.topLeft,
                                     children: [
                                       ...previousChildren,
-                                      if (currentChild != null) currentChild,
+                                      ?currentChild,
                                     ],
                                   ),
                                   child: KeyedSubtree(
@@ -9075,7 +9075,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         ),
                       );
                       }),
-                          if (_buildOptionSuggestionMenu(accentTheme) case final menu?) menu,
+                          ?_buildOptionSuggestionMenu(accentTheme),
                         ],
                       ),
                     ],

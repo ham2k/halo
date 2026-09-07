@@ -9,6 +9,7 @@
 // still win hit-testing (a double-click on a button must act on the button,
 // never zoom the window under it).
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart' show debugDefaultTargetPlatformOverride;
@@ -348,14 +349,14 @@ void main() {
       expect(modalBarrierIsVisible.value, isFalse);
 
       // An opaque page route has no barrier — it must NOT hide the mask.
-      navigator.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: SizedBox())));
+      unawaited(navigator.push(MaterialPageRoute<void>(builder: (_) => const Scaffold(body: SizedBox()))));
       await tester.pumpAndSettle();
       expect(modalBarrierIsVisible.value, isFalse);
       navigator.pop();
       await tester.pumpAndSettle();
 
       // A dialog dims the window — on while it's up, off once dismissed.
-      showDialog<void>(context: navigator.context, builder: (_) => const AlertDialog(content: Text('hi')));
+      unawaited(showDialog<void>(context: navigator.context, builder: (_) => const AlertDialog(content: Text('hi'))));
       await tester.pumpAndSettle();
       expect(modalBarrierIsVisible.value, isTrue);
 
@@ -381,18 +382,18 @@ void main() {
       final navigator = tester.state<NavigatorState>(find.byType(Navigator));
       expect(modalBarrierIsDismissible.value, isFalse, reason: 'nothing is up');
 
-      showDialog<void>(
+      unawaited(showDialog<void>(
         context: navigator.context,
         builder: (_) => const AlertDialog(content: Text('first')),
-      );
+      ));
       await tester.pumpAndSettle();
       expect(modalBarrierIsDismissible.value, isTrue);
 
-      showDialog<void>(
+      unawaited(showDialog<void>(
         context: navigator.context,
         barrierDismissible: false,
         builder: (_) => const AlertDialog(content: Text('second')),
-      );
+      ));
       await tester.pumpAndSettle();
       expect(modalBarrierIsDismissible.value, isFalse, reason: "the top dialog refuses barrier dismissal");
 

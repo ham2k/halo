@@ -139,20 +139,16 @@ class FlagsService extends ChangeNotifier {
     required this.statusBar,
     this.annotate,
     this.baseUrl = kFlagsBaseUrl,
-    FlagsFetcher? fetcher,
+    this._fetcher,
     http.Client? client,
     Future<NoticeEnvironment> Function()? environmentProvider,
-    NoticeActionHandler? onNoticeAction,
-    SharedPreferences? prefs,
-    void Function(String event, [Map<String, Object?> properties])? onTrack,
+    this._onNoticeAction,
+    this._prefs,
+    this._onTrack,
     this.isReleaseBuild = kReleaseMode,
     this.staleness,
-  })  : _fetcher = fetcher,
-        _client = client ?? http.Client(),
-        _environmentProvider = environmentProvider ?? defaultNoticeEnvironment,
-        _onNoticeAction = onNoticeAction,
-        _prefs = prefs,
-        _onTrack = onTrack {
+  })  : _client = client ?? http.Client(),
+        _environmentProvider = environmentProvider ?? defaultNoticeEnvironment {
     // Gating the push alone isn't enough: notices persist, so one an earlier
     // build left on file sits in the footer of every later launch until
     // somebody dismisses it. Clear it here rather than in the push path,

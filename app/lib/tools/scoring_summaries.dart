@@ -68,8 +68,8 @@ List<Map<String, dynamic>> mergedDaySections(Map<String, dynamic>? scoring) {
 
   for (final scorerKey in orderedScorerKeys(scoring)) {
     final raw = _scorerEntry(scoring, scorerKey)?['daySections'];
-    final sections = raw is List ? raw : const [];
-    for (final section in sections.whereType<Map>()) {
+    final sections = raw is List ? raw : const <dynamic>[];
+    for (final section in sections.whereType<Map<dynamic, dynamic>>()) {
       final day = (section['day'] as num?)?.toInt();
       if (day == null) continue;
       final bucket = byDay.putIfAbsent(day, () => {'day': day, 'scores': <String, dynamic>{}});

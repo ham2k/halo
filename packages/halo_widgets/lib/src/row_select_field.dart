@@ -44,7 +44,7 @@ class SelectRow {
   });
 
   /// What the closed field shows, which has one line and no columns.
-  String get flatLabel => [name, ...tags, if (trailing != null) trailing!].join(' ');
+  String get flatLabel => [name, ...tags, ?trailing].join(' ');
 }
 
 /// A dropdown built from [SelectRow]s, opened as a menu anchored under the

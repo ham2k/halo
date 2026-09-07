@@ -500,7 +500,7 @@ void main() {
 
     var ready = false;
     var readyWhenCalled = false;
-    Future<void>.delayed(const Duration(milliseconds: 100)).then((_) => ready = true);
+    unawaited(Future<void>.delayed(const Duration(milliseconds: 100)).then((_) => ready = true));
 
     final queue = service(
       (call, {required qso, required operation, bool online = true, bool recentContext = false}) async {

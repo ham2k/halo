@@ -54,7 +54,7 @@ class _FakeGeoshapes extends GeoshapeService {
 
 Operation _operationWith({String? grid, List<Map<String, dynamic>> refs = const []}) => Operation(
       uuid: 'op-shapes',
-      data: {if (grid != null) 'grid': grid, 'refs': refs},
+      data: {'grid': ?grid, 'refs': refs},
     );
 
 void main() {

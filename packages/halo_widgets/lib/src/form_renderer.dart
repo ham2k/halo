@@ -503,7 +503,7 @@ class FormRendererState extends State<FormRenderer> {
       if (_isRowSelect(field)) continue;
       final key = field['key'] as String;
       if (_values[key] == null || changes.containsKey(key)) continue;
-      final options = (field['options'] as List?)?.cast<Map>() ?? const [];
+      final options = (field['options'] as List?)?.cast<Map<dynamic, dynamic>>() ?? const [];
       if (options.isNotEmpty && !options.any((opt) => opt['value'] == _values[key])) {
         changes[key] = null;
       }
@@ -549,7 +549,7 @@ class FormRendererState extends State<FormRenderer> {
       // value is exactly one of its items, so the form would throw instead of
       // rendering. Dropping it here also means Save clears it, rather than
       // writing back a value nothing downstream will honour.
-      final options = (field['options'] as List?)?.cast<Map>() ?? const [];
+      final options = (field['options'] as List?)?.cast<Map<dynamic, dynamic>>() ?? const [];
       if (options.isNotEmpty && !options.any((opt) => opt['value'] == val)) {
         val = options.any((opt) => opt['value'] == field['value']) ? field['value'] : null;
       }
@@ -1092,7 +1092,7 @@ class FormRendererState extends State<FormRenderer> {
           // otherwise keeps showing whatever item was last tapped —
           // including an isAction option that never became the value.
           key: ValueKey('$key-$_actionGeneration'),
-          value: _values[key],
+          initialValue: _values[key],
           focusNode: _focusNodes[key],
           icon: dropdownTrailingIcon,
           menuMaxHeight: dropdownMenuMaxHeight(context),
@@ -1159,7 +1159,13 @@ class FormRendererState extends State<FormRenderer> {
                 RadioListTile<dynamic>(
                   title: Text(opt['label'] as String),
                   value: opt['value'],
+                  // Flutter 3.32 moved the group value to a RadioGroup
+                  // ancestor. Migrating changes how a radio's selection is
+                  // wired, which is a form-renderer change of its own, not
+                  // an analyzer one — HALO-534.
+                  // ignore: deprecated_member_use
                   groupValue: _values[key],
+                  // ignore: deprecated_member_use
                   onChanged: _isSubmitting
                       ? null
                       : (val) {
@@ -1371,7 +1377,7 @@ class FormRendererState extends State<FormRenderer> {
       _values[key] = val;
       _errors.remove(key);
     });
-    _handleFieldBlurOrInteraction(key, val);
+    unawaited(_handleFieldBlurOrInteraction(key, val));
   }
 
   /// A text-like icon-row field (`text`/`multiline`/`email`/`callsign`/
@@ -1691,6 +1697,10 @@ class FormRendererState extends State<FormRenderer> {
           ReorderableListView(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
+            // onReorderItem hands over already-adjusted indices, so the
+            // move-down compensation in `actions.reorder` has to change with
+            // the callback — a behaviour change that belongs to HALO-534.
+            // ignore: deprecated_member_use
             onReorder: actions.reorder,
             // Otherwise, on a desktop/web (mouse) platform, the framework
             // auto-adds its OWN trailing drag handle to every row — landing
@@ -1875,6 +1885,8 @@ class FormRendererState extends State<FormRenderer> {
                         // icon above carries the ReorderableDragStartListener
                         // instead.
                         buildDefaultDragHandles: false,
+                        // See the ReorderableListView above — HALO-534.
+                        // ignore: deprecated_member_use
                         onReorder: actions.reorder,
                         children: [for (var i = 0; i < items.length; i++) rowFor(i)],
                       )

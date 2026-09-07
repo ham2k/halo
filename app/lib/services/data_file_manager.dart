@@ -761,7 +761,7 @@ class DataFileManager {
       args: {
         'body': body,
         'url': def['url'],
-        'options': const {},
+        'options': const <String, dynamic>{},
       },
     );
 

@@ -208,7 +208,7 @@ void main() {
     await deviceB.service.trust.trust(deviceA.deviceId, name: 'Laptop');
     SerialClaims claimsFor(_Device device) => SerialClaims(
           localDeviceId: device.deviceId,
-          peek: (_, __) async => 1,
+          peek: (_, _) async => 1,
           livePeers: () => [
             for (final id in device.service.peers.keys)
               if (device.service.hasSession(id)) id,

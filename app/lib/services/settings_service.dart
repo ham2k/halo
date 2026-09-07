@@ -105,7 +105,7 @@ class CwMessageSet {
       labels: pad({1: 'CQ', 2: '5NN', 4: '{{op.call}}'}),
     );
     return [
-      if (saved != null) saved,
+      ?saved,
       defaults,
       CwMessageSet(
         name: m.setPota,

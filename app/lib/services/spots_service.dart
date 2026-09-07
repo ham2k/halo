@@ -38,11 +38,11 @@ typedef SpotsFetch = Future<
 /// which is the whole point of the lookup.
 class SpotsService extends ChangeNotifier {
   SpotsService({
-    required SpotsFetch fetchSpots,
+    required this._fetchSpots,
     this.refreshInterval = const Duration(minutes: 2),
     this.isOffline,
     Stream<bool>? offlineChanges,
-  }) : _fetchSpots = fetchSpots {
+  }) {
     // Straight away on recovery rather than up to a whole refreshInterval
     // later: the board an operator comes back to is stale by exactly the
     // length of the outage, and that is the moment they look at it.

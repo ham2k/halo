@@ -179,7 +179,7 @@ void main() {
       {
         ...snapshot.data,
         'operation': op.uuid,
-        'their': <String, dynamic>{...snapshot.data['their'] as Map, 'name': 'Hiram'},
+        'their': <String, dynamic>{...snapshot.data['their'] as Map<String, dynamic>, 'name': 'Hiram'},
         'updatedAtMillis': (snapshot.data['updatedAtMillis'] as int) + 60000,
       },
     ]);
@@ -191,7 +191,7 @@ void main() {
         operationUuid: op.uuid,
         data: {
           ...snapshot.data,
-          'their': <String, dynamic>{...snapshot.data['their'] as Map, 'sent': '55'},
+          'their': <String, dynamic>{...snapshot.data['their'] as Map<String, dynamic>, 'sent': '55'},
         },
       ),
       basedOn: snapshot,
@@ -206,7 +206,7 @@ void main() {
 
   group('writeBatch', () {
     Map<String, dynamic> qsoData(String call, {String? uuid}) => {
-          if (uuid != null) 'uuid': uuid,
+          'uuid': ?uuid,
           'our': {'call': 'KI2D'},
           'their': {'call': call},
           'band': '20m',
@@ -375,7 +375,7 @@ void main() {
         {
           ...snapshot.data,
           'operation': op.uuid,
-          'their': <String, dynamic>{...snapshot.data['their'] as Map, 'name': 'Hiram'},
+          'their': <String, dynamic>{...snapshot.data['their'] as Map<String, dynamic>, 'name': 'Hiram'},
           'updatedAtMillis': (snapshot.data['updatedAtMillis'] as int) + 60000,
         },
       ]);
@@ -386,7 +386,7 @@ void main() {
         operationUuid: op.uuid,
         data: {
           ...snapshot.data,
-          'their': <String, dynamic>{...snapshot.data['their'] as Map, 'grid': 'FN31pr'},
+          'their': <String, dynamic>{...snapshot.data['their'] as Map<String, dynamic>, 'grid': 'FN31pr'},
         },
       );
       await qsos.writeBatch(

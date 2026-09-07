@@ -295,16 +295,14 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   CatService(this._settings,
       {EquipmentRegistry? registry,
-      RadioService? radio,
-      void Function(String event, [Map<String, Object?> properties])? onTrack,
+      this._radio,
+      this._onTrack,
       this.reconnectDelay = _defaultReconnectDelay,
       this.now = realNowUtc,
       this.idleRetryFirst = _idleRetryFirst,
       this.staleAfter = catStaleAfter})
       : assert(idleRetryFirst > Duration.zero, 'a zero first delay makes the backoff a tight loop'),
-        registry = registry ?? EquipmentRegistry(),
-        _onTrack = onTrack,
-        _radio = radio {
+        registry = registry ?? EquipmentRegistry() {
     _load();
     // The meter calibration tables (drivers/info/), read once. Not awaited
     // by anything: a session asks for its table each time it converts a
@@ -411,7 +409,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   List<EquipmentNode> get autoConnectHeldNodes => [
         for (final uuid in _autoConnectHeld)
           if (_autoConnectTargets.contains(uuid))
-            if (_nodes[uuid] case final node?) node,
+            ?_nodes[uuid],
       ];
 
   /// The nodes an automatic reconnect aims at: radio1, and the key in use when
@@ -420,7 +418,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   Set<String> get _autoConnectTargets {
     final keyer = designatedFor(kCategoryKey);
     return {
-      if (_localRadio1 case final uuid?) uuid,
+      ?_localRadio1,
       if (keyer != null && _isDesignatedKeyerDevice(keyer)) keyer,
     };
   }
@@ -1600,7 +1598,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     }
     return [
       for (final found in _discovered.values)
-        if (_offerFor(found, configured) case final offer?) offer,
+        ?_offerFor(found, configured),
     ];
   }
 

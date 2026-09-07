@@ -52,11 +52,18 @@ import 'halo_services.dart';
 /// only degrades those two commands.
 Future<bool> runCommandAction(HaLoServices services, String action,
     [Map<String, dynamic>? params, BuildContext? context]) async {
-  final outcome = switch (action) {
-    'purgeTests' => await _runPurgeTests(services, context),
-    'syncAll' => await _runSyncAll(services, context),
-    _ => await services.handleCommandAction(action, params),
-  };
+  // A statement switch rather than an expression: only one arm runs, but the
+  // analyzer reads an expression's arms in sequence and sees the second
+  // arm's `context` as used after the first arm's await.
+  final CommandActionOutcome? outcome;
+  switch (action) {
+    case 'purgeTests':
+      outcome = await _runPurgeTests(services, context);
+    case 'syncAll':
+      outcome = await _runSyncAll(services, context);
+    default:
+      outcome = await services.handleCommandAction(action, params);
+  }
   if (outcome == null) return false;
   final sink = services.commandResponseSink;
   if (sink == null || !sink(outcome.text, failed: outcome.failed)) {

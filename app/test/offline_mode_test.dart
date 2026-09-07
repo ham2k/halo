@@ -414,7 +414,7 @@ void _indicatorTests() {
 class _RecoveringQsos extends QsosRepository {
   final void Function() onWrite;
 
-  _RecoveringQsos(HaLoDatabase db, {required this.onWrite}) : super(db);
+  _RecoveringQsos(super.db, {required this.onWrite});
 
   @override
   Future<void> update(Qso qso, {Qso? basedOn}) async {

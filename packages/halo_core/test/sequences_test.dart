@@ -23,7 +23,7 @@ Map<String, dynamic> _qsoData({String call = 'N0CALL', String band = '20m', List
       'band': band,
       'mode': 'CW',
       'their': {'call': call},
-      if (refs != null) 'refs': refs,
+      'refs': ?refs,
     };
 
 int? _serialOf(Qso qso, {String type = 'cqwpx'}) {

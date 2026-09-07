@@ -17,11 +17,11 @@ void main() {
     Object? on,
     Object? form,
   }) => {
-    if (hookKey != null) 'hookKey': hookKey,
-    if (key != null) 'key': key,
-    if (title != null) 'title': title,
-    if (on != null) 'on': on,
-    if (form != null) 'form': form,
+    'hookKey': ?hookKey,
+    'key': ?key,
+    'title': ?title,
+    'on': ?on,
+    'form': ?form,
   };
 
   test('an extension panel is namespaced by the hook that registered it', () {

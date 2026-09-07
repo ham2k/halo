@@ -70,7 +70,7 @@ bool elementMatchesEnvironment(Map<String, dynamic> element) {
   // which is always lowercase — rather than silently failing open/closed.
   final tokens = switch (raw) {
     String s => s.split(',').map((t) => t.trim().toLowerCase()).where((t) => t.isNotEmpty).toList(),
-    List l => l.whereType<String>().map((t) => t.toLowerCase()).toList(),
+    List<dynamic> l => l.whereType<String>().map((t) => t.toLowerCase()).toList(),
     _ => const <String>[],
   };
   if (tokens.isEmpty) return true;
@@ -100,7 +100,7 @@ bool elementMatchesTarget(Map<String, dynamic> element, String target) {
   final raw = element['target'];
   final targets = switch (raw) {
     String s => [s],
-    List l => l.whereType<String>().toList(),
+    List<dynamic> l => l.whereType<String>().toList(),
     _ => const <String>[],
   };
   return targets.contains(target);

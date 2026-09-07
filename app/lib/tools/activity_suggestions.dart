@@ -44,7 +44,7 @@ List<Map<String, dynamic>> mergeActivitySuggestions(
   for (final entry in entries) {
     if (entry['ok'] != true || entry['value'] is! List) continue;
     final band = preferredKeys.contains(entry['key']) ? preferred : others;
-    band.addAll((entry['value'] as List).cast<Map>().map((s) => s.cast<String, dynamic>()));
+    band.addAll((entry['value'] as List).cast<Map<dynamic, dynamic>>().map((s) => s.cast<String, dynamic>()));
   }
   return [...rankActivitySuggestions(preferred), ...rankActivitySuggestions(others)];
 }

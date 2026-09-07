@@ -144,7 +144,7 @@ class _ConfirmDevicePaneState extends State<ConfirmDevicePane> {
     final result = _usableResult(await widget.findByCode(code));
     if (!mounted) return;
     final permissions = (result?['permissions'] as List?) ?? const [];
-    final permission = permissions.whereType<Map>().firstOrNull?.cast<String, dynamic>();
+    final permission = permissions.whereType<Map<dynamic, dynamic>>().firstOrNull?.cast<String, dynamic>();
     setState(() {
       _busy = false;
       if (result != null && permission == null) _error = t.confirmDevice.codeNotFound;

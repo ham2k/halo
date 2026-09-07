@@ -57,7 +57,7 @@ void main() {
     addTearDown(tester.view.reset);
     final context = await pumpHost(tester);
 
-    showModalPane<void>(context, title: 'Account', builder: (context) => const Text('pane body'));
+    unawaited(showModalPane<void>(context, title: 'Account', builder: (context) => const Text('pane body')));
     await tester.pumpAndSettle();
 
     // Dialog presentation: close button, no AppBar, content underneath
@@ -91,12 +91,12 @@ void main() {
     // For a pane whose own footer carries Done. The X going away is the point;
     // what must NOT go away with it is the phone presentation's back button,
     // which is the platform's dismissal rather than this flag's.
-    showModalPane<void>(
+    unawaited(showModalPane<void>(
       context,
       title: 'Exports',
       closeButton: false,
       builder: (context) => const Text('pane body'),
-    );
+    ));
     await tester.pumpAndSettle();
     expect(find.text('pane body'), findsOneWidget);
     expect(find.byIcon(MdiIcons.close), findsNothing);
@@ -153,7 +153,7 @@ void main() {
     addTearDown(tester.view.reset);
     final context = await pumpHost(tester);
 
-    showModalPane<void>(context, title: 'Account', builder: (context) => const TextField());
+    unawaited(showModalPane<void>(context, title: 'Account', builder: (context) => const TextField()));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'draft input');
@@ -176,13 +176,13 @@ void main() {
     addTearDown(tester.view.reset);
     final context = await pumpHost(tester);
 
-    showModalPane<void>(
+    unawaited(showModalPane<void>(
       context,
       builder: (context) => TextButton(
         onPressed: () => ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('invalid reference'))),
         child: const Text('validate'),
       ),
-    );
+    ));
     await tester.pumpAndSettle();
     await tester.tap(find.text('validate'));
     await tester.pump();
@@ -236,7 +236,7 @@ void main() {
     addTearDown(tester.view.reset);
     final context = await pumpHost(tester);
 
-    showModalPane<void>(
+    unawaited(showModalPane<void>(
       context,
       title: 'Activities',
       scrollable: false,
@@ -246,7 +246,7 @@ void main() {
           Expanded(child: ListView(children: const [Text('filling section')])),
         ],
       ),
-    );
+    ));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('filling section'), findsOneWidget);
@@ -268,14 +268,14 @@ void main() {
     addTearDown(tester.view.reset);
     final context = await pumpHost(tester);
 
-    showModalPane<void>(context, builder: (context) => const Text('pane body'));
+    unawaited(showModalPane<void>(context, builder: (context) => const Text('pane body')));
     await tester.pumpAndSettle();
     // Tap outside the ideal-width card (near the left edge).
     await tester.tapAt(const Offset(10, 400));
     await tester.pumpAndSettle();
     expect(find.text('pane body'), findsNothing);
 
-    showModalPane<void>(context, barrierDismissible: false, builder: (context) => const Text('pane body'));
+    unawaited(showModalPane<void>(context, barrierDismissible: false, builder: (context) => const Text('pane body')));
     await tester.pumpAndSettle();
     await tester.tapAt(const Offset(10, 400));
     await tester.pumpAndSettle();
@@ -293,7 +293,7 @@ void main() {
     addTearDown(tester.view.reset);
     final context = await pumpHost(tester);
 
-    showModalPane<void>(context, barrierDismissible: false, builder: (context) => const Text('pane body'));
+    unawaited(showModalPane<void>(context, barrierDismissible: false, builder: (context) => const Text('pane body')));
     await tester.pumpAndSettle();
     expect(find.text('pane body'), findsOneWidget);
 
@@ -474,7 +474,7 @@ void main() {
       addTearDown(tester.view.reset);
       final context = await pumpHost(tester);
 
-      showFormPane(
+      unawaited(showFormPane(
         context,
         formDefinition: {
           'title': 'Casing',
@@ -484,7 +484,7 @@ void main() {
           ],
         },
         initialState: const {},
-      );
+      ));
       await tester.pumpAndSettle();
 
       await tester.enterText(find.widgetWithText(TextField, 'Exchange'), 'br from fl');
@@ -509,7 +509,7 @@ void main() {
     addTearDown(tester.view.reset);
     final context = await pumpHost(tester);
 
-    showFormPane(context, formDefinition: formOf(4), initialState: const {});
+    unawaited(showFormPane(context, formDefinition: formOf(4), initialState: const {}));
     await tester.pumpAndSettle();
 
     expect(tester.getSize(card()).height, lessThan(maxPaneHeightOf(tester) * 0.75));
@@ -532,7 +532,7 @@ void main() {
     addTearDown(tester.view.reset);
     final context = await pumpHost(tester);
 
-    showFormPane(context, formDefinition: formOf(20), initialState: const {});
+    unawaited(showFormPane(context, formDefinition: formOf(20), initialState: const {}));
     await tester.pumpAndSettle();
 
     expect(tester.getSize(card()).height, maxPaneHeightOf(tester));

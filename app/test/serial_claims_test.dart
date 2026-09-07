@@ -11,7 +11,6 @@
 // wire the way they do on a LAN. Nothing here touches a database: `peek` is
 // a counter the test owns.
 
-import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
@@ -44,7 +43,7 @@ class _Lan {
     var counter = next;
     final service = SerialClaims(
       localDeviceId: deviceId,
-      peek: (_, __) async => counter,
+      peek: (_, _) async => counter,
       livePeers: () => [for (final id in devices.keys) if (id != deviceId && !offline.contains(id)) id],
       send: (to, message) => _send(deviceId, to, message),
       ackTimeout: ackTimeout,
@@ -355,9 +354,9 @@ void main() {
     final marked = <(String, String, int)>[];
     final a = SerialClaims(
       localDeviceId: 'a',
-      peek: (_, __) async => 1,
+      peek: (_, _) async => 1,
       livePeers: () => const ['b'],
-      send: (_, __) => true,
+      send: (_, _) => true,
       onCommittedConflict: (op, request, number) => marked.add((op, request.label, number)),
     );
     addTearDown(a.dispose);

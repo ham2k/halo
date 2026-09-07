@@ -342,9 +342,9 @@ class _CommandDialogState extends State<CommandDialog> {
               _CatalogResult(:final command, :final params, :final describe, :final category) => {
                   'type': 'command',
                   'command': command,
-                  if (params != null) 'params': params,
+                  'params': ?params,
                   'describe': describe,
-                  if (category != null) 'category': category,
+                  'category': ?category,
                 },
               _TypedResult(:final text, :final describe) => {'type': 'typed', 'text': text, 'describe': describe},
               _NavResult(:final label) => {'type': 'nav', 'label': label},
@@ -608,9 +608,9 @@ class _CommandDialogState extends State<CommandDialog> {
     );
     services.track('operation_created');
     unawaited(services.settings.recordOnboardingShown(OnboardingFlows.newOperation));
-    navigatorKey.currentState?.push(MaterialPageRoute(
+    unawaited(navigatorKey.currentState?.push(MaterialPageRoute<void>(
       builder: (_) => OperationView(services: services, operationUuid: operation.uuid, openActivities: true),
-    ));
+    )));
   }
 
   List<_Result> _selectableOf(List<_Result> results) => results.where((r) => r.selectable).toList();
@@ -656,9 +656,9 @@ class _CommandDialogState extends State<CommandDialog> {
         await go();
       case _OperationResult(:final operation):
         _close();
-        navigatorKey.currentState?.push(MaterialPageRoute(
+        unawaited(navigatorKey.currentState?.push(MaterialPageRoute<void>(
           builder: (_) => OperationView(services: widget.services, operationUuid: operation.uuid),
-        ));
+        )));
     }
   }
 

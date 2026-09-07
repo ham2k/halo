@@ -13,7 +13,7 @@ import '../i18n/strings.g.dart';
 /// with the uuid's first 8 characters, the same convention app-polo uses.
 /// Returns null when the map carries none of those (an empty placeholder
 /// while account data is still loading, or a failed fetch).
-String? syncAccountIdentity(Map? account, {bool includePending = true}) =>
+String? syncAccountIdentity(Map<dynamic, dynamic>? account, {bool includePending = true}) =>
     _emailIdentity(account, includePending: includePending) ?? _anonymousIdentity(account);
 
 /// The one-line account description shared by the Sync panel and the
@@ -46,7 +46,7 @@ String syncAccountLabel(Object? accountData) {
   return _anonymousIdentity(account) ?? t.settings.syncPanel.notLinked;
 }
 
-String? _emailIdentity(Map? account, {required bool includePending}) {
+String? _emailIdentity(Map<dynamic, dynamic>? account, {required bool includePending}) {
   if (includePending) {
     final pending = _pendingEmail(account);
     if (pending != null) return t.syncAccount.pendingConfirmation(email: pending);
@@ -56,12 +56,12 @@ String? _emailIdentity(Map? account, {required bool includePending}) {
 
 /// The address awaiting confirmation, or null when there is none — a
 /// `pending_email` equal to the confirmed one is not a change in flight.
-String? _pendingEmail(Map? account) {
+String? _pendingEmail(Map<dynamic, dynamic>? account) {
   final pending = _field(account, 'pending_email');
   return pending == _field(account, 'email') ? null : pending;
 }
 
-String? _anonymousIdentity(Map? account) {
+String? _anonymousIdentity(Map<dynamic, dynamic>? account) {
   final id = _shortId(account);
   if (id == null) return null;
   return t.syncAccount.anonymous(id: id);
@@ -69,13 +69,13 @@ String? _anonymousIdentity(Map? account) {
 
 /// The uuid's first 8 characters, upper-cased — app-polo's convention, and
 /// short enough to read aloud to support.
-String? _shortId(Map? account) {
+String? _shortId(Map<dynamic, dynamic>? account) {
   final uuid = _field(account, 'uuid');
   if (uuid == null) return null;
   return (uuid.length > 8 ? uuid.substring(0, 8) : uuid).toUpperCase();
 }
 
-String? _field(Map? account, String key) {
+String? _field(Map<dynamic, dynamic>? account, String key) {
   final value = account?[key];
   return value is String && value.isNotEmpty ? value : null;
 }
@@ -92,7 +92,7 @@ String? _field(Map? account, String key) {
 /// one (the Sync panel's Synced Data row, the Switch Accounts dialog): two
 /// surfaces reading the payload by different keys would show one account
 /// with two sizes.
-({int? operations, int? qsos}) syncAccountCounts(Map? accountData) {
+({int? operations, int? qsos}) syncAccountCounts(Map<dynamic, dynamic>? accountData) {
   int? read(String side, String preferred) {
     final counts = accountData?[side] as Map?;
     return ((counts?[preferred] ?? counts?['total']) as num?)?.toInt();

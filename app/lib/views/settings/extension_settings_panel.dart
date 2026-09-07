@@ -192,7 +192,7 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
   }
 
   Map<String, dynamic> _fieldFor(String fieldKey) {
-    final elements = (_definition?['elements'] as List? ?? const []).cast<Map>();
+    final elements = (_definition?['elements'] as List? ?? const []).cast<Map<dynamic, dynamic>>();
     for (final el in elements) {
       if (el['type'] == 'field' && el['key'] == fieldKey) return el.cast<String, dynamic>();
     }

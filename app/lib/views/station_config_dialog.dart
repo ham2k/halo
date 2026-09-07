@@ -44,7 +44,7 @@ Future<void> showStationConfigDialog(BuildContext context, HaLoServices services
     onMoreSettings: () {
       final navigator = Navigator.of(context);
       navigator.pop();
-      navigator.push(MaterialPageRoute(
+      navigator.push(MaterialPageRoute<void>(
         builder: (_) => SettingsView(services: services, initialPanel: 'station'),
       ));
     },

@@ -832,9 +832,10 @@ for pkg in "${PACKAGES[@]}"; do
   fi
   cd "$ROOT_DIR/$pkg"
   flutter pub get
-  # Fail on warnings and errors; infos (mostly framework-deprecation churn
-  # in form_renderer) are surfaced but non-blocking so CI stays actionable.
-  flutter analyze --no-fatal-infos
+  # Infos are fatal too: the count is zero, and zero is the only number
+  # that stays meaningful. A deprecation that arrives with a Flutter bump is
+  # fixed or carries a reasoned `// ignore:` naming the card that owns it.
+  flutter analyze
   if [[ "$QUICK" -eq 0 ]]; then
     flutter test
   fi

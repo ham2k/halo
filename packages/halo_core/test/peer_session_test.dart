@@ -1079,7 +1079,7 @@ void main() {
     test('a malformed frame is dropped without killing a working session', () async {
       final (sessionA, _, op) = await pairedSessions();
 
-      links_send_garbage(sessionA);
+      linksSendGarbage(sessionA);
       await settle();
       expect(sessionA.state, PeerSessionState.live);
 
@@ -1116,7 +1116,7 @@ class _FailingQsosRepository extends QsosRepository {
 }
 
 /// Pushes bytes that are not a valid envelope into [session]'s own link.
-void links_send_garbage(PeerSession session) {
+void linksSendGarbage(PeerSession session) {
   final link = session.link as _MemoryLink;
   link.peer.send(utf8.encode('this is not json'));
   link.peer.send(utf8.encode(jsonEncode({'no': 'type key'})));
