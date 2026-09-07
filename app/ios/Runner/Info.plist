@@ -8,10 +8,6 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>$(HALO_DISPLAY_NAME)</string>
-	<!-- FOLLOWUP: the edition schemes are hardwired here because iOS has no
-	     HALO_EDITION build setting yet (editions PR #140 covers core + macOS
-	     only). Once editions reach iOS, replace the .dev/.next entries with a
-	     single com.ham2k.logger.$(HALO_EDITION), as macOS already does. -->
 	<!-- Ham2K extension bundles (HALO-422). The exported type declaration is
 	     what teaches the OS the extension exists at all; the document type is
 	     what makes Finder offer this app for one. Both are needed, and a
@@ -63,25 +59,49 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.ham2k.logger.deeplinks</string>
+			<string>com.ham2k.halo.deeplinks</string>
+			<!-- Only THIS edition's schemes, in both families, so
+			     com.ham2k.halo.<edition> names exactly one installed app. A
+			     build that claims a sibling's scheme makes canOpenURL answer
+			     yes for an edition that isn't there, which is what the
+			     sibling-app offer reads (HALO-526). PoLo's own
+			     com.ham2k.polo* are deliberately NOT claimed: they are
+			     queried below, and a claim would answer our own query. -->
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<!-- Public api, any Ham2K app: /qso, /vfo, /link_client. -->
 				<string>com.ham2k</string>
+				<!-- Official HaLo prefix. -->
 				<string>com.ham2k.logger</string>
-				<string>com.ham2k.logger.dev</string>
-				<string>com.ham2k.logger.next</string>
+				<string>com.ham2k.logger.$(HALO_EDITION)</string>
 				<string>com.ham2k.logger.auth</string>
-				<!-- SOTA's per-edition OAuth clients (ham2k/halo-dist#253) —
-				     all three listed for the same FOLLOWUP reason as .dev/.next
-				     above: no per-edition Info.plist here yet, so every build
-				     carries every edition's scheme. -->
-				<string>com.ham2k.logger.prod.auth</string>
-				<string>com.ham2k.logger.next.auth</string>
-				<string>com.ham2k.logger.dev.auth</string>
-				<string>com.ham2k.polo</string>
-				<string>com.ham2k.polo.auth</string>
+				<!-- Load-bearing literal: SOTA's Keycloak client holds this
+				     exact string on its redirect allowlist, and a spelling it
+				     does not hold fails sign-in before any redirect happens
+				     (ham2k/halo-dist#253). -->
+				<string>com.ham2k.logger.$(HALO_EDITION).auth</string>
+				<!-- Aliases under HaLo's own name. Nothing outside this app
+				     emits one, which is what makes com.ham2k.halo.<edition> a
+				     clean "is that edition installed?" probe — the official
+				     family cannot serve, since a build older than HALO-526
+				     claims every edition's. -->
+				<string>com.ham2k.halo</string>
+				<string>com.ham2k.halo.$(HALO_EDITION)</string>
+				<string>com.ham2k.halo.$(HALO_EDITION).auth</string>
 			</array>
 		</dict>
+	</array>
+	<!-- What canOpenURL may ask about (asking, not claiming — see
+	     HALO-526). Every edition is listed because this plist is templated
+	     per edition and cannot know which one it is building; the running
+	     edition always answers yes about itself, so it is excluded in Dart,
+	     not here. -->
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>com.ham2k.polo</string>
+		<string>com.ham2k.halo.dev</string>
+		<string>com.ham2k.halo.next</string>
+		<string>com.ham2k.halo.prod</string>
 	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>

@@ -8,14 +8,40 @@ import 'package:app_links/app_links.dart';
 ///
 /// Ham2K's schema catalog (mirrors app-polo's DeepLinks.jsx):
 ///
-///   - `com.ham2k://…` — any Ham2K app may handle the link.
-///   - `com.ham2k.logger://…` / `com.ham2k.logger.<edition>://…` — HaLo
-///     only (edition-specific variants for Dev/Next builds).
-///   - `com.ham2k.polo://…` — PoLo's own scheme, registered here too since
-///     HaLo will eventually replace PoLo.
-///   - `com.ham2k.polo.auth://…` / `com.ham2k.logger.auth://…` — OAuth
-///     redirect callbacks (the `.auth` suffix is what OAuth providers have
-///     registered as redirect URIs); consumed by the account login flow.
+///   - `com.ham2k://…` — the PUBLIC deep-link api, for links that any Ham2K
+///     app on the device may answer: `/qso`, `/vfo`, `/operation`, and the
+///     LoFi account links (`/link_client`) a companion app or an email sends
+///     without knowing which logger is installed. **Never an OAuth redirect**
+///     — a callback carrying an authorization code has to reach the one app
+///     that asked for it, and this scheme names no particular app.
+///   - `com.ham2k.logger://…`, `com.ham2k.logger.<edition>://…`,
+///     `com.ham2k.logger.<edition>.auth://…` — the OFFICIAL HaLo-specific
+///     prefix. The `.auth` spellings are what OAuth providers hold on their
+///     redirect allowlists, so those three literals are load-bearing: an
+///     unregistered spelling fails sign-in at the provider, before any
+///     redirect happens.
+///   - `com.ham2k.halo*://…` — aliases of the `logger` family, answered so a
+///     link written against HaLo's own name still arrives.
+///
+/// Each build claims only ITS OWN edition in both families, which is what
+/// lets `com.ham2k.halo.<edition>` answer "is that edition installed?"
+/// (HALO-526). Detection probes the ALIAS family, not the official one: a
+/// build older than HALO-526 claims every edition's `logger` scheme, so a hit
+/// on one of those names no particular edition. Nothing outside this app
+/// emits a `halo` URL, which is exactly what makes it a clean probe.
+///
+/// That probe answers only about builds carrying HALO-526 or later, and the
+/// error runs ONE WAY: an older sibling claims no `halo` scheme at all, so it
+/// reads as absent while sitting right there on the device. A false negative
+/// costs an offer that never appears; the false positive the `logger` family
+/// would give instead — offering to link against an edition that is not
+/// installed — ends in an app switch to nothing. Scheme probing is an iOS
+/// concern only: Android asks `PackageManager` about a package id, which the
+/// sibling's own age cannot change.
+///
+/// `com.ham2k.polo*` is PoLo's, and no Ham2K logger but PoLo claims it — an
+/// app that claimed it could not then ask whether PoLo is installed, since it
+/// would be answering its own question.
 ///
 /// The command is the URL PATH, so a Ham2K app writes three slashes
 /// (`com.ham2k:///qso?…`). A hand-typed or relayed two-slash form puts the

@@ -35,19 +35,35 @@ void main() {
       final schemes = values.where((v) => v.name == 'URL Protocol').map((v) => v.key).toSet();
       expect(schemes, {
         'com.ham2k',
+        'com.ham2k.halo',
+        'com.ham2k.halo.dev',
+        'com.ham2k.halo.dev.auth',
         'com.ham2k.logger',
         'com.ham2k.logger.auth',
-        'com.ham2k.polo',
-        'com.ham2k.polo.auth',
         'com.ham2k.logger.dev',
         'com.ham2k.logger.dev.auth',
       });
     });
 
+    test('claims nothing under com.ham2k.polo, on any edition', () {
+      // HaLo used to register PoLo's schemes so a PoLo link would still land.
+      // It must not: onboarding asks canOpenURL/PackageManager whether PoLo is
+      // installed (HALO-526), and a claim here makes this app answer its own
+      // question — "PoLo is here" on a machine that has never had it. Windows
+      // cannot run PoLo at all, so the claim is pure downside; the check lives
+      // here because this table is where reinstating one is tempting.
+      for (final edition in ['dev', 'next', 'prod']) {
+        final schemes = schemeRegistryValues(exePath: r'C:\HaLo\app.exe', edition: edition)
+            .where((v) => v.name == 'URL Protocol')
+            .map((v) => v.key);
+        expect(schemes.where((s) => s.startsWith('com.ham2k.polo')), isEmpty, reason: edition);
+      }
+    });
+
     test('marks every scheme with URL Protocol', () {
       // Without this value the key is a registered class the shell will not
       // treat as a URL handler — registered, and inert.
-      for (final scheme in ['com.ham2k', 'com.ham2k.polo.auth', 'com.ham2k.logger.dev']) {
+      for (final scheme in ['com.ham2k', 'com.ham2k.halo.dev.auth', 'com.ham2k.logger.dev']) {
         expect(hasUrlProtocolMarker(values, scheme), isTrue, reason: scheme);
       }
     });
@@ -62,6 +78,8 @@ void main() {
     test('scopes the edition-specific schemes to the edition given', () {
       final next = schemeRegistryValues(exePath: r'C:\HaLo\ham2k_logger.exe', edition: 'next');
       final schemes = next.where((v) => v.name == 'URL Protocol').map((v) => v.key);
+      expect(schemes, contains('com.ham2k.halo.next'));
+      expect(schemes, isNot(contains('com.ham2k.halo.dev')));
       expect(schemes, contains('com.ham2k.logger.next'));
       expect(schemes, isNot(contains('com.ham2k.logger.dev')));
       // The shared ones are NOT edition-scoped — that is what makes them
@@ -108,8 +126,21 @@ void main() {
       // `com.ham2k.logger.{#HaloEdition}` — a lowercase-only class stops at
       // the brace and silently drops them from the comparison.
       final pattern = RegExp(r'Software\\Classes\\(com\.ham2k[A-Za-z0-9.{}#]*)"');
-      final fromIss = pattern
-          .allMatches(iss)
+      final fromIss = iss
+          .split('\n')
+          // `Flags: deletekey` rows REMOVE a scheme (the stale com.ham2k.polo*
+          // handlers an upgrade would otherwise leave behind). Counting one as
+          // a registration would demand the Dart catalog claim the very scheme
+          // the installer exists to delete.
+          //
+          // Word-anchored, because `uninsdeletekey` CONTAINS `deletekey` and
+          // means the opposite — it registers a key and removes it at
+          // uninstall. A substring test drops all four edition rows, and this
+          // comparison still passes only because those schemes happen to
+          // appear on other rows too; consolidate the .iss and the guard would
+          // quietly stop covering them.
+          .where((line) => !RegExp(r'\bdeletekey\b').hasMatch(line))
+          .expand(pattern.allMatches)
           .map((m) => m.group(1)!)
           // The edition rows are templated; normalize to the same 'dev' the
           // catalog below is built with.
@@ -122,6 +153,51 @@ void main() {
           .map((v) => v.key)
           .toSet();
       expect(fromIss, equals(fromDart));
+    });
+
+    test('the edition rows survive the deletekey filter', () {
+      // `uninsdeletekey` contains `deletekey`, so a substring filter drops
+      // every edition row and the comparison above silently narrows to the
+      // shared schemes. It would still pass — those editions appear on other
+      // rows — which is why this asserts on the filter's own subject rather
+      // than on the comparison's result.
+      final iss = File('windows/installer/ham2k-logger.iss').readAsStringSync();
+      final kept = iss
+          .split('\n')
+          .where((line) => !RegExp(r'\bdeletekey\b').hasMatch(line))
+          .join('\n');
+      expect(kept, contains(r'com.ham2k.logger.{#HaloEdition}'));
+      expect(kept, contains(r'com.ham2k.halo.{#HaloEdition}'));
+      // ...and the rows it exists to drop are gone. Registry rows only: the
+      // [Code] section names the polo schemes too, to unregister them, and
+      // that mention is not a claim.
+      expect(kept, isNot(contains(r'Software\Classes\com.ham2k.polo')));
+    });
+  });
+
+  group('stale scheme cleanup', () {
+    test('names exactly the schemes the catalog no longer claims', () {
+      // Registering cannot repair these: `reg add` writes the keys it is given
+      // and leaves every other one alone, so a scheme dropped from the catalog
+      // keeps pointing wherever it last did. A copy that registered before
+      // HALO-526 therefore answers com.ham2k.polo:// forever unless it is
+      // deleted outright.
+      expect(staleUrlSchemes, ['com.ham2k.polo', 'com.ham2k.polo.auth']);
+      final claimed = schemeRegistryValues(exePath: r'C:\x\x.exe', edition: 'dev').map((v) => v.key);
+      for (final stale in staleUrlSchemes) {
+        expect(claimed, isNot(contains(stale)), reason: 'deleting a scheme the catalog also claims');
+      }
+    });
+
+    test('deletes under the same HKCU root the in-app registration writes', () {
+      // The installer's migration writes HKA; this path writes HKCU, and the
+      // installer's own notes say HKCU keys SHADOW the machine ones. Deleting
+      // anywhere else would leave the shadowing key answering.
+      expect(regDeleteArguments('com.ham2k.polo'), [
+        'delete',
+        r'HKCU\Software\Classes\com.ham2k.polo',
+        '/f',
+      ]);
     });
   });
 

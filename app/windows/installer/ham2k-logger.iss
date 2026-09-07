@@ -164,16 +164,35 @@ Root: HKA; Subkey: "Software\Classes\{#ProgId}\shell\open\command"; ValueType: s
 ; runner's own single-instance forwarding never gets the chance to run.
 ;
 ; A scheme has exactly ONE owner per user, so the SHARED ones (com.ham2k,
-; com.ham2k.logger, com.ham2k.polo and the two bare .auth spellings) go to
-; whichever edition installed last — the same "last one wins" the ProgID above
-; already lives with. The EDITION-SPECIFIC ones are unambiguous and stay with
-; their own install forever.
+; com.ham2k.logger, the bare .auth spelling and the com.ham2k.halo alias) go
+; to whichever edition installed last — the same "last one wins" the ProgID
+; above already lives with. The EDITION-SPECIFIC ones are unambiguous and stay
+; with their own install forever.
+;
+; com.ham2k.logger* is the official HaLo prefix; com.ham2k.halo* is an alias
+; under the app's own name. com.ham2k plain is the public deep-link api any
+; Ham2K app may answer, never an OAuth redirect.
+;
+; com.ham2k.polo* is NOT here, on purpose (HALO-526). A Ham2K logger that
+; claims PoLo's schemes cannot then ask whether PoLo is installed, because it
+; answers its own question — and PoLo cannot run on Windows at all, so the
+; claim only ever cost. Older installs did register them, which is why
+; UnregisterSharedSchemes in [Code] still names them.
 ;
 ; The two are also uninstalled differently, which is the point of the split:
 ; the edition-specific keys carry uninsdeletekey, while the shared ones are
 ; removed in [Code] and ONLY when they still point at this install. Deleting
 ; them unconditionally would mean uninstalling Dev silently unregisters every
 ; deep link for a Prod install that is still sitting there working.
+; An install predating HALO-526 registered com.ham2k.polo* pointing at its own
+; exe, and an upgrade only overwrites what it still claims — so without these
+; the stale handlers would outlive it on every upgraded machine, leaving
+; upgraded and fresh installs answering differently. Deleted outright rather
+; than conditionally: no Ham2K app on Windows may own these, and PoLo has no
+; Windows build to own them either.
+Root: HKA; Subkey: "Software\Classes\com.ham2k.polo"; Flags: deletekey
+Root: HKA; Subkey: "Software\Classes\com.ham2k.polo.auth"; Flags: deletekey
+
 ; Shared — no uninsdeletekey; see UnregisterSharedSchemes in [Code].
 Root: HKA; Subkey: "Software\Classes\com.ham2k"; ValueType: string; ValueName: ""; ValueData: "URL:Ham2K"
 Root: HKA; Subkey: "Software\Classes\com.ham2k"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
@@ -190,19 +209,23 @@ Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.auth"; ValueType: string; 
 Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.auth\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
 Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.auth\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
 
-; PoLo's own schemes, registered here for the same reason macOS does: HaLo
-; will eventually replace it, and a link written for PoLo should still land.
-Root: HKA; Subkey: "Software\Classes\com.ham2k.polo"; ValueType: string; ValueName: ""; ValueData: "URL:Ham2K Portable Logger"
-Root: HKA; Subkey: "Software\Classes\com.ham2k.polo"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKA; Subkey: "Software\Classes\com.ham2k.polo\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
-Root: HKA; Subkey: "Software\Classes\com.ham2k.polo\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
-
-Root: HKA; Subkey: "Software\Classes\com.ham2k.polo.auth"; ValueType: string; ValueName: ""; ValueData: "URL:Ham2K Portable Logger Sign-in"
-Root: HKA; Subkey: "Software\Classes\com.ham2k.polo.auth"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
-Root: HKA; Subkey: "Software\Classes\com.ham2k.polo.auth\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
-Root: HKA; Subkey: "Software\Classes\com.ham2k.polo.auth\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+; The alias under HaLo's own name.
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo"; ValueType: string; ValueName: ""; ValueData: "URL:Ham2K Logger"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
 
 ; Edition-specific — nobody else ever claims these, so they uninstall cleanly.
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo.{#HaloEdition}"; ValueType: string; ValueName: ""; ValueData: "URL:{#AppName}"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo.{#HaloEdition}"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo.{#HaloEdition}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo.{#HaloEdition}\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo.{#HaloEdition}.auth"; ValueType: string; ValueName: ""; ValueData: "URL:{#AppName} Sign-in"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo.{#HaloEdition}.auth"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo.{#HaloEdition}.auth\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
+Root: HKA; Subkey: "Software\Classes\com.ham2k.halo.{#HaloEdition}.auth\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#ExeName}"" ""%1"""
+
 Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}"; ValueType: string; ValueName: ""; ValueData: "URL:{#AppName}"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
 Root: HKA; Subkey: "Software\Classes\com.ham2k.logger.{#HaloEdition}\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\{#ExeName},0"
@@ -270,8 +293,14 @@ end;
 procedure UnregisterSharedSchemes();
 begin
   UnregisterSharedScheme('com.ham2k');
+  UnregisterSharedScheme('com.ham2k.halo');
   UnregisterSharedScheme('com.ham2k.logger');
   UnregisterSharedScheme('com.ham2k.logger.auth');
+  // No longer registered (HALO-526), but an install predating that did, and
+  // the keys outlive it: an upgrade writes over what it claims and leaves the
+  // rest. These two stay so the stale handler goes when this copy does — and
+  // they are safe to name, since the command check above deletes nothing that
+  // does not already point at this exe.
   UnregisterSharedScheme('com.ham2k.polo');
   UnregisterSharedScheme('com.ham2k.polo.auth');
 end;

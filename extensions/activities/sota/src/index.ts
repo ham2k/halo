@@ -462,10 +462,12 @@ const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: st
   dev: { clientId: 'polo', redirectUrl: 'com.ham2k.logger.dev.auth://sota' },
 }
 
-// Web and Linux can't catch that custom-scheme redirect at all (no
+// Web, Linux and Windows go through LoFi's webhook-relay callback instead of
+// that custom-scheme redirect. Web and Linux cannot catch one at all (no
 // `flutter_inappwebview` on Linux; a non-http(s) scheme a browser tab
-// navigates to just fails) — those two platforms go through LoFi's
-// webhook-relay callback instead (HALO-65/66), one fixed URL shared by
+// navigates to just fails); Windows registers the schemes (HALO-178) and
+// takes the relay anyway, deliberately — see `oauthUsesWebhookRelay`.
+// The relay is one fixed URL (HALO-65/66) shared by
 // every edition and every client, registered with SOTA as a literal exact
 // string, no wildcard: https://lofi.ham2k.net/v1/webhooks/client/oauth. The
 // host (`_doOAuth`, settings_view.dart) picks which of `redirectUrl` /

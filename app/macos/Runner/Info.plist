@@ -61,19 +61,24 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.ham2k.logger.deeplinks</string>
+			<string>com.ham2k.halo.deeplinks</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<!-- Public api, any Ham2K app: /qso, /vfo, /link_client. -->
 				<string>com.ham2k</string>
+				<!-- Official HaLo prefix. -->
 				<string>com.ham2k.logger</string>
 				<string>com.ham2k.logger.$(HALO_EDITION)</string>
 				<string>com.ham2k.logger.auth</string>
 				<!-- SOTA's per-edition OAuth client (ham2k/halo-dist#253) —
 				     must match the redirect URL registered with THIS edition's
-				     Keycloak client. -->
+				     Keycloak client, as a literal. -->
 				<string>com.ham2k.logger.$(HALO_EDITION).auth</string>
-				<string>com.ham2k.polo</string>
-				<string>com.ham2k.polo.auth</string>
+				<!-- Aliases under HaLo's own name; the per-edition one is what
+				     sibling detection probes (HALO-526). -->
+				<string>com.ham2k.halo</string>
+				<string>com.ham2k.halo.$(HALO_EDITION)</string>
+				<string>com.ham2k.halo.$(HALO_EDITION).auth</string>
 			</array>
 		</dict>
 	</array>

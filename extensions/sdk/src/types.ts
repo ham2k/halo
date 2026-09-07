@@ -1539,16 +1539,16 @@ export interface AccountField {
 export interface OAuth2Config {
   issuer: string
   clientId: string
-  /// The native custom-scheme redirect (`com.ham2k.*.auth://…`), used on
-  /// every platform that can intercept it via an in-app webview or OS deep
-  /// link (macOS/Windows/Android/iOS today — see `oauthUsesWebhookRelay` in
-  /// app/lib/views/oauth_browser_login.dart).
+  /// The native custom-scheme redirect (`com.ham2k.*.auth://…`), used where
+  /// the OS delivers it as a deep link: macOS, iOS and Android. NOT Windows —
+  /// it registers the schemes but takes the relay deliberately (see
+  /// `oauthUsesWebhookRelay` in app/lib/views/oauth_browser_login.dart).
   redirectUrl: string
   /// The LoFi webhook-relay callback (HALO-65/66), used instead of
-  /// [redirectUrl] on platforms that can't catch a custom scheme at all
-  /// (Web, Linux). Optional so an OAuth2 hook that only supports the native
-  /// flow keeps compiling — the host then simply can't offer relay-only
-  /// platforms this login.
+  /// [redirectUrl] on Web, Linux and Windows. Optional so an OAuth2 hook that
+  /// only supports the native flow keeps compiling — but omitting it means
+  /// those three platforms cannot start this login at all, since the host
+  /// resolves the redirect to null there and has nothing to send.
   webhookRedirectUrl?: string
   scopes: string[]
 }

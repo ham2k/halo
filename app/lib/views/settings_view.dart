@@ -3397,10 +3397,11 @@ class _AccountPaneState extends State<_AccountPane> {
     final clientId = oauth2['clientId'] as String;
     final scopes = (oauth2['scopes'] as List).cast<String>();
     // Every platform opens the sign-in page in the operator's own browser.
-    // What differs is only how the code comes home: Web/Linux/Windows can't
-    // receive the native com.ham2k.*.auth:// redirect at all
-    // (oauth_browser_login.dart's header explains why), so they go through
-    // LoFi's webhook relay; everywhere else the OS delivers it as a deep link.
+    // What differs is only how the code comes home: Web, Linux and Windows go
+    // through LoFi's webhook relay, everywhere else the OS delivers the
+    // native com.ham2k.*.auth:// redirect as a deep link. Web and Linux have
+    // no choice; Windows registers the schemes and takes the relay anyway,
+    // deliberately — oauth_browser_login.dart's header has the whole rule.
     final useRelay = oauthUsesWebhookRelay();
     final redirectUrl = (useRelay ? oauth2['webhookRedirectUrl'] : oauth2['redirectUrl']) as String?;
 

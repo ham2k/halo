@@ -29,14 +29,16 @@ typedef SchemeRegistryValue = ({String key, String name, String data});
 /// The schemes any Ham2K app may answer, shared by every edition installed on
 /// a machine — so whoever registers last owns them, exactly as the installer
 /// arranges it.
+/// PoLo's own `com.ham2k.polo*` are deliberately absent, here as on every
+/// other platform: a Ham2K app that claims them cannot then ask whether PoLo
+/// is installed, because it would be answering its own question (HALO-526).
 const sharedUrlSchemes = <String, String>{
   'com.ham2k': 'URL:Ham2K',
+  // Official HaLo prefix.
   'com.ham2k.logger': 'URL:Ham2K Logger',
   'com.ham2k.logger.auth': 'URL:Ham2K Logger Sign-in',
-  // PoLo's own, registered for the same reason macOS does: HaLo will
-  // eventually replace it and a link written for PoLo should still land.
-  'com.ham2k.polo': 'URL:Ham2K Portable Logger',
-  'com.ham2k.polo.auth': 'URL:Ham2K Portable Logger Sign-in',
+  // Alias under HaLo's own name.
+  'com.ham2k.halo': 'URL:Ham2K Logger',
 };
 
 /// Every value that must exist for [exePath] to answer the catalog, in the
@@ -69,6 +71,8 @@ List<SchemeRegistryValue> schemeRegistryValues({
   // Dev install keeps answering its own links whatever else is on the machine.
   add('com.ham2k.logger.$edition', 'URL:Ham2K Logger ($edition)');
   add('com.ham2k.logger.$edition.auth', 'URL:Ham2K Logger ($edition) Sign-in');
+  add('com.ham2k.halo.$edition', 'URL:Ham2K Logger ($edition)');
+  add('com.ham2k.halo.$edition.auth', 'URL:Ham2K Logger ($edition) Sign-in');
   return values;
 }
 
@@ -86,6 +90,21 @@ List<String> regAddArguments(SchemeRegistryValue value) => [
       'REG_SZ',
       '/d',
       value.data,
+      '/f',
+    ];
+
+/// Schemes a Ham2K logger may have registered once and must not hold now.
+///
+/// Registering the catalog cannot repair these on its own: `reg add` writes
+/// the keys it is given and leaves every other one alone, so a scheme dropped
+/// from [sharedUrlSchemes] keeps whatever it was last pointed at.
+const staleUrlSchemes = <String>['com.ham2k.polo', 'com.ham2k.polo.auth'];
+
+/// Removes [scheme] and everything under it. `/f` so an absent key is not a
+/// prompt on a machine with nobody watching.
+List<String> regDeleteArguments(String scheme) => [
+      'delete',
+      'HKCU\\Software\\Classes\\$scheme',
       '/f',
     ];
 
@@ -108,6 +127,18 @@ Future<String?> registerWindowsUrlSchemes({required String edition}) async {
     for (final value in values) {
       final result = await Process.run('reg.exe', regAddArguments(value));
       if (result.exitCode != 0) return _failureMessage(result);
+    }
+    // A copy that registered before HALO-526 wrote com.ham2k.polo* under HKCU
+    // pointing at itself, and writing the current catalog does not disturb a
+    // key no longer in it. Without this the copy answers com.ham2k.polo://
+    // for good — the one claim no Ham2K logger may hold, and the installer's
+    // own migration cannot reach it, since that writes HKA and an operator who
+    // pressed this button left keys in HKCU that shadow the machine ones.
+    for (final scheme in staleUrlSchemes) {
+      // An absent key exits non-zero, which is the ordinary case and not a
+      // failure: the delete is a repair, and reporting "not found" as an error
+      // would fail a registration that fully succeeded.
+      await Process.run('reg.exe', regDeleteArguments(scheme));
     }
   } catch (e) {
     return e.toString();

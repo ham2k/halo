@@ -39,6 +39,7 @@ android {
         // flavor selected; every real build picks one of the flavors below.
         manifestPlaceholders["appLabel"] = "Ham2K Portable Logger"
         manifestPlaceholders["appIconLabel"] = "Logger"
+        manifestPlaceholders["editionScheme"] = "prod"
     }
 
     // Build editions (docs/releases.md §2.6), the Android counterpart of the
@@ -47,6 +48,15 @@ android {
     // src/<edition>/res/mipmap-*) and home-screen label. Build with e.g.
     // `flutter build apk --flavor next --dart-define=HALO_EDITION=next` — the
     // --flavor keeps Gradle in step with the Dart-side kEdition.
+    //
+    // BOTH are required, and disagreeing is silent. Since HALO-526 the
+    // manifest claims only ONE edition's schemes (editionScheme, below), so
+    // `--flavor next` without the matching define registers
+    // com.ham2k.logger.next.auth while the Dart side asks the provider to
+    // redirect to com.ham2k.logger.dev.auth://… — a scheme no installed app
+    // claims. Android takes the deep-link OAuth path with no relay to fall
+    // back to, so the sign-in simply waits, reporting nothing. Before this
+    // the manifest claimed all three editions and a mismatch could not show.
     flavorDimensions += "edition"
     productFlavors {
         create("dev") {
@@ -54,18 +64,21 @@ android {
             applicationIdSuffix = ".dev"
             manifestPlaceholders["appLabel"] = "Ham2K Portable Logger (Dev)"
             manifestPlaceholders["appIconLabel"] = "Logger (Dev)"
+            manifestPlaceholders["editionScheme"] = "dev"
         }
         create("next") {
             dimension = "edition"
             applicationIdSuffix = ".next"
             manifestPlaceholders["appLabel"] = "Ham2K Portable Logger (Next)"
             manifestPlaceholders["appIconLabel"] = "Logger (Next)"
+            manifestPlaceholders["editionScheme"] = "next"
         }
         create("prod") {
             dimension = "edition"
             applicationIdSuffix = ".prod"
             manifestPlaceholders["appLabel"] = "Ham2K Portable Logger"
             manifestPlaceholders["appIconLabel"] = "Logger"
+            manifestPlaceholders["editionScheme"] = "prod"
         }
     }
 

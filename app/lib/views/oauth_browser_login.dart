@@ -22,21 +22,25 @@
 //   through `DeepLinkService`; `_doOAuth`'s own listener is what ends the
 //   wait. This body then carries no relay wiring at all, and nothing in it
 //   can resolve the login on its own.
-// - **Relay** (Web, Linux, Windows): those platforms cannot receive that
-//   redirect — a browser tab navigating to a non-http(s) scheme just fails,
-//   and neither Linux nor Windows registers the schemes (HALO-178, HALO-121).
-//   So the `redirect_uri` is LoFi's fixed webhook-relay URL instead
+// - **Relay** (Web, Linux, Windows): the `redirect_uri` is LoFi's fixed
+//   webhook-relay URL instead
 //   (https://lofi.ham2k.net/v1/webhooks/client/oauth), the browser lands on
 //   LoFi's own confirmation page, and LoFi's server-side receiver creates a
 //   WebhookEvent and Pusher-pings this device's channel — with periodic
 //   polling as the fallback for a missed ping. Here the body itself is what
 //   spots the result and hands it back.
 //
-// The relay is not free: it makes a login depend on LoFi being reachable and
-// on this device holding a sync registration, which the deep-link platforms
-// need for nothing. That is the price Windows pays for signing in through the
-// operator's own browser, and registering its schemes (HALO-178) is what would
-// buy it back.
+// Web and Linux have no choice: a browser tab navigating to a non-http(s)
+// scheme just fails, and nothing in Linux's .desktop/GTK setup receives the
+// scheme (HALO-121). Windows DOES register the schemes — the Inno script and
+// `windows_url_schemes.dart` both write them (HALO-178) — and stays on the
+// relay anyway, deliberately. Do not "fix" that by moving Windows to the
+// deep-link branch on the strength of the registration alone.
+//
+// The relay is not free, and the cost is worth stating because it is what a
+// Windows sign-in failure will look like: a login depends on LoFi being
+// reachable AND on this device holding a sync registration, neither of which
+// the deep-link platforms need at all.
 
 import 'dart:async';
 
@@ -57,12 +61,15 @@ const _noResponseAfter = Duration(seconds: 90);
 /// Consecutive failed relay fetches before the body stops calling it waiting.
 const _failuresBeforeSayingSo = 3;
 
-/// Whether this platform needs the webhook relay to get the authorization code
-/// home, because it cannot receive the native `com.ham2k.*.auth://` redirect:
-/// Web (a browser tab navigating to a non-http(s) scheme just fails), Linux
-/// (nothing in the `.desktop`/GTK setup receives the scheme — HALO-121) and
-/// Windows (the schemes are not registered — HALO-178). Everywhere else the
-/// redirect comes back through `DeepLinkService`.
+/// Whether this platform gets the authorization code home through the webhook
+/// relay rather than the native `com.ham2k.*.auth://` redirect: Web (a browser
+/// tab navigating to a non-http(s) scheme just fails), Linux (nothing in the
+/// `.desktop`/GTK setup receives the scheme — HALO-121) and Windows.
+/// Everywhere else the redirect comes back through `DeepLinkService`.
+///
+/// Windows is the one that is a CHOICE, not a limitation: it registers the
+/// schemes (HALO-178) and could take the deep link, and stays on the relay
+/// regardless.
 ///
 /// This is NOT a choice about where the sign-in page opens. That is settled:
 /// the system browser, on every platform.

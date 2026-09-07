@@ -46,19 +46,30 @@
                 <action android:name="android.intent.action.VIEW"/>
                 <category android:name="android.intent.category.DEFAULT"/>
                 <category android:name="android.intent.category.BROWSABLE"/>
+                <!-- Only THIS edition's schemes (${editionScheme}, set per
+                     flavor in build.gradle.kts), so com.ham2k.halo.<edition>
+                     names exactly one installed app. PoLo's com.ham2k.polo*
+                     are deliberately NOT claimed: a claim here would make this
+                     app a candidate for a link meant for PoLo (HALO-526). -->
+                <!-- Public api, any Ham2K app: /qso, /vfo, /link_client. -->
                 <data android:scheme="com.ham2k"/>
+                <!-- Official HaLo prefix. -->
                 <data android:scheme="com.ham2k.logger"/>
-                <data android:scheme="com.ham2k.logger.dev"/>
-                <data android:scheme="com.ham2k.logger.next"/>
+                <data android:scheme="com.ham2k.logger.${editionScheme}"/>
                 <data android:scheme="com.ham2k.logger.auth"/>
-                <!-- SOTA's per-edition OAuth clients (ham2k/halo-dist#253) —
-                     the manifest isn't flavor-specific here, so every build
-                     carries every edition's scheme, same as .dev/.next above. -->
-                <data android:scheme="com.ham2k.logger.prod.auth"/>
-                <data android:scheme="com.ham2k.logger.next.auth"/>
-                <data android:scheme="com.ham2k.logger.dev.auth"/>
-                <data android:scheme="com.ham2k.polo"/>
-                <data android:scheme="com.ham2k.polo.auth"/>
+                <!-- Load-bearing literal: SOTA's Keycloak client holds this
+                     exact string on its redirect allowlist, and a spelling it
+                     does not hold fails sign-in at the provider
+                     (ham2k/halo-dist#253). -->
+                <data android:scheme="com.ham2k.logger.${editionScheme}.auth"/>
+                <!-- Aliases under HaLo's own name. Nothing outside this app
+                     emits one, which is what makes com.ham2k.halo.<edition> a
+                     clean "is that edition installed?" probe — the official
+                     family cannot serve, since a build older than HALO-526
+                     claims every edition's. -->
+                <data android:scheme="com.ham2k.halo"/>
+                <data android:scheme="com.ham2k.halo.${editionScheme}"/>
+                <data android:scheme="com.ham2k.halo.${editionScheme}.auth"/>
             </intent-filter>
             <!-- Ham2K extension bundles (HALO-422), so a .h2kext opened from
                  Files or a browser download offers this app.
@@ -111,5 +122,19 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- The other Ham2K loggers, so onboarding can offer to link this
+             device against an account one of them already holds (HALO-526).
+             Android 11+ filters package queries: without a <package> entry
+             here, getPackageInfo throws NameNotFoundException for an app that
+             IS installed, and the offer never appears. Every edition is
+             listed because this manifest is templated per flavor and cannot
+             know which one it is building; the running package always
+             resolves, so it is excluded in Dart, not here. -->
+        <package android:name="com.ham2k.polo.prod"/>
+        <package android:name="com.ham2k.polo.beta"/>
+        <package android:name="com.ham2k.polo.alpha"/>
+        <package android:name="com.ham2k.logger.prod"/>
+        <package android:name="com.ham2k.logger.next"/>
+        <package android:name="com.ham2k.logger.dev"/>
     </queries>
 </manifest>

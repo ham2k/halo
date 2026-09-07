@@ -50,6 +50,10 @@ void main() {
     // redirect is the per-edition half, and the only half that is: it must
     // match a string on the `polo` client's redirect allowlist EXACTLY, or
     // Keycloak rejects the authorization request outright.
+    // `com.ham2k.logger.*`, not `.halo.*`: OAuth redirects use the OFFICIAL
+    // prefix, and each string is on the `polo` client's allowlist as a
+    // literal. The `.halo` aliases are not registered there, so spelling one
+    // here fails every SOTA sign-in with "Invalid parameter: redirect_uri".
     expect(oauth2['redirectUrl'], 'com.ham2k.logger.dev.auth://sota');
     // One fixed relay URL shared by every edition (HALO-22), used only on
     // platforms oauthUsesWebhookRelay() sends through LoFi (Web/Linux) — see
