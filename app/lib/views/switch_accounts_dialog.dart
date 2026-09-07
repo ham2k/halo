@@ -31,7 +31,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../services/error_reporting_service.dart';
 import '../tools/sync_account_identity.dart';
 

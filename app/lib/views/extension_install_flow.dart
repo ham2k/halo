@@ -17,7 +17,7 @@ import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform,
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../services/catalog_service.dart' show CatalogRelease;
 import '../services/error_reporting_service.dart';
 import '../services/halo_services.dart';

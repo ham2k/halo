@@ -23,7 +23,7 @@ import 'deep_link_service.dart';
 import 'error_reporting_service.dart';
 import 'installed_extensions.dart';
 import 'status_bar_service.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 import '../config/navigation.dart';
 import 'halo_services.dart';

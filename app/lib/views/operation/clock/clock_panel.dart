@@ -11,7 +11,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../../../services/panel_service.dart';
 import 'clock_faces.dart';
 import 'clock_math.dart';

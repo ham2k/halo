@@ -18,7 +18,7 @@ import 'package:flutter/services.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/release_notes.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../config/navigation.dart';
 import '../services/halo_services.dart';
 import '../services/error_reporting_service.dart';

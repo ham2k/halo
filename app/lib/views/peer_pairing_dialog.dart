@@ -13,7 +13,7 @@
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// The first group of a v4 UUID — enough to tell two devices apart at a
 /// glance, and short enough to sit on a row beside a name. Every surface

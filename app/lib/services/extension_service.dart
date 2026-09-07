@@ -39,11 +39,10 @@ import '../config/dev_fixture.dart';
 import '../config/user_agent.dart';
 import '../config/version.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../config/navigation.dart';
 import 'link_opener.dart';
 import '../tools/backoff.dart';
-import '../tools/form_chrome_labels.dart';
 import '../tools/activity_suggestions.dart';
 import '../tools/qso_patch.dart';
 
@@ -2483,7 +2482,6 @@ class ExtensionService implements PanelExtensionSource {
           context,
           formDefinition: formDef,
           initialState: state,
-          labels: formRendererLabelsFor(t),
           validator: (fieldKey, value, currentState) async {
             try {
               final res = await _host?.invokeHook(

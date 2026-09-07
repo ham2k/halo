@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
@@ -1722,6 +1723,10 @@ void main() {
         // over on a 430px pane before the OverflowBar went in, and these three
         // widths are ordinary phones. Spanish labels, because they are the
         // longest the app ships and the English ones fit where these do not.
+        // runAsync: the Spanish translations are a deferred library, and its
+        // load is a real future that fake async would never complete.
+        await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.es));
+        addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
         tester.view.physicalSize = Size(width, 800);
         tester.view.devicePixelRatio = 1.0;
         addTearDown(tester.view.resetPhysicalSize);
@@ -1740,7 +1745,6 @@ void main() {
                     ],
                   },
                   initialState: const {'name': 'Left Radio'},
-                  labels: const FormRendererLabels(cancel: 'Cancelar', save: 'Guardar'),
                   destructiveAction: (label: 'Eliminar', color: const Color(0xFFB3261E), onPressed: () {}, icon: null),
                   secondaryAction: (label: 'Informar', onPressed: () {}),
                 ),

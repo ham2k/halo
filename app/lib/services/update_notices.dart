@@ -13,7 +13,7 @@
 
 import 'dart:async';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'restart_service.dart';
 import 'status_bar_service.dart';
 

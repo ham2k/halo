@@ -43,7 +43,7 @@ import 'window_chrome_service.dart';
 import 'update_check_service.dart';
 import 'update_service.dart';
 import 'shorebird_update_service.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 import '../config/navigation.dart';
 import 'app_exit.dart';

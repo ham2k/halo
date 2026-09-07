@@ -13,10 +13,8 @@
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../i18n/strings.g.dart';
 import '../../services/halo_services.dart';
 import '../../services/panel_service.dart';
-import '../../tools/form_chrome_labels.dart';
 import 'remote_screen/remote_screen_panel.dart';
 import 'remote_screen/remote_screen_picker.dart';
 
@@ -51,14 +49,12 @@ Future<void> showPanelSettings(
   required HaLoServices services,
   required PanelDefinition panel,
 }) async {
-  final t = context.t;
   final current = await services.panels.configFor(panel);
   if (!context.mounted) return;
   final result = await showFormDialog(
     context,
     formDefinition: {'title': panel.title, 'elements': panel.formFields},
     initialState: current,
-    labels: formRendererLabelsFor(t),
     developerMode: services.settings.developerMode,
     // A panel's configuration is settings, not a form to fill in — same rows
     // the Settings panels show.

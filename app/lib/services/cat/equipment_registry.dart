@@ -22,7 +22,7 @@
 // new radio never needs to re-declare a serial port picker or re-parse a hex
 // address.
 
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/antenna_driver.dart';

@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/settings_service.dart' show MapStyle, SettingsService;
 import 'package:ham2k_logger/views/map/map_gl_script.dart';
 import 'package:ham2k_logger/views/map/osm_map_view.dart';

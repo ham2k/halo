@@ -8,7 +8,7 @@
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../services/link_opener.dart' show openExternalUrl;
 
 /// One destination: an icon, what it is, and where it goes. `mailto:` here as

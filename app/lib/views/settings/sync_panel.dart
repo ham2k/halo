@@ -10,7 +10,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/halo_services.dart';
 import '../../services/pusher_service.dart';
 import '../../tools/sync_account_identity.dart';

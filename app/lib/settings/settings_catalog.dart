@@ -26,7 +26,7 @@
 // by every settings write in the app (including the ones these very commands
 // make) to stay correct, and a stale answer here is a wrong answer.
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import 'settings_fuzzy.dart';
 import 'settings_scan.dart';

@@ -20,7 +20,7 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:ham2k_logger/config/version.dart' show Edition;
-import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/catalog_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';

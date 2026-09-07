@@ -8,7 +8,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 
-import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/tools/operation_title.dart';
 
 void main() {

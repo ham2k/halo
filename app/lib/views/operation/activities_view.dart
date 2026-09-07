@@ -39,7 +39,7 @@ import 'operation_location_screen.dart';
 import '../accordion_section.dart';
 import '../operation_dialogs.dart';
 import '../extensions_panel.dart';
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../../tools/distance_format.dart';
 import '../../tools/operation_title.dart';
 import '../map/map_zoom_controller.dart';

@@ -15,7 +15,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:halo_core/halo_core.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'distance_format.dart';
 
 /// The location string for [guess] — distance (and bearing, if the setting is

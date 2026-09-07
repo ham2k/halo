@@ -81,7 +81,7 @@ import 'staleness_service.dart';
 import 'update_service.dart';
 import 'data_file_manager.dart';
 import 'flags_service.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 import '../config/navigation.dart';
 import 'dev_overlay_trigger.dart';

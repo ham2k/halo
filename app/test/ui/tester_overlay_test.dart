@@ -8,7 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart' show buildHaLoTheme;
 import 'package:ham2k_logger/config/tester_notes.dart';
 import 'package:ham2k_logger/config/version.dart';
-import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/views/ham2k_logo.dart';
 import 'package:ham2k_logger/views/tester_overlay.dart';
 import 'package:ham2k_logger/views/version_label.dart';

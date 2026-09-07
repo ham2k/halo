@@ -21,7 +21,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/halo_services.dart';
 import '../../services/spots_service.dart';
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// Modes excluded from the callsign-merge pass (SpotsPanel.jsx: too many
 /// simultaneous operators on one frequency to safely merge callsigns). A

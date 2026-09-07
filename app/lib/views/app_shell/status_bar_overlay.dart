@@ -24,7 +24,7 @@ import '../../services/bottom_chrome_squeezed.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/cat/cat_service.dart';
 import '../../services/status_bar_service.dart';
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 import '../../config/navigation.dart';
 import '../../services/halo_services.dart';

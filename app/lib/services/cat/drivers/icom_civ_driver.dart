@@ -17,7 +17,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../driver.dart';
 import '../equipment.dart';
 import '../telemetry_poller.dart';

@@ -23,7 +23,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/dev_bridge.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../config/navigation.dart';
 import '../services/command_actions.dart';
 import '../services/halo_services.dart';

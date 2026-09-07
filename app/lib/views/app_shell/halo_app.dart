@@ -19,7 +19,7 @@ import '../../config/dev_bridge.dart';
 
 import '../../services/settings_service.dart';
 import '../../services/window_chrome_service.dart';
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 import '../../config/navigation.dart';
 import '../../services/halo_services.dart';

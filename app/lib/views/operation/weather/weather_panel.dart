@@ -25,7 +25,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../config/user_agent.dart';
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../../../services/panel_service.dart';
 import '../../../services/settings_service.dart';
 import 'weather_chart.dart';

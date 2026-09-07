@@ -7,7 +7,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
 
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/halo_services.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_summaries.dart';
@@ -124,8 +124,8 @@ class InformationPanel extends StatelessWidget {
     final theme = Theme.of(context);
     final t = context.t.loggingControls.info;
     // Per-locale, not a bare `DateFormat(...)`: weekday/month names are
-    // locale text (see `_qsoListLabelsFor` in logging_panel.dart, which
-    // localizes the same day-header vocabulary the same way).
+    // locale text (halo_widgets' DayHeaderRow localizes the same day-header
+    // vocabulary the same way).
     final dayFormat = DateFormat.yMMMMEEEEd(Localizations.localeOf(context).toLanguageTag());
     final widgets = <Widget>[];
     for (final section in daySections) {

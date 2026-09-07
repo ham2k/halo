@@ -18,7 +18,7 @@ import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:uuid/uuid.dart';
 
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../error_reporting_service.dart';
 import '../hang_watchdog.dart';
 import '../peer/peer_station_radios.dart';

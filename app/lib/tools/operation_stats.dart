@@ -4,7 +4,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:halo_core/halo_core.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// The operation's default statistics: count + duration, "since
 /// last" (only while the last QSO is recent), and last-10 / last-100 Q/h

@@ -15,9 +15,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/settings_service.dart';
-import '../../tools/form_chrome_labels.dart';
 
 /// Distinguishes "argument not passed" from "explicitly passed null" in
 /// [PaneLayoutOptions.copyWith] — every field there is nullable, so a plain
@@ -677,7 +676,6 @@ class _EmbeddedPanelSettingsFormState extends State<EmbeddedPanelSettingsForm> {
       showActions: false,
       showTitle: false,
       developerMode: widget.developerMode,
-      labels: formRendererLabelsFor(context.t),
       settingsList: true,
       onChange: _onChange,
       onSubmit: (_) {},

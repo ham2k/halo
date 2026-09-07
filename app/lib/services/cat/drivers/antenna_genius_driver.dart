@@ -20,7 +20,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../discovery.dart';
 import '../driver.dart';
 import '../equipment.dart';

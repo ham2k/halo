@@ -19,7 +19,7 @@ import '../../services/halo_services.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/extension_service.dart';
 import '../../services/location_service.dart';
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 class OperationLocationScreen extends StatefulWidget {
   final HaLoServices services;

@@ -13,7 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart' show nowMillis;
 import 'package:halo_widgets/halo_widgets.dart' show MdiIcons;
-import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/views/operation/radio/radio_faces.dart';
 import 'package:ham2k_logger/views/operation/radio/radio_panel.dart';

@@ -3,7 +3,7 @@
 
 import 'package:flutter/widgets.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// Localized pill text for a scoring notice/alert key, falling back to the raw
 /// key. Shared by the compact call-info line (`logging_panel.dart`) and the

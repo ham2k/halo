@@ -34,17 +34,17 @@ const _slack = 100;
 /// Path → the line count it had when it was listed. Lower a number when
 /// the file shrinks; never raise one.
 const _ceilings = <String, int>{
-  '../packages/halo_widgets/lib/src/logging_controls.dart': 9842,
+  '../packages/halo_widgets/lib/src/logging_controls.dart': 9835,
   'lib/services/extension_service.dart': 4060,
   'lib/views/operation/spots_panel.dart': 3647,
   'lib/views/operation_view.dart': 3662,
   'lib/views/operation/activities_view.dart': 3071,
-  '../packages/halo_widgets/lib/src/form_renderer.dart': 2953,
+  '../packages/halo_widgets/lib/src/form_renderer.dart': 2852,
   'lib/views/logs_view.dart': 2701,
   'lib/services/cat/cat_service.dart': 2866,
   'lib/views/station_panel.dart': 2478,
   'lib/views/dock_host.dart': 2094,
-  '../packages/halo_widgets/lib/src/qso_list.dart': 2041,
+  '../packages/halo_widgets/lib/src/qso_list.dart': 2000,
   'lib/services/halo_services.dart': 1987,
   '../packages/halo_widgets/lib/src/dock_layout.dart': 1817,
   'lib/views/home_view.dart': 1684,

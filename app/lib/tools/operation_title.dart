@@ -10,7 +10,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:halo_core/halo_core.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// Assembles [fragments] into the localized "for X at Y" sentence — the
 /// generated (non-user) part of an operation's title. `ActivitiesView.

@@ -24,7 +24,7 @@
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// A Modal Pane (docs/design/layouts.md). Returns true once a device has
 /// been linked, so the caller can refresh whatever shows the account.

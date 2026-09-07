@@ -35,7 +35,7 @@ import 'ham2k_logo.dart';
 import 'panel_use_tracker.dart';
 import 'release_overlay.dart';
 import 'version_label.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// A free-form developer label shown in the home header after the edition
 /// badge — marks which dev build/session is running. Set with

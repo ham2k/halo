@@ -623,6 +623,13 @@ packages:
       relative: true
     source: path
     version: "0.0.1"
+  halo_i18n:
+    dependency: "direct main"
+    description:
+      path: "../packages/halo_i18n"
+      relative: true
+    source: path
+    version: "0.0.1"
   halo_quickjs:
     dependency: transitive
     description:
@@ -1115,7 +1122,7 @@ packages:
     source: sdk
     version: "0.0.0"
   slang:
-    dependency: "direct dev"
+    dependency: transitive
     description:
       name: slang
       sha256: "76dbf1f8e87ed1c417026e93a57512f6b6b597104ce72eed99b24a3ed08f0ba2"
@@ -1123,7 +1130,7 @@ packages:
     source: hosted
     version: "4.18.0"
   slang_flutter:
-    dependency: "direct main"
+    dependency: transitive
     description:
       name: slang_flutter
       sha256: "7523a9389b44210eabcfd58412d9131f284b9b3c22d731614f0016e9582ee996"

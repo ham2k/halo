@@ -15,6 +15,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
+import 'package:intl/intl.dart';
 
 import 'activity_controls.dart';
 import 'density.dart';
@@ -167,50 +169,6 @@ enum DxFlags { dx, all, none }
 /// so a day's pinned header lines up with the `daySections` scores cached
 /// for that same boundary.
 const int _dayInMillis = 1000 * 60 * 60 * 24;
-
-/// The localizable vocabulary the QSO list needs for day headers and event
-/// rows — the tiering/formatting logic stays in the widget (it's display
-/// logic, tested here), but the words come from the app's locale. Defaults
-/// to English so the widget package stays usable standalone (and tests read
-/// naturally); the app injects a locale-aware instance (see
-/// `logging_panel.dart`, which fills the month/weekday names from `intl`'s
-/// `DateFormat`).
-class QsoListLabels {
-  /// Monday-first, 7 entries: Mon…Sun.
-  final List<String> weekdayAbbrs;
-
-  /// 12 entries: Jan…Dec.
-  final List<String> monthAbbrs;
-
-  final String today;
-  final String yesterday;
-  final String tomorrow;
-
-  /// The day header's QSO count ("1 QSO" / "12 QSOs"). Nullable function
-  /// (same convention as LoggingControls' parameterized labels) so the
-  /// class stays const-constructible — null falls back to the English
-  /// composition.
-  final String Function(int count)? qsoCount;
-
-  const QsoListLabels({
-    required this.weekdayAbbrs,
-    required this.monthAbbrs,
-    required this.today,
-    required this.yesterday,
-    required this.tomorrow,
-    this.qsoCount,
-  });
-
-  String qsoCountLabel(int count) => qsoCount?.call(count) ?? (count == 1 ? '1 QSO' : '$count QSOs');
-
-  static const english = QsoListLabels(
-    weekdayAbbrs: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    monthAbbrs: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-    today: 'Today',
-    yesterday: 'Yesterday',
-    tomorrow: 'Tomorrow',
-  );
-}
 
 /// Whether a ref is contest metadata rather than an activity reference.
 ///
@@ -401,10 +359,6 @@ class QsoList extends StatefulWidget {
   /// the first rescore lands) just means that header shows no score badges.
   final List<Map<String, dynamic>> daySections;
 
-  /// Localized vocabulary for day headers and event rows — defaults to
-  /// English; the app passes a locale-aware instance.
-  final QsoListLabels labels;
-
   const QsoList({
     super.key,
     required this.qsos,
@@ -422,7 +376,6 @@ class QsoList extends StatefulWidget {
     this.ourEntityPrefix,
     this.dxFlags = DxFlags.dx,
     this.daySections = const [],
-    this.labels = QsoListLabels.english,
   });
 
   @override
@@ -1274,7 +1227,6 @@ class _QsoListState extends State<QsoList> {
                                     .where((i) => qsos[i].isRealContact)
                                     .length,
                                 scores: scoresByDay[dayKeys[g]],
-                                labels: widget.labels,
                                 onTap: widget.onTapDayHeader,
                               ),
                             ),
@@ -1615,7 +1567,6 @@ class DayHeaderRow extends StatelessWidget {
   final int dayMillis;
   final int count;
   final Map<String, dynamic>? scores;
-  final QsoListLabels labels;
 
   /// Tapping the header opens the operation's own info — the day divider is
   /// the list's stand-in for "this operation", the way a QSO row is for a
@@ -1631,7 +1582,6 @@ class DayHeaderRow extends StatelessWidget {
     required this.dayMillis,
     required this.count,
     this.scores,
-    this.labels = QsoListLabels.english,
     this.now,
     this.onTap,
   });
@@ -1641,8 +1591,13 @@ class DayHeaderRow extends StatelessWidget {
   /// obvious cases, weekday+day within the last week, month+day within the
   /// last 9 months, and month+day+year beyond that — so a long-running log
   /// still reads as calendar dates instead of an ever-scrolling "N days ago".
-  static String _dayLabel(int dayMillis, DateTime now, QsoListLabels labels) {
+  /// The weekday and month abbreviations come from `intl` for the widget's
+  /// locale, the relative words from `t` — both follow the app's language.
+  static String _dayLabel(BuildContext context, int dayMillis, DateTime now) {
     final d = DateTime.fromMillisecondsSinceEpoch(dayMillis, isUtc: true);
+    final locale = Localizations.maybeLocaleOf(context)?.toLanguageTag();
+    String weekday() => DateFormat.E(locale).format(d);
+    String month() => DateFormat.MMM(locale).format(d);
     final diffInDays = now.difference(d).inMilliseconds / _dayInMillis;
     final absDiffInDays = diffInDays.abs();
 
@@ -1651,12 +1606,12 @@ class DayHeaderRow extends StatelessWidget {
     // future days get their calendar-date label like any other non-adjacent
     // day, so a date typo or clock-skewed device reads "Jul 20", not
     // "Yesterday".
-    if (diffInDays > -1 && diffInDays <= 0) return labels.tomorrow;
-    if (diffInDays > 0 && diffInDays <= 1) return labels.today;
-    if (diffInDays > 1 && diffInDays <= 2) return labels.yesterday;
-    if (absDiffInDays <= 7) return '${labels.weekdayAbbrs[d.weekday - 1]} ${d.day}';
-    if (absDiffInDays <= 274) return '${labels.monthAbbrs[d.month - 1]} ${d.day}';
-    return '${labels.monthAbbrs[d.month - 1]} ${d.day} ${d.year}';
+    if (diffInDays > -1 && diffInDays <= 0) return t.qsoList.tomorrow;
+    if (diffInDays > 0 && diffInDays <= 1) return t.qsoList.today;
+    if (diffInDays > 1 && diffInDays <= 2) return t.qsoList.yesterday;
+    if (absDiffInDays <= 7) return '${weekday()} ${d.day}';
+    if (absDiffInDays <= 274) return '${month()} ${d.day}';
+    return '${month()} ${d.day} ${d.year}';
   }
 
   @override
@@ -1765,7 +1720,7 @@ class DayHeaderRow extends StatelessWidget {
                     children: [
                       Flexible(
                         child: Text(
-                          _dayLabel(dayMillis, now ?? nowUtc(), labels),
+                          _dayLabel(context, dayMillis, now ?? nowUtc()),
                           style: rowStyle?.copyWith(
                             fontWeight: FontWeight.w700,
                             color: theme.colorScheme.onSurface,
@@ -1783,7 +1738,11 @@ class DayHeaderRow extends StatelessWidget {
                       // which is the behaviour we want everywhere except a count
                       // label wider than the list's whole minimum width, and that
                       // needs ~25 characters of "N QSOs".
-                      Text(labels.qsoCountLabel(count), style: rowStyle),
+                      // Same "1 QSO"/"N QSOs" vocabulary the info area's stats line uses.
+                      Text(
+                        count == 1 ? t.loggingControls.info.qsoCountOne : t.loggingControls.info.qsoCountOther(count: count),
+                        style: rowStyle,
+                      ),
                     ],
                   ),
                 ),

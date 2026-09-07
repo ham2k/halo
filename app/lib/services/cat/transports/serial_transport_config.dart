@@ -8,7 +8,7 @@
 
 import 'package:flutter/foundation.dart';
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../transport.dart';
 import 'config_field_helpers.dart';
 import 'serial_port_sightings.dart';

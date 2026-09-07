@@ -61,7 +61,7 @@ ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 # macOS ships bash 3.2, so no associative arrays: case functions instead.
 # ---------------------------------------------------------------------------
 
-PKG_GROUP_NAMES="extensions core build-tools extension-host quickjs widgets cli app dist"
+PKG_GROUP_NAMES="extensions core build-tools extension-host quickjs widgets i18n cli app dist"
 
 app_group_names() {
   local d
@@ -80,6 +80,7 @@ pkg_group_dir() {
     extension-host) echo "packages/halo_extension_host" ;;
     quickjs) echo "packages/halo_quickjs" ;;
     widgets) echo "packages/halo_widgets" ;;
+    i18n) echo "packages/halo_i18n" ;;
     cli) echo "packages/halo_cli" ;;
     *) echo "" ;;
   esac
@@ -315,6 +316,36 @@ ensure_bundles() {
   fi
 }
 
+# The generated strings must be what the sources say. `dart run slang` is
+# cheap, so every run that loads them regenerates first (ensure_i18n) — the
+# same stale-artifact trap ensure_bundles closes, one directory over — and
+# the gate additionally refuses a tree whose committed output was behind
+# (check_i18n_fresh). The comparison is against the generated files as they
+# were on disk, not git: the sources sit in the same directory, and an
+# uncommitted JSON edit that WAS regenerated is fresh, not stale. The
+# generated header carries no timestamp (slang.yaml), so identical sources
+# give identical files.
+ensure_i18n() {
+  ensure_pub packages/halo_i18n
+  echo "▶ halo_i18n: regenerate the strings"
+  (cd "$ROOT_DIR/packages/halo_i18n" && dart run slang >/dev/null)
+}
+
+check_i18n_fresh() {
+  local dir="$ROOT_DIR/packages/halo_i18n/lib/i18n" before f stale=""
+  before=$(mktemp -d)
+  cp "$dir"/*.g.dart "$before"/
+  ensure_i18n
+  for f in "$dir"/*.g.dart; do
+    if [[ ! -f "$before/${f##*/}" ]] || ! cmp -s "$f" "$before/${f##*/}"; then stale="$stale ${f##*/}"; fi
+  done
+  rm -rf "$before"
+  if [[ -n "$stale" ]]; then
+    echo "❌ packages/halo_i18n/lib/i18n was behind its sources — the regenerated files (now on disk) need committing:$stale" >&2
+    exit 1
+  fi
+}
+
 ensure_hostlib() {
   # build_host.sh is incremental; a no-op run costs a couple of seconds.
   echo "▶ halo_quickjs: host JS engine library (incremental)"
@@ -419,7 +450,7 @@ run_npm_counted() {
 run_subset() {
   # $@: validated group names (deduped by the caller)
   local g run_extensions=0 run_dist=0 run_all_app=0
-  local need_bundles=0 need_hostlib=0
+  local need_bundles=0 need_hostlib=0 need_i18n=0
   local pkg_dirs="" app_files="" files empty_groups=""
 
   for g in "$@"; do
@@ -429,10 +460,11 @@ run_subset() {
       # gitignored assets/extensions/ as an asset dir — absent bundles fail
       # the dependency's asset build on a fresh worktree.
       dist) run_dist=1; need_bundles=1 ;;
-      app) run_all_app=1; need_bundles=1; need_hostlib=1 ;;
+      app) run_all_app=1; need_bundles=1; need_hostlib=1; need_i18n=1 ;;
       quickjs) need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       extension-host) need_bundles=1; need_hostlib=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
-      core | build-tools | widgets) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
+      core | build-tools) pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
+      widgets | i18n) need_i18n=1; pkg_dirs="$pkg_dirs $(pkg_group_dir "$g")" ;;
       # halo_cli boots the REAL QuickJS host against the built bundles
       # (runtime_test.dart, scoring_merge_test.dart), so it belongs with
       # extension-host rather than with the pure-Dart packages: without these
@@ -446,7 +478,7 @@ run_subset() {
         if ! is_app_group "$g"; then
           echo "internal error: group '$g' has no runner" >&2; exit 2
         fi
-        need_bundles=1; need_hostlib=1
+        need_bundles=1; need_hostlib=1; need_i18n=1
         files=$(app_group_files "$g")
         if [[ -z "$files" ]]; then
           echo "⚠️  group '$g' matches no test files" >&2
@@ -472,6 +504,7 @@ $(echo "$EXTRA_APP_FILES" | tr ' ' '\n')"
 
   [[ "$need_bundles" == "1" ]] && ensure_bundles
   [[ "$need_hostlib" == "1" ]] && ensure_hostlib
+  [[ "$need_i18n" == "1" ]] && ensure_i18n
 
   if [[ "$run_extensions" == "1" ]]; then
     ensure_node_modules
@@ -579,6 +612,8 @@ changed_subset() {
       packages/halo_extension_host/*) groups="$groups extension-host" ;;
       packages/halo_quickjs/*) groups="$groups quickjs" ;;
       packages/halo_widgets/*) groups="$groups widgets" ;;
+      # A string reaches every widget and every view.
+      packages/halo_i18n/*) groups="$groups i18n widgets app" ;;
       packages/halo_cli/*) groups="$groups cli" ;;
       # None has tests of its own; app/test/platform/webview_plugin_overrides_test
       # is what covers them, so `platform` is the group (plus the guards every
@@ -820,7 +855,9 @@ fi
 # configuration — every consumer degrades rather than failing.
 ensure_secrets
 
-PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_extension_host packages/halo_quickjs packages/halo_widgets packages/halo_cli app)
+check_i18n_fresh
+
+PACKAGES=(packages/halo_core packages/halo_build_tools packages/halo_i18n packages/halo_extension_host packages/halo_quickjs packages/halo_widgets packages/halo_cli app)
 # The private distribution layer, present only in the halo-dist checkout — a
 # public checkout has no app_dist/ and must still pass everything above.
 if [[ -d "$ROOT_DIR/app_dist" ]]; then

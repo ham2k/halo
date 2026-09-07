@@ -27,7 +27,7 @@
 import 'dart:async';
 import 'dart:typed_data';
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../driver.dart';
 import 'cw_send_queue.dart';
 

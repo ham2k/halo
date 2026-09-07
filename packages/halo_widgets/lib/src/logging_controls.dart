@@ -744,11 +744,6 @@ class LoggingControls extends StatefulWidget {
   /// other, the field is a number that means nothing.
   final bool showPositionField;
 
-  /// Localized chrome for the "More" full-edit pane's form renderer
-  /// (Cancel/Save buttons, close button, error prefixes — see
-  /// FormRendererLabels). Null keeps the English defaults.
-  final FormRendererLabels? formLabels;
-
   /// The band/mode options offered by the Radio control's dropdowns — the
   /// user's enabled lists from Settings (Logging → Bands/Modes). Null falls
   /// back to the full catalogs from halo_core; empty falls back to the
@@ -964,7 +959,6 @@ class LoggingControls extends StatefulWidget {
     this.cancelLabel,
     this.expandControlsLabel,
     this.collapseControlsLabel,
-    this.formLabels,
     this.enabledBands,
     this.enabledModes,
     this.suggestSpotSources,
@@ -7264,7 +7258,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
     final result = await showFormPane(
       context,
-      labels: widget.formLabels ?? FormRendererLabels.english,
       formDefinition: _buildQsoEditFormDefinition(),
       initialState: {
         'theirCall': _call,

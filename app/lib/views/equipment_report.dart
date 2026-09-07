@@ -24,12 +24,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/equipment_registry.dart';
 import '../services/cat/transports/serial_transport_config.dart';
-import '../tools/form_chrome_labels.dart';
 
 /// What the operator says happened, and what that makes the card.
 ///
@@ -129,7 +128,7 @@ Future<void> showEquipmentReportDialog(
       'outcome' when _Outcome.byName(value) == null => st.reportOutcomeRequired,
       _ => null,
     },
-    labels: formRendererLabelsFor(context.t, saveLabel: st.reportSend),
+    saveLabel: st.reportSend,
   );
   if (values == null || !context.mounted) return;
 

@@ -18,7 +18,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/windows_webview.dart';

@@ -43,7 +43,7 @@ import 'tester_overlay.dart' show testerOverlayCovering;
 import 'operation/positions_panel.dart';
 import 'peers_panel.dart';
 import '../tools/operation_title.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// How far into the sheet's open/close slide (0 closed, 1 open) the header's
 /// falling-dots handoff to the accept button completes — shared by the

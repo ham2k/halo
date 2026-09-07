@@ -26,7 +26,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/deep_link_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';

@@ -8,17 +8,15 @@ import 'package:flutter/services.dart'
     show HardwareKeyboard, KeyDownEvent, KeyEvent, KeyRepeatEvent, LogicalKeyboardKey;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:intl/intl.dart';
 
 import '../../config/dev_bridge.dart';
 import '../../services/halo_services.dart';
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/cat/equipment.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
 import '../../tools/call_location_line.dart';
-import '../../tools/form_chrome_labels.dart';
 import '../../tools/operation_stats.dart';
 import '../../tools/scoring_labels.dart';
 import '../../tools/scoring_summaries.dart';
@@ -33,23 +31,6 @@ import 'extension_panel.dart' show PanelRenderContext;
 /// `GlobalMaterialLocalizations`), so they localize for free; the relative
 /// and event words come from the app's own translations. 2024-01-01 is a
 /// Monday, so a 7-day walk from it yields Mon…Sun in order.
-QsoListLabels _qsoListLabelsFor(BuildContext context) {
-  final locale = Localizations.localeOf(context).toLanguageTag();
-  final weekday = DateFormat.E(locale);
-  final month = DateFormat.MMM(locale);
-  final t = context.t.qsoList;
-  final info = context.t.loggingControls.info;
-  return QsoListLabels(
-    weekdayAbbrs: [for (var i = 0; i < 7; i++) weekday.format(DateTime.utc(2024, 1, 1 + i))],
-    monthAbbrs: [for (var m = 1; m <= 12; m++) month.format(DateTime.utc(2024, m))],
-    today: t.today,
-    yesterday: t.yesterday,
-    tomorrow: t.tomorrow,
-    // Same "1 QSO"/"N QSOs" vocabulary the info area's stats line uses.
-    qsoCount: (count) => count == 1 ? info.qsoCountOne : info.qsoCountOther(count: count),
-  );
-}
-
 class LoggingPanel extends StatefulWidget {
   final Operation operation;
   final HaLoServices services;
@@ -740,7 +721,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
       ourEntityPrefix: widget.ourEntityPrefix,
       dxFlags: widget.dxFlags,
       daySections: daySections,
-      labels: _qsoListLabelsFor(context),
     );
 
     // Escape deselecting a QSO regardless of what has focus (e.g. the QSO
@@ -950,7 +930,6 @@ class _LoggingPanelState extends State<LoggingPanel> {
             controlSettingsTitle: context.t.loggingControls.controlSettings,
             expandControlsLabel: context.t.loggingControls.expandControls,
             collapseControlsLabel: context.t.loggingControls.collapseControls,
-            formLabels: formRendererLabelsFor(context.t),
             saveLabel: context.t.common.save,
             cancelLabel: context.t.common.cancel,
             timeLabel: context.t.loggingControls.timeUtc,

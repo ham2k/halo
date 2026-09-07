@@ -15,7 +15,7 @@ import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/release_notes.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'ham2k_logo.dart';
 import 'version_label.dart';
 

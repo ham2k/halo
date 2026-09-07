@@ -1,0 +1,22 @@
+name: halo_i18n
+description: "HaLo's user-facing strings: the slang sources and their generated Translations, as one package every first-party package can depend on."
+version: 0.0.1
+publish_to: 'none'
+
+environment:
+  sdk: ^3.12.2
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  intl: ^0.20.2
+  slang: ^4.0.0
+  slang_flutter: ^4.0.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:

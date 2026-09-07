@@ -13,6 +13,8 @@ dependencies:
     sdk: flutter
   halo_core:
     path: ../halo_core
+  halo_i18n:
+    path: ../halo_i18n
   # Already resolved through flutter itself; declared because the draft-QSO
   # publisher deep-compares nested maps, which foundation's mapEquals can't.
   collection: any

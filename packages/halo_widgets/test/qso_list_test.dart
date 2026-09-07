@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 /// A real OS accessibility text-scale curve can be non-linear — unlike
@@ -2214,16 +2215,13 @@ void main() {
         expect(find.text('Sat 13'), findsOneWidget);
       });
 
-      testWidgets('uses the injected locale vocabulary', (tester) async {
-        const es = QsoListLabels(
-          weekdayAbbrs: ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom'],
-          monthAbbrs: ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'],
-          today: 'Hoy',
-          yesterday: 'Ayer',
-          tomorrow: 'Mañana',
-        );
+      testWidgets("uses the current locale's vocabulary", (tester) async {
+        // runAsync: the Spanish translations are a deferred library, and its
+        // load is a real future that fake async would never complete.
+        await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.es));
+        addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
         await tester.pumpWidget(MaterialApp(
-          home: Scaffold(body: DayHeaderRow(dayMillis: dayOf(now), count: 1, now: now, labels: es)),
+          home: Scaffold(body: DayHeaderRow(dayMillis: dayOf(now), count: 1, now: now)),
         ));
         expect(find.text('Hoy'), findsOneWidget);
       });

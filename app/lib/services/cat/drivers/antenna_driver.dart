@@ -5,7 +5,7 @@
 // recording. See type_only_equipment_driver.dart for the shape shared with
 // key_driver.dart.
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'type_only_equipment_driver.dart';
 
 /// Stable, not translated — an export or a future driver reads this value,

@@ -5,7 +5,7 @@
 // recording. See type_only_equipment_driver.dart for the shape shared with
 // antenna_driver.dart.
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'type_only_equipment_driver.dart';
 
 /// ADIF's own MORSE_KEY_TYPE enumeration codes, stored as-is so a future

@@ -21,7 +21,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../config/release_notes.dart';
 import '../config/tester_notes.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'release_overlay.dart' show ReleasePhoto, overlayVersionHeader;
 
 // Same fixed (theme-mode-independent) palette as release_overlay.dart — this

@@ -21,7 +21,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import '../config/dev_flags.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../config/user_agent.dart';
 import 'error_reporting_service.dart';
 import 'extension_store_settings.dart';

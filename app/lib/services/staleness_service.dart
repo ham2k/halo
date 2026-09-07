@@ -17,7 +17,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/version.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../views/staleness_dialog.dart';
 import 'staleness.dart';
 import 'status_bar_service.dart';

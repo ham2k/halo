@@ -6,7 +6,7 @@
 // icom_network_transport_web.dart, so this is the one place that logic
 // lives.
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../transport.dart';
 import 'config_field_helpers.dart';
 

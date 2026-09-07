@@ -14,7 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import '../services/auto_update_service.dart';
 import '../services/error_reporting_service.dart';

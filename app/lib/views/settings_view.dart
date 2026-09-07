@@ -12,12 +12,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import 'panel_use_tracker.dart';
 import '../services/link_opener.dart';
 import '../services/settings_service.dart';
-import '../tools/form_chrome_labels.dart';
 import 'header_profile_label.dart';
 import 'help_panel.dart';
 import '../settings/settings_catalog.dart' show elementSearchScore;
@@ -803,7 +802,6 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       showActions: false,
       showTitle: false,
       developerMode: widget.services.settings.developerMode,
-      labels: formRendererLabelsFor(context.t),
       settingsList: true,
       onChange: _autosave,
       onOpenLink: openExternalUrl,

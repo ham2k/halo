@@ -9,7 +9,7 @@
 // independently-drifted copies of this kind of parsing have already caused
 // a bug (see IcomCivDriver._parseAddress) — don't fork new copies.
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// The plain required-hostname-or-IP field two transports collect
 /// identically (TCP's own host, and the Icom network login's host).

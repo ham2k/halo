@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'list_contents_key.dart';
@@ -53,15 +54,6 @@ String _templateString(String template, Map<String, dynamic> item) {
   return template.replaceAllMapped(RegExp(r'\$\{([^}]+)\}'), (m) => item[m.group(1)]?.toString() ?? '');
 }
 
-/// The localizable vocabulary for the renderer's own chrome — action
-/// buttons, editor dialogs, icon-button names, and error prefixes. Field labels,
-/// titles, and options come from the form definition itself, so localizing
-/// those is the definition author's job. Defaults to English so the widget
-/// package stays usable standalone (same pattern as QsoListLabels); the app
-/// injects a locale-aware instance. Parameterized labels are nullable
-/// functions (same convention as LoggingControls' `spotSelfLabel` etc.) so
-/// the class stays const-constructible — null falls back to the English
-/// composition at the call site.
 /// A `select` option carrying `emphasis: true` is drawn bold — the option
 /// list is saying one entry is the one to pick, not merely that it exists.
 /// The serial port picker's suggestion for a radio whose bridge chip the
@@ -79,103 +71,6 @@ TextStyle? optionEmphasisStyle(Map<String, dynamic> option, List<Map<String, dyn
   return TextStyle(fontWeight: option['emphasis'] == true ? FontWeight.bold : FontWeight.normal);
 }
 
-class FormRendererLabels {
-  final String cancel;
-  final String save;
-  final String done;
-
-  /// A list-editor row whose item has no non-empty field to title it by.
-  final String untitledItem;
-
-  /// The multiselect editor's disclosure toggle states.
-  final String showMore;
-  final String showAll;
-  final String showFewer;
-
-  /// The multiselect editor's restore-defaults button.
-  final String defaults;
-
-  /// The multiselect editor's search field hint and clear-button name.
-  final String searchHint;
-  final String clearLabel;
-
-  /// A `type: 'link'` element's open button name.
-  final String openPageLabel;
-
-  /// A repeating-list row's remove button name (icon-only).
-  final String removeItemLabel;
-
-  /// An `account` field's status line and Manage/Connect button.
-  final String connected;
-  final String notConnected;
-
-  /// Shown in place of [notConnected] when the account's status says the
-  /// credential store could not be reached — "not connected" would be a claim
-  /// about the account, when the truth is about the machine.
-  final String storageUnavailable;
-  final String manage;
-  final String connect;
-
-  /// [showFormDialog]'s title when the definition has none.
-  final String formTitle;
-
-  /// [showFormPane]'s modal-pane close button name (threaded through to
-  /// [showModalPane]).
-  final String closeLabel;
-
-  /// The list editor's "Add `<field label>`" / "Edit `<field label>`" titles.
-  final String Function(String label)? addItem;
-  final String Function(String label)? editItem;
-
-  /// The "Showing X of Y (Z selected)" status line shown while a
-  /// multiselect search filter is active.
-  final String Function(int shown, int total, int selected)? multiselectStatus;
-
-  /// Error prefixes: field validation/transformation failures at submit
-  /// time, and a `type: 'action'` handler throwing.
-  final String Function(String error)? validationError;
-  final String Function(String error)? transformationError;
-  final String Function(String error)? actionError;
-
-  const FormRendererLabels({
-    this.cancel = 'Cancel',
-    this.save = 'Save',
-    this.done = 'Done',
-    this.untitledItem = '(untitled)',
-    this.showMore = 'Show more',
-    this.showAll = 'Show all',
-    this.showFewer = 'Show fewer',
-    this.defaults = 'Defaults',
-    this.searchHint = 'Search',
-    this.clearLabel = 'Clear',
-    this.openPageLabel = 'Open page',
-    this.removeItemLabel = 'Remove',
-    this.connected = 'Connected',
-    this.notConnected = 'Not Connected',
-    this.storageUnavailable = 'Logins unavailable',
-    this.manage = 'Manage',
-    this.connect = 'Connect',
-    this.formTitle = 'Form',
-    this.closeLabel = 'Close',
-    this.addItem,
-    this.editItem,
-    this.multiselectStatus,
-    this.validationError,
-    this.transformationError,
-    this.actionError,
-  });
-
-  static const english = FormRendererLabels();
-
-  String addItemLabel(String label) => addItem?.call(label) ?? 'Add $label';
-  String editItemLabel(String label) => editItem?.call(label) ?? 'Edit $label';
-  String multiselectStatusLabel(int shown, int total, int selected) =>
-      multiselectStatus?.call(shown, total, selected) ?? 'Showing $shown of $total ($selected selected)';
-  String validationErrorLabel(String error) => validationError?.call(error) ?? 'Validation error: $error';
-  String transformationErrorLabel(String error) => transformationError?.call(error) ?? 'Transformation error: $error';
-  String actionErrorLabel(String error) => actionError?.call(error) ?? 'Error: $error';
-}
-
 /// The three callbacks a `fieldType: 'list'` editor needs — built by
 /// `_FormRendererState._listFieldActions`, shared by both presentations
 /// (`_buildInlineListField`'s inline rows and `_openListEditor`'s dialog).
@@ -191,10 +86,10 @@ class _ListFieldActions {
 /// slot — one builder so the three dialogs can't drift on icon or wording.
 /// Undo, not restore: what it undoes is the operator's own change, and the
 /// two icons read as different promises when one dialog uses each.
-Widget _defaultsButton({required FormRendererLabels labels, required VoidCallback? onPressed}) => TextButton.icon(
+Widget _defaultsButton({required VoidCallback? onPressed}) => TextButton.icon(
       onPressed: onPressed,
       icon: const Icon(MdiIcons.undo, size: 18),
-      label: Text(labels.defaults),
+      label: Text(t.formChrome.defaults),
     );
 
 /// The Cancel/Save (+ submitting spinner) row shared by every presenter of
@@ -207,7 +102,7 @@ Widget _formActionsRow({
   required bool isSubmitting,
   required VoidCallback? onCancel,
   required VoidCallback? onSave,
-  required FormRendererLabels labels,
+  String? saveLabel,
   ({String label, VoidCallback onPressed, Color color, IconData? icon})? destructive,
   ({String label, VoidCallback onPressed})? secondary,
 }) {
@@ -258,7 +153,7 @@ Widget _formActionsRow({
           ),
     cancel: TextButton(
       onPressed: isSubmitting ? null : onCancel,
-      child: label(labels.cancel),
+      child: label(t.common.cancel),
     ),
     actions: [
       if (isSubmitting)
@@ -272,7 +167,7 @@ Widget _formActionsRow({
       else
         // The one verb that never gives ground: whatever else gets clipped,
         // the form's own action stays readable.
-        FilledButton(onPressed: onSave, child: label(labels.save)),
+        FilledButton(onPressed: onSave, child: label(saveLabel ?? t.common.save)),
     ],
   );
 }
@@ -312,9 +207,10 @@ class FormRenderer extends StatefulWidget {
   /// all — hidden entirely (not just disabled) when false, the default.
   final bool developerMode;
 
-  /// Localized chrome vocabulary — defaults to English; the app passes a
-  /// locale-aware instance (see FormRendererLabels).
-  final FormRendererLabels labels;
+  /// Renames the submit button for a form that does not save anything — the
+  /// radio report sends one. The only chrome word any caller has wanted to
+  /// change; everything else reads the current locale's `t` directly.
+  final String? saveLabel;
 
   /// Whether this form IS a settings list rather than a form to fill in —
   /// the settings panels, a target-scoped settings dialog, a panel's own
@@ -350,7 +246,7 @@ class FormRenderer extends StatefulWidget {
     this.showTitle = true,
     this.submittingNotifier,
     this.developerMode = false,
-    this.labels = FormRendererLabels.english,
+    this.saveLabel,
     this.settingsList = false,
   });
 
@@ -743,7 +639,7 @@ class FormRendererState extends State<FormRenderer> {
             errors[key] = error;
           }
         } catch (e) {
-          errors[key] = widget.labels.validationErrorLabel(e.toString());
+          errors[key] = t.formChrome.validationError(error: e.toString());
         }
       }
 
@@ -753,7 +649,7 @@ class FormRendererState extends State<FormRenderer> {
           final transformed = await widget.transformer!(key, val, _values);
           transformedValues[key] = transformed;
         } catch (e) {
-          errors[key] = widget.labels.transformationErrorLabel(e.toString());
+          errors[key] = t.formChrome.transformationError(error: e.toString());
         }
       }
     }
@@ -847,7 +743,7 @@ class FormRendererState extends State<FormRenderer> {
           ),
           if (widget.showActions) ...[
             const SizedBox(height: Space.xxl),
-            _formActionsRow(isSubmitting: _isSubmitting, onCancel: widget.onCancel, onSave: submit, labels: widget.labels),
+            _formActionsRow(isSubmitting: _isSubmitting, onCancel: widget.onCancel, onSave: submit, saveLabel: widget.saveLabel),
           ],
         ],
       ),
@@ -1359,16 +1255,15 @@ class FormRendererState extends State<FormRenderer> {
         content: _SelectDialogBody(
           options: options,
           current: current,
-          searchHint: widget.labels.searchHint,
-          clearLabel: widget.labels.clearLabel,
+          searchHint: t.formChrome.search,
+          clearLabel: t.formChrome.clear,
         ),
         secondary: hasDefault
             ? _defaultsButton(
-                labels: widget.labels,
                 onPressed: _isSubmitting ? null : () => Navigator.of(dialogContext).pop([el['defaultValue']]),
               )
             : null,
-        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(widget.labels.done)),
+        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
       ),
     );
     if (picked == null || !mounted) return;
@@ -1471,7 +1366,6 @@ class FormRendererState extends State<FormRenderer> {
         textCapitalization: fieldType == 'number' ? TextCapitalization.none : _capitalizationFor(fieldType, el),
         inputFormatters: _inputFormattersFor(fieldType, el),
         autofillHints: _getAutofillHints(key, fieldType),
-        labels: widget.labels,
         onClosed: (text) => _commitTextEdit(el, fieldType, text),
       ),
     );
@@ -1513,7 +1407,7 @@ class FormRendererState extends State<FormRenderer> {
           MdiIcons.openInNew,
           size: 22,
           color: devModeColor,
-          semanticLabel: widget.labels.openPageLabel,
+          semanticLabel: t.formChrome.openPage,
         ),
         onPressed: open,
       ),
@@ -1675,10 +1569,10 @@ class FormRendererState extends State<FormRenderer> {
         leading: orderable
             ? ReorderableDragStartListener(index: index, child: const Icon(MdiIcons.dragHorizontalVariant))
             : null,
-        title: Text(title.isEmpty ? widget.labels.untitledItem : title),
+        title: Text(title.isEmpty ? t.formChrome.untitled : title),
         onTap: _isSubmitting ? null : () => actions.editItem(index),
         trailing: IconButton(
-          icon: Icon(MdiIcons.delete, size: 20, semanticLabel: widget.labels.removeItemLabel),
+          icon: Icon(MdiIcons.delete, size: 20, semanticLabel: t.formChrome.removeItem),
           onPressed: _isSubmitting ? null : () => actions.deleteItem(index),
         ),
         mouseCursor: SystemMouseCursors.click,
@@ -1716,7 +1610,7 @@ class FormRendererState extends State<FormRenderer> {
           child: TextButton.icon(
             onPressed: _isSubmitting ? null : () => actions.editItem(null),
             icon: const Icon(MdiIcons.plus, size: 18),
-            label: Text(widget.labels.addItemLabel(itemLabel)),
+            label: Text(t.formChrome.addItem(label: itemLabel)),
           ),
         ),
       ],
@@ -1760,7 +1654,7 @@ class FormRendererState extends State<FormRenderer> {
       final result = await showFormDialog(
         context,
         formDefinition: {
-          'title': index != null ? widget.labels.editItemLabel(itemLabel) : widget.labels.addItemLabel(itemLabel),
+          'title': index != null ? t.formChrome.editItem(label: itemLabel) : t.formChrome.addItem(label: itemLabel),
           'elements': itemFields,
         },
         initialState: initial,
@@ -1771,7 +1665,6 @@ class FormRendererState extends State<FormRenderer> {
             ? null
             : (fieldKey, value, state) => widget.transformer!('$itemPath.$fieldKey', value, state),
         developerMode: widget.developerMode,
-        labels: widget.labels,
       );
       if (result == null) return;
       final newItems = List<Map<String, dynamic>>.from(items);
@@ -1839,7 +1732,7 @@ class FormRendererState extends State<FormRenderer> {
               key: ValueKey('$key-item-$index'),
               dense: true,
               contentPadding: EdgeInsets.zero,
-              title: Text(title.isEmpty ? widget.labels.untitledItem : title),
+              title: Text(title.isEmpty ? t.formChrome.untitled : title),
               onTap: _isSubmitting ? null : () => actions.editItem(index),
               trailing: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -1854,7 +1747,7 @@ class FormRendererState extends State<FormRenderer> {
                       child: const Icon(MdiIcons.dragHorizontalVariant, size: 20),
                     ),
                   IconButton(
-                    icon: Icon(MdiIcons.delete, size: 20, semanticLabel: widget.labels.removeItemLabel),
+                    icon: Icon(MdiIcons.delete, size: 20, semanticLabel: t.formChrome.removeItem),
                     onPressed: _isSubmitting ? null : () => actions.deleteItem(index),
                   ),
                 ],
@@ -1895,12 +1788,12 @@ class FormRendererState extends State<FormRenderer> {
                     TextButton.icon(
                       onPressed: _isSubmitting ? null : () => actions.editItem(null),
                       icon: const Icon(MdiIcons.plus, size: 18),
-                      label: Text(widget.labels.addItemLabel(itemLabel)),
+                      label: Text(t.formChrome.addItem(label: itemLabel)),
                     ),
                   ],
                 ),
               ),
-            cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(widget.labels.done)),
+            cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
           );
         },
       ),
@@ -2186,7 +2079,7 @@ class FormRendererState extends State<FormRenderer> {
                       key: const ValueKey('multiselect-status'),
                       padding: const EdgeInsets.only(top: Space.md),
                       child: Text(
-                        widget.labels.multiselectStatusLabel(visible.length, options.length, selected.length),
+                        t.formChrome.multiselectStatus(shown: visible.length, total: options.length, selected: selected.length),
                         style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                       ),
                     ),
@@ -2213,10 +2106,10 @@ class FormRendererState extends State<FormRenderer> {
                                   suffixIcon: !filtering
                                       ? null
                                       : IconButton(
-                                          icon: Icon(MdiIcons.close, size: 18, semanticLabel: widget.labels.clearLabel),
+                                          icon: Icon(MdiIcons.close, size: 18, semanticLabel: t.formChrome.clear),
                                           onPressed: () => setDialogState(() => searchController!.clear()),
                                         ),
-                                  hintText: widget.labels.searchHint,
+                                  hintText: t.formChrome.search,
                                   border: searchBorder,
                                   focusedBorder: haloFocusedBorder(searchBorder, dialogContext),
                                 ),
@@ -2235,10 +2128,10 @@ class FormRendererState extends State<FormRenderer> {
                               }),
                               icon: Icon(level >= 2 ? MdiIcons.unfoldLessHorizontal : MdiIcons.unfoldMoreHorizontal, size: 18),
                               label: Text(switch (level) {
-                                0 when hasUncommon => widget.labels.showMore,
-                                0 => widget.labels.showAll,
-                                1 => widget.labels.showAll,
-                                _ => widget.labels.showFewer,
+                                0 when hasUncommon => t.formChrome.showMore,
+                                0 => t.formChrome.showAll,
+                                1 => t.formChrome.showAll,
+                                _ => t.formChrome.showFewer,
                               }),
                             ),
                         ],
@@ -2257,7 +2150,6 @@ class FormRendererState extends State<FormRenderer> {
                 // Deliberately drops any out-of-vocabulary stored values —
                 // Defaults means the declared set.
                 : _defaultsButton(
-                    labels: widget.labels,
                     onPressed: _isSubmitting
                         ? null
                         : () {
@@ -2265,7 +2157,7 @@ class FormRendererState extends State<FormRenderer> {
                             commit({...defaultValue});
                           },
                   ),
-            cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(widget.labels.done)),
+            cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
           );
         },
       ),
@@ -2307,17 +2199,17 @@ class FormRendererState extends State<FormRenderer> {
       title: Text(label, style: devModeColor == null ? null : TextStyle(color: devModeColor)),
       subtitle: Text(
         unavailable
-            ? widget.labels.storageUnavailable
+            ? t.formChrome.storageUnavailable
             : connected
-                ? (statusLabel ?? widget.labels.connected)
-                : widget.labels.notConnected,
+                ? (statusLabel ?? t.formChrome.connected)
+                : t.formChrome.notConnected,
         style: devModeColor == null ? null : TextStyle(color: devModeColor),
       ),
       trailing: TextButton(
         onPressed: accountKey == null || widget.onManageAccount == null || unavailable
             ? null
             : () => widget.onManageAccount!(accountKey, subkey),
-        child: Text(connected ? widget.labels.manage : widget.labels.connect),
+        child: Text(connected ? t.formChrome.manage : t.formChrome.connect),
       ),
     );
   }
@@ -2338,7 +2230,7 @@ class FormRendererState extends State<FormRenderer> {
     try {
       result = await widget.onAction!(actionKey, method, _values);
     } catch (e) {
-      result = FormActionResult(message: widget.labels.actionErrorLabel(e.toString()));
+      result = FormActionResult(message: t.formChrome.actionError(error: e.toString()));
     }
     if (!mounted) return;
     setState(() {
@@ -2389,7 +2281,7 @@ Future<Map<String, dynamic>?> showFormDialog(
   FormManageAccount? onManageAccount,
   FormOpenLink? onOpenLink,
   bool developerMode = false,
-  FormRendererLabels labels = FormRendererLabels.english,
+  String? saveLabel,
   bool settingsList = false,
 }) {
   final theme = Theme.of(context);
@@ -2407,7 +2299,7 @@ Future<Map<String, dynamic>?> showFormDialog(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(formDefinition['title'] as String? ?? labels.formTitle),
+          Text(formDefinition['title'] as String? ?? t.formChrome.formTitle),
           if (formDefinition['subtitle'] != null) ...[
             const SizedBox(height: Space.xs),
             Text(
@@ -2435,7 +2327,6 @@ Future<Map<String, dynamic>?> showFormDialog(
         onManageAccount: onManageAccount,
         onOpenLink: onOpenLink,
         developerMode: developerMode,
-        labels: labels,
         settingsList: settingsList,
         showActions: false,
         showTitle: false,
@@ -2448,10 +2339,10 @@ Future<Map<String, dynamic>?> showFormDialog(
         ValueListenableBuilder<bool>(
           valueListenable: submittingNotifier,
           builder: (context, isSubmitting, _) => _formActionsRow(
+            saveLabel: saveLabel,
             isSubmitting: isSubmitting,
             onCancel: () => Navigator.of(context).pop(null),
             onSave: () => formKey.currentState?.submit(),
-            labels: labels,
           ),
         ),
       ],
@@ -2483,7 +2374,7 @@ Future<Map<String, dynamic>?> showFormPane(
   FormManageAccount? onManageAccount,
   FormOpenLink? onOpenLink,
   bool developerMode = false,
-  FormRendererLabels labels = FormRendererLabels.english,
+  String? saveLabel,
   /// A destructive action for the footer, beside Cancel and in its own
   /// colour. The PANE CLOSES FIRST and then the callback runs, so the
   /// callback owns only the confirmation. A caller cannot pop it itself
@@ -2528,7 +2419,7 @@ Future<Map<String, dynamic>?> showFormPane(
     title: formDefinition['title'] as String?,
     barrierDismissible: false,
     scrollable: false,
-    closeLabel: labels.closeLabel,
+    closeLabel: t.common.close,
     builder: (context) => ValueListenableBuilder<bool>(
       valueListenable: submittingNotifier,
       // While a submit's async validators/transformers are in flight the
@@ -2575,7 +2466,6 @@ Future<Map<String, dynamic>?> showFormPane(
                   onManageAccount: onManageAccount,
                   onOpenLink: onOpenLink,
                   developerMode: developerMode,
-                  labels: labels,
                   // The pane's own title bar already shows formDefinition['title'].
                   showTitle: false,
                   showActions: false,
@@ -2592,10 +2482,10 @@ Future<Map<String, dynamic>?> showFormPane(
             builder: (context, isSubmitting, _) => Padding(
               padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
               child: _formActionsRow(
+                saveLabel: saveLabel,
                 isSubmitting: isSubmitting,
                 onCancel: () => Navigator.of(context).pop(null),
                 onSave: () => formKey.currentState?.submit(),
-                labels: labels,
                 destructive: destructiveAction == null
                     ? null
                     : (
@@ -2838,7 +2728,6 @@ class _TextEditDialog extends StatefulWidget {
   final TextCapitalization textCapitalization;
   final List<TextInputFormatter>? inputFormatters;
   final Iterable<String>? autofillHints;
-  final FormRendererLabels labels;
 
   /// The edited text, handed back as the dialog closes — by any route out of
   /// it, which is why this is a callback rather than the dialog's pop result:
@@ -2857,7 +2746,6 @@ class _TextEditDialog extends StatefulWidget {
     required this.textCapitalization,
     required this.inputFormatters,
     required this.autofillHints,
-    required this.labels,
     required this.onClosed,
   });
 
@@ -2952,13 +2840,12 @@ class _TextEditDialogState extends State<_TextEditDialog> {
         secondary: widget.defaultText == null
             ? null
             : _defaultsButton(
-                labels: widget.labels,
                 onPressed: () {
                   _controller.text = widget.defaultText!;
                   _close();
                 },
               ),
-        cancel: TextButton(onPressed: _close, child: Text(widget.labels.done)),
+        cancel: TextButton(onPressed: _close, child: Text(t.common.done)),
       ),
     );
   }

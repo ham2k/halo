@@ -6,7 +6,7 @@ import 'dart:ui' as ui;
 import 'package:halo_core/halo_core.dart';
 import 'package:intl/intl.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// "3.3 km" / "1,042 mi", with separators from the device's system locale
 /// (independent of the app's own Language setting — see [fmtDistance]'s

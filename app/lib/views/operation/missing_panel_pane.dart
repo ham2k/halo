@@ -16,7 +16,7 @@
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// The extension a panel id belongs to, for naming it in a message. Ids are
 /// `ext:<hookKey>:<panelKey>`; anything else is not an extension's.

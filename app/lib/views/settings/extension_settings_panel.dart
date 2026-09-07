@@ -9,10 +9,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/halo_services.dart';
 import '../../services/link_opener.dart';
-import '../../tools/form_chrome_labels.dart';
 import '../../settings/settings_catalog.dart' show elementSearchScore;
 import '../../settings/settings_registry.dart';
 
@@ -353,7 +352,6 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
       // definition title would double it.
       showTitle: !widget.embedded,
       developerMode: widget.services.settings.developerMode,
-      labels: formRendererLabelsFor(context.t),
       settingsList: true,
       validator: _validate,
       onChange: _autosave,

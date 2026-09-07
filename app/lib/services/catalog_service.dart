@@ -25,7 +25,7 @@ import 'package:pub_semver/pub_semver.dart';
 
 import '../config/user_agent.dart';
 import '../config/version.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'error_reporting_service.dart';
 import 'extension_geo.dart';
 import 'extension_service.dart' show ExtensionInfo, ExtensionSearchable;

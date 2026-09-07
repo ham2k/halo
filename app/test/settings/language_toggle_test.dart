@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:ham2k_logger/config/release_notes.dart';
 import 'package:ham2k_logger/config/tester_notes.dart';
-import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 
 import '../support/halo_test_support.dart';

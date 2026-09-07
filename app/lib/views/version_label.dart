@@ -8,7 +8,7 @@
 import 'package:flutter/material.dart';
 
 import '../config/version.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../services/update_service.dart' show currentCodePush;
 
 /// The build-identity parenthetical every version display shares —

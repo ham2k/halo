@@ -31,7 +31,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../adaptive_poller.dart';
 import '../telemetry_poller.dart';
 import '../driver.dart';

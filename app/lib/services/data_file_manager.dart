@@ -11,7 +11,7 @@ import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../config/user_agent.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'app_storage.dart';
 import 'error_reporting_service.dart';
 import 'extension_service.dart';

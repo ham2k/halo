@@ -20,7 +20,7 @@ import 'package:http/http.dart' as http;
 
 import '../config/build_reload.dart';
 import '../config/version.dart';
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'status_bar_service.dart';
 
 /// Outcome of a [BuildFreshnessService.check] call.

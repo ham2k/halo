@@ -25,7 +25,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:pointer_interceptor/pointer_interceptor.dart';
 
-import '../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/geoshape_service.dart';
 import '../../services/settings_service.dart';
 import '../../tools/distance_format.dart';

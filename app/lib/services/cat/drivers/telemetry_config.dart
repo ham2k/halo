@@ -6,7 +6,7 @@
 // wording, the validation and the "blank means work it out" rule are the
 // same on every radio in the catalogue.
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../telemetry_poller.dart';
 
 /// The slowest cadence worth offering. Past this the strip is a slideshow

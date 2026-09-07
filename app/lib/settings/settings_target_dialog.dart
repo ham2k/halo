@@ -33,10 +33,9 @@
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import '../services/link_opener.dart';
-import '../tools/form_chrome_labels.dart';
 import '../views/settings/accounts_panel.dart' show showAccountDialogByKey;
 import 'settings_registry.dart';
 import 'settings_scan.dart';
@@ -445,7 +444,6 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     showTitle: false,
     validator: _validate,
     developerMode: widget.services.settings.developerMode,
-    labels: formRendererLabelsFor(context.t),
     settingsList: true,
     onChange: _autosave,
     onAction: _onAction,

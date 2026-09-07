@@ -9,7 +9,7 @@
 // these, and one on a generic entry is told by the entry's own notes
 // that the app does not know their radio.
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../driver.dart';
 
 /// The CW keyer checkbox and the voice memory count, each skipped when

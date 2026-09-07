@@ -15,7 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:ham2k_logger/i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/views/switch_accounts_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';

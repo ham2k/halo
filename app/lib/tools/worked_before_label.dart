@@ -5,7 +5,7 @@ import 'package:flutter/widgets.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 /// The compact call-info's worked-before pill, app-polo's way: the most
 /// telling recent bucket first, then whatever is left — "3 today + 48 QSOs",

@@ -24,7 +24,7 @@ import 'dart:js_interop';
 import 'package:flutter/foundation.dart';
 import 'package:web/web.dart' as web;
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../transport.dart';
 import 'serial_transport_config.dart';
 import 'web_serial_interop.dart';

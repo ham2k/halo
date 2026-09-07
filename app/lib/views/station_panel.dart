@@ -17,7 +17,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
-import '../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import 'accordion_section.dart';
 import '../settings/settings_target_dialog.dart';
@@ -31,7 +31,6 @@ import '../services/cat/cat_service.dart';
 import '../services/peer/peer_remote_radios.dart';
 import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
-import '../tools/form_chrome_labels.dart';
 import 'cw_messages_dialog.dart';
 import 'voice_messages_dialog.dart';
 import 'equipment_report.dart';
@@ -739,7 +738,6 @@ class StationPanel extends StatelessWidget {
       // Cancel/Save/Close and the rest of the pane's chrome. Without this
       // the form's own fields are translated and the buttons around them
       // are not.
-      labels: formRendererLabelsFor(context.t),
     );
     if (result == null) return null;
 
@@ -1380,7 +1378,6 @@ class StationPanel extends StatelessWidget {
         },
         onSubmit: (_) {},
         onCancel: () {},
-        labels: formRendererLabelsFor(context.t),
         settingsList: true,
       ),
     ];

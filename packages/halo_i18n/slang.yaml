@@ -7,3 +7,7 @@ output_file_name: strings.g.dart
 
 pluralization:
   default_parameter: count
+
+# The header carries no build time: the gate regenerates and diffs, and a
+# timestamp would make every run a difference.
+timestamp: false

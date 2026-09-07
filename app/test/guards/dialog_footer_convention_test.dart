@@ -23,7 +23,7 @@ const _dismissalTokens = [
   'common.close',
   'common.dismiss',
   'labels.cancel',
-  // FormRenderer's own dialogs name their verbs through FormRendererLabels,
+  // FormRenderer's own dialogs name their verbs through the strings package,
   // not the app's i18n — two of them shipped a Done inside `actions:` while
   // this list only knew `labels.cancel`.
   'labels.done',

@@ -22,7 +22,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import '../../../i18n/strings.g.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import '../adaptive_poller.dart';
 import '../telemetry_poller.dart';
 import '../transports/config_field_helpers.dart';
