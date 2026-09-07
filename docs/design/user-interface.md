@@ -640,8 +640,8 @@ you focus to *append* to. The logging panel's own controls
 themselves; every other field opts out.
 
 **A live filter hides what it excludes; it never unmounts it.** Anything that
-re-filters a list of forms while the operator is still typing the query — All
-Settings' search is the one that exists today — must keep the excluded
+re-filters a list of forms while the operator is still typing the query — the
+Settings panel's search is the one that exists today — must keep the excluded
 sections in the tree (`Visibility`/`SliverVisibility` with
 `maintainState: true`, plus `ExcludeFocus` so a hidden field stays out of the
 Tab order). Dropping a section instead
@@ -683,16 +683,40 @@ and these rules are what keep it one:
   still a settings row on a settings list, with nothing in the leading slot.
   Decided per element, the shape becomes an accident of whoever wrote the
   declaration.
-- **A section is headed by a band**, `SectionHeader`: full-bleed, on the
-  ground the Operation Setup sheet's sections use, in the slab face.
+- **A section is headed by `SectionHeader`**: the accent title in the slab
+  face over a hairline rule in that same accent, on no ground of its own.
+  Title and rule both sit at the ROW INSET — the rule measures the content
+  it heads and stops where the rows' own text does, unlike a filled band,
+  which is full-bleed precisely so it does not read as one highlighted row.
   `FormRenderer`'s `style: 'section'` header IS that widget, and it is the
-  only section header in the app. The band abuts its rows on both sides — the
-  gap belongs above a section, not between a heading and what it names.
-- **Bands stick.** A section is a `SliverMainAxisGroup` of [band, rows]
-  (`SectionHeader.section`), so the band holds the top while its own rows
-  scroll under it and is pushed off by the next section's. That makes the
-  surface a `CustomScrollView`, and every piece of it a sliver: a box handed
-  to a viewport fails the whole list, not just the section that returned it.
+  only section header in the app. It abuts its rows on both sides — the gap
+  belongs above a section, not between a heading and what it names.
+  Pinned (`SectionHeader.pinned`) it paints the pane's surface behind
+  itself, since its own rows scroll under it; only a surface-grounded list
+  may pin one.
+- **Bands stick, unless the section collapses.** A section is a
+  `SliverMainAxisGroup` of [band, rows] (`SectionHeader.section`), so the band
+  holds the top while its own rows scroll under it and is pushed off by the
+  next section's. That makes the surface a `CustomScrollView`, and every piece
+  of it a sliver: a box handed to a viewport fails the whole list, not just
+  the section that returned it.
+- **A CATEGORY is not a section.** The Settings panel is an accordion of
+  categories — Common Settings, then one per declared group and extension
+  panel, one open at a time and remembered across visits. A category heads
+  itself with the FILLED band (the ground the Operation Setup sheet's
+  sections take) and a chevron on its left; a section inside one (a panel's
+  own `style: 'section'` header, e.g. Callsign Notes' "Built-in Notes") is
+  the unfilled heading above. The ground is what says which contains the
+  other, so neither borrows the other's look. Nothing pins in
+  the panel, and it is boxes rather than slivers. Every category is built up
+  front, never lazily: one a lazy list scrolls out of view is DISPOSED, and
+  disposing a form takes the focus of whatever is being typed in with it —
+  the live-filter rule above, which the panel's search depends on. Inside Common Settings the
+  contributing groups head their own rows with the unfilled section heading,
+  so a row drawn from a dozen groups still says where it belongs. A search
+  opens every category that still matches (Common Settings excepted — its
+  rows are copies of the ones below, and it would answer every query twice),
+  and clearing the query returns to the one remembered category.
 
 ## Row gestures
 

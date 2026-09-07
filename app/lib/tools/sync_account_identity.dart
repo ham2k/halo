@@ -16,8 +16,8 @@ import '../i18n/strings.g.dart';
 String? syncAccountIdentity(Map? account, {bool includePending = true}) =>
     _emailIdentity(account, includePending: includePending) ?? _anonymousIdentity(account);
 
-/// The one-line account description shared by the Sync panel and the All
-/// Settings sync group, from the whole `getAccountData` payload: the email
+/// The one-line account description shared by the Sync panel and the
+/// Settings panel's sync group, from the whole `getAccountData` payload: the email
 /// followed by the account's short id when an email identifies the account,
 /// the bare anonymous label (which already carries that id) for an
 /// email-less account, or "Not linked yet" when there is no account data at

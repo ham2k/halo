@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The two contracts the settings-panel rewrite rests on and nothing else
-// checks: a section's band STAYS while its own rows scroll under it, and a
-// row spans the pane while its contents sit at the shared inset.
+// checks: a section's heading STAYS while its own rows scroll under it, and
+// its rule measures the content it heads rather than the pane.
 //
 // Both are invisible to a test that only asks whether a widget is present —
 // which is what every other settings test does — so they are pinned here.
@@ -71,14 +71,15 @@ void main() {
     expect(find.text('Section 1'), findsOneWidget);
   });
 
-  testWidgets('the band spans the pane, with its title at the rows\' own inset', (tester) async {
+  testWidgets("the rule spans the content, with the title at the rows' own inset", (tester) async {
     await tester.pumpWidget(host(width: 600, sections: 1, rowsPerSection: 2));
     await tester.pumpAndSettle();
 
-    // Full-bleed: a band inset to match the rows reads as one highlighted row
-    // rather than as the head of a section.
-    final band = find.ancestor(of: find.text('Section 0'), matching: find.byType(Container)).first;
-    expect(tester.getSize(band).width, 600);
+    // The heading carries no fill, so its rule is all there is to place: it
+    // measures what it heads, ending at the inset the rows' text ends at
+    // rather than running to the pane's edges.
+    final ruled = find.ancestor(of: find.text('Section 0'), matching: find.byType(Container)).first;
+    expect(tester.getSize(ruled).width, 600 - 24 * 2);
 
     // And its title lands where the rows' own text does — one inset, taken
     // from the ambient ListTileTheme by both.
@@ -97,9 +98,9 @@ void main() {
     await tester.pumpWidget(host(width: 240, sections: 1, rowsPerSection: 2));
     await tester.pumpAndSettle();
 
-    final band = find.ancestor(of: find.text('Section 0'), matching: find.byType(Container)).first;
+    final ruled = find.ancestor(of: find.text('Section 0'), matching: find.byType(Container)).first;
     final titleHeight = tester.getSize(find.text('Section 0')).height;
-    expect(tester.getSize(band).height, greaterThanOrEqualTo(titleHeight));
+    expect(tester.getSize(ruled).height, greaterThanOrEqualTo(titleHeight));
     expect(tester.takeException(), isNull);
   });
 }

@@ -2412,7 +2412,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       target: 'logging',
       // The logging view's own title for its own dialog — distinct from
       // LoggingSettingsGroup.title ("Logging"), which names the group as it
-      // appears in All Settings/Common Preferences, a different surface
+      // appears in Settings, a different surface
       // with a different audience.
       title: effectiveContext.t.operation.menu.loggingSettingsTitle,
       // The pane's layout options embeds this same target's fields too, but

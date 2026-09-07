@@ -548,10 +548,10 @@ class HaLoServices {
   late final SystemLists systemLists = SystemLists();
 
   /// The declarative settings groups (docs in settings/settings_registry.dart)
-  /// rendered by the Common Preferences and All Settings panels. Extension
-  /// panels aren't registered here — the All Settings panel composes them
-  /// from [ExtensionService.getSettingsPanels] at build time (the runtime
-  /// boots asynchronously).
+  /// rendered by the Settings panel. Extension panels aren't registered
+  /// here — that panel composes them from
+  /// [ExtensionService.getSettingsPanels] at build time (the runtime boots
+  /// asynchronously).
   late final SettingsRegistry settingsRegistry = SettingsRegistry()
     ..register(GeneralSettingsGroup(settings, extensions))
     ..register(LoggingSettingsGroup(settings))

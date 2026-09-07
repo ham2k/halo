@@ -1595,10 +1595,9 @@
       "copiedVersion": "Copied version details to clipboard"
     },
     "panels": {
-      "commonPreferences": "Common Preferences",
-      "commonPreferencesDescription": "Appearance, language, and everyday settings",
-      "allSettings": "All Settings",
-      "allSettingsDescription": "Every available setting in one place",
+      "settings": "Settings",
+      "settingsDescription": "Every available setting in one place",
+      "commonSettings": "Common Settings",
       "syncDescription": "Back up and sync your logs across devices",
       "accountsDescription": "Sign in to online services and lookups",
       "extensions": "Features & Extensions",

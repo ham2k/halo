@@ -6,16 +6,21 @@ import 'package:flutter/material.dart';
 import 'spacing.dart';
 import 'theme.dart';
 
-/// The band that heads a section of settings — every settings panel's, and
+/// The heading of a section of settings — every settings panel's, and
 /// [FormRenderer]'s `style: 'section'` header, so a hand-built panel and a
 /// declared one cannot drift apart.
 ///
-/// The same ground the Operation Setup sheet's sections take. FULL-BLEED to
-/// the pane's edges, with the row inset spent inside it: inset to match the
-/// rows instead, a band reads as one highlighted row rather than as the start
-/// of a section. The inset comes from the ambient `ListTileTheme` — the same
-/// one every settings row takes its content inset from — so a band and the
-/// rows under it line up wherever the pane puts them.
+/// The accent title over a hairline rule, on no ground of its own. The
+/// Settings panel's CATEGORY headings are the filled bands (settings_view.
+/// dart's `_settingsCategory`), and a section sits INSIDE one: taking a
+/// ground here too would leave the two headings saying the same thing at
+/// different sizes.
+///
+/// Title and rule alike sit at the ROW INSET, so the rule spans the content
+/// it heads and stops where the rows' own text does. The inset comes from
+/// the ambient `ListTileTheme` — the same one every settings row takes its
+/// content inset from — so a heading and the rows under it line up wherever
+/// the pane puts them.
 class SectionHeader extends StatelessWidget {
   final String title;
 
@@ -42,6 +47,11 @@ class SectionHeader extends StatelessWidget {
           ) ??
       const TextStyle();
 
+  /// The rule under the title. A hairline, in the title's own accent: it
+  /// closes the heading rather than dividing rows, so it is thinner than a
+  /// [Divider] and coloured with what it belongs to.
+  static const ruleWidth = 1.0;
+
   static EdgeInsetsGeometry _padding(BuildContext context) =>
       (ListTileTheme.of(context).contentPadding ?? const EdgeInsets.symmetric(horizontal: Space.xxl))
           .add(const EdgeInsets.symmetric(vertical: Space.sm));
@@ -60,7 +70,7 @@ class SectionHeader extends StatelessWidget {
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
     )..layout(maxWidth: (width - padding.horizontal).clamp(0.0, double.infinity));
-    return painter.height + padding.vertical;
+    return painter.height + padding.vertical + ruleWidth;
   }
 
   /// This band as a header pinned to the top of its own section: it stays put
@@ -102,16 +112,28 @@ class SectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: _padding(context),
-      color: haloDialogBandColorAt(context),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: titleStyle(context, color: color)),
-          if (subtitle != null) ...[const SizedBox(height: Space.xs), subtitle!],
-        ],
+    final padding = _padding(context).resolve(Directionality.of(context));
+    // The inset is spent OUTSIDE the ruled box, not inside it: the rule
+    // measures the content it heads, ending where the rows' own text does,
+    // rather than running out to the pane's edges the way a filled band
+    // (the Settings panel's categories) does.
+    return Padding(
+      padding: EdgeInsets.only(left: padding.left, right: padding.right),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.only(top: padding.top, bottom: padding.bottom),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: color ?? HaLoColors.of(context).onSurfaceAccent, width: ruleWidth),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: titleStyle(context, color: color)),
+            if (subtitle != null) ...[const SizedBox(height: Space.xs), subtitle!],
+          ],
+        ),
       ),
     );
   }
@@ -132,7 +154,14 @@ class _PinnedSectionHeader extends SliverPersistentHeaderDelegate {
 
   @override
   Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) =>
-      SizedBox(height: extent, child: SectionHeader(title, color: color));
+      // Painted, unlike the inline heading: pinned, it has its own rows
+      // scrolling UNDER it, and a heading with no ground of its own would
+      // show them through. The pane's surface is what it stands on — a
+      // pinned band only belongs on a surface-grounded list.
+      ColoredBox(
+        color: Theme.of(context).colorScheme.surface,
+        child: SizedBox(height: extent, child: SectionHeader(title, color: color)),
+      );
 
   @override
   bool shouldRebuild(_PinnedSectionHeader old) =>

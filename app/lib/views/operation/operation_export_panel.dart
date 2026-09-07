@@ -151,7 +151,7 @@ Future<void> showOperationExportPanel(
 }
 
 /// The gear's dialog. Also declared as a settings group
-/// (`ExportsSettingsGroup`), so the same setting is reachable from All
+/// (`ExportsSettingsGroup`), so the same setting is reachable from
 /// Settings by someone who never opens this panel.
 Future<void> showExportSettingsDialog(
   BuildContext context, {

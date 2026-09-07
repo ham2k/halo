@@ -15,6 +15,7 @@ upcoming:
     - "The serial port picker suggests your radio's port, flags one just plugged in, and refreshes while open"
     - "A WinKeyer now asks which of its two jacks your radio is on, and no longer dead-keys"
     - "New QSO Parties extension: 49 state and provincial parties, with counties, county lines and Cabrillo"
+    - "Settings is now one panel: Common Settings on top, every category below it, one open at a time"
 
 "162":
   changes:

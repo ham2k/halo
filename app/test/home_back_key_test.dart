@@ -158,9 +158,11 @@ void main() {
     await _pumpHome(tester, services, size: const Size(400, 800));
     await _openSettings(tester);
 
-    await tester.tap(find.text('All Settings'));
+    // Scoped to the sidebar list: the screen's own header carries the same
+    // word.
+    await tester.tap(find.descendant(of: find.byType(ListView).first, matching: find.text('Settings')));
     await _settle(tester);
-    expect(find.text('Common Preferences'), findsNothing, reason: 'the panel covers the sidebar at this width');
+    expect(find.text('Callsign'), findsNothing, reason: 'the panel covers the sidebar at this width');
 
     final platformCalls = _watchPlatformCalls(tester);
     await _systemBack(tester);
@@ -169,7 +171,7 @@ void main() {
     // The panel is a route of its own above Home's, so it pops on its own and
     // this never reaches the interception — one back press per screen, not a
     // press that throws the operator out of Settings from three levels in.
-    expect(find.text('Common Preferences'), findsOneWidget, reason: 'back from a panel lands on the sidebar');
+    expect(find.text('Callsign'), findsWidgets, reason: 'back from a panel lands on the sidebar');
     expect(find.byType(SettingsView), findsOneWidget);
     expect(platformCalls, isNot(contains('SystemNavigator.pop')));
 

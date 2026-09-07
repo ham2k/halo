@@ -93,7 +93,7 @@ void main() {
     });
 
     test('headers/dividers/markdown are never common, even if flagged', () {
-      // Common Preferences builds its own section headers from each
+      // The Common Settings section builds its own bands from each
       // group/panel's title rather than reusing a panel's own elements —
       // see settings_registry.dart's elementIsCommon doc comment.
       expect(elementIsCommon({'type': 'header', 'common': true}), isFalse);

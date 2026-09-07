@@ -1947,15 +1947,15 @@ export interface FormField {
   /// value you want by the discriminator, never by "whichever is non-empty".
   visibleWhen?: { field: string; equals: any }
   /// Only meaningful within a settingsPanel (ignored in ad hoc forms) — see
-  /// docs/extensions/settings.md's "Common Preferences and environment
-  /// gating". Also shows this field on the app's Common Preferences
+  /// docs/extensions/settings.md's "Common Settings and environment
+  /// gating". Also shows this field on the app's Common Settings
   /// quick-access panel, in addition to the full settings list. Unrelated
   /// to FormFieldOption.common/uncommon above (a multiselect option's own
   /// disclosure tier) — different scope, an option inside one field vs.
   /// the field itself.
   common?: boolean
   /// Only meaningful within a settingsPanel. Restricts which platform(s)
-  /// show this field at all — Common Preferences and the full settings
+  /// show this field at all — Common Settings and the full settings
   /// list alike, not just one view of it. One or more platform tokens
   /// (`ios`, `android`, `macos`, `windows`, `linux`, `web`) as a
   /// comma-separated string or array. Every token unprefixed: show ONLY on
@@ -1972,7 +1972,7 @@ export interface FormField {
   /// idea, but starts hidden behind that modal's own "show more settings"
   /// disclosure — for a field related to the target but niche enough it
   /// shouldn't clutter the default view. Omitting `target` doesn't hide the
-  /// field from anywhere it already appears (Common Preferences, All
+  /// field from anywhere it already appears (the Settings panel, Common
   /// Settings) — it just means no target-scoped modal picks it up.
   target?: string | string[]
   /// Only meaningful within a `kind: 'dynamic'` settingsPanel. After this
@@ -1998,10 +1998,10 @@ export interface FormHeader {
   /// carving its fields into named groups, not for an ad hoc form's own
   /// title.
   style?: 'default' | 'section'
-  /// Settings-panel-only; see FormField.environment. Not `common` — Common
-  /// Preferences builds its own section headers from each group/panel's
-  /// title rather than reusing a panel's own FormHeader elements, so there
-  /// is nothing for a header to opt into there.
+  /// Settings-panel-only; see FormField.environment. Not `common` — a
+  /// header is chrome for the rows under it, and the Common Settings
+  /// section shows flagged rows with no bands at all, so there is nothing
+  /// for a header to opt into there.
   environment?: string | string[]
 }
 
@@ -2128,7 +2128,7 @@ export interface SettingsField extends Omit<FormField, 'validate' | 'transform' 
   pattern?: string
   patternError?: string
   itemFields?: SettingsField[]
-  /// Extra names this setting answers to in the All Settings search box and in
+  /// Extra names this setting answers to in the Settings search box and in
   /// the SET/SHOW/HIDE commands, alongside its key, label and description —
   /// for a setting whose real name is a poor thing to type. See
   /// docs/extensions/settings.md. Matched case- and punctuation-insensitively,

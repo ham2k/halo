@@ -4566,17 +4566,14 @@ class Translations$settings$panels$en {
 
 	// Translations
 
-	/// en: 'Common Preferences'
-	String get commonPreferences => 'Common Preferences';
-
-	/// en: 'Appearance, language, and everyday settings'
-	String get commonPreferencesDescription => 'Appearance, language, and everyday settings';
-
-	/// en: 'All Settings'
-	String get allSettings => 'All Settings';
+	/// en: 'Settings'
+	String get settings => 'Settings';
 
 	/// en: 'Every available setting in one place'
-	String get allSettingsDescription => 'Every available setting in one place';
+	String get settingsDescription => 'Every available setting in one place';
+
+	/// en: 'Common Settings'
+	String get commonSettings => 'Common Settings';
 
 	/// en: 'Back up and sync your logs across devices'
 	String get syncDescription => 'Back up and sync your logs across devices';
@@ -7456,10 +7453,9 @@ extension on Translations {
 			'settings.about.noticesDescription' => 'Announcements and status messages',
 			'settings.about.releaseNotes' => 'Release Notes',
 			'settings.about.copiedVersion' => 'Copied version details to clipboard',
-			'settings.panels.commonPreferences' => 'Common Preferences',
-			'settings.panels.commonPreferencesDescription' => 'Appearance, language, and everyday settings',
-			'settings.panels.allSettings' => 'All Settings',
-			'settings.panels.allSettingsDescription' => 'Every available setting in one place',
+			'settings.panels.settings' => 'Settings',
+			'settings.panels.settingsDescription' => 'Every available setting in one place',
+			'settings.panels.commonSettings' => 'Common Settings',
 			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
 			'settings.panels.accountsDescription' => 'Sign in to online services and lookups',
 			'settings.panels.extensions' => 'Features & Extensions',
@@ -7662,9 +7658,9 @@ extension on Translations {
 			'switchAccounts.emailSent' => ({required Object email}) => 'An email was sent to ${email}. Open it and confirm the request to link this device.',
 			'switchAccounts.resendEmail' => 'Resend email',
 			'switchAccounts.qrPrompt' => 'Scan this QR code from a device already linked to the account you want — for example with Ham2K Portable Logger on your phone.',
+			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
 			_ => null,
 		} ?? switch (path) {
-			'switchAccounts.serverUnreachable' => 'Could not reach the sync server. Try again later.',
 			'switchAccounts.emailRequired' => 'Enter an email address to link.',
 			'switchAccounts.noAccountForEmail' => ({required Object email}) => 'No account found for ${email}.',
 			'switchAccounts.serverRejected' => ({required Object error}) => 'The sync server rejected the request: ${error}',

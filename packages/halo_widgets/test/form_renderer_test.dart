@@ -2490,7 +2490,7 @@ void main() {
       expect(header.style?.fontFamily, 'RobotoSlab');
     });
 
-    testWidgets("style: 'section' is a banded header, smaller than a form's own title", (tester) async {
+    testWidgets("style: 'section' is a ruled header, smaller than a form's own title", (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: FormRenderer(
@@ -2513,15 +2513,31 @@ void main() {
       expect(header.style?.fontFamily, 'RobotoSlab');
       expect(header.style?.fontSize, lessThan(plain.style!.fontSize!));
 
-      // The band runs FULL WIDTH, with the row inset spent inside it. Inset
-      // to match the rows instead, it would read as one highlighted row
-      // rather than as the start of a section.
-      final band = find.ancestor(of: find.text('Section Header'), matching: find.byType(Container)).first;
-      expect(tester.widget<Container>(band).color, isNotNull);
-      expect(tester.getSize(band).width, tester.getSize(find.byType(FormRenderer)).width);
+      // The rule measures the CONTENT it heads: it starts where the title
+      // does and ends the same distance from the other edge, rather than
+      // running out to the pane's edges the way a filled band does.
+      final heading = find.ancestor(of: find.text('Section Header'), matching: find.byType(Container)).first;
+      final form = find.byType(FormRenderer);
+      expect(tester.getTopLeft(heading).dx, tester.getTopLeft(find.text('Section Header')).dx);
+      expect(
+        tester.getTopRight(form).dx - tester.getTopRight(heading).dx,
+        tester.getTopLeft(heading).dx - tester.getTopLeft(form).dx,
+        reason: 'the rule is inset equally on both sides',
+      );
+      expect(tester.getSize(heading).width, lessThan(tester.getSize(form).width));
 
-      // And the plain header takes no band at all — every FormRenderer
-      // caller renders `type: 'header'`, not just settings panels.
+      // On no ground of its own, closed by a hairline in the title's accent:
+      // the FILLED band belongs to the Settings panel's categories, and a
+      // section sits inside one of those.
+      final decoration = tester.widget<Container>(heading).decoration as BoxDecoration;
+      expect(tester.widget<Container>(heading).color, isNull);
+      expect(decoration.color, isNull);
+      expect(decoration.border?.bottom.width, SectionHeader.ruleWidth);
+      expect(decoration.border?.bottom.color, header.style?.color);
+
+      // And the plain header takes no heading chrome at all — every
+      // FormRenderer caller renders `type: 'header'`, not just settings
+      // panels.
       expect(find.ancestor(of: find.text('Plain Title'), matching: find.byType(Container)), findsNothing);
     });
   });

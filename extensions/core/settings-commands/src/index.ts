@@ -61,7 +61,7 @@ function describeCurrent(t: Translator, result: SettingsSearchResult): string {
 /// EVERY match goes into the dialog, best first, not just the top one. A query
 /// like `SET RST` legitimately names several settings, and offering only the
 /// winner means the operator has to guess a better word for the others rather
-/// than simply seeing them — the same list the All Settings search box would
+/// than simply seeing them — the same list the Settings search box would
 /// give for the same query.
 function openSettings(t: Translator, result: SettingsSearchResult, query: string): CommandInterpretation {
   const candidates = result.candidates ?? []

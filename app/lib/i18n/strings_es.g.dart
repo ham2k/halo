@@ -2101,10 +2101,9 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get commonPreferences => 'Preferencias comunes';
-	@override String get commonPreferencesDescription => 'Apariencia, idioma y ajustes cotidianos';
-	@override String get allSettings => 'Todos los ajustes';
-	@override String get allSettingsDescription => 'Todos los ajustes disponibles en un solo lugar';
+	@override String get settings => 'Ajustes';
+	@override String get settingsDescription => 'Todos los ajustes disponibles en un solo lugar';
+	@override String get commonSettings => 'Ajustes comunes';
 	@override String get syncDescription => 'Respalda y sincroniza tus registros entre dispositivos';
 	@override String get accountsDescription => 'Inicia sesión en servicios y búsquedas en línea';
 	@override String get extensions => 'Funciones y extensiones';
@@ -4220,10 +4219,9 @@ extension on TranslationsEs {
 			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			'settings.about.releaseNotes' => 'Notas de la versión',
 			'settings.about.copiedVersion' => 'Detalles de versión copiados al portapapeles',
-			'settings.panels.commonPreferences' => 'Preferencias comunes',
-			'settings.panels.commonPreferencesDescription' => 'Apariencia, idioma y ajustes cotidianos',
-			'settings.panels.allSettings' => 'Todos los ajustes',
-			'settings.panels.allSettingsDescription' => 'Todos los ajustes disponibles en un solo lugar',
+			'settings.panels.settings' => 'Ajustes',
+			'settings.panels.settingsDescription' => 'Todos los ajustes disponibles en un solo lugar',
+			'settings.panels.commonSettings' => 'Ajustes comunes',
 			'settings.panels.syncDescription' => 'Respalda y sincroniza tus registros entre dispositivos',
 			'settings.panels.accountsDescription' => 'Inicia sesión en servicios y búsquedas en línea',
 			'settings.panels.extensions' => 'Funciones y extensiones',
@@ -4434,9 +4432,9 @@ extension on TranslationsEs {
 			'switchAccounts.qsoCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO', other: '${count} QSOs', ), 
 			'switchAccounts.operationCount' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} operación', other: '${count} operaciones', ), 
 			'adifImport.title' => 'Importar QSOs desde ADIF',
+			'adifImport.reading' => ({required Object filename}) => 'Leyendo ${filename}…',
 			_ => null,
 		} ?? switch (path) {
-			'adifImport.reading' => ({required Object filename}) => 'Leyendo ${filename}…',
 			'adifImport.dropHint' => 'Suelta un archivo ADIF para importarlo',
 			'adifImport.totalInFile' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} QSO en este archivo', other: '${formatted} QSOs en este archivo', ), 
 			'adifImport.alreadyLogged' => ({required num count, required Object formatted}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} ya está en tu registro', other: '${formatted} ya están en tu registro', ), 

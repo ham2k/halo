@@ -372,17 +372,18 @@ Aliases are for names an operator would plausibly *reach for* — not a thesauru
 Every alias is one more thing that can collide with another setting's real name,
 and a collision costs a disambiguation prompt on a query that used to be exact.
 
-## Common Preferences and environment gating
+## Common Settings and environment gating
 
-The app has two settings screens: **All Settings**, listing every declared
-group and panel, and **Common Preferences**, a short list of the handful of
-settings most users ever touch. Which fields land on Common Preferences —
+The app has one settings screen, **Settings**: a collapsible section per
+declared group and panel, led by **Common Settings**, a short list of the
+handful of settings most users ever touch. Which fields land on Common
+Settings —
 and which platforms show a field at all — is declared per-element, not
 maintained as a separate list somewhere else in the app. Any field, link, or
 action (core-declared or extension-declared, Tier 1 or Tier 2 alike) can set:
 
-- **`common: true`** — also show this element on Common Preferences, in
-  addition to All Settings. Off by default. Not the same thing as
+- **`common: true`** — also show this element in the Common Settings
+  section, on top of its own group's. Off by default. Not the same thing as
   `FormFieldOption.common`/`uncommon` above — that's a `multiselect`
   option's own disclosure tier (upfront vs. behind "Show more"), a
   different scope (an option inside one field, not the field itself).
@@ -393,8 +394,8 @@ action (core-declared or extension-declared, Tier 1 or Tier 2 alike) can set:
 
 - **`environment: 'ios,android'`** (or `'-web'`, or an array either way) —
   restrict which platform(s) show this element at all. This is a platform
-  gate, not a Common-vs-All one: an excluded field disappears from every
-  settings surface on that platform, not just Common Preferences. Every
+  gate, not a common-vs-everything one: an excluded field disappears from every
+  settings surface on that platform, not just Common Settings. Every
   token unprefixed is a whitelist (show ONLY there); every token
   `-`-prefixed is a blacklist (show everywhere EXCEPT there); mixing the two
   forms in one attribute is invalid and treated as if `environment` were
@@ -445,7 +446,7 @@ target but niche enough it shouldn't clutter the default view:
 ```
 
 Omitting `target` doesn't hide a field from anywhere it already appears —
-Common Preferences and All Settings are unaffected either way. It's purely
+The Settings panel is unaffected either way. It's purely
 additive: an extra place a field can be reached from, on top of wherever
 `common`/`environment` already put it.
 
@@ -453,8 +454,8 @@ additive: an extra place a field can be reached from, on top of wherever
 elements can both set `target` and both appear in a target-scoped modal —
 an action's method dispatches through the same extension host call the
 full settings screens use, and an account field's Manage/Connect button
-opens that account's own standalone dialog, exactly as it would from All
-Settings.
+opens that account's own standalone dialog, exactly as it would from the
+Settings panel.
 
 ## Restarting the runtime after a Tier 2 field commits
 

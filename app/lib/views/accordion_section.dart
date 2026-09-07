@@ -23,6 +23,12 @@ class AccordionSection extends StatelessWidget {
   /// [title] (e.g. the Manage extensions button).
   final Widget? trailing;
 
+  /// Added to the header's own padding — for a host whose rows are inset
+  /// beyond the pane's edges (Settings centres its content in a wide
+  /// window), so the chevron and title line up with them while the header's
+  /// tint still runs edge to edge.
+  final EdgeInsetsGeometry headerInset;
+
   const AccordionSection({
     super.key,
     required this.title,
@@ -32,6 +38,7 @@ class AccordionSection extends StatelessWidget {
     required this.onHeaderColor,
     required this.child,
     this.trailing,
+    this.headerInset = EdgeInsets.zero,
   });
 
   static const _duration = Duration(milliseconds: 200);
@@ -56,7 +63,7 @@ class AccordionSection extends StatelessWidget {
       // Extra room on the right so the trailing control doesn't sit flush
       // against the pane's edge — the rows below match it, see
       // `contentPadding`.
-      padding: const EdgeInsets.fromLTRB(Space.xs, Space.sm, Space.lg, Space.sm),
+      padding: const EdgeInsets.fromLTRB(Space.xs, Space.sm, Space.lg, Space.sm).add(headerInset),
       child: Row(
         children: [
           arrow,

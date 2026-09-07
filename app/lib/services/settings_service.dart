@@ -39,7 +39,7 @@ ThemeMode toggledThemeMode(ThemeMode current, Brightness platformBrightness) {
 /// One named set of CW messages: eight templates and eight labels, the same
 /// eight function keys under a name the operator picked. Sets are the
 /// STORAGE — `SettingsService.cwMessage` reads the active one, so every
-/// surface that names a message by its key (All Settings, SET) moves with
+/// surface that names a message by its key (Settings, SET) moves with
 /// the set in use rather than addressing a ninth, hidden copy.
 ///
 /// Immutable: the messages dialog edits a draft list and writes it whole on
@@ -1126,7 +1126,7 @@ class SettingsService extends ChangeNotifier implements SyncSettings {
 
   /// The stored key of message [n] (1-based) — also its settings field key.
   /// It addresses a message WITHIN the active set: the sets are the storage
-  /// (`cwMessageSets`), and these keys are what All Settings and SET name a
+  /// (`cwMessageSets`), and these keys are what Settings and SET name a
   /// message by, so both surfaces move with the set the operator picked.
   static String cwMessageKey(int n) => 'cwMessage$n';
 

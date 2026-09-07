@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The Station Configuration section: that it's gated on the CAT
-// experiment, that it sits between Callsign and Common Preferences, and
+// experiment, that it sits between Callsign and Settings, and
 // that it lists configured equipment with its live status.
 
 import 'dart:convert';
@@ -63,7 +63,7 @@ void main() {
     expect(find.text('Station Configuration'), findsNothing);
   });
 
-  testWidgets('with CAT on, the section sits between Callsign and Common Preferences', (tester) async {
+  testWidgets('with CAT on, the section sits between Callsign and Settings', (tester) async {
     await pumpSettings(tester, catEnabled: true);
 
     expect(find.text('Station Configuration'), findsOneWidget);
@@ -73,13 +73,13 @@ void main() {
     // Order comes from the entry's `order`, so assert on where the rows
     // actually land. Scoped to the sidebar — it's the first ListView in the
     // tree (the split's primary pane); "Callsign" also appears as a field
-    // label in the Common Preferences panel showing alongside it.
+    // label in the Settings panel showing alongside it.
     final sidebar = find.byType(ListView).first;
     double rowY(String label) =>
         tester.getTopLeft(find.descendant(of: sidebar, matching: find.text(label))).dy;
 
     expect(rowY('Station Configuration'), greaterThan(rowY('Callsign')));
-    expect(rowY('Station Configuration'), lessThan(rowY('Common Preferences')));
+    expect(rowY('Station Configuration'), lessThan(rowY('Settings')));
   });
 
   testWidgets('the panel starts empty and offers to add equipment', (tester) async {

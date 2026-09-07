@@ -1587,10 +1587,9 @@
       "copiedVersion": "Detalles de versión copiados al portapapeles"
     },
     "panels": {
-      "commonPreferences": "Preferencias comunes",
-      "commonPreferencesDescription": "Apariencia, idioma y ajustes cotidianos",
-      "allSettings": "Todos los ajustes",
-      "allSettingsDescription": "Todos los ajustes disponibles en un solo lugar",
+      "settings": "Ajustes",
+      "settingsDescription": "Todos los ajustes disponibles en un solo lugar",
+      "commonSettings": "Ajustes comunes",
       "syncDescription": "Respalda y sincroniza tus registros entre dispositivos",
       "accountsDescription": "Inicia sesión en servicios y búsquedas en línea",
       "extensions": "Funciones y extensiones",

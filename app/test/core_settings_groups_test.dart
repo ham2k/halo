@@ -143,7 +143,7 @@ void main() {
 
     test('contributes nothing at all until the CAT experiment is on', () async {
       // An empty group renders nothing; a group with only a header renders a
-      // section title over no rows, on everyone's All Settings screen.
+      // section title over no rows, on everyone's Settings screen.
       // Raw, not through keysFor — that helper filters the CW messages out,
       // and they are exactly what a guard left off would leak.
       expect(await RadioSettingsGroup(await settingsWith(cat: false)).buildElements(), isEmpty);
@@ -203,7 +203,7 @@ void main() {
         // as `== true`, which is how FormRenderer reads the flag — an absent
         // key and an explicit false both mean "show it".
         expect(el['devMode'] == true, el['key'] != 'zeroBeatRangeHz',
-            reason: '${el['key']} is flagged for the wrong audience in All Settings');
+            reason: '${el['key']} is flagged for the wrong audience in Settings');
       }
 
       // The select fields emit strings; a commit path that only handled bools
@@ -259,7 +259,7 @@ void main() {
       expect(settings.activeCwMessageSet.message(1), 'CQ CQ DE {{ op.call }} K');
       expect(settings.cwMessage(3), '', reason: 'a message the seeds left alone is empty, and sends nothing');
 
-      // Both repeats are settings, so SET and All Settings reach them.
+      // Both repeats are settings, so SET and Settings reach them.
       final repeats = all.where((el) => el['key'] == 'cwRepeatDelay' || el['key'] == 'voiceRepeatDelay');
       expect(repeats, hasLength(2));
       expect(elementMatchesTarget(repeats.first, 'cw-messages'), isTrue);

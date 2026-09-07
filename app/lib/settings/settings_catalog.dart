@@ -182,7 +182,7 @@ Future<List<SettingsCatalogEntry>> buildSettingsCatalog(
 /// [fuzzyMatchScore] reads word boundaries from, and stripping them here would
 /// throw away most of what makes the ranking useful.
 ///
-/// Shared so the All Settings search box and [rankSettings] look at the same
+/// Shared so the Settings search box and [rankSettings] look at the same
 /// things. They do different jobs with them — the box filters and shows every
 /// match, the commands rank and act on the best — but a setting one can find
 /// must be findable by the other, or `SET RST` resolving to a setting that
@@ -222,7 +222,7 @@ const _minNameScore = -1000;
 /// below every clamped name score, by one.
 const _descriptionPenalty = _minNameScore - 1;
 
-/// The All Settings search: how well [query] matches this element, or null
+/// The Settings search: how well [query] matches this element, or null
 /// when it doesn't match at all. Is [query] a subsequence of one of the
 /// element's [_searchableNames], or a plain substring of its description?
 ///

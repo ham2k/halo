@@ -27,6 +27,7 @@ import '../config/version.dart';
 import '../i18n/strings.g.dart';
 import '../config/navigation.dart';
 import '../services/halo_services.dart';
+import 'accordion_section.dart';
 import 'panel_use_tracker.dart';
 import '../services/app_storage.dart';
 import '../services/windows_url_schemes.dart';
@@ -102,23 +103,15 @@ class _SettingsPanelEntry {
 // A function of the current translations (not a const list) so the sidebar
 // follows the app locale like the panel bodies do.
 List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
-      // The `common: true`-flagged subset of the declarative settings
-      // registry AND extension panels (see settings_registry.dart); the
-      // full set lives under All Settings.
+      // Every declared group — core, sync and extension — in one panel,
+      // led by the `common: true`-flagged subset of all of them (see
+      // settings_registry.dart).
       _SettingsPanelEntry(
           key: 'settings',
-          title: t.settings.panels.commonPreferences,
-          icon: MdiIcons.tune,
-          order: 0,
-          description: t.settings.panels.commonPreferencesDescription),
-      // Immediately after Common Preferences: every declared group — core,
-      // sync, and extension — in one place.
-      _SettingsPanelEntry(
-          key: 'all_settings',
-          title: t.settings.panels.allSettings,
+          title: t.settings.panels.settings,
           icon: MdiIcons.cog,
-          order: 5,
-          description: t.settings.panels.allSettingsDescription),
+          order: 0,
+          description: t.settings.panels.settingsDescription),
       _SettingsPanelEntry(
           key: 'sync',
           title: t.settings.sync.title,
@@ -144,11 +137,11 @@ List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
           order: 40,
           description: t.settings.panels.extensionsDescription),
     ];
-// Before Common Preferences (order 0) — the Profiles panel leads the list.
+// Before Common Settings (order 0) — the Profiles panel leads the list.
 // Internally "profiles"; until multi-profile features are enabled it
 // presents itself as just "Callsign".
 const _profilesPanelOrder = -10;
-// Between Callsign and Common Preferences (0) — see the entry itself.
+// Between Callsign and Common Settings (0) — see the entry itself.
 const _stationPanelOrder = -5;
 const _developerPanelOrder = 90;
 const _aboutPanelOrder = 100;
@@ -283,7 +276,7 @@ class _SettingsViewState extends State<SettingsView> {
         order: _profilesPanelOrder,
       ),
       // Station equipment and CAT control (docs/design/cat.md). Between
-      // Callsign (-10) and Common Preferences (0) — who you are, then what
+      // Callsign (-10) and Common Settings (0) — who you are, then what
       // you're operating with, then how the app behaves. Not hidden
       // on web: the serial transport works there,
       // via the Web Serial API. TCP and the Icom network transport
@@ -617,11 +610,9 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, Pane
     case 'station':
       content = StationPanel(services: services);
     case 'settings':
-      content = _CommonSettingsPanel(services: services);
+      content = _SettingsPanel(services: services);
     case 'extensions':
       content = ExtensionsPanel(services: services);
-    case 'all_settings':
-      content = _AllSettingsPanel(services: services);
     case 'sync':
       content = _SyncPanel(services: services);
     case 'peers':
@@ -679,7 +670,7 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, Pane
 /// Not read from a `SliverLayoutBuilder` at the band itself, which is where
 /// it is wanted: `SliverConstraints` carry `scrollOffset`, so such a builder
 /// re-runs on every frame of a scroll — one text measurement per section per
-/// frame, across every group and extension panel in All Settings, for a width
+/// frame, across every group and extension panel in Settings, for a width
 /// that cannot change while scrolling.
 class _SettingsPaneWidth extends InheritedWidget {
   final double width;
@@ -974,7 +965,7 @@ class _PersonalInfoDialogState extends State<_PersonalInfoDialog> {
 }
 
 /// One declared settings group rendered as an autosaving form: the group's
-/// title as a section header, then its elements. Values refresh whenever
+/// title as a category heading, then its elements. Values refresh whenever
 /// the group's [SettingsGroup.listenable] fires (a keyboard shortcut, the
 /// "..." menu, another panel) — same external-change contract as
 /// [_ExtensionSettingsPanel], including its reload coalescing (commit
@@ -983,21 +974,41 @@ class _SettingsGroupForm extends StatefulWidget {
   final HaLoServices services;
   final SettingsGroup group;
 
-  /// Common Preferences mode: keep only elements flagged `common: true`
+  /// Common Settings mode: keep only elements flagged `common: true`
   /// (settings_registry.dart's [elementIsCommon]). False shows everything
   /// the group declares (minus whatever `environment` rules out — that
   /// filter always applies, common or not).
   final bool commonOnly;
 
-  /// All Settings' search query (lowercased); when it matches nothing in
-  /// this group, the whole section — header included — renders empty.
+  /// The panel's search query (lowercased); when it matches nothing in
+  /// this group, the whole category — heading included — renders empty.
   final String searchQuery;
 
+  /// Whether this category's rows are showing. Ignored when [onToggle] is
+  /// null.
+  final bool expanded;
+
+  /// Toggles [expanded], and by being non-null asks for the category
+  /// heading. Null renders the rows BARE, which is how the groups inside
+  /// Common Settings appear: that one category heading owns them all.
+  final VoidCallback? onToggle;
+
+  /// Called when a load lands a DIFFERENT set of elements than the one
+  /// showing — a group that grows sub-options when a toggle goes on, or the
+  /// first load arriving. Every row below this one moves, which the panel
+  /// has to know about (see `_SettingsPanelState._refreshListKey`); nothing
+  /// else can tell it, since the set is decided in here.
+  final VoidCallback? onRowsChanged;
+
   const _SettingsGroupForm({
+    super.key,
     required this.services,
     required this.group,
     this.commonOnly = false,
     this.searchQuery = '',
+    this.expanded = true,
+    this.onToggle,
+    this.onRowsChanged,
   });
 
   @override
@@ -1008,6 +1019,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
   List<Map<String, dynamic>>? _elements;
   bool _reloading = false;
   bool _reloadPending = false;
+  int? _lastRowIdentity;
 
   @override
   void initState() {
@@ -1036,7 +1048,13 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
         // baked in here rather than filtered per-view, same as
         // [_ExtensionSettingsPanel].
         final elements = filterElementsForEnvironment(resolved);
-        if (mounted) setState(() => _elements = elements);
+        if (!mounted) continue;
+        final identity = _rowIdentity(elements);
+        setState(() => _elements = elements);
+        if (identity != _lastRowIdentity) {
+          _lastRowIdentity = identity;
+          widget.onRowsChanged?.call();
+        }
       } while (_reloadPending && mounted);
     } finally {
       _reloading = false;
@@ -1055,32 +1073,21 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
   Widget build(BuildContext context) {
     var elements = _elements;
     if (elements == null) {
-      return const SliverToBoxAdapter(
-        child: Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator())),
-      );
+      return const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()));
     }
     // A group can decline to contribute anything at all — RadioSettingsGroup
     // does while the CAT experiment is off. Its title is chrome for the rows
     // below it, so with no rows there is nothing to head.
-    if (elements.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+    if (elements.isEmpty) return const SizedBox.shrink();
     if (widget.commonOnly) {
       elements = [
         for (final el in elements)
           if (elementIsCommon(el)) el,
       ];
-      if (elements.isEmpty) return const SliverToBoxAdapter(child: SizedBox.shrink());
+      if (elements.isEmpty) return const SizedBox.shrink();
     }
-    // A group the search excludes is HIDDEN, not unmounted. Unmounting it
-    // disposes every FocusNode and TextEditingController its FormRenderer
-    // owns, and on web that teardown takes the browser's text-input element
-    // with it: focus falls back to the route's scope and the next keystrokes
-    // are swallowed, so the query loses characters as it is typed. macOS has
-    // no DOM and shows no symptom.
-    //
-    // `maintainState` is what keeps the State (and its nodes) alive; the
-    // ExcludeFocus is what keeps hidden fields out of the Tab order, which
-    // Offstage alone does not do. Nothing is spent that an empty query
-    // doesn't already spend — with no search every group is mounted anyway.
+    // A group the search excludes is HIDDEN, not unmounted — see
+    // [_settingsCategory], which is where that is done.
     var hidden = false;
     if (widget.searchQuery.isNotEmpty) {
       // Sorted by score, not left in declaration order. Subsequence matching
@@ -1104,126 +1111,176 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       hidden = scored.isEmpty;
       if (!hidden) elements = [for (final s in scored) s.element];
     }
-    // A section, not a box: its band is PINNED over its own rows and pushed
-    // off by the next section's, which only a SliverMainAxisGroup can
-    // express. The band is therefore no longer part of the form definition —
-    // the rows are the form, the heading is the sliver above them.
-    return SliverVisibility(
-      visible: !hidden,
-      maintainState: true,
-      sliver: SliverMainAxisGroup(slivers: [
-        SectionHeader.pinned(context, widget.group.title, width: settingsPaneWidth(context)),
-        SliverToBoxAdapter(
-          child: ExcludeFocus(
-            excluding: hidden,
-            child: FormRenderer(
-          formDefinition: {'elements': elements},
-          initialState: const {},
-          showActions: false,
-          showTitle: false,
-          developerMode: widget.services.settings.developerMode,
-          labels: formRendererLabelsFor(context.t),
-          settingsList: true,
-          onChange: _autosave,
-          onOpenLink: openExternalUrl,
-          onSubmit: (_) {},
-          onCancel: () {},
-            ),
+    final form = FormRenderer(
+      formDefinition: {'elements': elements},
+      initialState: const {},
+      showActions: false,
+      showTitle: false,
+      developerMode: widget.services.settings.developerMode,
+      labels: formRendererLabelsFor(context.t),
+      settingsList: true,
+      onChange: _autosave,
+      onOpenLink: openExternalUrl,
+      onSubmit: (_) {},
+      onCancel: () {},
+    );
+    return _settingsCategory(
+      context,
+      title: widget.group.title,
+      expanded: widget.expanded,
+      onToggle: widget.onToggle,
+      hidden: hidden,
+      child: form,
+    );
+  }
+}
+
+/// WHICH rows a category currently holds, hashed — the same identity
+/// `listContentsKey` is built from, and for the same reason: the panel
+/// remounts its scroll view when rows move, and a group that grows or drops
+/// elements moves every row below it (docs/quirks.md).
+///
+/// An element's own key where it has one, its type otherwise: headers and
+/// dividers carry no key, and two of them in a row are interchangeable for
+/// this purpose — what matters is that one appeared or went away.
+int _rowIdentity(List<Map<String, dynamic>> elements) =>
+    Object.hashAll([for (final el in elements) el['key'] ?? el['type']]);
+
+/// One CATEGORY of the Settings panel — a declared group, an extension's
+/// whole panel, or Common Settings — as a collapsible band of rows.
+///
+/// A category heads itself with the filled band the app's sections have
+/// always used, precisely so it does not read as one of the headings a
+/// panel's own `style: 'section'` headers put INSIDE it (docs/extensions/
+/// forms.md) — those are the accent title over a hairline, on no ground.
+/// One is the shelf, the other names a group of rows on it.
+///
+/// With no [onToggle] the rows are headed by a plain section heading and
+/// always show — how a group's contribution to Common Settings appears,
+/// where rows drawn from a dozen groups need saying which group each came
+/// from, and the collapsible category above owns them all.
+///
+/// [hidden] takes the whole category out of view without unmounting it —
+/// what the search does to one that matches nothing. Unmounting it
+/// disposes every FocusNode and TextEditingController its FormRenderer
+/// owns, and on web that teardown takes the browser's text-input element
+/// with it: focus falls back to the route's scope and the next keystrokes
+/// are swallowed, so the query loses characters as it is typed. macOS has
+/// no DOM and shows no symptom.
+///
+/// `maintainState` is what keeps the State (and its nodes) alive; the
+/// ExcludeFocus is what keeps unreachable fields — hidden or merely
+/// collapsed — out of the Tab order, which Visibility alone does not do.
+Widget _settingsCategory(
+  BuildContext context, {
+  required String title,
+  required bool expanded,
+  required VoidCallback? onToggle,
+  required Widget child,
+  bool hidden = false,
+}) {
+  final rows = ExcludeFocus(excluding: hidden || (onToggle != null && !expanded), child: child);
+  final theme = Theme.of(context);
+  final accent = SectionHeader.titleStyle(context).color ?? theme.colorScheme.onSurface;
+  // The centring only: the band runs to the pane's edges like every row
+  // does, while the chevron and title follow the pane's centring so they
+  // land beside the rows below rather than out in the gutter of a wide
+  // window.
+  final centering = settingsRowCentering(settingsPaneWidth(context));
+  return Visibility(
+    visible: !hidden,
+    maintainState: true,
+    child: onToggle == null
+        ? Column(mainAxisSize: MainAxisSize.min, children: [SectionHeader(title), rows])
+        : AccordionSection(
+            title: Text(title, style: SectionHeader.titleStyle(context)),
+            expanded: expanded,
+            onToggle: onToggle,
+            headerColor: haloDialogBandColorAt(context),
+            onHeaderColor: accent,
+            headerInset: EdgeInsets.symmetric(horizontal: centering),
+            child: rows,
           ),
-        ),
-      ]),
-    );
-  }
+  );
 }
 
-/// The `common: true` subset of every declared group — core (via
-/// [_SettingsGroupForm]'s `commonOnly`) and extension-contributed panels
-/// (via [_ExtensionSettingsPanel]'s) alike — the panel most users ever
-/// need. Each candidate section is always rendered: whether it ends up
-/// empty (nothing in that group/panel is flagged `common`, or an
-/// `environment` filter rules out everything left) is only known after its
-/// own async load, so an empty one collapses itself to nothing rather than
-/// this widget pre-filtering synchronously the way a static whitelist
-/// could.
-class _CommonSettingsPanel extends StatefulWidget {
+/// Every declared setting in one panel: the `common: true` subset of all
+/// of them leading, then every declared group — core, sync, and each
+/// extension-contributed panel — as a category of its own
+/// ([_settingsCategory]).
+///
+/// One category is open at a time and which one is remembered across
+/// visits ([_openCategoryPrefsKey]). A search opens every category that
+/// still has a match, and the operator can close those individually while
+/// the query stands; clearing it returns to the single remembered one.
+class _SettingsPanel extends StatefulWidget {
   final HaLoServices services;
 
-  const _CommonSettingsPanel({required this.services});
+  const _SettingsPanel({required this.services});
 
   @override
-  State<_CommonSettingsPanel> createState() => _CommonSettingsPanelState();
+  State<_SettingsPanel> createState() => _SettingsPanelState();
 }
 
-class _CommonSettingsPanelState extends State<_CommonSettingsPanel> {
-  List<Map<String, dynamic>>? _extensionPanels;
+/// The category that leads the panel, and the one open on a first run.
+const _commonCategoryKey = 'common';
 
-  @override
-  void initState() {
-    super.initState();
-    _loadExtensionPanels();
-    widget.services.extensions.runtimeGeneration.addListener(_loadExtensionPanels);
-  }
+/// Which category is open, kept across visits to Settings. Empty string
+/// means the operator closed the one that was open, leaving them all shut —
+/// distinct from an absent key, which is a first run.
+const _openCategoryPrefsKey = 'settingsOpenCategory';
 
-  @override
-  void dispose() {
-    widget.services.extensions.runtimeGeneration.removeListener(_loadExtensionPanels);
-    super.dispose();
-  }
-
-  Future<void> _loadExtensionPanels() async {
-    await widget.services.extensions.start();
-    final panels = await widget.services.extensions.getSettingsPanels();
-    if (mounted) setState(() => _extensionPanels = panels);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final extensionPanels = _extensionPanels;
-    // A CustomScrollView because each section pins its own band while its
-    // rows scroll under it (see [_SettingsGroupForm]). No horizontal
-    // padding: rows, bands and dividers run to the pane's own edges, and
-    // their CONTENTS are inset by the ambient ListTileTheme instead.
-    return CustomScrollView(
-      slivers: [
-        // Straight into the first section: its band heads the list, flush
-        // under the pane's own header.
-        for (final group in widget.services.settingsRegistry.groups)
-          _SettingsGroupForm(services: widget.services, group: group, commonOnly: true),
-        if (extensionPanels != null)
-          for (final descriptor in extensionPanels)
-            _ExtensionSettingsPanel(
-              services: widget.services,
-              descriptor: descriptor,
-              embedded: true,
-              commonOnly: true,
-              sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
-            ),
-        const SliverToBoxAdapter(child: SizedBox(height: Space.xl)),
-      ],
-    );
-  }
-}
-
-/// Every declared settings group — core and sync from the registry, then
-/// each extension-contributed panel as its own `extension_{panelKey}`
-/// section (full validate/transform/commit behavior via
-/// [_ExtensionSettingsPanel] in embedded mode).
-class _AllSettingsPanel extends StatefulWidget {
-  final HaLoServices services;
-
-  const _AllSettingsPanel({required this.services});
-
-  @override
-  State<_AllSettingsPanel> createState() => _AllSettingsPanelState();
-}
-
-class _AllSettingsPanelState extends State<_AllSettingsPanel> {
+class _SettingsPanelState extends State<_SettingsPanel> {
   List<Map<String, dynamic>>? _extensionPanels;
   final _searchController = TextEditingController();
 
+  String? _openCategory;
+
+  /// Categories the operator closed while the CURRENT query stands — a
+  /// search opens them all, and this holds the ones they then dismissed.
+  /// Cleared whenever searching starts or stops, so a query never leaves
+  /// the single-open state behind it.
+  final _closedWhileSearching = <String>{};
+  bool _searching = false;
+
+  /// One key per category, held here so it outlives the scroll view —
+  /// [_refreshListKey] rebuilds that scroll view whenever the rows move,
+  /// and a globally-keyed child is moved into the new one rather than
+  /// disposed with the old.
+  final _categoryKeys = <String, GlobalKey>{};
+
+  GlobalKey _keyFor(String category) => _categoryKeys.putIfAbsent(category, GlobalKey.new);
+
+  /// See [_refreshListKey].
+  Key _listKey = listContentsKey(const []);
+
+  /// Recreated with each [_listKey], carrying the offset over: a fresh
+  /// scroll view starts at the top, and an operator opening a category half
+  /// way down the panel would be thrown back to the first one.
+  ScrollController _scroll = ScrollController();
+  double _offset = 0;
+
+  /// Bumped by a category whose own element set changed under it — see
+  /// [_refreshListKey], which cannot see that from out here.
+  int _rowsRevision = 0;
+
+  void _rowsChanged() {
+    if (!mounted) return;
+    setState(() {
+      _rowsRevision++;
+      _refreshListKey();
+    });
+  }
+
   @override
   void initState() {
     super.initState();
+    final stored = widget.services.settings.prefs.getString(_openCategoryPrefsKey);
+    _openCategory = stored == null
+        ? _commonCategoryKey
+        : stored.isEmpty
+            ? null
+            : stored;
     _loadExtensionPanels();
     // Extension toggles restart the runtime with a different panel set.
     widget.services.extensions.runtimeGeneration.addListener(_loadExtensionPanels);
@@ -1233,13 +1290,139 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
   void dispose() {
     widget.services.extensions.runtimeGeneration.removeListener(_loadExtensionPanels);
     _searchController.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
   Future<void> _loadExtensionPanels() async {
     await widget.services.extensions.start();
     final panels = await widget.services.extensions.getSettingsPanels();
-    if (mounted) setState(() => _extensionPanels = panels);
+    if (!mounted) return;
+    setState(() {
+      _extensionPanels = panels;
+      _refreshListKey();
+    });
+  }
+
+  /// The key the scroll view takes, and the controller that goes with it.
+  ///
+  /// On the web a click is hit-tested against the accessibility DOM, and a
+  /// list rebuilt in place can leave those elements holding the previous
+  /// arrangement's geometry — the click then acts on a neighbouring row
+  /// (docs/quirks.md, `listContentsKey`). Every row here acts on a tap, and
+  /// four things move rows: the query, which category is open, the arrival
+  /// of the extension-contributed ones, and a category's own element set
+  /// changing under it — a group grows sub-options when a toggle goes on,
+  /// and a Tier 2 extension panel rebuilds its whole definition on every
+  /// commit. Only the category can see that last one, so it reports it
+  /// ([_rowsChanged]).
+  ///
+  /// Keyed on the QUERY rather than on the surviving row set, unlike every
+  /// other list taking this fix: which rows a category keeps is decided
+  /// inside it, after its own async load and its own scoring, so this widget
+  /// cannot enumerate them. The cost is a remount on a keystroke that
+  /// narrows nothing; the alternative is not knowing when rows moved.
+  ///
+  /// Nothing is disposed by the remount — every category is globally keyed
+  /// ([_keyFor]), so the framework moves it into the new scroll view with
+  /// its State intact. That matters more here than anywhere else: dropping
+  /// a form disposes the FocusNodes and TextEditingControllers it owns, and
+  /// on web that teardown takes the focus out of the search field the
+  /// operator is still typing in (see [_settingsCategory]).
+  void _refreshListKey() {
+    final key = listContentsKey([
+      _searchController.text.trim().toLowerCase(),
+      _openCategory ?? '',
+      _closedWhileSearching.length,
+      _rowsRevision,
+      for (final group in widget.services.settingsRegistry.groups) group.key,
+      for (final descriptor in _extensionPanels ?? const <Map<String, dynamic>>[]) descriptor['panelKey'],
+    ]);
+    if (key == _listKey) return;
+    _listKey = key;
+    // The outgoing controller is still attached to the scroll view being
+    // replaced, which only detaches during the coming build — disposing it
+    // here would assert.
+    final outgoing = _scroll;
+    WidgetsBinding.instance.addPostFrameCallback((_) => outgoing.dispose());
+    _scroll = ScrollController(initialScrollOffset: _offset);
+  }
+
+  bool _expanded(String key) => _searching ? !_closedWhileSearching.contains(key) : _openCategory == key;
+
+  void _toggle(String key) {
+    setState(() {
+      if (_searching) {
+        if (!_closedWhileSearching.remove(key)) _closedWhileSearching.add(key);
+      } else {
+        _openCategory = _openCategory == key ? null : key;
+        widget.services.settings.prefs.setString(_openCategoryPrefsKey, _openCategory ?? '');
+      }
+      _refreshListKey();
+    });
+  }
+
+  /// Every category below Common Settings, core and extension-contributed
+  /// alike, in ONE order — the same rule the sidebar sorts its entries by.
+  /// Rendering the registry's groups and then the extensions' panels
+  /// instead would pin every extension below every core group, and a group
+  /// declaring itself last (Privacy) would land in the middle of the list.
+  List<Widget> _orderedCategories(String query) {
+    final categories = <({int order, int index, Widget widget})>[];
+    for (final group in widget.services.settingsRegistry.groups) {
+      categories.add((
+        order: group.order,
+        index: categories.length,
+        widget: _SettingsGroupForm(
+          key: _keyFor('group:${group.key}'),
+          services: widget.services,
+          group: group,
+          searchQuery: query,
+          expanded: _expanded('group:${group.key}'),
+          onToggle: () => _toggle('group:${group.key}'),
+          onRowsChanged: _rowsChanged,
+        ),
+      ));
+    }
+    // Nothing stands in for them while they load: the core categories are
+    // already on screen, and an extension's heading appearing a moment
+    // later reads as the list filling in rather than as the panel waiting
+    // on something.
+    for (final descriptor in _extensionPanels ?? const <Map<String, dynamic>>[]) {
+      final panelKey = descriptor['panelKey'] as String;
+      categories.add((
+        order: (descriptor['order'] as num?)?.toInt() ?? _extensionPanelDefaultOrder,
+        index: categories.length,
+        widget: _ExtensionSettingsPanel(
+          key: _keyFor('extension:$panelKey'),
+          services: widget.services,
+          descriptor: descriptor,
+          embedded: true,
+          sectionTitle: (descriptor['title'] as String?) ?? panelKey,
+          searchQuery: query,
+          expanded: _expanded('extension:$panelKey'),
+          onToggle: () => _toggle('extension:$panelKey'),
+          onRowsChanged: _rowsChanged,
+        ),
+      ));
+    }
+    // Declaration order breaks ties explicitly — Dart's sort is not stable
+    // above 32 elements, and a list of categories that reshuffles between
+    // builds is a list nobody can learn.
+    categories.sort((a, b) {
+      final byOrder = a.order.compareTo(b.order);
+      return byOrder != 0 ? byOrder : a.index.compareTo(b.index);
+    });
+    return [for (final category in categories) category.widget];
+  }
+
+  void _queryChanged(String query) {
+    setState(() {
+      final searching = query.trim().isNotEmpty;
+      if (searching != _searching) _closedWhileSearching.clear();
+      _searching = searching;
+      _refreshListKey();
+    });
   }
 
   @override
@@ -1252,65 +1435,165 @@ class _AllSettingsPanelState extends State<_AllSettingsPanel> {
     // else and the field it filters with is wider than the results.
     final rowInset = ListTileTheme.of(context).contentPadding ?? EdgeInsets.zero;
     final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
+    final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Pinned above the scroll: filters every section below by setting
-        // key, title, and description; sections with no match disappear
-        // entirely, title included.
-        Padding(
-          // Bottom as well as top: the sections below have no margin of their
-          // own any more (a band abuts its rows), so this is what keeps the
-          // field off the first one.
-          padding: rowInset.add(const EdgeInsets.symmetric(vertical: Space.xl)),
-          child: TextField(
-            selectAllOnFocus: false,
-            key: const ValueKey('all-settings-search'),
-            controller: _searchController,
-            onChanged: (_) => setState(() {}),
-            decoration: InputDecoration(
-              isDense: true,
-              prefixIcon: const Icon(MdiIcons.magnify, size: 18),
-              suffixIcon: query.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: Icon(MdiIcons.close, size: 18, semanticLabel: context.t.settings.search.clear),
-                      onPressed: () => setState(() => _searchController.clear()),
-                    ),
-              hintText: context.t.settings.search.hint,
-              border: searchBorder,
-              focusedBorder: haloFocusedBorder(searchBorder, context),
+        // Pinned above the scroll: filters every category below by setting
+        // key, title, and description; categories with no match disappear
+        // entirely, heading included.
+        //
+        // On a lighter wash of the category bands' ground, with the field
+        // itself on the surface: the strip belongs to the chrome above the
+        // list rather than to the list, and the field reads as the one thing
+        // on it to type into. At the band's own strength the strip merges
+        // with the collapsed bands under it into a single block of tint.
+        ColoredBox(
+          color: Color.lerp(theme.colorScheme.surface, haloDialogBandColorAt(context), 0.5)!,
+          child: Padding(
+            // Bottom as well as top: the categories below have no margin of
+            // their own (a heading abuts its rows), so this is what keeps the
+            // field off the first one.
+            padding: rowInset.add(const EdgeInsets.symmetric(vertical: Space.xl)),
+            child: TextField(
+              selectAllOnFocus: false,
+              key: const ValueKey('settings-search'),
+              controller: _searchController,
+              onChanged: _queryChanged,
+              decoration: InputDecoration(
+                isDense: true,
+                filled: true,
+                fillColor: theme.colorScheme.surface,
+                prefixIcon: const Icon(MdiIcons.magnify, size: 18),
+                suffixIcon: query.isEmpty
+                    ? null
+                    : IconButton(
+                        icon: Icon(MdiIcons.close, size: 18, semanticLabel: context.t.settings.search.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _queryChanged('');
+                        },
+                      ),
+                hintText: context.t.settings.search.hint,
+                border: searchBorder,
+                focusedBorder: haloFocusedBorder(searchBorder, context),
+              ),
             ),
           ),
         ),
         Expanded(
-          // Sliver sections, so each band pins over its own rows. No
-          // horizontal padding — rows run to the pane's edges and inset their
-          // own contents through the ambient ListTileTheme (see
-          // _rowContentPadding in form_renderer.dart), landing on the same
-          // inset the search bar above uses.
-          child: CustomScrollView(
-            slivers: [
-              for (final group in widget.services.settingsRegistry.groups)
-                _SettingsGroupForm(services: widget.services, group: group, searchQuery: query),
-              if (extensionPanels == null)
-                const SliverToBoxAdapter(
-                  child: Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator())),
-                )
-              else
-                for (final descriptor in extensionPanels)
-                  _ExtensionSettingsPanel(
+          // The offset is recorded rather than read back off the controller
+          // after the fact: the controller that HELD it is replaced with the
+          // scroll view (see [_refreshListKey]), so by then it is gone.
+          child: NotificationListener<ScrollUpdateNotification>(
+            onNotification: (notification) {
+              if (notification.depth == 0) _offset = notification.metrics.pixels;
+              return false;
+            },
+            // Every category is built up front rather than lazily: one
+            // scrolled out of a lazy list is DISPOSED, and disposing a form
+            // mid-search drops the focus of the field being typed in (see
+            // [_settingsCategory]). No horizontal padding either — rows run to
+            // the pane's edges and inset their own contents through the
+            // ambient ListTileTheme (see _rowContentPadding in
+            // form_renderer.dart), landing on the same inset as the search
+            // bar above.
+            child: SingleChildScrollView(
+              // Keyed and controller-carried: see [_refreshListKey].
+              key: _listKey,
+              controller: _scroll,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Hidden rather than dropped while a search runs: its rows
+                  // are copies of ones the categories below already offer, so
+                  // showing it would answer every query twice.
+                  _CommonSettingsCategory(
+                    key: _keyFor(_commonCategoryKey),
                     services: widget.services,
-                    descriptor: descriptor,
-                    embedded: true,
-                    sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
-                    searchQuery: query,
+                    extensionPanels: extensionPanels,
+                    expanded: _expanded(_commonCategoryKey),
+                    onToggle: () => _toggle(_commonCategoryKey),
+                    onRowsChanged: _rowsChanged,
+                    hidden: _searching,
                   ),
-              const SliverToBoxAdapter(child: SizedBox(height: Space.xl)),
-            ],
+                  ..._orderedCategories(query),
+                  const SizedBox(height: Space.xl),
+                ],
+              ),
+            ),
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The `common: true` subset of every declared group — core (via
+/// [_SettingsGroupForm]'s `commonOnly`) and extension-contributed panels
+/// (via [_ExtensionSettingsPanel]'s) alike — as the panel's leading
+/// category, the only one most operators ever open. Each candidate group is
+/// always rendered: whether it ends up empty (nothing in it is flagged
+/// `common`, or an `environment` filter rules out everything left) is only
+/// known after its own async load, so an empty one collapses itself to
+/// nothing rather than this widget pre-filtering synchronously the way a
+/// static whitelist could.
+class _CommonSettingsCategory extends StatelessWidget {
+  final HaLoServices services;
+
+  /// The extension panels to draw the common rows from, or null while the
+  /// panel above is still loading them.
+  final List<Map<String, dynamic>>? extensionPanels;
+
+  final bool expanded;
+  final VoidCallback onToggle;
+  final bool hidden;
+
+  /// See [_SettingsGroupForm.onRowsChanged]: the rows in here are drawn
+  /// from every group and panel, so they move for all the same reasons.
+  final VoidCallback onRowsChanged;
+
+  const _CommonSettingsCategory({
+    super.key,
+    required this.services,
+    required this.extensionPanels,
+    required this.expanded,
+    required this.onToggle,
+    required this.onRowsChanged,
+    required this.hidden,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final panels = extensionPanels;
+    return _settingsCategory(
+      context,
+      title: context.t.settings.panels.commonSettings,
+      expanded: expanded,
+      onToggle: onToggle,
+      hidden: hidden,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final group in services.settingsRegistry.groups)
+            _SettingsGroupForm(
+              services: services,
+              group: group,
+              commonOnly: true,
+              onRowsChanged: onRowsChanged,
+            ),
+          if (panels != null)
+            for (final descriptor in panels)
+              _ExtensionSettingsPanel(
+                services: services,
+                descriptor: descriptor,
+                embedded: true,
+                commonOnly: true,
+                sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
+                onRowsChanged: onRowsChanged,
+              ),
+        ],
+      ),
     );
   }
 }
@@ -2162,7 +2445,7 @@ class _DataFilesPanelState extends State<_DataFilesPanel> {
   /// One row per [_dataFileScopedPanels] entry (HALO-53) — call-notes'
   /// builtin/custom-file toggles, and whichever other extensions declare a
   /// `dataFilesSection: true` panel of their own, live there (the same panel
-  /// All Settings would show), not in this generic status-and-refresh list.
+  /// Settings would show), not in this generic status-and-refresh list.
   Widget _buildExtensionPanelRow(BuildContext context, Map<String, dynamic> panel) {
     final title = (panel['title'] as String?) ?? (panel['panelKey'] as String?) ?? '';
     return ListTile(
@@ -2276,32 +2559,51 @@ class _ExtensionSettingsPanel extends StatefulWidget {
   final HaLoServices services;
   final Map<String, dynamic> descriptor;
 
-  /// Embedded: rendered as a shrink-wrapped section inside the All Settings
-  /// scroll view instead of a standalone scrolling panel.
+  /// Embedded: rendered as a shrink-wrapped category inside the Settings
+  /// panel's scroll view instead of a standalone scrolling panel.
   final bool embedded;
 
-  /// Section title rendered above the form in embedded mode — lives here
-  /// (not in the parent) so a search query that empties this section hides
-  /// its title along with it.
+  /// What heads this panel in embedded mode — the category band it opens
+  /// under, or, inside Common Settings, the plain section heading over its
+  /// contribution. Lives here (not in the parent) so a search query that
+  /// empties the panel hides its heading along with it.
   final String? sectionTitle;
 
-  /// All Settings' search query (lowercased); empty shows everything.
+  /// The Settings panel's search query (lowercased); empty shows
+  /// everything.
   final String searchQuery;
 
-  /// Common Preferences mode: keep only elements the extension flagged
+  /// Common Settings mode: keep only elements the extension flagged
   /// `common: true` (settings_registry.dart's [elementIsCommon]) — same
   /// convention as [_SettingsGroupForm]'s `commonOnly`. False shows
   /// everything the panel declares (minus whatever `environment` rules
   /// out — that filter always applies, common or not).
   final bool commonOnly;
 
+  /// Whether this category's rows are showing. Ignored when [onToggle] is
+  /// null, and meaningless outside [embedded] mode.
+  final bool expanded;
+
+  /// Toggles [expanded], and by being non-null asks for the category
+  /// heading — see [_SettingsGroupForm.onToggle], which this mirrors.
+  final VoidCallback? onToggle;
+
+  /// See [_SettingsGroupForm.onRowsChanged], which this mirrors: an
+  /// extension's definition decides its own element set, and a Tier 2 panel
+  /// rebuilds that set on every commit.
+  final VoidCallback? onRowsChanged;
+
   const _ExtensionSettingsPanel({
+    super.key,
     required this.services,
     required this.descriptor,
     this.embedded = false,
     this.sectionTitle,
     this.searchQuery = '',
     this.commonOnly = false,
+    this.expanded = true,
+    this.onToggle,
+    this.onRowsChanged,
   });
 
   @override
@@ -2312,6 +2614,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
   Map<String, dynamic>? _definition;
   bool _loading = true;
   List<Map<String, dynamic>>? _accountsCache;
+  int? _lastRowIdentity;
 
   // _load() is called from two places that can fire back-to-back for the
   // same underlying change: _autosave's own reload after a commit, and the
@@ -2348,12 +2651,19 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
     // and never go through _autosave's own reload.
     widget.services.settings.addListener(_load);
     widget.services.extensions.runtimeGeneration.addListener(_runtimeChanged);
+    // A commit made by ANOTHER instance of this same panel — the Settings
+    // panel shows a `common: true` field both under Common Settings and in
+    // the panel's own category. Neither commit path notifies
+    // SettingsService, so the listener above never hears it, and the copy
+    // left holding the old value writes it back on the next interaction.
+    widget.services.extensions.settingsGeneration.addListener(_load);
   }
 
   @override
   void dispose() {
     widget.services.settings.removeListener(_load);
     widget.services.extensions.runtimeGeneration.removeListener(_runtimeChanged);
+    widget.services.extensions.settingsGeneration.removeListener(_load);
     super.dispose();
   }
 
@@ -2392,11 +2702,16 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
           // is safe for those paths too.
           definition = {...definition, 'elements': filterElementsForEnvironment(resolved)};
         }
-        if (mounted) {
-          setState(() {
-            _definition = definition;
-            _loading = false;
-          });
+        if (!mounted) continue;
+        final elements = (definition?['elements'] as List? ?? const []).cast<Map<String, dynamic>>();
+        final identity = _rowIdentity(elements);
+        setState(() {
+          _definition = definition;
+          _loading = false;
+        });
+        if (identity != _lastRowIdentity) {
+          _lastRowIdentity = identity;
+          widget.onRowsChanged?.call();
         }
       } while (_reloadPending && mounted);
     } finally {
@@ -2513,33 +2828,27 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    // Embedded, EVERY return is a sliver: this panel is one section of a
-    // CustomScrollView, and a box handed to a viewport fails the whole list,
-    // not just this section. See the embedded branch at the end.
-    Widget out(Widget box) => widget.embedded ? SliverToBoxAdapter(child: box) : box;
     if (_loading) {
-      return out(widget.embedded
+      return widget.embedded
           ? const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()))
-          : const Center(child: CircularProgressIndicator()));
+          : const Center(child: CircularProgressIndicator());
     }
     var definition = _definition;
     if (definition == null) {
-      return out(Center(child: Text(context.t.settings.developer.panelLoadFailed)));
+      return Center(child: Text(context.t.settings.developer.panelLoadFailed));
     }
     if (widget.commonOnly) {
       final common = [
         for (final el in (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>())
           if (elementIsCommon(el)) el,
       ];
-      if (common.isEmpty) return out(const SizedBox.shrink());
+      if (common.isEmpty) return const SizedBox.shrink();
       definition = {...definition, 'elements': common};
     }
-    // Hidden, not unmounted — same rule as the core groups above, and for the
-    // same reason. There is one of these per extension, so a query that stops
-    // matching takes dozens of panels out of the tree at once; each disposes
-    // the FocusNodes its FormRenderer owns, and on web that teardown drops the
-    // focus of whatever the operator is typing in. Focus falls back to the
-    // route's scope and the next keystroke is lost.
+    // Hidden, not unmounted — same rule as the core groups above, and for
+    // the same reason ([_settingsCategory]). There is one of these per
+    // extension, so a query that stops matching would otherwise take dozens
+    // of them out of the tree at once.
     var searchHidden = false;
     if (widget.searchQuery.isNotEmpty) {
       // Scored and sorted, exactly as [_SettingsGroupForm] does for core
@@ -2547,7 +2856,7 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       // alone barely narrows anything, so an extension's rows left in
       // declaration order would be the same loose match with none of the
       // ranking that makes it usable — a difference the operator would read
-      // as the search working on some sections and not others.
+      // as the search working on some categories and not others.
       final panelElements = (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>();
       final scored = <({Map<String, dynamic> element, int score, int index})>[];
       for (var i = 0; i < panelElements.length; i++) {
@@ -2568,9 +2877,9 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       formDefinition: definition,
       initialState: const {},
       showActions: false,
-      // The embedded section already renders sectionTitle — the form's own
+      // Embedded, the heading above the form names it — the form's own
       // definition title would double it.
-      showTitle: !(widget.embedded && widget.sectionTitle != null),
+      showTitle: !widget.embedded,
       developerMode: widget.services.settings.developerMode,
       labels: formRendererLabelsFor(context.t),
       settingsList: true,
@@ -2590,36 +2899,43 @@ class _ExtensionSettingsPanelState extends State<_ExtensionSettingsPanel> {
       onSubmit: (_) {},
       onCancel: () {},
     );
-    // Wrap once, here, so both the embedded and standalone shapes below are
-    // covered by the same hide-don't-unmount rule.
-    Widget hideIfFiltered(Widget child) => Visibility(
-          visible: !searchHidden,
-          maintainState: true,
-          child: ExcludeFocus(excluding: searchHidden, child: child),
-        );
-    // Embedded, this panel is one SECTION of the list that hosts it — a
-    // sliver, with its band pinned over its own rows, exactly as a core
-    // group's is ([_SettingsGroupForm]). An extension's section is one of
-    // these, and a plain line of text among banded ones would read as a
-    // different kind of thing.
+    // Embedded, this panel is one CATEGORY of the list that hosts it,
+    // headed and collapsible exactly as a core group's is
+    // ([_SettingsGroupForm]) — an extension's settings are one of these,
+    // and a plain line of text among headed ones would read as a different
+    // kind of thing.
     if (widget.embedded) {
       final title = widget.sectionTitle;
-      Widget hideSliverIfFiltered(Widget sliver) =>
-          SliverVisibility(visible: !searchHidden, maintainState: true, sliver: sliver);
-      final rows = SliverToBoxAdapter(child: ExcludeFocus(excluding: searchHidden, child: form));
-      if (title == null) return hideSliverIfFiltered(rows);
-      return hideSliverIfFiltered(SliverMainAxisGroup(slivers: [
-        SectionHeader.pinned(context, title, width: settingsPaneWidth(context)),
-        rows,
-      ]));
+      if (title == null) {
+        return Visibility(
+          visible: !searchHidden,
+          maintainState: true,
+          child: ExcludeFocus(excluding: searchHidden, child: form),
+        );
+      }
+      return _settingsCategory(
+        context,
+        title: title,
+        expanded: widget.expanded,
+        onToggle: widget.onToggle,
+        hidden: searchHidden,
+        child: form,
+      );
     }
 
-    return hideIfFiltered(SingleChildScrollView(
-      // No horizontal padding: rows run to the pane's edges and inset their
-      // own contents from the ambient ListTileTheme.
-      padding: const EdgeInsets.symmetric(vertical: Space.xl),
-      child: form,
-    ));
+    return Visibility(
+      visible: !searchHidden,
+      maintainState: true,
+      child: ExcludeFocus(
+        excluding: searchHidden,
+        child: SingleChildScrollView(
+          // No horizontal padding: rows run to the pane's edges and inset
+          // their own contents from the ambient ListTileTheme.
+          padding: const EdgeInsets.symmetric(vertical: Space.xl),
+          child: form,
+        ),
+      ),
+    );
   }
 }
 

@@ -3,7 +3,7 @@
 //
 // A settings modal built from a subset of the app's declared settings rather
 // than a whole group — the logging panel's tune icon, for one, doesn't want
-// All Settings or even the whole `LoggingSettingsGroup`, just the handful
+// Settings or even the whole `LoggingSettingsGroup`, just the handful
 // of elements that opted into `target: 'logging'`, plus a "show more
 // settings" disclosure for the `'logging-extended'` bucket. Any part of the
 // app can call [showSettingsForTarget] with its own target string; nothing
@@ -20,14 +20,14 @@
 // wired up (onAction dispatches through [ExtensionService.runSettingsAction];
 // onManageAccount reuses [showAccountDialogByKey], reloading once its pane
 // closes so a status field this dialog shows doesn't go stale) — the same
-// as the full All Settings screen, just reached from a curated target
+// as the full Settings screen, just reached from a curated target
 // instead of a whole panel. Every extension-facing call receives `state`
 // scoped to that element's OWN panel (bare field keys, stripped of the
 // `<panelKey>.` prefix and of every other panel's/core's keys) — never
 // this dialog's combined, cross-panel `_values` map, which an extension's
 // hook has no way to make sense of. A caller whose target includes a
 // `type: 'action'` element needs a Scaffold ancestor (for the action's
-// result-banner SnackBar) — same requirement the full All Settings screen
+// result-banner SnackBar) — same requirement the full Settings screen
 // already has, just not one this file can enforce on the caller's behalf.
 
 import 'package:flutter/material.dart';

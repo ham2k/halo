@@ -435,9 +435,9 @@ class LoggingSettingsGroup extends SettingsGroup {
       ),
       // The mobile numbers row — irrelevant without an
       // on-screen keyboard, hence `environment: 'ios,android'`, filtered out
-      // everywhere (not just Common Preferences) on desktop/web. Flagged
-      // `common: true` so it's reachable from Common Preferences too, not
-      // just All Settings. Its two sub-options only make sense while the
+      // everywhere (not just Common Settings) on desktop/web. Flagged
+      // `common: true` so it's reachable from Common Settings too, not
+      // just Settings. Its two sub-options only make sense while the
       // row is on, so they appear only then — buildElements re-runs on
       // every settings change (listenable: settings), so they show/hide as
       // the master toggle flips.
@@ -483,6 +483,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         'value': settings.enabledBands,
         'defaultValue': SettingsService.defaultBands,
         'options': r'$core.bands',
+        'common': true,
         'target': 'logging-extended',
       },
       {
@@ -494,6 +495,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         'value': settings.enabledModes,
         'defaultValue': SettingsService.defaultModes,
         'options': r'$core.modes',
+        'common': true,
         'target': 'logging-extended',
       },
       _toggle(
@@ -609,7 +611,7 @@ class RadioSettingsGroup extends SettingsGroup {
       // the target dialog decides whether to offer "show more settings" from
       // whether the bucket is EMPTY, so flagging alone would leave everyone
       // else a disclosure that expands to nothing. The flag is set as well,
-      // for the dev-mode accent and for All Settings.
+      // for the dev-mode accent and for Settings.
       if (settings.smartVfoSnap && settings.developerMode) ...[
         _tuningSelect(
           key: 'smartVfoSnapDebounceMs',
@@ -676,7 +678,7 @@ class RadioSettingsGroup extends SettingsGroup {
       // keyer row opens `cw-messages` as its own dialog (station_panel.dart),
       // and eight text fields among the radio's behaviour toggles would bury
       // both. Declared here rather than in a widget so SET/SHOW find them
-      // and All Settings lists them like any other setting.
+      // and Settings lists them like any other setting.
       // Behind the keyer experiment as well as CAT — the surfaces that key
       // them are.
       if (settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) ...[
@@ -813,7 +815,7 @@ String _numText(double value) =>
 /// but that only matters on Linux, where this group still shows the field
 /// (it just goes unused there). `target: 'map'` is what the tab's own
 /// settings button (operation_view.dart) opens; the field is also reachable
-/// from All Settings, same as every other target-scoped field.
+/// from Settings, same as every other target-scoped field.
 class MapSettingsGroup extends SettingsGroup {
   final SettingsService settings;
 
@@ -871,7 +873,12 @@ class PrivacySettingsGroup extends SettingsGroup {
   String get title => t.settings.privacy.title;
 
   @override
-  int get order => 20;
+  // Last of the core groups, and below the extension-contributed panels'
+  // default order too (settings_view.dart) — consent and policy links are
+  // what an operator looks up once, not what they come to Settings for. An
+  // extension declaring a higher order of its own still sorts below this;
+  // nothing clamps that, and nothing needs to.
+  int get order => 200;
 
   @override
   Listenable? get listenable => settings;
@@ -886,7 +893,6 @@ class PrivacySettingsGroup extends SettingsGroup {
         icon: 'cellphone-lock',
         description: settings.consentAppData ? s.shareAppData.descriptionOn : s.shareAppData.descriptionOff,
         value: settings.consentAppData,
-        common: true,
       ),
       _toggle(
         key: 'consentOpData',
@@ -894,7 +900,6 @@ class PrivacySettingsGroup extends SettingsGroup {
         icon: 'cellphone-lock',
         description: settings.consentOpData ? s.shareOpData.descriptionOn : s.shareOpData.descriptionOff,
         value: settings.consentOpData,
-        common: true,
       ),
       {
         'type': 'link',
@@ -902,7 +907,6 @@ class PrivacySettingsGroup extends SettingsGroup {
         'label': s.privacyPolicy,
         'icon': 'shield-account',
         'url': privacyPolicyUrl,
-        'common': true,
       },
       {
         'type': 'link',
@@ -910,7 +914,6 @@ class PrivacySettingsGroup extends SettingsGroup {
         'label': s.termsOfService,
         'icon': 'file-document',
         'url': termsOfServiceUrl,
-        'common': true,
       },
     ];
   }
@@ -973,7 +976,7 @@ class ExportsSettingsGroup extends SettingsGroup {
   }
 }
 
-/// Sync's declarative representation for All Settings: the enabled toggle
+/// Sync's declarative representation for Settings: the enabled toggle
 /// (routed through HaLoServices so the engine starts) and a read-only
 /// account line. The dedicated Sync panel remains the full management UI.
 ///

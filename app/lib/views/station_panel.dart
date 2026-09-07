@@ -81,7 +81,7 @@ class StationPanel extends StatelessWidget {
   final HaLoServices services;
 
   /// The Radio control's quick-access dialog, as opposed to the full page
-  /// under All Settings: current configuration only, the inventory row for
+  /// under Settings: current configuration only, the inventory row for
   /// whichever rig is designated (not the whole catalogue), a Power field,
   /// and a footer offering the full page instead of Add Equipment/Other
   /// Options inline.

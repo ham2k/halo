@@ -1344,6 +1344,7 @@ class ExtensionService implements PanelExtensionSource {
   }) async {
     if (kind == 'simple') {
       await _writeSettingsValue(panelKey: panelKey, fieldKey: fieldKey, value: value, isSecret: isSecret);
+      settingsGeneration.value++;
       return;
     }
     // Wait out any in-flight restart before touching `host` — it's briefly
@@ -1381,8 +1382,20 @@ class ExtensionService implements PanelExtensionSource {
         _fieldCommitsIdle = null;
       }
     }
+    settingsGeneration.value++;
     if (restartOnChange) await _debouncedRestartRuntime();
   }
+
+  /// Bumped whenever an extension's own settings value is committed —
+  /// neither path notifies [settings], since one writes straight to prefs
+  /// and the other hands the value to the extension, so a panel showing
+  /// that field has nothing else to learn the change from.
+  ///
+  /// The Settings panel mounts a panel's fields TWICE — once under Common
+  /// Settings, once in the panel's own category — and without this the copy
+  /// that did not commit keeps the old value and writes it back on the next
+  /// interaction, silently reverting what the operator typed.
+  final ValueNotifier<int> settingsGeneration = ValueNotifier(0);
 
   int _inFlightFieldCommits = 0;
   Completer<void>? _fieldCommitsIdle;

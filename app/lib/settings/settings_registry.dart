@@ -8,17 +8,17 @@
 // declarations for the core groups (general/logging/privacy — see
 // core_settings_groups.dart), other services declare their own (sync), and
 // extensions contribute theirs through the settingsPanel hook, surfaced as
-// `extension_{panelKey}` sections by the All Settings panel.
+// `extension_{panelKey}` sections by the Settings panel.
 //
 // Three element-level attributes (docs/extensions/settings.md), settable by
 // any of the above — core groups and extension settingsPanels alike — drive
 // visibility instead of a central whitelist:
 //
-//  - `common: true` also shows the field on the Common Preferences panel;
-//    everything else appears only under All Settings.
+//  - `common: true` also shows the field in Settings' Common Settings
+//    section; everything else appears only under its own group's section.
 //  - `environment: 'ios,android'` (or `'-web'`, or a list of tokens) hides
-//    the field outside the named platform(s) — everywhere, not just Common
-//    Preferences. Tokens: ios, android, macos, windows, linux, web — the
+//    the field outside the named platform(s) — everywhere, not just
+//    Common Settings. Tokens: ios, android, macos, windows, linux, web — the
 //    same vocabulary notices.dart's `_knownPlatforms` uses.
 //  - `target: 'logging'` (or a list, for a setting reachable from more than
 //    one target-built modal) opts the field into a target-scoped settings
@@ -30,7 +30,7 @@
 //    they'd otherwise crowd out the common ones. Unlike `common`/
 //    `environment`, absence of `target` isn't "matches everything" — a
 //    field with no `target` simply never appears in a target-scoped modal,
-//    only in All Settings/Common Preferences.
+//    only in Settings.
 
 import 'package:flutter/foundation.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -83,7 +83,7 @@ bool elementMatchesEnvironment(Map<String, dynamic> element) {
 
 /// [elements], minus whatever [elementMatchesEnvironment] rules out for the
 /// current platform. Applied once, at load time, by every settings surface
-/// (Common Preferences, All Settings, and standalone extension panels
+/// (the Settings panel and standalone extension panels
 /// alike) — a platform-excluded field doesn't exist on this platform's
 /// session at all, not just hidden from one view of it.
 List<Map<String, dynamic>> filterElementsForEnvironment(List<Map<String, dynamic>> elements) => [
@@ -106,8 +106,8 @@ bool elementMatchesTarget(Map<String, dynamic> element, String target) {
   return targets.contains(target);
 }
 
-/// Whether [element] is flagged `common: true` — shown on Common
-/// Preferences in addition to All Settings. Only meaningful for the
+/// Whether [element] is flagged `common: true` — shown in Settings'
+/// Common Settings section as well as its own group's. Only meaningful for the
 /// element kinds a settings panel actually persists/acts on (field, link,
 /// action) — headers/dividers/markdown are chrome, never individually
 /// whitelisted, same restriction [FormRenderer]'s own search already

@@ -14,8 +14,8 @@
 // one on screen.
 //
 // The active set's messages are still settings (`cwMessage1..8`,
-// `cwMessageLabel1..8` in the Radio group), so SET and All Settings reach
-// them too; this is the editor an operator meets, not the storage.
+// `cwMessageLabel1..8` in the Radio group), so SET and Settings reach them
+// too; this is the editor an operator meets, not the storage.
 
 import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';

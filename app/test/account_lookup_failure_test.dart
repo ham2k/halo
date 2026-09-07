@@ -132,7 +132,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   /// Opens the extension's own settings panel — the same
-  /// _ExtensionSettingsPanel All Settings embeds, minus the scrolling — and
+  /// _ExtensionSettingsPanel the Settings panel embeds, minus the scrolling — and
   /// leaves it showing its single account field.
   Future<({_FlakyAccountHost host, HaLoServices services})> openPanel(WidgetTester tester) async {
     tester.view.physicalSize = const Size(1000, 1400);
@@ -148,7 +148,9 @@ void main() {
 
     await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('My Extension'));
+    // Scoped to the sidebar list: the Settings panel showing beside it
+    // carries a band by the same name.
+    await tester.tap(find.descendant(of: find.byType(ListView).first, matching: find.text('My Extension')));
     await tester.pumpAndSettle();
 
     expect(

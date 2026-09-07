@@ -157,7 +157,7 @@ void main() {
     });
   });
 
-  group('the commands and the All Settings search box agree', () {
+  group('the commands and the Settings search box agree', () {
     // The two do different jobs — the box filters and lists every match, the
     // commands rank and act on the best — but they must look at the same
     // things. When they didn't, `SET RST` resolved Default Report (via its
@@ -193,7 +193,7 @@ void main() {
           expect(
             elementSearchScore(element!, query),
             isNotNull,
-            reason: 'SET "$query" resolves ${match.entry.key}, but searching "$query" in All Settings would not '
+            reason: 'SET "$query" resolves ${match.entry.key}, but searching "$query" in Settings would not '
                 'list it — the operator would be told about a setting they cannot then find',
           );
         }

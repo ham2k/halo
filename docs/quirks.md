@@ -276,6 +276,21 @@ a row's HEIGHT moves every row below it while the set is untouched — a locale
 change rewriting every label, a subtitle that wraps at one font scale and not
 another. A list whose rows change height under it needs its own thinking.
 
+**A row set the list cannot see** still has to reach the key. Where the rows
+come from children that decide their own contents — the Settings panel's
+categories each load and filter their own — the child reports a changed set
+upwards and the list keys on that; a group growing sub-options when a toggle
+goes on moves every row below it with the query and everything else
+untouched.
+
+**A list that cannot afford to be remounted** takes the key anyway and keeps
+its children through it: give each child a `GlobalKey` and the framework MOVES
+it into the fresh scrollable rather than disposing it with the old one. The
+Settings panel does this — its forms own the focus nodes the operator is
+typing against, and disposing them empties the search field (the live-filter
+rule in user-interface.md) — so "the rows hold state" is not on its own a
+reason to leave a searched list unkeyed.
+
 **Not testable here.** The Flutter test harness has no web semantics DOM, so a
 widget test cannot fail when this breaks; one would read as coverage and
 assert nothing. Verification is by measurement against a running web build:

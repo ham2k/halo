@@ -148,7 +148,7 @@ void main() {
       expect(keys!.first, 'defaultReport', reason: 'the preview names the best match, so it must lead the list');
       expect(keys.length, greaterThan(1));
       expect(keys, containsAll(['showRSTFields', 'jumpAfterRST']),
-          reason: 'these match "rst" too and the All Settings search box lists them — so must this');
+          reason: 'these match "rst" too and the Settings search box lists them — so must this');
     });
 
     test('a single-match query still opens just that setting', () async {

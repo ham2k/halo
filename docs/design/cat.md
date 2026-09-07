@@ -1003,7 +1003,7 @@ to the extent the pacing is, and a paddle-stop at the rig is invisible to it.
 **Messages come in SETS.** `CwMessageSet` (settings_service.dart) is a name plus the eight templates
 and their labels; `cwMessageSets` holds them all and `cwMessageSet` names the one in use, which is
 what `cwMessage(n)` reads and what the function keys send. The keys address a message WITHIN the
-active set, so All Settings and `SET` follow the operator's pick rather than editing a ninth hidden
+active set, so Settings and `SET` follow the operator's pick rather than editing a ninth hidden
 copy — `RadioSettingsGroup.commit` routes those keys into the set. An install with nothing stored is
 seeded with a Default worth keying and a POTA that differs from it only in the CQ; one whose F1-F8
 were written before sets existed keeps them as a set of its own, placed first and therefore active,
@@ -1364,7 +1364,7 @@ They are *emitted* only in developer mode rather than merely flagged `devMode: t
 an element inside `FormRenderer`, but `showSettingsForTarget` decides whether to offer "show more
 settings" from whether the bucket is empty — so flagging alone would leave every other operator a
 disclosure that expands to nothing. The flag is set as well, for the dev-mode accent colour and for
-All Settings.
+Settings.
 
 What it refuses, and why each one is not an edge case:
 
