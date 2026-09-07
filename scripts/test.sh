@@ -28,9 +28,12 @@
 #                            merge-base with origin/main (committed +
 #                            uncommitted + untracked).
 #   test.sh --list [group]   list the groups, or one group's files.
-#   test.sh --guards         the source-scanning guards alone (no toolchain,
-#                            no build). Folded into --quick, so the Checks
-#                            workflow gets them without naming them.
+#   test.sh --guards        the source-scanning guards alone: the clock grep,
+#                            and the convention tests under app/test that read
+#                            source rather than pump widgets (Flutter, no
+#                            bundle build; ~40s). Folded into --quick and
+#                            --changed, so the Checks workflow and every
+#                            inner-loop run get them without naming them.
 #   test.sh --browser        the browser-platform tests alone, fatal rather
 #                            than skipped when no Chrome is present. Part of
 #                            the full gate; nothing on GitHub runs it.
@@ -57,7 +60,7 @@ ROOT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." && pwd )"
 # ---------------------------------------------------------------------------
 
 PKG_GROUP_NAMES="extensions core build-tools extension-host quickjs widgets cli app dist"
-APP_GROUP_NAMES="cat settings activities spots logging operation home sync extension commands ui errors misc"
+APP_GROUP_NAMES="cat settings activities spots logging operation home sync extension commands ui errors guards misc"
 
 pkg_group_dir() {
   case "$1" in
@@ -89,6 +92,16 @@ app_group_prefixes() {
   esac
 }
 
+# The convention guards: app tests that READ source (lib/, the packages, the
+# extensions) and enforce a rule the analyzer has no lint for — no tooltips,
+# the spacing vocabulary, dialog footers, links leaving the app, the file-size
+# budget… Listed by name rather than by prefix because their names say what
+# each protects, not what kind of test it is. What qualifies: it scans files,
+# never pumps a widget, and runs in seconds — which is what lets --quick and
+# --changed afford them on every run. A guard that needs the bundles or a
+# real host belongs in its feature's group instead.
+GUARD_TEST_FILES="no_hover_tooltips_test.dart spacing_vocabulary_test.dart dialog_footer_convention_test.dart links_leave_the_app_test.dart webview_call_sites_test.dart markdown_emoji_font_test.dart scoring_labels_test.dart entry_point_not_imported_test.dart file_size_budget_test.dart"
+
 is_app_group() {
   local g
   for g in $APP_GROUP_NAMES; do [[ "$1" == "$g" ]] && return 0; done
@@ -106,10 +119,20 @@ is_known_group() {
 # (file × group) turns the pre-flight of every subset run into seconds.
 app_group_files() {
   local g="$1" f base p og matched prefixes
-  if [[ "$g" == "misc" ]]; then
+  if [[ "$g" == "guards" ]]; then
+    # A name on the list that no longer exists is a rotted list, not an
+    # empty group: say which, rather than quietly guarding less.
+    for base in $GUARD_TEST_FILES; do
+      if [[ ! -f "$ROOT_DIR/app/test/$base" ]]; then
+        echo "❌ GUARD_TEST_FILES names app/test/$base, which does not exist — fix the list." >&2
+        exit 2
+      fi
+      echo "$base"
+    done
+  elif [[ "$g" == "misc" ]]; then
     prefixes=""
     for og in $APP_GROUP_NAMES; do
-      [[ "$og" == "misc" ]] && continue
+      [[ "$og" == "misc" || "$og" == "guards" ]] && continue
       prefixes="$prefixes $(app_group_prefixes "$og")"
     done
     for f in "$ROOT_DIR"/app/test/*_test.dart; do
@@ -118,6 +141,7 @@ app_group_files() {
       for p in $prefixes; do
         if [[ "$base" == "$p"* ]]; then matched=1; break; fi
       done
+      case " $GUARD_TEST_FILES " in *" $base "*) matched=1 ;; esac
       [[ "$matched" -eq 0 ]] && echo "$base"
     done
   else
@@ -144,13 +168,29 @@ list_groups() {
     esac
   done
   echo
-  echo "App groups (subsets of app/test/ by filename prefix):"
+  echo "App groups (subsets of app/test/ by filename prefix; guards by name):"
   for g in $APP_GROUP_NAMES; do
     n=$(app_group_files "$g" | wc -l | tr -d ' ')
-    echo "  $(printf '%-15s' "$g") — $n files"
+    case "$g" in
+      guards) echo "  $(printf '%-15s' "$g") — $n files (the convention guards; also run by --quick and --changed)" ;;
+      *) echo "  $(printf '%-15s' "$g") — $n files" ;;
+    esac
   done
   echo
   echo "Use: scripts/test.sh <group>... | --changed | --list <group>"
+}
+
+# The convention guards under app/test (GUARD_TEST_FILES), as one
+# `flutter test` run from the app package. Needs the app resolved and a
+# secrets file, never the bundles: none of these boots a host. Called from
+# --quick (so the Checks workflow runs them on every push to main) and from
+# --guards; --changed reaches them through the `guards` group instead.
+run_guard_tests() {
+  local files
+  files=$(app_group_files guards | sed 's|^|test/|' | tr '\n' ' ')
+  echo "▶ app: convention guards ($(echo "$files" | wc -w | tr -d ' ') files)"
+  # shellcheck disable=SC2086
+  (cd "$ROOT_DIR/app" && flutter test $files)
 }
 
 # ---------------------------------------------------------------------------
@@ -631,6 +671,13 @@ changed_subset() {
     return 0
   fi
 
+  # Every scoped run carries the guards: a convention broken by the change
+  # under test is exactly what a subset that never runs them would miss, and
+  # they cost seconds. Not for a whole-app run, which has them already.
+  if ! echo " $groups " | grep -q " app "; then
+    groups="$groups guards"
+  fi
+
   echo "▶ --changed selection: ${groups:-–}${app_test_files:+ + files:$app_test_files}"
 
   # The specific files run directly rather than as their whole groups; one
@@ -681,6 +728,9 @@ case "${1:-}" in
       echo "--guards takes no further arguments" >&2; exit 2
     fi
     check_clock_discipline
+    ensure_secrets
+    ensure_pub app
+    run_guard_tests
     echo "✅ guards passed"
     exit 0
     ;;
@@ -792,10 +842,15 @@ done
 
 if [[ "$QUICK" -eq 0 ]]; then
   run_browser_tests
+else
+  # The one set of tests quick mode runs: the conventions the analyzer has no
+  # lint for, in seconds. Without this a guard violation reaches `main` and
+  # nothing on GitHub reddens.
+  run_guard_tests
 fi
 
 if [[ "$QUICK" -eq 1 ]]; then
-  echo "✅ quick checks passed (typecheck + analyze; tests NOT run)"
+  echo "✅ quick checks passed (typecheck + analyze + convention guards; other tests NOT run)"
 else
   if [[ "${BROWSER_SKIPPED:-0}" -eq 1 ]]; then
     # Not a pass. Nothing downstream re-runs these, so the verdict line is the

@@ -130,13 +130,16 @@ typechecks + tests the extensions, **rebuilds the bundles** (Dart integration
 tests load them), copies the blank secrets template if missing, then runs
 `flutter analyze` + `flutter test` for every package and the app.
 
-CI splits that work across parallel jobs rather than running the script
-end-to-end, so anything the script does that no job re-implements would be
-local-only. Two modes exist for exactly those parts, and CI invokes the script
-for both — `--guards` (the source-scanning rules, seconds, no toolchain) and
-`--browser` (the browser-platform tests, which fail rather than skip when
-`BROWSER_REQUIRED=1`). A new rule of that shape belongs in one of them, not in
-a hand-written workflow step.
+CI runs `./scripts/test.sh --quick` on every push to `main` and nothing else
+(`.github/workflows/checks.yml`): the source-scanning guards, the extensions'
+typecheck, and `dart analyze` for every package — never the suite. The
+guards are the clock-discipline grep plus the convention tests under
+`app/test` that read source rather than pump widgets (`--list guards`), and
+quick mode runs them so a broken convention on `main` reddens something.
+`--guards` runs exactly those on their own (about forty seconds), and
+`--browser` the browser-platform tests, which fail rather than skip when
+`BROWSER_REQUIRED=1`. A new rule of that shape belongs in one of them, not
+in a hand-written workflow step.
 
 For the inner loop, the same script runs **subsets** — it handles the
 stale-bundle problem itself (rebuilding only when `extensions/` is newer than
