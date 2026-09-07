@@ -496,7 +496,11 @@ monthly main version is a binary release.
   manifest, so the download page lists which version/build iOS is at and says it
   is TestFlight-only — there is nothing to download there.
 - **Android**: Google Play (stable), Play testing track — internal/closed/open —
-  (Next).
+  (Next). `android-next-release` / `android-prod-release` both go through
+  `app_dist/ci/build-android.sh`, uploading the AAB to the `internal` track and
+  promoting that same release into `GOOGLE_PLAY_TRACK` when one is set. Each
+  edition is its own Play listing (`com.ham2k.logger.next` / `.prod`), so a
+  closed-track name configured for one has to exist on the other too.
 
 Store installs update through the store's own mechanism; no custom updater
 needed.
@@ -572,6 +576,45 @@ The app compares on **`build`**, not on `version`: the build number is a single
 monotonic integer across every platform and edition (§2.2), while a version holds
 still for a whole release cycle as the build climbs beneath it. `version` in this
 file is for display.
+
+### 3.5 Building an edition without announcing it — `HALO_PUBLISH_MANIFEST`
+
+Being *built* and being *announced* are two different decisions, and an edition
+can sit between them for weeks. A signed store build reaches only the testers
+invited to TestFlight or a Play track; the manifests under
+`https://updates.ham2k.net/halo-<edition>/` reach everyone — they put a row on
+the public download page and make every install's "Check for Updates" start
+offering the build.
+
+`HALO_PUBLISH_MANIFEST` separates the two. It defaults to `true`, so a workflow
+that does not mention it behaves exactly as it always has; set to `false` it
+suppresses every write under that prefix:
+
+- the per-platform download entry, the re-derived `latest.json`, and the
+  download page itself (`publish-download.sh`),
+- the approval manifest (`publish-approved.sh`, §3.4),
+- and, on macOS, the **Sparkle appcast and its update zip** — the update feed
+  itself, and so the loudest of the three.
+
+Store delivery is deliberately outside the flag: the TestFlight upload and the
+Play submit + track promotion still run. What stops is only the public
+announcement.
+
+The check lives at the entry of the two publish scripts
+(`app_dist/ci/manifest-guard.sh`), not at each caller, so a build script cannot
+reach a manifest write without passing it. An unrecognised or empty value is a
+build failure rather than a default — a `HALO_PUBLISH_MANIFEST: "False"` quietly
+read as "publish" would announce an edition that was being held back, and once
+the download page and every install has seen it there is no taking it back.
+**Windows is not covered**: `build-windows.ps1` publishes through a PowerShell
+sibling and writes its own WinSparkle appcast, neither of which can source the
+guard, and there is no Regular Windows workflow yet. Wiring one means porting the
+guard first.
+
+The three Regular workflows (`ios-prod-release`, `macos-prod-release`,
+`android-prod-release`) set it from the `hold_regular` anchor in
+`codemagic.yaml`. Making Regular public is that one anchor going to `"true"`,
+after which the next Regular build of each platform writes its entry.
 
 ---
 
@@ -750,8 +793,11 @@ the release's §2.2-projected version, so Shorebird's default lookup fails with
 either — `kBuildNumber` advances per release, so once it has been bumped past the
 target release the projection no longer names that release.
 
-**Wired so far:** iOS, macOS, and Android for **Next** (release + code push). Regular
-follows the same pattern via `HALO_EDITION=prod`; Windows/Linux are not wired yet.
+**Wired so far:** iOS, macOS, and Android for **Next** (release + code push), and
+the same three for **Regular** (release only — `ios-prod-release`,
+`macos-prod-release`, `android-prod-release`, all manual-start, all holding their
+manifests per §3.5). Regular code-push workflows follow the same pattern via
+`HALO_EDITION=prod` when wanted; Windows/Linux are not wired for Regular at all.
 
 **Prerequisites (one-time):** run `shorebird init` (creates the apps and the
 committed `shorebird.yaml`), then add `SHOREBIRD_TOKEN` to the `ios_signing`,
