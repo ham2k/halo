@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"164":
   changes:
     - "A warning pill in the logging panel when the contact has no band or no mode"
     - "New optional Notes control in the logging row: turn it on to jot a note per contact"
