@@ -627,7 +627,7 @@
     "activitiesTitle2": "Tipos de actividad: ${first} y ${second}",
     "activitiesTitleMore": "Tipos de actividad: ${first}, ${second} y ${more} más",
     "reference": "Referencia",
-    "invalidReference": "Referencia no válida",
+    "invalidReference": "No válida",
     "duplicateReference": "Ya añadida",
     "searchHint": "Busca por nombre, referencia o cualquier otra cosa…",
     "noSuggestions": "Sin coincidencias",

@@ -14,7 +14,7 @@
 import { DXCC_BY_CODE } from "@ham2k/lib-dxcc-data"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, isTestOperation, LOCATION_ACCURACY } from "@ham2k/extension-sdk"
+import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, isTestOperation, looksLikeReference, LOCATION_ACCURACY } from "@ham2k/extension-sdk"
 import type {
   AnnotatedCallInfo,
   HookContext,
@@ -138,10 +138,30 @@ const RefHandler = {
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const t = tFor(ctx)
     const reference = (ref.ref ?? '').toUpperCase().trim()
-    if (!REFERENCE_REGEX.test(reference)) return { ...ref, ref: reference, name: t('invalidReference') }
+    // A reference that resolved to nothing keeps NONE of the old one's
+    // decoration, whether it failed the pattern or merely isn't in the list.
+    // `label`/`shortLabel` are what the activity row renders in preference to
+    // the code itself, so a spread-through pair would show the previous park's
+    // name over the new code — and `lat`/`lon` outrank a grid wherever a
+    // location is read (docs/design/locations.md), so they would keep the
+    // operation at a park it no longer references.
+    const undecorated = (name: string): Ref => ({
+      ...ref,
+      ref: reference,
+      name,
+      label: undefined,
+      shortLabel: undefined,
+      grid: undefined,
+      lat: undefined,
+      lon: undefined,
+      location: undefined,
+      retired: undefined,
+    })
+
+    if (!REFERENCE_REGEX.test(reference)) return undecorated(t('invalidReference'))
 
     const park = await fetchPark(reference)
-    if (!park?.name) return { ...ref, ref: reference, name: t('unknownPark') }
+    if (!park?.name) return undecorated(t('unknownPark'))
 
     return {
       ...ref,
@@ -231,7 +251,7 @@ const ActivityHook = {
     ]
   },
 
-  async suggest({ location, searchTerm, callsign }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
+  async suggest({ location, searchTerm, callsign, scoped }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
     // A name/code search spans every POTA park worldwide, so narrow it to
     // the caller's own DXCC entity when we can tell whose callsign this is
     // — nearby (location-based) results are already geographically scoped
@@ -299,8 +319,24 @@ const ActivityHook = {
     // it already made the cut above, so a known park's name/grid still
     // take priority.
     const normalizedSearch = searchTerm ? normalizeReference(searchTerm) : null
-    if (normalizedSearch && !suggestions.some((s) => s.ref === normalizedSearch)) {
-      const isTestRef = normalizedSearch.endsWith('-TEST')
+    // A code the pattern REJECTS is offered too, but only when POTA alone was
+    // asked (`pota: <code>`, or its row in Activity Types). The operator named
+    // the program, so the one thing left in doubt is whether HaLo's idea of a
+    // POTA reference is right — and a reference the app refuses to accept is
+    // an activation the operator cannot log at all. Never on an unscoped
+    // search, where every enabled program would answer any text at all with a
+    // malformed reference of its own.
+    // `looksLikeReference` is what keeps a NAME search out of it: `pota: bear`
+    // is someone looking for a park called Bear, and must not also be offered
+    // an invented BEAR park at the head of the list.
+    const typedMalformed =
+      scoped && searchTerm && looksLikeReference(searchTerm.toUpperCase().trim(), REFERENCE_REGEX)
+        ? searchTerm.toUpperCase().trim()
+        : ''
+    const typedSearch = normalizedSearch ?? (typedMalformed || null)
+    if (typedSearch && !suggestions.some((s) => s.ref === typedSearch)) {
+      const isValidRef = normalizedSearch !== null
+      const isTestRef = typedSearch.endsWith('-TEST')
       const t = tFor(ctx)
       // The row query above searched for the RAW text ("us1234"), which a
       // dashless/lowercase reference never matches — the local table's keys
@@ -309,8 +345,9 @@ const ActivityHook = {
       // "Unknown": [fetchPark] tries the local table again (this time by
       // the normalized key) and then the network, same as a real ref lookup
       // gets everywhere else.
-      const resolved = isTestRef ? null : await fetchPark(normalizedSearch)
-      const name = resolved?.name || (isTestRef ? t('testParkName') : t('unknownParkName'))
+      const resolved = isTestRef || !isValidRef ? null : await fetchPark(typedSearch)
+      const name =
+        resolved?.name || (!isValidRef ? t('invalidReference') : isTestRef ? t('testParkName') : t('unknownParkName'))
       // Naming a retired park exactly still offers it — marked, so the
       // operator learns WHY it was missing from the list rather than reading
       // its absence as a bad code. Carried as a flag for the picker to render,
@@ -322,15 +359,15 @@ const ActivityHook = {
       if (suggestions.length >= MAX_SUGGESTIONS) suggestions.pop()
       suggestions.unshift({
         type: ACTIVATION_TYPE,
-        ref: normalizedSearch,
+        ref: typedSearch,
         name,
         grid: resolved?.grid6,
         lat: resolved?.lat,
         lon: resolved?.lon,
         location: resolved?.locationDesc,
         program: 'POTA',
-        label: `POTA ${normalizedSearch}: ${name}`,
-        shortLabel: `POTA ${normalizedSearch}`,
+        label: `POTA ${typedSearch}: ${name}`,
+        shortLabel: `POTA ${typedSearch}`,
         relevance: 1,
         allowsMultiple: true,
         retired,

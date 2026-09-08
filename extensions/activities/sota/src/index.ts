@@ -13,7 +13,7 @@
 import { parseCallsign } from "@ham2k/lib-callsigns"
 import { annotateFromCountryFile, useBuiltinCountryFile } from "@ham2k/lib-country-files"
 import { locationToGrid6, distanceOnEarth } from "@ham2k/lib-geo-tools"
-import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, LOCATION_ACCURACY } from "@ham2k/extension-sdk"
+import { activityAdifImport, activityExportHook, activityScorer, applyLatLonFromApiFields, contestScorer, defineExtension, host, huntingExportHook, looksLikeReference, LOCATION_ACCURACY } from "@ham2k/extension-sdk"
 import type {
   AnnotatedCallInfo,
   FetchOptions,
@@ -232,10 +232,29 @@ const RefHandler = {
   async decorateRef({ ref }: { ref: Ref }, ctx: HookContext): Promise<Ref> {
     const t = tFor(ctx)
     const reference = (ref.ref ?? '').toUpperCase().trim()
-    if (!REFERENCE_REGEX.test(reference)) return { ...ref, ref: reference, name: t('invalidReference') }
+    // A reference that resolved to nothing keeps NONE of the old one's
+    // decoration, whether it failed the pattern or merely isn't in the list.
+    // `label`/`shortLabel` are what the activity row renders in preference to
+    // the code itself, so a spread-through pair would show the previous
+    // summit's name over the new code — and `lat`/`lon` outrank a grid wherever
+    // a location is read (docs/design/locations.md), so they would keep the
+    // operation at a summit it no longer references.
+    const undecorated = (name: string): Ref => ({
+      ...ref,
+      ref: reference,
+      name,
+      label: undefined,
+      shortLabel: undefined,
+      grid: undefined,
+      lat: undefined,
+      lon: undefined,
+      location: undefined,
+    })
+
+    if (!REFERENCE_REGEX.test(reference)) return undecorated(t('invalidReference'))
 
     const summit = await fetchSummit(reference)
-    if (!summit?.name) return { ...ref, ref: reference, name: t('unknownSummit') }
+    if (!summit?.name) return undecorated(t('unknownSummit'))
 
     const location = [summit.regionName, summit.associationName].filter((x) => x).join(', ')
 
@@ -318,7 +337,7 @@ const ActivityHook = {
     ]
   },
 
-  async suggest({ location, searchTerm, callsign }: SuggestArgs, _ctx: HookContext): Promise<ActivitySuggestion[]> {
+  async suggest({ location, searchTerm, callsign, scoped }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
     const rows: LookupRow[] = searchTerm
       ? await host.dbLookupSelectAll('sota', searchTerm)
       : location
@@ -348,7 +367,7 @@ const ActivityHook = {
       withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
     }
 
-    return withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
+    const suggestions: ActivitySuggestion[] = withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
       const data = (row.data ?? {}) as Record<string, any>
       const associationRegion = [data.region, data.association].filter((x) => x).join(', ')
 
@@ -367,6 +386,48 @@ const ActivityHook = {
         relevance: relevanceForMatch(row, searchTerm),
       }
     })
+
+    // The summit the operator typed, offered as itself when the table has no
+    // row for it — a summit added since the last data-file sync, or a code the
+    // REFERENCE_REGEX pattern rejects. Only when SOTA alone was asked
+    // (`sota: <code>`, or its row in Activity Types): the operator named the
+    // program, so the one thing left in doubt is whether HaLo's idea of a SOTA
+    // reference is right, and a code the app refuses is an activation that
+    // cannot be logged at all. Never on an unscoped search, where every
+    // enabled program would answer any text with a malformed reference of its
+    // own.
+    //
+    // `looksLikeReference` is what keeps a NAME search out of it: `sota: bear`
+    // is someone looking for a summit called Bear, and must not also be offered
+    // an invented BEAR summit at the head of the list.
+    const typed = scoped ? (searchTerm ?? '').toUpperCase().trim() : ''
+    if (typed && looksLikeReference(typed, REFERENCE_REGEX) && !suggestions.some((s) => s.ref === typed)) {
+      const t = tFor(ctx)
+      const valid = REFERENCE_REGEX.test(typed)
+      const summit = valid ? await fetchSummit(typed) : null
+      const name = summit?.name || (valid ? t('unknownSummit') : t('invalidReference'))
+      if (suggestions.length >= MAX_SUGGESTIONS) suggestions.pop()
+      suggestions.unshift({
+        type: ACTIVATION_TYPE,
+        ref: typed,
+        name,
+        grid: summit?.locator,
+        lat: summit?.lat,
+        lon: summit?.lon,
+        // `undefined` rather than the empty string a join() would give for an
+        // unresolved summit: this suggestion is stored on the operation as it
+        // stands, and a present-but-blank value satisfies every `??` fallback
+        // downstream while saying nothing.
+        location: summit ? [summit.regionName, summit.associationName].filter((x) => x).join(', ') : undefined,
+        program: 'SOTA',
+        label: `SOTA ${typed}: ${name}`,
+        shortLabel: `SOTA ${typed}`,
+        distance: undefined,
+        relevance: 1,
+      })
+    }
+
+    return suggestions
   },
 }
 
@@ -678,7 +739,17 @@ async function postSpotToSOTA(
   { activatorCallsign: string; freq: number; mode?: string; comment?: string; ref: Ref; ctx: HookContext },
 ): Promise<PostResult> {
   if (!activatorCallsign) return { ok: false, message: 'No station callsign to spot' }
+  // SOTAWatch is told the association and the summit as two fields, so a
+  // reference with nothing to split on cannot name a summit at all — and
+  // `JSON.stringify` drops an undefined `summitCode` without a word, which
+  // would post a spot that says only which association the operator is in.
+  // A reference this app merely doubts is still spotted: only one it cannot
+  // take apart is refused, and the operator is told why rather than left
+  // believing the chasers were called.
   const [associationCode, summitCode] = String(ref.ref).split('/', 2)
+  if (!associationCode || !summitCode) {
+    return { ok: false, message: `Not a summit reference SOTAWatch can be told about: ${ref.ref}` }
+  }
 
   const body = {
     associationCode,

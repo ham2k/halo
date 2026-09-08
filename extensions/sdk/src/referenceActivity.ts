@@ -109,6 +109,35 @@ function normalize(ref: string | undefined): string {
   return (ref ?? '').toUpperCase().trim()
 }
 
+/// Whether [text] is worth offering as a reference of a program whose codes
+/// look like [referenceRegex] — either it already is one, or it is shaped like
+/// a code rather than like a name.
+///
+/// The scoped search offers the operator's own text when nothing else matched,
+/// so that a reference the program's list has not caught up with — or whose
+/// format this app has wrong — is still reachable. The cost of getting this
+/// wrong is a junk row at the head of every search: a single word is the
+/// commonest way to look for a park or a summit BY NAME, and answering
+/// `beersel` with an invented BEERSEL reference buries the real match.
+///
+/// Anything the program itself accepts is a reference by definition, whatever
+/// it looks like — that is what lets BLHA's `BEL 123` through, space and all,
+/// and it is why the space test below costs no program its own format.
+///
+/// Past that, a name is rejected on either count: more than one word, or no
+/// digit and no separator anywhere. Both are needed. Names carry numbers
+/// (`route 66`, `camp 4`, `castle 3`), so a digit alone does not make text a
+/// code; and a code can be a single bare word, so one word alone does not make
+/// it one either.
+///
+/// Exported so the hand-written programs (POTA, SOTA) apply the same rule as
+/// the fourteen built on this factory.
+export function looksLikeReference(text: string, referenceRegex: RegExp): boolean {
+  if (referenceRegex.test(text)) return true
+  if (/\s/.test(text)) return false
+  return /[0-9]/.test(text) || /[-/]/.test(text)
+}
+
 function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
 }
@@ -152,8 +181,29 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
     }
   }
 
+  /// A reference that resolved to nothing keeps NONE of the previous one's
+  /// decoration. `label`/`shortLabel` are what an activity row renders in
+  /// preference to the code itself, so a spread-through pair would show the old
+  /// reference's name over the new code; and `lat`/`lon` outrank a grid wherever
+  /// a location is read (docs/design/locations.md), so they would keep the
+  /// operation at a reference it no longer carries.
+  function undecorated(ref: Ref, reference: string, name: string): Ref {
+    return {
+      ...ref,
+      ref: reference,
+      name,
+      program,
+      label: undefined,
+      shortLabel: undefined,
+      grid: undefined,
+      lat: undefined,
+      lon: undefined,
+      location: undefined,
+    }
+  }
+
   function decorate(ref: Ref, reference: string, row: LookupRow | null, unknown: string): Ref {
-    if (!row?.name) return { ...ref, ref: reference, name: unknown, program }
+    if (!row?.name) return undecorated(ref, reference, unknown)
     const data = (row.data ?? {}) as Record<string, any>
     return {
       ...ref,
@@ -179,7 +229,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
       const t = config.tFor(ctx)
       const reference = normalize(ref.ref)
       if (!config.referenceRegex.test(reference)) {
-        return { ...ref, ref: reference, name: t('invalidReference') }
+        return undecorated(ref, reference, t('invalidReference'))
       }
       return decorate(ref, reference, await lookupReference(reference), t('unknownReference'))
     },
@@ -273,7 +323,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
         }
       : {}),
 
-    async suggest({ location, searchTerm }: SuggestArgs, _ctx: HookContext): Promise<ActivitySuggestion[]> {
+    async suggest({ location, searchTerm, scoped }: SuggestArgs, ctx: HookContext): Promise<ActivitySuggestion[]> {
       const host = await hostApi()
       const rows: LookupRow[] = searchTerm
         ? await host.dbLookupSelectAll(category, searchTerm)
@@ -295,7 +345,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
         withDistance.sort((a, b) => (a.distance ?? Infinity) - (b.distance ?? Infinity))
       }
 
-      return withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
+      const suggestions = withDistance.slice(0, MAX_SUGGESTIONS).map(({ row, distance }) => {
         const data = (row.data ?? {}) as Record<string, any>
         return {
           type: config.activationType,
@@ -313,6 +363,48 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
           allowsMultiple,
         }
       })
+
+      // The reference the operator typed, offered as itself when the data file
+      // has no row for it — a reference added since the last sync, or one
+      // `referenceRegex` rejects. Only when this program alone was asked
+      // (`wca: <code>`, or its row in Activity Types): the operator named the
+      // program, so the one thing left in doubt is whether HaLo's idea of its
+      // reference format is right, and a code the app refuses is an activation
+      // that cannot be logged at all. Never on an unscoped search, where every
+      // enabled program would answer any text with a reference of its own.
+      //
+      // What separates a code from a name is that a code carries a digit or a
+      // separator. `wca: beersel` is someone looking for a castle by name and
+      // must not also be offered a reference called BEERSEL — one word, so a
+      // whitespace test would not catch it. A code the pattern already accepts
+      // skips the heuristic entirely, which is what lets BLHA through: its
+      // references are `BEL 123`, space and all.
+      const typed = scoped ? normalize(searchTerm) : ''
+      if (typed && looksLikeReference(typed, config.referenceRegex) && !suggestions.some((s) => s.ref === typed)) {
+        const t = config.tFor(ctx)
+        const valid = config.referenceRegex.test(typed)
+        const row = valid ? await lookupReference(typed) : null
+        const data = (row?.data ?? {}) as Record<string, any>
+        const name = row?.name || (valid ? t('unknownReference') : t('invalidReference'))
+        if (suggestions.length >= MAX_SUGGESTIONS) suggestions.pop()
+        suggestions.unshift({
+          type: config.activationType,
+          ref: typed,
+          name,
+          grid: data.grid,
+          lat: row?.lat,
+          lon: row?.lon,
+          location: data.location,
+          program,
+          label: `${config.label} ${typed}: ${name}`,
+          shortLabel: `${config.label} ${typed}`,
+          distance: undefined,
+          relevance: 1,
+          allowsMultiple,
+        })
+      }
+
+      return suggestions
     },
   }
 

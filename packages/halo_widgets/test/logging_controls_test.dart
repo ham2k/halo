@@ -4400,6 +4400,62 @@ void main() {
     expect(potaField.controller?.text, '');
   });
 
+  // A reference the pattern rejects is kept and logged, so the chip counts it
+  // and reads "✓ POTA" like any other. The tint that says otherwise lives in
+  // the expanded field — and the field is shut for most of a QSO, and shut
+  // again the moment the contact is logged. Without the chip's own mark the
+  // operator is left a check mark over the one reference needing attention.
+  testWidgets('the activity chip wears the error pair while a reference fails its pattern', (tester) async {
+    const controls = [
+      {
+        'key': 'pota/hunter',
+        'label': 'POTA',
+        'icon': 'pine-tree',
+        'color': '#00AA00',
+        'input': {'kind': 'refList', 'refType': 'pota', 'pattern': r'[A-Z0-9]+-[0-9]{4,5}'},
+      },
+    ];
+
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          radioService: tunedRadio,
+          operation: operation,
+          qsosRepository: qsos,
+          activityControls: controls,
+        ),
+      ),
+    ));
+    await openControl(tester, MdiIcons.pineTree);
+
+    ChoiceChip potaChip() => tester.widget<ChoiceChip>(
+          find.ancestor(of: find.text('✓ POTA'), matching: find.byType(ChoiceChip)).first,
+        );
+
+    final scheme = Theme.of(tester.element(find.byType(LoggingControls))).colorScheme;
+
+    await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'NOT-A-PARK');
+    await tester.pump();
+    expect(potaChip().selectedColor, scheme.error, reason: 'open chip alerts');
+
+    // Shut, which is how the chip spends most of a QSO — the state in which it
+    // is the ONLY thing that can report this.
+    await openControl(tester, MdiIcons.pineTree);
+    expect(
+      tester.widget<ChoiceChip>(find.ancestor(of: find.text('✓ POTA'), matching: find.byType(ChoiceChip)).first)
+          .backgroundColor,
+      scheme.errorContainer,
+      reason: 'closed chip alerts',
+    );
+
+    // And it clears: correcting the code takes the alert away rather than
+    // leaving the chip red for the rest of the operation.
+    await openControl(tester, MdiIcons.pineTree);
+    await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-1234');
+    await tester.pump();
+    expect(potaChip().selectedColor, isNot(scheme.error));
+  });
+
   group('expanding a secondary control moves the cursor into it', () {
     // Expanding a control is a statement of intent — the operator opened it to
     // type into it. Leaving focus back in the callsign field means every

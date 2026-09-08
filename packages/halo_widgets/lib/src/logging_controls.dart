@@ -4497,12 +4497,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       haloMonoStyle(context, fontSize: 15, fontWeight: fontWeight);
 
   /// The underline an exchange field wears while its value isn't one this
-  /// contest recognizes. Same weights as the normal borders (1 idle, 2 focused,
-  /// matching Material's own focused default), so the tint costs no layout.
+  /// contest recognizes — the same one a reference field wears for a code that
+  /// fails its program's pattern (theme.dart).
   UnderlineInputBorder _invalidUnderline(BuildContext context, {required double width}) =>
-      UnderlineInputBorder(
-        borderSide: BorderSide(color: Theme.of(context).colorScheme.error, width: width),
-      );
+      haloInvalidInputBorder(context, width: width);
 
   /// [horizontalPadding] is the field's **total** effective left+right inset,
   /// the last thing the row gives up when the fields won't fit at their floors
@@ -6247,6 +6245,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // Accent the icon (issue #187) only once the field actually holds a
       // reference — an active-but-empty control stays the default color.
       iconColor: refCount > 0 ? resolveExtensionColor(control['color'] as String?) : null,
+      // A reference the pattern rejects is KEPT, so the chip counts it and reads
+      // "✓ POTA" like any other — and the field's own tint is gone the moment
+      // the control is shut, which is how it spends most of a QSO and all of
+      // the instant the contact is logged. So the chip carries the mark too, in
+      // the error pair the Radio chip wears with no band to log on and for the
+      // same reason: what is wrong is only cheap to fix while the station is
+      // still there. It outranks the extension's accent, which has no
+      // guaranteed contrast against the error fill.
+      alert: anyRefFailsPattern(
+        _controlRefs[control['key']] ?? const [],
+        (control['input'] as Map?)?['pattern'] as String?,
+      ),
       expandedBuilder: (context) => SizedBox(
         width: 160,
         child: RefTextInput(
@@ -6363,12 +6373,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           if (input['maxLength'] is int) LengthLimitingTextInputFormatter(input['maxLength'] as int),
         ],
         // An unrecognized value tints the field's own underline rather than
-        // going through `errorText`. A decorator with an error — even an empty
-        // one styled to zero height — still reserves its error slot, making
-        // the field 5px taller and, through the row's IntrinsicHeight, moving
-        // every primary control and the submit button DOWN as the operator
-        // types. A contest exchange is invalid for most of the keystrokes it
-        // takes to type it, so that would be a jump per QSO.
+        // going through `errorText` — see [haloInvalidInputBorder] for why the
+        // error slot is not an option in this row.
         decoration: _primaryFieldDecoration(context, label, horizontalPadding: padding).copyWith(
           hintText: input['placeholder'] as String?,
           enabledBorder: isInvalid ? _invalidUnderline(context, width: 1) : null,

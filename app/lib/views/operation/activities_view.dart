@@ -877,8 +877,7 @@ class OperationSheetState extends State<OperationSheet> {
     unawaited(_search(_searchController.text));
   }
 
-  bool _matchesPattern(String? pattern, String code) =>
-      pattern == null || RegExp('^(?:$pattern)\$', caseSensitive: false).hasMatch(code);
+  bool _isInvalidRef(Map<String, dynamic> entry) => activityRowIsInvalid(_controls, entry);
 
   bool _isDuplicateRef(String type, String code) =>
       _operation.refs.any((ref) => ref['type'] == type && ref['ref'] == code);
@@ -1019,11 +1018,6 @@ class OperationSheetState extends State<OperationSheet> {
     if (trimmed.isEmpty) return;
 
     final type = ref['type'] as String?;
-    final pattern = (controlForRefType(_controls, type)?['input'] as Map?)?['pattern'] as String?;
-    if (!_matchesPattern(pattern, trimmed)) {
-      widget.services.statusBar.setMessage(key: 'activities:invalid', text: t.invalidReference);
-      return;
-    }
 
     final refs = _operation.refs;
     final index = refs.indexWhere((r) => r['type'] == ref['type'] && r['ref'] == ref['ref']);
@@ -2249,6 +2243,11 @@ class OperationSheetState extends State<OperationSheet> {
                 title: Row(
                   children: [
                     Flexible(child: _activityRowTitleText(activityRowTitle(control, ref))),
+                    if (_isInvalidRef(ref))
+                      Padding(
+                        padding: const EdgeInsets.only(left: Space.md),
+                        child: ActivityRowChip(label: t.invalidReference, unavailable: true),
+                      ),
                     if (activityRowIsRetired(ref))
                       Padding(
                         padding: const EdgeInsets.only(left: Space.md),
@@ -2661,6 +2660,11 @@ class OperationSheetState extends State<OperationSheet> {
                             // start, the chips take what they need and the
                             // reference takes the rest.
                             Flexible(child: _activityRowTitleText(activityRowTitle(suggestionControl, suggestion))),
+                            if (_isInvalidRef(suggestion))
+                              Padding(
+                                padding: const EdgeInsets.only(left: Space.md),
+                                child: ActivityRowChip(label: t.invalidReference, unavailable: true),
+                              ),
                             if (activityRowIsRetired(suggestion))
                               Padding(
                                 padding: const EdgeInsets.only(left: Space.md),
@@ -2981,6 +2985,30 @@ class ActivityRowChip extends StatelessWidget {
 /// be activated. Set by the extension's `suggest` hook and persisted with the
 /// ref (see the SDK's `ActivitySuggestion.disabled`).
 bool activityRowIsRetired(Map<String, dynamic> entry) => entry['retired'] == true;
+
+/// Whether an entry's code fails the pattern its program's control declares —
+/// what the "Not valid" mark on a row reports.
+///
+/// A reference like this is kept, never refused: the pattern is HaLo's idea of
+/// the program rather than the program's own, so a format that changed — or one
+/// this app simply has wrong — must not cost the operator a code they were
+/// given on the air. The mark is the whole of the app's opinion about it, and
+/// the reference reaches the log and the exports either way.
+///
+/// A ref type with no control at all has no pattern to fail: that is a
+/// different problem, and [isUnknownRefType] already colors the row for it. The
+/// same silence covers a sheet whose controls did not load — `_controls` is
+/// then empty and every reference reads as fine. Unmarked is the safe direction
+/// of the two, and `_controlsUnreliable` already says on the row itself that
+/// the sheet cannot vouch for what it is showing.
+bool activityRowIsInvalid(List<Map<String, dynamic>> controls, Map<String, dynamic> entry) {
+  // The widgets' own helper, so a row, the field that typed the code and the
+  // chip that summarizes it cannot disagree about the same reference — and so a
+  // regex an extension got wrong disables the mark rather than throwing into a
+  // build that runs this for every row.
+  final control = controlForRefType(controls, entry['type'] as String?);
+  return anyRefFailsPattern([entry], (control?['input'] as Map?)?['pattern'] as String?);
+}
 
 class _PulsingGpsPin extends StatefulWidget {
   final Color color;

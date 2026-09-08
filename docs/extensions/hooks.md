@@ -424,7 +424,10 @@ interface ActivityHook {
 //
 // `pattern` is anchored (`^(?:…)$`) and matched case-insensitively for every
 // kind; a malformed regex disables validation rather than throwing. A
-// mismatch tints the field but still accepts the value.
+// mismatch tints the field but still accepts the value — a `refList` segment
+// that fails it becomes a ref like any other, and reaches the log and the
+// exports as typed. The pattern is HaLo's idea of the program rather than the
+// program's own, so it may never cost the operator a reference.
 //
 // `text`, `options` and `serial` values round-trip onto a ref of `refType` under
 // `field`, through the same core-owned path refList writes refs — several may
@@ -502,6 +505,22 @@ ties broken on the order the extension emitted them. So `relevance` alone orders
 a set of placeless suggestions (dated contest events, say) among themselves, but
 never lifts one above a located park. Implemented by: `pota`, `sota`,
 `stateparks`, `cwt`.
+
+**A scoped search offers the reference the operator typed, listed or not.** The
+reference programs (`pota`, `sota` and every one built on `referenceActivity`)
+answer a scoped search with the typed code itself when no row matched it —
+named `unknownReference` where it fits the program's pattern, `invalidReference`
+where it does not. The search is the only way onto the operation, so a program
+whose list is stale, or whose pattern this app has wrong, would otherwise answer
+a reference the operator was handed on the air with "no results". The scope is
+what keeps the MALFORMED half of that narrow: unscoped, every enabled program
+would answer any text at all with an invented reference of its own, burying the
+real matches. (A well-formed code needs no scope — POTA has always offered one,
+since only that program's own pattern can accept it.) A search term that is not
+code-shaped is left alone either way: a single word is how a park or summit gets
+looked up BY NAME, and `pota: beersel` must not answer with an invented BEERSEL.
+The row is marked, and the reference is stored, logged and exported as typed —
+the same rule ADIF import follows for a malformed `*_REF` (below).
 
 The activity search box also treats a leading scope word as a scope — typing
 `pota:` (or tapping a row under "Activity Types") asks the extension serving

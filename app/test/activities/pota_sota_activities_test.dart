@@ -462,6 +462,144 @@ void main() {
     expect(synthetic['name'], 'Unknown Park');
   });
 
+  // A malformed code is the operator's, not a typo the app gets to discard:
+  // POTA's own reference format has changed before, and a code this app refuses
+  // is an activation that cannot be logged at all. The scope is what keeps it
+  // narrow — see the unscoped case below.
+  test('POTA suggest() offers a code its own pattern rejects when POTA alone was asked', () async {
+    final host = extensions.host!;
+
+    final results = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'callsign': 'W1AW',
+        'searchTerm': 'us-12',
+        'scoped': true,
+      },
+    );
+
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    final offered = potaSuggestions.firstWhere((s) => s['ref'] == 'US-12');
+    expect(offered['type'], 'potaActivation');
+    expect(offered['name'], 'Invalid reference');
+  });
+
+  // With a dozen reference programs switched on, an unscoped search that let
+  // every one of them answer any text with a reference of its own would bury
+  // the real matches under a dozen invented ones.
+  test('POTA suggest() invents nothing for a malformed code on an unscoped search', () async {
+    final host = extensions.host!;
+
+    final results = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'callsign': 'W1AW',
+        'searchTerm': 'us-12',
+      },
+    );
+
+    final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+    expect(potaSuggestions.map((s) => s['ref']), isNot(contains('US-12')));
+  });
+
+  // A park search must not double as an offer to activate a park by that name.
+  // ONE WORD, deliberately: a multi-word term passes against a guard that
+  // merely rejects whitespace, and one word is how a park is actually looked
+  // up by name — so the multi-word version of this test would hold while the
+  // common case misbehaved.
+  test('POTA suggest() invents nothing from a scoped search for a NAME', () async {
+    final host = extensions.host!;
+
+    for (final term in ['yosemite', 'bear mountain']) {
+      final results = await host.invokeHookAll(
+        'activity',
+        method: 'suggest',
+        args: {
+          'operation': <String, dynamic>{},
+          'callsign': 'W1AW',
+          'searchTerm': term,
+          'scoped': true,
+        },
+      );
+
+      final potaSuggestions = (results.firstWhere((e) => e['key'] == 'pota')['value'] as List).cast<Map>();
+      expect(potaSuggestions.map((s) => s['ref']), isNot(contains(term.toUpperCase())), reason: term);
+    }
+  });
+
+  // POTA and SOTA are hand-written, so the SDK factory's coverage of this does
+  // not speak for them: an unlisted-but-well-formed code must shed the previous
+  // park's identity exactly as a malformed one does. Otherwise the row reads
+  // "POTA US-1234" over a QSO whose export carries US-99999.
+  test('POTA decorateRef drops the old park when the new code resolves to nothing', () async {
+    final host = extensions.host!;
+
+    for (final code in ['US-99999', 'US-12']) {
+      final ref = await host.invokeHook('ref:potaActivation', method: 'decorateRef', args: {
+        'ref': {
+          'type': 'potaActivation',
+          'ref': code,
+          'name': 'Oak Ridge',
+          'label': 'POTA US-12059: Oak Ridge',
+          'shortLabel': 'POTA US-12059',
+          'grid': 'FN21rq',
+          'lat': 41.7,
+          'lon': -74.2,
+          'location': 'US-NY',
+        },
+      });
+      expect(ref['ref'], code, reason: code);
+      for (final stale in ['label', 'shortLabel', 'grid', 'lat', 'lon', 'location']) {
+        expect(ref[stale], isNull, reason: '$stale survived onto $code');
+      }
+    }
+  });
+
+  // SOTA's malformed branch, end to end — the summit test below covers only the
+  // well-formed-but-unlisted half of the same code.
+  test('SOTA suggest() offers a code its own pattern rejects when SOTA alone was asked', () async {
+    final host = extensions.host!;
+
+    final results = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'callsign': 'W1AW',
+        'searchTerm': 'w6/sd-9',
+        'scoped': true,
+      },
+    );
+
+    final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'sota')['value'] as List).cast<Map>();
+    final offered = sotaSuggestions.firstWhere((s) => s['ref'] == 'W6/SD-9');
+    expect(offered['name'], 'Invalid reference');
+  });
+
+  test('SOTA suggest() offers a summit typed into a scoped search, listed or not', () async {
+    final host = extensions.host!;
+
+    final results = await host.invokeHookAll(
+      'activity',
+      method: 'suggest',
+      args: {
+        'operation': <String, dynamic>{},
+        'callsign': 'W1AW',
+        'searchTerm': 'w6/sd-999',
+        'scoped': true,
+      },
+    );
+
+    final sotaSuggestions = (results.firstWhere((e) => e['key'] == 'sota')['value'] as List).cast<Map>();
+    final offered = sotaSuggestions.firstWhere((s) => s['ref'] == 'W6/SD-999');
+    expect(offered['type'], 'sotaActivation');
+    expect(offered['name'], 'Unknown summit');
+  });
+
   test('POTA suggest() accepts a fully-formed reference typed without its dash', () async {
     final host = extensions.host!;
 

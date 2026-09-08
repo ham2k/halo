@@ -38,9 +38,37 @@ RegExp? compileRefPattern(String? pattern) {
   if (pattern == null) return null;
   try {
     return RegExp('^(?:$pattern)\$', caseSensitive: false);
-  } catch (_) {
+  } catch (e) {
+    // Null disables validation for this control — every consumer reads it as
+    // "nothing to check", so the field never marks and neither does the
+    // activity row. That is the right answer for the operator and the wrong one
+    // to keep to ourselves: silently, permanently, no reference of that program
+    // is ever checked again. Once per distinct pattern, since this compiles on
+    // every keystroke and every row of every build.
+    if (_reportedBadPatterns.add(pattern)) {
+      debugPrint('[extensions] unusable reference pattern, validation disabled: $pattern ($e)');
+    }
     return null;
   }
+}
+
+/// Patterns already named by [compileRefPattern], so a broken one is reported
+/// once rather than per keystroke.
+final Set<String> _reportedBadPatterns = {};
+
+/// Whether any of [refs] carries a code [pattern] rejects.
+///
+/// The one question the reference field, the activity chip that summarizes it
+/// and the Activities view's rows all ask — kept here, beside
+/// [compileRefPattern], so the three can never answer it differently about the
+/// same reference. An absent or unusable pattern has nothing to reject.
+bool anyRefFailsPattern(Iterable<Map<String, dynamic>> refs, String? pattern) {
+  final regex = compileRefPattern(pattern);
+  if (regex == null) return false;
+  return refs.any((ref) {
+    final code = (ref['ref'] as String?)?.trim() ?? '';
+    return code.isNotEmpty && !regex.hasMatch(code);
+  });
 }
 
 class RefTransform {
@@ -148,8 +176,9 @@ class RefTextInput extends StatefulWidget {
   final String label;
   final String? placeholder;
 
-  /// Regex source from the control descriptor; a comma-separated segment
-  /// only becomes a ref once it matches.
+  /// Regex source from the control descriptor. Every comma-separated segment
+  /// becomes a ref whether or not it matches; the pattern only decides whether
+  /// the field marks itself (see [_emit]).
   final String? pattern;
   final List<RefTransform> transforms;
   final List<Map<String, dynamic>> refs;
@@ -214,6 +243,24 @@ class _RefTextInputState extends State<RefTextInput> {
 
   RegExp? get _regex => compileRefPattern(widget.pattern);
 
+  /// Whether any segment currently in the field fails [RefTextInput.pattern],
+  /// which the field reports by tinting its underline. Kept in state rather
+  /// than read off the controller during build: nothing guarantees the parent
+  /// rebuilds this widget on every keystroke, so the tint has to ask for its
+  /// own frame.
+  bool _hasInvalid = false;
+
+  /// The comma-separated segments of [text], trimmed and uppercased — what
+  /// both the emitted refs and the validity check are built from, so they can
+  /// never disagree about where one reference ends and the next begins.
+  List<String> _codesIn(String text) =>
+      text.split(',').map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty).toList();
+
+  bool _anyInvalid(List<String> codes) {
+    final regex = _regex;
+    return regex != null && codes.any((code) => !regex.hasMatch(code));
+  }
+
   @override
   void initState() {
     super.initState();
@@ -227,6 +274,10 @@ class _RefTextInputState extends State<RefTextInput> {
     if (widget.controller != null && widget.controller!.text != _joined(widget.refs)) {
       widget.controller!.text = _joined(widget.refs);
     }
+    // A ref that came in already invalid — a QSO opened for editing, or one an
+    // ADIF import kept the raw text of — wears the tint from the first frame,
+    // without waiting for a keystroke to recompute it.
+    _hasInvalid = _anyInvalid(_codesIn(_controller.text));
     _focus.addListener(_onFocusChange);
   }
 
@@ -257,6 +308,12 @@ class _RefTextInputState extends State<RefTextInput> {
     if (!_focus.hasFocus && !identical(oldWidget.refs, widget.refs)) {
       _controller.text = _joined(widget.refs);
     }
+    // Both inputs to the tint can change without a keystroke: the text just
+    // above, and the pattern itself when the expanded panel is reused for a
+    // different activity's control (see the focus node above).
+    // A plain assignment, not a setState: the build that follows this callback
+    // is the one that will paint it.
+    _hasInvalid = _anyInvalid(_codesIn(_controller.text));
   }
 
   @override
@@ -270,21 +327,32 @@ class _RefTextInputState extends State<RefTextInput> {
   }
 
   /// The field's whole text is the source of truth: every comma-separated
-  /// segment that matches the pattern becomes a ref, in order, on every
-  /// keystroke — there's no separate add step to commit to.
+  /// segment becomes a ref, in order, on every keystroke — there's no separate
+  /// add step to commit to.
+  ///
+  /// A segment that fails the pattern is kept, not dropped. The operator typed
+  /// it, and a program's pattern is this app's idea of the program rather than
+  /// the program's own — a reference format that changed, or one HaLo simply
+  /// has wrong, must not cost the operator the code they were given. The field
+  /// says so with [haloInvalidInputBorder]; the ref reaches the QSO, the log
+  /// and the exports either way.
   void _emit(String text) {
     final regex = _regex;
-    final codes = text.split(',').map((s) => s.trim().toUpperCase()).where((s) => s.isNotEmpty).toList();
+    final codes = _codesIn(text);
     final refs = [
-      for (final code in codes)
-        if (regex == null || regex.hasMatch(code)) _decorations[code] ?? <String, dynamic>{'type': widget.refType, 'ref': code},
+      for (final code in codes) _decorations[code] ?? <String, dynamic>{'type': widget.refType, 'ref': code},
     ];
     widget.onChanged(refs);
+
+    final hasInvalid = _anyInvalid(codes);
+    if (hasInvalid != _hasInvalid) setState(() => _hasInvalid = hasInvalid);
 
     final decorate = widget.decorate;
     if (decorate == null) return;
     for (final code in codes) {
       if (_decorations.containsKey(code)) continue;
+      // A code that cannot be a reference of this type has nothing to look up:
+      // the round trip would answer "unknown" at best, once per keystroke.
       if (regex != null && !regex.hasMatch(code)) continue;
       unawaited(_decorateOne(code, decorate));
     }
@@ -325,6 +393,9 @@ class _RefTextInputState extends State<RefTextInput> {
           widget.label,
           hintText: widget.placeholder,
           labelColor: widget.labelColor,
+        ).copyWith(
+          enabledBorder: _hasInvalid ? haloInvalidInputBorder(context, width: 1) : null,
+          focusedBorder: _hasInvalid ? haloInvalidInputBorder(context, width: 2) : null,
         ),
         textCapitalization: TextCapitalization.characters,
         // References (e.g. "US-1234") are codes, not prose: no autocorrect /
@@ -336,7 +407,15 @@ class _RefTextInputState extends State<RefTextInput> {
         smartDashesType: SmartDashesType.disabled,
         smartQuotesType: SmartQuotesType.disabled,
         inputFormatters: [
-          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-, ]')),
+          // The slash is a reference character, not punctuation: SOTA's
+          // `W6/SD-026`, and GMA's, ZLOTA's and WWBOTA's codes, are built from
+          // it. Filtering it out does not merely make those awkward to type —
+          // since a segment is kept whether or not it matches the pattern, a
+          // stripped slash is stored and exported as the operator's own code.
+          // SOTA gets away without it only because its `transforms` put the
+          // slash back; the fourteen programs built on `referenceActivity`
+          // declare no transforms at all.
+          FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-/, ]')),
           _upperCaseFormatter,
           if (widget.transforms.isNotEmpty) RefTransformFormatter(widget.transforms),
         ],

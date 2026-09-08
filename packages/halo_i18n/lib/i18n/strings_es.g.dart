@@ -329,7 +329,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String activitiesTitle2({required Object first, required Object second}) => 'Tipos de actividad: ${first} y ${second}';
 	@override String activitiesTitleMore({required Object first, required Object second, required Object more}) => 'Tipos de actividad: ${first}, ${second} y ${more} más';
 	@override String get reference => 'Referencia';
-	@override String get invalidReference => 'Referencia no válida';
+	@override String get invalidReference => 'No válida';
 	@override String get duplicateReference => 'Ya añadida';
 	@override String get searchHint => 'Busca por nombre, referencia o cualquier otra cosa…';
 	@override String get noSuggestions => 'Sin coincidencias';
@@ -3442,7 +3442,7 @@ extension on TranslationsEs {
 			'activitiesView.activitiesTitle2' => ({required Object first, required Object second}) => 'Tipos de actividad: ${first} y ${second}',
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'Tipos de actividad: ${first}, ${second} y ${more} más',
 			'activitiesView.reference' => 'Referencia',
-			'activitiesView.invalidReference' => 'Referencia no válida',
+			'activitiesView.invalidReference' => 'No válida',
 			'activitiesView.duplicateReference' => 'Ya añadida',
 			_ => null,
 		} ?? switch (path) {

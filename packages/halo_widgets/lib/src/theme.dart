@@ -648,6 +648,24 @@ InputBorder haloFocusedBorder(InputBorder base, BuildContext context) =>
 BorderSide _haloFocusedSide(bool isDark) =>
     BorderSide(color: isDark ? Colors.white : Colors.black, width: 2.0);
 
+/// The underline a field wears while its value isn't one its own rules
+/// recognize — a contest exchange the rules don't know, a reference that
+/// fails its program's pattern.
+///
+/// A tint rather than an `errorText`: a decorator with an error — even an
+/// empty one styled to zero height — still reserves its error slot, making
+/// the field 5px taller and, through the logging row's IntrinsicHeight,
+/// moving every control and the submit button DOWN as the operator types.
+/// A value is invalid for most of the keystrokes it takes to type it, so
+/// that would be a jump per QSO.
+///
+/// [width] takes the same weights as the normal borders — 1 idle, 2 focused,
+/// matching Material's own focused default — so the tint costs no layout.
+UnderlineInputBorder haloInvalidInputBorder(BuildContext context, {required double width}) =>
+    UnderlineInputBorder(
+      borderSide: BorderSide(color: Theme.of(context).colorScheme.error, width: width),
+    );
+
 /// Adds tabular figures to every style in a Roboto [TextTheme] so digit runs
 /// (QSO counts, dates) stay aligned — `TextTheme.apply` has no fontFeatures
 /// parameter, so each style needs it added explicitly.

@@ -634,8 +634,8 @@ class Translations$activitiesView$en {
 	/// en: 'Reference'
 	String get reference => 'Reference';
 
-	/// en: 'Not a valid reference'
-	String get invalidReference => 'Not a valid reference';
+	/// en: 'Not valid'
+	String get invalidReference => 'Not valid';
 
 	/// en: 'Already added'
 	String get duplicateReference => 'Already added';
@@ -6747,7 +6747,7 @@ extension on Translations {
 			'activitiesView.activitiesTitle2' => ({required Object first, required Object second}) => 'Activity Types: ${first} and ${second}',
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'Activity Types: ${first}, ${second} and ${more} more',
 			'activitiesView.reference' => 'Reference',
-			'activitiesView.invalidReference' => 'Not a valid reference',
+			'activitiesView.invalidReference' => 'Not valid',
 			'activitiesView.duplicateReference' => 'Already added',
 			_ => null,
 		} ?? switch (path) {

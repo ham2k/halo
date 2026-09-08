@@ -72,12 +72,16 @@ class SecondaryControlSpec {
   /// doesn't change between editing a contact and an event.
   final bool enabled;
 
-  /// Paints the chip in the theme's error pair instead of the tertiary one.
-  /// The Radio control sets it when there is no band to log on — nothing
-  /// tuned, or a frequency outside every ham band — because a contact
-  /// logged on the wrong band is only discovered long after the station is
-  /// gone. It outranks [iconColor]: an arbitrary accent has no guaranteed
-  /// contrast against the error fill.
+  /// Paints the chip in the theme's error pair instead of the tertiary one,
+  /// for something wrong with the value the chip is summarizing that is only
+  /// cheap to fix while the station is still on the air. The Radio control
+  /// sets it when there is no band to log on — nothing tuned, or a frequency
+  /// outside every ham band; an activity control sets it for a reference its
+  /// own pattern rejects, which is kept and logged either way.
+  ///
+  /// Both are conditions the operator cannot see once the control is shut, and
+  /// a chip is shut for most of a QSO. It outranks [iconColor]: an arbitrary
+  /// accent has no guaranteed contrast against the error fill.
   final bool alert;
 
   const SecondaryControlSpec({
@@ -875,10 +879,10 @@ class _ControlChip extends StatelessWidget {
         control.icon,
         size: 16 * MediaQuery.textScalerOf(context).scale(1.0),
         // The accent shows whenever the field holds a reference — open
-        // (selected, solid tertiary fill) or closed (tertiaryLight fill)
-        // — since iconColor is only ever set once a reference has already
-        // passed the control's own pattern validation (see
-        // _activityControlSpec). Contrast against the selected fill isn't
+        // (selected, solid tertiary fill) or closed (tertiaryLight fill).
+        // Holding one is all it means: a reference the control's pattern
+        // rejects is kept like any other, and says so through [alert] below
+        // rather than by withholding the accent. Contrast against the selected fill isn't
         // guaranteed for an arbitrary extension color, but that's on the
         // extension to pick a color that works — same as the unselected case.
         // An alerting chip drops the accent entirely (see [alert]).

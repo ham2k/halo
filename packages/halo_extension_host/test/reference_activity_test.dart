@@ -91,6 +91,37 @@ void main() {
       expect(result['valid'], false);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
+    // The two answers that resolve to nothing must shed the previous
+    // reference's decoration, not just the invalid one. `label`/`shortLabel`
+    // are what a row renders in preference to the code, so a spread-through
+    // pair shows the OLD reference over the new code while the log and the
+    // export carry the new one; and a stale `lat`/`lon` outranks a grid
+    // wherever a location is read, keeping the operation at a castle it no
+    // longer references.
+    test('re-decorating onto an unresolvable code drops the old one entirely', () async {
+      final host = await startHost();
+      for (final code in ['ON-99999', 'ON-0055']) {
+        final ref = await host.invokeHook('ref:wcaActivation', method: 'decorateRef', args: {
+          'ref': {
+            'type': 'wcaActivation',
+            'ref': code,
+            // Everything a previous, resolved reference would have left behind.
+            'name': 'Kasteel van Beersel',
+            'label': 'WCA ON-00558: Kasteel van Beersel',
+            'shortLabel': 'WCA ON-00558',
+            'grid': 'JO20eq',
+            'lat': 50.766,
+            'lon': 4.307,
+            'location': 'Vlaams-Brabant',
+          },
+        });
+        expect(ref['ref'], code, reason: code);
+        for (final stale in ['label', 'shortLabel', 'grid', 'lat', 'lon', 'location']) {
+          expect(ref[stale], isNull, reason: '$stale survived onto $code');
+        }
+      }
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
     test('a known reference is decorated from the local list', () async {
       final host = await startHost();
       final ref = await host.invokeHook('ref:wcaActivation',
@@ -164,6 +195,97 @@ void main() {
       expect(suggestions.length, 1);
       expect(suggestions.first['ref'], 'I-00001');
       expect(suggestions.first['shortLabel'], 'WCA I-00001');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    // A reference the list does not carry is otherwise unreachable: the search
+    // is the only way onto the operation, so an answer of "no results" is the
+    // operator being told their own castle does not exist. Both of these are
+    // real — a castle added since the last data-file sync, and a code whose
+    // shape WCA's own regex has wrong.
+    test('a scoped search offers the reference the operator typed, even unlisted', () async {
+      final host = await startHost();
+      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
+        'operation': {'uuid': 'op'},
+        'searchTerm': 'on-99999',
+        'scoped': true,
+      }) as List).cast<Map>();
+
+      expect(suggestions.first['ref'], 'ON-99999');
+      expect(suggestions.first['name'], 'Unknown castle');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('a scoped search offers a code the regex rejects, named as invalid', () async {
+      final host = await startHost();
+      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
+        'operation': {'uuid': 'op'},
+        'searchTerm': 'ZZ-0055',
+        'scoped': true,
+      }) as List).cast<Map>();
+
+      expect(suggestions.first['ref'], 'ZZ-0055');
+      expect(suggestions.first['name'], 'Invalid reference');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    // A name search must not double as an offer to activate a reference by that
+    // name: `wca: beersel` is looking for a castle, and answering it with
+    // "BEERSEL — Invalid reference" at the head of the list is the search
+    // arguing with the operator.
+    //
+    // ONE WORD, deliberately. A multi-word term would pass against a guard that
+    // merely rejects whitespace, and a single word is how a castle, park or
+    // summit actually gets looked up by name — so the multi-word version of
+    // this test would hold while the common case misbehaved.
+    test('a scoped search for a NAME invents no reference from it', () async {
+      final host = await startHost();
+      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
+        'operation': {'uuid': 'op'},
+        'searchTerm': 'Beersel',
+        'scoped': true,
+      }) as List).cast<Map>();
+
+      expect(suggestions.map((s) => s['ref']), ['ON-00558']);
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    // A program whose references contain a space — BLHA's are `BEL 123` — must
+    // not be shut out of the escape hatch by the code-shape heuristic. Anything
+    // the program's own pattern accepts skips the heuristic entirely.
+    test('a reference the pattern accepts is offered whatever it looks like', () async {
+      final host = await sharedHost(['blha'], onHostCall: castleLookups);
+      final suggestions = (await host.invokeHook('activity', key: 'blha', method: 'suggest', args: {
+        'operation': {'uuid': 'op'},
+        'searchTerm': 'BEL 999',
+        'scoped': true,
+      }) as List).cast<Map>();
+
+      expect(suggestions.first['ref'], 'BEL 999');
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    // Names carry numbers — `route 66`, `camp 4`, `castle 3` — so a digit alone
+    // cannot be what marks text as a code. Both halves of the heuristic are
+    // load-bearing, and a program's own pattern short-circuits ahead of them,
+    // which is what keeps BLHA's `BEL 123` (tested above) working.
+    test('a scoped NAME search with a number in it still invents nothing', () async {
+      final host = await startHost();
+      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
+        'operation': {'uuid': 'op'},
+        'searchTerm': 'castle 3',
+        'scoped': true,
+      }) as List).cast<Map>();
+
+      expect(suggestions.map((s) => s['ref']), isNot(contains('CASTLE 3')));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    // The guard that keeps the list usable: with a dozen of these programs
+    // switched on, offering every one of them's own reading of any typed text
+    // would bury the real matches under a dozen invented references.
+    test('an unscoped search invents nothing', () async {
+      final host = await startHost();
+      final suggestions = (await host.invokeHook('activity', key: 'wca', method: 'suggest', args: {
+        'operation': {'uuid': 'op'},
+        'searchTerm': 'ZZ-0055',
+      }) as List).cast<Map>();
+
+      expect(suggestions, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 60)));
   });
 

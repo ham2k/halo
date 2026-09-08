@@ -8,18 +8,30 @@ import 'package:halo_widgets/halo_widgets.dart';
 void main() {
   const potaPattern = r'[A-Z0-9]+-(?:[0-9]{4,5}|TEST)';
 
-  Widget build({List<RefTransform> transforms = const []}) => MaterialApp(
+  Widget build({
+    List<RefTransform> transforms = const [],
+    ValueChanged<List<Map<String, dynamic>>>? onChanged,
+    List<Map<String, dynamic>> refs = const [],
+    RefDecorator? decorate,
+  }) =>
+      MaterialApp(
         home: Scaffold(
           body: RefTextInput(
             refType: 'pota',
             label: 'POTA',
             pattern: potaPattern,
             transforms: transforms,
-            refs: const [],
-            onChanged: (_) {},
+            refs: refs,
+            onChanged: onChanged ?? (_) {},
+            decorate: decorate,
           ),
         ),
       );
+
+  /// The field's underline color, which is the whole of how it reports a
+  /// reference its program's pattern rejects.
+  Color? underlineColor(WidgetTester tester) =>
+      tester.widget<TextField>(find.byType(TextField)).decoration?.enabledBorder?.borderSide.color;
 
   testWidgets('disables autocorrect, suggestions, and smart punctuation', (tester) async {
     // References like "US-1234" are codes, not prose — the "-" in particular
@@ -144,6 +156,94 @@ void main() {
 
       final field = tester.widget<TextField>(find.byType(TextField));
       expect(field.controller!.text, 'US-1234,');
+    });
+  });
+
+  // The slash is a reference character for SOTA, GMA, ZLOTA and WWBOTA. Since a
+  // segment is now KEPT whether or not it matches, a filtered-out slash is no
+  // longer merely awkward to type — it is stored and exported as the operator's
+  // own code, altered. SOTA survives a stripped slash because its `transforms`
+  // put one back; the fourteen programs built on `referenceActivity` declare no
+  // transforms at all, so for those the field is the only thing standing
+  // between the operator and a silently mangled reference.
+  testWidgets('a slash survives the input filter, with no transform to repair it', (tester) async {
+    List<Map<String, dynamic>>? emitted;
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: RefTextInput(
+          refType: 'gmaActivation',
+          label: 'GMA',
+          // GMA's own shape, and no transforms — exactly what the factory emits.
+          pattern: r'[A-Z0-9]+/[A-Z]{2,}-[0-9]{3,}',
+          refs: const [],
+          onChanged: (refs) => emitted = refs,
+        ),
+      ),
+    ));
+
+    await tester.enterText(find.byType(TextField), 'DL/BW-123');
+    await tester.pump();
+
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'DL/BW-123');
+    expect(emitted?.single['ref'], 'DL/BW-123');
+    expect(underlineColor(tester), isNot(Theme.of(tester.element(find.byType(TextField))).colorScheme.error),
+        reason: 'a well-formed GMA reference must not read as invalid');
+  });
+
+  group('a reference the pattern rejects', () {
+    // The pattern is HaLo's idea of the program, not the program's own: a
+    // format that changed, or one this app has wrong, must not cost the
+    // operator the code they were handed on the air. Dropping it silently is
+    // the failure this group exists to catch — the QSO logged, the reference
+    // gone, and nothing on screen having said so.
+    testWidgets('reaches the QSO anyway, alongside the well-formed ones', (tester) async {
+      List<Map<String, dynamic>>? emitted;
+      await tester.pumpWidget(build(onChanged: (refs) => emitted = refs));
+
+      await tester.enterText(find.byType(TextField), 'US-1234, NOT-A-PARK');
+      await tester.pump();
+
+      expect(emitted?.map((r) => r['ref']), ['US-1234', 'NOT-A-PARK']);
+      expect(emitted?.every((r) => r['type'] == 'pota'), isTrue);
+    });
+
+    testWidgets('tints the field, and the tint clears once the code is well formed', (tester) async {
+      await tester.pumpWidget(build());
+      final error = Theme.of(tester.element(find.byType(TextField))).colorScheme.error;
+
+      await tester.enterText(find.byType(TextField), 'NOPE');
+      await tester.pump();
+      expect(underlineColor(tester), error);
+
+      await tester.enterText(find.byType(TextField), 'US-1234');
+      await tester.pump();
+      expect(underlineColor(tester), isNot(error));
+    });
+
+    testWidgets('a reference that arrives already invalid is tinted before a key is pressed', (tester) async {
+      // An imported QSO, or one opened for editing: nothing recomputes the
+      // tint on its own, so a state seeded only by `onChanged` would show a
+      // clean field over a reference the operator still has to fix.
+      await tester.pumpWidget(build(refs: const [
+        {'type': 'pota', 'ref': 'NOT-A-PARK'},
+      ]));
+      await tester.pump();
+
+      final error = Theme.of(tester.element(find.byType(TextField))).colorScheme.error;
+      expect(underlineColor(tester), error);
+    });
+
+    testWidgets('is not sent for decoration — there is nothing to look up', (tester) async {
+      final looked = <String>[];
+      await tester.pumpWidget(build(decorate: (ref) async {
+        looked.add(ref['ref'] as String);
+        return ref;
+      }));
+
+      await tester.enterText(find.byType(TextField), 'US-1234, NOPE');
+      await tester.pump();
+
+      expect(looked, ['US-1234']);
     });
   });
 }

@@ -11,6 +11,7 @@ upcoming:
     - "The More pane now edits every field a contact holds, in sections: city, county, zones, ARRL section, coordinates and their power"
     - "ADIF exports now carry DXCC, CQ and ITU zones, county, power, split and TIME_OFF"
     - "Guohetec Q900 in the radio list, on its own protocol — tell us how it behaves"
+    - "An unrecognized reference is marked, not dropped — it logs and exports as typed"
 
 "163":
   changes:
