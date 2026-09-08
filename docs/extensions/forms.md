@@ -93,6 +93,14 @@ export interface FormHeader {
   type: 'header';
   title: string;
   subtitle?: string;
+  // How the heading is drawn. Omitted, it is plain text above the fields
+  // that follow. 'section' is the app's section band — the accent title
+  // over a hairline, which holds the top of the surface while its own rows
+  // scroll under it. 'category' is the FILLED band, for a heading that is
+  // the top-level grouping of its surface rather than one section inside
+  // one (docs/design/user-interface.md § Settings lists). A settings panel
+  // is already inside a category, so its own headings take 'section'.
+  style?: 'default' | 'section' | 'category';
   devMode?: boolean;
   environment?: string | string[]; // settings-panel-only; see FormField.environment (not `common` — see settings.md)
 }

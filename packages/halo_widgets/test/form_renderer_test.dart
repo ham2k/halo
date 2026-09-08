@@ -1155,6 +1155,180 @@ void main() {
       expect(find.text('COM1'), findsOneWidget);
     });
 
+    testWidgets('every field in a form pane lands on ONE left edge, whatever its type', (tester) async {
+      // The invariant the pane's whole geometry rests on. The pane used to
+      // pad around its rows, which held every type in line for free; it
+      // cannot any more, because a filled band has to reach its edges — so
+      // each field spends the inset itself, and a type that forgets is a
+      // control hanging off the edge with nothing to report it. Add a field
+      // type, add it here.
+      tester.view.physicalSize = const Size(900, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showFormPane(
+                context,
+                formDefinition: const {
+                  'title': 'Every type',
+                  'elements': [
+                    {'type': 'header', 'title': 'Wiring', 'style': 'category'},
+                    {'type': 'field', 'fieldType': 'text', 'key': 'text', 'label': 'A text field'},
+                    {'type': 'field', 'fieldType': 'secret', 'key': 'secret', 'label': 'A secret field'},
+                    {
+                      'type': 'field',
+                      'fieldType': 'select',
+                      'key': 'select',
+                      'label': 'A select field',
+                      'options': [{'value': 'a', 'label': 'Only option'}],
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'radio',
+                      'key': 'radio',
+                      'label': 'A radio group',
+                      'options': [{'value': 'a', 'label': 'Radio option'}],
+                    },
+                    {
+                      'type': 'field',
+                      'fieldType': 'checkboxGroup',
+                      'key': 'boxes',
+                      'label': 'A checkbox group',
+                      'options': [{'value': 'a', 'label': 'Box option'}],
+                    },
+                    {'type': 'field', 'fieldType': 'checkbox', 'key': 'flag', 'label': 'A checkbox'},
+                    {'type': 'action', 'key': 'act', 'label': 'An action'},
+                  ],
+                },
+                initialState: const {},
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      // The band's TITLE is the reference: its ground spans the pane, and its
+      // title sits on the rows' inset, with nothing of its own around it.
+      // A Material input decoration adds a few pixels of its own on top of
+      // that, so the tolerance is a couple of pixels wide — the failure this
+      // guards against is a field back at the pane's EDGE, a whole inset out.
+      final edge = tester.getTopLeft(find.text('Wiring')).dx;
+      for (final label in [
+        'A text field',
+        'A secret field',
+        'A select field',
+        'A radio group',
+        'A checkbox group',
+      ]) {
+        expect(tester.getTopLeft(find.text(label)).dx, closeTo(edge, 5), reason: label);
+      }
+      // Two rows whose LABEL is not their left edge: a checkbox row leads
+      // with its control, and an action's label is centred in a button that
+      // spans the row. Both are measured by the thing that does sit there.
+      expect(tester.getTopLeft(find.widgetWithText(OutlinedButton, 'An action')).dx, closeTo(edge, 5),
+          reason: 'An action');
+      expect(
+        tester
+            .getTopLeft(find.descendant(
+              of: find.widgetWithText(CheckboxListTile, 'A checkbox'),
+              matching: find.byType(Checkbox),
+            ))
+            .dx,
+        closeTo(edge, 5),
+        reason: 'A checkbox',
+      );
+    });
+
+    testWidgets("style: 'category' is the FILLED band, edge to edge, with the fields still inset", (tester) async {
+      // The equipment editor's own groups: a heading that is the top level of
+      // its surface rather than a section inside one. The ground reaching the
+      // edges is what says so — inset, it would read as one highlighted row.
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: ListTileTheme(
+            data: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 24)),
+            child: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'header', 'title': 'Wiring', 'style': 'category'},
+                  {'type': 'field', 'fieldType': 'text', 'key': 'a', 'label': 'Antenna port 1'},
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
+          ),
+        ),
+      ));
+
+      final band = find.byType(CategoryBand);
+      final form = find.byType(FormRenderer);
+      expect(tester.getSize(band).width, tester.getSize(form).width, reason: 'the ground spans the surface');
+      // The title, though, lands on the rows' own inset — the band names them.
+      expect(tester.getTopLeft(find.text('Wiring')).dx, tester.getTopLeft(form).dx + 24);
+      expect(tester.getTopLeft(find.widgetWithText(TextField, 'Antenna port 1')).dx,
+          tester.getTopLeft(form).dx + 24,
+          reason: 'a bare control takes the same inset, since the host no longer pads around it');
+    });
+
+    testWidgets('a section band in a form pane holds the top while its own fields scroll under it', (tester) async {
+      // The station equipment editor declares sections (the antenna switch's
+      // Current State and Wiring), and it reaches the operator through this
+      // pane — so the pane scrolls its form in a sliver viewport, which is
+      // the only kind a band can pin in.
+      tester.view.physicalSize = const Size(800, 600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Builder(
+            builder: (context) => TextButton(
+              onPressed: () => showFormPane(
+                context,
+                formDefinition: {
+                  'title': 'Radio',
+                  'elements': [
+                    {'type': 'header', 'title': 'Connection', 'style': 'section'},
+                    for (var i = 0; i < 8; i++)
+                      {'type': 'field', 'fieldType': 'text', 'key': 'a$i', 'label': 'Connection field $i'},
+                    {'type': 'header', 'title': 'Wiring', 'style': 'section'},
+                    for (var i = 0; i < 8; i++)
+                      {'type': 'field', 'fieldType': 'text', 'key': 'b$i', 'label': 'Wiring field $i'},
+                  ],
+                },
+                initialState: const {},
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ));
+      await tester.tap(find.text('open'));
+      await tester.pumpAndSettle();
+
+      // Past the pane's own top padding first — the band travels with that,
+      // and pins once it is the top of the viewport.
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -160));
+      await tester.pumpAndSettle();
+      final band = tester.getTopLeft(find.text('Connection')).dy;
+
+      await tester.drag(find.byType(CustomScrollView), const Offset(0, -160));
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(find.text('Connection')).dy, band, reason: 'the band held');
+      // Its own first field has gone past the top — under the band, which is
+      // what the band standing still is FOR.
+      expect(tester.getTopLeft(find.text('Connection field 0')).dy, lessThan(band));
+    });
+
     testWidgets(
         'an action\'s elements replace the form\'s own definition, so a newly-picked value is immediately selectable',
         (tester) async {

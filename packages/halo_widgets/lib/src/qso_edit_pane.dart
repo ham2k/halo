@@ -6,7 +6,7 @@
 //
 // It is a secondary control that bypasses the usual inline-expand behavior
 // (special-cased in LoggingControls' _onSelectControl) to open a Modal Pane,
-// reusing the FormRenderer engine via showFormPane (see form_renderer.dart)
+// reusing the FormRenderer engine via showFormPane (see form_pane.dart)
 // rather than a new navigation route. Fields are `uppercase: true` per the
 // logging-wide rule — uppercase unless explicitly mixed-case: Name and Notes
 // are free prose, and Band's canonical names are lowercase ("20m", matching
@@ -26,7 +26,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
-import 'form_renderer.dart';
+import 'form_pane.dart';
 import 'logging_controls.dart';
 import 'mdi_icons.g.dart';
 import 'secondary_control_row.dart';

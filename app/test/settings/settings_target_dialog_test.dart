@@ -84,6 +84,7 @@ void main() {
 
     final toggle = find.descendant(of: find.widgetWithText(ListTile, 'Send Spots'), matching: find.byType(Switch));
     await tester.ensureVisible(toggle);
+    await tester.pumpAndSettle();
     await tester.tap(toggle);
     await tester.pumpAndSettle();
 
@@ -122,6 +123,7 @@ void main() {
     await _openDialog(tester, services);
     final toggle = find.descendant(of: find.widgetWithText(ListTile, 'Live Flag'), matching: find.byType(Switch));
     await tester.ensureVisible(toggle);
+    await tester.pumpAndSettle();
     await tester.tap(toggle);
     await tester.pumpAndSettle();
 
@@ -157,6 +159,10 @@ void main() {
 
     final toggleA = find.descendant(of: find.widgetWithText(ListTile, 'Panel A Flag'), matching: find.byType(Switch));
     await tester.ensureVisible(toggleA);
+    // The scroll ensureVisible starts needs a frame before a tap can be
+    // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+    // tap placed from the old one lands on whatever was there before.
+    await tester.pumpAndSettle();
     await tester.tap(toggleA);
     await tester.pumpAndSettle();
 
@@ -187,6 +193,10 @@ void main() {
     expect(button, findsOneWidget, reason: 'action elements now render, routed through their own panel');
 
     await tester.ensureVisible(button);
+    // The scroll ensureVisible starts needs a frame before a tap can be
+    // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+    // tap placed from the old one lands on whatever was there before.
+    await tester.pumpAndSettle();
     await tester.tap(button);
     await tester.pumpAndSettle();
 
@@ -240,6 +250,10 @@ void main() {
     // implementation would get wrong.
     final toggleA = find.descendant(of: find.widgetWithText(ListTile, 'Flag A'), matching: find.byType(Switch));
     await tester.ensureVisible(toggleA);
+    // The scroll ensureVisible starts needs a frame before a tap can be
+    // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+    // tap placed from the old one lands on whatever was there before.
+    await tester.pumpAndSettle();
     await tester.tap(toggleA);
     await tester.pumpAndSettle();
 
@@ -348,6 +362,10 @@ void main() {
     final connect = find.widgetWithText(TextButton, 'Connect');
     expect(connect, findsOneWidget, reason: 'starts out not connected');
     await tester.ensureVisible(connect);
+    // The scroll ensureVisible starts needs a frame before a tap can be
+    // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+    // tap placed from the old one lands on whatever was there before.
+    await tester.pumpAndSettle();
     await tester.tap(connect);
     await tester.pumpAndSettle();
 
@@ -381,6 +399,10 @@ void main() {
     expect(find.byWidgetPredicate((w) => w is TextField && w.decoration?.hintText == '599'), findsNothing);
 
     await tester.ensureVisible(row);
+    // The scroll ensureVisible starts needs a frame before a tap can be
+    // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+    // tap placed from the old one lands on whatever was there before.
+    await tester.pumpAndSettle();
     await tester.tap(row);
     await tester.pumpAndSettle();
 
@@ -442,6 +464,10 @@ void main() {
         matching: find.byType(Switch),
       );
       await tester.ensureVisible(toggle);
+      // The scroll ensureVisible starts needs a frame before a tap can be
+      // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+      // tap placed from the old one lands on whatever was there before.
+      await tester.pumpAndSettle();
       await tester.tap(toggle);
       await tester.pumpAndSettle();
 

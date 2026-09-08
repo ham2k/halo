@@ -708,11 +708,19 @@ and these rules are what keep it one:
   wraps at a large font scale takes the room it needs rather than a stated
   extent's guess — and nested bands STACK: a section band pins under whatever
   pinned band the group above it holds.
-- **A CATEGORY is not a section.** The Settings panel is an accordion of
-  categories — Common Settings, then one per declared group and extension
+- **A CATEGORY is not a section.** The FILLED band is the shelf; the unfilled
+  heading names a group of rows already on one. A surface whose groups are its
+  own top level takes the filled band with no chevron and nothing to collapse
+  — `CategoryBand`, which a declared form asks for with
+  `style: 'category'` (the station equipment editor's Current State and
+  Wiring). Its ground runs to the surface's edges and only its title takes the
+  row inset, so a host that pads its content horizontally has to spend that
+  padding on its rows instead — `showFormPane` does, through the row theme —
+  or the band floats in a gutter and reads as one highlighted row.
+- **The Settings panel is an accordion of categories** — Common Settings,
+  then one per declared group and extension
   panel, one open at a time and remembered across visits. A category heads
-  itself with the FILLED band (the ground the Operation Setup sheet's
-  sections take) and a chevron on its left; a section inside one (a panel's
+  itself with that filled band and a chevron on its left; a section inside one (a panel's
   own `style: 'section'` header, e.g. Callsign Notes' "Built-in Notes") is
   the unfilled heading above. The ground is what says which contains the
   other, so neither borrows the other's look. The category band pins too, and

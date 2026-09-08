@@ -2029,7 +2029,11 @@ export interface FormHeader {
   /// the Sync/Accounts/General settings panels — for a settingsPanel
   /// carving its fields into named groups, not for an ad hoc form's own
   /// title.
-  style?: 'default' | 'section'
+  /// 'category' is the FILLED band — for a heading that is the top level of
+  /// its surface rather than a section inside one (the station equipment
+  /// editor's). A settingsPanel is already inside a category, so its own
+  /// headings take 'section'.
+  style?: 'default' | 'section' | 'category'
   /// Settings-panel-only; see FormField.environment. Not `common` — a
   /// header is chrome for the rows under it, and the Common Settings
   /// section shows flagged rows with no bands at all, so there is nothing

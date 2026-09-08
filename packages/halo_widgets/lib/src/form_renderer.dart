@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
+import 'category_band.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'list_contents_key.dart';
@@ -94,11 +95,13 @@ Widget _defaultsButton({required VoidCallback? onPressed}) => TextButton.icon(
 
 /// The Cancel/Save (+ submitting spinner) row shared by every presenter of
 /// a [FormRenderer] — the renderer's own `showActions` footer,
-/// [showFormDialog]'s action bar, and [showFormPane]'s pinned footer. Only
-/// the row lives here; each presenter keeps its own chrome (tinted
-/// container, SafeArea, padding) around it, so a change to the submission
-/// UX lands in all three at once.
-Widget _formActionsRow({
+/// [showFormDialog]'s action bar, and `showFormPane`'s pinned footer (which
+/// lives in form_pane.dart, and is why this is not private). Only the row
+/// lives here; each presenter keeps its own chrome (tinted container,
+/// SafeArea, padding) around it, so a change to the submission UX lands in
+/// all three at once. Shared no further than those files: the package export
+/// hides it.
+Widget formActionsRow({
   required bool isSubmitting,
   required VoidCallback? onCancel,
   required VoidCallback? onSave,
@@ -729,21 +732,13 @@ class FormRendererState extends State<FormRenderer> {
       );
       slivers.add(band == null
           ? rows
-          : SliverMainAxisGroup(slivers: [
-              SectionHeader.pinned(
-                context,
-                band!['title'] as String? ?? '',
-                color: _devModeColor(band!),
-                subtitle: _headerSubtitle(band!, theme),
-              ),
-              rows,
-            ]));
+          : SliverMainAxisGroup(slivers: [_pinnedBand(context, band!, theme), rows]));
       section = [];
       band = null;
     }
 
     for (final el in elements) {
-      if (el['type'] == 'header' && el['style'] == 'section') {
+      if (_isBand(el)) {
         flush();
         band = el;
       } else {
@@ -757,6 +752,22 @@ class FormRendererState extends State<FormRenderer> {
       slivers.add(SliverToBoxAdapter(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: actions)));
     }
     return SliverMainAxisGroup(slivers: slivers);
+  }
+
+  /// Whether an element heads a section — either style of band. A band is a
+  /// header and nothing else: a `style` that strays onto another element
+  /// must not silently close the gaps around it.
+  static bool _isBand(Map<String, dynamic> el) =>
+      el['type'] == 'header' && (el['style'] == 'section' || el['style'] == 'category');
+
+  /// [el]'s band, pinned over the rows that follow it.
+  Widget _pinnedBand(BuildContext context, Map<String, dynamic> el, ThemeData theme) {
+    final title = el['title'] as String? ?? '';
+    final color = _devModeColor(el);
+    final subtitle = _headerSubtitle(el, theme);
+    return el['style'] == 'category'
+        ? CategoryBand(title, color: color, subtitle: subtitle).asPinnedSliver
+        : SectionHeader.pinned(context, title, color: color, subtitle: subtitle);
   }
 
   List<Widget> _formTitle(BuildContext context, ThemeData theme) => [
@@ -785,7 +796,7 @@ class FormRendererState extends State<FormRenderer> {
   List<Widget> _formActions() => [
         if (widget.showActions) ...[
           const SizedBox(height: Space.xxl),
-          _formActionsRow(
+          formActionsRow(
               isSubmitting: _isSubmitting, onCancel: widget.onCancel, onSave: submit, saveLabel: widget.saveLabel),
         ],
       ];
@@ -800,7 +811,7 @@ class FormRendererState extends State<FormRenderer> {
   /// end of this list: a band is always what a run of rows begins after.
   List<Widget> _elementRows(ThemeData theme, List<Map<String, dynamic>> elements) => [
         for (final (index, el) in elements.indexed) ...[
-          if (index > 0 && el['style'] != 'section' && elements[index - 1]['style'] != 'section')
+          if (index > 0 && !_isBand(el) && !_isBand(elements[index - 1]))
             const SizedBox(height: Space.xl),
           switch (el['type'] as String?) {
             'header' => _buildHeader(el, theme),
@@ -859,6 +870,7 @@ class FormRendererState extends State<FormRenderer> {
         if (subtitleWidget != null) ...[const SizedBox(height: Space.xs), subtitleWidget],
       ],
     );
+    if (el['style'] == 'category') return CategoryBand(title, color: devModeColor, subtitle: subtitleWidget);
     if (!isSection) return Padding(padding: _rowContentPadding, child: content);
     return SectionHeader(title, color: devModeColor, subtitle: subtitleWidget);
   }
@@ -948,6 +960,14 @@ class FormRendererState extends State<FormRenderer> {
     final errorText = _errors[key];
     final devModeColor = _devModeColor(el);
 
+    // A control the surface does NOT render as a row takes the row inset
+    // here. A row-shaped field spends it through its own `contentPadding`,
+    // and this is the same number from the same theme — so every field in a
+    // form lines up whether it came out a row or a box, and a host padding
+    // the whole form is not what holds them there. (It cannot be: a filled
+    // band runs to the surface's edges, which a padded host would prevent.)
+    Widget inset(Widget control) => Padding(padding: _rowContentPadding, child: control);
+
     switch (fieldType) {
       case 'text':
       case 'multiline':
@@ -961,7 +981,7 @@ class FormRendererState extends State<FormRenderer> {
         // filter makes `uppercase: true` meaningless, and the full-width
         // layout has never honored it there.
         final multiline = fieldType == 'multiline';
-        return TextField(
+        return inset(TextField(
           selectAllOnFocus: false,
           // See the checkbox's own `disabled` below: greyed rather than
           // hidden, so a field that does not apply here says so instead of
@@ -986,21 +1006,23 @@ class FormRendererState extends State<FormRenderer> {
           textInputAction: multiline ? null : TextInputAction.done,
           onSubmitted: multiline ? null : (_) => submit(),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
-        );
+        ));
       case 'secret':
-        return SecretTextField(
+        return inset(SecretTextField(
           controller: _controllers[key],
           focusNode: _focusNodes[key],
           textInputAction: TextInputAction.done,
           onSubmitted: (_) => submit(),
           decoration: poloFieldDecoration(context, label, hintText: placeholder, errorText: errorText, labelColor: devModeColor),
-        );
+        ));
       case 'list':
         return _buildListField(el, theme);
       case 'multiselect':
         return _buildMultiselectField(el, theme);
       case 'checkboxGroup':
-        return _buildCheckboxGroupField(el, theme);
+        // Inset here, not inside: it is a label over a Wrap of checkboxes,
+        // with no row of its own to spend the inset through.
+        return inset(_buildCheckboxGroupField(el, theme));
       case 'account':
         return _buildAccountField(el, theme);
       case 'select':
@@ -1010,7 +1032,7 @@ class FormRendererState extends State<FormRenderer> {
         // column of near-identical device names is unscannable inline, and
         // has to be a column. Every other select is untouched.
         if (_isRowSelect(el)) {
-          return RowSelectField(
+          return inset(RowSelectField(
             label: label,
             value: _values[key],
             focusNode: _focusNodes[key],
@@ -1050,9 +1072,9 @@ class FormRendererState extends State<FormRenderer> {
               });
               _handleFieldBlurOrInteraction(key, val);
             },
-          );
+          ));
         }
-        return DropdownButtonFormField<dynamic>(
+        return inset(DropdownButtonFormField<dynamic>(
           // See _actionGeneration: forces a remount from the true
           // _values[key] after any action runs, since this widget
           // otherwise keeps showing whatever item was last tapped —
@@ -1107,19 +1129,23 @@ class FormRendererState extends State<FormRenderer> {
                   });
                   _handleFieldBlurOrInteraction(key, val);
                 },
-        );
+        ));
       case 'radio':
+        // Not inset whole: the options below ARE rows and spend the inset
+        // through their own contentPadding. What is left — the group's
+        // label, and its error — has to take it here, or it hangs off the
+        // edge of the options it names.
         return Focus(
           focusNode: _focusNodes[key],
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
+              inset(Text(
                 label,
                 style: theme.textTheme.labelMedium?.copyWith(
                   color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
                 ),
-              ),
+              )),
               const SizedBox(height: Space.xs),
               for (final opt in options)
                 RadioListTile<dynamic>(
@@ -1145,13 +1171,13 @@ class FormRendererState extends State<FormRenderer> {
                   dense: true,
                 ),
               if (errorText != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: Space.xs, left: Space.xs),
+                inset(Padding(
+                  padding: const EdgeInsets.only(top: Space.xs),
                   child: Text(
                     errorText,
                     style: TextStyle(color: theme.colorScheme.error, fontSize: 12),
                   ),
-                ),
+                )),
             ],
           ),
         );
@@ -2334,6 +2360,9 @@ class FormRendererState extends State<FormRenderer> {
   }
 
   /// A `type: 'action'` element: a button that runs [_runAction].
+  /// A bare button, so it takes the row inset here — a form that pads
+  /// around its rows is not what holds the others in line (see the `inset`
+  /// helper in [_buildField]).
   Widget _buildActionElement(Map<String, dynamic> el, ThemeData theme) {
     final actionKey = el['key'] as String? ?? '';
     final label = el['label'] as String? ?? '';
@@ -2341,7 +2370,9 @@ class FormRendererState extends State<FormRenderer> {
     final isRunning = _runningActions.contains(actionKey);
     final devModeColor = _devModeColor(el);
 
-    return OutlinedButton(
+    return Padding(
+      padding: _rowContentPadding,
+      child: OutlinedButton(
       style: devModeColor == null ? null : OutlinedButton.styleFrom(foregroundColor: devModeColor, side: BorderSide(color: devModeColor)),
       onPressed: widget.onAction == null || isRunning ? null : () => _runAction(actionKey, method),
       child: isRunning
@@ -2351,317 +2382,9 @@ class FormRendererState extends State<FormRenderer> {
               child: CircularProgressIndicator(strokeWidth: 2),
             )
           : Text(label),
+    ),
     );
   }
-}
-
-/// Helper function to display the FormRenderer inside an AlertDialog.
-Future<Map<String, dynamic>?> showFormDialog(
-  BuildContext context, {
-  required Map<String, dynamic> formDefinition,
-  required Map<String, dynamic> initialState,
-  FormValidator? validator,
-  FormTransformer? transformer,
-  FormOnChange? onChange,
-  FormAction? onAction,
-  FormManageAccount? onManageAccount,
-  FormOpenLink? onOpenLink,
-  bool developerMode = false,
-  String? saveLabel,
-  bool settingsList = false,
-}) {
-  final theme = Theme.of(context);
-  final formKey = GlobalKey<FormRendererState>();
-  final submittingNotifier = ValueNotifier<bool>(false);
-
-  return showHaloDialog<Map<String, dynamic>>(
-    context: context,
-    barrierDismissible: false,
-    builder: (context) => HaloDialog(
-      wide: true,
-      // The shell supplies the header band, its padding AND the title type
-      // (the view-header style), so only the subtitle styles itself.
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(formDefinition['title'] as String? ?? t.formChrome.formTitle),
-          if (formDefinition['subtitle'] != null) ...[
-            const SizedBox(height: Space.xs),
-            Text(
-              formDefinition['subtitle'] as String,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ],
-      ),
-      // A settings list takes the shell's own list padding — rows to the
-      // card's edges, contents inset — rather than a form's prose padding.
-      list: settingsList,
-      contentPadding: settingsList ? null : const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
-      // Width comes from the shared sizing, and the shell scrolls the body.
-      content: FormRenderer(
-        key: formKey,
-        formDefinition: formDefinition,
-        initialState: initialState,
-        validator: validator,
-        transformer: transformer,
-        onChange: onChange,
-        onAction: onAction,
-        onManageAccount: onManageAccount,
-        onOpenLink: onOpenLink,
-        developerMode: developerMode,
-        settingsList: settingsList,
-        showActions: false,
-        showTitle: false,
-        submittingNotifier: submittingNotifier,
-        onSubmit: (values) => Navigator.of(context).pop(values),
-        onCancel: () => Navigator.of(context).pop(null),
-      ),
-      // The shell's footer band supplies the background and padding.
-      actions: [
-        ValueListenableBuilder<bool>(
-          valueListenable: submittingNotifier,
-          builder: (context, isSubmitting, _) => _formActionsRow(
-            saveLabel: saveLabel,
-            isSubmitting: isSubmitting,
-            onCancel: () => Navigator.of(context).pop(null),
-            onSave: () => formKey.currentState?.submit(),
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-/// [showFormDialog]'s Modal Pane counterpart (see modal_pane.dart): the same
-/// form-definition engine presented via [showModalPane], so on XS/S shirt
-/// sizes it fills the screen instead of cramming a fixed-width AlertDialog.
-/// For pane-sized forms (the QSO full editor); one-or-two-field prompts
-/// should keep using [showFormDialog]. Completes with the submitted values,
-/// or null on Cancel/close. `barrierDismissible: false` for the same reason
-/// showFormDialog passes it to showDialog — a stray tap outside must not
-/// discard in-progress edits (the title bar's close button still cancels).
-///
-/// `scrollable: false` + own Cancel/Save footer, NOT FormRenderer's built-in
-/// `showActions` row: that row sits at the bottom of the form content, so on
-/// a form taller than the pane it scrolls out of reach — Save must stay
-/// pinned below the scrolling fields, same as showFormDialog's action bar.
-Future<Map<String, dynamic>?> showFormPane(
-  BuildContext context, {
-  required Map<String, dynamic> formDefinition,
-  required Map<String, dynamic> initialState,
-  FormValidator? validator,
-  FormTransformer? transformer,
-  FormOnChange? onChange,
-  FormAction? onAction,
-  FormManageAccount? onManageAccount,
-  FormOpenLink? onOpenLink,
-  bool developerMode = false,
-  String? saveLabel,
-  /// A destructive action for the footer, beside Cancel and in its own
-  /// colour. The PANE CLOSES FIRST and then the callback runs, so the
-  /// callback owns only the confirmation. A caller cannot pop it itself
-  /// safely: it holds the context it opened the pane from, and popping
-  /// through that removes whatever route is topmost — a menu overlay from
-  /// one of the form's own select fields, say — leaving the editor open
-  /// over equipment that is being deleted underneath it.
-  ({String label, VoidCallback onPressed, Color color, IconData? icon})? destructiveAction,
-
-  /// A second thing the operator can do with what they are editing, sitting
-  /// beside Save — the equipment editor's "Report this radio".
-  ///
-  /// Unlike [destructiveAction] the pane STAYS OPEN and the callback runs over
-  /// it: this is not a way out of the form, and an operator who reports a
-  /// radio and then decides not to report it must find their edits where they
-  /// left them. So whatever the callback opens has to be a route of its own.
-  ({String label, VoidCallback onPressed})? secondaryAction,
-
-  /// Rebuilds the element list on a timer while the pane is open, for a form
-  /// describing something that changes underneath it — the serial port
-  /// picker, whose options are whatever is plugged in this second.
-  ///
-  /// The result is pushed only when it DIFFERS from what is on screen. An
-  /// unchanged list must not be republished: it rebuilds every field, which
-  /// closes an open dropdown menu under the operator's cursor — so a picker
-  /// nobody has touched a cable for stays perfectly still.
-  ({Duration every, Future<List<Map<String, dynamic>>> Function() build})? refreshElements,
-}) {
-  final formKey = GlobalKey<FormRendererState>();
-  final submittingNotifier = ValueNotifier<bool>(false);
-  // An action (or an actionable select option) can replace the element
-  // list mid-edit — a newly-granted device becoming a selectable option,
-  // say — so `formDefinition['elements']` can't just be handed to
-  // [FormRenderer] once; this is what [FormRenderer.onElementsChanged]
-  // pushes into.
-  final elementsNotifier = ValueNotifier<List<Map<String, dynamic>>>(
-    (formDefinition['elements'] as List?)?.cast<Map<String, dynamic>>() ?? const [],
-  );
-
-  return showModalPane<Map<String, dynamic>>(
-    context,
-    title: formDefinition['title'] as String?,
-    barrierDismissible: false,
-    scrollable: false,
-    closeLabel: t.common.close,
-    builder: (context) => ValueListenableBuilder<bool>(
-      valueListenable: submittingNotifier,
-      // While a submit's async validators/transformers are in flight the
-      // pane must not be dismissible — the pane's title-bar close button,
-      // Escape, and the XS/S back button would otherwise pop null mid-submit
-      // and silently discard edits the user explicitly saved (submit()'s
-      // mounted guard drops the result).
-      // All three dismissal paths go through Navigator.maybePop (see
-      // modal_pane.dart), which this PopScope blocks; the deliberate pops
-      // below (Save's onSubmit, the footer's Cancel) call pop() directly
-      // and are unaffected.
-      builder: (context, isSubmitting, child) => PopScope(canPop: !isSubmitting, child: child!),
-      // min + Flexible, not max + Expanded: the Column asks for only the
-      // height the form needs, so the dialog card shrink-wraps a short form
-      // instead of stranding the footer at the bottom of a full-height card.
-      // spaceBetween is what keeps the footer pinned when the box is taller
-      // than the form anyway (the full-screen presentation, which IS the
-      // screen): the slack falls between the fields and the footer.
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
-              child: _PeriodicElements(
-                // Owned by a widget rather than started beside the route:
-                // the timer then dies with the tree that shows the form,
-                // whichever way that tree goes away.
-                refresh: refreshElements,
-                elements: elementsNotifier,
-                child: ValueListenableBuilder<List<Map<String, dynamic>>>(
-                valueListenable: elementsNotifier,
-                builder: (context, elements, _) => FormRenderer(
-                  key: formKey,
-                  formDefinition: {...formDefinition, 'elements': elements},
-                  initialState: initialState,
-                  validator: validator,
-                  transformer: transformer,
-                  onChange: onChange,
-                  onAction: onAction,
-                  onElementsChanged: (updated) => elementsNotifier.value = updated,
-                  onManageAccount: onManageAccount,
-                  onOpenLink: onOpenLink,
-                  developerMode: developerMode,
-                  // The pane's own title bar already shows formDefinition['title'].
-                  showTitle: false,
-                  showActions: false,
-                  submittingNotifier: submittingNotifier,
-                  onSubmit: (values) => Navigator.of(context).pop(values),
-                  onCancel: () => Navigator.of(context).pop(null),
-                ),
-                ),
-              ),
-            ),
-          ),
-          ValueListenableBuilder<bool>(
-            valueListenable: submittingNotifier,
-            builder: (context, isSubmitting, _) => Padding(
-              padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.xl),
-              child: _formActionsRow(
-                saveLabel: saveLabel,
-                isSubmitting: isSubmitting,
-                onCancel: () => Navigator.of(context).pop(null),
-                onSave: () => formKey.currentState?.submit(),
-                destructive: destructiveAction == null
-                    ? null
-                    : (
-                        label: destructiveAction.label,
-                        color: destructiveAction.color,
-                        icon: destructiveAction.icon,
-                        // This context is INSIDE the pane, so the pop is
-                        // the pane's own, not whatever happens to be on top
-                        // of the caller's navigator.
-                        onPressed: () {
-                          Navigator.of(context).pop(null);
-                          destructiveAction.onPressed();
-                        },
-                      ),
-                // Passed through untouched — no pop, deliberately: see
-                // [secondaryAction]'s doc.
-                secondary: secondaryAction,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-}
-
-
-/// Rebuilds [elements] on a timer for as long as this is in the tree — see
-/// [showFormPane]'s `refreshElements`. A widget rather than a timer started
-/// beside the route, so it is the TREE's life that bounds it: a pane popped
-/// normally and a test tearing the tree down both end it, and neither leaves
-/// a timer enumerating hardware for a form nobody is looking at.
-class _PeriodicElements extends StatefulWidget {
-  final ({Duration every, Future<List<Map<String, dynamic>>> Function() build})? refresh;
-  final ValueNotifier<List<Map<String, dynamic>>> elements;
-  final Widget child;
-
-  const _PeriodicElements({required this.refresh, required this.elements, required this.child});
-
-  @override
-  State<_PeriodicElements> createState() => _PeriodicElementsState();
-}
-
-class _PeriodicElementsState extends State<_PeriodicElements> {
-  Timer? _timer;
-  var _refreshing = false;
-
-  @override
-  void initState() {
-    super.initState();
-    final refresh = widget.refresh;
-    if (refresh == null) return;
-    _timer = Timer.periodic(refresh.every, (_) => unawaited(_tick(refresh.build)));
-  }
-
-  Future<void> _tick(Future<List<Map<String, dynamic>>> Function() build) async {
-    // A tick landing while the previous build is still out would enumerate
-    // twice over; skipping is right rather than queueing, since the next tick
-    // asks the same question again anyway.
-    if (_refreshing) return;
-    _refreshing = true;
-    try {
-      final rebuilt = await build();
-      // Only once it DIFFERS. An unchanged republish rebuilds every field,
-      // which closes an open dropdown menu under the operator's cursor — so a
-      // picker nobody has plugged a cable for stays perfectly still.
-      if (mounted && !const DeepCollectionEquality().equals(rebuilt, widget.elements.value)) {
-        widget.elements.value = rebuilt;
-      }
-    } catch (e) {
-      // Skip the tick, keep the timer. The callback enumerates real hardware
-      // and reads live equipment state, so it can throw — and without this
-      // every throw is an unhandled async error, repeating for as long as the
-      // pane stays open with nothing to stop it. The form goes on showing
-      // what it last had, which is the right answer for one missed look.
-      debugPrint('[form] periodic element refresh failed: $e');
-    } finally {
-      _refreshing = false;
-    }
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 /// A collapsible markdown section: an [ExpansionTile] with an MDI chevron
@@ -2936,3 +2659,84 @@ class _TextEditDialogState extends State<_TextEditDialog> {
     );
   }
 }
+/// Helper function to display the FormRenderer inside an AlertDialog.
+Future<Map<String, dynamic>?> showFormDialog(
+  BuildContext context, {
+  required Map<String, dynamic> formDefinition,
+  required Map<String, dynamic> initialState,
+  FormValidator? validator,
+  FormTransformer? transformer,
+  FormOnChange? onChange,
+  FormAction? onAction,
+  FormManageAccount? onManageAccount,
+  FormOpenLink? onOpenLink,
+  bool developerMode = false,
+  String? saveLabel,
+  bool settingsList = false,
+}) {
+  final theme = Theme.of(context);
+  final formKey = GlobalKey<FormRendererState>();
+  final submittingNotifier = ValueNotifier<bool>(false);
+
+  return showHaloDialog<Map<String, dynamic>>(
+    context: context,
+    barrierDismissible: false,
+    builder: (context) => HaloDialog(
+      wide: true,
+      // The shell supplies the header band, its padding AND the title type
+      // (the view-header style), so only the subtitle styles itself.
+      title: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(formDefinition['title'] as String? ?? t.formChrome.formTitle),
+          if (formDefinition['subtitle'] != null) ...[
+            const SizedBox(height: Space.xs),
+            Text(
+              formDefinition['subtitle'] as String,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ],
+      ),
+      // A settings list takes the shell's own list padding — rows to the
+      // card's edges, contents inset — rather than a form's prose padding.
+      list: settingsList,
+      contentPadding: settingsList ? null : const EdgeInsets.fromLTRB(Space.xxl, Space.xl, Space.xxl, Space.xl),
+      // Width comes from the shared sizing, and the shell scrolls the body.
+      content: FormRenderer(
+        key: formKey,
+        formDefinition: formDefinition,
+        initialState: initialState,
+        validator: validator,
+        transformer: transformer,
+        onChange: onChange,
+        onAction: onAction,
+        onManageAccount: onManageAccount,
+        onOpenLink: onOpenLink,
+        developerMode: developerMode,
+        settingsList: settingsList,
+        showActions: false,
+        showTitle: false,
+        submittingNotifier: submittingNotifier,
+        onSubmit: (values) => Navigator.of(context).pop(values),
+        onCancel: () => Navigator.of(context).pop(null),
+      ),
+      // The shell's footer band supplies the background and padding.
+      actions: [
+        ValueListenableBuilder<bool>(
+          valueListenable: submittingNotifier,
+          builder: (context, isSubmitting, _) => formActionsRow(
+            saveLabel: saveLabel,
+            isSubmitting: isSubmitting,
+            onCancel: () => Navigator.of(context).pop(null),
+            onSave: () => formKey.currentState?.submit(),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+

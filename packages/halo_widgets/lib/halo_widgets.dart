@@ -5,6 +5,7 @@ library;
 
 export 'src/activity_controls.dart';
 export 'src/call_info_summary.dart';
+export 'src/category_band.dart';
 export 'src/chrome_edge.dart';
 export 'src/collapsing_sliver.dart';
 export 'src/density.dart';
@@ -13,6 +14,7 @@ export 'src/dock_model.dart';
 export 'src/dock_regions.dart' show DockRegion, DockBodyDrop, dockSplitRegionAt, dockNestRegionAt;
 export 'src/dock_tab.dart' show quietTabActionTone;
 export 'src/flags.dart';
+export 'src/form_pane.dart';
 export 'src/icon_resolver.dart';
 export 'src/halo_dialog.dart';
 export 'src/inline_markdown.dart';
@@ -46,6 +48,6 @@ export 'src/theme.dart';
 export 'src/timed_undo_slot.dart';
 export 'src/ui_scale.dart';
 export 'src/wall_clock.dart';
-export 'src/form_renderer.dart';
+export 'src/form_renderer.dart' hide formActionsRow;
 export 'src/format_utils.dart';
 

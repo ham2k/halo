@@ -271,8 +271,11 @@ class StationPanel extends StatelessWidget {
 
     return [
       {
+        // The FILLED band, not the unfilled heading: these are the editor's
+        // own top-level groups rather than sections inside one, and nothing
+        // above them says so (docs/design/user-interface.md § Settings lists).
         'type': 'header',
-        'style': 'section',
+        'style': 'category',
         'title': st.switchCurrentStateHeader,
         'subtitle': st.switchCurrentStateDescription,
       },
@@ -319,7 +322,7 @@ class StationPanel extends StatelessWidget {
         if (element['key'] == switchLayoutConfigKey) element,
     ];
     return [
-      {'type': 'header', 'style': 'section', 'title': st.switchWiringHeader},
+      {'type': 'header', 'style': 'category', 'title': st.switchWiringHeader},
       ...layout,
       ..._switchAntennaLinks(context, type, node),
     ];

@@ -667,19 +667,24 @@ class _EmbeddedPanelSettingsFormState extends State<EmbeddedPanelSettingsForm> {
   // Scrolls itself, matching the contract every panelSettingsBuilder result
   // holds to: the caller (pane_layout_options.dart) hands it a bounded
   // Flexible and nothing else, so a panel with more fields than fit has to
-  // clip and scroll on its own rather than overflow.
+  // clip and scroll on its own rather than overflow. A sliver viewport, so
+  // that a panel declaring sections gets bands that pin over their own rows.
   @override
-  Widget build(BuildContext context) => SingleChildScrollView(
-    child: FormRenderer(
-      formDefinition: {'elements': widget.fields},
-      initialState: _values,
-      showActions: false,
-      showTitle: false,
-      developerMode: widget.developerMode,
-      settingsList: true,
-      onChange: _onChange,
-      onSubmit: (_) {},
-      onCancel: () {},
-    ),
+  Widget build(BuildContext context) => CustomScrollView(
+    shrinkWrap: true,
+    slivers: [
+      FormRenderer(
+        formDefinition: {'elements': widget.fields},
+        initialState: _values,
+        showActions: false,
+        showTitle: false,
+        sliver: true,
+        developerMode: widget.developerMode,
+        settingsList: true,
+        onChange: _onChange,
+        onSubmit: (_) {},
+        onCancel: () {},
+      ),
+    ],
   );
 }

@@ -329,6 +329,10 @@ void main() {
       // before tapping, or the geometric tap lands on whatever's still
       // visible at that (now-stale) offset instead.
       await tester.ensureVisible(find.text('Show more settings'));
+      // The scroll ensureVisible starts needs a frame before a tap can be
+      // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+      // tap placed from the old one lands on whatever was there before.
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Show more settings'));
       await tester.pumpAndSettle();
       expect(find.text('Leftie Mode'), findsOneWidget, reason: 'revealed once "show more" is tapped');
@@ -372,12 +376,20 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.ensureVisible(find.text('Show more settings'));
+      // The scroll ensureVisible starts needs a frame before a tap can be
+      // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+      // tap placed from the old one lands on whatever was there before.
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Show more settings'));
       await tester.pumpAndSettle();
 
       expect(settings.leftieMode, isFalse);
       final leftieSwitch = find.descendant(of: find.widgetWithText(ListTile, 'Leftie Mode'), matching: find.byType(Switch));
       await tester.ensureVisible(leftieSwitch);
+      // The scroll ensureVisible starts needs a frame before a tap can be
+      // aimed: in a sliver viewport the rows move on the NEXT layout, and a
+      // tap placed from the old one lands on whatever was there before.
+      await tester.pumpAndSettle();
       await tester.tap(leftieSwitch);
       await tester.pumpAndSettle();
 

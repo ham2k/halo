@@ -442,6 +442,9 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
     initialState: const {},
     showActions: false,
     showTitle: false,
+    // A sliver: the dialog scrolls its form in a viewport of its own so the
+    // bands inside it pin.
+    sliver: true,
     validator: _validate,
     developerMode: widget.services.settings.developerMode,
     settingsList: true,
@@ -473,33 +476,35 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
           // long enough to reach the dialog's own height limit clips and
           // scrolls, instead of pushing Actions off the bottom.
           Flexible(
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
+            // AnimatedSize around the VIEWPORT, which shrink-wraps its
+            // slivers: the height it animates is the form's own, so the
+            // extended fields still arrive with a growing pane rather than a
+            // jump — and the form stays slivers, which is what lets a section
+            // band inside it pin.
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeInOut,
+              alignment: Alignment.topCenter,
+              child: CustomScrollView(
+                shrinkWrap: true,
+                slivers: [
                   // One FormRenderer whose element list grows, not two
                   // separate FormRenderer widgets swapped/composited — the
                   // extended fields are simply spliced into the same array
                   // once _showExtended flips, so they're absent from the
-                  // tree (and from find.text in a test) until then, with a
-                  // plain widget subtree AnimatedSize can safely resize
-                  // around.
-                  AnimatedSize(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeInOut,
-                    alignment: Alignment.topCenter,
-                    child: _buildFormRenderer([
-                      ...base,
-                      if (_showExtended) ...extended,
-                    ]),
-                  ),
+                  // tree (and from find.text in a test) until then.
+                  _buildFormRenderer([
+                    ...base,
+                    if (_showExtended) ...extended,
+                  ]),
                   if (!_showExtended && extended.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: Space.xs),
-                      child: TextButton(
-                        onPressed: () => setState(() => _showExtended = true),
-                        child: Text(context.t.settings.showMoreSettings),
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: Space.xs),
+                        child: TextButton(
+                          onPressed: () => setState(() => _showExtended = true),
+                          child: Text(context.t.settings.showMoreSettings),
+                        ),
                       ),
                     ),
                 ],
