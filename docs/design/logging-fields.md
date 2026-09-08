@@ -367,6 +367,38 @@ The log-time refusal above remains the backstop for the operator who closes
 the control without answering. Note the two interact: while the control is
 open, Enter closes it rather than logging, per the ladder below.
 
+**And said out loud for as long as it's true.** A red `No Band` pill stands at
+the top of the information area whenever the contact in hand would be logged
+with neither, and a `No Mode` pill whenever it would carry no mode. Unlike the
+auto-open, which fires once per install, and the refusal, which speaks only
+after a station has been worked, the pills are on screen the whole time the
+condition holds — before a callsign is typed, beside the call-info line once
+one is, and over a grid-with-no-call. They read the same band-OR-frequency
+condition the refusal does, so the two can never disagree about what is
+missing.
+
+They sit **above** a command's message, refusal included, rather than being
+replaced by it. That message outlives the condition that wrote it — only a
+call-field keystroke clears it, not the band pick that answers it — so a
+warning underneath would go quiet exactly while the operator was doing what
+the refusal asked, and would stay quiet about anything still missing.
+
+Two states show no pill. An event row (a NOTE or TODO) is not a contact and
+needs no band. And whenever the fields are locked — a staged delete, an
+already-deleted contact, or an operation that cannot be written to — the
+information area is replaced by that warning outright, and this never runs.
+Nothing in either state can log a contact, so nothing is lost by staying
+quiet there.
+
+Tapping the pill does nothing. The area's tap opens the *other station's*
+detail panel, which is no answer to a question about our own radio, so the
+gesture is applied to the call-info content and not to the warning above it.
+
+The mode pill is the narrower of the two: nothing the operator can do in the
+panel empties the mode, since it starts on the hardcoded `SSB` above and every
+path that moves it writes a real emission. An extension command that sets an
+empty mode is what it catches.
+
 The QSO list's empty state carries the same reminder — "Please make sure your
 band and mode are correct" — but only while the VFO actually needs it, using
 the same condition as the auto-open above. A band picked by hand (no

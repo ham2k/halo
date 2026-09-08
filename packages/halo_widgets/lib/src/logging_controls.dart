@@ -778,6 +778,13 @@ class LoggingControls extends StatefulWidget {
   /// would carry neither a band nor a frequency (HALO-24) — see [_log].
   final String? bandOrFreqRequiredLabel;
 
+  /// The warning pills for a contact that would be logged with no band and no
+  /// frequency, or with no mode — the standing version of the refusal
+  /// [bandOrFreqRequiredLabel] delivers only once a submit is attempted. See
+  /// [_missingRadioWarnings]. Null keeps the English defaults.
+  final String? missingBandLabel;
+  final String? missingModeLabel;
+
   /// Shown in the info area when a QSO write throws ([_log]'s catch blocks) —
   /// "Could not save: `<error>`". Without an explicit in-panel message a failed
   /// save is near-silent (the global handler's generic notice shows at most
@@ -971,6 +978,8 @@ class LoggingControls extends StatefulWidget {
     this.spotTooLateLabel,
     this.spotNoFreqLabel,
     this.bandOrFreqRequiredLabel,
+    this.missingBandLabel,
+    this.missingModeLabel,
     this.saveFailedLabel,
     this.deleteFailedLabel,
     this.onWriteError,
@@ -8801,17 +8810,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                   ),
                                   child: KeyedSubtree(
                                     key: ValueKey(_infoGeneration),
+                                    // The tap-to-open-the-detail-panel gesture
+                                    // is applied inside `_buildInfoArea`, to
+                                    // the call-info content alone — the
+                                    // missing-band/mode row above it is about
+                                    // this station's radio, and must not answer
+                                    // a tap with a panel about the other one.
                                     child: fieldsLocked
                                         ? _buildLockedWarning(theme, deletedQso)
-                                        : (_callInfoActive && !_editingEvent && widget.onCallInfoTap != null)
-                                            // Tap the call-info area to open the
-                                            // detail panel (modal on narrow).
-                                            ? GestureDetector(
-                                                behavior: HitTestBehavior.opaque,
-                                                onTap: widget.onCallInfoTap,
-                                                child: _buildInfoArea(accentTheme),
-                                              )
-                                            : _buildInfoArea(accentTheme),
+                                        : _buildInfoArea(accentTheme),
                                   ),
                                 ),
                               ),
@@ -9234,6 +9241,51 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// space for as long as an exchange field had focus. They are a menu floating
   /// over the fields instead (`_buildOptionSuggestionMenu`).
   Widget _buildInfoArea(ThemeData theme) {
+    // The missing-band/mode warnings ride ABOVE everything else the area can
+    // show, including a command's message: a band that was never set is wrong
+    // before there is anything to work, and the operator has to see it then,
+    // not on the submit the log-time refusal finally blocks. Above the message
+    // in particular because that message OUTLIVES the condition that wrote it
+    // — the refusal is cleared by a call-field keystroke, not by the band pick
+    // that answers it — so a warning underneath it would go quiet exactly
+    // while the operator was fixing the problem, and stay quiet about anything
+    // still missing. Not folded into the call-info pills for the opposite
+    // reason: those belong to the station in the field, and this one doesn't.
+    final warnings = _missingRadioWarnings;
+    if (warnings.isEmpty) return _tappableInfoContent(theme);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Wraps rather than a plain Row: two pills in a locale that spells
+        // them long ("Sin Banda" + "Sin Modo") reach the width this area has
+        // left after the edit button's reserve at the tightest supported
+        // geometry, and a non-flex Row child would overflow rather than move
+        // to a second line.
+        Wrap(
+          spacing: Space.xs,
+          runSpacing: Space.xxs,
+          children: [for (final warning in warnings) noticePill(theme, warning, level: NoticeLevel.alert)],
+        ),
+        const SizedBox(height: Space.xxs),
+        _tappableInfoContent(theme),
+      ],
+    );
+  }
+
+  /// The area's content, carrying the tap that opens the call-info detail
+  /// panel (a modal on narrow layouts). Only the content: the warning row
+  /// above it says something about our own radio, and a tap there answering
+  /// with a panel about the station being worked would be an answer to a
+  /// question nobody asked — and one the same pill does not give in the
+  /// stats or grid-only states, where there is no gesture at all.
+  Widget _tappableInfoContent(ThemeData theme) {
+    final content = _buildInfoAreaContent(theme);
+    if (!_callInfoActive || _editingEvent || widget.onCallInfoTap == null) return content;
+    return GestureDetector(behavior: HitTestBehavior.opaque, onTap: widget.onCallInfoTap, child: content);
+  }
+
+  Widget _buildInfoAreaContent(ThemeData theme) {
     final message = _commandMessage;
     if (message != null) {
       return MarkdownBody(
@@ -9254,6 +9306,32 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (_callInfoActive && !_editingEvent) return _buildCallInfo(theme);
     if (_gridOnlyLine case final line?) return _buildGridOnlyInfo(theme, line);
     return _buildOperationStats(theme);
+  }
+
+  /// What the contact in hand is missing from the radio state that every QSO
+  /// needs: a band (or a frequency to derive one from) and a mode. Empty —
+  /// the normal state — paints nothing.
+  ///
+  /// Never while editing an event row. A NOTE is not a contact and needs no
+  /// band, and the `event` band sentinel it carries does not survive into
+  /// `_band`: the record's zero frequency sends `_applyFieldsFromData` down
+  /// its frequency branch, which drops `_manualBand`. On a tuned rig
+  /// `_seedFromRadioService` then fills it from the VFO and the question never
+  /// arises; on the untuned one these warnings exist for, this guard is all
+  /// that stops an annotation being nagged about a field it will never have.
+  List<String> get _missingRadioWarnings {
+    if (_editingEvent) return const [];
+    return [
+      // The same condition [_log] refuses a submit on, so the two can never
+      // name different things as missing. They are not the same test, though:
+      // this one is additionally suppressed on an event row and wherever
+      // `fieldsLocked` swaps the whole area for its own warning. Neither is
+      // reachable with something loggable in hand today — an event's `NOTE`
+      // is not a callsign, and a locked form cannot log — so nothing is lost
+      // by staying quiet there.
+      if (_freq == null && _band == null) widget.missingBandLabel ?? 'No Band',
+      if (_mode.trim().isEmpty) widget.missingModeLabel ?? 'No Mode',
+    ];
   }
 
   /// The searchable-exchange suggestions, as a menu floating over the fields.
@@ -9410,6 +9488,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// AnimatedSwitcher key for the info area — changes when the DISPLAYED
   /// content changes (mode, lookup result, notices), but is stable across the
   /// stats line's 1 Hz clock tick, so only real content changes cross-fade.
+  ///
+  /// The missing-band/mode warnings are deliberately outside it: they are a
+  /// state of the radio, not of the area, and they come and go while the area
+  /// is showing the same thing. They update in place, as lookup and score
+  /// results do.
   String _infoAreaSignature({required bool fieldsLocked, required bool deletedQso}) {
     // The refusal is part of the signature because it can clear while the
     // form stays locked for another reason — travel ending over a staged

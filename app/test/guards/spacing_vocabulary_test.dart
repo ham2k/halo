@@ -221,8 +221,8 @@ void main() {
     final source = File('../packages/halo_widgets/lib/src/call_info_summary.dart').readAsStringSync();
     expect(
       source,
-      contains('+ Space.sm * 2; // _noticePill\'s padding'),
-      reason: 'the notice-pill width measurement must track _noticePill\'s own padding constant',
+      contains('+ Space.sm * 2; // noticePill\'s padding'),
+      reason: 'the notice-pill width measurement must track noticePill\'s own padding constant',
     );
     expect(
       source,

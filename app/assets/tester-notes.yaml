@@ -4,6 +4,10 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
+upcoming:
+  changes:
+    - "A warning pill in the logging panel when the contact has no band or no mode"
+
 "163":
   changes:
     - "Microwave bands by name in the call field: 10G, 24G, 47G and the rest"

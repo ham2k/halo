@@ -709,6 +709,8 @@
     "spotNoFreq": "First set a frequency to spot",
     "spotComment": "Comment",
     "bandOrFreqRequired": "Set a frequency or band before logging",
+    "missingBand": "No Band",
+    "missingMode": "No Mode",
     "saveFailed": "Could not save: ${error}",
     "deleteFailed": "Could not delete: ${error}",
     "info": {

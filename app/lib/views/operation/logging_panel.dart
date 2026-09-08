@@ -844,6 +844,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
             spotNoFreqLabel: context.t.loggingControls.spotNoFreq,
             spotCommentHint: context.t.loggingControls.spotComment,
             bandOrFreqRequiredLabel: context.t.loggingControls.bandOrFreqRequired,
+            missingBandLabel: context.t.loggingControls.missingBand,
+            missingModeLabel: context.t.loggingControls.missingMode,
             saveFailedLabel: (error) => context.t.loggingControls.saveFailed(error: error.toString()),
             deleteFailedLabel: (error) => context.t.loggingControls.deleteFailed(error: error.toString()),
             onWriteError: (error, stack) => ErrorReportingService.report(error, stack, context: 'loggingControls:log'),

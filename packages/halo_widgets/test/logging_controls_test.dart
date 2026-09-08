@@ -106,6 +106,9 @@ void main() {
     void Function(Iterable<Qso> qsos)? enqueueAllLookups,
     Widget? trailing,
     String? bandOrFreqRequiredLabel,
+    VoidCallback? onCallInfoTap,
+    String? missingBandLabel,
+    String? missingModeLabel,
     QsosRepository? qsosRepository,
     void Function(Object error, StackTrace stackTrace)? onWriteError,
     int? ourItuRegion,
@@ -143,6 +146,9 @@ void main() {
       // that logs anything needs one. Tests about the untuned, fresh-install
       // state pass `fakeRadio` (or their own store) explicitly.
       bandOrFreqRequiredLabel: bandOrFreqRequiredLabel,
+      onCallInfoTap: onCallInfoTap,
+      missingBandLabel: missingBandLabel,
+      missingModeLabel: missingModeLabel,
       radioService: resolvedRadio,
       // The app passes the same object twice — RadioService is both the
       // store and the Listenable. See LoggingControls.radioUpdates.
@@ -7679,6 +7685,249 @@ void main() {
       // `watchForOperation` excludes soft-deleted records, so an empty list is
       // the delete having gone through rather than the guard blocking it.
       expect(await waitForQsos(tester, 1), isEmpty, reason: 'the delete went through');
+    });
+  });
+
+  // The standing half of the same rule. The log-time refusal above only
+  // speaks once the operator has typed a call and pressed Enter — by then
+  // they have worked the station and the answer is late. The pill is on
+  // screen from the moment the panel is, in every state the information area
+  // takes, so a station that never set a band is told before the first
+  // contact rather than after it.
+  group('the missing band/mode warning pill', () {
+    testWidgets('stands in the information area before anything is typed', (tester) async {
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pump();
+
+      expect(find.text('No Band'), findsOneWidget);
+    });
+
+    // The pill is a warning about the RADIO, not about the station in the
+    // field, so it must not wait for a callsign — nor vanish once there is
+    // one, which is exactly when it matters most.
+    testWidgets('stays up beside the call-info line once a call is typed', (tester) async {
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+      // The info area cross-fades between its states; a second pump lets the
+      // outgoing copy of the pill leave, so `findsOneWidget` measures what is
+      // on screen rather than a frame of the transition.
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('No Band'), findsOneWidget);
+    });
+
+    // The mutation this catches: a pill that is drawn unconditionally still
+    // passes every assertion above.
+    testWidgets('is absent once the radio has a frequency to derive a band from', (tester) async {
+      fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pump();
+
+      expect(find.text('No Band'), findsNothing);
+    });
+
+    // A band picked by hand answers the question as completely as a
+    // frequency does — the same band-OR-frequency rule the log-time guard
+    // applies, and the two must not disagree about what counts.
+    testWidgets('a band with no frequency answers it too', (tester) async {
+      fakeRadio.setVfo('vfoA', band: '40m', mode: 'SSB');
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pump();
+
+      expect(find.text('No Band'), findsNothing);
+    });
+
+    // Band-OR-frequency, exactly as the log-time guard reads it: a frequency
+    // in no band at all is still a frequency, and the contact it logs still
+    // carries one, so there is nothing to warn about. The mutation this
+    // catches is dropping the frequency half of the condition — on every
+    // in-band frequency `_band` is derived from it, so nothing else here can
+    // tell the two conditions apart.
+    testWidgets('a frequency outside every band is still an answer', (tester) async {
+      fakeRadio.setVfo('vfoA', freq: 5000, mode: 'SSB');
+      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pump();
+
+      expect(find.text('No Band'), findsNothing);
+    });
+
+    // The mode half. Nothing the operator can do in the panel empties the
+    // mode — it starts on a hardcoded 'SSB' and every path that moves it
+    // writes a real emission — so a command is the one thing that can, and an
+    // extension's command is not the app's code. A QSO with no mode is
+    // rejected by LoTW and every award programme, so it is worth the pill.
+    testWidgets('a command that leaves the mode empty is called out', (tester) async {
+      Future<Map<String, dynamic>?> clearsTheMode(
+        String input, [
+        Map<String, dynamic>? operation,
+        Map<String, dynamic>? qso,
+        bool execute = false,
+      ]) async =>
+          input.toUpperCase() == 'NOMODE'
+              ? {
+                  'describe': 'Clear the mode?',
+                  'confirm': 'Mode cleared',
+                  'commands': [
+                    {'setVfo': {'mode': ''}}
+                  ]
+                }
+              : null;
+
+      await tester.pumpWidget(host(interpretCommand: clearsTheMode));
+      expect(find.text('No Mode'), findsNothing, reason: 'the panel starts with a mode');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOMODE');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+      // The command's own confirmation owns the information area while it is
+      // up; typing the next callsign clears it and the area goes back to
+      // reporting the state the command left behind.
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('No Mode'), findsOneWidget);
+    });
+
+    // The label is the app's, not the widget's. Every other test here reads
+    // the English fallback, so all of them would still pass with the two
+    // `context.t` lines deleted from logging_panel.dart and a Spanish
+    // operator shown "No Band" in an otherwise Spanish panel. This one
+    // measures the plumbing instead, as the log-time refusal's test does.
+    testWidgets('the pill says what the app tells it to say', (tester) async {
+      await tester.pumpWidget(host(radioService: fakeRadio, missingBandLabel: 'Sin Banda'));
+      await tester.pump();
+
+      expect(find.text('Sin Banda'), findsOneWidget);
+      expect(find.text('No Band'), findsNothing);
+    });
+
+    // The refusal message OUTLIVES the condition that wrote it — only a
+    // call-field keystroke clears it, not the band pick that answers it. So a
+    // warning drawn underneath it would go quiet exactly while the operator
+    // was doing what they were told, and the area would keep asserting a
+    // refusal that no longer applies.
+    testWidgets('answering the refusal clears the pill even while its message is still up', (tester) async {
+      await tester.pumpWidget(host(
+        radioService: fakeRadio,
+        bandOrFreqRequiredLabel: 'Set a frequency or band before logging',
+      ));
+      await tester.pump();
+      // The unset VFO opens the Radio control on mount; collapse it, or Enter
+      // closes it instead of reaching the log path.
+      await openControl(tester, MdiIcons.radio);
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump(const Duration(milliseconds: 400));
+      // The area cross-fades into the message state; let the outgoing copy go.
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(find.textContaining('Set a frequency or band'), findsOneWidget, reason: 'the refusal stands');
+      expect(find.text('No Band'), findsOneWidget, reason: 'and so does the warning it is about');
+
+      // The operator does what the refusal asked, in the control it opened.
+      await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
+      await tester.pump(const Duration(milliseconds: 400));
+
+      expect(find.text('No Band'), findsNothing);
+    });
+
+    // Both at once, in the locale that spells them longest and at the
+    // narrowest width the panel itself still lays out at — no other test here
+    // renders two pills, so without this one nothing sees them side by side
+    // at all. It pins that they fit and that the row does not overflow; the
+    // `Wrap` is what keeps that true if a label or a rung grows, and a plain
+    // Row still passes at this width, so read it as the floor, not as proof
+    // of the Wrap.
+    testWidgets('an untuned radio with an emptied mode shows both pills together', (tester) async {
+      Future<Map<String, dynamic>?> clearsTheMode(
+        String input, [
+        Map<String, dynamic>? operation,
+        Map<String, dynamic>? qso,
+        bool execute = false,
+      ]) async =>
+          input.toUpperCase() == 'NOMODE'
+              ? {
+                  'describe': 'Clear the mode?',
+                  'confirm': 'Mode cleared',
+                  'commands': [
+                    {'setVfo': {'mode': ''}}
+                  ]
+                }
+              : null;
+
+      // Below this the entry row itself overflows, which would mask what this
+      // test is watching rather than sharpen it.
+      await tester.binding.setSurfaceSize(const Size(320, 600));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(host(
+        radioService: fakeRadio,
+        interpretCommand: clearsTheMode,
+        missingBandLabel: 'Sin Banda',
+        missingModeLabel: 'Sin Modo',
+      ));
+      await tester.pump();
+      // The unset VFO opens the Radio control on mount; Enter inside an open
+      // control closes it rather than running the command.
+      await openControl(tester, MdiIcons.radio);
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOMODE');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(find.text('Sin Banda'), findsOneWidget);
+      expect(find.text('Sin Modo'), findsOneWidget);
+      expect(tester.takeException(), isNull, reason: 'the two pills must not overflow their row');
+    });
+
+    // The warning is about OUR radio. Answering a tap on it with the detail
+    // panel for the station being worked answers a question nobody asked —
+    // and the same pill offers no gesture at all in the stats state.
+    testWidgets('tapping the pill does not open the other station\'s detail panel', (tester) async {
+      var opened = 0;
+      await tester.pumpWidget(host(radioService: fakeRadio, onCallInfoTap: () => opened++));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      await tester.tap(find.text('No Band'));
+      await tester.pump();
+      expect(opened, 0);
+
+      // …while the call-info line beside it still opens it.
+      await tester.tap(find.byIcon(MdiIcons.account));
+      await tester.pump();
+      expect(opened, 1, reason: 'the call-info content is still the tap target');
+    });
+
+    // An event row is not a contact and needs no band, so it must not be
+    // nagged about one — even on the untuned station these warnings are for.
+    // The `event` band sentinel does not reach `_band` here (the record's zero
+    // frequency drops it), so nothing but the explicit guard stops this.
+    testWidgets('an event row is not nagged about a band it will never carry', (tester) async {
+      final note = Qso(
+        uuid: 'note-uuid',
+        operationUuid: operation.uuid,
+        data: {
+          'band': 'event',
+          'freq': 0,
+          'mode': 'note',
+          'our': {'call': 'EVENT'},
+          'their': {'call': 'NOTE'},
+          'event': {'event': 'note', 'note': 'check later'},
+        },
+      );
+      await tester.pumpWidget(host(radioService: fakeRadio, editingQso: note, onEditCanceled: () {}));
+      await tester.pump();
+
+      expect(find.text('No Band'), findsNothing);
     });
   });
 

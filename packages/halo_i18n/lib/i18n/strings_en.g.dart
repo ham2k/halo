@@ -883,6 +883,12 @@ class Translations$loggingControls$en {
 	/// en: 'Set a frequency or band before logging'
 	String get bandOrFreqRequired => 'Set a frequency or band before logging';
 
+	/// en: 'No Band'
+	String get missingBand => 'No Band';
+
+	/// en: 'No Mode'
+	String get missingMode => 'No Mode';
+
 	/// en: 'Could not save: ${error}'
 	String saveFailed({required Object error}) => 'Could not save: ${error}';
 
@@ -6772,6 +6778,8 @@ extension on Translations {
 			'loggingControls.spotNoFreq' => 'First set a frequency to spot',
 			'loggingControls.spotComment' => 'Comment',
 			'loggingControls.bandOrFreqRequired' => 'Set a frequency or band before logging',
+			'loggingControls.missingBand' => 'No Band',
+			'loggingControls.missingMode' => 'No Mode',
 			'loggingControls.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'loggingControls.info.noQsos' => 'No QSOs yet... let\'s get on the air!',
@@ -7204,10 +7212,10 @@ extension on Translations {
 			'settings.station.detectedEquipment' => 'Detected Equipment',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'Can\'t listen for radios: ${error}',
 			'settings.station.edit' => 'Edit equipment',
-			'settings.station.name' => 'Name',
-			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.name' => 'Name',
+			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
 			'settings.station.transport' => 'Connection',
 			'settings.station.transportDescription' => 'How the app reaches this radio. Each one has its own settings.',
 			'settings.station.host' => 'Address',
@@ -7718,10 +7726,10 @@ extension on Translations {
 			'confirmDevice.grantWarning' => 'It will be able to read and change every operation and QSO in this account.',
 			'confirmDevice.needsSyncTitle' => 'This device does not sync yet',
 			'confirmDevice.needsSyncText' => 'Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.',
-			'confirmDevice.malformedRequest' => 'The sync server sent a request this app could not read. Ask the other device to try again.',
-			'confirmDevice.linkIt' => 'Link Device',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.malformedRequest' => 'The sync server sent a request this app could not read. Ask the other device to try again.',
+			'confirmDevice.linkIt' => 'Link Device',
 			'switchAccounts.noAccountDetails' => 'No account details yet',
 			'switchAccounts.currentAccount' => 'Current account',
 			'switchAccounts.otherAccounts' => 'Other accounts',

@@ -70,9 +70,34 @@ const positiveGreen = Color(0xFF2E7D32);
 /// QSO nor an alert, just a fact about the station (how often it was worked).
 const infoGrey = Color(0xFF666666);
 
-enum _NoticeLevel { alert, notice, info }
+enum NoticeLevel { alert, notice, info }
 
-typedef _Notice = ({String label, _NoticeLevel level});
+typedef _Notice = ({String label, NoticeLevel level});
+
+/// One scoring pill. Top-level so the logging panel can paint the same pill
+/// outside a call-info line — its missing-band/mode warning is not a scoring
+/// verdict, but the operator reads a red pill in that area as one thing.
+///
+/// Alerts are the error color; notices a positive green; the worked-before
+/// count app-polo's neutral grey (matching its red/green/grey pill
+/// convention) — the logging panel's own tertiaryContainer fill rules out
+/// relying on the neutral scheme containers for contrast.
+Widget noticePill(ThemeData theme, String label, {required NoticeLevel level}) {
+  final background = switch (level) {
+    NoticeLevel.alert => theme.colorScheme.error,
+    NoticeLevel.notice => positiveGreen,
+    NoticeLevel.info => infoGrey,
+  };
+  final foreground = level == NoticeLevel.alert ? theme.colorScheme.onError : Colors.white;
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
+    decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(3)),
+    child: Text(
+      label,
+      style: theme.textTheme.labelSmall?.copyWith(color: foreground),
+    ),
+  );
+}
 
 /// A soft halo behind small glyphs (the call-info flag/note emoji, the
 /// spotting control's source-status icons) so they stay legible against a
@@ -189,9 +214,9 @@ class CallInfoSummary extends StatelessWidget {
     final labelOf = noticeLabel ?? (String key) => key;
     final worked = _workedBeforeText;
     return [
-      for (final key in data.alertKeys) (label: labelOf(key), level: _NoticeLevel.alert),
-      for (final key in data.noticeKeys) (label: labelOf(key), level: _NoticeLevel.notice),
-      if (worked != null) (label: worked, level: _NoticeLevel.info),
+      for (final key in data.alertKeys) (label: labelOf(key), level: NoticeLevel.alert),
+      for (final key in data.noticeKeys) (label: labelOf(key), level: NoticeLevel.notice),
+      if (worked != null) (label: worked, level: NoticeLevel.info),
     ];
   }
 
@@ -263,7 +288,7 @@ class CallInfoSummary extends StatelessWidget {
     final pillsRow = <Widget>[
       for (var i = 0; i < notices.length; i++) ...[
         if (i > 0) const SizedBox(width: Space.xs),
-        _noticePill(theme, notices[i].label, level: notices[i].level),
+        noticePill(theme, notices[i].label, level: notices[i].level),
       ],
     ];
     final note = nameInfo == null ? null : _buildNoteOrName(context, theme, nameInfo);
@@ -281,7 +306,7 @@ class CallInfoSummary extends StatelessWidget {
       // Both halves of each pair must name the same constant the widget does:
       // a hand-copied number here measures a pill that is no longer that wide
       // the moment the spacing rung moves, and the row silently mis-wraps.
-      pillsWidth += _measureTextWidth(context, notices[i].label, pillStyle) + Space.sm * 2; // _noticePill's padding
+      pillsWidth += _measureTextWidth(context, notices[i].label, pillStyle) + Space.sm * 2; // noticePill's padding
       if (i > 0) pillsWidth += Space.xs; // the inter-pill SizedBox in pillsRow
     }
     final noteWidth = nameInfo!.isNote
@@ -409,27 +434,6 @@ class CallInfoSummary extends StatelessWidget {
           Flexible(child: markdown),
         ],
       ],
-    );
-  }
-
-  Widget _noticePill(ThemeData theme, String label, {required _NoticeLevel level}) {
-    // Alerts are the error color; notices a positive green; the worked-before
-    // count app-polo's neutral grey (matching its red/green/grey pill
-    // convention) — the logging panel's own tertiaryContainer fill rules out
-    // relying on the neutral scheme containers for contrast.
-    final background = switch (level) {
-      _NoticeLevel.alert => theme.colorScheme.error,
-      _NoticeLevel.notice => positiveGreen,
-      _NoticeLevel.info => infoGrey,
-    };
-    final foreground = level == _NoticeLevel.alert ? theme.colorScheme.onError : Colors.white;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: Space.sm, vertical: Space.xxs),
-      decoration: BoxDecoration(color: background, borderRadius: BorderRadius.circular(3)),
-      child: Text(
-        label,
-        style: theme.textTheme.labelSmall?.copyWith(color: foreground),
-      ),
     );
   }
 }

@@ -418,6 +418,8 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get spotNoFreq => 'Primero define una frecuencia para spotear';
 	@override String get spotComment => 'Comentario';
 	@override String get bandOrFreqRequired => 'Define una frecuencia o banda antes de registrar';
+	@override String get missingBand => 'Sin Banda';
+	@override String get missingMode => 'Sin Modo';
 	@override String saveFailed({required Object error}) => 'No se pudo guardar: ${error}';
 	@override String deleteFailed({required Object error}) => 'No se pudo borrar: ${error}';
 	@override late final _Translations$loggingControls$info$es info = _Translations$loggingControls$info$es._(_root);
@@ -3505,6 +3507,8 @@ extension on TranslationsEs {
 			'loggingControls.spotNoFreq' => 'Primero define una frecuencia para spotear',
 			'loggingControls.spotComment' => 'Comentario',
 			'loggingControls.bandOrFreqRequired' => 'Define una frecuencia o banda antes de registrar',
+			'loggingControls.missingBand' => 'Sin Banda',
+			'loggingControls.missingMode' => 'Sin Modo',
 			'loggingControls.saveFailed' => ({required Object error}) => 'No se pudo guardar: ${error}',
 			'loggingControls.deleteFailed' => ({required Object error}) => 'No se pudo borrar: ${error}',
 			'loggingControls.info.noQsos' => 'Aún no hay QSOs... ¡a la carga!',
@@ -3937,10 +3941,10 @@ extension on TranslationsEs {
 			'settings.station.detectedEquipment' => 'Equipos detectados',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'No se puede buscar radios: ${error}',
 			'settings.station.edit' => 'Editar equipo',
-			'settings.station.name' => 'Nombre',
-			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.station.name' => 'Nombre',
+			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
 			'settings.station.transport' => 'Conexión',
 			'settings.station.transportDescription' => 'Cómo llega la aplicación a esta radio. Cada una tiene sus propios ajustes.',
 			'settings.station.host' => 'Dirección',
@@ -4451,10 +4455,10 @@ extension on TranslationsEs {
 			'switchAccounts.linkWithEmail' => 'Vincular con una dirección de email',
 			'switchAccounts.linkWithEmailDescription' => 'Confirma con un código o un enlace por email',
 			'switchAccounts.enterEmailPrompt' => 'Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.',
-			'switchAccounts.emailAddress' => 'Dirección de email',
-			'switchAccounts.linkAccount' => 'Vincular cuenta',
 			_ => null,
 		} ?? switch (path) {
+			'switchAccounts.emailAddress' => 'Dirección de email',
+			'switchAccounts.linkAccount' => 'Vincular cuenta',
 			'switchAccounts.copiedCode' => 'Código copiado al portapapeles',
 			'switchAccounts.copyCode' => 'Copiar código',
 			'switchAccounts.codePrompt' => ({required Object email}) => 'Abre la app Ham2K en un dispositivo ya vinculado con ${email} e introduce este código para aprobar la solicitud:',

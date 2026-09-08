@@ -709,6 +709,8 @@
     "spotNoFreq": "Primero define una frecuencia para spotear",
     "spotComment": "Comentario",
     "bandOrFreqRequired": "Define una frecuencia o banda antes de registrar",
+    "missingBand": "Sin Banda",
+    "missingMode": "Sin Modo",
     "saveFailed": "No se pudo guardar: ${error}",
     "deleteFailed": "No se pudo borrar: ${error}",
     "info": {
