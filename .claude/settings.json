@@ -9,6 +9,12 @@
             "command": "G=\"$(git rev-parse --show-toplevel 2>/dev/null)/.claude/hooks/base-branch-guard.sh\"; [ -x \"$G\" ] || G=\"$CLAUDE_PROJECT_DIR/.claude/hooks/base-branch-guard.sh\"; [ -x \"$G\" ] && exec \"$G\" session || exit 0",
             "timeout": 25,
             "statusMessage": "Checking branch base against origin/main"
+          },
+          {
+            "type": "command",
+            "command": "R=\"$(git rev-parse --show-toplevel 2>/dev/null)\"; [ -n \"$R\" ] || R=\"$CLAUDE_PROJECT_DIR\"; for f in \"$R\"/.agents/*/AGENTS.md; do [ -f \"$f\" ] && { echo \"# Contents of ${f#$R/}\"; echo; cat \"$f\"; }; done; exit 0",
+            "timeout": 10,
+            "statusMessage": "Loading session context from .agents/*/AGENTS.md"
           }
         ]
       }

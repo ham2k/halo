@@ -5,62 +5,49 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 
 ## Design & Architecture
 
-- [DESIGN.md](file:///Users/sd/Work/ham2k/halo-dist/DESIGN.md) contains high-level design documentation.
+- [DESIGN.md](../DESIGN.md) contains high-level design documentation.
 
-- User interface conventions and branding are documented in [user-interface.md](file:///Users/sd/Work/ham2k/halo-dist/docs/design/user-interface.md).
+- User interface conventions and branding are documented in [user-interface.md](../docs/design/user-interface.md).
 
-- The logging controls' parts, and the focus and keyboard-navigation rules for the main logging fields, are specified in [logging-fields.md](file:///Users/sd/Work/ham2k/halo-dist/docs/design/logging-fields.md). Read it before changing anything about focus in the logging panel — the rules are a contract, not defaults.
+- The logging controls' parts, and the focus and keyboard-navigation rules for the main logging fields, are specified in [logging-fields.md](../docs/design/logging-fields.md). Read it before changing anything about focus in the logging panel — the rules are a contract, not defaults.
 
-- The Font Scale setting scales the **whole** UI from one root wrapper ([ui-scaling.md](file:///Users/sd/Work/ham2k/halo-dist/docs/design/ui-scaling.md)). Write all dimensions in plain logical pixels and **never multiply a size, padding, or font size by the font scale** — that double-scales it. Read ui-scaling.md before any scaling-, layout-, or macOS-window-related change.
+- The Font Scale setting scales the **whole** UI from one root wrapper ([ui-scaling.md](../docs/design/ui-scaling.md)). Write all dimensions in plain logical pixels and **never multiply a size, padding, or font size by the font scale** — that double-scales it. Read ui-scaling.md before any scaling-, layout-, or macOS-window-related change.
 
-- **Never call `DateTime.now()`.** Every "now" in app code goes through the app clock — `nowUtc()` / `nowLocal()` / `nowMillis()` from `halo_core` — so that developer time travel (`DEVTT`) moves the whole app at once ([time.md](file:///Users/sd/Work/ham2k/halo-dist/docs/design/time.md)). `./scripts/test.sh` fails the build on a direct read. A value that must NOT travel calls the explicit `realNowUtc()` / `realNowMillis()` instead — a sync revision stamp (it persists, so it escapes the session), a protocol timeout, anything whose remainder becomes a `Timer` duration. Read time.md before adding a clock read, a staleness check, or anything the extension sandbox reads a date for — and its §7 before writing a test that waits for one, because a timer can fire late but never early, and faking a timer without faking the clock the code reads makes a test pass while testing nothing.
+- **Never call `DateTime.now()`.** Every "now" in app code goes through the app clock — `nowUtc()` / `nowLocal()` / `nowMillis()` from `halo_core` — so that developer time travel (`DEVTT`) moves the whole app at once ([time.md](../docs/design/time.md)). `./scripts/test.sh` fails the build on a direct read. A value that must NOT travel calls the explicit `realNowUtc()` / `realNowMillis()` instead — a sync revision stamp (it persists, so it escapes the session), a protocol timeout, anything whose remainder becomes a `Timer` duration. Read time.md before adding a clock read, a staleness check, or anything the extension sandbox reads a date for — and its §7 before writing a test that waits for one, because a timer can fire late but never early, and faking a timer without faking the clock the code reads makes a test pass while testing nothing.
 
-- A coordinate measures, a grid displays ([locations.md](file:///Users/sd/Work/ham2k/halo-dist/docs/design/locations.md)). Wherever a location is captured, capture the `lat`/`lon` too — and where a pair is present it OUTRANKS the grid, so **a writer that sets a grid without a coordinate must clear the pair in the same write**. Read locations.md before storing, resolving, or displaying a location.
+- A coordinate measures, a grid displays ([locations.md](../docs/design/locations.md)). Wherever a location is captured, capture the `lat`/`lon` too — and where a pair is present it OUTRANKS the grid, so **a writer that sets a grid without a coordinate must clear the pair in the same write**. Read locations.md before storing, resolving, or displaying a location.
 
-- What an escaped exception deserves — a user notice, a silent upload, the console, or nothing — is decided in ONE place, `ErrorPolicy` ([error-reporting.md](file:///Users/sd/Work/ham2k/halo-dist/docs/design/error-reporting.md)). Never add an ad-hoc "ignore this error" check at a handler or catch site; add a rule there instead.
+- What an escaped exception deserves — a user notice, a silent upload, the console, or nothing — is decided in ONE place, `ErrorPolicy` ([error-reporting.md](../docs/design/error-reporting.md)). Never add an ad-hoc "ignore this error" check at a handler or catch site; add a rule there instead.
 
 - The extension system and hooks are defined under `docs/extensions/`.
+
+- User-facing strings live in `packages/halo_i18n` — edit **both** `en` and `es`, then regenerate there (its README says how); the gate fails on a stale output.
 
 - We often mention app-polo and web-lofi, which are the existing mobile version and a web-based log browser that shares a lot of logic with PoLo. These are available in separate sibling repositories that can be used for reference.
 
 
 ## Development Process
 
-- **Tasks, bugs and ideas live in [CaBo](https://cabo.ham2k.com/halo), not GitHub Issues.** Cards are referenced as `HALO-24` and deep-link as `https://cabo.ham2k.com/halo/c/24`. Read and write them through the `cabo` MCP server — `list_projects`, `search_cards`, `get_board`, `get_card`, `create_card`, `update_card`, `move_card`, `add_comment`, `get_activity`. Leave a comment on the card whenever the state a human would want to see changes: the branch name and plan once work starts, findings that redefine the task, and the merge. **GitHub PRs are not part of the workflow** — GitHub is the remote, and runs no tests; the card is where a task's plan and state live.
-
-- Agents should always work on a worktree, with a branch off of the `main` branch on `origin` (ham2k/halo-dist; usually available as `main` locally too, tracking `origin/main`). As new tasks come in, use new branches and rename the worktree to keep the name relevant.
-
-- **`origin/main` is the only base.** Do not trust the branch a session hands you — a worktree created for you may already be on the wrong base, and nothing about it looks unusual. Check before editing:
+- **`main` is the only base.** Branch off the latest `main` on `origin`, and do not trust the branch a session hands you — a worktree created for you may already be on the wrong base, and nothing about it looks unusual. Check before editing:
   `git fetch origin main && git rev-list --count $(git merge-base HEAD origin/main)..origin/main`
   A large number means the branch was cut from the wrong place; re-cut it with `git checkout -b <task-name> origin/main` rather than rebasing. `.claude/hooks/base-branch-guard.sh` enforces this and will block edits, but the check is yours to make first.
 
 - Keep `main` updated. Rebase your branches on top of the latest `main` before finalizing or merging.
 
-- **Merging to `main` requires the developer's approval, every time.** Never land work on `main` on your own initiative. **No test runs anywhere but here** — the Checks workflow re-runs the guards, the extensions' typecheck and `dart analyze` on a push to `main`, and nothing else, so the local `./scripts/test.sh` run before merging is not merely the first gate for the suite, it is the only one. A green run there is the sole evidence the tests passed; treat a skipped or partial run as shipping untested code.
+- **Work lands on `main` as one squash commit per task, and landing it is the maintainer's decision, every time.** Never land work on `main` on your own initiative. **No test runs anywhere but here** — the Checks workflow re-runs the guards, the extensions' typecheck and `dart analyze` on a push to `main` (and on a pull request), and nothing else, so the local `./scripts/test.sh` run before merging is not merely the first gate for the suite, it is the only one. A green run there is the sole evidence the tests passed; treat a skipped or partial run as shipping untested code.
 
 - Steps when tackling a new task:
   - Open a new branch, off the latest `main`. Look for updates to AGENTS.md.
-  - Do a quick analisys of the problem, ask the user a short round of pointed questions to pin down scope and assumptions, then record the plan — as a comment on the CaBo card when one exists, otherwise presented directly to the developer — before implementing anything.
+  - Do a quick analysis of the problem, ask the developer a short round of pointed questions to pin down scope and assumptions, then record the plan before implementing anything.
   - Take a full pass at the problem and then present the results to the developer. If possible and relevant, start a web build of the app for the developer to verify on.
-  - Iterate with the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to ammend the commits in the branch if it makes sense to keep work organized and easier to review, and skip running tests for short iterations unless it's useful.
-  - If the work gives a Dev/Next tester something new to go and try, add a note under the `upcoming` key of `app/assets/tester-notes.yaml`, in the same commit — about a dozen words on one line, one per change and never one per detail. Most changes get no note at all: a new feature or control earns one, bug fixes and refinements to existing behaviour usually don't, and work with no tester-visible surface never does. **Anything behind an experiment never does either** — neither tester notes nor release notes ever mention an experiment, the `EXP` word that toggles it, or the feature it gates; that work earns a note only once it ships without the gate. The release cut renames that key to the build that ships it, so never type a build number there. [releases.md §2.7](file:///Users/sd/Work/ham2k/halo-dist/docs/releases.md) is the spec for both these and the public `release-notes.yaml` — the YAML files carry no guidance of their own, so read it before writing a note.
+  - Iterate with the developer. Don't pile up trivial commits. When iterating on a feature or approach, feel free to amend the commits in the branch if it makes sense to keep work organized and easier to review, and skip running tests for short iterations unless it's useful.
+  - If the work gives a Dev/Next tester something new to go and try, add a note under the `upcoming` key of `app/assets/tester-notes.yaml`, in the same commit — about a dozen words on one line, one per change and never one per detail. Most changes get no note at all: a new feature or control earns one, bug fixes and refinements to existing behaviour usually don't, and work with no tester-visible surface never does. **Anything behind an experiment never does either** — neither tester notes nor release notes ever mention an experiment, the `EXP` word that toggles it, or the feature it gates; that work earns a note only once it ships without the gate. The release cut renames that key to the build that ships it, so never type a build number there. [releases.md §2.7](../docs/releases.md) is the spec for both these and the public `release-notes.yaml` — the YAML files carry no guidance of their own, so read it before writing a note.
   - Once the work has settled, run a code review, present the results to the developer and ask for followups.
   - When the followups have been addressed, rebase on top of an updated `main`, run the full suite, and ask the developer to approve the merge.
-  - Work stays local. Push the branch to `origin` only as a **backup** when a task stretches past a couple of hours (or holds unmerged work between sessions) — pushed branches run nothing (the workflows are `main`-only) and invite no review; delete them after the merge.
 
-- Whenever running the app (any `flutter run`, including the web dev server), always pass a `DEV_LABEL` set to your session name or a brief description of the work at hand, so the running build is identifiable in the home-screen header — e.g. `flutter run -d macos --dart-define=DEV_LABEL="header work"` or `DEV_LABEL="header work" flutter run -d web-server`. See [DEVELOPMENT.md](file:///Users/sd/Work/ham2k/halo-dist/DEVELOPMENT.md).
+- Commit messages are read by people who were not there: the title states the outcome in the project's voice (what is now true, not what was done), and the body says why. What a squash message carries is published as-is, so it describes only what a reader of the published repository can see for themselves.
 
-- When starting the app for developer checks, use `--dart-define=ONBOARD_AS="N0DEV,pota"` to provide a default setup and avoid the onboarding dialog (unless working on an onboarding feature).
-
-- We do all work on the `ham2k/halo-dist` repository (`origin`), where `main` is. Work lands on `main` as one squash commit per task. Distribution-only code lives in `app_dist/`; commits may freely mix `app_dist` and public paths. On every push to `main`, the **Publish Public** workflow (`.github/workflows/publish-public.yml`) filters `app_dist/` out of the full history and force-pushes the result to the `public` branch. The open-source mirror `ham2k/halo` is updated **manually and deliberately** with `halo-ops publish-code` (`mise run ops -- publish-code`; `--ref` holds back recent work) — so features can sit on `main` for a while before going public. Rules: **commit messages are published verbatim — never describe `app_dist` contents in one**; **never push to `public` or `ham2k/halo` by hand** (generated artifacts; `publish-code` is the only path to the mirror); and agents never run `halo-ops publish-code` on their own — publishing is the maintainer's call.
-
-- New branches are pushed to `origin` (ham2k/halo-dist).
-
-- Branches for CaBo cards should be named `halo-<number>-<short-description>` (e.g. `halo-24-cabo-tracker` for `HALO-24`) and should be based off `origin/main`. Keep the `halo-` prefix: CaBo numbers restart at 1, so a bare `24-…` is ambiguous against the older branches named after GitHub Issue numbers.
-
-- Squash commit messages should cite the CaBo card ref (`HALO-24`). GitHub's "closes"/"fixes"/"resolves" keywords do **not** reach CaBo, so nothing auto-closes a card; closing one is a deliberate step — comment the outcome on it and move it to the board's done column.
-
-- Agents should name their sessions with "[HaLo]" as a prefix, followed by a very short description of the work at hand. It's ok to update the name of the session as we go along.
+- A change from outside the project comes in as a pull request on the public repository — [CONTRIBUTING.md](../CONTRIBUTING.md) is the whole path, from setup to what happens after the review.
 
 
 ## Tooling
@@ -68,19 +55,16 @@ This is a multi-platform app for Amateur Radio Logging, called "Ham2K Logger" (o
 - **Verify with `./scripts/test.sh`** (or `mise run test`) before saying tests
   pass or merging — it is the whole gate, and the only place the tests run. For the inner loop, run **subsets**
   through the same script: `./scripts/test.sh <group>...` (see `--list`) or
-  `./scripts/test.sh --changed` — it keeps the extension bundles fresh (the
-  stale-bundle trap raw `flutter test` falls into) while skipping
-  npm ci / pub get / analyze. Subset runs are NOT the gate: no analyze, no
-  extensions typecheck, no dependent packages, no browser step — the full
-  no-arg run is still required before merging. `--quick` for analyze+typecheck only. See DEVELOPMENT.md.
+  `./scripts/test.sh --changed` — it keeps the extension bundles and the
+  generated strings fresh (the stale-artifact trap raw `flutter test` falls
+  into) while skipping npm ci / pub get / analyze. Subset runs are NOT the
+  gate: no analyze, no extensions typecheck, no dependent packages, no browser
+  step — the full no-arg run is still required before merging. `--quick` for
+  analyze+typecheck only. See DEVELOPMENT.md.
 
 - On the development environment, we use `mise` to manage dependencies and tool versions.
 
-- When adding commits, identify yourself as "Sebastian Delmont <sd@ham2k.com>"
-
-- When interacting with Github, use `export GH_TOKEN="$(security find-generic-password -a claude-code -s gh-bot-token -w)"` in the session to authenticate API requests as ham2k-bot.
-
-- CaBo authenticates over OAuth through its MCP server — there is no shell token and no CLI, so it can only be reached via the `cabo` tools. It's registered at user scope in `~/.claude.json`, so every worktree gets it, but MCP servers only load at session start: if the tools are missing, the fix is a session restart, not a config change.
+- Whenever running the app (any `flutter run`, including the web dev server), pass a `DEV_LABEL` naming the work at hand, so the running build is identifiable in the home-screen header — e.g. `flutter run -d macos --dart-define=DEV_LABEL="header work"`. For developer checks, `--dart-define=ONBOARD_AS="N0DEV,pota"` provides a default setup and skips the onboarding dialog (unless working on an onboarding feature). See [DEVELOPMENT.md](../DEVELOPMENT.md).
 
 ---
 

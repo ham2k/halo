@@ -2,6 +2,9 @@
 
 ## Getting started
 
+- [CONTRIBUTING.md](../CONTRIBUTING.md) (repo root) — how a change from
+  outside gets in: setup, the gate, the pull request, what it needs to carry,
+  and what the maintainer does with it.
 - [DEVELOPMENT.md](../DEVELOPMENT.md) (repo root) — environment setup, running
   and building per platform, tests, the build-time/runtime flags (`HALO_EDITION`,
   `ONBOARD_AS`, …), and the developer commands typed into the call field.

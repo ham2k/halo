@@ -18,7 +18,8 @@
 # is still local, and still the only thing standing between a mistake and
 # `main` (AGENTS.md). This catches the narrow class that survives a local run:
 # a merge resolved by hand and pushed without re-running, or a tree that
-# analyzed clean on one machine's cached toolchain.
+# analyzed clean on one machine's cached toolchain. On a pull request it is
+# the whole signal a contributor sees before review.
 #
 # ONE job, deliberately. Billing rounds every job up to the whole minute, so a
 # matrix of short jobs costs several times its own wall clock; the retired CI
@@ -34,13 +35,23 @@ on:
       - '**/*.md'
       - '.agents/**'
       - '.claude/**'
+  # A pull request is how an outside change arrives on the public mirror
+  # (CONTRIBUTING.md), and this is the only signal it gets there: the gate
+  # is local, so a fork's PR would otherwise show nothing at all. No
+  # paths-ignore, unlike the push above: skipping the run leaves a PR showing
+  # no check, which reads exactly like a broken one to the person waiting on
+  # it, and a handful of PR runs is not the bill that pruning push runs was.
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 # Keyed on the SHA, not the ref: cancelling is right for a deploy, where only
 # the newest commit matters, and wrong for a check, where each commit is its
 # own claim. Two merges inside this job's window would otherwise cancel the
 # first — leaving a commit on `main` that was never checked, showing grey
-# rather than red.
+# rather than red. On a pull request `github.sha` is the ephemeral merge
+# commit, which changes whenever either side moves — so each push to the PR
+# gets its own run, and a rebase of `main` under it re-checks the result.
 concurrency:
   group: checks-${{ github.sha }}
   cancel-in-progress: true

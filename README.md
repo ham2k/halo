@@ -14,7 +14,8 @@ taxonomy, data layer, sequencing plan. Setting up to build and hack on it?
 [DEVELOPMENT.md](DEVELOPMENT.md) covers environment setup, running/building,
 tests, and the dev-only flags (`ONBOARD_AS`, …) and call-field commands. The
 full documentation index is at [docs/README.md](docs/README.md); for writing
-extensions, see [docs/extensions/](docs/extensions/README.md).
+extensions, see [docs/extensions/](docs/extensions/README.md). Want to send a
+change? [CONTRIBUTING.md](CONTRIBUTING.md) is the path, from setup to merge.
 
 ## Status
 
