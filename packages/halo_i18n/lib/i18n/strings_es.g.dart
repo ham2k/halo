@@ -363,6 +363,9 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String enableExtension({required Object name}) => 'Activar ${name}';
 	@override String get enableExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está activada';
 	@override String get enableExtensionForRefHint => 'Esta extensión maneja una de las referencias de esta operación, pero no está activada';
+	@override String installExtension({required Object name}) => 'Instalar ${name}';
+	@override String get installExtensionHint => 'Esta extensión coincide con tu búsqueda, pero no está instalada';
+	@override String get onlyCatalogMatches => 'Sin coincidencias\nAlgunas extensiones del catálogo podrían tener resultados.\nInstálalas en Tipos de actividad, más abajo.';
 	@override String get setupUnavailable => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar';
 	@override String get controlsUnavailableTitle => 'Controles de actividad no disponibles';
 	@override String get controlsUnavailableReason => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.';
@@ -3478,6 +3481,9 @@ extension on TranslationsEs {
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
 			'activitiesView.enableExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está activada',
 			'activitiesView.enableExtensionForRefHint' => 'Esta extensión maneja una de las referencias de esta operación, pero no está activada',
+			'activitiesView.installExtension' => ({required Object name}) => 'Instalar ${name}',
+			'activitiesView.installExtensionHint' => 'Esta extensión coincide con tu búsqueda, pero no está instalada',
+			'activitiesView.onlyCatalogMatches' => 'Sin coincidencias\nAlgunas extensiones del catálogo podrían tener resultados.\nInstálalas en Tipos de actividad, más abajo.',
 			'activitiesView.setupUnavailable' => 'No se pudo cargar la configuración de esta actividad; inténtalo desde Gestionar',
 			'activitiesView.controlsUnavailableTitle' => 'Controles de actividad no disponibles',
 			'activitiesView.controlsUnavailableReason' => 'Tus referencias están a salvo, pero ahora mismo no se pueden editar.',
@@ -3955,11 +3961,11 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esto continuará automáticamente en cuanto lo hagas.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginNoResponse' => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cancela e intenta conectar de nuevo.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.loginIncompleteResponse' => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.',
 			'settings.accounts.noKeyringTitle' => 'No se pueden guardar las cuentas',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',
@@ -4469,11 +4475,11 @@ extension on TranslationsEs {
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'No se pudo consultar tus actividades, así que ${refs} quedó fuera — reintenta ese enlace',
 			'confirmDevice.title' => 'Confirmar un dispositivo',
 			'confirmDevice.codePrompt' => 'Introduce el código que muestra el dispositivo que quiere unirse a esta cuenta.',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.code' => 'Código',
 			'confirmDevice.lookUp' => 'Buscar',
 			'confirmDevice.codeNotFound' => 'Ninguna solicitud coincide con ese código. Los códigos caducan a los 10 minutos: pide uno nuevo en el otro dispositivo.',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.linkExpired' => 'Ese enlace ha caducado. Pide al otro dispositivo que muestre un código QR nuevo.',
 			'confirmDevice.areYouSure' => ({required Object device}) => '¿Vincular ${device} a esta cuenta?',
 			'confirmDevice.unnamedDevice' => 'un dispositivo sin nombre',

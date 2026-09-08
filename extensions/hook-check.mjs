@@ -13,7 +13,7 @@
 // not see a hook registered from a loop or a template key
 // (`registerHook(`ref:${TYPE}`)`) anyway.
 //
-// Two rules, and they are deliberately different:
+// Three rules, and they are deliberately different:
 //
 //   - A PLAIN category (`activity`, `spots`, `dataFile`…) must match exactly,
 //     both ways. The host uses these to decide what an extension is.
@@ -26,6 +26,13 @@
 //     offer enabling a switched-off extension when an operation carries such a
 //     ref — and an offer that leads to no control leaves the row exactly as
 //     red as it was.
+//
+//   - A `ref:<type>/<code>` entry claims a LEGACY reference under someone
+//     else's type — `ref:qp/ny` for the New York party, which publishes
+//     `ref:nyqp`. It is not a control claim, so the rule is different again:
+//     the manifest must declare exactly one plain `ref:<type>`, which is what
+//     the legacy reference is rewritten into, and must not also declare the
+//     legacy type plainly (that would already handle it).
 //
 // Runs over the built bundles, so it belongs after the build rather than
 // beside the manifest's field validation in build-config.mjs.
@@ -120,7 +127,10 @@ async function inspectBundle({ key, outDir, sharedModules }) {
 async function controlledRefTypes(activityHooks, refTypes) {
   const operation = { uuid: 'check', refs: refTypes.map((type) => ({ type, ref: 'TEST-0001' })) }
   const args = { operation, qso: { their: { call: 'W1AW' } } }
-  const controlled = new Set()
+  // type -> the control kinds publishing it. The kind matters to the
+  // qualified rule below: only a `form` reference is codeless, and only a
+  // codeless one can be what a rewrite that drops the code produces.
+  const controlled = new Map()
   for (const hook of activityHooks) {
     // An activation ref is named by an operation-level control, a hunting ref
     // by a per-QSO one. Either clears the row, so both count.
@@ -128,7 +138,9 @@ async function controlledRefTypes(activityHooks, refTypes) {
       if (typeof hook[method] !== 'function') continue
       for (const control of (await hook[method](args, hookContext)) ?? []) {
         const type = control?.input?.refType
-        if (typeof type === 'string') controlled.add(type)
+        if (typeof type !== 'string') continue
+        if (!controlled.has(type)) controlled.set(type, new Set())
+        controlled.get(type).add(control?.input?.kind)
       }
     }
   }
@@ -170,9 +182,61 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
       problems.push(`${manifestPath}: lists ${phantom.join(', ')} in "hooks" but never registers ${phantom.length > 1 ? 'them' : 'it'}`)
     }
 
-    const declaredRefTypes = declared.filter((hook) => hook.startsWith('ref:')).map((hook) => hook.slice(4))
+    const declaredRefs = declared.filter((hook) => hook.startsWith('ref:')).map((hook) => hook.slice(4))
+    // A qualified claim (`ref:qp/ny`) is about a LEGACY reference the
+    // extension answers under another name, so it is not a control claim and
+    // is checked by its own rules below.
+    const declaredRefTypes = declaredRefs.filter((entry) => !entry.includes('/'))
+    const qualified = declaredRefs.filter((entry) => entry.includes('/'))
+    // Shape first: the app reads `ref:<type>/<code>` and nothing else, so a
+    // half-written entry (`ref:qp/`, `ref:/ny`) or one with a second slash
+    // matches no reference at all — the extension would ship a claim that
+    // does nothing and the operator's legacy row would stay red, which is
+    // the very failure this file exists to catch.
+    const malformed = qualified.filter((q) => q.split('/').length !== 2 || q.split('/').some((half) => !half)).sort()
+    if (malformed.length) {
+      problems.push(
+        `${manifestPath}: lists ${malformed.map((q) => `"ref:${q}"`).join(', ')} in "hooks". A qualified claim is ` +
+          `"ref:<type>/<code>" with both halves present and one slash; nothing else is read as one.`,
+      )
+    }
+    const controlled = declaredRefTypes.length ? await controlledRefTypes(activityHooks, declaredRefTypes) : new Map()
+    if (qualified.length) {
+      // The migration target: what a legacy reference is rewritten INTO is
+      // the one type this extension publishes. Two would leave the rewrite
+      // guessing, and none would leave it with nowhere to go — either way an
+      // operation's red row stays red, which is the outcome the plain rule
+      // above exists to prevent.
+      if (declaredRefTypes.length !== 1) {
+        problems.push(
+          `${manifestPath}: lists ${qualified.map((q) => `ref:${q}`).join(', ')} in "hooks", which says a legacy ` +
+            `reference is this extension's — but a rewrite needs exactly one "ref:<type>" entry to name what it becomes, ` +
+            `and this manifest declares ${declaredRefTypes.length}.`,
+        )
+      }
+      const shadowed = qualified.filter((q) => declaredRefTypes.includes(q.split('/')[0])).sort()
+      if (shadowed.length) {
+        problems.push(
+          `${manifestPath}: lists both "ref:${shadowed[0].split('/')[0]}" and ${shadowed.map((q) => `"ref:${q}"`).join(', ')} ` +
+            `in "hooks". An extension that publishes a control for a type handles every reference of it; the qualified ` +
+            `entr${shadowed.length > 1 ? 'ies say' : 'y says'} nothing the plain one does not.`,
+        )
+      }
+      // The rewrite DROPS the reference code, because the target type carries
+      // what the code used to say. That only holds for a `form` reference,
+      // which has no code; against a `refList` target the migration would
+      // delete the identity of a reference out of the operator's log —
+      // `{type:'pota', ref:'US-0001'}` becoming a bare `{type:'potaActivation'}`.
+      const target = declaredRefTypes.length === 1 ? declaredRefTypes[0] : undefined
+      if (target !== undefined && controlled.has(target) && !controlled.get(target).has('form')) {
+        problems.push(
+          `${manifestPath}: claims a legacy reference (${qualified.map((q) => `"ref:${q}"`).join(', ')}) but publishes ` +
+            `"ref:${target}" as a ${[...controlled.get(target)].join('/')} control, not a form. A rewrite drops the ` +
+            `reference code, which only a codeless (form) reference can afford to lose.`,
+        )
+      }
+    }
     if (declaredRefTypes.length) {
-      const controlled = await controlledRefTypes(activityHooks, declaredRefTypes)
       const uncontrolled = declaredRefTypes.filter((type) => !controlled.has(type)).sort()
       if (uncontrolled.length) {
         problems.push(

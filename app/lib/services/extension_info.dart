@@ -77,6 +77,141 @@ mixin ExtensionSearchable {
   }
 }
 
+/// The reference a manifest `hooks` entry claims, in either of the two forms
+/// the list allows.
+///
+/// `ref:<type>` is the plain claim: this extension publishes a control for
+/// every reference of that type. `ref:<type>/<code>` is the qualified one:
+/// this extension answers for ONE legacy reference under a type it does not
+/// publish — `ref:qp/ny` on the New York QSO Party, whose own control is
+/// `nyqp`. The second exists because a type that used to hold fifty events in
+/// one extension becomes fifty types, and every operation logged before the
+/// split still carries the old pair.
+///
+/// Null for anything that is not a `ref:` entry.
+({String type, String? code})? refClaimOf(String hook) {
+  if (!hook.startsWith('ref:')) return null;
+  final body = hook.substring(4);
+  if (body.isEmpty) return null;
+  final slash = body.indexOf('/');
+  if (slash < 0) return (type: body, code: null);
+  final type = body.substring(0, slash);
+  final code = body.substring(slash + 1);
+  if (type.isEmpty || code.isEmpty) return null;
+  return (type: type, code: code.toLowerCase());
+}
+
+/// Whether [hooks] claims the reference [type]/[code].
+///
+/// A plain claim answers for every reference of its type; a qualified one
+/// only for the code it names, case-folded because a reference code is
+/// hand-typed and `NY` and `ny` are the same county list either way.
+///
+/// Both count wherever an extension is offered for a reference nothing
+/// handles: a plain claim clears that row with a control, and a qualified one
+/// clears it by rewriting the reference ([refsMigratedBy]) as the extension
+/// comes on. An offer that could do neither is the one this must not make.
+bool hooksClaimRef(List<String> hooks, {required String type, String? code}) {
+  for (final hook in hooks) {
+    final claim = refClaimOf(hook);
+    if (claim == null || claim.type != type) continue;
+    if (claim.code == null) return true;
+    if (code != null && claim.code == code.toLowerCase()) return true;
+  }
+  return false;
+}
+
+/// What a legacy reference this extension claims is rewritten INTO — the one
+/// type it publishes a control for.
+///
+/// Exactly one, or null: the build refuses a manifest that qualifies a claim
+/// without a single plain `ref:` entry to name the target (extensions/
+/// hook-check.mjs), so null here means an extension built before that rule or
+/// one the app is reading from a catalog that never applied it. A rewrite
+/// with nowhere to go is not performed.
+String? refMigrationTargetOf(List<String> hooks) {
+  String? target;
+  for (final hook in hooks) {
+    final claim = refClaimOf(hook);
+    if (claim == null || claim.code != null) continue;
+    if (target != null) return null;
+    target = claim.type;
+  }
+  return target;
+}
+
+/// The extensions among [available] whose manifest claims any of [refs] —
+/// the manifest's own statement of which references it handles, which is what
+/// a ref no loaded control recognizes can be matched against. Exact, unlike
+/// the search's loose match: a ref type is an identifier, and `sotaActivation`
+/// names SOTA, not everything mentioning summits.
+///
+/// Both claim forms count (see [hooksClaimRef]): the plain `ref:<type>`, and
+/// the qualified `ref:qp/ny` by which a per-event QSO party answers for the
+/// pair every operation logged before the split still carries.
+List<ExtensionInfo> extensionsDeclaringRefs(
+  Iterable<ExtensionInfo> available,
+  Iterable<({String type, String? code})> refs,
+) =>
+    [
+      for (final info in available)
+        if (refs.any((ref) => hooksClaimRef(info.hooks, type: ref.type, code: ref.code))) info,
+    ];
+
+/// [refs] with every legacy reference an extension declaring [hooks] claims
+/// rewritten into the type that extension publishes, or null when it claims
+/// none of them.
+///
+/// This is what makes a qualified claim worth declaring. Installing the New
+/// York QSO Party for an operation carrying `{type: 'qp', ref: 'NY'}` would
+/// otherwise leave that row exactly as red as it was, since the extension
+/// publishes a control for `nyqp` and nothing answers `qp` any more.
+///
+/// The code goes and the type takes its meaning — `{type: 'nyqp'}` — while
+/// everything else on the reference is kept: a contest reference carries the
+/// operator's own setup (exchange, entry class, power), and a migration that
+/// dropped it would cost them what the row was for.
+List<Map<String, dynamic>>? refsMigratedBy(List<Map<String, dynamic>> refs, List<String> hooks) {
+  final target = refMigrationTargetOf(hooks);
+  if (target == null) return null;
+  // A reference of the target type is the SAME activity the legacy one names,
+  // already in the operation and already configured under the extension that
+  // is arriving. Rewriting into it would leave the operation carrying two,
+  // and every form path here reads the first (`_addFormActivity`), so the
+  // second would be uneditable while still scoring and exporting. So the
+  // legacy row is dropped instead of duplicated.
+  var haveTarget = refs.any((ref) => ref['type'] == target);
+  var changed = false;
+  final migrated = <Map<String, dynamic>>[];
+  for (final ref in refs) {
+    final type = ref['type'];
+    // Its own type is not a legacy one, whatever a plain claim says about it.
+    final code = ref['ref'] is String ? ref['ref'] as String : null;
+    if (type is String && type != target && hooksClaimRef(hooks, type: type, code: code)) {
+      changed = true;
+      if (haveTarget) continue;
+      migrated.add({...ref, 'type': target}..remove('ref'));
+      haveTarget = true;
+    } else {
+      migrated.add(ref);
+    }
+  }
+  return changed ? migrated : null;
+}
+
+/// [refsMigratedBy] for the extension [key] names among [available], or null
+/// when nothing there claims one of [refs] — which is also the answer for a
+/// key no longer present, since a runtime restart is what makes a
+/// freshly-installed one appear.
+List<Map<String, dynamic>>? refsMigratedByExtension(
+  Iterable<ExtensionInfo> available,
+  String key,
+  List<Map<String, dynamic>> refs,
+) {
+  final info = available.where((i) => i.key == key).firstOrNull;
+  return info == null ? null : refsMigratedBy(refs, info.hooks);
+}
+
 /// One entry of the build index (assets/extensions/index.json) — the static,
 /// user-facing metadata the extensions build emits so the app can describe every
 /// extension (including disabled ones whose bundles never load). Core

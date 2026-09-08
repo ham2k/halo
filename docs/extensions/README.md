@@ -176,17 +176,50 @@ doesn't match its bundle entry. `hooks` is declarative — the kernel still
 learns the actual hooks from `registerHook` — but its `ref:<type>` entries are
 read by the host: an operation carrying a reference of a type no loaded
 extension handles offers to enable the switched-off extension that declares
-it, so an activity that leaves them out is never offered that way. List only
-the types the extension publishes a control for — a `ref:` entry for a legacy
-type it merely decorates or scores would offer a switch that cannot clear the
-row.
+it, or to install one from the catalog, so an activity that leaves them out is
+never offered that way. List only the types the extension publishes a control
+for — a `ref:` entry for a legacy type it merely decorates or scores would
+offer a switch that cannot clear the row.
+
+A **qualified** entry, `ref:<type>/<code>`, claims one legacy reference under
+a type the extension does not publish. It exists for a type that used to hold
+many events in one extension and became one extension per event: the New York
+QSO Party publishes `ref:nyqp`, and every operation logged before the split
+carries `{type: 'qp', ref: 'NY'}`, which nothing answers any more. Declaring
+`ref:qp/ny` beside `ref:nyqp` says that reference is this extension's, and the
+host **rewrites** it — `{type: 'nyqp'}`, keeping everything else the reference
+carries, since a contest reference holds the operator's own exchange and entry
+class — as the extension comes on. The rewrite is what makes the offer honest:
+without it the row is answered under a new name and stays as red as it was.
+
+Rules follow, and the build enforces all of them. The manifest must declare
+**exactly one** plain `ref:<type>` — that is what a legacy reference is
+rewritten into, and a rewrite cannot choose between two or proceed with none.
+That single type must be published by a **`form`** control, because the
+rewrite drops the reference code and only a codeless reference can afford to
+lose it: against a `refList` target the migration would delete
+`{type: 'pota', ref: 'US-0001'}`'s identity out of the operator's log. The
+manifest must not declare the legacy type plainly as well — an extension
+publishing a control for `qp` already handles every reference of it, so the
+qualified entry would say nothing. And the entry must be shaped
+`<type>/<code>` with one slash and both halves present; anything else matches
+no reference at all and would ship as a claim that does nothing. The code is
+matched case-insensitively, because a reference code is hand-typed.
+
+If the operation already carries a reference of the target type, the legacy
+one is **dropped** rather than rewritten: they are the same activity, and two
+would score and export twice while only the first is reachable from the setup
+form.
 
 The build checks all of this rather than trusting it (`extensions/hook-check.mjs`):
 it activates each built bundle against a stand-in kernel and compares what
 `registerHook` was actually called with. A plain category must match both ways;
 a declared `ref:<type>` must publish a control, while registering one you do
 NOT declare is how a decorate-only handler is written (WWBOTA answers for the
-legacy `ukbota` types without offering itself for them).
+legacy `ukbota` types without offering itself for them); and a qualified
+`ref:<type>/<code>` must be well-formed, must have exactly one plain entry to
+be rewritten into, that entry must be a form control, and it must not
+duplicate a plain claim.
 
 Rules of the road:
 

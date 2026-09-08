@@ -304,6 +304,11 @@ One category **per ref type** (e.g. `ref:pota`, `ref:potaActivation`),
 following app-polo's QSON conventions. Handles validation and enrichment of
 activity references on QSOs and operations.
 
+`registerHook` takes the type alone. The **qualified** `ref:<type>/<code>` form
+is a manifest claim, not a category — it tells the host which legacy reference
+an extension answers for so it can rewrite one (docs/extensions/README.md), and
+registering a hook under it would register a category nothing ever invokes.
+
 ```ts
 interface RefHandlerHook {
   validateRef?(args: { ref: Ref }, ctx): Promise<{valid: boolean; normalized?: string}>

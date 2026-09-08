@@ -134,18 +134,23 @@ Future<void> _pump(WidgetTester tester, HaLoServices services, Operation operati
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  group('extensionsDeclaringRefTypes', () {
+  group('extensionsDeclaringRefs', () {
     test('matches on the ref hook alone, never on names or keywords', () {
       expect(
-        extensionsDeclaringRefTypes([_lookalikeInfo, _sotaInfo], {'sotaActivation'}),
+        extensionsDeclaringRefs([_lookalikeInfo, _sotaInfo], [(type: 'sotaActivation', code: null)]),
         [_sotaInfo],
       );
     });
 
-    test('an empty type set and a hook-less extension match nothing', () {
-      expect(extensionsDeclaringRefTypes([_sotaInfo], const {}), isEmpty);
-      expect(extensionsDeclaringRefTypes([const ExtensionInfo(key: 'x', file: 'x.js', core: false, name: 'X')], {'x'}),
-          isEmpty);
+    test('an empty ref set and a hook-less extension match nothing', () {
+      expect(extensionsDeclaringRefs([_sotaInfo], const []), isEmpty);
+      expect(
+        extensionsDeclaringRefs(
+          [const ExtensionInfo(key: 'x', file: 'x.js', core: false, name: 'X')],
+          [(type: 'x', code: null)],
+        ),
+        isEmpty,
+      );
     });
   });
 

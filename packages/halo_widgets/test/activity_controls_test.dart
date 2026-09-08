@@ -54,4 +54,34 @@ void main() {
       expect(controlForRefType(withTypeless, 'pota')?['icon'], 'pine-tree');
     });
   });
+
+  group('unhandledRefsIn', () {
+    const potaControl = {
+      'key': 'pota/activation',
+      'input': {'kind': 'refList', 'refType': 'pota'},
+    };
+
+    test('reports only what no control handles', () {
+      expect(
+        unhandledRefsIn(const [
+          {'type': 'pota', 'ref': 'US-0001'},
+          {'type': 'qp', 'ref': 'NY'},
+        ], const [potaControl]),
+        [(type: 'qp', code: 'NY')],
+      );
+    });
+
+    test('a ref field that is not a string reads as no code, and does not throw', () {
+      // Operation refs are JSON written by extensions and by app-polo. Callers
+      // are deciding what to OFFER; taking the screen down over one odd row
+      // is never the better answer.
+      expect(
+        unhandledRefsIn(const [
+          {'type': 'qp', 'ref': 42},
+          {'type': 42, 'ref': 'NY'},
+        ], const []),
+        [(type: 'qp', code: null)],
+      );
+    });
+  });
 }

@@ -69,6 +69,12 @@ class CatalogEntry with ExtensionSearchable {
   @override
   final List<String> keywords;
 
+  /// The manifest's `hooks`, as the catalog serves them (SPEC.md §8.1) — the
+  /// same list `ExtensionInfo` carries, and read for the same reason: a
+  /// `ref:` entry is how a reference nothing installed handles finds the
+  /// extension that does, without any of its code having run.
+  final List<String> hooks;
+
   /// Where the extension is relevant; null is worldwide.
   final ExtensionGeo? geo;
   @override
@@ -89,6 +95,7 @@ class CatalogEntry with ExtensionSearchable {
     this.category,
     this.icon,
     this.keywords = const [],
+    this.hooks = const [],
     this.geo,
     this.translations = const {},
   });
@@ -120,6 +127,7 @@ class CatalogEntry with ExtensionSearchable {
       category: json['category'] is String ? json['category'] as String : null,
       icon: json['icon'] is String ? json['icon'] as String : null,
       keywords: json['keywords'] is List ? (json['keywords'] as List).whereType<String>().toList() : const [],
+      hooks: json['hooks'] is List ? (json['hooks'] as List).whereType<String>().toList() : const [],
       geo: json['geo'] is Map ? ExtensionGeo.fromJson((json['geo'] as Map).cast<String, dynamic>()) : null,
       translations: {
         if (json['translations'] is Map)
@@ -151,6 +159,30 @@ class CatalogEntry with ExtensionSearchable {
       return null;
     }
   }
+}
+
+/// The three tiers of the catalog's own ordering rule: what the operator's
+/// callsign is in the audience of, what is for everyone, and the rest —
+/// alphabetical within each. With no callsign known yet there is no first
+/// tier: worldwide leads, and every gated entry follows.
+///
+/// One copy, because two places rank catalog entries for the same operator —
+/// the Extensions panel's Catalog section and the operation sheet's activity
+/// search — and a Texan offered the Texas party first in one place and third
+/// in the other would be reading two different catalogs.
+List<CatalogEntry> orderedCatalogEntries(List<CatalogEntry> entries, OperatorGeo? operator, String locale) {
+  int tier(CatalogEntry entry) {
+    final geo = entry.geo;
+    if (geo == null || geo.isWorldwide) return 1;
+    return operator != null && geo.matchesOperator(operator) ? 0 : 2;
+  }
+
+  final tiers = {for (final entry in entries) entry.key: tier(entry)};
+  return [...entries]..sort((a, b) {
+      final byTier = tiers[a.key]!.compareTo(tiers[b.key]!);
+      if (byTier != 0) return byTier;
+      return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
+    });
 }
 
 /// One version of `GET /api/v1/extensions/:key` — the hash a deep link's

@@ -412,7 +412,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         // it hides the section the way an emptied category loses its header.
         final catalogRows = <CatalogEntry>[];
         if (_catalogShown && _catalog != null) {
-          catalogRows.addAll(_orderedCatalog(_catalog!, widget.services.flags.operatorGeo, locale));
+          catalogRows.addAll(orderedCatalogEntries(_catalog!, widget.services.flags.operatorGeo, locale));
           if (query.isNotEmpty) catalogRows.retainWhere((entry) => entry.matchesSearch(query, locale: locale));
         }
         if (_catalogShown && (query.isEmpty || catalogRows.isNotEmpty)) {
@@ -559,25 +559,6 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
         return ExtensionDropTarget(onFile: _installDropped, child: body);
       },
     );
-  }
-
-  /// The three tiers of the catalog's own ordering rule: what the operator's
-  /// callsign is in the audience of, what is for everyone, and the rest —
-  /// alphabetical within each. With no callsign known yet there is no first
-  /// tier: worldwide leads, and every gated entry follows.
-  static List<CatalogEntry> _orderedCatalog(List<CatalogEntry> entries, OperatorGeo? operator, String locale) {
-    int tier(CatalogEntry entry) {
-      final geo = entry.geo;
-      if (geo == null || geo.isWorldwide) return 1;
-      return operator != null && geo.matchesOperator(operator) ? 0 : 2;
-    }
-
-    final tiers = {for (final entry in entries) entry.key: tier(entry)};
-    return [...entries]..sort((a, b) {
-        final byTier = tiers[a.key]!.compareTo(tiers[b.key]!);
-        if (byTier != 0) return byTier;
-        return a.nameFor(locale).toLowerCase().compareTo(b.nameFor(locale).toLowerCase());
-      });
   }
 
   /// A dropped file takes exactly the path a picked one does.

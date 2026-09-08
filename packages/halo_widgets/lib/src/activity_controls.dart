@@ -45,6 +45,23 @@ Color? colorForRefType(List<Map<String, dynamic>> controls, String? refType) =>
 bool isUnknownRefType(List<Map<String, dynamic>> controls, String? refType) =>
     controlForRefType(controls, refType) == null;
 
+/// The references among [refs] that no control in [controls] handles, as the
+/// type and code pair an extension's manifest claim is matched against.
+///
+/// Both are read defensively: operation refs are JSON written by extensions
+/// and by app-polo, so a `ref` that is a number is not this reader's to throw
+/// over — every caller here is deciding what to OFFER, and offering nothing
+/// beats taking the screen down with it.
+List<({String type, String? code})> unhandledRefsIn(
+  List<Map<String, dynamic>> refs,
+  List<Map<String, dynamic>> controls,
+) =>
+    [
+      for (final ref in refs)
+        if (ref['type'] is String && isUnknownRefType(controls, ref['type'] as String))
+          (type: ref['type'] as String, code: ref['ref'] is String ? ref['ref'] as String : null),
+    ];
+
 /// The icon for a ref/suggestion of [refType]: the matching control's own
 /// icon, tinted with its declared accent color if any — or, when it matches
 /// no active control, a pale-red circle with a question-mark, so a ref from

@@ -733,6 +733,15 @@ class Translations$activitiesView$en {
 	/// en: 'This extension handles one of this operation's references, but it is not currently enabled'
 	String get enableExtensionForRefHint => 'This extension handles one of this operation\'s references, but it is not currently enabled';
 
+	/// en: 'Install ${name}'
+	String installExtension({required Object name}) => 'Install ${name}';
+
+	/// en: 'This extension matches your search, but it is not installed'
+	String get installExtensionHint => 'This extension matches your search, but it is not installed';
+
+	/// en: 'No matches Some extensions in the catalog might have results. Install them in Activity Types below.'
+	String get onlyCatalogMatches => 'No matches\nSome extensions in the catalog might have results.\nInstall them in Activity Types below.';
+
 	/// en: 'Could not load this activity's setup — try again from Manage'
 	String get setupUnavailable => 'Could not load this activity\'s setup — try again from Manage';
 
@@ -6782,6 +6791,9 @@ extension on Translations {
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
 			'activitiesView.enableExtensionHint' => 'This extension matches your search, but it is not currently enabled',
 			'activitiesView.enableExtensionForRefHint' => 'This extension handles one of this operation\'s references, but it is not currently enabled',
+			'activitiesView.installExtension' => ({required Object name}) => 'Install ${name}',
+			'activitiesView.installExtensionHint' => 'This extension matches your search, but it is not installed',
+			'activitiesView.onlyCatalogMatches' => 'No matches\nSome extensions in the catalog might have results.\nInstall them in Activity Types below.',
 			'activitiesView.setupUnavailable' => 'Could not load this activity\'s setup — try again from Manage',
 			'activitiesView.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'activitiesView.controlsUnavailableReason' => 'Your references are safe, but editing them is unavailable right now.',
@@ -7260,11 +7272,11 @@ extension on Translations {
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.loginIncompleteResponse' => 'That login attempt didn\'t complete correctly. Please try connecting again.',
 			'settings.accounts.noKeyringTitle' => 'Account logins can’t be saved',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
@@ -7774,11 +7786,11 @@ extension on Translations {
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Settings reset',
 			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
+			_ => null,
+		} ?? switch (path) {
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
-			_ => null,
-		} ?? switch (path) {
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
 			'deepLink.needsAnOperation' => 'Start an operation first, then send that contact again',

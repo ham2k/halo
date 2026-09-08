@@ -30,11 +30,13 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../../services/halo_services.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
+import '../../services/catalog_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/location_service.dart';
 import '../../services/extension_service.dart';
 import '../../services/link_opener.dart';
 import '../../services/settings_service.dart';
+import 'activities_catalog_tier.dart';
 import 'operation_location_screen.dart';
 import '../accordion_section.dart';
 import '../operation_dialogs.dart';
@@ -408,17 +410,6 @@ class ActivitySearchQuery {
   return (search: trimmed, key: firstWord.replaceFirst(RegExp(r':$'), '').toLowerCase());
 }
 
-/// The extensions among [available] declaring a `ref:<type>` hook for any of
-/// [refTypes] — the manifest's own statement of which reference types it
-/// handles, which is what a ref no loaded control recognizes can be matched
-/// against. Exact, unlike the search's loose match: a ref type is an
-/// identifier, and `sotaActivation` names SOTA, not everything mentioning
-/// summits.
-List<ExtensionInfo> extensionsDeclaringRefTypes(Iterable<ExtensionInfo> available, Set<String> refTypes) => [
-      for (final info in available)
-        if (info.hooks.any((hook) => hook.startsWith('ref:') && refTypes.contains(hook.substring(4)))) info,
-    ];
-
 /// What's in [typed] past a leading [key], or empty when it doesn't lead with
 /// that key at all — an extension matched by its name or a keyword leaves
 /// nothing worth carrying into its scope.
@@ -514,6 +505,12 @@ class OperationSheetState extends State<OperationSheet> {
   /// extra row. Empty unless the box has text in it.
   List<ExtensionInfo> _disabledMatches = const [];
 
+  /// The catalog tier's own state — the listing, the one fetch that gets it,
+  /// and what it matches. The search's third tier, below enabled and
+  /// installed-but-off: it closes the case of an activity the operator
+  /// searched for looking like it does not exist.
+  final CatalogTier _catalogTier = CatalogTier();
+
   /// Switched-off extensions that declare a ref type the operation carries
   /// but no loaded control handles — the switch behind a red "unknown" row
   /// in Current Activities, offered as the same "enable this?" rows. An
@@ -539,7 +536,17 @@ class OperationSheetState extends State<OperationSheet> {
   /// search's enable rows (see `_search`): a collapsed section shows nothing,
   /// leaving a red row above with its remedy hidden. Not persisted.
   void _refreshUnhandledRefMatches() {
-    final unhandled = _extensionsForUnhandledRefs();
+    final unhandledRefs = _unhandledRefs();
+    // Nothing installed answers these; the catalog may. Asked only when there
+    // is a reference to ask about, so an operation whose activities all load
+    // reaches the catalog no more than an empty search box does.
+    if (unhandledRefs.isNotEmpty) _ensureCatalogFetched();
+    _catalogTier.refMatches = _catalogTier.matchingRefs(
+      widget.services,
+      unhandledRefs,
+      alreadyOffered: {for (final entry in _catalogTier.matches) entry.key},
+    );
+    final unhandled = _extensionsForUnhandledRefs(unhandledRefs);
     // Recorded BEFORE the search's matches are subtracted: an extension the
     // box happens to name right now is still one the operator has seen
     // offered, and forgetting it would reopen the section as soon as the box
@@ -554,19 +561,18 @@ class OperationSheetState extends State<OperationSheet> {
     ];
   }
 
-  /// Every switched-off extension declaring a ref type the operation carries
-  /// with no loaded control. Empty while the descriptors are unreliable — an
-  /// absent control then means "not loaded yet", not "no extension has it".
-  List<ExtensionInfo> _extensionsForUnhandledRefs() {
-    if (_controlsUnreliable) return const [];
-    final types = {
-      for (final ref in _operation.refs)
-        if (ref['type'] is String && isUnknownRefType(_controls, ref['type'] as String)) ref['type'] as String,
-    };
-    if (types.isEmpty) return const [];
+  /// The operation's references no loaded control handles. Empty while the
+  /// descriptors are unreliable — an absent control then means "not loaded
+  /// yet", not "no extension has it".
+  List<({String type, String? code})> _unhandledRefs() =>
+      _controlsUnreliable ? const [] : unhandledRefsIn(_operation.refs, _controls);
+
+  /// Every switched-off extension claiming one of [unhandled].
+  List<ExtensionInfo> _extensionsForUnhandledRefs(List<({String type, String? code})> unhandled) {
+    if (unhandled.isEmpty) return const [];
     final extensions = widget.services.extensions;
     return [
-      for (final info in extensionsDeclaringRefTypes(extensions.availableExtensions, types))
+      for (final info in extensionsDeclaringRefs(extensions.availableExtensions, unhandled))
         if (!info.core && extensions.isExtensionAvailable(info) && !extensions.isExtensionEnabled(info)) info,
     ];
   }
@@ -1126,7 +1132,7 @@ class OperationSheetState extends State<OperationSheet> {
         // stock POTA is off and a user-published one serves parks — and
         // typing its key is how stock POTA gets switched back on from here.
         _disabledMatches = _disabledExtensionsMatching(term, keyOnly: query.activityKeys != null);
-        _refreshUnhandledRefMatches();
+        _refreshCatalogMatches();
         // The enable row lives in the Activity Types section, which the
         // operator may have collapsed — so a search that finds only a
         // switched-off extension would otherwise answer with nothing at all.
@@ -1144,6 +1150,11 @@ class OperationSheetState extends State<OperationSheet> {
         if (_disabledMatches.isNotEmpty) _allOptionsExpanded = true;
         _loadingSuggestions = false;
       });
+      // A box that would match nothing asks the catalog nothing — the same
+      // emptiness test the matching uses — and neither does a recognized
+      // scope, whose word exists only for a LOADED control, so the extension
+      // serving it is installed and excluded from this tier.
+      if (query.activityKeys == null && extensionSearchCandidates(term).search.isNotEmpty) _ensureCatalogFetched();
       // After the assignment, not before: it reads `_suggestions`.
       unawaited(_loadSuggestionLinks());
     }
@@ -1261,14 +1272,39 @@ class OperationSheetState extends State<OperationSheet> {
     ];
   }
 
+  /// Both catalog tiers re-matched against the box as it is NOW: a listing
+  /// can land while the operator is still typing, and matching the term they
+  /// have moved on from offers rows for a search no longer on screen.
+  void _refreshCatalogMatches() {
+    final term = _searchController.text;
+    final query = ActivitySearchQuery.parse(term, _activityScopes);
+    _catalogTier.matches =
+        _catalogTier.matching(widget.services, extensionSearchCandidates(term), keyOnly: query.activityKeys != null);
+    _refreshUnhandledRefMatches();
+    if (_catalogTier.matches.isNotEmpty || _catalogTier.refMatches.isNotEmpty) _allOptionsExpanded = true;
+  }
+
+  void _ensureCatalogFetched() {
+    if (!CatalogTier.shownFor(widget.services)) return;
+    _catalogTier.ensureFetched(widget.services, () {
+      if (mounted) setState(_refreshCatalogMatches);
+    });
+  }
+
+  /// Installs a catalog extension from the search results, and lands where
+  /// the enable row lands. The consent screen, the refusals and the failure
+  /// report are all [installCatalogExtension]'s; false covers every one.
+  Future<void> _installCatalogExtension(CatalogEntry entry) => _gainExtension(
+        entry.key,
+        scopeSearch: true,
+        gain: () => installCatalogExtension(context, services: widget.services, entry: entry),
+      );
+
   /// Turns an extension on from the search results, then scopes the search to
   /// the ref type it lists. Text that merely NAMED the extension is dropped —
   /// its own suggestions are what the operator wants next — but a reference
   /// typed after its key (`sota w7a/mn-001`) is carried across into the
   /// scope, since that half of the box was never about naming the extension.
-  /// Enabling restarts the extension runtime, so the controls are reloaded
-  /// too: the new type has to appear under "Activity Types" as well, and its
-  /// scope word only exists once its control is among the loaded ones.
   ///
   /// [scopeSearch] is false for an extension enabled on behalf of a ref the
   /// operation already carries: nothing was typed, and the operator wants
@@ -1276,46 +1312,76 @@ class OperationSheetState extends State<OperationSheet> {
   /// search is re-run as-is, which also settles the results spinner. The
   /// same happens for an extension whose controls declare no ref type: there
   /// is no word to type.
-  Future<void> _enableExtension(ExtensionInfo info, {bool scopeSearch = true}) async {
-    // Enabling restarts the runtime, which takes a moment — a second tap
-    // would queue a second restart on top of the first.
+  Future<void> _enableExtension(ExtensionInfo info, {bool scopeSearch = true}) => _gainExtension(
+        info.key,
+        scopeSearch: scopeSearch,
+        gain: () async {
+          try {
+            await widget.services.extensions.setExtensionEnabled(info.key, true);
+            return true;
+          } catch (e, st) {
+            // A failed restart must not strand the section on its spinner.
+            debugPrint('[activities] enabling ${info.key} failed: $e');
+            ErrorReportingService.report(e, st, context: 'activities:enable-extension');
+            return false;
+          }
+        },
+      );
+
+  /// Gaining an extension, however it is gained: [gain] acquires it and
+  /// answers whether it worked, then the search lands on it. The guard is
+  /// held across the reload and re-search too — both ways end in a runtime
+  /// restart, and releasing it earlier frees the second tap to queue one on
+  /// top of the first.
+  Future<void> _gainExtension(String key, {required bool scopeSearch, required Future<bool> Function() gain}) async {
     if (_enablingExtension) return;
     _enablingExtension = true;
     setState(() => _loadingSuggestions = true);
-    // Held across the reload and re-search too, not just the restart: those are
-    // awaited as well, and a guard released before them leaves the second tap
-    // this exists to stop free to queue a second restart on top of the first.
     try {
-      try {
-        await widget.services.extensions.setExtensionEnabled(info.key, true);
-      } catch (e, st) {
-        // A failed restart must not strand the section on its spinner.
-        debugPrint('[activities] enabling ${info.key} failed: $e');
-        ErrorReportingService.report(e, st, context: 'activities:enable-extension');
-        if (mounted) setState(() => _loadingSuggestions = false);
+      final gained = await gain();
+      if (!mounted) return;
+      if (!gained) {
+        setState(() => _loadingSuggestions = false);
         return;
       }
-      if (!mounted) return;
-      await _loadControls();
-      if (!mounted) return;
-      final scopeWord = scopeSearch ? _scopeWordServedBy(info.key) : null;
-      if (scopeWord == null) {
-        _debounce?.cancel();
-        await _search(_searchController.text);
-        return;
-      }
-      final scoped =
-          ActivitySearchQuery.scopePrefixFor(scopeWord) + searchTextAfterKey(_searchController.text, info.key);
-      _searchController.value = TextEditingValue(
-        text: scoped,
-        selection: TextSelection.collapsed(offset: scoped.length),
-      );
-      _debounce?.cancel();
-      await _search(scoped);
+      await _continueAfterExtensionAvailable(key, scopeSearch: scopeSearch);
     } finally {
       _enablingExtension = false;
     }
   }
+
+  /// Where both ways of gaining an extension end — the enable row above and a
+  /// catalog install. The descriptors are reloaded (the new type has to appear
+  /// under "Activity Types", and its scope word only exists once its control
+  /// is among the loaded ones) and the search is scoped to it, so what comes
+  /// back is the extension's own suggestions.
+  ///
+  /// Called with the guard held, and awaited by the caller for that reason.
+  Future<void> _continueAfterExtensionAvailable(String key, {required bool scopeSearch}) async {
+    // Legacy references this extension claims become the type it publishes —
+    // the step that makes an extension gained for an unhandled reference
+    // actually clear that row instead of answering it under another name.
+    // Before the controls reload, so the descriptors arrive for it as it now is.
+    final migrated = refsMigratedByExtension(widget.services.extensions.availableExtensions, key, _operation.refs);
+    if (migrated != null) _saveRefs(migrated);
+    await _loadControls();
+    if (!mounted) return;
+    final scopeWord = scopeSearch ? _scopeWordServedBy(key) : null;
+    if (scopeWord == null) {
+      _debounce?.cancel();
+      await _search(_searchController.text);
+      return;
+    }
+    final scoped = ActivitySearchQuery.scopePrefixFor(scopeWord) + searchTextAfterKey(_searchController.text, key);
+    _putInSearchBox(scoped);
+    _debounce?.cancel();
+    await _search(scoped);
+  }
+
+  /// Replaces the search box, caret at the end — every caller has just
+  /// written a scope prefix for a reference to be typed after.
+  void _putInSearchBox(String text) =>
+      _searchController.value = TextEditingValue(text: text, selection: TextSelection.collapsed(offset: text.length));
 
   /// The scope word any of [hookKey]'s loaded controls answers to, or null
   /// when none declares a ref type. A word shared with another extension
@@ -1364,10 +1430,7 @@ class OperationSheetState extends State<OperationSheet> {
       return;
     }
     final prefix = ActivitySearchQuery.scopePrefixFor(scopeWord);
-    _searchController.value = TextEditingValue(
-      text: prefix,
-      selection: TextSelection.collapsed(offset: prefix.length),
-    );
+    _putInSearchBox(prefix);
     setState(() {
       // The results live in the scroll area above, so close this section and
       // put the caret in the field ready for the reference or name.
@@ -1415,7 +1478,7 @@ class OperationSheetState extends State<OperationSheet> {
   double _optionsPeekHeightFor(BuildContext context, double available) {
     final scale = MediaQuery.textScalerOf(context);
     final floor = scale.scale(_optionsPeekHeight);
-    final enableRows = _disabledMatches.length + _unhandledRefMatches.length;
+    final enableRows = _disabledMatches.length + _unhandledRefMatches.length + _catalogTier.matches.length + _catalogTier.refMatches.length;
     if (enableRows == 0) return floor;
 
     final wanted = scale.scale(enableRows * _twoLineRowHeight + _optionRowHeight);
@@ -1625,8 +1688,11 @@ class OperationSheetState extends State<OperationSheet> {
     // Ahead of the failure state below, because that row comes from extension
     // metadata rather than from the hooks — it is a real answer even when
     // every hook is broken.
-    if (_disabledMatches.isNotEmpty) {
-      return _emptyStatePadding(child: _emptyStateFromMessage(theme, t.onlyDisabledMatches));
+    if (_disabledMatches.isNotEmpty || _catalogTier.matches.isNotEmpty) {
+      // Two sentences, because the remedies differ: a switch for what is
+      // installed, a download and a consent screen for what is not.
+      final only = _disabledMatches.isNotEmpty ? t.onlyDisabledMatches : t.onlyCatalogMatches;
+      return _emptyStatePadding(child: _emptyStateFromMessage(theme, only));
     }
     // Nobody could answer, which is not the same as nobody having anything —
     // and telling the operator "no suggestions" for it sends them looking for
@@ -2859,6 +2925,12 @@ class OperationSheetState extends State<OperationSheet> {
                   // "unknown" row in Current Activities.
                   for (final info in _unhandledRefMatches)
                     _enableExtensionRow(theme, info, hint: t.enableExtensionForRefHint, scopeSearch: false),
+                  // Last of the three tiers, and last for a reason: what the
+                  // app already has is always the cheaper answer, so an
+                  // install is offered only under the rows that need no
+                  // download at all.
+                  for (final entry in [..._catalogTier.matches, ..._catalogTier.refMatches])
+                    InstallExtensionRow(entry: entry, onTap: () => unawaited(_installCatalogExtension(entry))),
                   for (final control in _controls)
                     if ((control['input'] as Map?)?['kind'] == 'refList' ||
                         (control['input'] as Map?)?['kind'] == 'form')
