@@ -83,4 +83,5 @@ cd app && flutter run -d windows
 
 ## License
 
-MPL-2.0, following the rest of the Ham2K projects.
+[MPL-2.0](LICENSE), following the rest of the Ham2K projects. Every source
+file carries the SPDX header.

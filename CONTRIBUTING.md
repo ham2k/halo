@@ -85,6 +85,6 @@ carried it.
 
 ## License
 
-The project is MPL-2.0, like the rest of the Ham2K projects, and every
-source file carries the header; a contribution is accepted under the same
-license, and opening a pull request says you agree to that.
+The project is [MPL-2.0](LICENSE), like the rest of the Ham2K projects, and
+every source file carries the SPDX header. A contribution is accepted under
+the same license, and opening a pull request says you agree to that.
