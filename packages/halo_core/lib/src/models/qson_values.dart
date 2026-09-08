@@ -62,6 +62,35 @@ Map<String, dynamic>? asQsonMap(Object? value) {
 /// A list, or null.
 List<Object?>? asQsonList(Object? value) => value is List ? value : null;
 
+/// A record's boolean flag, in every dialect one reaches us in: `true`, the
+/// integer `1`, and the strings `'true'` and `'1'`. Anything else — absent,
+/// null, `0`, `'false'`, a value we cannot read — is false.
+///
+/// A flag is NOT a field a strict `== true` can read, because this app is the
+/// only writer that spells one as a JSON boolean. PoLo copies its SQLite
+/// column straight into the record it pushes, so its `deleted` is the integer
+/// `1`; LoFi's own delete endpoint writes the same integer into the stored
+/// blob, and LoFi hands a record back with whatever dialect wrote it. A
+/// strict check reads all of those as "not deleted" and resurrects a
+/// tombstoned operation — silently, and for good, since the record that would
+/// correct it compares equal on every later round (`inboundIsStale`).
+///
+/// Narrower than LoFi's own `ActiveModel::Type::Boolean`, and deliberately
+/// so. Rails enumerates the FALSE values and casts everything else true, so
+/// `'t'`, `'on'`, `'yes'` and `2` are all deleted there and live here. That
+/// asymmetry is the safe one for a flag whose meaning is destructive: a
+/// spelling this app does not recognise leaves an operator's log where they
+/// can still see it, while the reverse hides a log on a value nobody meant as
+/// a delete. No writer produces those spellings today; a writer that starts
+/// to belongs on this list, named, rather than swept in by a rule that treats
+/// every unknown value as a tombstone.
+///
+/// Enumerated rather than probed for truthiness for a second reason: `0` is
+/// truthy in Ruby, and probing is exactly how the server once marked live
+/// QSOs deleted.
+bool asQsonBool(Object? value) =>
+    value == true || value == 1 || value == 'true' || value == '1';
+
 /// A QSON field whose value was dropped as unusable, as reported to the crash
 /// backend — the shape [onQsonTypeViolation]'s wiring hands to
 /// `ErrorReportingService`. Mirrors

@@ -12,8 +12,9 @@ import 'package:test/test.dart';
 class _FakeSyncSettings extends SyncSettings {
   @override
   bool enabled = true;
-  @override
-  Map<String, dynamic> state;
+  /// Every write goes through [state]'s setter, which is what keeps the
+  /// rewind default below from being defeated by a wholesale reassignment.
+  Map<String, dynamic> _state;
   @override
   String operatorCall = 'KI2D';
 
@@ -22,11 +23,36 @@ class _FakeSyncSettings extends SyncSettings {
   /// await wide.
   void Function(Map<String, dynamic> state)? onStateSet;
 
-  _FakeSyncSettings({Map<String, dynamic>? state}) : state = state ?? const {};
+  /// Defaulted, not left absent: every test but the rewind's own describes a
+  /// device that already took the one-time forward-cursor rewind, and without
+  /// this its first round spends a state write, a log line and both forward
+  /// cursors on a repair the test is not about. A test that wants the rewind
+  /// assigns [state] itself, without the key.
+  _FakeSyncSettings({Map<String, dynamic>? state}) : _state = _pastRewind(state ?? const {});
+
+  /// Every test but the rewind's own describes a device that already took the
+  /// one-time forward-cursor rewind — otherwise its first round spends a
+  /// state write, a log line and BOTH forward cursors on a repair the test is
+  /// not about, and a test that presets a forward watermark silently gets it
+  /// zeroed and passes for the wrong reason.
+  ///
+  /// Applied on assignment as well as construction, because most tests here
+  /// replace [state] wholesale rather than build a new fake. A test that
+  /// wants the rewind says so, by spelling the key `false`.
+  static Map<String, dynamic> _pastRewind(Map<String, dynamic> state) =>
+      state.containsKey(SyncEngine.tombstoneRewindKey) ? state : {SyncEngine.tombstoneRewindKey: true, ...state};
+
+  @override
+  Map<String, dynamic> get state => _state;
+
+  set state(Map<String, dynamic> value) => _state = _pastRewind(value);
 
   @override
   Future<void> setState(Map<String, dynamic> newState) async {
-    state = newState;
+    // Straight to the field: this is the ENGINE writing, and a write of its
+    // own must land verbatim — routing it through the setter would hand the
+    // rewind back its own untaken flag.
+    _state = newState;
     onStateSet?.call(newState);
   }
 }
@@ -2040,6 +2066,84 @@ void main() {
       await engine.runOneRound();
 
       expect(await qsos.get(orphan.uuid), isNull, reason: 'an inbound purge tombstone re-arms the sweep');
+    });
+  });
+
+  // A device that dropped a tombstone it could not read has no local trace of
+  // the mistake and never asks for the correcting record again — the forward
+  // cursor moved past it rounds ago. The one-time rewind is the only thing
+  // that puts those records back on the wire, and forward mode asks for other
+  // clients' writes only, which is exactly where a foreign-dialect delete
+  // came from.
+  group('the one-time forward-cursor rewind', () {
+    late List<Map<String, dynamic>> syncArgs;
+
+    setUp(() {
+      syncArgs = [];
+      settings.state = {
+        'lastSyncAccountUUID': 'acct-1',
+        'completedFullSync': true,
+        'latestOperationSyncedAtMillis': 5000,
+        'latestQSOSyncedAtMillis': 6000,
+        'forwardOperationCursor': 'fwd:op:9',
+        'forwardQSOCursor': 'fwd:qso:9',
+        // The one group that wants the rewind, so it says so — everywhere
+        // else the fake defaults it away.
+        SyncEngine.tombstoneRewindKey: false,
+      };
+      transport.responder = (method, args) {
+        if (method == 'sync') syncArgs.add(args);
+        return {
+          'account': {'uuid': 'acct-1'},
+          'meta': {
+            'operations': {'records_left': 0},
+            'qsos': {'records_left': 0},
+          },
+        };
+      };
+    });
+
+    Map<String, dynamic> forwardWindow(Map<String, dynamic> args, String side) =>
+        ((args['meta'] as Map)['sync'] as Map)[side] as Map<String, dynamic>;
+
+    test('the first round asks for the account history again, from the beginning', () async {
+      await engine.runOneRound();
+
+      // Both halves matter: a banked watermark left behind asks `> 5000` and
+      // a cursor left behind resumes mid-history, and either one alone skips
+      // every record the repair exists to re-deliver.
+      expect(forwardWindow(syncArgs.single, 'operations')['syncedSinceMillis'], 0);
+      expect(forwardWindow(syncArgs.single, 'qsos')['syncedSinceMillis'], 0);
+      expect(forwardWindow(syncArgs.single, 'operations').containsKey('cursor'), isFalse);
+      expect(forwardWindow(syncArgs.single, 'qsos').containsKey('cursor'), isFalse);
+      // Forward mode, not backfill: the account's history is already here, so
+      // restarting the backward walk would re-pull it for nothing.
+      expect(forwardWindow(syncArgs.single, 'operations')['anyClient'], isFalse);
+    });
+
+    test('it never spends a second round on itself', () async {
+      await engine.runOneRound();
+      settings.state = {...settings.state, 'latestQSOSyncedAtMillis': 7000};
+
+      await engine.runOneRound();
+
+      // Rewinding again would pin the device to the start of its history
+      // forever, one wasted pass per round, and it would never catch up.
+      expect(forwardWindow(syncArgs.last, 'qsos')['syncedSinceMillis'], 7000);
+      expect(settings.state[SyncEngine.tombstoneRewindKey], isTrue);
+    });
+
+    test('a device still backfilling records the rewind without changing its walk', () async {
+      // Backfill already pages the whole account history with `anyClient`, so
+      // it delivers the correcting records on its own. What must not happen
+      // is the flag going unwritten and the rewind firing later, mid-forward,
+      // once the backfill has finished.
+      settings.state = {'lastSyncAccountUUID': 'acct-1', SyncEngine.tombstoneRewindKey: false};
+
+      await engine.runOneRound();
+
+      expect(settings.state[SyncEngine.tombstoneRewindKey], isTrue);
+      expect(forwardWindow(syncArgs.single, 'operations')['anyClient'], isTrue);
     });
   });
 }

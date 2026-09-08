@@ -97,6 +97,43 @@ bool inboundIsStale({
   return incomingUpdatedAtMillis == null && !existingSynced;
 }
 
+/// Whether a record [inboundIsStale] just rejected still has one thing to say
+/// that the local row got wrong: the row is a tombstone this device
+/// resurrected, and the record is the tombstone itself coming back.
+///
+/// The signature is a row holding the sender's own revision — same stamp,
+/// nothing local pending — that nonetheless calls live a record the sender
+/// calls deleted. Two things produce it, and the flag alone (never the stale
+/// record's `data`) settles both:
+///
+///  - LoFi's own delete endpoint tombstones an operation WITHOUT touching its
+///    `updatedAtMillis`, so the tombstone it hands back ties with the live
+///    copy every device already holds. Without this, deleting an operation
+///    from the web reaches no device that has the operation — ever.
+///  - A `deleted` flag read in a dialect this app did not understand (see
+///    [asQsonBool]) dropped a tombstone while storing the record's own stamp.
+///    Nothing local can repair that row: `deleted` is removed from the record
+///    before the blob is encoded, so it keeps no trace of what it was told,
+///    and every later delivery of the correcting record ties and is skipped.
+///
+/// A tie, not merely stale: a strictly OLDER tombstone against a newer local
+/// row describes a revision the operator made after the delete and has
+/// already pushed — the server holds that revision too, so re-deleting here
+/// would undo an edit rather than repair one.
+@internal
+bool inboundRepairsTombstone({
+  required bool existingDeleted,
+  required bool existingSynced,
+  required int? existingUpdatedAtMillis,
+  required bool incomingDeleted,
+  required int? incomingUpdatedAtMillis,
+}) =>
+    incomingDeleted &&
+    !existingDeleted &&
+    existingSynced &&
+    existingUpdatedAtMillis != null &&
+    existingUpdatedAtMillis == incomingUpdatedAtMillis;
+
 /// Normalizing here, not only in [encodeQsoData], is what reaches a record
 /// that was already stored: the writers cannot heal a row nothing writes to.
 /// It also settles what the rest of the app is handed, because `data` is the

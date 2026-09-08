@@ -592,6 +592,51 @@ class SyncEngine {
     return true;
   }
 
+  /// Where [_rewindForwardCursorOnce] records that it has run.
+  static const tombstoneRewindKey = 'tombstoneRewindDone';
+
+  /// Rewinds the forward pull window, once per install, so every record the
+  /// account holds is delivered one more time.
+  ///
+  /// Recovery for a device that resurrected tombstoned records by reading a
+  /// `deleted` flag in a dialect it did not understand (see [asQsonBool]).
+  /// Such a row cannot be repaired from anything local — the flag is removed
+  /// from the record before the blob is encoded — and the record that would
+  /// correct it is never asked for again, because the forward cursor moved
+  /// past it rounds ago. Only a re-delivery reaches it, and
+  /// [inboundRepairsTombstone] is what makes that re-delivery land.
+  ///
+  /// The forward window ONLY, and no local data: leaving `completedFullSync`
+  /// alone keeps a caught-up device out of backfill mode, and touching
+  /// nothing in the tables is what separates this from [forceFullResync],
+  /// which wipes them and relies on the pull to refill. Every record that
+  /// arrives here either merges as it always would or is skipped as stale, so
+  /// the cost is one extra pass over the account's history, paced by the
+  /// server's own cooldown.
+  ///
+  /// Both halves are written together on purpose: a crash between marking the
+  /// rewind done and clearing the cursor would spend the one chance at it.
+  ///
+  /// Walking old history through the forward window needs no pull-limit
+  /// growth of the kind the backfill grows, and must not be given one: the
+  /// server hands back a row cursor on every non-empty page (LOFI-41), which
+  /// the forward branch of `_processResponseMeta` follows, and a page built
+  /// without one is extended over its whole edge millisecond server-side. A
+  /// millisecond holding more records than a page is passable either way.
+  Future<Map<String, dynamic>> _rewindForwardCursorOnce(Map<String, dynamic> state) async {
+    if (state[tombstoneRewindKey] == true) return state;
+    final rewound = {
+      ...state,
+      tombstoneRewindKey: true,
+      'latestOperationSyncedAtMillis': null,
+      'latestQSOSyncedAtMillis': null,
+      for (final key in forwardCursorKeys.values) key: null,
+    };
+    await settings.setState(rewound);
+    log?.call('[sync] forward cursor rewound once, to re-deliver tombstones this device may have dropped');
+    return rewound;
+  }
+
   /// Backs up and clears operations and QSOs as one transaction — a crash
   /// between the two would otherwise leave every QSO orphaned (parents
   /// gone) yet still counted and eligible for push. Both repositories share
@@ -686,7 +731,7 @@ class SyncEngine {
     // describes a world that no longer exists — abandon the response.
     final generation = _generation;
     try {
-      final state = settings.state;
+      var state = settings.state;
 
       if (state['pendingAccountUUID'] != null) {
         if (!smallBatch) _scheduleLoop(_checkPeriod);
@@ -719,6 +764,8 @@ class SyncEngine {
         if (!smallBatch) _scheduleLoop(_checkPeriod);
         return;
       }
+
+      state = await _rewindForwardCursorOnce(state);
 
       final backfilling = state['completedFullSync'] != true;
       final batchSize = smallBatch ? smallBatchSize : _largeBatchSize;

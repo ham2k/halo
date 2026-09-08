@@ -11,7 +11,7 @@
 // a CLI that selected or merged differently would describe a program that
 // isn't the one running.
 
-import 'package:halo_core/halo_core.dart' show Qso, SegmentedOperation;
+import 'package:halo_core/halo_core.dart' show Qso, SegmentedOperation, asQsonBool;
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'runtime.dart' show CliUsageError;
@@ -34,7 +34,9 @@ List<Qso> qsosOf(Map<String, Object?> operation, List<Map<String, Object?>> qsos
           // `deleted` is a column, not something `data` carries, so a file that
           // spells it out has to be read here: a deleted `break` row that still
           // opened a segment would give this tool boundaries the app never sees.
-          deleted: qso['deleted'] == true,
+          // Coerced, because a file exported from polo or dumped from LoFi
+          // spells the flag as the integer 1 (see [asQsonBool]).
+          deleted: asQsonBool(qso['deleted']),
           data: qso.cast<String, dynamic>(),
         ),
     ];

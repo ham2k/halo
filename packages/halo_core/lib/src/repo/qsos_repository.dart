@@ -1208,7 +1208,7 @@ class QsosRepository {
         if (uuid == null || operationUuid == null) continue;
 
         final data = Map<String, dynamic>.from(incoming)..remove('operation');
-        final deleted = data.remove('deleted') == true;
+        final deleted = asQsonBool(data.remove('deleted'));
         // See OperationsRepository.mergeFromSync: carried through, never
         // acted on by a receiving device.
         final purged = data.remove('purged') == true;
@@ -1223,12 +1223,28 @@ class QsosRepository {
         // `purgeForOperation` when a whole operation goes, or `purgeQsos` for
         // a test contact belonging to no operation.
         if (existing == null && purged) continue;
+        final incomingUpdatedAtMillis = asQsonNum(data['updatedAtMillis'])?.toInt();
         if (existing != null &&
             inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,
               existingSynced: existing.synced,
-              incomingUpdatedAtMillis: asQsonNum(data['updatedAtMillis'])?.toInt(),
+              incomingUpdatedAtMillis: incomingUpdatedAtMillis,
             )) {
+          // See OperationsRepository.mergeFromSync: the flag alone, because
+          // the rest of the record is what the staleness gate just rejected.
+          if (inboundRepairsTombstone(
+            existingDeleted: existing.deleted,
+            existingSynced: existing.synced,
+            existingUpdatedAtMillis: existing.updatedAtMillis,
+            incomingDeleted: deleted,
+            incomingUpdatedAtMillis: incomingUpdatedAtMillis,
+          )) {
+            await (db.update(db.qsos)..where((q) => q.uuid.equals(uuid)))
+                .write(const QsosCompanion(deleted: Value(true)));
+            // The contact leaves the operation's cached count, which is a
+            // column no query recomputes on its own.
+            if (existing.operation.isNotEmpty) affectedOperations.add(existing.operation);
+          }
           continue;
         }
 
@@ -1286,7 +1302,7 @@ class QsosRepository {
         if (uuid == null || operationUuid == null) continue;
 
         final data = Map<String, dynamic>.from(incoming)..remove('operation');
-        final deleted = data.remove('deleted') == true;
+        final deleted = asQsonBool(data.remove('deleted'));
         final purged = data.remove('purged') == true;
         normalizeLegacyStamps(data);
 

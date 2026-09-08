@@ -508,12 +508,17 @@ class OperationsRepository {
         final uuid = asQsonString(incoming['uuid']);
         if (uuid == null) continue;
         final data = Map<String, dynamic>.from(incoming)..remove('uuid');
-        final deleted = data.remove('deleted') == true;
+        final deleted = asQsonBool(data.remove('deleted'));
         // Carried through for informational parity with the sending
         // device's row, but never acted on here: this device never
         // hard-deletes on receipt of a sync record, purged or not — only
         // the device that itself purged the operation ever removes the row
         // (`SyncEngine`, after its own push is acknowledged).
+        //
+        // Read strictly, unlike `deleted` beside it, and that difference is
+        // deliberate: `purged` is this app's own key, written by nothing else
+        // and stored by LoFi as the JSON boolean it was pushed as. There is
+        // no second dialect for it to arrive in.
         final purged = data.remove('purged') == true;
         normalizeLegacyStamps(data);
         watermark.include(asQsonNum(data['syncedAtMillis'])?.toInt());
@@ -530,12 +535,26 @@ class OperationsRepository {
         // it. Updating an EXISTING row is still right: that is what raises
         // the prompt in the first place.
         if (existing == null && purged) continue;
+        final incomingUpdatedAtMillis = asQsonNum(data['updatedAtMillis'])?.toInt();
         if (existing != null &&
             inboundIsStale(
               existingUpdatedAtMillis: existing.updatedAtMillis,
               existingSynced: existing.synced,
-              incomingUpdatedAtMillis: asQsonNum(data['updatedAtMillis'])?.toInt(),
+              incomingUpdatedAtMillis: incomingUpdatedAtMillis,
             )) {
+          // The one thing a stale record still settles: a tombstone this
+          // device resurrected. The flag alone — the rest of the record is
+          // older than what this row holds, which is why it was rejected.
+          if (inboundRepairsTombstone(
+            existingDeleted: existing.deleted,
+            existingSynced: existing.synced,
+            existingUpdatedAtMillis: existing.updatedAtMillis,
+            incomingDeleted: deleted,
+            incomingUpdatedAtMillis: incomingUpdatedAtMillis,
+          )) {
+            await (db.update(db.operations)..where((op) => op.uuid.equals(uuid)))
+                .write(const OperationsCompanion(deleted: Value(true)));
+          }
           continue;
         }
 
@@ -588,7 +607,7 @@ class OperationsRepository {
         final uuid = asQsonString(incoming['uuid']);
         if (uuid == null) continue;
         final data = Map<String, dynamic>.from(incoming)..remove('uuid');
-        final deleted = data.remove('deleted') == true;
+        final deleted = asQsonBool(data.remove('deleted'));
         // Same as mergeFromSync: informational only, never acted on by a
         // receiving device — only the device that itself purged the
         // operation ever removes the row.
