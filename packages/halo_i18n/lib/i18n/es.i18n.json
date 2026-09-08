@@ -1055,7 +1055,7 @@
         "recordingMemory": "Grabando $label",
         "doubtful": "¿La radio lo reprodujo? Dijo estar en reposo de inmediato.",
         "notAvailable": "Conecta una radio con manipulador de voz para reproducir o grabar desde aquí.",
-        "recordOnRadio": "Esta radio graba sus memorias desde su propio panel frontal."
+        "recordOnRadio": "Tienes que grabar las memorias en la propia radio."
       },
       "avoidZeroBeat": {
         "title": "Evitar batido cero en los spots",

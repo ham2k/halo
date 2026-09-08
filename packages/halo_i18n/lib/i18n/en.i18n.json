@@ -1055,7 +1055,7 @@
         "recordingMemory": "Recording $label",
         "doubtful": "Did the radio play it? It said it was idle right away.",
         "notAvailable": "Connect a radio with a voice keyer to play or record from here.",
-        "recordOnRadio": "This radio records its memories from its own front panel."
+        "recordOnRadio": "You have to record the memories on the radio itself."
       },
       "avoidZeroBeat": {
         "title": "Avoid Zero-Beating on Spots",

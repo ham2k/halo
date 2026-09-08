@@ -51,7 +51,6 @@ class _VoiceMessagesDialog extends StatelessWidget {
       listenable: Listenable.merge([settings, cat, cat.voiceActivity]),
       builder: (context, _) {
         final canPlay = cat.canPlayVoice;
-        final canRecord = cat.canRecordVoice;
         // The radio's own count while one can play; every label otherwise,
         // so a memory the next radio has is not unnameable until it is on.
         final count = canPlay ? cat.voiceMemoryCount : SettingsService.voiceMessageCount;
@@ -120,13 +119,15 @@ class _VoiceMessagesDialog extends StatelessWidget {
                   ),
                   mouseCursor: SystemMouseCursors.click,
                 ),
-              // Why the buttons are missing, or why Record is: said once
-              // under the list rather than on every row.
-              if (!canPlay || !canRecord)
+              // Why there is nothing to play with. Why RECORDING is missing
+              // is said in the memory's own dialog instead — beside the
+              // disabled button, which is where an operator goes looking
+              // for it.
+              if (!canPlay)
                 Padding(
                   padding: const EdgeInsets.fromLTRB(Space.xxl, Space.md, Space.xxl, Space.md),
                   child: Text(
-                    !canPlay ? m.notAvailable : m.recordOnRadio,
+                    m.notAvailable,
                     style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurface.withValues(alpha: 0.7)),
                   ),
                 ),
@@ -215,19 +216,21 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                 padding: rowInset.copyWith(top: Space.md, bottom: Space.lg),
                 child: Row(
                   children: [
-                    if (cat.canRecordVoice)
-                      if (recording)
-                        FilledButton.tonalIcon(
-                          onPressed: cat.stopVoice,
-                          icon: Icon(MdiIcons.stop, color: theme.colorScheme.error),
-                          label: Text(m.stopButton),
-                        )
-                      else
-                        FilledButton.tonalIcon(
-                          onPressed: busy ? null : () => cat.recordVoiceMemory(widget.n),
-                          icon: const Icon(MdiIcons.recordCircleOutline),
-                          label: Text(m.recordButton),
-                        ),
+                    // Drawn even where the CAT cannot record, and disabled
+                    // there: absent, recording looks like something this app
+                    // does not do rather than something this RADIO does not.
+                    if (recording)
+                      FilledButton.tonalIcon(
+                        onPressed: cat.stopVoice,
+                        icon: Icon(MdiIcons.stop, color: theme.colorScheme.error),
+                        label: Text(m.stopButton),
+                      )
+                    else
+                      FilledButton.tonalIcon(
+                        onPressed: busy || !cat.canRecordVoice ? null : () => cat.recordVoiceMemory(widget.n),
+                        icon: const Icon(MdiIcons.recordCircleOutline),
+                        label: Text(m.recordButton),
+                      ),
                     Expanded(
                       child: Text(
                         duration > 0 ? voiceDurationText(context, duration) : m.notMeasured,
@@ -257,6 +260,19 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                   ],
                 ),
               ),
+              // Why the button above is disabled, before anything about how
+              // to use it: an operator who cannot record from here needs to
+              // know that first.
+              if (!cat.canRecordVoice)
+                Padding(
+                  padding: rowInset.copyWith(bottom: Space.xl),
+                  child: Text(
+                    m.recordOnRadio,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ),
               // Under the buttons: it explains what to do AFTER pressing
               // Record, not what Record is (EquipmentModel.recordingHelp).
               if (cat.canRecordVoice && cat.voiceRecordingHelp != null)

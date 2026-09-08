@@ -32,11 +32,14 @@ void main() {
     await settings.setExperimentEnabled('keyer', true);
   });
 
-  Future<void> connectPlaceholder(WidgetTester tester) async {
+  Future<void> connectPlaceholder(WidgetTester tester, {bool records = true}) async {
     final node = await services.cat.addNode(
       typeKey: 'placeholder-radio',
       name: 'Bench Rig',
-      config: placeholderRadioModel.variants.single.defaultConfig,
+      config: {
+        ...placeholderRadioModel.variants.single.defaultConfig,
+        if (!records) 'placeholderNoVoiceRecording': true,
+      },
     );
     await tester.runAsync(() => services.cat.connect(node.uuid));
     addTearDown(() => services.cat.disconnect(node.uuid));
@@ -101,7 +104,24 @@ void main() {
     expect(find.byIcon(MdiIcons.play), findsNothing);
     expect(find.byIcon(MdiIcons.recordCircleOutline), findsNothing);
     expect(find.text('Unknown length'), findsNWidgets(placeholderVoiceMemoryCount));
-    expect(find.textContaining('front panel'), findsNothing);
+    expect(find.textContaining('record the memories on the radio'), findsNothing);
+  });
+
+  testWidgets('a radio whose CAT cannot record says so where Record is, not under the list', (tester) async {
+    // Every Icom: `0x28` plays a memory, and nothing in CI-V records one.
+    await connectPlaceholder(tester, records: false);
+    await open(tester);
+    // The trap this test exists for: explaining an absent action somewhere
+    // other than where the operator looks for it. Recording moved into the
+    // memory's dialog; the sentence has to follow it.
+    expect(find.textContaining('record the memories on the radio'), findsNothing);
+
+    await openMemory(tester, 2);
+    expect(find.textContaining('record the memories on the radio'), findsOneWidget);
+    // Disabled, not absent: absent, recording reads as something the APP
+    // does not do rather than something this RADIO does not.
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Record')).onPressed, isNull);
+    expect(tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Play')).onPressed, isNotNull);
   });
 
   testWidgets('the memory dialog plays it: Play becomes Stop, and the length is measured off the play', (tester) async {

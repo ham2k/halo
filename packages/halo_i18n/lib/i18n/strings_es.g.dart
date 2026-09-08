@@ -2725,7 +2725,7 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	@override String recordingMemory({required Object label}) => 'Grabando ${label}';
 	@override String get doubtful => '¿La radio lo reprodujo? Dijo estar en reposo de inmediato.';
 	@override String get notAvailable => 'Conecta una radio con manipulador de voz para reproducir o grabar desde aquí.';
-	@override String get recordOnRadio => 'Esta radio graba sus memorias desde su propio panel frontal.';
+	@override String get recordOnRadio => 'Tienes que grabar las memorias en la propia radio.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -3791,7 +3791,7 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Grabando ${label}',
 			'settings.radio.voiceMessages.doubtful' => '¿La radio lo reprodujo? Dijo estar en reposo de inmediato.',
 			'settings.radio.voiceMessages.notAvailable' => 'Conecta una radio con manipulador de voz para reproducir o grabar desde aquí.',
-			'settings.radio.voiceMessages.recordOnRadio' => 'Esta radio graba sus memorias desde su propio panel frontal.',
+			'settings.radio.voiceMessages.recordOnRadio' => 'Tienes que grabar las memorias en la propia radio.',
 			'settings.radio.avoidZeroBeat.title' => 'Evitar batido cero en los spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'Con una radio conectada, sintoniza unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Sintoniza exactamente la frecuencia del spot.',

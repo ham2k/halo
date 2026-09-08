@@ -403,8 +403,13 @@ class PlaceholderRadioSession implements TransceiverSession, CwKeyerSession, Voi
   @override
   int get voiceMemoryCount => placeholderVoiceMemoryCount;
 
+  /// Off through `placeholderNoVoiceRecording`, so the fake rig can also
+  /// stand in for one whose CAT plays memories but cannot record them —
+  /// every Icom, where recording is the front panel's alone. Config rather
+  /// than a second fake driver: standing in for real radios is what this
+  /// one is for.
   @override
-  bool get canRecordVoice => true;
+  bool get canRecordVoice => _config['placeholderNoVoiceRecording'] != true;
 
   @override
   Duration get voiceMemoryCeiling => voiceActivityCeiling;

@@ -5832,8 +5832,8 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: 'Connect a radio with a voice keyer to play or record from here.'
 	String get notAvailable => 'Connect a radio with a voice keyer to play or record from here.';
 
-	/// en: 'This radio records its memories from its own front panel.'
-	String get recordOnRadio => 'This radio records its memories from its own front panel.';
+	/// en: 'You have to record the memories on the radio itself.'
+	String get recordOnRadio => 'You have to record the memories on the radio itself.';
 }
 
 // Path: settings.radio.avoidZeroBeat
@@ -7096,7 +7096,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.recordingMemory' => ({required Object label}) => 'Recording ${label}',
 			'settings.radio.voiceMessages.doubtful' => 'Did the radio play it? It said it was idle right away.',
 			'settings.radio.voiceMessages.notAvailable' => 'Connect a radio with a voice keyer to play or record from here.',
-			'settings.radio.voiceMessages.recordOnRadio' => 'This radio records its memories from its own front panel.',
+			'settings.radio.voiceMessages.recordOnRadio' => 'You have to record the memories on the radio itself.',
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
 			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tune a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
 			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tune exactly to the spotted frequency.',
