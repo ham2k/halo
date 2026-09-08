@@ -356,7 +356,9 @@ name (§2).
   activate/deactivate lifecycle supports this.
 - `halo-ext` ([docs/extensions/cli.md](docs/extensions/cli.md)) runs hooks
   outside the app, and the extensions' own unit tests run under `npm test`
-  with no Flutter involved.
+  with no Flutter involved — including tests that call an extension's hooks
+  against fixture operations and QSOs (`sdk/src/testing.ts`), so what a hook
+  hands back is pinned rather than only the functions behind it.
 
 ---
 

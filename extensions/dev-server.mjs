@@ -19,10 +19,11 @@
 // neither side needs a dependency for it — Node has no WebSocket server built
 // in, and SSE is a one-way push, which is all a reload notification is.
 //
-// NOT watched: the kernel, and anything only it imports. Reloading the kernel
-// means restarting the runtime, which is a different operation from swapping an
-// extension. The SDK *is* covered, because every extension bundle inlines it —
-// editing sdk/src rebuilds all of them.
+// The kernel is watched but never SERVED: reloading it means restarting the
+// runtime, which is a different operation from swapping an extension, so a
+// change there is reported and left for the author to act on. The SDK *is*
+// served, because every extension bundle inlines it — editing sdk/src rebuilds
+// all of them, and each rebuild whose bytes actually changed reloads.
 
 import { context } from 'esbuild'
 import { createServer } from 'node:http'
@@ -152,16 +153,64 @@ function watchPlugin(bundle) {
           done()
           return
         }
+        // Recovering from a build error is a reload even when the bytes are
+        // the same as the last good ones, which is exactly what undoing a typo
+        // produces: the app clears an extension's error only when a reload
+        // arrives, so staying quiet here would leave it reported as broken.
+        const hadError = buildErrors.has(bundle.key)
         buildErrors.delete(bundle.key)
-        sources.set(bundle.key, result.outputFiles[0].text)
+        const built = result.outputFiles[0].text
+        // Every extension inlines the SDK, so one edit under sdk/src rebuilds
+        // all ~50 of them — but only a few carry code that actually changed.
+        // Reloading an extension whose bytes are identical costs the running
+        // app a teardown and re-activation for nothing, which at fifty at once
+        // is the difference between a loop and a pause.
+        const unchanged = sources.get(bundle.key) === built && !hadError
+        sources.set(bundle.key, built)
         done()
         if (!watching) return // the initial build is summarised at startup
+        if (unchanged) return
         const size = (result.outputFiles[0].contents.byteLength / 1024).toFixed(1)
         console.log(`${stamp()}  ✓ ${bundle.key} — ${size} KB`)
         broadcast({ type: 'reload', key: bundle.key, ...indexEntryFor(bundle) })
       })
     },
   }
+}
+
+/// The kernel, built only to be watched. It is never served (see the note at
+/// the top), so its output is discarded — what the author needs is to be told
+/// that the runtime they are running no longer matches its source, since
+/// nothing else in this loop would say so.
+async function watchKernel() {
+  const kernel = bundles.find((b) => b.kind === 'kernel')
+  if (!kernel) return
+  const options = buildOptionsFor(kernel, { hostSharedVersions })
+  options.logLevel = 'silent'
+  // Its own first build is not a change — this watcher starts after the
+  // extensions', when `watching` is already true, so it cannot use that.
+  let built = false
+  options.plugins = [
+    ...(options.plugins ?? []),
+    {
+      name: 'halo-dev-kernel-watch',
+      setup(build) {
+        build.onEnd((result) => {
+          const first = !built
+          built = true
+          if (first) return
+          if (result.errors.length) {
+            console.error(`${stamp()}  ✗ kernel\n${result.errors.map((e) => e.text).join('\n')}`)
+            return
+          }
+          console.log(`${stamp()}  ⟳ kernel changed — run \`npm run build\` and restart the app to pick it up`)
+        })
+      },
+    },
+  ]
+  const ctx = await context(options)
+  await ctx.watch()
+  return ctx
 }
 
 const contexts = []
@@ -177,6 +226,10 @@ for (const bundle of served) {
 }
 await Promise.all([...firstBuilds.values()].map((b) => b.promise))
 watching = true
+
+// After the first builds, so its message cannot land amid the startup summary.
+const kernelContext = await watchKernel()
+if (kernelContext) contexts.push(kernelContext)
 
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`)
@@ -297,8 +350,8 @@ server.listen(port, bindHost, () => {
   if (failed.length) console.log(`  ${failed.length} failed to build: ${failed.map((b) => b.key).join(', ')}`)
   console.log('\nPoint the app at (Settings → Developer → Extension Dev Server):')
   for (const address of lanAddresses()) console.log(`  http://${address}:${port}`)
-  console.log('\nWatching for changes. The kernel is not watched — changes there need')
-  console.log('`npm run build` and an app restart.\n')
+  console.log('\nWatching for changes. A kernel change is reported but not served —')
+  console.log('it needs `npm run build` and an app restart.\n')
 })
 
 function lanAddresses() {

@@ -18,7 +18,7 @@
 // carries a local-time value — a log is kept in UTC, and a filename that
 // shifted with the reader's zone would name the wrong day (exportNames.ts).
 
-import type { JSONValue } from "./types"
+import type { JSONValue } from "./types.ts"
 
 /// `2026-07-27`
 export function utcDate(millis: number): string {

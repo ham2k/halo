@@ -7,7 +7,7 @@
 // unit test suite instead of only being exercised through the JS
 // engine/bridge plumbing, which isn't easily unit-testable in isolation.
 
-import type { SettingsPanelDescriptor } from "./types"
+import type { SettingsPanelDescriptor } from "./types.ts"
 
 export interface SettingsPanelEntry {
   panelKey: string

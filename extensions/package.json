@@ -7,7 +7,7 @@
     "build:packages": "node sdk/build.mjs",
     "dev": "node dev-server.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test '**/*.test.ts'"
+    "test": "node --experimental-strip-types --conditions=ham2k-source --test '**/*.test.ts'"
   },
   "dependencies": {
     "@ham2k/lib-callsigns": "^1.0.2",
@@ -24,6 +24,7 @@
     "liquidjs": "^10.28.0"
   },
   "devDependencies": {
+    "@ham2k/extension-sdk": "file:./sdk",
     "@types/node": "^24.13.3",
     "dts-bundle-generator": "^9.5.1",
     "esbuild": "^0.25.5",

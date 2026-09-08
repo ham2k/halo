@@ -7,7 +7,11 @@
 //
 // It also answers for the legacy `ukbota` ref types. The award was UKBOTA
 // before it went worldwide and logs synced from app-polo still carry those, so
-// dropping them would leave old bunker references undecorated.
+// dropping them would leave old bunker references undecorated. They are
+// registered but deliberately NOT in the manifest's `hooks`: that list is what
+// the host offers to enable for an unhandled reference, and there is no
+// control for a legacy type — an offer that cannot clear the row is worse than
+// no offer (hook-check.mjs enforces this).
 
 import {
   activityExportHook,

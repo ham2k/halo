@@ -25,8 +25,17 @@
     "subpath, so a tool asking this package its own version is told the package",
     "does not exist. Common enough that npm's own docs call it out."
   ],
+  "//ham2k-source": [
+    "A condition only this repo's own test run asks for (`--conditions=ham2k-source`),",
+    "so a test can import the SDK by name and get the TypeScript sources rather",
+    "than a build of them — the same thing esbuild's alias does when it bundles an",
+    "extension. Deliberately not the conventional `development`: the published",
+    "tarball ships `dist` and not `src`, and a consumer who happened to run with",
+    "that common condition would be pointed at files their install does not have."
+  ],
   "exports": {
     ".": {
+      "ham2k-source": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
     },

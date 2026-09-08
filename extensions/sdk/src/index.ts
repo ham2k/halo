@@ -24,22 +24,22 @@ import type {
   StatusBarProgressParams,
   StatusBarNoticeParams,
   VersionInfo,
-} from "./types"
+} from "./types.ts"
 
-export * from "./types"
-export * from "./i18n"
-export * from "./dxcc"
-export * from "./location"
-export * from "./modes"
-export * from "./scoring"
-export * from "./activityScoring"
-export * from "./activityExports"
-export * from "./activityAdifImport"
-export * from "./exportNames"
-export * from "./referenceActivity"
-export * from "./templates"
-export * from "./templateContext"
-export * from "./testOperation"
+export * from "./types.ts"
+export * from "./i18n.ts"
+export * from "./dxcc.ts"
+export * from "./location.ts"
+export * from "./modes.ts"
+export * from "./scoring.ts"
+export * from "./activityScoring.ts"
+export * from "./activityExports.ts"
+export * from "./activityAdifImport.ts"
+export * from "./exportNames.ts"
+export * from "./referenceActivity.ts"
+export * from "./templates.ts"
+export * from "./templateContext.ts"
+export * from "./testOperation.ts"
 
 interface KernelApi {
   defineExtension(def: ExtensionDefinition): void

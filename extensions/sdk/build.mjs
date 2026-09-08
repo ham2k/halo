@@ -28,17 +28,22 @@ await rm(dist, { recursive: true, force: true })
 await mkdir(dist, { recursive: true })
 
 /// Every module the package ships: the SDK's own sources, minus its tests and
-/// minus the kernel.
+/// minus the two that stand in for the host.
 ///
 /// `kernel.ts` sits in this directory and must never leave it. It IS the host —
 /// it defines `globalThis.__polo` and holds the one instance of every shared
-/// library that extensions look up. Nothing in the barrel imports it, so a
-/// bundled build would drop it silently; naming the entry points explicitly is
-/// what keeps that true when someone adds an import.
+/// library that extensions look up. `testing.ts` installs a stand-in for that
+/// same object so this repo's tests can call a hook without a runtime, which
+/// makes it host-shaped too, and it is imported by path rather than through
+/// the barrel. Nothing in the barrel imports either, so a bundled build would
+/// drop them silently; naming the entry points explicitly is what keeps that
+/// true when someone adds an import.
+const notShipped = new Set(['kernel.ts', 'testing.ts'])
+
 async function shippedModules() {
   const names = await readdir(src)
   return names
-    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && name !== 'kernel.ts')
+    .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && !notShipped.has(name))
     .map((name) => join(src, name))
 }
 

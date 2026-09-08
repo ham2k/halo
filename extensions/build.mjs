@@ -21,6 +21,7 @@ import {
   loadManifests,
   outDir,
 } from './build-config.mjs'
+import { checkHooksAgainstManifests } from './hook-check.mjs'
 
 const hostSharedVersions = await loadHostSharedVersions()
 await loadManifests()
@@ -69,3 +70,8 @@ for (const name of await readdir(outDir)) {
 }
 
 console.log(`index.json — ${bundles.length - 1} extensions`)
+
+// Last, because it evaluates what was just written: every manifest's `hooks`
+// must be what its code registers (hook-check.mjs).
+await checkHooksAgainstManifests({ bundles, outDir })
+console.log('hooks — every manifest matches what its bundle registers')

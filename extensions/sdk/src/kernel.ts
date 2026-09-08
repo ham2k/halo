@@ -28,8 +28,8 @@
 import { installNumberFormatPolyfill } from "./number-format.ts"
 installNumberFormatPolyfill()
 
-import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor, Spot } from "./types"
-import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels"
+import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor, Spot } from "./types.ts"
+import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels.ts"
 import { installAppClock } from "./appClock.ts"
 
 import * as libCallsigns from "@ham2k/lib-callsigns"

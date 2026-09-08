@@ -47,14 +47,18 @@ half-typed line doesn't take the extension away mid-edit.
 
 ## What it does not cover
 
-**The kernel.** `sdk/src/kernel.ts` and anything only it imports are not
-watched. Reloading the kernel means restarting the runtime, which is a
-different operation from swapping one extension — so a kernel change still
-needs `npm run build` and an app restart.
+**The kernel.** Reloading it means restarting the runtime, which is a different
+operation from swapping one extension, so the server never serves one. It does
+watch `sdk/src/kernel.ts` and tells you when it changes — a kernel change still
+needs `npm run build` and an app restart, and nothing else in the loop would
+say so.
 
 The **rest of the SDK is** covered, because every extension bundle inlines it:
-editing `sdk/src/templates.ts` rebuilds every extension that uses it, and each
-one reloads.
+editing `sdk/src/templates.ts` rebuilds every extension that uses it. Only the
+ones whose bundle actually came out different reload — an edit to a comment, or
+to a module a given extension does not use, rebuilds it and changes nothing, and
+reloading fifty extensions for that costs the running app a teardown and
+re-activation apiece.
 
 **Anything that isn't an extension.** Only the extensions the server watches
 are live; the app's own Dart code still needs a normal hot reload or restart.
@@ -65,6 +69,50 @@ extensions baked into the app's assets. So a feature that depends on one (SOTA's
 SSO login is the live example) degrades in the loop exactly as it does in a
 build without the value configured. Everything else about that extension still
 reloads. See `README.md`'s "Expect null and degrade".
+
+## Running a hook in a test, without any of this
+
+For a hook whose answer you want to PIN rather than look at, `sdk/src/testing.ts`
+loads an extension and calls its hooks in a plain `node:test` run — no bundles,
+no QuickJS, no Flutter:
+
+```ts
+import { fixtureOperation, fixtureQsos, loadExtension } from "../../../sdk/src/testing.ts"
+
+const pota = await loadExtension(() => import("./index.ts"))
+
+test("an activating operation is offered the park control", async () => {
+  const controls = await pota.runHook("activity", "operationControls", {
+    operation: fixtureOperation({ refs: [{ type: "potaActivation", ref: "US-0001" }] }),
+  })
+  assert.equal(controls[0].input.refType, "potaActivation")
+})
+```
+
+`loadExtension` installs a stand-in kernel, imports your entry point and
+activates it, so `runHook` reaches the hook the app would call — a registration
+that stops happening fails the test rather than passing quietly. It throws when
+the category, the key or the method is absent, so a test cannot exercise
+nothing and still be green.
+
+`fixtureOperation`, `fixtureQso` and `fixtureQsos` are plain JSON in the shapes
+a hook receives; override any field. Host calls answer benignly (`getSettings`
+gives `{}`, a lookup gives `[]`, everything else null — what an extension
+already has to tolerate); pass `hostCalls` to answer a particular one, and
+`ctx` to set the locale or anything else the hook reads.
+
+One extension per test file, and `loadExtension` refuses a second. In the app
+each bundle carries its own copy of the SDK, so `host.*` belongs to the
+extension it was compiled into; in a test process they share one instance,
+which binds host calls to whichever extension was defined last — two in a file
+would answer each other's stubs. `node:test` already runs each file in its own
+process, so this costs nothing.
+
+Worked examples: `activities/wwbota/src/hooks.test.ts` (which controls an
+activity offers, and its activation threshold) and
+`contests/cqww/src/hooks.test.ts` (a contest scored over a fixture log).
+Import the helper by path — it is deliberately not exported from the SDK's
+index, because everything there is bundled into all fifty-odd extensions.
 
 ## Running a hook against your edit, without the app
 

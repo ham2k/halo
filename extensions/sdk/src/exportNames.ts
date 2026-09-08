@@ -27,7 +27,7 @@
 // templates get `log.*` and the DATE half of `op`, because a filename is
 // built from parts rather than from an operation (see [ExportNameParts]).
 
-import type { JSONValue } from "./types"
+import type { JSONValue } from "./types.ts"
 import { dateValues, logValues } from "./templateContext.ts"
 import { oneLine, renderTemplate } from "./templates.ts"
 import { isTestOperation } from "./testOperation.ts"

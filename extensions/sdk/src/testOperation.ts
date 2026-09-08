@@ -8,7 +8,7 @@
 // across the Dart/TypeScript boundary, so this is the TypeScript side's only
 // copy — every caller here imports it rather than re-deriving it.
 
-import type { JSONValue } from "./types"
+import type { JSONValue } from "./types.ts"
 
 /// True when any comma-separated call in `stationCall` carries a `T` or
 /// `TEST` SEGMENT — checked per-call, not on the joined string, so a real

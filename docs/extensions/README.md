@@ -181,6 +181,13 @@ the types the extension publishes a control for — a `ref:` entry for a legacy
 type it merely decorates or scores would offer a switch that cannot clear the
 row.
 
+The build checks all of this rather than trusting it (`extensions/hook-check.mjs`):
+it activates each built bundle against a stand-in kernel and compares what
+`registerHook` was actually called with. A plain category must match both ways;
+a declared `ref:<type>` must publish a control, while registering one you do
+NOT declare is how a decorate-only handler is written (WWBOTA answers for the
+legacy `ukbota` types without offering itself for them).
+
 Rules of the road:
 
 - `defineExtension` only **registers** the definition. Activation happens
