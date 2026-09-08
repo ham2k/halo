@@ -191,6 +191,7 @@ void main() {
         'ft817-serial',
         'ft857-serial',
         'ft897-serial',
+        'q900-serial',
         'icom-generic-serial',
         'kenwood-serial',
         'qmx-serial',

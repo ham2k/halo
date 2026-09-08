@@ -178,12 +178,18 @@ void main() {
     // spinner beside it is what says the search is still going.
     expect(find.text('Detected Equipment'), findsOneWidget);
 
-    // Every pairing in the catalogue has now met a radio, so nothing carries
-    // the caveat — neither the whole-model one nor the per-transport marker
-    // the IC-705 used to show while its USB side was untried. A definition
-    // added for a driver or transport nobody has pointed at a rig brings both
-    // back, which is what these two assertions are watching for.
-    expect(find.text('Not tested against this hardware'), findsNothing);
+    // The caveat appears where it is earned and nowhere else. The Q900's
+    // definition was written from the manufacturer's published protocol and
+    // has never met a radio, so it says so; every other pairing built here
+    // has met one. The per-transport marker the IC-705 used to show while
+    // its USB side was untried is a separate thing, and stays gone.
+    //
+    // Only the built prefix of a lazy list is covered, which is why the
+    // count is exact rather than a bare "at least one": a second untested
+    // definition sorting into view is the change these assertions exist to
+    // catch, and `findsWidgets` would let one through.
+    expect(find.text('Guohetec Q900'), findsOneWidget);
+    expect(find.text('Not tested against this hardware'), findsOneWidget);
     expect(find.textContaining('(untested)'), findsNothing);
 
     await tester.tap(find.text('FlexRadio (SmartSDR)'));

@@ -288,6 +288,30 @@ These three radios have no auto-information either, so the poll is not a backsto
 the ASCII line: it is the only way a dial turn is ever seen, which is why the TX watch's own answers
 never defer it.
 
+### The costume and the radio underneath
+
+A Guohetec Q900 answers that same five-byte chart, and its manual tells people to pick an FT-817 in
+their logging software. Doing so is why one arrived as a bug report. The compatibility is an
+emulation — undocumented, partial, and sharing its port with the radio's *own* protocol, which is
+the worst possible neighbour for a stream that carries no framing: one packet the emulation does not
+account for and the count is lost for good, leaving a connected radio that never reports a
+frequency.
+
+So the Q900 is driven natively instead (`guohetec_codec.dart`, `guohetec_driver.dart`), from the
+protocol its manual publishes in full and licenses for free distribution. That one is framed —
+`A5 A5 A5 A5`, a length, a command, a CRC-16 — which is what lets its driver skip everything the
+section above describes: no one-command-at-a-time pump, no inter-byte deadline, no resync. It also
+answers more, and in one exchange: both VFO frequencies, both modes, the transmit state, the supply
+voltage and the meters. The FT-817 chart needs three exchanges for less and cannot read the second
+VFO at all, so a split operator's transmit frequency is invisible to it.
+
+Its own sharp edge is the reverse of the Yaesu one. Nothing about the wire is ambiguous; what is
+missing is a command that sets **one** VFO. Tuning means transmitting a value for the other one too,
+so the session tunes only from a picture the radio has given it, and holds a retune that arrives
+before the first status sync rather than inventing the half it cannot see.
+
+The PMR-171 speaks the same protocol and gets an entry when someone can test one.
+
 Serial is `flutter_libserialport` (FFI, the same shape as the existing `halo_quickjs` plugin), behind
 the same conditional-export barrel as TCP. Android goes through the `usb_serial` plugin instead
 (`UsbManager` over a MethodChannel, with a runtime permission flow), and iOS has no USB host API at

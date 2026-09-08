@@ -4012,6 +4012,12 @@ class Translations$settings$station$en {
 	String get yaesuBinaryTroubleshooting => 'This radio speaks Yaesu\'s older five-byte CAT, and it answers nothing at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB — it needs a CT-62 or an equivalent adapter. A plain audio or data cable carries no CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). A mismatch answers with nothing, and never with an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.';
 
 	/// en: 'If the radio connects but shows no frequency'
+	String get guohetecTroubleshootingTitle => 'If the radio connects but shows no frequency';
+
+	/// en: 'The Q900 answers CAT two different ways, and this entry uses its own protocol rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation answers fewer commands, and nothing reports which one the radio is using. - **The USB-C cable is the CAT link**, and it carries the sound card too. Speed does not matter on it; the port ignores whatever it is set to. - **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation. This driver was written from the manufacturer's published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.'
+	String get guohetecTroubleshooting => 'The Q900 answers CAT two different ways, and this entry uses its own protocol rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation answers fewer commands, and nothing reports which one the radio is using.\n\n- **The USB-C cable is the CAT link**, and it carries the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.';
+
+	/// en: 'If the radio connects but shows no frequency'
 	String get yaesuTroubleshootingTitle => 'If the radio connects but shows no frequency';
 
 	/// en: 'The radio is receiving commands but answering nothing. Almost always one of: - **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891). - **Speed must match** the radio's CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error. - **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open. - **Modes follow the FT-891's table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.'
@@ -5967,6 +5973,9 @@ class Translations$settings$station$models$en {
 	/// en: 'Yaesu FT-897'
 	String get ft897 => 'Yaesu FT-897';
 
+	/// en: 'Guohetec Q900'
+	String get q900 => 'Guohetec Q900';
+
 	/// en: 'Yaesu - Generic'
 	String get yaesuGeneric => 'Yaesu - Generic';
 
@@ -7354,6 +7363,7 @@ extension on Translations {
 			'settings.station.models.ft817' => 'Yaesu FT-817 / FT-818',
 			'settings.station.models.ft857' => 'Yaesu FT-857',
 			'settings.station.models.ft897' => 'Yaesu FT-897',
+			'settings.station.models.q900' => 'Guohetec Q900',
 			'settings.station.models.yaesuGeneric' => 'Yaesu - Generic',
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Generic',
@@ -7385,6 +7395,8 @@ extension on Translations {
 			'settings.station.ft891Troubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio** (FT-891 menu **05-08**). With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter.\n- **Speed must match** the radio\'s CAT RATE (menu **05-06**). A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.yaesuBinaryTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuBinaryTroubleshooting' => 'This radio speaks Yaesu\'s older five-byte CAT, and it answers nothing at all when something is off. Almost always one of:\n\n- **The cable must convert levels.** The CAT jack on the back is not RS-232 and not USB — it needs a CT-62 or an equivalent adapter. A plain audio or data cable carries no CAT.\n- **Speed must match** the radio\'s CAT RATE menu (**#14** on an FT-817, **#19** on an FT-857 or FT-897). A mismatch answers with nothing, and never with an error.\n- **Never let anything raise RTS or DTR on this port.** On most cables for these radios those lines are PTT and keying.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n\nThis driver was written from Yaesu\'s published CAT chart and has not been run against one of these radios. If it half-works, that is worth reporting.',
+			'settings.station.guohetecTroubleshootingTitle' => 'If the radio connects but shows no frequency',
+			'settings.station.guohetecTroubleshooting' => 'The Q900 answers CAT two different ways, and this entry uses its own protocol rather than the FT-817 imitation. Pick **Guohetec Q900** here, not an FT-817 — the imitation answers fewer commands, and nothing reports which one the radio is using.\n\n- **The USB-C cable is the CAT link**, and it carries the sound card too. Speed does not matter on it; the port ignores whatever it is set to.\n- **Never let anything raise RTS or DTR on this port.** On a serial cable those lines are PTT and keying.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **A second-generation radio behaves differently** from a first. Long press Menu, then About: HW 2.0 is the second generation.\n\nThis driver was written from the manufacturer\'s published protocol and has not been run against one of these radios. If it half-works, that is worth reporting.',
 			'settings.station.yaesuTroubleshootingTitle' => 'If the radio connects but shows no frequency',
 			'settings.station.yaesuTroubleshooting' => 'The radio is receiving commands but answering nothing. Almost always one of:\n\n- **CAT RTS must be OFF at the radio.** With it on, the radio waits for a handshake line the app deliberately never raises — on a Digirig, SignaLink or most home-brew cables that same line is PTT, so raising it would key your transmitter. Where that setting lives differs by model (menu **05-08** on an FT-891).\n- **Speed must match** the radio\'s CAT RATE menu. A mismatch answers with garbage, or nothing, and never with an error.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.\n- **Modes follow the FT-891\'s table.** Most of the Yaesu line matches it, but a radio that numbers its modes differently will show — and set — the wrong one for those. The frequency is unaffected.',
 			'settings.station.elecraftTroubleshootingTitle' => 'If the radio connects but shows no frequency',
@@ -7765,11 +7777,11 @@ extension on Translations {
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
+			_ => null,
+		} ?? switch (path) {
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
 			'deepLink.needsAnOperation' => 'Start an operation first, then send that contact again',
-			_ => null,
-		} ?? switch (path) {
 			'deepLink.waitingInOperation' => 'That contact is waiting in the operation behind this screen',
 			'deepLink.unknownActivities' => ({required Object refs}) => 'This device has no activity for ${refs}, so those references were left off',
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'Could not reach your activities, so ${refs} was left off — try that link again',

@@ -31,6 +31,7 @@ import 'drivers/placeholder_radio_driver.dart';
 import 'drivers/winkeyer_driver.dart';
 import 'drivers/flexradio_driver.dart';
 import 'drivers/flrig_driver.dart';
+import 'drivers/guohetec_driver.dart';
 import 'drivers/ft891_driver.dart';
 import 'drivers/meter_calibration.dart';
 import 'drivers/icom_civ_driver.dart';
@@ -422,6 +423,7 @@ const _yaesuSerialKey = 'yaesu-serial';
 const _ft817SerialKey = 'ft817-serial';
 const _ft857SerialKey = 'ft857-serial';
 const _ft897SerialKey = 'ft897-serial';
+const _q900SerialKey = 'q900-serial';
 const _kenwoodSerialKey = 'kenwood-serial';
 const _qmxSerialKey = 'qmx-serial';
 const _elecraftSerialKey = 'elecraft-serial';
@@ -728,6 +730,52 @@ const ft897Model = EquipmentModel(
 );
 
 String _ft897Name() => t.settings.station.models.ft897;
+
+/// Guohetec Q900, over the USB-C cable that also carries its sound card.
+///
+/// Its own protocol ([GuohetecDriver]), NOT the FT-817 imitation the radio
+/// also answers and its manual points people at. The imitation is
+/// undocumented and partial, and it shares a port with the native protocol,
+/// which is a bad place for the FT-817's unframed five-byte commands: any
+/// packet the emulation does not account for desynchronises them and the
+/// operator sees a connected radio with no frequency. The native protocol
+/// is framed and checksummed, and answers more — both VFOs, both modes and
+/// the transmit state in one exchange.
+///
+/// The PMR-171 speaks the same protocol and gets its own entry once someone
+/// can test one; nothing here is Q900-specific except the name.
+///
+/// Written from the manufacturer's published protocol and run against no
+/// radio, which is what [GuohetecDriver.hardwareVerified] says.
+const q900Model = EquipmentModel(
+  key: 'q900',
+  manufacturer: 'Guohetec',
+  category: kCategoryTransceiver,
+  name: _q900Name,
+  variants: [
+    EquipmentVariant(
+      key: _q900SerialKey,
+      driver: GuohetecDriver(),
+      transport: SerialTransport(),
+      // The radio presents a USB CDC port, which ignores the rate — this
+      // matters only on its RS232 jack or a Bluetooth SPP bridge.
+      defaultConfig: {'baudRate': guohetecDefaultBaudRate},
+      notes: _guohetecSerialNotes,
+    ),
+  ],
+);
+
+String _q900Name() => t.settings.station.models.q900;
+
+List<Map<String, dynamic>> _guohetecSerialNotes() => [
+      {
+        'type': 'markdown',
+        'collapsible': true,
+        'title': t.settings.station.troubleshootingNotes,
+        'text': '**${t.settings.station.guohetecTroubleshootingTitle}**\n\n'
+            '${t.settings.station.guohetecTroubleshooting}',
+      },
+    ];
 
 List<Map<String, dynamic>> _yaesuBinarySerialNotes() => [
       {
@@ -1466,6 +1514,7 @@ const _defaultModels = [
   ft817Model,
   ft857Model,
   ft897Model,
+  q900Model,
   yaesuGenericModel,
   ic705Model,
   ic7300Model,
