@@ -93,5 +93,21 @@ whenever its location came from a fix, so writing it verbatim would state the
 position to a few hundred metres through the very switch withholding the
 coordinate it was derived from.
 
+The coarser location fields are public on both sides, because the award
+programs are claimed on them and a callsign or an on-air exchange already
+states them: `STATE`, `COUNTRY`, `CNTY`, `DXCC`, `CQZ`, `ITUZ`, `CONT` and
+`REGION` for the worked station, and `MY_STATE`, `MY_COUNTRY`, `MY_CNTY`,
+`MY_DXCC`, `MY_CQ_ZONE`, `MY_ITU_ZONE`, `MY_CONT` and `MY_REGION` for ours.
+
+The county is a deliberate divergence from app-polo, which withholds it as an
+address. In a QSO party it is the EXCHANGE — the other station said it on the
+air, and a file withholding it claims nothing the event scores on.
+
+An export reads our own location off the CONTACT before the operation, and a
+segmented log stamps each contact with its segment's answer on the way out
+(`ExportService._stampSegment`). A hook is handed one operation for the whole
+file, so that is the only way a rover's second county reaches the records it
+belongs to. The stamp never covers a location the contact recorded itself.
+
 Peer sync and backups carry everything unconditionally — that is the user's own
 data moving between the user's own devices.

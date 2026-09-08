@@ -4,7 +4,13 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { annotateCallAgainstCountryFile, entityPrefixForCall, flagForDxccCode, regionAndCountryForDxccCode } from "./dxcc.ts"
+import {
+  annotateCallAgainstCountryFile,
+  entityForCall,
+  entityPrefixForCall,
+  flagForDxccCode,
+  regionAndCountryForDxccCode,
+} from "./dxcc.ts"
 
 test("entityPrefixForCall resolves a plain callsign's DXCC entity prefix", () => {
   assert.equal(entityPrefixForCall("W1AW"), "K")
@@ -45,4 +51,33 @@ test("regionAndCountryForDxccCode resolves a Region 3 entity", () => {
 
 test("regionAndCountryForDxccCode returns an empty object for an unresolved code", () => {
   assert.deepEqual(regionAndCountryForDxccCode(undefined), {})
+})
+
+test("entityForCall resolves our own station's entity from its callsign", () => {
+  assert.deepEqual(entityForCall("W1AW"), {
+    dxccCode: 291,
+    continent: "NA",
+    entityName: "United States",
+  })
+})
+
+// The zones are the country file's per-prefix guess at where inside an entity
+// a station is, and a callsign does not settle that: `N0DEV` resolves to zone
+// 4 whether the operator is in Missouri or California. Answering with one
+// would put a whole ADIF field's worth of wrong claims in every export, so
+// the caller is left to find a real answer or write nothing.
+//
+// Read off a call the country file DOES zone — `W6ABC` annotates as CQ 3, ITU
+// 6 — so this fails the moment either one is passed through, rather than
+// merely restating the shape of a shorthand return.
+test("entityForCall answers nothing about the zones a callsign cannot settle", () => {
+  const zoned = entityForCall("W6ABC") as Record<string, unknown>
+  assert.equal(zoned.cqZone, undefined)
+  assert.equal(zoned.ituZone, undefined)
+  assert.equal(annotateCallAgainstCountryFile("W6ABC").cqZone, 3)
+})
+
+test("entityForCall answers an empty entity for no call", () => {
+  assert.deepEqual(entityForCall(undefined), {})
+  assert.deepEqual(entityForCall(""), {})
 })

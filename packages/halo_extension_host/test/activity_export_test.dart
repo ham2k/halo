@@ -148,6 +148,10 @@ void main() {
     expect(content, isNot(contains('LLUS-9002')));
     // One claim per record, not two.
     expect('<MY_SIG:'.allMatches(content).length, 1);
+    // The free-text fields are the half of a record `mainHandler` does not
+    // govern, and QSLMSG's default is the operation's whole reference list —
+    // every program it claimed, in a field no hook filtered.
+    expect(content, isNot(contains('QSLMSG')));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // The main handler's key lives in two places — the `adifFields` registration

@@ -155,10 +155,10 @@ export function renderTemplate(template: string, context: Record<string, unknown
 /// `{% if %}` block spanning lines would carry those newlines into the
 /// value. app-polo does the same to its filenames.
 ///
-/// NOT applied to the ADIF free-text fields: a QSO note is the operator's
-/// own text, line breaks and all, and flattening it would rewrite what they
-/// wrote. A multi-line TEMPLATE for one of those fields would want this;
-/// none exists (`core/adif`'s TEXT_FIELD_TEMPLATES).
+/// The ADIF free-text fields apply it by ADIF TYPE, not uniformly: NOTES is a
+/// MultilineString and keeps the operator's own line breaks, while COMMENT and
+/// QSLMSG are Strings, which exclude them (`core/adif`'s
+/// TEXT_FIELD_TEMPLATES).
 export function oneLine(text: string): string {
   return text.replace(/\s+/g, " ").trim()
 }

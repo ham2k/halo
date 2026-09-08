@@ -11,12 +11,22 @@
 import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 
-import { defineExtension, hooks, qsoValues, renderTemplate, startMillisOf, templateContext } from "@ham2k/extension-sdk"
+import {
+  defineExtension,
+  entityForCall,
+  hooks,
+  oneLine,
+  qsoValues,
+  renderTemplate,
+  startMillisOf,
+  templateContext,
+} from "@ham2k/extension-sdk"
 import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, HookContext, JSONValue } from "@ham2k/extension-sdk"
 
 import manifest from "../manifest.json" with { type: "json" }
 import { formatAdifCoordinate } from "./coordinates.ts"
-import { adifCounty, field, renderRow } from "./fields.ts"
+import { adifCounty } from "./county.ts"
+import { field, renderRow } from "./fields.ts"
 import type { AdifField } from "./fields.ts"
 import { filenameFor } from "./filename.ts"
 
@@ -54,26 +64,115 @@ function coarseGrid(grid: string | undefined): string | undefined {
   return typeof grid === 'string' ? grid.slice(0, 6) : undefined
 }
 
+/// One side's county as ADIF's `CNTY`, from the record that holds it.
+///
+/// [claimedState] is what this record's `STATE`/`MY_STATE` says. A county
+/// carrying a state of its own that has been overruled describes somewhere the
+/// record does not claim to have been, and writing it under either state makes
+/// the record contradict itself — so it is dropped instead.
+function countyFor(source: Record<string, unknown>, claimedState: unknown): string | undefined {
+  const own = source.state
+  if (typeof own === 'string' && typeof claimedState === 'string' && own.trim() !== '') {
+    if (own.trim().toUpperCase() !== claimedState.trim().toUpperCase()) return undefined
+  }
+  return adifCounty(source.county, claimedState)
+}
+
+/// ADIF frequencies are MHz to six decimals (Hz), with the trailing zeroes
+/// trimmed; QSON keeps kHz.
+function formatAdifFreq(freqKHz: number): string {
+  return (freqKHz / 1000).toFixed(6).replace(/0+$/, '').replace(/\.$/, '')
+}
+
 /// ADIF's three free-text fields, as templates over the standard vocabulary
 /// (docs/extensions/templates.md) — the same engine that names the file.
 /// app-polo templates exactly these three (`ADIFNotesTemplate`,
 /// `ADIFCommentTemplate`, `ADIFQslMsgTemplate`).
 ///
-/// COMMENT and QSLMSG are EMPTY and so write nothing. polo defaults COMMENT
-/// to the notes and QSLMSG to the operation's references; both stay empty
-/// here until there is a settings screen to edit them in, because a default
-/// nobody can see is a default nobody can turn off — and these end up in
-/// files submitted to a program's servers.
+/// NOTES and COMMENT are app-polo's defaults verbatim (`basePartialTemplates`:
+/// `ADIFNotes`, `ADIFComment`). QSLMSG writes the same field from the same
+/// source and deliberately not the same text: polo joins each ref's decorated
+/// `shortLabel`/`label`, and a ref crosses into this runtime as the raw QSON
+/// `{type, ref}` it is stored as, with no label on it. The reference itself is
+/// what a card needs to name anyway.
 ///
-/// Whatever fills them has to respect the private/public split below:
-/// `notes` is the operator's own words about the station they worked, so it
-/// belongs only in a field this export withholds when `includePrivateData`
-/// is false. NOTES is such a field; COMMENT and QSLMSG are not.
-const TEXT_FIELD_TEMPLATES: { name: string; template: string; private: boolean }[] = [
-  { name: 'NOTES', template: '{{ qso.notes }}', private: true },
-  { name: 'COMMENT', template: '', private: false },
-  { name: 'QSLMSG', template: '', private: false },
+/// `multiline` is ADIF's own type split: NOTES is a MultilineString and keeps
+/// the operator's line breaks; COMMENT and QSLMSG are Strings, which exclude
+/// them, so a two-line note written into COMMENT verbatim is a field a strict
+/// reader rejects.
+///
+/// None are editable yet; the settings screen that makes them so is what
+/// `renderTemplate`'s error reporting is waiting for.
+///
+/// `private` is the whole of the split: COMMENT says what NOTES says, so it
+/// is withheld on the same switch — a file uploaded to a program's servers
+/// must not carry the operator's own words about who they met through a field
+/// whose name happens to be different. polo reaches the same result by
+/// blanking `qso.notes` in the template context.
+///
+/// QSLMSG is the operation's references — what goes on the card, and public
+/// by construction: `op.refs` is the operation's own claim, `compact` drops
+/// the entries that carry no reference (a contest's, say).
+///
+/// `wholeLogOnly` is the other axis, and QSLMSG is the only field on it:
+/// `op.refs` is EVERY program the operation claimed, so a file submitted to
+/// one of them would carry the others' references in a free-text field — the
+/// leak [fieldSetsPerHook] exists to prevent, arriving through the one part of
+/// a record it does not govern. Such a file already states its own reference
+/// in MY_SIG_INFO, so it loses nothing.
+const TEXT_FIELD_TEMPLATES: {
+  name: string
+  template: string
+  private: boolean
+  wholeLogOnly: boolean
+  multiline: boolean
+  /// Whether the template reads the CONTACT. One that doesn't renders once for
+  /// the file — QSLMSG names the operation's references and says the same
+  /// thing on every record, and a whole-log export of 38k contacts would
+  /// otherwise run 38k liquid renders for one string, each of them first
+  /// building a per-QSO context it has no use for.
+  ///
+  /// That makes QSLMSG the one field here that is NOT segment-aware: a rover
+  /// who activated a second park at a break gets the operation's current refs
+  /// on every record, the earlier contacts included. `op.refs` is the
+  /// operation's own claim and an export hook is handed one operation, so
+  /// saying otherwise needs the refs to reach the template per contact, which
+  /// is a different shape than a QSL message.
+  usesQso: boolean
+}[] = [
+  { name: 'NOTES', template: '{{ qso.notes }}', private: true, wholeLogOnly: false, multiline: true, usesQso: true },
+  {
+    name: 'COMMENT',
+    template: '{{ qso.notes }}',
+    private: true,
+    wholeLogOnly: false,
+    multiline: false,
+    usesQso: true,
+  },
+  {
+    name: 'QSLMSG',
+    template: '{{ op.refs | map: "ref" | compact | join: ", " }}',
+    private: false,
+    wholeLogOnly: true,
+    multiline: false,
+    usesQso: false,
+  },
 ]
+
+/// One free-text template, rendered. Shared by the per-record loop and the
+/// once-per-file one so the two cannot disagree about line handling.
+///
+/// Not caught: these templates are ours, so a throw here is a bug in one of
+/// them and belongs in front of whoever changed it. An operator's own template
+/// reaching this table is a later feature, and the settings screen that
+/// accepts it is where a typo has to be reported.
+function renderTextField(
+  textField: (typeof TEXT_FIELD_TEMPLATES)[number],
+  context: Record<string, unknown>,
+): AdifField {
+  const rendered = renderTemplate(textField.template, context, `ADIF ${textField.name}`)
+  return { name: textField.name, value: textField.multiline ? rendered : oneLine(rendered) }
+}
 
 /// The QSO's own fields, shared by every ADIF record it produces.
 /// `timeOffsetMillis` shifts this record's timestamp off the contact's — see
@@ -95,6 +194,16 @@ function baseFieldsFor(
   /// only `qso` changes per contact, and rebuilding the rest ten thousand
   /// times would be the expensive half of a large export.
   exportContext: Record<string, unknown>,
+  /// Our own station's DXCC entity, also resolved once for the whole file:
+  /// it follows from the station callsign, and this file is one station's.
+  ourEntity: ReturnType<typeof entityForCall>,
+  /// The free-text templates this file writes — [TEXT_FIELD_TEMPLATES] with
+  /// the ones this file withholds already removed, since what it withholds is
+  /// a property of the file and not of the contact.
+  textFields: typeof TEXT_FIELD_TEMPLATES,
+  /// The free-text fields that say the same thing on every record, rendered
+  /// once for the whole file.
+  constantTextFields: AdifField[],
 ): AdifField[] {
   const our = (qso.our ?? {}) as Record<string, unknown>
   const their = (qso.their ?? {}) as Record<string, unknown>
@@ -104,8 +213,11 @@ function baseFieldsFor(
   // manually entered, same convention as app-polo's ADIF exporter.
   const theirGuess = (their.guess ?? {}) as Record<string, unknown>
   const startAtMillis = Number(qso.startAtMillis ?? 0)
+  const endAtMillis = Number(qso.endAtMillis ?? 0)
   const [mode, submode] = adifModeAndSubmodeForMode(String(qso.mode ?? 'SSB'))
   const freqKHz = Number(qso.freq ?? 0)
+  // Read once: `STATE` writes it, and the county below is qualified by it.
+  const theirState = their.state ?? theirGuess.state
 
   const fields: AdifField[] = []
   const add = (name: string, value: unknown) => fields.push({ name, value })
@@ -113,9 +225,19 @@ function baseFieldsFor(
   if (startAtMillis > 0) {
     add('QSO_DATE', fmtADIFDate(startAtMillis + timeOffsetMillis))
     add('TIME_ON', fmtADIFTime(startAtMillis + timeOffsetMillis))
+    // Only a contact that recorded an end, and only one that ends after it
+    // began: QSON defaults `endAtMillis` to the start where nothing measured a
+    // duration, and TIME_OFF equal to TIME_ON tells a reader the contact took
+    // no time rather than that nobody timed it. QSO_DATE_OFF rides along only
+    // when the contact crossed midnight, which is the case it exists for.
+    if (endAtMillis > startAtMillis) {
+      add('TIME_OFF', fmtADIFTime(endAtMillis + timeOffsetMillis))
+      const dateOff = fmtADIFDate(endAtMillis + timeOffsetMillis)
+      if (dateOff !== fmtADIFDate(startAtMillis + timeOffsetMillis)) add('QSO_DATE_OFF', dateOff)
+    }
   }
   add('BAND', qso.band)
-  if (freqKHz > 0) add('FREQ', (freqKHz / 1000).toFixed(6).replace(/0+$/, '').replace(/\.$/, ''))
+  if (freqKHz > 0) add('FREQ', formatAdifFreq(freqKHz))
   add('MODE', mode)
   add('SUBMODE', submode)
   add('RST_SENT', our.sent)
@@ -133,23 +255,65 @@ function baseFieldsFor(
   if (operatorCall && operatorCall.toUpperCase() !== stationCall.trim().toUpperCase()) {
     add('OPERATOR', operatorCall)
   }
+  add('TX_PWR', qso.power)
+  add('RX_PWR', their.power ?? theirGuess.power)
+  // A split contact's receive side, which QSON records on `their` — the
+  // frequency we LISTENED on. Only when it differs from the transmit
+  // frequency, which is how `adif_to_qson.dart` decides it is a split in the
+  // first place; writing FREQ_RX equal to FREQ says "split" about a contact
+  // that wasn't one.
+  //
+  // BAND_RX has an owner elsewhere: `activities/satellites` writes the
+  // transponder's downlink band, and AO-7 answers on 10m from one transponder
+  // and 2m from the other. Base fields are written first and a name goes to
+  // the first value that fills it ([renderRow]), so on an imported satellite
+  // log the measured receive frequency decides and the transponder table does
+  // not. That is the right answer for a contact that recorded what it actually
+  // heard — but it is the opposite of who owns the field, so a satellite log
+  // whose FREQ_RX is wrong now says so twice.
+  const theirFreqKHz = Number(their.freq ?? 0)
+  if (theirFreqKHz > 0 && theirFreqKHz !== freqKHz) {
+    add('FREQ_RX', formatAdifFreq(theirFreqKHz))
+    add('BAND_RX', their.band)
+  }
   if (includePrivateData) {
     add('NAME', their.name ?? theirGuess.name)
     add('QTH', their.city ?? theirGuess.city)
+    add('EMAIL', their.email ?? theirGuess.email)
   }
   // STATE and COUNTRY stay: awards are claimed on them, and both are
   // implied by the callsign anyway. app-polo draws the line in the same
-  // place.
-  add('STATE', their.state ?? theirGuess.state)
+  // place — and the entity fields below say no more than COUNTRY already
+  // does, in the numeric and zone forms the award programs actually read.
+  add('STATE', theirState)
   add('COUNTRY', their.country ?? theirGuess.country)
-  // The rest of what awards are claimed on, by the same argument: a county,
-  // a zone and an ARRL section are all things the other station said on the
-  // air or that follow from their callsign, not an address. RX_PWR is what
-  // they were running, which is theirs to have stated.
-  add('CNTY', adifCounty(their.county ?? theirGuess.county, their.state ?? theirGuess.state))
+  // The county is on this side of the line rather than with the town above,
+  // a deliberate divergence from app-polo, which gates it. In a QSO party the
+  // county IS the exchange — the other station said it on the air, and a file
+  // that withholds it claims nothing the event scores on.
+  //
+  // County and state are read from ONE source, and that source's state has to
+  // be the one the record CLAIMS. An operator correcting a bad lookup's state
+  // leaves its county behind: qualify it with the correction and the file says
+  // Hartford County, Ontario; qualify it with the guess and STATE and CNTY
+  // name two different primary subdivisions. Neither is a true statement about
+  // the contact, so a county whose own state has been overruled is not
+  // exported at all.
+  add('CNTY', countyFor(their.county != null ? their : theirGuess, theirState))
+  add('DXCC', their.dxccCode ?? theirGuess.dxccCode)
+  // Whatever the log HOLDS, never a zone worked out here: an export states
+  // what the app knows about a contact, and resolving a callsign is the lookup
+  // layer's job, done once when the contact is logged. A guess made at export
+  // time would also be a different answer from the one the operator saw.
   add('CQZ', their.cqZone ?? theirGuess.cqZone)
   add('ITUZ', their.ituZone ?? theirGuess.ituZone)
-  add('RX_PWR', their.power)
+  add('CONT', their.continent ?? theirGuess.continent)
+  add('REGION', their.regionCode ?? theirGuess.regionCode)
+  // No PFX. ADIF's is the contacted station's WPX PREFIX — `W1` for W1AW —
+  // and QSON's `entityPrefix` is its DXCC entity's, `K`. Writing one as the
+  // other reads back correctly through our own importer and hands a contest
+  // robot the wrong multiplier. Exporting it needs a WPX prefix worked out
+  // where the contact is logged, not a near-miss substituted here.
   // Our own location always goes out, at SIX characters — the field award
   // programs read, and a ~9 x 5 km square, which is what an operator has always
   // put on the air. The finer forms below ride `includePrivateData`, so the
@@ -161,8 +325,50 @@ function baseFieldsFor(
   // A QSO's own `our.grid` wins over the operation's throughout: QSON allows
   // the station to move mid-operation, and the contact records where it was
   // actually made from.
-  const ourGrid = (our.grid ?? operation.grid) as string | undefined
+  // ONE source for the whole group, never a field at a time. A grid and a
+  // coordinate are two statements about one place, and `lat`/`lon` are stored
+  // as explicit NULLS where an operator typed a locator instead of taking a
+  // fix (`OperationLocationScreen`) — so coalescing them apart pairs a
+  // contact's own grid, or a segment's, with whatever coordinate the base
+  // operation last held. A rover exports MY_GRIDSQUARE in California beside
+  // MY_LAT/MY_LON in Nevada, and locations.md's rule says the coordinate wins,
+  // so the record reads as a place the operator never claimed.
+  const ourLocation = our.grid != null || our.lat != null || our.lon != null ? our : operation
+  const ourGrid = ourLocation.grid as string | undefined
   add('MY_GRIDSQUARE', includePrivateData ? ourGrid : coarseGrid(ourGrid))
+
+  // Our own side of what the `their` fields say about theirs. [ourEntity] is
+  // the FALLBACK: an operation stores no entity data, so these three are
+  // resolved from the station callsign, which settles an entity outright. A
+  // contact that CARRIES one outranks that — an ADIF import writes
+  // `our.entityName`/`dxccCode`/`continent` (`adif_to_qson.dart`), and a log
+  // made from Hawaii under a mainland call says 110 where the callsign says
+  // 291. Re-deriving would answer the wrong entity through the very round trip
+  // these fields exist to keep whole.
+  const ourState = our.state ?? operation.state
+  add('MY_STATE', ourState)
+  add('MY_COUNTRY', our.entityName ?? our.country ?? ourEntity.entityName)
+  add('MY_DXCC', our.dxccCode ?? ourEntity.dxccCode)
+  add('MY_CONT', our.continent ?? ourEntity.continent)
+  add('MY_REGION', our.regionCode)
+  // The zones are NOT derived: a callsign says which entity a station is in,
+  // never which zone of one. Only the contact answers — an ADIF import writes
+  // `our.cqZone`/`ituZone`, and nothing else does yet — and a contact that
+  // does not leaves them for an extension's `adifFields` hook, which can take
+  // them because a name this record never writes is a name still free to claim
+  // ([renderRow]).
+  add('MY_CQ_ZONE', our.cqZone)
+  add('MY_ITU_ZONE', our.ituZone)
+  // The station's own equipment, which QSON records per contact because an
+  // operator swaps antennas mid-operation. Not private: what was on the air
+  // is what the contact was made with.
+  add('MY_RIG', our.rig)
+  add('MY_ANTENNA', our.antenna)
+  // Public for the same reason theirs is, and on the same terms: one source
+  // for the pair, since `segmentOverrideKeys` carries `state` and `county`
+  // separately and a segment that moved to a new county must not be read
+  // beside an operation that never left its state.
+  add('MY_CNTY', countyFor(our.county != null ? our : operation, ourState))
 
   if (includePrivateData) {
     // ADIF names no field for a multi-station operating position, so this is
@@ -178,25 +384,20 @@ function baseFieldsFor(
     const theirs = theirCoordinate(their, theirGuess)
     add('LAT', formatAdifCoordinate(theirs?.lat, 'lat'))
     add('LON', formatAdifCoordinate(theirs?.lon, 'lon'))
-    add('MY_LAT', formatAdifCoordinate(our.lat ?? operation.lat, 'lat'))
-    add('MY_LON', formatAdifCoordinate(our.lon ?? operation.lon, 'lon'))
+    add('MY_LAT', formatAdifCoordinate(ourLocation.lat, 'lat'))
+    add('MY_LON', formatAdifCoordinate(ourLocation.lon, 'lon'))
   }
 
-  // Built once, on the first field that will actually render — `qsoValues`
-  // formats four dates and copies the contact, per RECORD, and with private
-  // data off every template below is skipped, which is the common case for
-  // an upload.
+  // Built once per record, on the first field that will actually render —
+  // `qsoValues` formats four dates and copies the contact, and a record whose
+  // templates are all withheld must not pay for it.
   let textContext: Record<string, unknown> | undefined
-  for (const textField of TEXT_FIELD_TEMPLATES) {
-    if (textField.template === '') continue
-    if (textField.private && !includePrivateData) continue
+  for (const textField of textFields) {
     textContext ??= { ...exportContext, qso: qsoValues(qso as Record<string, JSONValue>) }
-    // Not caught: these templates are ours, so a throw here is a bug in one
-    // of them and belongs in front of whoever changed it. An operator's own
-    // template reaching this table is a later feature, and the settings
-    // screen that accepts it is where a typo has to be reported.
-    add(textField.name, renderTemplate(textField.template, textContext, `ADIF ${textField.name}`))
+    fields.push(renderTextField(textField, textContext))
   }
+  // Last, keeping the order the table declares.
+  fields.push(...constantTextFields)
   return fields
 }
 
@@ -358,6 +559,19 @@ const ExportHandler = {
   ): Promise<ExportResult> {
     const stationCall = String(operation.stationCall ?? 'UNKNOWN')
     const title = String(operation.title ?? '')
+    // Once for the file: an ADIF export is one station's log, and a segmented
+    // operation that changed call produces one file per call (the caller has
+    // already picked which).
+    const ourEntity = entityForCall(stationCall)
+    // Decided once, for the file: what a template is withheld for is a
+    // property of the export, not of the contact it would have been written on.
+    const writable = TEXT_FIELD_TEMPLATES.filter(
+      (textField) =>
+        textField.template !== '' &&
+        (includePrivateData === true || !textField.private) &&
+        (mainHandler == null || !textField.wholeLogOnly),
+    )
+    const textFields = writable.filter((textField) => textField.usesQso)
 
     const lines: string[] = []
     // The operation's TITLE is the operator's own words — "Dad's memorial
@@ -386,6 +600,12 @@ const ExportHandler = {
       log: { station: stationCall, format: 'adif', exportType: 'adif', extension: 'adi', compact: compactFilenames },
     })
 
+    // The contact-independent half, rendered once now that `exportContext`
+    // exists rather than once per record.
+    const constantTextFields = writable
+      .filter((textField) => !textField.usesQso)
+      .map((textField) => renderTextField(textField, exportContext))
+
     for (const qso of qsos) {
       // The program fields (SIG, POTA_REF…) come from an `adifFields` hook via
       // in-runtime hook composition — no bridge crossing. Which hooks, see
@@ -401,7 +621,17 @@ const ExportHandler = {
         // Records split out of one contact would otherwise be identical, and a
         // log processor is entitled to read that as a duplicate. app-polo
         // shifts each by a second (`qsonToADIF.js:144`); so do we.
-        const fields = baseFieldsFor(qso, operation, stationCall, n * 1000, includePrivateData === true, exportContext)
+        const fields = baseFieldsFor(
+          qso,
+          operation,
+          stationCall,
+          n * 1000,
+          includePrivateData === true,
+          exportContext,
+          ourEntity,
+          textFields,
+          constantTextFields,
+        )
         for (const sets of perHook) {
           // A hook with a single set describes the contact rather than one of
           // its records, so it belongs on all of them.

@@ -9,6 +9,7 @@ upcoming:
     - "A warning pill in the logging panel when the contact has no band or no mode"
     - "New optional Notes control in the logging row: turn it on to jot a note per contact"
     - "The More pane now edits every field a contact holds, in sections: city, county, zones, ARRL section, coordinates and their power"
+    - "ADIF exports now carry DXCC, CQ and ITU zones, county, power, split and TIME_OFF"
 
 "163":
   changes:

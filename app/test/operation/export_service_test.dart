@@ -444,6 +444,91 @@ void main() {
             ((qso as Map)['their'] as Map)['call'] as String,
         ];
 
+    // A hook is handed ONE operation for the whole file, so the base
+    // operation's state, county and location are what it reads — and a rover
+    // who moved at a break made half the log somewhere else. The segment's
+    // answer reaches a hook the only way it can: on the contact.
+    test('a segment stamps its own location onto the contacts it covers', () async {
+      final operations = OperationsRepository(db);
+      final qsos = QsosRepository(db);
+      final created = await operations.create(stationCall: 'N0CALL');
+      await operations.saveData(Operation(uuid: created.uuid, data: {
+        ...created.data,
+        'state': 'CA',
+        'county': 'Marin',
+        'grid': 'CM87ss',
+      }));
+
+      final start = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
+      await qsos.add(created.uuid, {
+        'their': {'call': 'BEFORE'},
+        'startAtMillis': start,
+      });
+      await qsos.addEvent(
+        created.uuid,
+        kind: 'break',
+        atMillis: start + 1000,
+        operation: {'state': 'NV', 'county': 'Washoe', 'grid': 'DM09'},
+      );
+      await qsos.add(created.uuid, {
+        'their': {'call': 'AFTER'},
+        'startAtMillis': start + 2000,
+      });
+
+      await sliced.generateExports((await operations.get(created.uuid))!, [
+        {'hookKey': 'adif', 'exportType': 'adif'},
+      ]);
+
+      final sent = ((host.calls.last['args'] as Map)['qsos'] as List)
+          .cast<Map>()
+          .where((qso) => qso['their'] != null)
+          .toList();
+      Map ourOf(String call) =>
+          sent.firstWhere((qso) => (qso['their'] as Map)['call'] == call)['our'] as Map;
+
+      expect(ourOf('BEFORE')['state'], 'CA');
+      expect(ourOf('BEFORE')['county'], 'Marin');
+      expect(ourOf('BEFORE')['grid'], 'CM87ss');
+      expect(ourOf('AFTER')['state'], 'NV', reason: 'the base operation still says CA');
+      expect(ourOf('AFTER')['county'], 'Washoe');
+      expect(ourOf('AFTER')['grid'], 'DM09');
+    });
+
+    // The segment is the default for a stretch; a contact that recorded where
+    // it was actually made from outranks it, or a rover logging each contact's
+    // own grid would have them all replaced by the stretch's.
+    test('a contact that carries its own location keeps it', () async {
+      final operations = OperationsRepository(db);
+      final qsos = QsosRepository(db);
+      final created = await operations.create(stationCall: 'N0CALL');
+      await operations.saveData(Operation(uuid: created.uuid, data: {...created.data, 'state': 'CA'}));
+
+      final start = DateTime.utc(2026, 7, 15, 12).millisecondsSinceEpoch;
+      await qsos.addEvent(
+        created.uuid,
+        kind: 'break',
+        atMillis: start,
+        operation: {'state': 'NV', 'grid': 'DM09'},
+      );
+      await qsos.add(created.uuid, {
+        'their': {'call': 'ROVING'},
+        'our': {'grid': 'DM09ab', 'lat': 39.5, 'lon': -119.8},
+        'startAtMillis': start + 1000,
+      });
+
+      await sliced.generateExports((await operations.get(created.uuid))!, [
+        {'hookKey': 'adif', 'exportType': 'adif'},
+      ]);
+
+      final our = ((host.calls.last['args'] as Map)['qsos'] as List)
+          .cast<Map>()
+          .firstWhere((qso) => qso['their'] != null)['our'] as Map;
+      expect(our['grid'], 'DM09ab');
+      expect(our['lat'], 39.5);
+      // The segment's grid must not arrive beside the contact's own coordinate.
+      expect(our['state'], 'NV', reason: 'state is independent of the grid/coordinate group');
+    });
+
     test('a refType-scoped export gets only its own segments', () async {
       await sliced.generateExports(segmentedOp, [
         {'hookKey': 'cqww', 'exportType': 'cabrillo', 'refType': 'cqww'},

@@ -189,19 +189,52 @@ class ExportService {
   /// The exception is two of them working each other: after the rewrite that
   /// QSO says N0DEV worked N0DEV, which no program will accept and which polo
   /// drops for the same reason.
-  List<Map<String, dynamic>> _qsosAs(String stationCall, List<Qso> qsoList, SegmentedOperation segmented) {
+  /// [stationCall] null means the log is already one station's: nothing is
+  /// reassigned and nothing is left out, and the pass runs only to stamp the
+  /// segments below.
+  List<Map<String, dynamic>> _qsosAs(String? stationCall, List<Qso> qsoList, SegmentedOperation segmented) {
     return [
       for (final qso in qsoList)
         () {
-          if (!segmented.segmentUses(qso.startAtMillis, stationCall)) return null;
+          if (stationCall != null && !segmented.segmentUses(qso.startAtMillis, stationCall)) return null;
           final data = {...qso.data};
           final our = {...?asQsonMap(data['our'])};
           final theirCall = asQsonString(asQsonMap(data['their'])?['call'])?.toUpperCase();
-          our['call'] = stationCall;
+          if (stationCall != null) our['call'] = stationCall;
+          if (segmented.isSegmented) _stampSegment(our, segmented.effectiveAt(qso.startAtMillis));
           data['our'] = our;
-          return theirCall == stationCall.toUpperCase() ? null : data;
+          if (stationCall != null && theirCall == stationCall.toUpperCase()) return null;
+          return data;
         }(),
     ].whereType<Map<String, dynamic>>().toList();
+  }
+
+  /// What the segment a contact falls in says about OUR station, written onto
+  /// its `our` map.
+  ///
+  /// An export hook is handed one operation for the whole file, so a segment's
+  /// own state, county and location reach it only per contact — and `our` is
+  /// exactly where a hook already looks first for them, because QSON lets the
+  /// station move mid-operation and a contact records where it was made from.
+  /// Without this a rover who changed county at a `break` exports the base
+  /// operation's county on every record of the log.
+  ///
+  /// Never OVER a value the contact carries: that one is what was actually
+  /// recorded at the key, and the segment is only the default for a stretch.
+  ///
+  /// `grid`/`lat`/`lon` travel as ONE group, taken only when the contact has
+  /// none of the three (docs/design/locations.md: a coordinate outranks a
+  /// grid, so filling a grid from the segment beside a coordinate from the
+  /// contact would state a location neither of them claims). `state` and
+  /// `county` are independent of it and of each other.
+  void _stampSegment(Map<String, dynamic> our, Map<String, dynamic> segment) {
+    for (final key in const ['state', 'county']) {
+      if (our[key] == null && segment[key] != null) our[key] = segment[key];
+    }
+    if (our['grid'] != null || our['lat'] != null || our['lon'] != null) return;
+    for (final key in const ['grid', 'lat', 'lon']) {
+      if (segment[key] != null) our[key] = segment[key];
+    }
   }
 
   /// The QSON payload for one station callsign.
@@ -216,6 +249,10 @@ class ExportService {
   /// hooks see a single-station operation — every filename, ADIF
   /// `STATION_CALLSIGN` and Cabrillo `CALLSIGN` then names the call whose
   /// file it is, and none of them need to know about the fan-out.
+  ///
+  /// A SEGMENTED log is rewritten either way, whatever its calls, so that each
+  /// contact carries its own segment's answer for everything a hook would
+  /// otherwise read off the base operation ([_stampSegment]).
   Map<String, dynamic> _payloadAs(
     String stationCall,
     Operation operation,
@@ -227,9 +264,10 @@ class ExportService {
     // call at a `break` has more than one even when the operation itself names
     // exactly one, and short-circuiting on the base would hand each file the
     // whole log under the last call.
-    if (segmented.allStationCalls.length < 2) return payload;
-    (payload['operation'] as Map<String, dynamic>)['stationCall'] = stationCall;
-    payload['qsos'] = _qsosAs(stationCall, qsoList, segmented);
+    final perCall = segmented.allStationCalls.length >= 2;
+    if (!perCall && !segmented.isSegmented) return payload;
+    if (perCall) (payload['operation'] as Map<String, dynamic>)['stationCall'] = stationCall;
+    payload['qsos'] = _qsosAs(perCall ? stationCall : null, qsoList, segmented);
     return payload;
   }
 

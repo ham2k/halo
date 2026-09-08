@@ -57,3 +57,20 @@ export function regionAndCountryForDxccCode(
   const entity = DXCC_BY_CODE[dxccCode]
   return { ituRegion: entity?.ituRegion, countryCode: entity?.countryCode }
 }
+
+/// The DXCC entity a callsign belongs to — for our OWN station, whose entity
+/// an operation records nowhere, having only the callsign it resolves from.
+///
+/// The three fields it answers with are the ones a callsign settles: an entity
+/// has one name, one DXCC number and one continent, so this restates the call
+/// rather than guessing beyond it. Deliberately NOT the zones — a
+/// continent-sized entity spans several of those, and which one a station is
+/// in does not follow from its callsign. Whatever fills those has to know
+/// where the station actually is.
+export function entityForCall(
+  call: string | undefined,
+): Pick<AnnotatedCallInfo, 'dxccCode' | 'continent' | 'entityName'> {
+  if (!call) return {}
+  const { dxccCode, continent, entityName } = annotateCallAgainstCountryFile(call)
+  return { dxccCode, continent, entityName }
+}

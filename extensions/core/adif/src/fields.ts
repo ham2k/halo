@@ -30,6 +30,17 @@ export interface AdifField {
 
 export function field(name: string, value: unknown): string {
   if (value === undefined || value === null || value === '') return ''
+  // A MAP is never an ADIF value. QSON is a forward-compatible blob and
+  // `qson_values.dart` normalizes only the keys a Dart getter reads, so a peer
+  // or a lookup writing `{ cqZone: { value: 5 } }` reaches here intact — and
+  // `String()` would put the literal text `[object Object]` in a file an
+  // operator submits. Writing nothing loses the same field either way and says
+  // nothing false about the contact.
+  //
+  // A LIST is not that case: `String(['US-0001', 'US-0002'])` is ADIF's own
+  // comma-separated multi-value syntax, which is what a field like
+  // MY_POTA_REF wants from a hook that answers with several.
+  if (typeof value === 'object' && !Array.isArray(value)) return ''
   const text = sanitizeAdifText(String(value))
   return `<${name}:${text.length}>${text} `
 }
@@ -60,43 +71,4 @@ export function renderRow(fields: AdifField[]): string {
     row += text
   }
   return row
-}
-
-/// ADIF's `CNTY` is `STATE,County` and nothing else. What a contact stores is
-/// one of several shapes, from writers that never agreed on one (HALO-562):
-///
-/// - `US/NY/Kings` — the country-qualified code an ADIF import produces
-///   (`adif_to_qson.dart`), whose last two segments are already the answer;
-/// - `??/NY/Kings` — the same, from a country whose scheme the import didn't
-///   recognise, and equally answerable;
-/// - `PR/Ponce` — Puerto Rico, which that importer leaves UNqualified, so the
-///   two segments are the state and county themselves;
-/// - `Hartford` — a plain name from a lookup (`normalizeGuess.ts`) or typed
-///   into the More pane, which needs the contact's own state to become one.
-///
-/// A name with no state and no state in the code writes NOTHING. `CNTY`
-/// without its state is not a county to any program that reads this file, and
-/// a half-answer in an award submission is worse than an absent one — which
-/// is also why the qualifier is stripped rather than passed through: `PR,
-/// PR/Ponce` would be read by nothing.
-export function adifCounty(county: unknown, state: unknown): string | undefined {
-  const text = typeof county === 'string' ? county.trim() : ''
-  if (!text) return undefined
-  const stateCode = typeof state === 'string' ? state.trim() : ''
-  const segments = text.split('/').filter((segment) => segment !== '')
-  const name = segments[segments.length - 1]
-  if (!name) return undefined
-  const qualifier = segments.length >= 2 ? segments[segments.length - 2] : ''
-  // Three deep, the middle segment is the state whatever the country said.
-  const resolved = segments.length >= 3 && qualifier !== '??' ? qualifier : ''
-  // Two deep is ambiguous, because the importer produces both shapes: a
-  // Puerto Rican `PR/Ponce`, where the first segment IS the state, and a
-  // `US/Hartford` or `??/Hartford` from a `CNTY` that arrived without its
-  // comma, where it is the country qualifier and no state was ever stated.
-  // Only the two country qualifiers the importer emits can be told apart, so
-  // they are excluded by name and everything else two-deep reads as
-  // state/county — `US,Hartford` is a state code to nothing.
-  const pair = segments.length === 2 && qualifier !== '??' && qualifier !== 'US' ? qualifier : ''
-  const finalState = resolved || pair || stateCode
-  return finalState ? `${finalState},${name}` : undefined
 }
