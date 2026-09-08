@@ -11,6 +11,7 @@
 // Its location set is inline (`locations.ts`), per docs/design/contests.md
 // §5.3's dataset table.
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ExportOption,
@@ -25,7 +26,6 @@ import type {
 } from "@ham2k/extension-sdk"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import { tFor } from "./i18n.ts"
 import { firstName, guessedLocation, guessedName, normalizeLocation, ourExchange } from "./exchange.ts"
 import { LOCATION_PATTERN, VALID_LOCATIONS } from "./locations.ts"

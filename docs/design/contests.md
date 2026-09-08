@@ -1290,13 +1290,12 @@ discriminator field — never "first non-empty".
   `'cabrillo'` format alongside `'contest-adif'`; `generateExport` builds the
   Cabrillo header block + per-QSO `QSO:` rows (app-polo's
   `cabrilloHeaders` / `qsoToCabrilloParts` logic).
-- **Correction to an earlier draft of this RFC:** `@ham2k/lib-qson-cabrillo`
-  only exports `cabrilloToQSON` — it is an *importer*, with no writer. The
-  generator is therefore ported from polo's `src/tools/qsonToCabrillo.js` and
-  lives in the contest extension (`simple-contest/src/cabrillo.ts`), written
-  contest-agnostically so the next contest shares it rather than copying. It
-  does use `fmtCabrilloDate`/`fmtCabrilloTime` from `@ham2k/lib-format-tools`,
-  which are available.
+- **The writer is `qsonToCabrillo` from `@ham2k/lib-qson-cabrillo`** (1.2.0 and
+  later; earlier releases only parse Cabrillo). It is a shared module, so the
+  kernel holds one copy and no contest bundle carries it. It is
+  contest-agnostic on purpose — the headers and the per-QSO exchange columns
+  are passed in — which is what lets every contest that submits a Cabrillo
+  share one writer instead of a copy each.
 - ADIF contest fields ride the existing `adifFields` hook — no new infra.
 - The Dart export picker is format-agnostic at the type level
   (`ExportResult.mimeType`, §3.4); confirm the picker UI surfaces a non-`adif`
@@ -1316,6 +1315,17 @@ VHF families submit EDI rather than Cabrillo, so it is the same
 `qsonToReg1test`-style writer ported from polo.
 
 ### 5.6 QSO Parties: one extension, many events, surfaced through `suggest`
+
+> **Superseded, and still what the code does.** This section decided against
+> one extension per event on the grounds that fifty bundles would each carry
+> their own copy of the engine. The catalog did not exist when that was
+> written, and neither did the option of making the engine a shared module the
+> kernel holds — which drops an event to its own data, a few kilobytes. Per
+> event is now the direction
+> ([HALO-558](https://cabo.ham2k.com/halo/c/558)), with the events living in
+> `ham2k/extensions` and published to the catalog. Everything below still
+> describes `qp` as it ships today; it stops being true the day the app stops
+> bundling it.
 
 Issue #149 asks that QSO Parties and State POTAs "provide separate extensions
 for each event, sharing some common logic." **The goal is discovery, not
@@ -1787,7 +1797,7 @@ Everything the two Field Days need for logging and export:
 - **Scoring.** `ContestScorer` folds it: per-band-and-mode dupes, a points table
   by super-mode, a multiplier applied at summary time. The invalid-band rule
   (60/30/17/12m score 0 with an alert) is an ordinary verdict.
-- **Cabrillo.** The writer is already shared out of `simple-contest/src/cabrillo.ts`.
+- **Cabrillo.** The writer is already shared, out of `@ham2k/lib-qson-cabrillo`.
 - **ADIF.** `CONTEST_ID`/`CLASS`/`ARRL_SECT`. app-polo emits these even when FD is
   not the main handler; HaLo fans `adifFields` out to every hook anyway, so this
   is the default rather than a special case.

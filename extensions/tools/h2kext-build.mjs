@@ -19,6 +19,7 @@
 // The repo's own build uses it too, on the same terms, which is what keeps the
 // path a third party takes from being the untested one.
 
+import { readFileSync } from 'node:fs'
 import { copyFile, mkdir, readFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
@@ -57,6 +58,47 @@ export class BuildError extends Error {}
 /// is how you use a version the host does not carry — and [inline] is how to
 /// make it, but it is a choice worth stating, because the silent version costs
 /// roughly thirty times the bundle size and nothing anywhere says so.
+/// The version of a shared package as installed beside the extension being
+/// built, for the range the "you must declare this" error suggests.
+///
+/// Suggesting a floor is not cosmetic. The host admits a bundle by comparing
+/// its declared range against the package version the host holds — it cannot
+/// see which SYMBOLS that version has. A package that grew an export (the
+/// Cabrillo writer arrived in `@ham2k/lib-qson-cabrillo` 1.2.0) therefore
+/// satisfies a `^1.0.0` declaration on a host too old to have the function,
+/// and the extension installs, loads, and throws the first time an operator
+/// asks for that feature. Suggesting the version the author is actually
+/// building against makes the honest declaration the easy one.
+///
+/// Null when the package is not resolvable from there, which leaves the
+/// caller its own fallback — a missing suggestion is worth far less than a
+/// failed build.
+function installedVersionOf(pkg, fromDir) {
+  try {
+    const require = createRequire(resolve(fromDir, 'noop.js'))
+    // Walked up from the entry point rather than resolved directly: a package
+    // with an `exports` map that does not list `./package.json` — which is
+    // most of them, `@ham2k/lib-qson-cabrillo` included — refuses that path
+    // outright, and asking for it is how this silently answers 1.0.0 for
+    // every package.
+    let dir = dirname(require.resolve(pkg))
+    for (let up = 0; up < 6; up += 1) {
+      try {
+        const manifest = JSON.parse(readFileSync(join(dir, 'package.json'), 'utf8'))
+        if (manifest.name === pkg) return manifest.version ?? null
+      } catch {
+        // Not this directory's package.json, or not readable — keep climbing.
+      }
+      const parent = dirname(dir)
+      if (parent === dir) break
+      dir = parent
+    }
+    return null
+  } catch {
+    return null
+  }
+}
+
 export function sharedModulesPlugin({ sharedDependencies = {}, api = H2KEXT_API_VERSION, inline = [] } = {}) {
   const offered = sharedModulesFor(api)
   const declared = Object.keys(sharedDependencies)
@@ -105,7 +147,8 @@ export function sharedModulesPlugin({ sharedDependencies = {}, api = H2KEXT_API_
           errors: [{
             text: `'${args.path}' is carried by the Ham2K extension host, but this bundle does not declare it. ` +
               `Add it to "sharedDependencies" in ${MANIFEST_ENTRY} with the version range you work with ` +
-              `(e.g. {${JSON.stringify(args.path)}: "^1.0.0"}), or pass inline: [${JSON.stringify(args.path)}] ` +
+              `(e.g. {${JSON.stringify(args.path)}: "^${installedVersionOf(args.path, args.resolveDir) ?? '1.0.0'}"}), ` +
+              `or pass inline: [${JSON.stringify(args.path)}] ` +
               'to ship your own copy — which is how you use a version the host does not carry.',
           }],
         }))

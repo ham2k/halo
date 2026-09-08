@@ -124,6 +124,15 @@ The host checks those before loading, and refuses a bundle it cannot satisfy —
 which is a message naming the library and both versions, instead of a call
 failing somewhere deep in a hook against a major you never tested.
 
+**Declare the version you actually build against, not the oldest that
+compiles.** That check compares versions, and cannot see which *functions* a
+version has. A library that gained an export — `qsonToCabrillo` arrived in
+`@ham2k/lib-qson-cabrillo` 1.2.0, whose earlier releases only read Cabrillo —
+satisfies a `^1.0.0` declaration on a host too old to have it, so the bundle
+installs, loads, and throws the first time an operator asks for the feature
+that needs it. The build's own message suggests the version installed beside
+you for exactly this reason; take it rather than rounding down.
+
 The packer refuses a bundle that reaches for a shared module **without**
 declaring it, and one that declares a package the host doesn't carry. Anything
 outside that list you bundle yourself, as normal.

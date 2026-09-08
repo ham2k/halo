@@ -10,6 +10,7 @@
 // codes with names, searchable, Space to accept the top hit. app-polo hand-rolls
 // a suggestions list here; HaLo already has the control.
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import {
   adifForExport,
   contestScorer,
@@ -30,13 +31,6 @@ import type {
   SuggestArgs,
   TitleSuggestion,
 } from "@ham2k/extension-sdk"
-
-// The Cabrillo writer every contest here shares — `@ham2k/lib-qson-cabrillo`
-// has no writer, so it was ported into `simple-contest` and imported from
-// there. `fd` and `wfd` keep their own copies of everything ELSE, but the
-// writer is the codebase's one Cabrillo implementation and forking it per
-// contest would be a different decision from separating these two.
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 
 import { ALL_SECTIONS, CALL_AREA_FOR_SECTION, PREFIX_TO_LOCATION } from "./sections.ts"
 import { CLAIMED_BONUS_KEYS, CLASS_REGEX, FDScorer, TYPE, refOfType } from "./scorer.ts"

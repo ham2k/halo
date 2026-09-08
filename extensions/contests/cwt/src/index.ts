@@ -17,6 +17,7 @@
 // — a `SuggestArgs.scoped` call — still offers the next four sessions on any
 // day, so setting one up in advance is never blocked.
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
@@ -34,7 +35,6 @@ import type {
   TitleSuggestion,
 } from "@ham2k/extension-sdk"
 
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import { tFor } from "./i18n.ts"
 import {
   NUMBER_PATTERN,

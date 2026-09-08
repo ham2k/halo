@@ -2,13 +2,24 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Run with `node --experimental-strip-types --test` (see package.json).
+//
+// The writer itself is `@ham2k/lib-qson-cabrillo`, shared and tested there.
+// These are HaLo's own cases, kept so the contests' expectations of the
+// writer keep running somewhere HaLo controls.
+//
+// This resolves the package from node_modules like any import. It does NOT
+// exercise the seam a contest bundle actually goes through at runtime —
+// `__polo.sharedModules['@ham2k/lib-qson-cabrillo']` off the kernel — so a
+// kernel that carried the package without the writer would pass here and
+// fail in the field. `packages/halo_extension_host/test/contest_export_test.dart`
+// is what covers that path: it boots the real kernel over the built bundles
+// and asserts a Cabrillo log out of `stateparks`.
 
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
 import { EHF_BANDS, SHF_BANDS, UHF_BANDS, VHF_BANDS } from "@ham2k/lib-operation-data"
-
-import { cabrilloFreq, qsonToCabrillo } from "./cabrillo.ts"
+import { cabrilloFreq, qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 
 // Microwave operators routinely type the frequency in MHz ("10368.1"), which the app keeps
 // as logged but still resolves to the right band. Decide the Cabrillo column on the frequency's

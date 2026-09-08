@@ -11,6 +11,7 @@
 // only DECLARES the sequence; the core allocates from it inside the QSO insert
 // (docs/design/contests.md §5.8), so neither failure is reachable.
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ExportOption,
@@ -24,7 +25,6 @@ import type {
   RefLink,
 } from "@ham2k/extension-sdk"
 
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import { tFor } from "./i18n.ts"
 import { CQWPXScorer } from "./scorer.ts"
 

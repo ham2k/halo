@@ -17,6 +17,7 @@
 //   adifFields          — CONTEST_ID / STX_STRING / SRX_STRING
 //   export              — contest ADIF options plus a Cabrillo file
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ExportOption,
@@ -29,7 +30,6 @@ import type {
   Ref,
 } from "@ham2k/extension-sdk"
 
-import { qsonToCabrillo } from "./cabrillo.ts"
 import { tFor } from "./i18n.ts"
 import { SimpleContestScorer } from "./scorer.ts"
 

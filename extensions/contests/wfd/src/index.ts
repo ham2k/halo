@@ -1,7 +1,10 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Winter Field Day — the exchange, the setup, and the two exports.
+// Winter Field Day — the exchange, the setup, and the one export.
+//
+// ADIF alone, unlike `fd`: the organizers ask entrants not to submit
+// Cabrillo, so there is no Cabrillo option to offer.
 //
 // A near-duplicate of `fd` by choice, not by accident: see `scorer.ts`.
 //
@@ -30,13 +33,6 @@ import type {
   SuggestArgs,
   TitleSuggestion,
 } from "@ham2k/extension-sdk"
-
-// The Cabrillo writer every contest here shares — `@ham2k/lib-qson-cabrillo`
-// has no writer, so it was ported into `simple-contest` and imported from
-// there. `fd` and `wfd` keep their own copies of everything ELSE, but the
-// writer is the codebase's one Cabrillo implementation and forking it per
-// contest would be a different decision from separating these two.
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 
 import { ALL_SECTIONS, CALL_AREA_FOR_SECTION, PREFIX_TO_LOCATION } from "./sections.ts"
 import { CLASS_REGEX, OBJECTIVE_KEYS, TYPE, WFDScorer, refOfType } from "./scorer.ts"

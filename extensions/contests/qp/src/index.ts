@@ -30,6 +30,7 @@
 // location. A QSO logged before this extension existed, or synced from polo,
 // falls back to the operation's — which is what polo does for every QSO.
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import {
   adifForExport,
   contestScorer,
@@ -53,7 +54,6 @@ import type {
   TitleSuggestion,
 } from "@ham2k/extension-sdk"
 
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import {
   cabrilloCategories,
   cabrilloRowsFor,

@@ -7,6 +7,7 @@
 // exchange, and per-band
 // multipliers accumulated from two different axes (zone and country).
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ExportOption,
@@ -21,7 +22,6 @@ import type {
 } from "@ham2k/extension-sdk"
 import { annotateCallAgainstCountryFile } from "../../../sdk/src/dxcc.ts"
 
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import { tFor } from "./i18n.ts"
 import { CQWWScorer, ZONE_PATTERN, normalizeZone } from "./scorer.ts"
 

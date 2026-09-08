@@ -4,9 +4,8 @@
 // A REG1TEST/EDI writer, ported from app-polo's `src/tools/qsonToReg1test.js`.
 // The IARU Region 1 / RSGB VHF+ contest families submit this format instead
 // of Cabrillo. Deliberately contest-agnostic (headers and per-QSO exchange
-// fields are passed in), the same shape `simple-contest/src/cabrillo.ts`
-// established — `rsgb-vhf-tests` imports this rather than getting its own
-// copy.
+// fields are passed in), the same shape `@ham2k/lib-qson-cabrillo`'s writer
+// uses — `rsgb-vhf-tests` imports this rather than getting its own copy.
 
 import { fmtTimestamp } from "@ham2k/lib-format-tools"
 import type { JSONValue } from "@ham2k/extension-sdk"

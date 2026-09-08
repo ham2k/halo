@@ -10,6 +10,7 @@
 // IARU R1 SSB Field Day, so both extensions may sit on ONE operation and score
 // it independently (docs/design/contests.md §5.1).
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
@@ -27,7 +28,6 @@ import type {
   TitleSuggestion,
 } from "@ham2k/extension-sdk"
 
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import { tFor } from "./i18n.ts"
 import { nextRunningYear, relevanceFor } from "./schedule.ts"
 import { NFDScorer, TYPE, nfdMode, refOfType } from "./scorer.ts"

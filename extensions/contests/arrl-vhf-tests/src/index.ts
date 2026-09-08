@@ -15,6 +15,7 @@
 // infra (docs/design/contests.md's segments model), not something this
 // extension tracks itself.
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
@@ -32,7 +33,6 @@ import type {
   TitleSuggestion,
 } from "@ham2k/extension-sdk"
 
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import { EVENTS, eventFor, type VhfEvent } from "./events.ts"
 import { gridPatternFor, guessedGrid, trimmedGrid } from "./exchange.ts"
 import { tFor } from "./i18n.ts"

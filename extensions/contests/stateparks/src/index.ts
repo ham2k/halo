@@ -21,6 +21,7 @@
 //   * Ohio exchanges a three-letter park abbreviation, which is this milestone's
 //     `kind: 'options'` field — 76 codes, searched, Space to accept.
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf, utcDateCompact } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
@@ -38,7 +39,6 @@ import type {
   TitleSuggestion,
 } from "@ham2k/extension-sdk"
 
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import { cabrilloPower, configuredCategory, configuredOurPower } from "./entry.ts"
 import { daysUntil, EVENTS, eventFor, hasAlreadyRun, type StateParkEvent } from "./events.ts"
 import { tFor } from "./i18n.ts"

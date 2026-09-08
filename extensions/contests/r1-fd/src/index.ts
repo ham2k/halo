@@ -10,6 +10,7 @@
 // `ref` field as `${mode}-${year}` ("SSB-2026"), so the two runnings of one
 // year stay distinct events with distinct logs.
 
+import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
@@ -27,7 +28,6 @@ import type {
   TitleSuggestion,
 } from "@ham2k/extension-sdk"
 
-import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"
 import { tFor } from "./i18n.ts"
 import { MODES, nextRunningYear, relevanceFor } from "./schedule.ts"
 import { R1FDScorer, TYPE, modeOfRef, refOfType, yearOfRef } from "./scorer.ts"

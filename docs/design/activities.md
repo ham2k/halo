@@ -41,10 +41,12 @@ for the reference-based activities.
 table. app-polo hand-writes that loop per activity (`WCADataFile.js` is 180
 lines); the HaLo equivalent is roughly 25.
 
-**Cross-extension sharing works.** The contests thread already shares its
-Cabrillo writer by relative import
-(`import { qsonToCabrillo } from "../../simple-contest/src/cabrillo.ts"`), so
-one activity can host a module the others import.
+**Cross-extension sharing works.** The contests thread already shares by
+relative import — `rsgb-vhf-tests` reaches into `r1-vhf-tests` for the EDI
+writer (`import { qsonToReg1test } from "../../r1-vhf-tests/src/reg1test.ts"`)
+— so one activity can host a module the others import. A module that outgrows
+that goes the way the Cabrillo writer did, into a shared package the kernel
+holds.
 
 **The scoring seam is the right shape.** `contestScorer` in
 `extensions/sdk/src/scoring.ts` already does the checkpointing, day
