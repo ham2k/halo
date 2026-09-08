@@ -134,3 +134,50 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+
+# The Visual C++ runtime, deployed app-local (HALO-568).
+#
+# A Flutter Windows build links the MSVC runtime DYNAMICALLY, so a machine
+# without the "Visual C++ 2015-2022 Redistributable" cannot start the app at
+# all: the loader fails before a single line of our code runs, with a system
+# dialog naming a missing VCRUNTIME140_1.dll and suggesting the one remedy that
+# cannot work ("reinstalling the program"). Nothing the app itself could do
+# runs early enough to catch that, so the runtime has to be in the bundle.
+#
+# App-local -- the DLLs sit beside the exe, where the loader looks first --
+# rather than a VC_redist.exe bootstrapper, because the Windows installer is
+# deliberately per-user and never elevates (that is what lets an update install
+# without a UAC prompt), and because the portable ZIP has no installer to run
+# one from. Microsoft's redistributable licence covers this deployment mode.
+#
+# UCRT is excluded: ucrtbase and the api-ms-win-crt-* set are part of Windows
+# itself from Windows 10 on, which is already the floor.
+#
+# _SKIP so the module contributes no install rule of its own -- its default
+# lands the DLLs in a `bin/` subdirectory, where app-local resolution never
+# looks. Redirecting that rule with CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION
+# would be one line, but it takes no CONFIGURATIONS, so a Debug build would
+# carry release CRT DLLs its exe cannot use.
+set(CMAKE_INSTALL_UCRT_LIBRARIES FALSE)
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP TRUE)
+include(InstallRequiredSystemLibraries)
+
+# A warning rather than a hard error, because the list comes up empty only when
+# this machine's Visual Studio carries no redistributable directory, and a
+# developer building locally already HAS the runtime installed system-wide:
+# failing here would break their build over a file they do not need.
+#
+# Know what that costs: `flutter build windows` streams the CONFIGURE step at
+# trace level, so this message is invisible without `flutter --verbose`. A
+# release built outside the release pipeline is therefore unguarded -- and a
+# non-empty list is not a complete one either. The pipeline is where both are
+# caught, by checking the packaged output for the DLLs the loader demands;
+# a shipped bundle missing them is the whole bug this block exists to prevent.
+if(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS)
+  install(FILES ${CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS}
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    CONFIGURATIONS Profile;Release
+    COMPONENT Runtime)
+else()
+  message(WARNING "No Visual C++ redistributable found to bundle: a Release build from this machine will not run on a machine without the runtime installed.")
+endif()
