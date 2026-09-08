@@ -9877,10 +9877,11 @@ void main() {
       final power = find.text('Power');
       expect(power, findsWidgets);
       // The pane stacks its fields, so "after Mode" is "lower than Mode" —
-      // and above Date, which is what stops it landing at the end of the form
-      // among the fields that describe something else.
+      // and still inside the QSO section, which is what stops it drifting
+      // down among the fields that describe something else. Ours is the one
+      // in that section: "Their power" is a different field, further down.
       expect(tester.getTopLeft(power.last).dy, greaterThan(tester.getTopLeft(find.text('Mode').last).dy));
-      expect(tester.getTopLeft(power.last).dy, lessThan(tester.getTopLeft(find.text('Date').last).dy));
+      expect(tester.getTopLeft(power.last).dy, lessThan(tester.getTopLeft(find.text('Their info').last).dy));
     });
 
     testWidgets('the pane offers it while the app captures power, with the control out of the row', (tester) async {
@@ -10084,6 +10085,381 @@ void main() {
           reason: 'editing an existing QSO applies changes to the QSO, never the VFO');
     });
   });
+
+  group('Notes control', () {
+    // Same "off until asked" rule as Power, and the same trap: a control
+    // absent from a saved order is one the operator was never offered, not
+    // one they turned down.
+    testWidgets('stays out of the row until the saved order names it', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pump();
+      expect(find.byIcon(MdiIcons.noteOutline), findsNothing);
+
+      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pump();
+      expect(find.byIcon(MdiIcons.noteOutline), findsOneWidget);
+    });
+
+    testWidgets('a note typed into the control reaches the logged QSO', (tester) async {
+      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+
+      await openControl(tester, MdiIcons.noteOutline);
+      await tester.enterText(find.widgetWithText(TextField, 'Notes'), 'Ran 5W to a wire');
+      await tester.pump();
+      // Enter inside a secondary control closes it and hands the keyboard
+      // back to the main fields; logging is one rung down from there.
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await settleControl(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.data['notes'], 'Ran 5W to a wire');
+    });
+
+    testWidgets('Space types a word break instead of moving the keyboard on', (tester) async {
+      // The panel binds Space panel-wide to advance the main fields. A note
+      // is a sentence, so without an branch of its own here every word break
+      // is swallowed and the operator types "Ran5Wtoawire".
+      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pump();
+      await openControl(tester, MdiIcons.noteOutline);
+
+      final notes = find.widgetWithText(TextField, 'Notes');
+      await tester.enterText(notes, 'Ran');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      await tester.enterText(notes, '${tester.widget<TextField>(notes).controller!.text}5W');
+      await tester.pump();
+
+      expect(tester.widget<TextField>(notes).controller!.text, 'Ran 5W');
+      expect(find.text('✓ Notes'), findsOneWidget,
+          reason: 'the space went through the same change path as a typed character');
+    });
+
+    testWidgets('the first letter is capitalized wherever the note is typed', (tester) async {
+      // textCapitalization is only a hint to an on-screen keyboard — nothing
+      // on a desktop or in a browser reads it — so a formatter is what
+      // actually delivers the capital. Both views of the note apply it.
+      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pump();
+      await openControl(tester, MdiIcons.noteOutline);
+      await tester.enterText(find.widgetWithText(TextField, 'Notes'), 'ran 5W to a wire');
+      await tester.pump();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text, 'Ran 5W to a wire');
+
+      await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      await tester.enterText(find.widgetWithText(TextField, 'Notes').last, 'second time this week');
+      await tester.pump();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes').last).controller!.text,
+          'Second time this week');
+    });
+
+    testWidgets('the chip says whether this contact carries one', (tester) async {
+      // The chip is the only thing on screen while the control is closed, so
+      // without this an operator has no way to tell a contact with a note
+      // from one without opening every control in turn.
+      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pump();
+      expect(find.text('Notes'), findsOneWidget);
+      expect(find.text('✓ Notes'), findsNothing);
+
+      await openControl(tester, MdiIcons.noteOutline);
+      await tester.enterText(find.widgetWithText(TextField, 'Notes'), 'Old friend');
+      await tester.pump();
+      expect(find.text('✓ Notes'), findsOneWidget);
+    });
+
+    testWidgets("a record's own note fills the field, and wiping takes it away", (tester) async {
+      final existing = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'SSB',
+        'notes': 'Second time this week',
+      });
+      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes'], editingQso: existing));
+      await tester.pump();
+      await openControl(tester, MdiIcons.noteOutline);
+
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text, 'Second time this week');
+
+      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pump();
+      await openControl(tester, MdiIcons.noteOutline);
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text, isEmpty,
+          reason: 'a note belongs to the contact it was written about, not to the entry row');
+    });
+
+    testWidgets('a note deleted from a logged contact stays deleted', (tester) async {
+      // This map is MERGED over the record, so an omitted key leaves the
+      // stored value standing — the same trap `refs`/`freq`/`band`/`power`
+      // are written unconditionally to avoid. Without an active write the
+      // field empties, the chip loses its ✓, the save reports success, and
+      // the note is still there the next time the contact is opened.
+      final existing = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'SSB',
+        'notes': 'Ran 5W to a wire',
+      });
+      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes'], editingQso: existing));
+      await tester.pump();
+      await openControl(tester, MdiIcons.noteOutline);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Notes'), '');
+      await tester.pump();
+      expect(find.text('✓ Notes'), findsNothing);
+      await tester.tap(find.byType(FilledButton));
+
+      var saved = existing;
+      for (var i = 0; i < 20 && (saved.data['notes'] as String?) != ''; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+        saved = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!.single;
+      }
+      expect(saved.data['notes'], '',
+          reason: 'the empty string is what a deliberate clear stores — an absent key would be re-filled');
+    });
+
+    testWidgets('a contact that never had a note is not rewritten as having an empty one', (tester) async {
+      // The other half: `mergeConcurrentEdit` takes what this map writes as
+      // an edit, so stamping `notes: ''` on every save would let a contact
+      // merely opened and re-saved overwrite a note another device added
+      // while the editor sat open.
+      final existing = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW', 'sent': '55'},
+        'band': '20m',
+        'mode': 'SSB',
+      });
+      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes'], editingQso: existing));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '57');
+      await tester.pump();
+      await tester.tap(find.byType(FilledButton));
+
+      var saved = existing;
+      for (var i = 0; i < 20 && saved.data['their']['sent'] != '57'; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+        saved = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!.single;
+      }
+      expect(saved.data['their']['sent'], '57', reason: 'the edit really did save');
+      expect(saved.data.containsKey('notes'), isFalse);
+    });
+
+    testWidgets('the control and the More pane are two views of one note', (tester) async {
+      // They write the same key. Without the pane pushing back into the
+      // control, the chip would go on showing the old note — and the next
+      // keystroke in the control would put it back on the contact.
+      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pump();
+      await openControl(tester, MdiIcons.noteOutline);
+      await tester.enterText(find.widgetWithText(TextField, 'Notes'), 'First');
+      await tester.pump();
+
+      await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes').last).controller!.text, 'First');
+      await tester.enterText(find.widgetWithText(TextField, 'Notes').last, 'Second');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text, 'Second');
+      expect(find.text('✓ Notes'), findsOneWidget);
+    });
+  });
+
+  group("the More pane's station fields", () {
+    /// A panel whose lookup answers [guess] for W1AW — the pane's placeholders
+    /// and its US-only fields both hang off what the lookup said.
+    Widget hostWithGuess(Map<String, dynamic> guess) => MaterialApp(
+          home: Scaffold(
+            body: LoggingControls(
+              radioService: tunedRadio,
+              operation: operation,
+              qsosRepository: qsos,
+              lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
+                  call == 'W1AW' ? {'guess': guess} : null,
+            ),
+          ),
+        );
+
+    Future<void> openPane(WidgetTester tester) async {
+      await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('County and ARRL Section are offered for a US contact and withheld for a DX one', (tester) async {
+      // Both name a US administrative division. Over a DX contact they are
+      // fields with no possible answer, and an operator who fills one in has
+      // written something no program will read.
+      await tester.pumpWidget(hostWithGuess({'entityPrefix': 'I', 'entityName': 'Italy'}));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+      await openPane(tester);
+      expect(find.text('County'), findsNothing);
+      expect(find.text('ARRL Section'), findsNothing);
+      expect(find.text('Entity'), findsOneWidget, reason: 'the entity is shown whoever they are');
+    });
+
+    testWidgets('a city and a zone typed into the pane reach the logged QSO', (tester) async {
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+
+      await openPane(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'City'), 'Newington');
+      await tester.enterText(find.widgetWithText(TextField, 'CQ Zone'), '5');
+      await tester.enterText(find.widgetWithText(TextField, 'Their power'), '100');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      final logged = await waitForQsos(tester, 1);
+      final their = logged.single.data['their'] as Map;
+      expect(their['city'], 'Newington');
+      expect(their['cqZone'], 5);
+      expect(their['power'], 100);
+    });
+
+    testWidgets('opening the pane over a guess and saving does not make the guess an entered value', (tester) async {
+      // The trap the whole `_theirExtra` before/after comparison exists for:
+      // a guess promoted to an entered value stops tracking the lookup, and
+      // an operator who merely looked at the pane has stated nothing.
+      await tester.pumpWidget(hostWithGuess({'city': 'Newington', 'state': 'CT', 'cqZone': 5}));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+
+      await openPane(tester);
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      final logged = await waitForQsos(tester, 1);
+      final their = logged.single.data['their'] as Map;
+      expect(their.containsKey('city'), isFalse);
+      expect(their.containsKey('cqZone'), isFalse);
+      expect((their['guess'] as Map)['city'], 'Newington', reason: 'the lookup still answers for it');
+    });
+
+    testWidgets('editing the grid clears the coordinate, on screen and on the record', (tester) async {
+      // A coordinate outranks a grid wherever one is read
+      // (docs/design/locations.md), so a stale pair left beside a corrected
+      // locator would silently discard the correction — and a pane still
+      // showing that pair would be telling the operator the opposite of what
+      // the save is about to do.
+      final existing = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW', 'grid': 'FN31pr', 'lat': 41.71, 'lon': -72.72},
+        'band': '20m',
+        'mode': 'SSB',
+      });
+      await tester.pumpWidget(host(editingQso: existing));
+      await tester.pump();
+      await openPane(tester);
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Latitude')).controller!.text, '41.71');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'fn20aa');
+      // onChange fires on blur, which is what an operator moving on does.
+      FocusManager.instance.primaryFocus?.unfocus();
+      await tester.pumpAndSettle();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Latitude')).controller!.text, isEmpty);
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Longitude')).controller!.text, isEmpty);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      // The panel's own Log button, not Enter: the pane has just closed and
+      // the keyboard is not back in a main field for a shortcut to reach.
+      await tester.tap(find.byType(FilledButton));
+
+      // The record already exists, so a count of one says nothing about
+      // whether the edit landed — poll for the value itself.
+      var saved = existing;
+      for (var i = 0; i < 20 && saved.theirGrid != 'FN20aa'; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+        saved = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!.single;
+      }
+      expect(saved.theirGrid, 'FN20aa');
+      expect((saved.data['their'] as Map)['lat'], isNull);
+    });
+
+    testWidgets('a grid saved without leaving the field still clears the coordinate', (tester) async {
+      // The pane's on-screen coordinate clear runs on BLUR, and `submit()`
+      // snapshots its values before the unfocus it triggers is delivered — so
+      // a grid typed and submitted straight from the field arrives with the
+      // coordinate fields never blanked and nothing recorded to blank them.
+      // The pair then outranks the grid just entered, everywhere it is read.
+      //
+      // It has to be a COMPOSED contact: on a saved record the coordinate
+      // lives on the record itself, where the grid's own clear reaches it. On
+      // a draft it lives in the pane's override map, which is what this
+      // orders against.
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+
+      await openPane(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Latitude'), '41.71');
+      await tester.enterText(find.widgetWithText(TextField, 'Longitude'), '-72.72');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      await openPane(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'fn20aa');
+      // The engine's own end-of-editing action, which the pane's single-line
+      // fields wire straight to `submit()`. NOT a tap on Save: a tap moves
+      // focus off the field first, firing the blur listener and hiding the
+      // very ordering this test exists for.
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FilledButton));
+      final their = (await waitForQsos(tester, 1)).single.data['their'] as Map;
+      expect(their['grid'], 'FN20aa');
+      expect(their['lat'], isNull);
+      expect(their['lon'], isNull);
+    });
+
+    testWidgets('County and ARRL Section are offered to Alaska and Hawaii', (tester) async {
+      // They are their own DXCC entities, so a bare `K` test hides both — and
+      // per the scorer these stations carry no `state` of their own, which
+      // makes the section the only place their location could be recorded.
+      for (final prefix in const ['KL', 'KH6']) {
+        await tester.pumpWidget(hostWithGuess({'entityPrefix': prefix}));
+        await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+        await tester.pump(const Duration(milliseconds: 400));
+        await openPane(tester);
+        expect(find.text('ARRL Section'), findsOneWidget, reason: '$prefix is US');
+        expect(find.text('County'), findsOneWidget, reason: '$prefix is US');
+        await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+        await tester.pumpAndSettle();
+      }
+    });
+
+    testWidgets('a coordinate typed into the pane outranks the grid it was stored beside', (tester) async {
+      // The other half: the clear above exists to stop a STALE pair from
+      // surviving a typed grid, not to overrule one the operator just stated.
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+
+      await openPane(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Latitude'), '41.71');
+      await tester.enterText(find.widgetWithText(TextField, 'Longitude'), '-72.72');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      final their = (await waitForQsos(tester, 1)).single.data['their'] as Map;
+      expect(their['lat'], 41.71);
+      expect(their['lon'], -72.72);
+    });
+  });
+
 
   group('secondary control row', () {
     testWidgets('Time and Radio chips show by default; tapping expands, tapping again collapses', (tester) async {

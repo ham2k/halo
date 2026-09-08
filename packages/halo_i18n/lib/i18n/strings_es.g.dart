@@ -405,6 +405,7 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get timeControl => 'Hora';
 	@override String get radioControl => 'Radio';
 	@override String get powerControl => 'Potencia';
+	@override String get notesControl => 'Notas';
 	@override String get power => 'Potencia';
 	@override String get powerUnit => 'W';
 	@override String get controlSettings => 'Controles de registro';
@@ -470,6 +471,19 @@ class _Translations$qsoEditForm$es extends Translations$qsoEditForm$en {
 	@override String get theirState => 'Estado/Provincia';
 	@override String get band => 'Banda';
 	@override String get notes => 'Notas';
+	@override String get sectionQso => 'QSO';
+	@override String get sectionTheir => 'Sus datos';
+	@override String get sectionOur => 'Nuestros datos';
+	@override String get sectionNotes => 'Notas';
+	@override String get theirCity => 'Ciudad';
+	@override String get theirCounty => 'Condado';
+	@override String get theirEntity => 'Entidad';
+	@override String get theirCqZone => 'Zona CQ';
+	@override String get theirItuZone => 'Zona ITU';
+	@override String get theirArrlSection => 'Sección ARRL';
+	@override String get theirLat => 'Latitud';
+	@override String get theirLon => 'Longitud';
+	@override String get theirPower => 'Su potencia';
 	@override String saveFailed({required Object error}) => 'No se pudo guardar: ${error}';
 	@override String deleteFailed({required Object error}) => 'No se pudo eliminar: ${error}';
 }
@@ -3494,6 +3508,7 @@ extension on TranslationsEs {
 			'loggingControls.timeControl' => 'Hora',
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.powerControl' => 'Potencia',
+			'loggingControls.notesControl' => 'Notas',
 			'loggingControls.power' => 'Potencia',
 			'loggingControls.powerUnit' => 'W',
 			'loggingControls.controlSettings' => 'Controles de registro',
@@ -3577,6 +3592,19 @@ extension on TranslationsEs {
 			'qsoEditForm.theirState' => 'Estado/Provincia',
 			'qsoEditForm.band' => 'Banda',
 			'qsoEditForm.notes' => 'Notas',
+			'qsoEditForm.sectionQso' => 'QSO',
+			'qsoEditForm.sectionTheir' => 'Sus datos',
+			'qsoEditForm.sectionOur' => 'Nuestros datos',
+			'qsoEditForm.sectionNotes' => 'Notas',
+			'qsoEditForm.theirCity' => 'Ciudad',
+			'qsoEditForm.theirCounty' => 'Condado',
+			'qsoEditForm.theirEntity' => 'Entidad',
+			'qsoEditForm.theirCqZone' => 'Zona CQ',
+			'qsoEditForm.theirItuZone' => 'Zona ITU',
+			'qsoEditForm.theirArrlSection' => 'Sección ARRL',
+			'qsoEditForm.theirLat' => 'Latitud',
+			'qsoEditForm.theirLon' => 'Longitud',
+			'qsoEditForm.theirPower' => 'Su potencia',
 			'qsoEditForm.saveFailed' => ({required Object error}) => 'No se pudo guardar: ${error}',
 			'qsoEditForm.deleteFailed' => ({required Object error}) => 'No se pudo eliminar: ${error}',
 			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
@@ -3927,6 +3955,8 @@ extension on TranslationsEs {
 			'settings.accounts.loginNoResponse' => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cancela e intenta conectar de nuevo.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginIncompleteResponse' => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.',
 			'settings.accounts.noKeyringTitle' => 'No se pueden guardar las cuentas',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',
@@ -3941,8 +3971,6 @@ extension on TranslationsEs {
 			'settings.station.detectedEquipment' => 'Equipos detectados',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'No se puede buscar radios: ${error}',
 			'settings.station.edit' => 'Editar equipo',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.name' => 'Nombre',
 			'settings.station.nameDescription' => 'Cómo lo llamas — «Radio Izquierda». Opcional.',
 			'settings.station.transport' => 'Conexión',
@@ -4441,6 +4469,8 @@ extension on TranslationsEs {
 			'confirmDevice.linkExpired' => 'Ese enlace ha caducado. Pide al otro dispositivo que muestre un código QR nuevo.',
 			'confirmDevice.areYouSure' => ({required Object device}) => '¿Vincular ${device} a esta cuenta?',
 			'confirmDevice.unnamedDevice' => 'un dispositivo sin nombre',
+			_ => null,
+		} ?? switch (path) {
 			'confirmDevice.grantWarning' => 'Podrá leer y modificar todas las operaciones y QSOs de esta cuenta.',
 			'confirmDevice.needsSyncTitle' => 'Este dispositivo aún no sincroniza',
 			'confirmDevice.needsSyncText' => 'Activa la sincronización con Ham2K Log Filer y vincula este dispositivo a una cuenta antes de que pueda admitir a otro.',
@@ -4455,8 +4485,6 @@ extension on TranslationsEs {
 			'switchAccounts.linkWithEmail' => 'Vincular con una dirección de email',
 			'switchAccounts.linkWithEmailDescription' => 'Confirma con un código o un enlace por email',
 			'switchAccounts.enterEmailPrompt' => 'Escribe la dirección de email de la cuenta que quieres usar en este dispositivo.',
-			_ => null,
-		} ?? switch (path) {
 			'switchAccounts.emailAddress' => 'Dirección de email',
 			'switchAccounts.linkAccount' => 'Vincular cuenta',
 			'switchAccounts.copiedCode' => 'Código copiado al portapapeles',

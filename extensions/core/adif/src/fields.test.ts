@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { renderRow } from "./fields.ts"
+import { adifCounty, renderRow } from "./fields.ts"
 
 test("a field carries its own length in characters, and fields are space-separated", () => {
   assert.equal(renderRow([{ name: "CALL", value: "KI2D" }, { name: "BAND", value: "20m" }]), "<CALL:4>KI2D <BAND:3>20m ")
@@ -46,4 +46,33 @@ test("a name differing only in case does not get a second field", () => {
 
 test("typographic quotes from a lookup are folded to ASCII", () => {
   assert.equal(renderRow([{ name: "NAME", value: "First “Nick” Last" }]), '<NAME:17>First "Nick" Last ')
+})
+
+test("a county code keeps only its state and county, whatever country qualified it", () => {
+  // The importer's own shape (`adif_to_qson.dart`): CNTY has no country in
+  // it, so a code written back verbatim would name a county no program can
+  // find.
+  assert.equal(adifCounty("US/NY/Kings", "NY"), "NY,Kings")
+  assert.equal(adifCounty("??/ON/Bruce", undefined), "ON,Bruce")
+})
+
+test("a plain county name takes the contact's own state, and writes nothing without one", () => {
+  // A lookup answers with a bare name (`normalizeGuess.ts`), and so does an
+  // operator typing into the More pane. CNTY without its state is not a
+  // county to anything reading the file — better absent than half-answered.
+  assert.equal(adifCounty("Hartford", "CT"), "CT,Hartford")
+  assert.equal(adifCounty("Hartford", ""), undefined)
+  assert.equal(adifCounty("Hartford", undefined), undefined)
+  assert.equal(adifCounty("  ", "CT"), undefined)
+  assert.equal(adifCounty(undefined, "CT"), undefined)
+})
+
+test("a two-segment county tells a state qualifier from a country one", () => {
+  // The importer produces both: `PR/Ponce` where the first segment is the
+  // state, and `US/Hartford` from a CNTY that arrived with no comma, where it
+  // is the country and no state was ever stated. `US,Hartford` names nothing.
+  assert.equal(adifCounty("PR/Ponce", undefined), "PR,Ponce")
+  assert.equal(adifCounty("US/Hartford", undefined), undefined)
+  assert.equal(adifCounty("US/Hartford", "CT"), "CT,Hartford")
+  assert.equal(adifCounty("??/Hartford", "CT"), "CT,Hartford")
 })

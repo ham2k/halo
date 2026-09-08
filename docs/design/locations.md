@@ -36,7 +36,9 @@ coordinate must clear `lat`/`lon` in the same write.** A stale coordinate
 outranks the grid everywhere it is read, so leaving one behind silently
 discards what the operator just entered. The writers that carry this today are
 `OperationLocationScreen._save`, `ActivitiesView._maybeAdoptLocationFromNewRef`,
-and the QSO editor's grid field (`logging_controls.dart`).
+and the QSO editor's grid field (`logging_controls.dart`) — which the More
+pane's own Grid field reaches through, blanking its Latitude and Longitude
+fields on the same edit so what is on screen is what will be stored.
 
 A hand-typed grid therefore stores no coordinate at all. That is the correct
 answer, not a gap: a square is all the operator stated.

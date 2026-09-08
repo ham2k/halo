@@ -184,6 +184,16 @@ const _qsoTheirFields = <String, QsonFieldType>{
   'name': QsonFieldType.string,
   'grid': QsonFieldType.string,
   'state': QsonFieldType.string,
+  // The rest of where they are, as the ADIF importer already writes them
+  // (`adif_to_qson.dart`) and the More pane now edits them. The zones are
+  // numbers there, so they are numbers here.
+  'city': QsonFieldType.string,
+  'county': QsonFieldType.string,
+  'cqZone': QsonFieldType.number,
+  'ituZone': QsonFieldType.number,
+  'arrlSection': QsonFieldType.string,
+  'country': QsonFieldType.string,
+  'entityName': QsonFieldType.string,
   'entityPrefix': QsonFieldType.string,
   'flag': QsonFieldType.string,
   'sent': QsonFieldType.string,

@@ -225,6 +225,34 @@ void main() {
       expect(flat, {'CONTEST_ID': 'ARRL-FIELD-DAY', 'CLASS': '2A', 'ARRL_SECT': 'ENY'});
     }, timeout: const Timeout(Duration(seconds: 60)));
 
+    test('the section FD exchanged outranks the one stored on the station', () async {
+      // The ADIF base row writes ARRL_SECT from `their.arrlSection` — a
+      // station attribute, entered in the More pane or supplied by a lookup.
+      // A contest submission has to carry the section that was SENT instead:
+      // it is what went over the air and what the log at the other end is
+      // checked against. `renderRow` keeps the first field of a given name and
+      // the contact's own are pushed ahead of every hook's, so the base row
+      // has to yield this one name — and a submission quietly carrying the
+      // wrong section is not something anything downstream can catch.
+      final host = await sharedHost(['adif', 'fd'], onHostCall: nullHostCall);
+      final qso = contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A', section: 'ENY');
+      (qso['their'] as Map<String, dynamic>)['arrlSection'] = 'CT';
+
+      final result = await host.invokeHook('export', key: 'adif', method: 'generateExport', args: {
+        'operation': {
+          'uuid': 'op-1',
+          'stationCall': 'W1AW',
+          'refs': [{'type': 'fd', 'ourClass': '1D', 'ourSection': 'CT'}],
+        },
+        'qsos': [qso],
+        'includePrivateData': true,
+      }, timeout: const Duration(seconds: 20)) as Map;
+
+      final content = result['content'] as String;
+      expect(content, contains('<ARRL_SECT:3>ENY'));
+      expect(content, isNot(contains('<ARRL_SECT:2>CT')));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
     test('an operation that is not Field Day gets no Field Day fields', () async {
       final host = await hostFor('fd');
       final fields = await host.invokeHook('adifFields', key: 'fd', method: 'fieldsForOneQSO', args: {

@@ -844,6 +844,9 @@ class Translations$loggingControls$en {
 	/// en: 'Power'
 	String get powerControl => 'Power';
 
+	/// en: 'Notes'
+	String get notesControl => 'Notes';
+
 	/// en: 'Power'
 	String get power => 'Power';
 
@@ -1001,6 +1004,45 @@ class Translations$qsoEditForm$en {
 
 	/// en: 'Notes'
 	String get notes => 'Notes';
+
+	/// en: 'QSO'
+	String get sectionQso => 'QSO';
+
+	/// en: 'Their info'
+	String get sectionTheir => 'Their info';
+
+	/// en: 'Our info'
+	String get sectionOur => 'Our info';
+
+	/// en: 'Notes'
+	String get sectionNotes => 'Notes';
+
+	/// en: 'City'
+	String get theirCity => 'City';
+
+	/// en: 'County'
+	String get theirCounty => 'County';
+
+	/// en: 'Entity'
+	String get theirEntity => 'Entity';
+
+	/// en: 'CQ Zone'
+	String get theirCqZone => 'CQ Zone';
+
+	/// en: 'ITU Zone'
+	String get theirItuZone => 'ITU Zone';
+
+	/// en: 'ARRL Section'
+	String get theirArrlSection => 'ARRL Section';
+
+	/// en: 'Latitude'
+	String get theirLat => 'Latitude';
+
+	/// en: 'Longitude'
+	String get theirLon => 'Longitude';
+
+	/// en: 'Their power'
+	String get theirPower => 'Their power';
 
 	/// en: 'Could not save: ${error}'
 	String saveFailed({required Object error}) => 'Could not save: ${error}';
@@ -6765,6 +6807,7 @@ extension on Translations {
 			'loggingControls.timeControl' => 'Time',
 			'loggingControls.radioControl' => 'Radio',
 			'loggingControls.powerControl' => 'Power',
+			'loggingControls.notesControl' => 'Notes',
 			'loggingControls.power' => 'Power',
 			'loggingControls.powerUnit' => 'W',
 			'loggingControls.controlSettings' => 'Logging Controls',
@@ -6848,6 +6891,19 @@ extension on Translations {
 			'qsoEditForm.theirState' => 'State',
 			'qsoEditForm.band' => 'Band',
 			'qsoEditForm.notes' => 'Notes',
+			'qsoEditForm.sectionQso' => 'QSO',
+			'qsoEditForm.sectionTheir' => 'Their info',
+			'qsoEditForm.sectionOur' => 'Our info',
+			'qsoEditForm.sectionNotes' => 'Notes',
+			'qsoEditForm.theirCity' => 'City',
+			'qsoEditForm.theirCounty' => 'County',
+			'qsoEditForm.theirEntity' => 'Entity',
+			'qsoEditForm.theirCqZone' => 'CQ Zone',
+			'qsoEditForm.theirItuZone' => 'ITU Zone',
+			'qsoEditForm.theirArrlSection' => 'ARRL Section',
+			'qsoEditForm.theirLat' => 'Latitude',
+			'qsoEditForm.theirLon' => 'Longitude',
+			'qsoEditForm.theirPower' => 'Their power',
 			'qsoEditForm.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
 			'qsoEditForm.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
@@ -7198,6 +7254,8 @@ extension on Translations {
 			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginIncompleteResponse' => 'That login attempt didn\'t complete correctly. Please try connecting again.',
 			'settings.accounts.noKeyringTitle' => 'Account logins can’t be saved',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
@@ -7212,8 +7270,6 @@ extension on Translations {
 			'settings.station.detectedEquipment' => 'Detected Equipment',
 			'settings.station.discoveryUnavailable' => ({required Object error}) => 'Can\'t listen for radios: ${error}',
 			'settings.station.edit' => 'Edit equipment',
-			_ => null,
-		} ?? switch (path) {
 			'settings.station.name' => 'Name',
 			'settings.station.nameDescription' => 'What you call it — "Left Radio". Optional.',
 			'settings.station.transport' => 'Connection',
@@ -7712,6 +7768,8 @@ extension on Translations {
 			'syncAccount.pendingConfirmation' => ({required Object email}) => '${email} (pending confirmation)',
 			'syncAccount.pendingConfirmationWithId' => ({required Object email, required Object id}) => '${email} (pending confirmation - #${id})',
 			'deepLink.needsAnOperation' => 'Start an operation first, then send that contact again',
+			_ => null,
+		} ?? switch (path) {
 			'deepLink.waitingInOperation' => 'That contact is waiting in the operation behind this screen',
 			'deepLink.unknownActivities' => ({required Object refs}) => 'This device has no activity for ${refs}, so those references were left off',
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'Could not reach your activities, so ${refs} was left off — try that link again',
@@ -7726,8 +7784,6 @@ extension on Translations {
 			'confirmDevice.grantWarning' => 'It will be able to read and change every operation and QSO in this account.',
 			'confirmDevice.needsSyncTitle' => 'This device does not sync yet',
 			'confirmDevice.needsSyncText' => 'Turn on Ham2K Log Filer sync and link this device to an account before it can admit another one.',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.malformedRequest' => 'The sync server sent a request this app could not read. Ask the other device to try again.',
 			'confirmDevice.linkIt' => 'Link Device',
 			'switchAccounts.noAccountDetails' => 'No account details yet',

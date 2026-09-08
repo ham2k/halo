@@ -29,9 +29,9 @@ expanded to show all controls in multiple rows or collapsed back to a single
 scrolling row to save screen space.
 
 Time and Radio can't be hidden; the rest the operator turns on and off in
-the row's own settings dialog. A control may also ship **off** — Power does,
-since most operators never state one per QSO — and stays out until the
-operator has been asked. Their saved order is what records that they were:
+the row's own settings dialog. A control may also ship **off** — Power and
+Notes both do, since most operators state neither per QSO — and stays out
+until the operator has been asked. Their saved order is what records that they were:
 the dialog writes every key it offered, so a default-hidden key missing from
 the order means "never decided", not "decided against", and no second stored
 set is needed to tell those apart. Power in particular changes what is
@@ -41,6 +41,11 @@ same thing a different way (`trackingPower`). Either one puts a Power field
 in the More pane after Mode — as does a record that already carries a power,
 whether or not anything is tracking one now, because a value nothing
 displays is a value nothing can correct.
+
+Notes is a single free-prose field for the contact's own `notes` — the same
+value the More pane's Notes field edits, so the two are two views of one
+string rather than two places to write it, and its chip carries the ✓ the
+reference controls use to say a field is filled in.
 
 **Information area.** Presents information to the user: details for the
 current callsign, or a summary of operation statistics when no callsign is
@@ -619,6 +624,61 @@ lands as surely as a single step does.
 
 Still to come: a "goto" search (Cmd/Ctrl-G) for jumping to a QSO by number or
 callsign — see [backlog.md](../backlog.md).
+
+## The More pane
+
+The pill that opens a Modal Pane instead of expanding, and the one surface
+that shows everything a contact can hold. Built in
+`qso_edit_pane.dart` on the FormRenderer engine (`showFormPane`), in four
+sections:
+
+- **QSO** — Date, Time, Frequency, Band, Mode, Power, Sent, Rcvd.
+- **Their info** — Call, Name, City, State, County, Entity, CQ Zone, ITU
+  Zone, ARRL Section, Grid, Latitude, Longitude, Their power.
+- **Our info** — Operator, Position.
+- **Notes** — Notes.
+
+Four rules hold that shape together.
+
+**Sent and Rcvd stay in the QSO section, together.** app-polo's Edit QSO
+screen splits them between Their Info and Our Info. Here they cannot be
+split: one place resolves which is drawn first (`_rstPaneKeyOrder`), and the
+row, the key cycle and the QSO list's report cell all read it — a pane that
+put them under two headings would contradict the row that opened it.
+
+**County and ARRL Section appear only for a US contact** — the same three
+country-file entities the scorer calls US (`K`, `KL`, `KH6`), read from the
+entered entity prefix and then the guess. app-polo asks on the bare `K`, which
+hides both fields from Alaska and Hawaii; those carry no state of their own, so
+the section is the only place their location could be recorded. Both name a US administrative
+division, and offering one over a DX contact is offering a field with no
+possible answer. **Entity is shown and never taken**: it follows from the
+callsign, and nothing here could correct it.
+
+**A value the pane merely displayed is never recorded as an entered one.**
+Every `their` field the pane owns outright goes into the record through an
+override map (`_theirExtra`, the same shape `_ourExtra` has for
+Operator/Position), and a key lands there only where the pane actually
+CHANGED it. Without that, opening a contact and saving it would promote its
+lookup's guesses to entered values and stop the lookup tracking them — the
+same trap `_gridTouched` exists for on the primary Grid field.
+
+**Editing the Grid drops the coordinate override, and blanks the two fields
+on screen.** The drop is what counts: the pane's on-screen clear runs on blur,
+and `submit()` reads its values before the unfocus it triggers is delivered, so
+a grid typed and submitted from inside the field would otherwise be saved
+alongside the pair it was meant to replace. A coordinate
+outranks a grid wherever one is read ([locations.md](locations.md)), and the
+save path already clears the pair for a typed grid; blanking the fields is
+what keeps the pane from showing a locator the app is about to ignore. A
+coordinate typed here still wins — the clear exists to stop a *stale* pair
+surviving a typed grid, not to overrule one the operator just stated.
+
+Three fields app-polo offers are deliberately absent. **Our station call**:
+the save path stamps the operation's own, and which of several callsigns made
+a given contact is not recorded per QSO. **Their exchange** and **our
+exchange**: contest exchanges live in refs here, surfaced as their own
+controls ([contests.md](contests.md)).
 
 ## Related conventions
 

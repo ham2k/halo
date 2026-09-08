@@ -1459,8 +1459,20 @@ class FormRendererState extends State<FormRenderer> {
   bool _isUppercase(String fieldType, Map<String, dynamic> el) =>
       fieldType == 'callsign' || el['uppercase'] == true;
 
-  TextCapitalization _capitalizationFor(String fieldType, Map<String, dynamic> el) =>
-      _isUppercase(fieldType, el) ? TextCapitalization.characters : TextCapitalization.none;
+  /// `capitalize: true` — free prose that still starts with a capital, the
+  /// middle setting between [_isUppercase]'s whole-field uppercasing and a
+  /// field that takes exactly what is typed. Ignored where `uppercase` is
+  /// also set: uppercasing has already capitalized the first letter.
+  bool _isCapitalized(Map<String, dynamic> el) => el['capitalize'] == true;
+
+  /// The on-screen keyboard's own shift state. A HINT only — no desktop or
+  /// web keyboard reads it — which is why the formatters below carry the
+  /// same intent as a rule the field actually enforces.
+  TextCapitalization _capitalizationFor(String fieldType, Map<String, dynamic> el) => _isUppercase(fieldType, el)
+      ? TextCapitalization.characters
+      : _isCapitalized(el)
+          ? TextCapitalization.sentences
+          : TextCapitalization.none;
 
   List<TextInputFormatter>? _inputFormattersFor(String fieldType, Map<String, dynamic> el) => switch (fieldType) {
         // BOTH marks are admitted and then normalized, rather than a filter
@@ -1481,7 +1493,11 @@ class FormRendererState extends State<FormRenderer> {
             FilteringTextInputFormatter.allow(_numberFieldCharacters()),
             const LocalizedDecimalMarkFormatter(),
           ],
-        _ => _isUppercase(fieldType, el) ? const [UpperCaseTextFormatter()] : null,
+        _ => _isUppercase(fieldType, el)
+            ? const [UpperCaseTextFormatter()]
+            : _isCapitalized(el)
+                ? const [CapitalizeFirstLetterTextFormatter()]
+                : null,
       };
 
   /// Sets a `checkbox` field, from the row or from its own Switch.

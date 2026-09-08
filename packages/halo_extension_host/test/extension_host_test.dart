@@ -196,6 +196,52 @@ __polo.defineExtension({
     expect('<EOR>'.allMatches(content).length, 2);
   });
 
+  // The award fields the More pane can now fill in. They ride beside STATE
+  // rather than behind `includePrivateData`: a county, a zone, a section and
+  // the power the other station stated are all things that went over the air
+  // or follow from the callsign — and a field the pane accepts but the export
+  // drops is a field the operator filled in for nothing.
+  test('ADIF export carries the county, zones, section and their power', () async {
+    final host = await ExtensionHost.start(
+      kernelSource: bundleSource('kernel'),
+      extensions: [ExtensionBundle(key: 'adif', source: bundleSource('adif'))],
+      useIsolate: false,
+    );
+    addTearDown(host.dispose);
+
+    final result = await host.invokeHook('export', key: 'adif', method: 'generateExport', args: {
+      'operation': {'uuid': 'op-1', 'stationCall': 'KI2D', 'title': 'Test Op'},
+      'qsos': [
+        {
+          'our': {'call': 'KI2D', 'sent': '59'},
+          'their': {
+            'call': 'W1AW',
+            'sent': '57',
+            'state': 'CT',
+            // A bare county name, as a lookup answers and as the More pane
+            // takes it — the state beside it is what makes it a CNTY.
+            'county': 'Hartford',
+            'cqZone': 5,
+            'ituZone': 8,
+            'arrlSection': 'CT',
+            'power': 100,
+          },
+          'band': '20m',
+          'mode': 'SSB',
+          'startAtMillis': DateTime.utc(2026, 7, 5, 18, 30).millisecondsSinceEpoch,
+        },
+      ],
+      'includePrivateData': false,
+    }) as Map;
+
+    final content = result['content'] as String;
+    expect(content, contains('<CNTY:11>CT,Hartford'));
+    expect(content, contains('<CQZ:1>5'));
+    expect(content, contains('<ITUZ:1>8'));
+    expect(content, contains('<ARRL_SECT:2>CT'));
+    expect(content, contains('<RX_PWR:3>100'));
+  });
+
   // The "Use compact file names" setting is core-owned but extension-applied:
   // the core only passes `compactFilenames` down, and each hook builds its own
   // name from it (`exportFilename` in the SDK). So the contract worth pinning

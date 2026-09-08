@@ -37,11 +37,11 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import 'call_info_summary.dart';
 import 'density.dart';
-import 'form_renderer.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'inline_markdown.dart';
@@ -52,6 +52,7 @@ import 'mdi_icons.g.dart';
 import 'modal_pane.dart' show showHaloDialog;
 import 'option_matching.dart';
 import 'platform_chrome.dart';
+import 'qso_edit_pane.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'semantic_id.dart';
 import 'ref_text_input.dart';
@@ -1297,6 +1298,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// re-stamped — the stamp fills what is ABSENT, and this key is present.
   final Map<String, dynamic> _ourExtra = {};
 
+  /// Fields of the contact's `their` block the full-edit pane overrides —
+  /// everything about the other station that no primary or secondary control
+  /// owns: city, county, the zones, the ARRL section, a coordinate, and the
+  /// power they were running. Same shape and same rule as [_ourExtra]: a key
+  /// lands here only where the pane actually CHANGED it, so opening a
+  /// contact and saving it never promotes a lookup guess into an entered
+  /// value the way `their.grid` would (see [_gridTouched]).
+  ///
+  /// Never `call`, `sent`, `name`, `grid` or `state` — those have their own
+  /// fields in the row, and their own touched-tracking above.
+  final Map<String, dynamic> _theirExtra = {};
+
   /// Refs entered via activity controls for the QSO being composed,
   /// keyed by control key.
   final Map<String, List<Map<String, dynamic>>> _controlRefs = {};
@@ -1554,7 +1567,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Two traps this has to cover. A controller write does NOT fire `onChanged`,
   /// so `_controlTextValues` and the touched set are updated by hand — the same
   /// trap the numbers row documents. And on mobile the space arrives through
-  /// `_VirtualSpaceFormatter`, which rejects the edit and schedules this in a
+  /// `VirtualSpaceFormatter`, which rejects the edit and schedules this in a
   /// microtask, so it must be safe to run when the field already holds the
   /// value: accepting the same code twice is a no-op rather than a second
   /// write.
@@ -2079,6 +2092,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   bool _gridTouched = false;
   bool _stateTouched = false;
 
+  /// The Notes control's field. The value itself lives in
+  /// [_currentQsoExtra] under `notes`, which is where the More pane reads
+  /// and writes it and how it round-trips through [_applyFieldsFromData] — this
+  /// controller is a second view onto that one value, not a second copy of
+  /// it, so the two surfaces can never disagree about what the contact says.
+  final _notesController = TextEditingController();
+  final _notesFocus = FocusNode();
+
   /// Spotting control state (ham2k/halo-dist#10) — lives here, not in
   /// `expandedBuilder`'s closure, since that's a plain render function
   /// re-invoked on every build, not a separately-stateful widget.
@@ -2121,16 +2142,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// Prepended to each primary field's formatters so a space typed on an
   /// on-screen keyboard rotates focus / runs a command like the hardware Space
-  /// shortcut does — see [_VirtualSpaceFormatter]. One shared instance since it
+  /// shortcut does — see [VirtualSpaceFormatter]. One shared instance since it
   /// only closes over the stable [_handleSpace] tear-off.
-  late final _VirtualSpaceFormatter _virtualSpace = _VirtualSpaceFormatter(_handleSpace);
+  late final VirtualSpaceFormatter _virtualSpace = VirtualSpaceFormatter(_handleSpace);
 
   /// The call field's variant for command free-text mode, where a space is a
   /// parameter character rather than "next field". Without it that mode has no
   /// on-screen-keyboard exit at all: the hardware Space shortcut never fires
   /// for a virtual keyboard, so the double-space would just type a second
   /// literal space and the operator would be stuck in the field.
-  late final _VirtualSpaceFormatter _commandVirtualSpace = _VirtualSpaceFormatter(
+  late final VirtualSpaceFormatter _commandVirtualSpace = VirtualSpaceFormatter(
     _handleSpace,
     shouldIntercept: (old) =>
         old.text.endsWith(' ') && old.selection.isCollapsed && old.selection.baseOffset == old.text.length,
@@ -2154,7 +2175,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Keyboard for the numeric-leaning primary fields (RST, frequency) on iOS.
   /// `numberWithOptions(signed: true)` selects iOS's NumbersAndPunctuation
   /// keyboard: numbers up front, but WITH a space bar (so Space still rotates
-  /// focus — see [_VirtualSpaceFormatter]) and the symbols these fields use —
+  /// focus — see [VirtualSpaceFormatter]) and the symbols these fields use —
   /// an RST like "5NN"/"59A" reaches letters via its ABC key, and +/- and the
   /// frequency separators sit on the primary page. Without it these fields get
   /// the letter-first default keyboard, which buries digits behind the "123"
@@ -3002,9 +3023,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // `editingQso` — recording it as an override too would mark an untouched
     // record as composed.
     _ourExtra.clear();
+    _theirExtra.clear();
     if ((asQsonString(data['uuid']) ?? '').isEmpty) {
       for (final key in const ['operatorCall', 'multiIdentifier']) {
         if (our.containsKey(key)) _ourExtra[key] = asQsonString(our[key]) ?? '';
+      }
+      // Raw, not coerced: these are a mix of strings and numbers, and
+      // `normalizeQsoQson` has already given each one the type its table
+      // names. A null is kept as a null — that is a coordinate the pane
+      // deliberately cleared, and dropping it would let the old one return.
+      for (final key in theirPaneKeys) {
+        if (their.containsKey(key)) _theirExtra[key] = their[key];
       }
     }
     _currentQsoExtra
@@ -3018,6 +3047,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       ..remove('mode')
       ..remove('power')
       ..remove('startAtMillis');
+    // The Notes control's second view onto `notes`, re-seeded with it. Read
+    // back out of the map rather than from `data`, so the two can only ever
+    // show the same string.
+    _notesController.text = (_currentQsoExtra['notes'] as String?) ?? '';
     _controlRefs.clear();
     _guessedRefs = const [];
     _guessedRefsForCall = null;
@@ -3294,7 +3327,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _unmatchedRefs = [];
     _clearTextControls();
     _currentQsoExtra.clear();
+    _notesController.clear();
     _ourExtra.clear();
+    _theirExtra.clear();
     _manualStartAtMillis = null;
     _manualBand = null;
     _selectedControlKey = null;
@@ -3340,6 +3375,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _spotStatusClearTimer?.cancel();
     _spotCommentController.dispose();
     _spotCommentFocus.dispose();
+    _notesController.dispose();
+    _notesFocus.dispose();
     for (final controller in _controlTextControllers.values) {
       controller.dispose();
     }
@@ -3978,6 +4015,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         return _powerFocus;
       case 'spotting':
         return _spotState.showComment ? _spotCommentFocus : null;
+      case 'notes':
+        return _notesFocus;
       default:
         // Every remaining control is an extension's. Only `refList` builds a
         // field to focus — the same condition that gave it a chip.
@@ -4012,6 +4051,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         return [(_powerFocus, _powerController)];
       case 'spotting':
         return _spotState.showComment ? [(_spotCommentFocus, _spotCommentController)] : const [];
+      case 'notes':
+        return [(_notesFocus, _notesController)];
       default:
         final control = _effectiveActivityControls
             .where((c) => c['key'] == key && (c['input'] as Map?)?['kind'] == 'refList')
@@ -4863,6 +4904,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               icon: resolveIconName(control['icon'] as String?),
               label: (control['label'] as String?) ?? control['key'] as String,
             ),
+        // Beside More, and off until the operator has been asked: a note
+        // per contact is a thing few operators keep, and the ones who do
+        // know to go looking for it. The More pane edits the same value for
+        // everyone else.
+        _ControlDescriptor(
+          key: 'notes',
+          icon: MdiIcons.noteOutline,
+          label: t.loggingControls.notesControl,
+          defaultHidden: true,
+        ),
         _ControlDescriptor(
           key: 'more',
           icon: MdiIcons.pencil,
@@ -4960,6 +5011,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           specs.add(_powerControlSpec());
         case 'spotting':
           specs.add(_spottingControlSpec(theme, poloColors));
+        case 'notes':
+          specs.add(notesControlSpec(theme,
+              controller: _notesController, focusNode: _notesFocus, onChanged: _onNotesChanged));
         case 'more':
           specs.add(_moreControlSpec());
         default:
@@ -6442,10 +6496,33 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               duration: duration,
               textCapitalization: TextCapitalization.characters,
               hintText: _currentGuess?['grid'] as String?,
-              onChanged: (_) => _gridTouched = true,
+              onChanged: (_) => _markGridTouched(),
             ),
           ),
       ];
+
+  /// The contact's own note. Wider than the other controls' fields — a note
+  /// is a sentence, not a value — and explicitly mixed-case, like Name and
+  /// the spot comment: free prose, not logging data.
+  /// Keeps the QSO's `notes` in step with the field, and the chip's check
+  /// mark in step with both. An empty note is REMOVED rather than stored as
+  /// an empty string: [_currentQsoExtra] being non-empty is one of the
+  /// signals that says a draft is worth keeping ([_hasComposedValues]), so a
+  /// note typed and then deleted would otherwise leave an empty entry looking
+  /// like a started one. What the SAVE writes for an empty note is a separate
+  /// question — see [_getCurrentQsoData]. The `setState` is also what pushes
+  /// the draft up to the host: the post-frame notify in [build] runs on every
+  /// rebuild.
+  void _onNotesChanged(String value) {
+    final notes = value.trim();
+    setState(() {
+      if (notes.isEmpty) {
+        _currentQsoExtra.remove('notes');
+      } else {
+        _currentQsoExtra['notes'] = notes;
+      }
+    });
+  }
 
   SecondaryControlSpec _moreControlSpec() => SecondaryControlSpec(
         key: 'more',
@@ -6549,6 +6626,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // Free prose, like NOTE's parameter: Space types a literal space —
       // the panel-wide shortcut would otherwise swallow it.
       _insertAtCursor(_spotCommentController, ' ');
+    } else if (_notesFocus.hasFocus) {
+      // A note is a sentence, so the same applies with more force: without
+      // this the panel's Space binding eats every word break and the operator
+      // types "Ran5Wtoawire". Unlike the call field there is no advance
+      // gesture to preserve — Notes is a secondary control, and the keyboard
+      // leaves it by Tab, the arrows or Enter.
+      _insertAtCursor(_notesController, ' ');
+      _onNotesChanged(_notesController.text);
     }
     // Space is inert in any other field with no override of its own.
     // RefTextInput is the one exception — it binds Space locally to type a
@@ -6760,7 +6845,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// Whether the caret sits at the end of a value that already ends in a space
   /// — the double-space that exits a field which otherwise accepts spaces (see
-  /// `_handleSpace`'s free-text branch and [_VirtualSpaceFormatter]).
+  /// `_handleSpace`'s free-text branch and [VirtualSpaceFormatter]).
   static bool _atTrailingSpace(TextEditingController controller) {
     final selection = controller.selection;
     return controller.text.endsWith(' ') &&
@@ -6848,6 +6933,23 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return NumberFormatting.instance.decimalSeparator;
   }
 
+  /// The operator has stated a locator — from the row's Grid field, the
+  /// numbers row above it, or the More pane. Every one of them goes through
+  /// here rather than setting the flag itself, because a typed grid also
+  /// takes the contact's coordinate out of the entry: [_getCurrentQsoData]
+  /// writes `lat`/`lon` null for a touched grid, and an override the pane
+  /// recorded would otherwise be spread over that null and put the stale pair
+  /// straight back — which outranks the grid everywhere it is read
+  /// (docs/design/locations.md), silently discarding the correction just
+  /// made. A coordinate the operator types in the same pane visit is recorded
+  /// after this and still wins, which is the intended precedence.
+  void _markGridTouched() {
+    _gridTouched = true;
+    _theirExtra
+      ..remove('lat')
+      ..remove('lon');
+  }
+
   /// Inserts a numbers-row key at the focused field's cursor. `_insertAtCursor`
   /// writes the controller value directly, which fires the controller
   /// listeners (lookup/dupe/rebuild) but NOT the TextField's `onChanged` — so
@@ -6859,7 +6961,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final (focus, controller) = field;
     _insertAtCursor(controller, key);
     if (identical(focus, _gridFocus)) {
-      _gridTouched = true;
+      _markGridTouched();
     } else if (identical(focus, _stateFocus)) {
       _stateTouched = true;
     }
@@ -7135,6 +7237,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         if (_gridTouched) 'lat': null,
         if (_gridTouched) 'lon': null,
         if (_stateTouched) 'state': _stateController.text.trim().toUpperCase(),
+        // After the grid's coordinate-clear above, so a coordinate the
+        // operator typed into the pane outranks it: the clear exists to stop
+        // a STALE pair from surviving a typed grid, not to overrule a pair
+        // that was just stated. The two can only both appear deliberately —
+        // every way of stating a grid drops the override first
+        // ([_markGridTouched], and the pane's own onChange).
+        ..._theirExtra,
         'call': call,
         'sent': _rstOrDefault(_rcvdController.text.trim()),
         // Matches the `AnnotatedCallInfo` TS type (`CallInfo & {guess?:
@@ -7157,91 +7266,32 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       if (_powerShown) 'power': _powerWatts,
       'startAtMillis': ?startAtMillis,
       ..._currentQsoExtra,
+      // The same active-overwrite rule as refs/freq/band/power above, and it
+      // has to be stated separately because [_currentQsoExtra] DROPS an empty
+      // note rather than holding one: an entry carrying nothing but a note
+      // that was typed and deleted again must not read as composed
+      // ([_hasComposedValues]). So the key is absent exactly when the note is
+      // empty, and this map is merged over the record — leaving a note
+      // deleted from a saved contact standing, with the field empty and the
+      // save reporting success.
+      //
+      // Only where there is something to clear, though: `mergeConcurrentEdit`
+      // reads what this map writes as an edit, so stamping an empty note on
+      // every save would let a contact merely opened and re-saved overwrite
+      // one another device added while the editor sat open. An empty string,
+      // not null, because that is what a deliberate clear stores everywhere
+      // else here — a stamp fills what is ABSENT, and this key is present.
+      if (_currentQsoExtra.containsKey('notes') || (asQsonString(base['notes']) ?? '').isNotEmpty)
+        'notes': (_currentQsoExtra['notes'] as String?) ?? '',
     };
   }
 
   // ---- "More" full-edit pane ----
   //
-  // A secondary control that bypasses the usual inline-expand behavior
-  // (special-cased in _onSelectControl) to open a Modal Pane covering
-  // fields the primary/secondary controls don't otherwise expose: their
-  // name, grid, and notes. Reuses the existing FormRenderer engine via
-  // showFormPane (see form_renderer.dart) rather than a new navigation
-  // route. Fields are `uppercase: true` per the logging-wide rule —
-  // uppercase unless explicitly mixed-case: Name and Notes are free prose,
-  // and Band's canonical names are lowercase ("20m", matching the `bands`
-  // table, which is compared by exact equality).
-
-  Map<String, dynamic> _buildQsoEditFormDefinition() {
-    // A new contact, not one already in the log — see the operator field.
-    final composing = widget.editingQso == null;
-    // Guessed values ride along as faint placeholders (the FormRenderer maps a
-    // field's `placeholder` to poloFieldDecoration's hintText) — same "guess as
-    // a hint, never a pre-filled value" behaviour as the primary Grid/State.
-    final guess = _currentGuess;
-    return {
-      'title': widget.qsoEditFormTitle ?? 'Edit QSO',
-      'elements': [
-        {'type': 'field', 'key': 'theirCall', 'fieldType': 'callsign', 'label': widget.theirCallLabel ?? 'Their call'},
-        {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': widget.theirNameLabel ?? 'Name', 'placeholder': guess?['name'] as String?},
-        {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid', 'uppercase': true, 'placeholder': guess?['grid'] as String?},
-        {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': widget.theirStateLabel ?? 'State', 'uppercase': true, 'placeholder': guess?['state'] as String?},
-        // Same blank-means-the-default rule as the Sent/Rcvd row, so the pane
-        // never shows a report the row is only standing in for — and the same
-        // display order, so the pane doesn't contradict the row that opened it.
-        for (final key in _rstPaneKeyOrder)
-          {
-            'type': 'field',
-            'key': key,
-            'fieldType': 'text',
-            'label': (key == 'sent' ? widget.sentLabel ?? 'Sent' : widget.rcvdLabel ?? 'Rcvd'),
-            'uppercase': true,
-            'placeholder': _rstPlaceholder,
-          },
-        {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': widget.freqLabel ?? 'Frequency'},
-        {'type': 'field', 'key': 'band', 'fieldType': 'text', 'label': widget.bandLabel ?? 'Band'},
-        {
-          'type': 'field',
-          'key': 'mode',
-          'fieldType': 'select',
-          'label': widget.modeLabel ?? 'Mode',
-          'options': [for (final m in modes) {'value': m, 'label': m}],
-        },
-        // After the mode, with the rest of what describes the transmission
-        // rather than the station. Only when power is part of this entry:
-        // an operator who never states one has no use for the field.
-        if (_powerShown)
-          {'type': 'field', 'key': 'power', 'fieldType': 'number', 'label': widget.powerLabel ?? 'Power'},
-        {'type': 'field', 'key': 'date', 'fieldType': 'text', 'label': widget.dateLabel ?? 'Date'},
-        {'type': 'field', 'key': 'time', 'fieldType': 'text', 'label': widget.timeLabel ?? 'Time (UTC)'},
-        // Who was at the key, and — only where the operation is run by
-        // positions — which one logged this contact.
-        //
-        // The placeholder is the operation's own answer, and only while
-        // COMPOSING: that is what the save path will stamp on a new contact,
-        // so the pane is showing what is about to happen. An existing record
-        // takes no stamp (`qsoWithOperator`), so the same hint over an old
-        // contact would promise a callsign that will never be written, and a
-        // log made before anyone was named would read as if it had been.
-        {
-          'type': 'field',
-          'key': 'operatorCall',
-          'fieldType': 'callsign',
-          'label': widget.operatorCallLabel ?? 'Operator',
-          'placeholder': composing && widget.defaultOperatorCall.isNotEmpty ? widget.defaultOperatorCall : null,
-        },
-        if (widget.showPositionField)
-          {
-            'type': 'field',
-            'key': 'multiIdentifier',
-            'fieldType': 'text',
-            'label': widget.positionLabel ?? 'Position',
-            'placeholder': composing && widget.defaultPosition.isNotEmpty ? widget.defaultPosition : null,
-          },
-        {'type': 'field', 'key': 'notes', 'fieldType': 'multiline', 'label': widget.notesLabel ?? 'Notes'},
-      ],
-    };
-  }
+  // The form's shape — its sections, its fields and the rules about which of
+  // them appear — lives in qso_edit_pane.dart. What is left here is applying
+  // what comes back, which is the half that needs the controllers and the
+  // override maps.
 
   Future<void> _openMoreEditor() async {
     final millis = _effectiveStartAtMillis;
@@ -7264,10 +7314,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final ourBeforePane = {...?asQsonMap(widget.editingQso?.data['our']), ..._ourExtra};
     final operatorBeforePane = (asQsonString(ourBeforePane['operatorCall']) ?? '').trim();
     final positionBeforePane = (asQsonString(ourBeforePane['multiIdentifier']) ?? '').trim();
+    // The same displayed-vs-edited distinction once more, for every `their`
+    // field the pane owns outright: a value merely shown must not be recorded
+    // as an override, or a contact opened and saved would take its lookup's
+    // guesses as entered values and stop tracking the lookup.
+    final theirBeforePane = {...?asQsonMap(widget.editingQso?.data['their']), ..._theirExtra};
+    final theirValuesBeforePane = theirPaneValues(theirBeforePane);
 
-    final result = await showFormPane(
+    final result = await showQsoEditPane(
       context,
-      formDefinition: _buildQsoEditFormDefinition(),
+      gridBeforePane: gridBeforePane,
+      formDefinition: buildQsoEditFormDefinition(
+        widget: widget,
+        their: asQsonMap(widget.editingQso?.data['their']),
+        guess: _currentGuess,
+        rstPaneKeyOrder: _rstPaneKeyOrder,
+        rstPlaceholder: _rstPlaceholder,
+        powerShown: _powerShown,
+        composing: widget.editingQso == null,
+      ),
       initialState: {
         'theirCall': _call,
         // Entered name only (not the `theirName` getter, which coalesces in the
@@ -7288,15 +7353,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         'notes': (_currentQsoExtra['notes'] as String?) ?? '',
         'operatorCall': operatorBeforePane,
         if (widget.showPositionField) 'multiIdentifier': positionBeforePane,
-      },
-      onChange: (key, value, state) async {
-        // Freq wins over a manually-typed band, matching _onFreqChanged's
-        // existing precedence for the inline Radio control.
-        if (key == 'freq' && value is num) {
-          final band = bandForFrequency(value.toDouble());
-          if (band != null) return {'band': band};
-        }
-        return null;
+        ...theirValuesBeforePane,
+        // Shown, never taken: `theirEntity` is `disabled`, and the save
+        // handler below reads nothing back out of it.
+        'theirEntity': theirEntityDisplay(asQsonMap(widget.editingQso?.data['their']), _currentGuess) ?? '',
       },
     );
     if (result == null || !mounted) return;
@@ -7318,7 +7378,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // 'FN31PR' and a raw compare would falsely promote the passive guess
       // to a sticky touched override (see _gridTouched's doc). Case is not
       // a deliberate edit; only a real value change is.
-      _gridTouched = _gridTouched || grid != normalizeGrid(gridBeforePane);
+      // Through [_markGridTouched], not a bare flag: the pane's on-screen
+      // coordinate clear runs on BLUR (`FormRenderer` hangs `onChange` off the
+      // focus node), and `submit()` snapshots its values before the unfocus it
+      // triggers has been delivered — so a grid typed and then saved with
+      // Enter, or with the field still focused, reaches here with the
+      // coordinate fields never blanked and no override recorded to blank
+      // them. The drop has to happen on the value that was actually saved.
+      if (grid != normalizeGrid(gridBeforePane)) _markGridTouched();
       _stateTouched = _stateTouched || state != stateBeforePane.toUpperCase();
       _gridController.text = grid;
       _stateController.text = state;
@@ -7345,19 +7412,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _powerController.text = power is num ? '$power' : '';
       }
 
-      final dateParts = ((result['date'] as String?) ?? '').split('-');
-      final timeParts = ((result['time'] as String?) ?? '').split(':');
-      final dateOrTimeEdited = result['date'] != dateBeforePane || result['time'] != timeBeforePane;
-      if (dateOrTimeEdited && dateParts.length == 3 && timeParts.length == 2) {
-        final year = int.tryParse(dateParts[0]);
-        final month = int.tryParse(dateParts[1]);
-        final day = int.tryParse(dateParts[2]);
-        final hour = int.tryParse(timeParts[0]);
-        final minute = int.tryParse(timeParts[1]);
-        if (year != null && month != null && day != null && hour != null && minute != null) {
-          _manualStartAtMillis = DateTime.utc(year, month, day, hour, minute).millisecondsSinceEpoch;
-        }
-      }
+      final stamped = paneStartAtMillis(result, dateBeforePane, timeBeforePane);
+      if (stamped != null) _manualStartAtMillis = stamped;
 
       final notes = ((result['notes'] as String?) ?? '').trim();
       if (notes.isEmpty) {
@@ -7365,6 +7421,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       } else {
         _currentQsoExtra['notes'] = notes;
       }
+      // The Notes control shows the same value; without this it would go on
+      // showing what the contact said before the pane was opened.
+      _notesController.text = notes;
+
+      _theirExtra.addAll(theirPaneOverrides(result, theirValuesBeforePane));
 
       // Recorded only where the pane actually changed them, so a contact
       // merely opened and saved keeps taking the operation's stamp — and an
@@ -7378,11 +7439,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       final operatorCall = ((result['operatorCall'] as String?) ?? '').trim().toUpperCase();
       if (operatorCall != operatorBeforePane.toUpperCase()) _ourExtra['operatorCall'] = operatorCall;
       if (widget.showPositionField) {
-        // Digits only, and no leading zeros: `/OP` plus anything else is a
-        // callsign no hunter can use, and `02` and `2` are the same seat.
-        final typed = ((result['multiIdentifier'] as String?) ?? '').replaceAll(RegExp(r'[^0-9]'), '');
-        final parsed = int.tryParse(typed);
-        final position = parsed == null || parsed <= 0 ? '' : parsed.toString();
+        final position = panePosition(result['multiIdentifier']);
         if (position != positionBeforePane) _ourExtra['multiIdentifier'] = position;
       }
 
@@ -7960,7 +8017,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _guessedRefsForCall = null;
     _clearTextControls();
     _currentQsoExtra.clear();
+    _notesController.clear();
     _ourExtra.clear();
+    _theirExtra.clear();
     _manualStartAtMillis = null;
     _selectedControlKey = null;
     _clearPowerEntry();
@@ -8007,6 +8066,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _unmatchedRefs.isNotEmpty ||
       _currentQsoExtra.isNotEmpty ||
       _ourExtra.isNotEmpty ||
+      // A VALUE, not merely a key: a draft restored after a grid was typed
+      // carries `lat`/`lon` nulls (the clear [_getCurrentQsoData] wrote into
+      // the snapshot), and counting those would leave a visibly empty row
+      // guarding itself against a wipe and asking before a spot overwrites it.
+      _theirExtra.values.any((value) => value != null) ||
       _gridController.text.trim().isNotEmpty ||
       _stateController.text.trim().isNotEmpty;
 
@@ -9755,164 +9819,4 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           ),
       ];
 
-}
-
-/// On mobile, "." often gets typed where "/" was meant — portable/mobile
-/// suffixes like "/P" or "/QRP" sit behind an extra keyboard layer, while
-/// "." is right on the main keys (issue #7). Converts "." to "/", but only
-/// once the text looks like the start of a callsign (a letter, or a
-/// digit then a letter) rather than digits alone, so typing a plain
-/// frequency ("14.285") keeps its decimal point. See isMobilePlatform.
-///
-/// A LEADING "." counts too, but only when a letter or another separator
-/// follows it: an operator entering a suffix-first call types "/P" the same
-/// wrong way, and ".." is the "//" of a call with no prefix yet. Alone or
-/// before a digit it stays a full stop, so "." and ".285" — a frequency
-/// mid-typing — are left as they are. Note what this rescues is the LEADING
-/// period only: what still holds "14.2P" together is its digit-only prefix,
-/// exactly as before, and not where in the text the period sits.
-///
-/// A leading "/" opens a call the same way, under the same rule — and it is
-/// what this formatter leaves behind after the first keystroke, so without it
-/// "//KI..KN" stops converting the moment its own leading ".." became "//",
-/// and "/P.QRP" the moment ".P" became "/P".
-///
-/// The FIRST word only. A callsign holds no whitespace, so past the first
-/// one there is nothing left this could be correcting — what is there is a
-/// command's free-text parameter, where a full stop is a full stop: without
-/// this bound, "REPORT it crashes. every time" files its card reading
-/// "crashes/ every time".
-///
-/// Public (not `_`-prefixed) so other callsign-entry fields — e.g.
-/// HomeQuickLookup in app/lib/views/home_view.dart — can reuse it instead
-/// of leaving the same mobile keyboard quirk unhandled there.
-class MobileDotToSlashFormatter extends TextInputFormatter {
-  static final _callsignPrefix = RegExp(r'^([A-Z]|[0-9][A-Z]|[./][./A-Z])', caseSensitive: false);
-  static final _whitespace = RegExp(r'\s');
-
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text;
-    if (!text.contains('.') || !_callsignPrefix.hasMatch(text)) {
-      return newValue;
-    }
-    final end = text.indexOf(_whitespace);
-    if (end < 0) return newValue.copyWith(text: text.replaceAll('.', '/'));
-    final head = text.substring(0, end);
-    if (!head.contains('.')) return newValue;
-    return newValue.copyWith(text: head.replaceAll('.', '/') + text.substring(end));
-  }
-}
-
-/// Routes a space typed on an on-screen keyboard to [onSpace] — the same
-/// handler the panel's hardware Space shortcut ([_LoggingControlsState._handleSpace])
-/// uses to rotate focus / run call-field command shortcuts.
-///
-/// A virtual keyboard sends a space as a text edit, not a key event, so the
-/// panel's `SingleActivator(LogicalKeyboardKey.space)` never fires for it: the
-/// space is instead inserted (State/Grid, which allow it) or silently stripped
-/// by a field's character filter (Call/Sent/Rcvd/Freq). Either way Space
-/// couldn't rotate focus on mobile. This formatter, placed first, drops a lone
-/// inserted space and invokes the shared handler after the edit resolves.
-///
-/// On a hardware keyboard the shortcut consumes the key before it reaches text
-/// input, so this never triggers there — the two paths don't double-fire.
-class _VirtualSpaceFormatter extends TextInputFormatter {
-  final VoidCallback onSpace;
-
-  /// When set, decides whether a given edit's space is ours to take. A field
-  /// that accepts literal spaces passes this in so only the double-space that
-  /// EXITS the field is intercepted; every other space is typed as normal.
-  /// Absent means every lone space is ours — the plain callsign/RST/State/Grid
-  /// case, where a space has no meaning other than "next field".
-  final bool Function(TextEditingValue oldValue)? shouldIntercept;
-
-  /// Called instead of [onSpace] when iOS's "." shortcut is recognized, with
-  /// the text as it stood BEFORE the whole gesture (the value minus its
-  /// trailing space). The exit can't be expressed as "strip what's there now":
-  /// by the time this runs iOS's second edit has already re-added the space
-  /// after the period, so the only reliable target is the text we saw going in.
-  final void Function(String baseText)? onPeriodShortcut;
-
-  const _VirtualSpaceFormatter(this.onSpace, {this.shouldIntercept, this.onPeriodShortcut});
-
-  /// iOS's "." shortcut, which fires exactly where our exit gesture does: with
-  /// a space already in the text, a second space-bar press is turned into a
-  /// period. It never arrives as a space insertion, so the check below can't
-  /// see it and a period lands in the field instead.
-  ///
-  /// It arrives as TWO edits, and this matches the first: the trailing space is
-  /// REPLACED BY A PERIOD, same length, caret still at the end — the space that
-  /// iOS then re-adds is a separate edit. Both were traced landing in the SAME
-  /// event-loop turn, which the exit depends on: [onPeriodShortcut] runs on a
-  /// microtask, so it sees the finished text and restores the pre-gesture value
-  /// over it. Were iOS ever to send the second edit a turn later, it would
-  /// arrive after the restore and put the period back — the symptom to look for
-  /// if this regresses on a future iOS is "focus moves but '.' is left behind".
-  /// Traced on an iPhone 17 Pro simulator, iOS 26.5:
-  ///
-  ///     old="NOTE HI " sel=8,8  ->  new="NOTE HI."  sel=8,8   <- this
-  ///     old="NOTE HI." sel=8,8  ->  new="NOTE HI. " sel=9,9
-  ///
-  /// Only reachable in a space-accepting field: everywhere else the first space
-  /// is consumed before it enters the text, leaving iOS nothing to convert.
-  /// A human can't produce this edit — typing "." with the caret at the end of
-  /// "NOTE HI " gives "NOTE HI ." (longer, space intact), never "NOTE HI." — so
-  /// matching it can't swallow a period somebody meant. The cost is that the
-  /// shortcut is unavailable in these fields: to get a period, type one.
-  ///
-  /// The traits are NOT the lever here, tempting as it looks: this was traced
-  /// with `autocorrect: false` live on the field and the shortcut still fired.
-  /// It follows the system-wide "." Shortcut setting, which an app cannot turn
-  /// off — recognizing the edit is the only option.
-  static bool _isIOSPeriodShortcut(TextEditingValue oldValue, TextEditingValue newValue) {
-    // iOS only. The shape is generic enough that an Android IME doing its own
-    // smart punctuation could produce it, and there a deliberately typed "."
-    // would be swallowed as the exit gesture — a silent edit to the operator's
-    // text. Android's own double-space-period is a Gboard setting nobody has
-    // traced here, so it stays out until someone does.
-    if (!isIOSPlatform) return false;
-    if (!oldValue.text.endsWith(' ')) return false;
-    final replaced = '${oldValue.text.substring(0, oldValue.text.length - 1)}.';
-    return newValue.text == replaced && newValue.selection.end == replaced.length;
-  }
-
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    // The exit gesture, arriving disguised as punctuation. Gated on the same
-    // predicate as a real space, so it stays confined to the fields that opted
-    // into space-accepting behavior.
-    if (shouldIntercept != null &&
-        onPeriodShortcut != null &&
-        _isIOSPeriodShortcut(oldValue, newValue) &&
-        shouldIntercept!(oldValue)) {
-      // The text as it was before the gesture — see [onPeriodShortcut]. Both of
-      // iOS's edits are applied synchronously before any microtask runs, so a
-      // handler that looked at the controller instead would find "NOTE HI. "
-      // and strip only the space, leaving the period behind.
-      final base = oldValue.text.substring(0, oldValue.text.length - 1);
-      scheduleMicrotask(() => onPeriodShortcut!(base));
-      return oldValue;
-    }
-    // Only a genuine single-space insertion at the cursor — not a paste that
-    // merely contains a space, and not a selection replacement.
-    if (newValue.text.length == oldValue.text.length + 1) {
-      final caret = newValue.selection.end;
-      if (caret > 0 &&
-          caret <= newValue.text.length &&
-          newValue.text[caret - 1] == ' ' &&
-          newValue.text.substring(0, caret - 1) + newValue.text.substring(caret) == oldValue.text &&
-          (shouldIntercept?.call(oldValue) ?? true)) {
-        // Deferred: mutating focus or a controller synchronously from inside a
-        // formatter (mid-text-input) is unsafe. The microtask runs right after
-        // this edit applies and before the next frame.
-        scheduleMicrotask(onSpace);
-        return oldValue;
-      }
-    }
-    return newValue;
-  }
 }

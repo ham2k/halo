@@ -16,7 +16,7 @@ import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, H
 
 import manifest from "../manifest.json" with { type: "json" }
 import { formatAdifCoordinate } from "./coordinates.ts"
-import { field, renderRow } from "./fields.ts"
+import { adifCounty, field, renderRow } from "./fields.ts"
 import type { AdifField } from "./fields.ts"
 import { filenameFor } from "./filename.ts"
 
@@ -142,6 +142,14 @@ function baseFieldsFor(
   // place.
   add('STATE', their.state ?? theirGuess.state)
   add('COUNTRY', their.country ?? theirGuess.country)
+  // The rest of what awards are claimed on, by the same argument: a county,
+  // a zone and an ARRL section are all things the other station said on the
+  // air or that follow from their callsign, not an address. RX_PWR is what
+  // they were running, which is theirs to have stated.
+  add('CNTY', adifCounty(their.county ?? theirGuess.county, their.state ?? theirGuess.state))
+  add('CQZ', their.cqZone ?? theirGuess.cqZone)
+  add('ITUZ', their.ituZone ?? theirGuess.ituZone)
+  add('RX_PWR', their.power)
   // Our own location always goes out, at SIX characters — the field award
   // programs read, and a ~9 x 5 km square, which is what an operator has always
   // put on the air. The finer forms below ride `includePrivateData`, so the
@@ -190,6 +198,26 @@ function baseFieldsFor(
     add(textField.name, renderTemplate(textField.template, textContext, `ADIF ${textField.name}`))
   }
   return fields
+}
+
+/// The station's own ARRL section, written AFTER every hook's fields rather
+/// than with the rest of the contact's.
+///
+/// `renderRow` keeps the first field of a given name, and the contact's own
+/// fields are pushed ahead of any hook's — the right rule everywhere else,
+/// and the wrong one here. Field Day and Winter Field Day both answer
+/// `ARRL_SECT` from the section the other station SENT (their `location` on
+/// the contest ref), and that is what a contest submission has to carry: it
+/// is what went over the air, checked against the log at the other end. The
+/// value in `their.arrlSection` is an attribute of the station, entered in
+/// the More pane or supplied by a lookup, and a submission carrying it in
+/// place of the exchange is wrong in a way nothing downstream can catch.
+///
+/// So it goes last and fills the gap only when no contest claimed the field.
+function stationSectionFieldsFor(qso: Record<string, unknown>): AdifField[] {
+  const their = (qso.their ?? {}) as Record<string, unknown>
+  const theirGuess = (their.guess ?? {}) as Record<string, unknown>
+  return [{ name: 'ARRL_SECT', value: their.arrlSection ?? theirGuess.arrlSection }]
 }
 
 /// Each `adifFields` hook's contribution, as a list of field sets — one per
@@ -381,6 +409,7 @@ const ExportHandler = {
           if (!set) continue
           fields.push(...set)
         }
+        fields.push(...stationSectionFieldsFor(qso as Record<string, unknown>))
         // Assembled and then rendered, rather than appended field by field, so
         // that two hooks naming the same field — an operation activating a park
         // and a summit both answer MY_SIG — write it once ([renderRow]).
