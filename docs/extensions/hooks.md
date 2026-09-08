@@ -252,7 +252,7 @@ interface ExportHook {
   generateExport(args: ExportRequest, ctx): Promise<ExportResult>
 }
 // ExportOptionsRequest: {operation, qsos, compactFilenames?}
-// ExportOption: {exportType, format, label, filename?, icon?, priority?, selectedByDefault?}
+// ExportOption: {exportType, format, label, filename?, icon?, color?, refType?, priority?, selectedByDefault?}
 // ExportRequest: {operation, qsos, exportType?, compactFilenames?}  — full QSON, one coarse call
 // ExportResult:  {filename, mimeType, content}
 ```
@@ -265,6 +265,15 @@ core owns file I/O and save/share; the hook only produces content.
 Exporters should compose per-QSO program fields from `adifFields` hooks (see
 below) rather than knowing about specific activities. Implemented by: `adif`
 (key `adif`, one option); Cabrillo will register here too.
+
+**How a row looks.** `refType` names the activity the export covers — the
+core slices the file's QSOs by it, and the panel takes the row's icon and
+accent colour from that activity's own control, so a contest's file is
+recognisably the contest's without saying anything about glyphs. `icon` and
+`color` override that, and are how an export that claims no activity — the
+whole-log ADIF — asks for a glyph of its own instead of borrowing one. An
+`icon` name that doesn't resolve falls back to the activity's, same as an
+unreadable `color` does.
 
 **Filenames.** Build them with the SDK's `exportFilename` rather than
 spelling one out, passing the request's `compactFilenames` straight through —

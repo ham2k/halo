@@ -289,13 +289,16 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
       final results = await Future.wait([
         widget.services.exports.getExportOptions(widget.operation),
         widget.services.qsos.syncCountsForOperation(widget.operation.uuid),
-        // Colors only. A runtime that can't answer must not cost the panel
-        // its export list, so this one degrades to the theme accent rather
-        // than failing the whole load.
+        // Presentation only — the accent AND the icon a row inherits from
+        // its activity (`_optionIcon`). A runtime that can't answer must not
+        // cost the panel its export list, so this one degrades to the theme
+        // accent and the generic file glyph rather than failing the whole
+        // load; every option still names its own file and still exports it.
         widget.services.extensions
             .operationControls(widget.operation.data)
             // Which is also why `loadFailed` is dropped here and acted on
-            // everywhere else: a tint is not worth a notice.
+            // everywhere else: this panel has nothing to withhold on a bad
+            // load the way a ref list does — a plainer row is the whole cost.
             .then((result) => result.controls)
             .catchError((Object e) {
               debugPrint('[extensions] operationControls failed for the export panel: $e');
@@ -855,9 +858,22 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// the same treatment the activity's own row gets in the operation sheet
   /// (`_accentIcon`), so the POTA export and the POTA row are
   /// recognisably the same thing.
+  ///
+  /// An option that names no icon of its own but does name a `refType` wears
+  /// that activity's icon, the same route its accent already takes
+  /// (`colorForRefType`) — a contest's two files belong to the contest, and a
+  /// generic file glyph would say only "an export", which every row is. A
+  /// name that doesn't RESOLVE falls through the same way an unreadable
+  /// `color` does, so a typo costs an option the glyph, not the inheritance.
   Widget _optionIcon(Map<String, dynamic> option, Color? activityColor, HaLoColors colors) {
     final icon = Icon(
-      resolveIconName(option['icon'] as String?, fallback: MdiIcons.fileExport),
+      resolveIconName(
+        option['icon'] as String?,
+        fallback: resolveIconName(
+          iconForRefType(_controls, option['refType'] as String?),
+          fallback: MdiIcons.fileExport,
+        ),
+      ),
       color: activityColor == null ? colors.onSurfaceAccent : null,
     );
     if (activityColor == null) return icon;

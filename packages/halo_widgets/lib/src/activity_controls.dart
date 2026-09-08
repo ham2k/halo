@@ -13,7 +13,15 @@ import 'mdi_icons.g.dart';
 
 /// The controls entry for [refType], or null for a type with no active
 /// control.
+///
+/// A null or empty [refType] matches nothing, whatever the controls hold.
+/// The match below is equality, so without this a null would be answered by
+/// the first control that declares no `input.refType` of its own — and every
+/// caller passes a nullable type read out of extension JSON, meaning a ref
+/// or an export that claims NO activity would be branded with that
+/// extension's icon and accent.
 Map<String, dynamic>? controlForRefType(List<Map<String, dynamic>> controls, String? refType) {
+  if (refType == null || refType.isEmpty) return null;
   for (final control in controls) {
     final input = control['input'] as Map?;
     if (input?['refType'] == refType) return control;

@@ -426,6 +426,73 @@ void main() {
       expect(find.byType(CircleAvatar), findsOneWidget);
     });
 
+    // A contest names the refs it covers but leaves the glyph to the app, and
+    // a file-export icon on every one of its rows would say only "an export",
+    // which every row in the panel already is. The icon takes the same route
+    // its accent does.
+    testWidgets("an export with no icon of its own wears its activity's", (tester) async {
+      exports.includeContest = true;
+      services = HaLoServices(
+        db,
+        settings,
+        extensions: _ExtensionsWithControls(const [
+          {'key': 'cqww/ref', 'color': '#3C8C3C', 'icon': 'trophy', 'input': {'refType': 'cqww'}},
+        ]),
+        exports: exports,
+      );
+      await pump(tester);
+
+      expect(find.byIcon(MdiIcons.trophy), findsOneWidget);
+      expect(find.byIcon(MdiIcons.fileExport), findsOneWidget,
+          reason: "only the whole-log ADIF, which asks for that glyph by name");
+    });
+
+    // Falling back on a name that doesn't RESOLVE, not merely on a missing
+    // one — the accent does exactly this (an unreadable `color` still leaves
+    // the row the activity's), and an option whose glyph is a typo would
+    // otherwise wear the generic file icon while its row keeps the contest's
+    // circle: the one outcome this whole fallback exists to prevent.
+    testWidgets("an icon name that doesn't resolve falls through too", (tester) async {
+      exports.includeContest = true;
+      exports.contestIcon = 'trophy-cup-that-does-not-exist';
+      services = HaLoServices(
+        db,
+        settings,
+        extensions: _ExtensionsWithControls(const [
+          {'key': 'cqww/ref', 'color': '#3C8C3C', 'icon': 'trophy', 'input': {'refType': 'cqww'}},
+        ]),
+        exports: exports,
+      );
+      await pump(tester);
+
+      expect(find.byIcon(MdiIcons.trophy), findsOneWidget);
+      expect(find.byIcon(MdiIcons.fileExport), findsOneWidget,
+          reason: "only the whole-log ADIF, which asks for that glyph by name");
+    });
+
+    // `controlForRefType` matches on equality, so a control that declares no
+    // refType of its own answers for a null one. The whole-log ADIF claims no
+    // activity and must not be branded with whichever extension happens to
+    // have shipped a control without an input refType.
+    testWidgets('an option with no refType claims no activity, whatever the controls say',
+        (tester) async {
+      services = HaLoServices(
+        db,
+        settings,
+        extensions: _ExtensionsWithControls(const [
+          {'key': 'odd', 'color': '#3C8C3C', 'icon': 'trophy', 'input': {}},
+        ]),
+        exports: exports,
+      );
+      await pump(tester);
+
+      expect(find.byIcon(MdiIcons.trophy), findsNothing);
+      expect(find.byIcon(MdiIcons.fileExport), findsOneWidget);
+      // The accent takes the same lookup, so the leak shows as a circle even
+      // when the glyph is right — the control here declares a color too.
+      expect(find.byType(CircleAvatar), findsNothing);
+    });
+
     testWidgets('with no activity colors at all, nothing is circled', (tester) async {
       await pump(tester);
       expect(find.byType(CircleAvatar), findsNothing);
@@ -857,6 +924,14 @@ class _FakeExportService extends ExportService {
   /// when developer mode is on — tagged with the operation's first callsign.
   bool includeQson = false;
 
+  /// Whether to append a contest's Cabrillo, which names a refType but no
+  /// icon or color of its own — the shape every contest hook returns.
+  bool includeContest = false;
+
+  /// An icon name for that Cabrillo, for the test that gives it one that
+  /// doesn't resolve.
+  String? contestIcon;
+
   /// Holds the option load open, for the test that has to see the pane
   /// mid-load. The real one waits on the extension host, which a fake
   /// answering synchronously never reproduces.
@@ -897,6 +972,19 @@ class _FakeExportService extends ExportService {
         'selectedByDefault': true,
         'priority': 0,
       },
+      if (includeContest)
+        {
+          'hookKey': 'cqww',
+          'exportType': 'cabrillo',
+          'format': 'cabrillo',
+          'refType': 'cqww',
+          'stationCall': operation.stationCalls.first,
+          'label': 'CQ WW Cabrillo',
+          if (contestIcon != null) 'icon': contestIcon,
+          'filename': '2026-07-15 N0CALL CQWW.log',
+          'selectedByDefault': true,
+          'priority': 0,
+        },
       if (includeQson)
         {
           'hookKey': 'core-devmode',

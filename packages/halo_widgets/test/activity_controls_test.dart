@@ -27,4 +27,31 @@ void main() {
       expect(isUnknownRefType(controls, null), isTrue);
     });
   });
+
+  group('a null or empty refType matches nothing', () {
+    // The lookup is equality, so a control that declares no refType of its
+    // own — an extension shipping a malformed entry, which crosses the bridge
+    // as unvalidated JSON — would otherwise ANSWER for a null. Everything
+    // that claims no activity (the whole-log ADIF export, a ref with no type)
+    // would then wear that extension's icon and accent.
+    final withTypeless = [
+      {'icon': 'trophy', 'color': '#3C8C3C', 'input': <String, dynamic>{}},
+      ...controls,
+    ];
+
+    test('a typeless control does not answer for a null type', () {
+      expect(controlForRefType(withTypeless, null), isNull);
+      expect(iconForRefType(withTypeless, null), isNull);
+      expect(colorForRefType(withTypeless, null), isNull);
+      expect(isUnknownRefType(withTypeless, null), isTrue);
+    });
+
+    test('nor for an empty one', () {
+      expect(controlForRefType(withTypeless, ''), isNull);
+    });
+
+    test('and a real type still matches past it', () {
+      expect(controlForRefType(withTypeless, 'pota')?['icon'], 'pine-tree');
+    });
+  });
 }

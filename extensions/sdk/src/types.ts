@@ -823,6 +823,12 @@ export interface ExportOption {
   /// applies. Omit it only if the name genuinely can't be known until the
   /// content exists.
   filename?: string
+  /// Icon for the panel row, by name (see `resolveIconName`). Omit it and an
+  /// export that names a `refType` inherits its activity's icon, exactly as
+  /// `color` below inherits the accent — a contest's files are the contest's
+  /// without saying so. Set it only for an export that belongs to no activity
+  /// or wants a glyph of its own; a name that doesn't resolve falls back to
+  /// the activity's too.
   icon?: string
   /// Accent color for the panel row's icon, as `#RRGGBB`. Omit it and an
   /// export that names a `refType` inherits its activity's accent (POTA's
