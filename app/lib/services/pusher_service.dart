@@ -32,7 +32,7 @@ class PusherEvent {
 /// api-lofi's push channels (`client-<uuid[0..7]>-<verifier>`,
 /// `account-...`, `operation-...`) are all *public* channels secured by an
 /// unguessable name rather than Pusher's private-channel auth handshake
-/// (confirmed against api-lofi's `config/initializers/pusher.rb` and
+/// (confirmed against api-lofi's `config/initializers/push.rb` and
 /// `Client#push_channel_name` — there is no `/pusher/auth` endpoint), same
 /// as web-lofi's own Pusher client. So this client only ever needs
 /// `pusher:subscribe` with a bare channel name — no channel auth signature
@@ -43,7 +43,18 @@ class PusherEvent {
 /// — callers never need to notice a drop and resubscribe themselves.
 class PusherService {
   final String appKey;
-  final String cluster;
+
+  /// Pusher's own deployments are addressed by cluster; ours is not. Exactly
+  /// one of [cluster] and [host] is needed, and [host] wins when both are given.
+  final String? cluster;
+
+  /// The WebSocket host to connect to, when it isn't Pusher's.
+  ///
+  /// LoFi is migrating off Pusher onto Ham2K's own fan-out service, which
+  /// speaks this same protocol deliberately so builds already in the field
+  /// move across by configuration rather than by release (LOFI-47). Setting
+  /// this is the entire client-side change.
+  final String? host;
 
   /// Injectable so tests can hand this a fake in-memory channel (e.g. from a
   /// `StreamChannelController`) instead of opening a real socket — typed as
@@ -68,9 +79,15 @@ class PusherService {
 
   PusherService({
     required this.appKey,
-    required this.cluster,
+    this.cluster,
+    this.host,
     StreamChannel<dynamic> Function(Uri uri)? connect,
-  }) : _connect = connect ?? WebSocketChannel.connect;
+  })  : assert(cluster != null || host != null, 'PusherService needs either a cluster or a host'),
+        _connect = connect ?? WebSocketChannel.connect;
+
+  /// Where to connect. Pusher derives its host from the cluster; ours is named
+  /// outright.
+  String get _wsHost => host ?? 'ws-$cluster.pusher.com';
 
   /// Named events on any subscribed channel. `pusher:*`/`pusher_internal:*`
   /// protocol events are filtered out — this stream is app events only.
@@ -92,7 +109,7 @@ class PusherService {
 
   void _ensureConnecting() {
     if (_socket != null || _disposed) return;
-    final uri = Uri.parse('wss://ws-$cluster.pusher.com/app/$appKey?protocol=7&client=halo&version=1.0');
+    final uri = Uri.parse('wss://$_wsHost/app/$appKey?protocol=7&client=halo&version=1.0');
     final socket = _connect(uri);
     _socket = socket;
     _socketSub = socket.stream.listen(

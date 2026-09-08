@@ -43,6 +43,53 @@ class _FakeServer {
 
 void main() {
   group('PusherService', () {
+    test('a host connects to Ham2K push instead of deriving a Pusher cluster host', () {
+      // The whole client-side migration off Pusher (LOFI-47) is this one
+      // substitution: same protocol, same frames, different host. If the URL
+      // stopped honouring `host`, a build configured for our own push service
+      // would quietly go on talking to Pusher.
+      fakeAsync((async) {
+        var connectedTo = '';
+        final service = PusherService(
+          appKey: 'key',
+          host: 'push.ham2k.com',
+          connect: (uri) {
+            connectedTo = uri.toString();
+            return _FakeServer().local;
+          },
+        );
+
+        service.subscribe('client-abc123');
+        async.flushMicrotasks();
+
+        expect(connectedTo, 'wss://push.ham2k.com/app/key?protocol=7&client=halo&version=1.0');
+
+        service.dispose();
+      });
+    });
+
+    test('a host wins over a cluster when a build names both', () {
+      fakeAsync((async) {
+        var connectedTo = '';
+        final service = PusherService(
+          appKey: 'key',
+          cluster: 'mt1',
+          host: 'push.ham2k.com',
+          connect: (uri) {
+            connectedTo = uri.toString();
+            return _FakeServer().local;
+          },
+        );
+
+        service.subscribe('client-abc123');
+        async.flushMicrotasks();
+
+        expect(connectedTo, startsWith('wss://push.ham2k.com/'));
+
+        service.dispose();
+      });
+    });
+
     test('subscribing connects and sends pusher:subscribe once the connection is established', () {
       fakeAsync((async) {
         late _FakeServer server;

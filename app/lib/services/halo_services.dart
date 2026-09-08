@@ -418,7 +418,8 @@ class HaLoServices {
   final SiblingAppsService? _siblingAppsOverride;
   late final SiblingAppsService siblingApps = _siblingAppsOverride ?? SiblingAppsService();
 
-  /// Pusher app key + cluster for the realtime client — public,
+  /// Push app key plus either a host or a cluster for the realtime client —
+  /// public,
   /// non-secret values (every Pusher client SDK ships them this way), but
   /// still build-time configured like SOTA's OAuth client id
   /// (config/secrets.dart) since they point at whichever LoFi
@@ -429,10 +430,25 @@ class HaLoServices {
   /// the real one only ever exists in a build whose secrets name a Pusher
   /// deployment, which no test has.
   final PusherService? _pusherOverride;
-  late final PusherService? pusher = _pusherOverride ??
-      ((secrets['PUSHER_KEY']?.isEmpty ?? true) || (secrets['PUSHER_CLUSTER']?.isEmpty ?? true)
-          ? null
-          : PusherService(appKey: secrets['PUSHER_KEY']!, cluster: secrets['PUSHER_CLUSTER']!));
+  late final PusherService? pusher = _pusherOverride ?? _pusherFromSecrets();
+
+  /// LoFi is migrating off Pusher onto Ham2K's own fan-out service, which
+  /// speaks the same protocol on purpose (LOFI-47). A build names one or the
+  /// other: `PUSHER_HOST` for ours, `PUSHER_CLUSTER` for Pusher's. Ours wins
+  /// where a checkout has filled in both, so moving a build across is one line
+  /// in secrets.dart.
+  PusherService? _pusherFromSecrets() {
+    final key = secrets['PUSHER_KEY'];
+    if (key?.isEmpty ?? true) return null;
+
+    final host = secrets['PUSHER_HOST'];
+    if (host?.isNotEmpty ?? false) return PusherService(appKey: key!, host: host);
+
+    final cluster = secrets['PUSHER_CLUSTER'];
+    if (cluster?.isEmpty ?? true) return null;
+
+    return PusherService(appKey: key!, cluster: cluster);
+  }
 
   /// Registers this device with the sync server — independent of QSO sync
   /// being enabled, deliberately — and, once that succeeds,
