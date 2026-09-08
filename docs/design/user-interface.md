@@ -684,22 +684,30 @@ and these rules are what keep it one:
   Decided per element, the shape becomes an accident of whoever wrote the
   declaration.
 - **A section is headed by `SectionHeader`**: the accent title in the slab
-  face over a hairline rule in that same accent, on no ground of its own.
-  Title and rule both sit at the ROW INSET — the rule measures the content
-  it heads and stops where the rows' own text does, unlike a filled band,
-  which is full-bleed precisely so it does not read as one highlighted row.
-  `FormRenderer`'s `style: 'section'` header IS that widget, and it is the
-  only section header in the app. It abuts its rows on both sides — the gap
-  belongs above a section, not between a heading and what it names.
-  Pinned (`SectionHeader.pinned`) it paints the pane's surface behind
-  itself, since its own rows scroll under it; only a surface-grounded list
-  may pin one.
-- **Bands stick, unless the section collapses.** A section is a
-  `SliverMainAxisGroup` of [band, rows] (`SectionHeader.section`), so the band
-  holds the top while its own rows scroll under it and is pushed off by the
-  next section's. That makes the surface a `CustomScrollView`, and every piece
-  of it a sliver: a box handed to a viewport fails the whole list, not just
-  the section that returned it.
+  face, a step above the row face, over a hairline rule in that same accent,
+  on no ground of its own. Title and rule both stand `SectionHeader.overhang`
+  OUTSIDE the row inset — the heading is proud of the rows it heads rather
+  than lined up with them, where it would read as one more row, and the rule
+  still measures the content rather than running full-bleed the way a filled
+  band does. (A pane that insets its rows by less than the overhang gets a
+  band at its own edge, never one pushed off it.) `FormRenderer`'s
+  `style: 'section'` header IS that widget, and it is the only section header
+  in the app. It abuts its rows on both sides — the gap belongs above a
+  section, not between a heading and what it names. Pinned it paints the
+  pane's surface behind itself, since its own rows scroll under it; only a
+  surface-grounded list may pin one.
+- **Bands stick.** A section is a `SliverMainAxisGroup` of [band, rows]
+  (`SectionHeader.section`), so the band holds the top while its own rows
+  scroll under it and is pushed off by the next section's. That makes the
+  surface a `CustomScrollView`, and every piece of it a sliver: a box handed
+  to a viewport fails the whole list, not just the section that returned it.
+  A list assembled as a flat row list, bands among them, says
+  `SectionedListView` and is cut into those groups for it;
+  `FormRenderer(sliver: true)` does the same for a declared form. The band is
+  a `PinnedHeaderSliver`, so it is as tall as it lays out to — a title that
+  wraps at a large font scale takes the room it needs rather than a stated
+  extent's guess — and nested bands STACK: a section band pins under whatever
+  pinned band the group above it holds.
 - **A CATEGORY is not a section.** The Settings panel is an accordion of
   categories — Common Settings, then one per declared group and extension
   panel, one open at a time and remembered across visits. A category heads
@@ -707,11 +715,20 @@ and these rules are what keep it one:
   sections take) and a chevron on its left; a section inside one (a panel's
   own `style: 'section'` header, e.g. Callsign Notes' "Built-in Notes") is
   the unfilled heading above. The ground is what says which contains the
-  other, so neither borrows the other's look. Nothing pins in
-  the panel, and it is boxes rather than slivers. Every category is built up
+  other, so neither borrows the other's look. The category band pins too, and
+  the section bands inside it stack under it — two bands deep while the rows
+  of an open category scroll past, which is what keeps "where am I" answerable
+  in a list whose rows all look alike. Opening a category brings it to the top
+  of the pane, a frame after its own animation: the pane can only scroll as
+  far as its content, and the room to scroll into is what that animation is
+  still making. The body is slivers, so the accordion's open-and-shut is
+  `CollapsingSliver` rather than `AnimatedCrossFade` — same wipe, a sliver
+  subtree instead of a box. Every category is built up
   front, never lazily: one a lazy list scrolls out of view is DISPOSED, and
   disposing a form takes the focus of whatever is being typed in with it —
-  the live-filter rule above, which the panel's search depends on. Inside Common Settings the
+  the live-filter rule above, which the panel's search depends on. A shut
+  category is mounted but paints nothing, which is what makes it "offstage" to
+  a widget test's default finder. Inside Common Settings the
   contributing groups head their own rows with the unfilled section heading,
   so a row drawn from a dozen groups still says where it belongs. A search
   opens every category that still matches (Common Settings excepted — its

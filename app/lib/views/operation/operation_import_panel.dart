@@ -153,7 +153,7 @@ class _OperationImportPanelState extends State<OperationImportPanel> {
         // § Settings lists).
         Expanded(
           child: SettingsList(
-            child: ListView(
+            child: SectionedListView(
               padding: const EdgeInsets.only(bottom: Space.md),
               children: _rows(context),
             ),

@@ -362,12 +362,12 @@ void main() {
       findsNothing,
     );
 
-    // The catalog rows are part of the row set the ListView is keyed by
+    // The catalog rows are part of the row set the list is keyed by
     // (docs/quirks.md): without them, the fetch resolving changes the rows
     // under a key that says nothing changed, and web clicks land on the
     // pre-fetch geometry.
     expect(
-      tester.widget<ListView>(find.byType(ListView)).key,
+      tester.widget<SectionedListView>(find.byType(SectionedListView)).key,
       listContentsKey([
         'pota',
         'k2hrc-llota',

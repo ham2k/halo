@@ -64,6 +64,11 @@ class ExtensionSettingsPanel extends StatefulWidget {
   /// rebuilds that set on every commit.
   final VoidCallback? onRowsChanged;
 
+  /// Renders as a SLIVER rather than a box — for the Settings panel, whose
+  /// scroll view is a sliver one so that its bands can pin. Only meaningful
+  /// in [embedded] mode; a standalone panel brings its own scroll view.
+  final bool sliver;
+
   const ExtensionSettingsPanel({
     super.key,
     required this.services,
@@ -75,6 +80,7 @@ class ExtensionSettingsPanel extends StatefulWidget {
     this.expanded = true,
     this.onToggle,
     this.onRowsChanged,
+    this.sliver = false,
   });
 
   @override
@@ -297,23 +303,28 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     );
   }
 
+  /// A box where this panel renders as one, wrapped for the viewport where
+  /// it renders as a sliver — the loading, failed and empty states, which
+  /// are boxes either way.
+  Widget _box(Widget child) => widget.sliver ? SliverToBoxAdapter(child: child) : child;
+
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return widget.embedded
+      return _box(widget.embedded
           ? const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()))
-          : const Center(child: CircularProgressIndicator());
+          : const Center(child: CircularProgressIndicator()));
     }
     var definition = _definition;
     if (definition == null) {
-      return Center(child: Text(context.t.settings.developer.panelLoadFailed));
+      return _box(Center(child: Text(context.t.settings.developer.panelLoadFailed)));
     }
     if (widget.commonOnly) {
       final common = [
         for (final el in (definition['elements'] as List? ?? const []).cast<Map<String, dynamic>>())
           if (elementIsCommon(el)) el,
       ];
-      if (common.isEmpty) return const SizedBox.shrink();
+      if (common.isEmpty) return _box(const SizedBox.shrink());
       definition = {...definition, 'elements': common};
     }
     // Hidden, not unmounted — same rule as the core groups above, and for
@@ -347,6 +358,7 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     final form = FormRenderer(
       formDefinition: definition,
       initialState: const {},
+      sliver: widget.sliver,
       showActions: false,
       // Embedded, the heading above the form names it — the form's own
       // definition title would double it.
@@ -377,20 +389,28 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     if (widget.embedded) {
       final title = widget.sectionTitle;
       if (title == null) {
-        return Visibility(
-          visible: !searchHidden,
-          maintainState: true,
-          child: ExcludeFocus(excluding: searchHidden, child: form),
-        );
+        final rows = ExcludeFocus(excluding: searchHidden, child: form);
+        return widget.sliver
+            ? SliverVisibility(visible: !searchHidden, maintainState: true, sliver: rows)
+            : Visibility(visible: !searchHidden, maintainState: true, child: rows);
       }
-      return settingsCategory(
-        context,
-        title: title,
-        expanded: widget.expanded,
-        onToggle: widget.onToggle,
-        hidden: searchHidden,
-        child: form,
-      );
+      return widget.sliver
+          ? settingsCategorySliver(
+              context,
+              title: title,
+              expanded: widget.expanded,
+              onToggle: widget.onToggle,
+              hidden: searchHidden,
+              sliver: form,
+            )
+          : settingsCategory(
+              context,
+              title: title,
+              expanded: widget.expanded,
+              onToggle: widget.onToggle,
+              hidden: searchHidden,
+              child: form,
+            );
     }
 
     return Visibility(

@@ -3424,135 +3424,133 @@ class _SpotsFilterDialogState extends State<_SpotsFilterDialog> {
       // viewport, which the shell's plain scroll view is not.
       scrollable: false,
       title: Text(t.operation.spots.filters.title),
-      content: LayoutBuilder(
-        builder: (context, constraints) => CustomScrollView(
-          shrinkWrap: true,
-          slivers: [
-            SliverToBoxAdapter(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _filterDropdown(
-                    label: t.operation.spots.filters.band,
-                    initialSelection: _bandFilter,
-                    entries: [
-                      for (final option in bandOptions)
-                        DropdownMenuEntry(value: option, label: _bandEntryLabel(t, option)),
-                    ],
-                    onSelected: (value) {
-                      if (value == null) return;
-                      setState(() => _bandFilter = value);
-                      widget.onBandChanged(value);
-                    },
-                  ),
-                  _filterDropdown(
-                    label: t.operation.spots.filters.mode,
-                    initialSelection: _modeFilter,
-                    entries: [
-                      for (final option in modeOptions)
-                        DropdownMenuEntry(value: option, label: _modeEntryLabel(t, option)),
-                    ],
-                    onSelected: (value) {
-                      if (value == null) return;
-                      setState(() => _modeFilter = value);
-                      widget.onModeChanged(value);
-                    },
-                  ),
-                  _filterDropdown<int>(
-                    label: t.operation.spots.filters.age,
-                    initialSelection: _ageMinutes,
-                    entries: [
-                      for (final minutes in _ageOptionsInMinutes)
-                        DropdownMenuEntry(
-                          value: minutes,
-                          label:
-                              '${t.operation.spots.ageMinutes(minutes: minutes)} (${widget.ageSpotCounts[minutes] ?? 0})',
-                        ),
-                    ],
-                    onSelected: (value) {
-                      if (value == null) return;
-                      setState(() => _ageMinutes = value);
-                      widget.onAgeChanged(value);
-                    },
-                  ),
-                ],
-              ),
-            ),
-            SectionHeader.section(context, t.operation.spots.filters.sorting, width: constraints.maxWidth, children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: settingsRowInset, vertical: Space.sm),
-                child: SegmentedButton<String>(
-                  // MDI-only UI: skip the framework's Material check on the
-                  // selected segment (same as settings_view).
-                  showSelectedIcon: false,
-                  segments: [
-                    ButtonSegment(value: 'frequency', label: Text(t.operation.spots.filters.sortByFrequency)),
-                    ButtonSegment(value: 'time', label: Text(t.operation.spots.filters.sortByTime)),
+      content: CustomScrollView(
+        shrinkWrap: true,
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _filterDropdown(
+                  label: t.operation.spots.filters.band,
+                  initialSelection: _bandFilter,
+                  entries: [
+                    for (final option in bandOptions)
+                      DropdownMenuEntry(value: option, label: _bandEntryLabel(t, option)),
                   ],
-                  selected: {_sortBy},
-                  onSelectionChanged: (selection) {
-                    setState(() => _sortBy = selection.first);
-                    widget.onSortByChanged(selection.first);
+                  onSelected: (value) {
+                    if (value == null) return;
+                    setState(() => _bandFilter = value);
+                    widget.onBandChanged(value);
                   },
                 ),
-              ),
-              _toggleRow(
-                title: t.operation.spots.filters.groupByBand,
-                value: _groupByBand,
-                // Grouping by band is meaningless once the Band filter has
-                // already narrowed to one band — every spot would land in
-                // the same single section anyway.
-                onChanged: _isSingleBandFilter
-                    ? null
-                    : (value) {
-                        setState(() => _groupByBand = value);
-                        widget.onGroupByBandChanged(value);
-                      },
-              ),
-              _toggleRow(
-                title: t.operation.spots.filters.groupCallsWithNotes,
-                value: _groupCallsWithNotes,
-                onChanged: (value) {
-                  setState(() => _groupCallsWithNotes = value);
-                  widget.onGroupCallsWithNotesChanged(value);
+                _filterDropdown(
+                  label: t.operation.spots.filters.mode,
+                  initialSelection: _modeFilter,
+                  entries: [
+                    for (final option in modeOptions)
+                      DropdownMenuEntry(value: option, label: _modeEntryLabel(t, option)),
+                  ],
+                  onSelected: (value) {
+                    if (value == null) return;
+                    setState(() => _modeFilter = value);
+                    widget.onModeChanged(value);
+                  },
+                ),
+                _filterDropdown<int>(
+                  label: t.operation.spots.filters.age,
+                  initialSelection: _ageMinutes,
+                  entries: [
+                    for (final minutes in _ageOptionsInMinutes)
+                      DropdownMenuEntry(
+                        value: minutes,
+                        label:
+                            '${t.operation.spots.ageMinutes(minutes: minutes)} (${widget.ageSpotCounts[minutes] ?? 0})',
+                      ),
+                  ],
+                  onSelected: (value) {
+                    if (value == null) return;
+                    setState(() => _ageMinutes = value);
+                    widget.onAgeChanged(value);
+                  },
+                ),
+              ],
+            ),
+          ),
+          SectionHeader.section(context, t.operation.spots.filters.sorting, children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: settingsRowInset, vertical: Space.sm),
+              child: SegmentedButton<String>(
+                // MDI-only UI: skip the framework's Material check on the
+                // selected segment (same as settings_view).
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(value: 'frequency', label: Text(t.operation.spots.filters.sortByFrequency)),
+                  ButtonSegment(value: 'time', label: Text(t.operation.spots.filters.sortByTime)),
+                ],
+                selected: {_sortBy},
+                onSelectionChanged: (selection) {
+                  setState(() => _sortBy = selection.first);
+                  widget.onSortByChanged(selection.first);
                 },
               ),
-            ]),
-            if (widget.sources.isNotEmpty)
-              SectionHeader.section(context, t.operation.spots.filters.sources, width: constraints.maxWidth, children: [
-                for (final source in widget.sources)
-                  _toggleRow(
-                    title: widget.sourceNames[source] ?? source,
-                    value: !_disabledSources.contains(source),
-                    trailing: _sourceStatus(source),
-                    onChanged: (_) {
-                      setState(
-                        () => _disabledSources.contains(source)
-                            ? _disabledSources.remove(source)
-                            : _disabledSources.add(source),
-                      );
-                      widget.onToggleSource(source);
+            ),
+            _toggleRow(
+              title: t.operation.spots.filters.groupByBand,
+              value: _groupByBand,
+              // Grouping by band is meaningless once the Band filter has
+              // already narrowed to one band — every spot would land in
+              // the same single section anyway.
+              onChanged: _isSingleBandFilter
+                  ? null
+                  : (value) {
+                      setState(() => _groupByBand = value);
+                      widget.onGroupByBandChanged(value);
                     },
-                  ),
-              ]),
-            SectionHeader.section(context, t.operation.spots.filters.continent, width: constraints.maxWidth, children: [
-              for (final code in _continentCodes)
+            ),
+            _toggleRow(
+              title: t.operation.spots.filters.groupCallsWithNotes,
+              value: _groupCallsWithNotes,
+              onChanged: (value) {
+                setState(() => _groupCallsWithNotes = value);
+                widget.onGroupCallsWithNotesChanged(value);
+              },
+            ),
+          ]),
+          if (widget.sources.isNotEmpty)
+            SectionHeader.section(context, t.operation.spots.filters.sources, children: [
+              for (final source in widget.sources)
                 _toggleRow(
-                  title: _continentLabel(t, code),
-                  value: !_disabledContinents.contains(code),
-                  trailing: Text(t.operation.spots.spotsCount(count: widget.continentSpotCounts[code] ?? 0)),
+                  title: widget.sourceNames[source] ?? source,
+                  value: !_disabledSources.contains(source),
+                  trailing: _sourceStatus(source),
                   onChanged: (_) {
                     setState(
-                      () => _disabledContinents.contains(code)
-                          ? _disabledContinents.remove(code)
-                          : _disabledContinents.add(code),
+                      () => _disabledSources.contains(source)
+                          ? _disabledSources.remove(source)
+                          : _disabledSources.add(source),
                     );
-                    widget.onToggleContinent(code);
+                    widget.onToggleSource(source);
                   },
                 ),
             ]),
-          ],
-        ),
+          SectionHeader.section(context, t.operation.spots.filters.continent, children: [
+            for (final code in _continentCodes)
+              _toggleRow(
+                title: _continentLabel(t, code),
+                value: !_disabledContinents.contains(code),
+                trailing: Text(t.operation.spots.spotsCount(count: widget.continentSpotCounts[code] ?? 0)),
+                onChanged: (_) {
+                  setState(
+                    () => _disabledContinents.contains(code)
+                        ? _disabledContinents.remove(code)
+                        : _disabledContinents.add(code),
+                  );
+                  widget.onToggleContinent(code);
+                },
+              ),
+          ]),
+        ],
       ),
 
       // Done, not Apply: every toggle above has already taken effect on the

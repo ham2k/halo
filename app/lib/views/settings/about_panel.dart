@@ -117,13 +117,16 @@ class AboutPanel extends StatelessWidget {
                 mouseCursor: SystemMouseCursors.click,
               ),
             ),
-            if (recentReleases.isNotEmpty) ...[
-              SliverToBoxAdapter(child: SectionHeader(context.t.settings.about.releaseNotes)),
-              SliverFillRemaining(
-                hasScrollBody: false,
-                child: _ReleaseNotesPreview(releases: recentReleases),
+            if (recentReleases.isNotEmpty)
+              SliverMainAxisGroup(
+                slivers: [
+                  SectionHeader.pinned(context, context.t.settings.about.releaseNotes),
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: _ReleaseNotesPreview(releases: recentReleases),
+                  ),
+                ],
               ),
-            ],
           ],
         );
       },

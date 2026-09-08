@@ -27,6 +27,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
+import 'package:ham2k_logger/views/accordion_section.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
 import '../support/halo_test_support.dart';
@@ -149,12 +150,12 @@ class _ServiceWithHost extends ExtensionService {
 /// bare `find.text` does not answer here.
 Finder shown(String text) => find.text(text).hitTestable();
 
-Future<void> pumpSettings(WidgetTester tester, HaLoServices services) async {
+Future<void> pumpSettings(WidgetTester tester, HaLoServices services, {Size size = const Size(1000, 4000)}) async {
   // Tall enough that the whole settings list renders without scrolling: the
   // sidebar is a ListView.builder and builds only what is on screen, so a
   // shorter viewport reads as a missing setting rather than an unscrolled
-  // one.
-  tester.view.physicalSize = const Size(1000, 4000);
+  // one. A test about SCROLLING passes a short one.
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
 
@@ -380,7 +381,12 @@ void main() {
     final services = HaLoServices(db, settings, extensions: _ServiceWithHost(host)..settings = settings);
     await pumpSettings(tester, services);
 
-    expect(find.text('before'), findsNWidgets(2), reason: 'test setup: both copies of the field are mounted');
+    // skipOffstage: false — the extension's own category is shut, and a shut
+    // category paints nothing while still holding its form (that is what
+    // CollapsingSliver is for). Mounted is what matters here: it is the copy
+    // nobody can see that would write its stale value back.
+    Finder mounted(String text) => find.text(text, skipOffstage: false);
+    expect(mounted('before'), findsNWidgets(2), reason: 'test setup: both copies of the field are mounted');
 
     await services.extensions.commitSettingsFieldValue(
       kind: 'dynamic',
@@ -392,8 +398,68 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('after'), findsNWidgets(2), reason: 'both copies show what was committed');
-    expect(find.text('before'), findsNothing);
+    expect(mounted('after'), findsNWidgets(2), reason: 'both copies show what was committed');
+    expect(mounted('before'), findsNothing);
+  });
+
+  testWidgets('an open category holds the top of the pane while its own rows scroll under it', (tester) async {
+    // The whole point of the sliver panel: an operator scrolling through a
+    // category's rows can still see which category they are in, and which
+    // section of it — a list of settings all of which look alike otherwise.
+    final services = await makeServices();
+    await pumpSettings(tester, services, size: const Size(1000, 700));
+
+    final list = find.byType(CustomScrollView).first;
+    final categoryBand = tester.getTopLeft(shown('Common Settings')).dy;
+    final firstSection = tester.getTopLeft(shown('User Interface')).dy;
+    final nextSection = tester.getTopLeft(shown('Logging')).dy;
+    // Stacked, not overlapping: the section band starts where the category
+    // band ends. A pinned band that ignored the one above it would be
+    // painted over by it.
+    expect(firstSection, greaterThan(categoryBand));
+    expect(firstSection, lessThan(nextSection));
+
+    await tester.drag(list, const Offset(0, -200));
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(shown('Common Settings')).dy, categoryBand, reason: 'the category band holds');
+    expect(tester.getTopLeft(shown('User Interface')).dy, firstSection,
+        reason: 'and so does the band of the section being scrolled through');
+    // The section that has not reached the top yet travels with its rows —
+    // pinning is per section, not the whole panel's bands piled up.
+    final logging = tester.getTopLeft(shown('Logging')).dy;
+    expect(logging, lessThan(nextSection), reason: 'it scrolled');
+    expect(logging, greaterThan(firstSection), reason: 'and has not pinned yet — its own rows are still below');
+  });
+
+  testWidgets('opening a category brings it to the top, so its first row is what shows', (tester) async {
+    // A category half way down the panel would otherwise open with most of
+    // itself below the fold — and the one that closed in the same gesture
+    // (only one is open at a time) has moved it again by the time its rows
+    // appear, so where it lands is not something the operator can predict.
+    final services = await makeServices();
+    await pumpSettings(tester, services, size: const Size(1000, 400));
+
+    final list = find.byType(CustomScrollView).first;
+    final listTop = tester.getTopLeft(list).dy;
+
+    // Shut the category that opens on a first run, so what is left is a
+    // stack of bands — and 'Logging' names one of them rather than the
+    // section of the same name inside Common Settings.
+    await tester.tap(shown('Common Settings'));
+    await tester.pumpAndSettle();
+
+    // The BAND, not the title inside it: the band is what lands at the top,
+    // and its title sits a padding's worth below that.
+    Finder loggingBand() => find.ancestor(of: shown('Logging'), matching: find.byType(AccordionHeader)).first;
+    expect(tester.getTopLeft(loggingBand()).dy, greaterThan(listTop + 100),
+        reason: 'test setup: the category sits well down the panel');
+
+    await tester.tap(shown('Logging'));
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(loggingBand()).dy, moreOrLessEquals(listTop, epsilon: 1));
+    expect(shown('Leftie Mode'), findsOneWidget, reason: 'and its own rows are what is under it');
   });
 
   testWidgets('HALO-530: a filtered list is rebuilt from scratch, with every form carried over', (tester) async {
@@ -414,8 +480,8 @@ void main() {
     final services = await makeServices();
     await pumpSettings(tester, services);
 
-    final scrollView = find.byType(SingleChildScrollView).first;
-    final keyBefore = tester.widget<SingleChildScrollView>(scrollView).key;
+    final scrollView = find.byType(CustomScrollView).first;
+    final keyBefore = tester.widget<CustomScrollView>(scrollView).key;
     final formsBefore = tester.stateList<State>(find.byType(FormRenderer, skipOffstage: false)).toList();
     expect(formsBefore, isNotEmpty, reason: 'test setup: some forms are mounted');
 
@@ -423,7 +489,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      tester.widget<SingleChildScrollView>(find.byType(SingleChildScrollView).first).key,
+      tester.widget<CustomScrollView>(find.byType(CustomScrollView).first).key,
       isNot(keyBefore),
       reason: 'a filtered list must build a fresh scroll view, or the click lands on a neighbouring row',
     );
@@ -452,7 +518,7 @@ void main() {
     final services = HaLoServices(db, settings, extensions: _ServiceWithHost(host)..settings = settings);
     await pumpSettings(tester, services);
 
-    final keyBefore = tester.widget<SingleChildScrollView>(find.byType(SingleChildScrollView).first).key;
+    final keyBefore = tester.widget<CustomScrollView>(find.byType(CustomScrollView).first).key;
 
     // A commit that changes the DEFINITION, not just a value — the field
     // count is what moves the rows below it.
@@ -469,7 +535,7 @@ void main() {
 
     expect(shown('Extra Field'), findsWidgets, reason: 'test setup: the definition grew a row');
     expect(
-      tester.widget<SingleChildScrollView>(find.byType(SingleChildScrollView).first).key,
+      tester.widget<CustomScrollView>(find.byType(CustomScrollView).first).key,
       isNot(keyBefore),
       reason: 'rows moved, so the scroll view must be rebuilt — otherwise the click lands on a neighbour',
     );

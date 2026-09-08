@@ -21,6 +21,7 @@ import 'header_profile_label.dart';
 import 'help_panel.dart';
 import '../settings/settings_catalog.dart' show elementSearchScore;
 import '../settings/settings_registry.dart';
+import 'accordion_section.dart' show accordionCurve, accordionDuration;
 import 'extensions_panel.dart';
 import 'peers_panel.dart';
 import 'station_panel.dart';
@@ -685,6 +686,9 @@ class _SettingsGroupForm extends StatefulWidget {
   /// else can tell it, since the set is decided in here.
   final VoidCallback? onRowsChanged;
 
+  /// Renders as a SLIVER rather than a box — see [ExtensionSettingsPanel.sliver].
+  final bool sliver;
+
   const _SettingsGroupForm({
     super.key,
     required this.services,
@@ -694,6 +698,7 @@ class _SettingsGroupForm extends StatefulWidget {
     this.expanded = true,
     this.onToggle,
     this.onRowsChanged,
+    this.sliver = false,
   });
 
   @override
@@ -754,22 +759,26 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
     return null;
   }
 
+  /// See [ExtensionSettingsPanel]'s namesake: the states that are a box
+  /// whichever way this group renders.
+  Widget _box(Widget child) => widget.sliver ? SliverToBoxAdapter(child: child) : child;
+
   @override
   Widget build(BuildContext context) {
     var elements = _elements;
     if (elements == null) {
-      return const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator()));
+      return _box(const Padding(padding: EdgeInsets.all(Space.xxl), child: Center(child: CircularProgressIndicator())));
     }
     // A group can decline to contribute anything at all — RadioSettingsGroup
     // does while the CAT experiment is off. Its title is chrome for the rows
     // below it, so with no rows there is nothing to head.
-    if (elements.isEmpty) return const SizedBox.shrink();
+    if (elements.isEmpty) return _box(const SizedBox.shrink());
     if (widget.commonOnly) {
       elements = [
         for (final el in elements)
           if (elementIsCommon(el)) el,
       ];
-      if (elements.isEmpty) return const SizedBox.shrink();
+      if (elements.isEmpty) return _box(const SizedBox.shrink());
     }
     // A group the search excludes is HIDDEN, not unmounted — see
     // [settingsCategory], which is where that is done.
@@ -799,6 +808,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
     final form = FormRenderer(
       formDefinition: {'elements': elements},
       initialState: const {},
+      sliver: widget.sliver,
       showActions: false,
       showTitle: false,
       developerMode: widget.services.settings.developerMode,
@@ -808,14 +818,23 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       onSubmit: (_) {},
       onCancel: () {},
     );
-    return settingsCategory(
-      context,
-      title: widget.group.title,
-      expanded: widget.expanded,
-      onToggle: widget.onToggle,
-      hidden: hidden,
-      child: form,
-    );
+    return widget.sliver
+        ? settingsCategorySliver(
+            context,
+            title: widget.group.title,
+            expanded: widget.expanded,
+            onToggle: widget.onToggle,
+            hidden: hidden,
+            sliver: form,
+          )
+        : settingsCategory(
+            context,
+            title: widget.group.title,
+            expanded: widget.expanded,
+            onToggle: widget.onToggle,
+            hidden: hidden,
+            child: form,
+          );
   }
 }
 
@@ -966,6 +985,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
   bool _expanded(String key) => _searching ? !_closedWhileSearching.contains(key) : _openCategory == key;
 
   void _toggle(String key) {
+    final opening = !_expanded(key);
     setState(() {
       if (_searching) {
         if (!_closedWhileSearching.remove(key)) _closedWhileSearching.add(key);
@@ -974,6 +994,34 @@ class _SettingsPanelState extends State<_SettingsPanel> {
         widget.services.settings.prefs.setString(_openCategoryPrefsKey, _openCategory ?? '');
       }
       _refreshListKey();
+    });
+    if (opening) _scrollToCategory(key);
+  }
+
+  /// Brings a category the operator just opened to the top of the pane, so
+  /// what they opened it for is the first thing under its band — a category
+  /// half way down opens with most of itself below the fold otherwise, and
+  /// the one above it closing pulls it somewhere else again.
+  ///
+  /// A list rebuilt mid-reveal (a category that grows rows under itself, a
+  /// keystroke in the search field) replaces the controller this is animating
+  /// and the pane stops where it got to. Rare enough to be left as a pause
+  /// rather than paid for with a re-issue that could fight the operator's own
+  /// scrolling.
+  void _scrollToCategory(String key) {
+    // A frame past the opening animation, not with it: the pane can only
+    // scroll as far as the content it has, and the room this needs is
+    // precisely what that animation is still making.
+    Future.delayed(accordionDuration + const Duration(milliseconds: 16), () {
+      if (!mounted || !_scroll.hasClients) return;
+      // The category's own sliver, brought to the pane's leading edge —
+      // measured now rather than at the tap, since the category that closed
+      // in the same gesture (one open at a time) has moved this one since.
+      final band = _categoryKeys[key]?.currentContext;
+      // Its own mounted-ness, not this panel's: a category can go while the
+      // animation runs (the search empties it, an extension unloads).
+      if (band == null || !band.mounted) return;
+      Scrollable.ensureVisible(band, alignment: 0, duration: accordionDuration, curve: accordionCurve);
     });
   }
 
@@ -992,6 +1040,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           key: _keyFor('group:${group.key}'),
           services: widget.services,
           group: group,
+          sliver: true,
           searchQuery: query,
           expanded: _expanded('group:${group.key}'),
           onToggle: () => _toggle('group:${group.key}'),
@@ -1013,6 +1062,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           services: widget.services,
           descriptor: descriptor,
           embedded: true,
+          sliver: true,
           sectionTitle: (descriptor['title'] as String?) ?? panelKey,
           searchQuery: query,
           expanded: _expanded('extension:$panelKey'),
@@ -1113,29 +1163,29 @@ class _SettingsPanelState extends State<_SettingsPanel> {
             // ambient ListTileTheme (see _rowContentPadding in
             // form_renderer.dart), landing on the same inset as the search
             // bar above.
-            child: SingleChildScrollView(
+            // A sliver viewport, not a plain one: the category bands PIN,
+            // and so do the section bands inside them (docs/design/
+            // user-interface.md § Settings lists).
+            child: CustomScrollView(
               // Keyed and controller-carried: see [_refreshListKey].
               key: _listKey,
               controller: _scroll,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Hidden rather than dropped while a search runs: its rows
-                  // are copies of ones the categories below already offer, so
-                  // showing it would answer every query twice.
-                  _CommonSettingsCategory(
-                    key: _keyFor(_commonCategoryKey),
-                    services: widget.services,
-                    extensionPanels: extensionPanels,
-                    expanded: _expanded(_commonCategoryKey),
-                    onToggle: () => _toggle(_commonCategoryKey),
-                    onRowsChanged: _rowsChanged,
-                    hidden: _searching,
-                  ),
-                  ..._orderedCategories(query),
-                  const SizedBox(height: Space.xl),
-                ],
-              ),
+              slivers: [
+                // Hidden rather than dropped while a search runs: its rows
+                // are copies of ones the categories below already offer, so
+                // showing it would answer every query twice.
+                _CommonSettingsCategory(
+                  key: _keyFor(_commonCategoryKey),
+                  services: widget.services,
+                  extensionPanels: extensionPanels,
+                  expanded: _expanded(_commonCategoryKey),
+                  onToggle: () => _toggle(_commonCategoryKey),
+                  onRowsChanged: _rowsChanged,
+                  hidden: _searching,
+                ),
+                ..._orderedCategories(query),
+                const SliverToBoxAdapter(child: SizedBox(height: Space.xl)),
+              ],
             ),
           ),
         ),
@@ -1181,20 +1231,22 @@ class _CommonSettingsCategory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final panels = extensionPanels;
-    return settingsCategory(
+    return settingsCategorySliver(
       context,
       title: context.t.settings.panels.commonSettings,
       expanded: expanded,
       onToggle: onToggle,
       hidden: hidden,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
+      // Each contributing group is a sliver of its own, so the section band
+      // naming it pins under this category's band while its rows pass.
+      sliver: SliverMainAxisGroup(
+        slivers: [
           for (final group in services.settingsRegistry.groups)
             _SettingsGroupForm(
               services: services,
               group: group,
               commonOnly: true,
+              sliver: true,
               onRowsChanged: onRowsChanged,
             ),
           if (panels != null)
@@ -1204,6 +1256,7 @@ class _CommonSettingsCategory extends StatelessWidget {
                 descriptor: descriptor,
                 embedded: true,
                 commonOnly: true,
+                sliver: true,
                 sectionTitle: (descriptor['title'] as String?) ?? (descriptor['panelKey'] as String),
                 onRowsChanged: onRowsChanged,
               ),

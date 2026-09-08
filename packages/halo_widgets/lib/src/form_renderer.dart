@@ -229,6 +229,15 @@ class FormRenderer extends StatefulWidget {
   /// beside it.
   final bool settingsList;
 
+  /// Whether this form renders as a SLIVER rather than a box.
+  ///
+  /// A section band pins — it holds the top of the viewport while its own
+  /// rows scroll under it — and only a sliver can do that. A form in a
+  /// [CustomScrollView] asks for this and takes the whole space of one
+  /// sliver; anywhere else the box form is what fits, and its bands scroll
+  /// with the rows.
+  final bool sliver;
+
   const FormRenderer({
     super.key,
     required this.formDefinition,
@@ -248,6 +257,7 @@ class FormRenderer extends StatefulWidget {
     this.developerMode = false,
     this.saveLabel,
     this.settingsList = false,
+    this.sliver = false,
   });
 
   @override
@@ -680,75 +690,129 @@ class FormRendererState extends State<FormRenderer> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final elements = _visibleElements;
-
+    // An InheritedWidget, so it wraps a sliver as happily as a box.
     return AutofillGroup(
-      child: Column(
+      child: widget.sliver ? _buildSliver(context, theme, elements) : _buildBox(context, theme, elements),
+    );
+  }
+
+  Widget _buildBox(BuildContext context, ThemeData theme, List<Map<String, dynamic>> elements) => Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (widget.showTitle && widget.formDefinition['title'] != null) ...[
-            Text(
-              widget.formDefinition['title'] as String,
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontFamily: 'RobotoSlab',
-                fontWeight: FontWeight.bold,
-                color: HaLoColors.of(context).onSurfaceAccent,
-              ),
-            ),
-            const SizedBox(height: Space.xs),
-          ],
-          if (widget.showTitle && widget.formDefinition['subtitle'] != null) ...[
-            Text(
-              widget.formDefinition['subtitle'] as String,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: Space.xl),
-          ],
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: elements.length,
-            // A section band abuts its rows on both sides: it heads the
-            // section below it, and the section above ends where the band
-            // starts. A gap either side would leave it floating between two
-            // sections, belonging to neither — and a band that STICKS as its
-            // rows scroll under it (SectionHeader.pinned) would drag
-            // a hole along with it.
-            separatorBuilder: (context, index) =>
-                elements[index]['style'] == 'section' || elements[index + 1]['style'] == 'section'
-                    ? const SizedBox.shrink()
-                    : const SizedBox(height: Space.xl),
-            itemBuilder: (context, index) {
-              final el = elements[index];
-              final type = el['type'] as String?;
-              switch (type) {
-                case 'header':
-                  return _buildHeader(el, theme);
-                case 'divider':
-                  return _buildDivider(el, theme);
-                case 'markdown':
-                  return _buildMarkdown(el, theme);
-                case 'field':
-                  return _buildField(el, theme);
-                case 'link':
-                  return _buildLink(el, theme);
-                case 'action':
-                  return _buildActionElement(el, theme);
-                default:
-                  return const SizedBox.shrink();
-              }
-            },
-          ),
-          if (widget.showActions) ...[
-            const SizedBox(height: Space.xxl),
-            _formActionsRow(isSubmitting: _isSubmitting, onCancel: widget.onCancel, onSave: submit, saveLabel: widget.saveLabel),
-          ],
+          ..._formTitle(context, theme),
+          ..._elementRows(theme, elements),
+          ..._formActions(),
         ],
-      ),
-    );
+      );
+
+  /// The same form, as one sliver: every run of rows under a section band is
+  /// a group of its own, so the band pins over ITS rows and is pushed off by
+  /// the next section's — rather than over the whole form, where every band
+  /// would pile up at the top.
+  Widget _buildSliver(BuildContext context, ThemeData theme, List<Map<String, dynamic>> elements) {
+    final slivers = <Widget>[];
+    final title = _formTitle(context, theme);
+    if (title.isNotEmpty) slivers.add(SliverToBoxAdapter(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: title)));
+
+    var section = <Map<String, dynamic>>[];
+    Map<String, dynamic>? band;
+    void flush() {
+      if (section.isEmpty && band == null) return;
+      // One box per section, not a SliverList: a lazy list builds only what
+      // is on screen and DISPOSES what scrolls off it, and these rows own
+      // the FocusNodes and TextEditingControllers the operator is typing
+      // into — the Settings panel builds every category up front for
+      // exactly that reason (settings_view.dart).
+      final rows = SliverToBoxAdapter(
+        child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: _elementRows(theme, section)),
+      );
+      slivers.add(band == null
+          ? rows
+          : SliverMainAxisGroup(slivers: [
+              SectionHeader.pinned(
+                context,
+                band!['title'] as String? ?? '',
+                color: _devModeColor(band!),
+                subtitle: _headerSubtitle(band!, theme),
+              ),
+              rows,
+            ]));
+      section = [];
+      band = null;
+    }
+
+    for (final el in elements) {
+      if (el['type'] == 'header' && el['style'] == 'section') {
+        flush();
+        band = el;
+      } else {
+        section.add(el);
+      }
+    }
+    flush();
+
+    final actions = _formActions();
+    if (actions.isNotEmpty) {
+      slivers.add(SliverToBoxAdapter(child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: actions)));
+    }
+    return SliverMainAxisGroup(slivers: slivers);
   }
+
+  List<Widget> _formTitle(BuildContext context, ThemeData theme) => [
+        if (widget.showTitle && widget.formDefinition['title'] != null) ...[
+          Text(
+            widget.formDefinition['title'] as String,
+            style: theme.textTheme.headlineSmall?.copyWith(
+              fontFamily: 'RobotoSlab',
+              fontWeight: FontWeight.bold,
+              color: HaLoColors.of(context).onSurfaceAccent,
+            ),
+          ),
+          const SizedBox(height: Space.xs),
+        ],
+        if (widget.showTitle && widget.formDefinition['subtitle'] != null) ...[
+          Text(
+            widget.formDefinition['subtitle'] as String,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: Space.xl),
+        ],
+      ];
+
+  List<Widget> _formActions() => [
+        if (widget.showActions) ...[
+          const SizedBox(height: Space.xxl),
+          _formActionsRow(
+              isSubmitting: _isSubmitting, onCancel: widget.onCancel, onSave: submit, saveLabel: widget.saveLabel),
+        ],
+      ];
+
+  /// [elements] as rows, with the gaps between them.
+  ///
+  /// A section band abuts its rows on both sides: it heads the section below
+  /// it, and the section above ends where the band starts. A gap either side
+  /// would leave it floating between two sections, belonging to neither —
+  /// and in the sliver form, where the band sticks as its rows scroll under
+  /// it, a gap would be a hole dragged along with it. Hence no gap at either
+  /// end of this list: a band is always what a run of rows begins after.
+  List<Widget> _elementRows(ThemeData theme, List<Map<String, dynamic>> elements) => [
+        for (final (index, el) in elements.indexed) ...[
+          if (index > 0 && el['style'] != 'section' && elements[index - 1]['style'] != 'section')
+            const SizedBox(height: Space.xl),
+          switch (el['type'] as String?) {
+            'header' => _buildHeader(el, theme),
+            'divider' => _buildDivider(el, theme),
+            'markdown' => _buildMarkdown(el, theme),
+            'field' => _buildField(el, theme),
+            'link' => _buildLink(el, theme),
+            'action' => _buildActionElement(el, theme),
+            _ => const SizedBox.shrink(),
+          },
+        ],
+      ];
 
   /// `style: 'section'` renders the settings-panel section band: smaller
   /// type than a form's own title, on the same ground the Operation Setup
@@ -759,22 +823,28 @@ class FormRendererState extends State<FormRenderer> {
   /// The band takes its own inset from the ambient ListTileTheme, which is
   /// the same one every row in this form reads, so the section branch skips
   /// [_rowContentPadding] rather than adding a second one on top.
+  /// A header's second line, in the ordinary body face — null where the
+  /// element declares none. Read by the pinned band too, which builds no
+  /// header widget of its own.
+  Widget? _headerSubtitle(Map<String, dynamic> el, ThemeData theme) {
+    final subtitle = el['subtitle'] as String?;
+    if (subtitle == null || subtitle.isEmpty) return null;
+    return Text(
+      subtitle,
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: _devModeColor(el) ?? theme.colorScheme.onSurfaceVariant,
+      ),
+    );
+  }
+
   Widget _buildHeader(Map<String, dynamic> el, ThemeData theme) {
     final title = el['title'] as String? ?? '';
-    final subtitle = el['subtitle'] as String?;
     final devModeColor = _devModeColor(el);
     final isSection = el['style'] == 'section';
     // Text on the surface, not a fill — HaLoColors.onSurfaceAccent, not
     // colorScheme.primary directly.
     final onSurfaceAccent = (theme.extension<HaLoColors>() ?? HaLoColors.light).onSurfaceAccent;
-    final subtitleWidget = subtitle == null || subtitle.isEmpty
-        ? null
-        : Text(
-            subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: devModeColor ?? theme.colorScheme.onSurfaceVariant,
-            ),
-          );
+    final subtitleWidget = _headerSubtitle(el, theme);
     final content = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [

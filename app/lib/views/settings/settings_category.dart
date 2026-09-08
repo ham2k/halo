@@ -59,13 +59,6 @@ Widget settingsCategory(
   bool hidden = false,
 }) {
   final rows = ExcludeFocus(excluding: hidden || (onToggle != null && !expanded), child: child);
-  final theme = Theme.of(context);
-  final accent = SectionHeader.titleStyle(context).color ?? theme.colorScheme.onSurface;
-  // The centring only: the band runs to the pane's edges like every row
-  // does, while the chevron and title follow the pane's centring so they
-  // land beside the rows below rather than out in the gutter of a wide
-  // window.
-  final centering = settingsRowCentering(settingsPaneWidth(context));
   return Visibility(
     visible: !hidden,
     maintainState: true,
@@ -76,9 +69,54 @@ Widget settingsCategory(
             expanded: expanded,
             onToggle: onToggle,
             headerColor: haloDialogBandColorAt(context),
-            onHeaderColor: accent,
-            headerInset: EdgeInsets.symmetric(horizontal: centering),
+            onHeaderColor: _accent(context),
+            headerInset: _headerInset(context),
             child: rows,
           ),
   );
 }
+
+/// [settingsCategory] as a SLIVER, for the panel that scrolls its categories
+/// itself: the band pins, holding the top of the pane while the category's
+/// own rows scroll under it, and the section bands inside [sliver] pin under
+/// it in turn.
+///
+/// Every wrapper here has a sliver twin of the box one — `SliverVisibility`
+/// for `Visibility`, [CollapsingSliver] for the cross-fade — and
+/// `ExcludeFocus` needs none, being layout-transparent either way.
+Widget settingsCategorySliver(
+  BuildContext context, {
+  required String title,
+  required bool expanded,
+  required VoidCallback? onToggle,
+  required Widget sliver,
+  bool hidden = false,
+}) {
+  final rows = ExcludeFocus(excluding: hidden || (onToggle != null && !expanded), child: sliver);
+  return SliverVisibility(
+    visible: !hidden,
+    maintainState: true,
+    sliver: onToggle == null
+        ? SliverMainAxisGroup(slivers: [SectionHeader.pinned(context, title), rows])
+        : SliverAccordionSection(
+            title: Text(title, style: SectionHeader.titleStyle(context)),
+            expanded: expanded,
+            onToggle: onToggle,
+            headerColor: haloDialogBandColorAt(context),
+            onHeaderColor: _accent(context),
+            headerInset: _headerInset(context),
+            sliver: rows,
+          ),
+  );
+}
+
+/// What the chevron and the title are drawn in — the section band's own
+/// accent, so the shelf and the headings on it agree.
+Color _accent(BuildContext context) =>
+    SectionHeader.titleStyle(context).color ?? Theme.of(context).colorScheme.onSurface;
+
+/// The centring only: the band runs to the pane's edges like every row does,
+/// while the chevron and title follow the pane's centring so they land
+/// beside the rows below rather than out in the gutter of a wide window.
+EdgeInsetsGeometry _headerInset(BuildContext context) =>
+    EdgeInsets.symmetric(horizontal: settingsRowCentering(settingsPaneWidth(context)));

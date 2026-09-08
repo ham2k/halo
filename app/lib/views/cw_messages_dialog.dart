@@ -321,9 +321,11 @@ class _CwMessageDialogState extends State<_CwMessageDialog> {
     return HaloDialog(
       title: Text(m.messageTitle(n: widget.n)),
       contentPadding: EdgeInsets.zero,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      // The body scrolls itself, because its band pins — which needs a
+      // sliver viewport, and the shell's plain scroll view is not one.
+      scrollable: false,
+      content: SectionedListView(
+        shrinkWrap: true,
         children: [
           Padding(
             padding: rowInset.copyWith(top: Space.xl, bottom: Space.xl),

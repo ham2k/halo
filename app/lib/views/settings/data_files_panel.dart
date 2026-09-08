@@ -138,7 +138,7 @@ class _DataFilesPanelState extends State<DataFilesPanel> {
     final files = _files;
     if (files == null) return const Center(child: CircularProgressIndicator());
 
-    return ListView(
+    return SectionedListView(
       padding: const EdgeInsets.only(bottom: Space.md),
       children: [
         SectionHeader(context.t.settings.offlineData.title),

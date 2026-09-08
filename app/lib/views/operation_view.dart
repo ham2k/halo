@@ -2298,8 +2298,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // padding: to the card's edges, with their contents inset off the
         // same SettingsList every other list in the app reads.
         list: true,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
+        // The body scrolls itself, because the Paired Devices band at the
+        // end of it pins — which needs a sliver viewport, and the shell's
+        // plain scroll view is not one.
+        scrollable: false,
+        content: SectionedListView(
+          shrinkWrap: true,
           children: [
             if (includeExport)
               ListTile(

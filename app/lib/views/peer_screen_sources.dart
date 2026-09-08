@@ -91,9 +91,10 @@ class _PeerScreenSourcesState extends State<PeerScreenSources> {
     final sharing = capable && settings.peerScreenShareEnabled;
     final offered = _screens.offeredSources;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+    // Its own section, cut here: the host list sees one child, so a band
+    // buried inside it would leave these rows under the band above instead.
+    return SliverMainAxisGroup(
+      slivers: sectionSlivers(context, [
         SectionHeader(t.screenSources),
         // A device that cannot capture says so instead of offering a switch
         // that would do nothing — it can still SHOW a screen another device
@@ -182,7 +183,7 @@ class _PeerScreenSourcesState extends State<PeerScreenSources> {
                 ),
               ),
         ],
-      ],
+      ]),
     );
   }
 }

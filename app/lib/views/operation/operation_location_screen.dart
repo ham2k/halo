@@ -258,11 +258,10 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
       // Rows and bands to the card's edges, contents inset — the same list
       // every other settings-shaped surface is (SettingsList).
       list: true,
-      content: LayoutBuilder(
-        builder: (context, constraints) => CustomScrollView(
+      content: CustomScrollView(
         shrinkWrap: true,
         slivers: [
-          SectionHeader.section(context, t.selectedLocation, width: constraints.maxWidth, children: [
+          SectionHeader.section(context, t.selectedLocation, children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: settingsRowInset),
             child: TextField(
@@ -282,7 +281,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
           ),
           const SizedBox(height: Space.md),
           ]),
-          SectionHeader.section(context, t.suggestedLocations, width: constraints.maxWidth, children: [
+          SectionHeader.section(context, t.suggestedLocations, children: [
           ListTile(
             leading: Icon(MdiIcons.crosshairsGps),
             // A fix served on a peer's behalf is named as such — calling the
@@ -327,7 +326,7 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
             ),
           const SizedBox(height: Space.md),
           ]),
-          SectionHeader.section(context, t.moreDetails, width: constraints.maxWidth, children: [
+          SectionHeader.section(context, t.moreDetails, children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: settingsRowInset),
             child: Column(
@@ -358,7 +357,6 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
           ]),
         ],
         ),
-      ),
       cancel: TextButton(
         onPressed: () => Navigator.of(context).pop(null),
         child: Text(context.t.common.cancel),

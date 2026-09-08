@@ -120,7 +120,7 @@ class _PeersPanelState extends State<PeersPanel> {
     final settings = widget.services.settings;
     final enabled = settings.peerSyncEnabled;
 
-    return ListView(
+    return SectionedListView(
       children: [
         // The name leads: it is what every other device calls this one, so
         // it is the first thing worth getting right — the switches below it
@@ -188,8 +188,12 @@ class _PeersPanelState extends State<PeersPanel> {
             leading: Icon(MdiIcons.alertCircleOutline, color: Theme.of(context).colorScheme.error),
             title: Text(t.problem(error: problem)),
           ),
-        SectionHeader(t.pairedDevices),
-        _DeviceList(
+        // The Paired Devices band belongs to [_DeviceList] along with the
+        // Nearby one: both name rows the stream decides, and a band pins
+        // only over rows its own list holds. Which makes it slivers, so the
+        // list above is told rather than left to guess.
+        SectionedSlivers(slivers: [
+          _DeviceList(
           services: widget.services,
           onForget: _forget,
           // Clears a previous decline or forget and dials if there is no
@@ -197,13 +201,14 @@ class _PeersPanelState extends State<PeersPanel> {
           // main.dart, which fires on the notification this causes. Raising
           // one here too would stack two dialogs over one request, and
           // answering them differently would record trust and then refuse it.
-          onAllow: _peers.offerPairingAgain,
-        ),
+            onAllow: _peers.offerPairingAgain,
+          ),
+        ]),
         // Last, past the devices: it is a section in its own right rather
         // than a sub-switch of the master one, and everything above it is
         // about reaching the other devices at all.
         if (enabled && settings.experimentEnabled('remote') /* stored key, see experiments.yaml */)
-          PeerScreenSources(services: widget.services),
+          SectionedSlivers(slivers: [PeerScreenSources(services: widget.services)]),
       ],
     );
   }
@@ -350,8 +355,12 @@ class _DeviceListState extends State<_DeviceList> {
         };
         final peers = widget.services.peerService.peers;
         final nearby = unlinkedPeerDeviceIds(trusted.keys.toSet(), peers.keys);
-        return Column(
-          children: [
+        // Its own sections, cut here rather than by the list above: the
+        // Nearby band names rows this widget builds, and a band the host
+        // cannot see would leave them under the band before it.
+        return SliverMainAxisGroup(
+          slivers: sectionSlivers(context, [
+            SectionHeader(t.pairedDevices),
             // Above the rows, not instead of them: a trust-store fault must
             // not take away the Allow button that answers a device asking
             // right now.
@@ -389,7 +398,7 @@ class _DeviceListState extends State<_DeviceList> {
                   onAllow: widget.onAllow,
                 ),
             ],
-          ],
+          ]),
         );
       },
     );

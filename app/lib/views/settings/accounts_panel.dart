@@ -126,7 +126,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
       grouped.putIfAbsent(categoryFor(account), () => []).add(account);
     }
 
-    return ListView(
+    return SectionedListView(
       padding: const EdgeInsets.only(bottom: Space.md),
       children: [
         // Said once, at

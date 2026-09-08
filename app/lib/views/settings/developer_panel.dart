@@ -33,7 +33,7 @@ class DeveloperPanel extends StatelessWidget {
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
-        return ListView(
+        return SectionedListView(
           // No inset of its own: every row here takes the ambient
           // ListTileTheme's, like every other panel's. Its own padding on top
           // pushed these rows in twice as far as the rest of Settings and
@@ -82,11 +82,13 @@ class DeveloperPanel extends StatelessWidget {
             // the developer-mode switch because it is meaningless without it,
             // and above the patch track because an author reaches for it far
             // more often.
-            if (settings.developerMode) _ExtensionDevServerSection(services: services),
+            if (settings.developerMode)
+              SectionedSlivers(slivers: [_ExtensionDevServerSection(services: services)]),
             // Not behind the `catalog` experiment, unlike the panel's
             // section: developer mode already gates it, and pointing the
             // app at a local catalog is how the catalog itself is worked on.
-            if (settings.developerMode) _CatalogOverrideSection(services: services),
+            if (settings.developerMode)
+              SectionedSlivers(slivers: [_CatalogOverrideSection(services: services)]),
             // Shorebird over-the-air patch track (docs/releases.md §4.3). Only
             // shown when the Shorebird engine is actually present — i.e. a
             // `shorebird release` build, not a local/debug/web one — so it's
@@ -322,9 +324,10 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
         final busy = client.state == DevServerState.connecting;
         final connected = client.state == DevServerState.connected;
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+        // Its own section: the panel's list sees one child, so a band left
+        // inside it would name the rows of the section above.
+        return SliverMainAxisGroup(
+          slivers: sectionSlivers(context, [
             SectionHeader(t.extDevServer),
             _sectionBody(context, [
               Padding(
@@ -374,7 +377,7 @@ class _ExtensionDevServerSectionState extends State<_ExtensionDevServerSection> 
                   ),
                 ),
             ]),
-          ],
+          ]),
         );
       },
     );
@@ -472,9 +475,9 @@ class _CatalogOverrideSectionState extends State<_CatalogOverrideSection> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final t = context.t.settings.developer;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
+    // Its own section — see [_ExtensionDevServerSection].
+    return SliverMainAxisGroup(
+      slivers: sectionSlivers(context, [
         SectionHeader(t.catalog),
         _sectionBody(context, [
           Padding(
@@ -503,7 +506,7 @@ class _CatalogOverrideSectionState extends State<_CatalogOverrideSection> {
             onSubmitted: (_) => unawaited(_save()),
           ),
         ]),
-      ],
+      ]),
     );
   }
 }

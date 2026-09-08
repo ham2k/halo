@@ -674,7 +674,15 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
         ? null
         : Text(
             context.t.operation.export.qsosInOperation(count: counts.total),
-            style: SectionHeader.titleStyle(context),
+            // The band's accent and slab at the ROW face's size, not
+            // SectionHeader.titleStyle: that is the HEADING face, a step up,
+            // and a count is a sentence, which at that size takes two lines
+            // of a phone's band.
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontFamily: 'RobotoSlab',
+                  fontWeight: FontWeight.w900,
+                  color: HaLoColors.of(context).onSurfaceAccent,
+                ),
           );
     return Container(
       color: _bandColor(context),

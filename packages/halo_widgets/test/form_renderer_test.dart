@@ -2494,41 +2494,55 @@ void main() {
       expect(header.style?.fontFamily, 'RobotoSlab');
     });
 
-    testWidgets("style: 'section' is a ruled header, smaller than a form's own title", (tester) async {
+    testWidgets("style: 'section' is a ruled header standing proud of its rows", (tester) async {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: FormRenderer(
-            formDefinition: const {
-              'elements': [
-                {'type': 'header', 'title': 'Plain Title'},
-                {'type': 'header', 'title': 'Section Header', 'style': 'section'},
-              ],
-            },
-            initialState: const {},
-            onSubmit: (_) {},
-            onCancel: () {},
+          // The inset a settings list publishes: without one the rows sit at
+          // the edge and the band has nothing to stand proud of.
+          body: ListTileTheme(
+            data: const ListTileThemeData(contentPadding: EdgeInsets.symmetric(horizontal: 24)),
+            child: FormRenderer(
+              formDefinition: const {
+                'elements': [
+                  {'type': 'header', 'title': 'Plain Title'},
+                  {'type': 'header', 'title': 'Section Header', 'style': 'section'},
+                ],
+              },
+              initialState: const {},
+              onSubmit: (_) {},
+              onCancel: () {},
+            ),
           ),
         ),
       ));
 
-      final plain = tester.widget<Text>(find.text('Plain Title'));
-      final header = tester.widget<Text>(find.text('Section Header'));
-      // Same slab face as a form's own title, one step down in size.
+      final title = find.text('Section Header');
+      final header = tester.widget<Text>(title);
+      // Same slab face as a form's own title, a step ABOVE the body-sized
+      // titleSmall it is built from — a band has to be findable while its
+      // rows scroll past.
       expect(header.style?.fontFamily, 'RobotoSlab');
-      expect(header.style?.fontSize, lessThan(plain.style!.fontSize!));
+      final titleSmall = Theme.of(tester.element(title)).textTheme.titleSmall!;
+      expect(header.style?.fontSize, greaterThan(titleSmall.fontSize!));
 
       // The rule measures the CONTENT it heads: it starts where the title
       // does and ends the same distance from the other edge, rather than
-      // running out to the pane's edges the way a filled band does.
-      final heading = find.ancestor(of: find.text('Section Header'), matching: find.byType(Container)).first;
+      // running out to the pane's edges the way a filled band does. Both
+      // stand SectionHeader.overhang outside the rows' own inset.
+      final heading = find.ancestor(of: title, matching: find.byType(Container)).first;
       final form = find.byType(FormRenderer);
-      expect(tester.getTopLeft(heading).dx, tester.getTopLeft(find.text('Section Header')).dx);
+      expect(tester.getTopLeft(heading).dx, tester.getTopLeft(title).dx);
       expect(
         tester.getTopRight(form).dx - tester.getTopRight(heading).dx,
         tester.getTopLeft(heading).dx - tester.getTopLeft(form).dx,
         reason: 'the rule is inset equally on both sides',
       );
       expect(tester.getSize(heading).width, lessThan(tester.getSize(form).width));
+      expect(
+        tester.getTopLeft(find.text('Plain Title')).dx - tester.getTopLeft(heading).dx,
+        SectionHeader.overhang,
+        reason: 'the band stands proud of the inset an ordinary row keeps',
+      );
 
       // On no ground of its own, closed by a hairline in the title's accent:
       // the FILLED band belongs to the Settings panel's categories, and a

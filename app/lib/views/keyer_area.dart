@@ -928,9 +928,11 @@ class _KeyerSpeedDialogState extends State<_KeyerSpeedDialog> {
     return HaloDialog(
       title: Text(context.t.settings.radio.cwKeying),
       contentPadding: EdgeInsets.zero,
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      // The body scrolls itself, because its band pins — which needs a
+      // sliver viewport, and the shell's plain scroll view is not one.
+      scrollable: false,
+      content: SectionedListView(
+        shrinkWrap: true,
         children: [
           // First, and a row of its own: the editor is where the messages
           // the function keys send are written, which is what an operator

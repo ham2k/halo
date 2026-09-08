@@ -25,7 +25,7 @@ void main() {
                   slivers: [
                     for (var s = 0; s < sections; s++)
                       SliverMainAxisGroup(slivers: [
-                        SectionHeader.pinned(context, 'Section $s', width: width),
+                        SectionHeader.pinned(context, 'Section $s'),
                         SliverList.list(children: [
                           for (var r = 0; r < rowsPerSection; r++)
                             ListTile(title: Text('Row $s-$r')),
@@ -71,27 +71,30 @@ void main() {
     expect(find.text('Section 1'), findsOneWidget);
   });
 
-  testWidgets("the rule spans the content, with the title at the rows' own inset", (tester) async {
+  testWidgets('the rule spans the content, standing proud of the rows\' own inset', (tester) async {
     await tester.pumpWidget(host(width: 600, sections: 1, rowsPerSection: 2));
     await tester.pumpAndSettle();
 
     // The heading carries no fill, so its rule is all there is to place: it
-    // measures what it heads, ending at the inset the rows' text ends at
-    // rather than running to the pane's edges.
+    // measures what it heads, stopping short of the pane's edges rather than
+    // running to them the way a filled band does.
     final ruled = find.ancestor(of: find.text('Section 0'), matching: find.byType(Container)).first;
-    expect(tester.getSize(ruled).width, 600 - 24 * 2);
+    expect(tester.getSize(ruled).width, 600 - (24 - SectionHeader.overhang) * 2);
 
-    // And its title lands where the rows' own text does — one inset, taken
-    // from the ambient ListTileTheme by both.
+    // Title and rule alike stand one overhang OUTSIDE the inset the rows
+    // keep — both insets are read from the ambient ListTileTheme, so the
+    // heading tracks the rows wherever the pane puts them without lining up
+    // with them and reading as one more row.
     expect(
-      tester.getTopLeft(find.text('Section 0')).dx,
-      tester.getTopLeft(find.text('Row 0-0')).dx,
+      tester.getTopLeft(find.text('Row 0-0')).dx - tester.getTopLeft(find.text('Section 0')).dx,
+      SectionHeader.overhang,
     );
   });
 
-  testWidgets('a pinned band is measured, not assumed, so a large text scale still fits', (tester) async {
-    // heightFor lays the title out rather than guessing: at a scale that wraps
-    // it, an assumed extent would clip the second line or leave a gap.
+  testWidgets('a pinned band takes the height it lays out to, so a large text scale still fits', (tester) async {
+    // The band is a PinnedHeaderSliver, which is as tall as what it holds: at
+    // a scale that wraps the title, a band with a stated extent would clip the
+    // second line or leave a gap under it.
     tester.platformDispatcher.textScaleFactorTestValue = 3.0;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 

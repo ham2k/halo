@@ -482,7 +482,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 ignoring: _applying,
                 child: rows.isEmpty
                     ? Center(child: Text(t.extensionsPanel.noMatches))
-                    : ListView(
+                    : SectionedListView(
                         // Without this the row a click lands on is not the row
                         // under the pointer — the web's accessibility DOM
                         // keeps the pre-filter geometry (docs/quirks.md, where

@@ -915,7 +915,7 @@ class StationPanel extends StatelessWidget {
             ? selection
             : null;
 
-        return ListView(
+        return SectionedListView(
           padding: const EdgeInsets.only(bottom: Space.md),
           children: [
             // What the station IS right now: the choices that decide how the

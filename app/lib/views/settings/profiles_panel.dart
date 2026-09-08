@@ -150,7 +150,7 @@ class _ProfilesPanelState extends State<ProfilesPanel> {
         final profile = settings.activeProfile;
         final call = profile.operatorCall;
         final sectionLabel = _sectionLabel(context, profile.operatorSection);
-        return ListView(
+        return SectionedListView(
           padding: const EdgeInsets.only(bottom: Space.md),
           children: [
             ListTile(

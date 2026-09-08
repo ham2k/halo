@@ -469,7 +469,7 @@ class _SyncPanelState extends State<SyncPanel> {
     return ListenableBuilder(
       listenable: settings,
       builder: (context, _) {
-        return ListView(
+        return SectionedListView(
           padding: const EdgeInsets.only(bottom: Space.md),
           children: [
             SectionHeader(context.t.settings.syncPanel.configuration),
