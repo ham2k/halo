@@ -507,6 +507,13 @@ void main() {
       expect(registry.typeFor('x6100-serial')!.restrictions['port'], {'index': 1});
     });
 
+    test('the IC-705 speaks CI-V on the first of the two ports it presents', () {
+      // Both ports carry the radio's own name on Android, so the picker's
+      // labels are no help; the restriction is the only thing that tells
+      // them apart.
+      expect(registry.typeFor('ic705-serial')!.restrictions['port'], {'index': 0});
+    });
+
     test('the CP2105 Yaesus speak CAT on the Enhanced port, the first, and only on a Silicon Labs bridge', () {
       for (final key in ['ft891-serial', 'ftdx10-serial']) {
         final port = registry.typeFor(key)!.restrictions['port'] as Map;

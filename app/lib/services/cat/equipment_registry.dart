@@ -1099,13 +1099,13 @@ const icomGenericModel = EquipmentModel(
 
 String _icomGenericName() => t.settings.station.models.icomGeneric;
 
-List<Map<String, dynamic>> _icomGenericSerialNotes() => [
+List<Map<String, dynamic>> _icomGenericSerialNotes({String extra = ''}) => [
       {
         'type': 'markdown',
         'collapsible': true,
         'title': t.settings.station.troubleshootingNotes,
         'text': '**${t.settings.station.icomCivTroubleshootingTitle}**\n\n'
-            '${t.settings.station.icomCivTroubleshooting}',
+            '${t.settings.station.icomCivTroubleshooting}$extra',
       },
     ];
 
@@ -1359,12 +1359,19 @@ const ic705Model = EquipmentModel(
         voiceMemoriesConfigKey: civVoiceMemoryCount,
         voiceCeilingConfigKey: _icomVoiceSeconds,
       },
-      notes: _icomGenericSerialNotes,
+      // The radio presents two USB serial ports under one name, and only
+      // the first carries CI-V; where the platform can tell them apart, the
+      // picker offers only that one.
+      restrictions: {'port': {'index': 0}},
+      notes: _ic705SerialNotes,
     ),
   ],
 );
 
 String _ic705Name() => t.settings.station.models.ic705;
+
+List<Map<String, dynamic>> _ic705SerialNotes() =>
+    _icomGenericSerialNotes(extra: t.settings.station.ic705PortNote);
 
 List<Map<String, dynamic>> _ic705NetworkNotes() => [
       {

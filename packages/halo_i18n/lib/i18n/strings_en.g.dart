@@ -4101,6 +4101,9 @@ class Translations$settings$station$en {
 	/// en: ' - The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.'
 	String get ic7300Mk2Note => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.';
 
+	/// en: ' - The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them. On Android only that one is listed.'
+	String get ic705PortNote => '\n- The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them. On Android only that one is listed.';
+
 	/// en: ' - The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.'
 	String get ic7760PortNote => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.';
 
@@ -7438,6 +7441,7 @@ extension on Translations {
 			'settings.station.civAddressTroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.civAddressTroubleshooting' => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE — or set the radio to Auto, which simply follows this app.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.ic7300Mk2Note' => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.',
+			'settings.station.ic705PortNote' => '\n- The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them. On Android only that one is listed.',
 			'settings.station.ic7760PortNote' => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.',
 			'settings.station.x6100PortNote' => '\n- The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents. On Android only that one is listed.',
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
@@ -7788,9 +7792,9 @@ extension on Translations {
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Open this log with that newer version instead.',
 			'notices.preferencesRestoredTitle' => 'Settings restored from a backup',
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
-			'notices.preferencesResetTitle' => 'Settings reset',
 			_ => null,
 		} ?? switch (path) {
+			'notices.preferencesResetTitle' => 'Settings reset',
 			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',

@@ -1906,6 +1906,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get civAddressTroubleshootingTitle => 'Si la radio nunca responde';
 	@override String get civAddressTroubleshooting => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio — o ponla en Auto, que simplemente sigue a la aplicación.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.';
 	@override String get ic7300Mk2Note => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.';
+	@override String get ic705PortNote => '\n- El **IC-705** presenta dos puertos serie USB, ambos con el nombre de la radio. CI-V está en el **primero**. En Android solo aparece ese.';
 	@override String get ic7760PortNote => '\n- El **IC-7760** usa CI-V en el **Puerto A** de los dos puertos serie USB que presenta.';
 	@override String get x6100PortNote => '\n- El **X6100** usa CI-V en su puerto **DEV**, el segundo de los dos puertos serie que presenta. En Android solo aparece ese.';
 	@override String get rigctldTroubleshootingTitle => 'Si la app no puede conectar';
@@ -4120,6 +4121,7 @@ extension on TranslationsEs {
 			'settings.station.civAddressTroubleshootingTitle' => 'Si la radio nunca responde',
 			'settings.station.civAddressTroubleshooting' => '- **La dirección CI-V debe coincidir** con el menú de la radio. Esta entrada rellena la dirección de fábrica del modelo, pero un equipo que comparte un bus CI-V es justo donde eso se cambia. Una trama enviada a la dirección equivocada se ignora en silencio, que se parece exactamente a un cable muerto.\n- **La velocidad debe coincidir** con el CI-V BAUD RATE de la radio — o ponla en Auto, que simplemente sigue a la aplicación.\n- **Otra aplicación puede tener el puerto abierto** — WSJT-X, fldigi y rigctld lo mantienen abierto.',
 			'settings.station.ic7300Mk2Note' => '\n- El **IC-7300 MK2** viene con la dirección `B6`, no con el `94` que se rellena aquí: elige la entrada IC-7300 MK2.',
+			'settings.station.ic705PortNote' => '\n- El **IC-705** presenta dos puertos serie USB, ambos con el nombre de la radio. CI-V está en el **primero**. En Android solo aparece ese.',
 			'settings.station.ic7760PortNote' => '\n- El **IC-7760** usa CI-V en el **Puerto A** de los dos puertos serie USB que presenta.',
 			'settings.station.x6100PortNote' => '\n- El **X6100** usa CI-V en su puerto **DEV**, el segundo de los dos puertos serie que presenta. En Android solo aparece ese.',
 			'settings.station.rigctldTroubleshootingTitle' => 'Si la app no puede conectar',
@@ -4475,9 +4477,9 @@ extension on TranslationsEs {
 			'deepLink.waitingInOperation' => 'Ese contacto está esperando en la operación detrás de esta pantalla',
 			'deepLink.unknownActivities' => ({required Object refs}) => 'Este dispositivo no tiene la actividad ${refs}, así que esas referencias quedaron fuera',
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'No se pudo consultar tus actividades, así que ${refs} quedó fuera — reintenta ese enlace',
-			'confirmDevice.title' => 'Confirmar un dispositivo',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.title' => 'Confirmar un dispositivo',
 			'confirmDevice.codePrompt' => 'Introduce el código que muestra el dispositivo que quiere unirse a esta cuenta.',
 			'confirmDevice.code' => 'Código',
 			'confirmDevice.lookUp' => 'Buscar',
