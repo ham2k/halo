@@ -655,11 +655,15 @@ void main() {
     });
 
     test('a named entry pins them, so it asks nothing', () {
-      for (final key in ['ic7300-serial', 'ft891-serial', 'kx3-serial', 'ic706mkiig-serial']) {
+      for (final key in ['ic7300-serial', 'ft891-serial', 'kx3-serial', 'ic706mkiig-serial', 'fx4cr-serial']) {
         final type = registry.typeFor(key)!;
         final asked = type.configElements().where((el) => el['type'] == 'field').map((el) => el['key']);
         expect(asked, isNot(contains('cwKeyer')), reason: key);
         expect(asked, isNot(contains('cwDialect')), reason: key);
+        // The pinned-off dialect is what makes voiceMemoryCount zero, so an
+        // assertion on that count cannot fail for a mutation of this entry;
+        // the question the entry stops asking is where the pin shows.
+        expect(asked, isNot(contains('voiceDialect')), reason: key);
         expect(asked, isNot(contains('voiceMemories')), reason: key);
       }
       expect(registry.typeFor('ic7300-serial')!.driver.canKeyCwWith(registry.typeFor('ic7300-serial')!.driverConfig(const {})), isTrue);

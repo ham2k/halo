@@ -2822,6 +2822,7 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get icomGeneric => 'Icom - Genérico';
 	@override String get kenwoodGeneric => 'Kenwood - Genérico';
 	@override String get qmx => 'QRP Labs QMX';
+	@override String get fx4cr => 'BG2FX FX-4CR';
 	@override String get elecraftGeneric => 'Elecraft - Genérico';
 	@override String get kx2 => 'Elecraft KX2';
 	@override String get kx3 => 'Elecraft KX3';
@@ -4069,6 +4070,7 @@ extension on TranslationsEs {
 			'settings.station.models.icomGeneric' => 'Icom - Genérico',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Genérico',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
+			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Genérico',
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
@@ -4474,9 +4476,9 @@ extension on TranslationsEs {
 			'deepLink.unknownActivities' => ({required Object refs}) => 'Este dispositivo no tiene la actividad ${refs}, así que esas referencias quedaron fuera',
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'No se pudo consultar tus actividades, así que ${refs} quedó fuera — reintenta ese enlace',
 			'confirmDevice.title' => 'Confirmar un dispositivo',
-			'confirmDevice.codePrompt' => 'Introduce el código que muestra el dispositivo que quiere unirse a esta cuenta.',
 			_ => null,
 		} ?? switch (path) {
+			'confirmDevice.codePrompt' => 'Introduce el código que muestra el dispositivo que quiere unirse a esta cuenta.',
 			'confirmDevice.code' => 'Código',
 			'confirmDevice.lookUp' => 'Buscar',
 			'confirmDevice.codeNotFound' => 'Ninguna solicitud coincide con ese código. Los códigos caducan a los 10 minutos: pide uno nuevo en el otro dispositivo.',

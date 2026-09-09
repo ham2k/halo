@@ -375,14 +375,17 @@ void main() {
       expect(session.declaredModeOffset, isNull);
     });
 
-    test('the QMX definition pins the layout the driver would otherwise spend a connection learning', () {
+    test('the QMX and the FX-4CR pin the layout the driver would otherwise spend a connection learning', () {
       // The override has to travel through driverConfig() to reach the
       // session: a pinned offset that never arrives costs nothing visible —
       // the radio is simply read the slow way — so nothing else here would
-      // notice it going missing.
-      final type = EquipmentRegistry().typeFor('qmx-serial')!;
-      final session = type.driver.createSession(sink, type.driverConfig(const {})) as KenwoodSession;
-      expect(session.declaredModeOffset, 27);
+      // notice it going missing. The FX-4CR carries the QMX's pin because
+      // that is the entry its operators proved this radio on.
+      for (final key in ['qmx-serial', 'fx4cr-serial']) {
+        final type = EquipmentRegistry().typeFor(key)!;
+        final session = type.driver.createSession(sink, type.driverConfig(const {})) as KenwoodSession;
+        expect(session.declaredModeOffset, 27, reason: key);
+      }
     });
 
     test('the KX2 and KX3 pin the same layout, and the generic Elecraft entry pins none', () {

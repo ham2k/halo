@@ -195,6 +195,7 @@ void main() {
         'icom-generic-serial',
         'kenwood-serial',
         'qmx-serial',
+        'fx4cr-serial',
         'kx2-serial',
         'kx3-serial',
         'elecraft-serial',
@@ -290,6 +291,35 @@ void main() {
     for (final key in ['elecraft-serial', 'kx2-serial', 'kx3-serial']) {
       expect(registry.typeFor(key)!.manufacturer, 'Elecraft', reason: '$key would otherwise report as Kenwood');
     }
+  });
+
+  // The FX-4CR sits outside the table above because the claim that table's
+  // companion test makes — that an operator has run this radio — is the one
+  // thing not true of it: the reports behind this entry were operators on
+  // the QMX entry, at that entry's 9600. Everything else about it is proven,
+  // so it carries no caveat; the rate is the field that stays editable.
+  group('the FX-4CR, which reached the catalogue by way of the QMX entry', () {
+    test('is the Kenwood driver over serial at the rate the entry prefills', () {
+      final type = registry.typeFor('fx4cr-serial')!;
+      expect(type.driver.key, 'kenwood');
+      expect(type.transportKey, SerialTransport.transportKey);
+      expect(type.category, kCategoryTransceiver);
+      expect(type.defaultConfig['baudRate'], 115200);
+    });
+
+    // Same fallback, same cost as the Elecraft entries above: this rides the
+    // Kenwood driver and would file itself as a Kenwood without the brand.
+    test('states its own brand rather than its protocol family', () {
+      expect(registry.typeFor('fx4cr-serial')!.manufacturer, 'BG2FX');
+    });
+
+    // Inherited from the driver, which a QMX and two Elecrafts have answered
+    // — not a claim that anyone has run an FX-4CR at 115200. Pinning the
+    // rate is the bet this entry makes; the operator can change it in one
+    // dropdown, which is why it lives in defaultConfig and not overrides.
+    test('ships with no untested caveat, on a driver radios have answered', () {
+      expect(registry.typeFor('fx4cr-serial')!.hardwareVerified, isTrue);
+    });
   });
 
   // Every shipped pairing now inherits a proven driver, so nothing in the

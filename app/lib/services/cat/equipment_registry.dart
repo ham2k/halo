@@ -426,6 +426,7 @@ const _ft897SerialKey = 'ft897-serial';
 const _q900SerialKey = 'q900-serial';
 const _kenwoodSerialKey = 'kenwood-serial';
 const _qmxSerialKey = 'qmx-serial';
+const _fx4crSerialKey = 'fx4cr-serial';
 const _elecraftSerialKey = 'elecraft-serial';
 const _kx2SerialKey = 'kx2-serial';
 const _kx3SerialKey = 'kx3-serial';
@@ -908,6 +909,45 @@ const qmxModel = EquipmentModel(
 );
 
 String _qmxName() => t.settings.station.models.qmx;
+
+/// BG2FX FX-4CR, which speaks Kenwood CAT over its USB serial port.
+///
+/// Its own entry rather than a line in the Kenwood generic's notes because
+/// the brand gives away the protocol no more than the QMX's does, and
+/// because a hardware report would otherwise file this radio under Kenwood.
+///
+/// Everything but the rate is the QMX's, which is where the entry comes
+/// from — operators run this radio on [qmxModel] and it answers, so the `IF`
+/// layout is the one pinned there. No QRP-Labs-style keyer either: nothing
+/// published names a dialect for this radio, and it has no voice memories.
+///
+/// The rate is the one field no report establishes: those operators were on
+/// the QMX entry's 9600 unless they changed it. A mismatch here is answered
+/// with silence rather than an error, which is why it sits in the prefill
+/// the operator can change and not in the overrides they cannot.
+const fx4crModel = EquipmentModel(
+  key: 'fx4cr',
+  manufacturer: 'BG2FX',
+  category: kCategoryTransceiver,
+  name: _fx4crName,
+  variants: [
+    EquipmentVariant(
+      key: _fx4crSerialKey,
+      driver: KenwoodDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'baudRate': 115200},
+      overrides: {
+        KenwoodDriver.ifModeOffsetKey: 27,
+        KenwoodDriver.cwDialectKey: '',
+        KenwoodDriver.voiceDialectKey: '',
+        KenwoodDriver.voiceMemoriesKey: 0,
+      },
+      notes: _kenwoodSerialNotes,
+    ),
+  ],
+);
+
+String _fx4crName() => t.settings.station.models.fx4cr;
 
 /// Any Elecraft transceiver over its serial port — the K3 and K4 as much as
 /// the KX2 and KX3, which have entries of their own below.
@@ -1525,6 +1565,7 @@ const _defaultModels = [
   x6100Model,
   icomGenericModel,
   qmxModel,
+  fx4crModel,
   kx2Model,
   kx3Model,
   elecraftGenericModel,

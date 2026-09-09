@@ -5997,6 +5997,9 @@ class Translations$settings$station$models$en {
 	/// en: 'QRP Labs QMX'
 	String get qmx => 'QRP Labs QMX';
 
+	/// en: 'BG2FX FX-4CR'
+	String get fx4cr => 'BG2FX FX-4CR';
+
 	/// en: 'Elecraft - Generic'
 	String get elecraftGeneric => 'Elecraft - Generic';
 
@@ -7380,6 +7383,7 @@ extension on Translations {
 			'settings.station.models.icomGeneric' => 'Icom - Generic',
 			'settings.station.models.kenwoodGeneric' => 'Kenwood - Generic',
 			'settings.station.models.qmx' => 'QRP Labs QMX',
+			'settings.station.models.fx4cr' => 'BG2FX FX-4CR',
 			'settings.station.models.elecraftGeneric' => 'Elecraft - Generic',
 			'settings.station.models.kx2' => 'Elecraft KX2',
 			'settings.station.models.kx3' => 'Elecraft KX3',
@@ -7785,9 +7789,9 @@ extension on Translations {
 			'notices.preferencesRestoredTitle' => 'Settings restored from a backup',
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Settings reset',
-			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			_ => null,
 		} ?? switch (path) {
+			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo stopped responding the last time it started connecting to ${name}, so it left it alone this time rather than risk doing it again. Check that the radio is switched on and its cable is plugged in, then press Connect on it in Settings.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Anonymous Account (#${id})',
