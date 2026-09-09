@@ -419,7 +419,12 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // is missing. Split around the band so backends can color just it (see
     // MapMarkerData.popupDetailPrefix).
     final band = qso.band ?? '';
-    final leadParts = [if (qso.receivedRST != null) qso.receivedRST!, if (qso.mode != null) qso.mode!];
+    // The mode as a list shows it ([displayMode]); the popup is plain text a
+    // backend renders, so an unexpected sideband is spelled out uncolored.
+    final leadParts = [
+      if (qso.receivedRST != null) qso.receivedRST!,
+      ?displayMode(qso.mode, freqKHz: qso.freq, band: qso.band),
+    ];
     final prefix = leadParts.isEmpty ? '' : leadParts.join(' • ') + (band.isEmpty ? '' : ' • ');
     final suffix = timeStr == null ? '' : (band.isEmpty && leadParts.isEmpty ? timeStr : ' • $timeStr');
 

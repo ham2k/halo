@@ -53,10 +53,61 @@ String? bandForFrequency(double khz) {
   return null;
 }
 
-/// Bands where SSB voice conventionally sits on the lower sideband.
-/// Everything else is upper — including 60 m, which is channelized USB by
-/// international agreement despite being below 10 MHz.
-const _lsbBands = {'2190m', '630m', '560m', '160m', '80m', '40m'};
+/// Bands whose voice sits on the lower sideband, for when a contact records a
+/// band and no frequency. Every other band name is upper.
+///
+/// Both spellings of the two bands that have two: the band table names
+/// `2190m`, and `75m` is what many loggers call the phone half of 80 m — a
+/// contact carrying either arrives from an import or a spot feed, and getting
+/// it wrong puts the wrong sideband on the air.
+const _lsbBands = {'2190m', '2200m', '630m', '560m', '160m', '80m', '75m', '40m'};
+
+/// Below this, voice is lower sideband; at or above it, upper.
+///
+/// Not a band edge — a plain split through the HF spectrum, which is all the
+/// convention has ever been. Every amateur band lands on the correct side of
+/// it, so nothing has to agree with a band table for this to be right, and a
+/// frequency in a gap between bands still gets a usable answer instead of a
+/// shrug.
+const _upperSidebandFloorKHz = 9000.0;
+
+/// The one stretch below [_upperSidebandFloorKHz] that runs upper: 60 m is
+/// channelized USB by international agreement. Written as a round span rather
+/// than the band's own edges so a frequency near it, or a 60 m allocation this
+/// table does not carry, still answers upper.
+const _sixtyMetreLoKHz = 5000.0;
+const _sixtyMetreHiKHz = 6000.0;
+
+/// Whether [mode] is voice SSB — the generic mode or either sideband.
+///
+/// What it is for: a sideband already resolved is still a DERIVED value, and
+/// moving band has to re-derive it (`RadioService.setVfo`). Which sideband a
+/// band runs is a property of where you are, not a preference to carry across
+/// a move.
+bool isSidebandMode(String? mode) =>
+    mode != null && const {'SSB', 'USB', 'LSB'}.contains(mode.toUpperCase());
+
+/// The sideband voice conventionally runs on, from [freqKHz] if there is one
+/// and from [band] otherwise, or **null** only when there is neither.
+///
+/// A frequency answers on its own — see [_upperSidebandFloorKHz] — so it needs
+/// no band table and no allocation to fall inside; a frequency between bands,
+/// or on one nothing here names, still gets the answer an operator would give.
+/// A band name answers from [_lsbBands], and anything not in it is upper.
+///
+/// The null is load-bearing, and it now means exactly one thing: nothing was
+/// stated at all. [resolveSideband] must answer with a sideband whatever it is
+/// handed, so it falls back to upper; a caller that must not guess — the
+/// display deciding whether to accuse a sideband, a writer deciding whether to
+/// rewrite a stored one — checks here first.
+String? expectedSideband({double? freqKHz, String? band}) {
+  if (freqKHz != null) {
+    if (freqKHz >= _upperSidebandFloorKHz) return 'USB';
+    return (freqKHz >= _sixtyMetreLoKHz && freqKHz < _sixtyMetreHiKHz) ? 'USB' : 'LSB';
+  }
+  if (band == null || band.isEmpty) return null;
+  return _lsbBands.contains(band) ? 'LSB' : 'USB';
+}
 
 /// [mode] with a generic `SSB` turned into the sideband that band actually
 /// uses. Anything else — including a mode already naming its sideband — is
@@ -72,18 +123,40 @@ const _lsbBands = {'2190m', '630m', '560m', '160m', '80m', '40m'};
 /// [band] is the fallback when there is no frequency to derive one from —
 /// which is exactly what a manual band pick leaves behind. Without it a
 /// picked 40m plus SSB resolved to USB.
-/// Whether [mode] is voice SSB — the generic mode or either sideband.
-///
-/// What it is for: a sideband already resolved is still a DERIVED value, and
-/// moving band has to re-derive it (`RadioService.setVfo`). Which sideband a
-/// band runs is a property of the band, not a preference to carry across one.
-bool isSidebandMode(String? mode) =>
-    mode != null && const {'SSB', 'USB', 'LSB'}.contains(mode.toUpperCase());
-
 String? resolveSideband(String? mode, double? freqKHz, {String? band}) {
   if (mode == null || mode.toUpperCase() != 'SSB') return mode;
-  final resolved = freqKHz != null ? bandForFrequency(freqKHz) : band;
-  return _lsbBands.contains(resolved) ? 'LSB' : 'USB';
+  return expectedSideband(freqKHz: freqKHz, band: band) ?? 'USB';
+}
+
+/// Whether [mode] names the sideband the band does NOT run — the one thing
+/// about a sideband worth an operator's attention, and the only reason a
+/// display ever spells one out.
+///
+/// False wherever there is nothing to contradict: a generic `SSB`, a
+/// non-voice mode, and a contact stating neither a frequency nor a band
+/// ([expectedSideband] returning null).
+bool isUnexpectedSideband(String? mode, {double? freqKHz, String? band}) {
+  final m = mode?.toUpperCase();
+  if (m != 'USB' && m != 'LSB') return false;
+  final expected = expectedSideband(freqKHz: freqKHz, band: band);
+  return expected != null && m != expected;
+}
+
+/// [mode] as a pill, a log row or a spot row shows it: `SSB`, unless the
+/// stored sideband is the one that band does not run, in which case it is
+/// spelled out so the operator can see it.
+///
+/// The sideband is where-you-are's business, not the operator's: `USB` on 20 m
+/// and `LSB` on 40 m are both just "SSB", and a log that spells them out reads as
+/// two modes where one was worked — enough to make the QSO list grow a Mode
+/// column for a single-mode operation. What the log STORES is untouched; ADIF
+/// and every scorer still see the sideband.
+///
+/// Pair it with [isUnexpectedSideband] to paint what comes back: a spelled-out
+/// sideband is exactly the case that wants an error color.
+String? displayMode(String? mode, {double? freqKHz, String? band}) {
+  if (!isSidebandMode(mode)) return mode;
+  return isUnexpectedSideband(mode, freqKHz: freqKHz, band: band) ? mode!.toUpperCase() : 'SSB';
 }
 
 typedef _BandPlanSegment = ({

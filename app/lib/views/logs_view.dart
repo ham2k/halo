@@ -2082,7 +2082,13 @@ double _autoFitColumnWidth(String column, BuildContext context, List<Qso> qsos, 
         monoStyle,
         t.freq,
       ),
-    'mode' => (widest(qsos.map((qso) => qso.mode ?? '')), monoStyle, t.mode),
+    // The DISPLAYED mode, like the cell below — measuring a stored `LSB` for
+    // a cell that renders `SSB` reserves a width no row uses.
+    'mode' => (
+        widest(qsos.map((qso) => displayMode(qso.mode, freqKHz: qso.freq, band: qso.band) ?? '')),
+        monoStyle,
+        t.mode,
+      ),
     'call' => (widest(qsos.map((qso) => qso.theirCall)), callStyle, t.call),
     'name' => (widest(qsos.map((qso) => qso.theirName ?? '')), nameStyle, t.name),
     _ => ('', monoStyle, ''),
@@ -2214,7 +2220,14 @@ class _LogQsoSummaryRow extends StatelessWidget {
       'freq': freqKHz == null
           ? Text(qso.band ?? '', style: condensedStyle)
           : _freqField(freqKHz, condensedStyle, mhzDigits: freqMhzDigits),
-      'mode': Text(qso.mode ?? '', style: monoStyle),
+      // `SSB` for the sideband the band runs; the one it doesn't is spelled
+      // out, in the error color, because that is the whole reason to spell it.
+      'mode': Text(
+        displayMode(qso.mode, freqKHz: freqKHz, band: qso.band) ?? '',
+        style: isUnexpectedSideband(qso.mode, freqKHz: freqKHz, band: qso.band)
+            ? monoStyle?.copyWith(color: theme.colorScheme.error)
+            : monoStyle,
+      ),
       'call': callsignText,
       'name': Text(
         qso.theirName ?? '',
@@ -2320,6 +2333,12 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   late final TextEditingController _time;
   late final TextEditingController _freqOrBand;
   late final TextEditingController _mode;
+
+  /// What [_mode] was seeded with — the DISPLAYED mode, which for a contact
+  /// stating neither a frequency nor a band collapses a stored sideband to
+  /// `SSB` with nothing to resolve it back from. Saving that would take the
+  /// sideband out of the log, so an untouched field keeps what was stored.
+  late final String _modeSeed;
   late final TextEditingController _sentRst;
   late final TextEditingController _rcvdRst;
   late final TextEditingController _notes;
@@ -2358,7 +2377,11 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     // is what keeps 1296 MHz from parsing as 1296 kHz.
     _freqOrBand =
         TextEditingController(text: qso.freq != null ? fmtFreqInput(qso.freq!) : (qso.band ?? ''));
-    _mode = TextEditingController(text: qso.mode ?? '');
+    // The mode as the row above shows it, or the dialog would read `LSB`
+    // under a row reading `SSB`. Resolved again on save, against the seed
+    // kept here so an untouched field cannot write the collapse back.
+    _modeSeed = displayMode(qso.mode, freqKHz: qso.freq, band: qso.band) ?? '';
+    _mode = TextEditingController(text: _modeSeed);
     _sentRst = TextEditingController(text: qso.sentRST ?? '');
     _rcvdRst = TextEditingController(text: qso.receivedRST ?? '');
     _notes = TextEditingController(text: qso.notes ?? '');
@@ -2434,7 +2457,23 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
           'our': our,
           'freq': freqFieldUnparseable ? qso.freq : parsedFreqKHz,
           'band': freqFieldUnparseable ? qso.band : parsedBand,
-          'mode': _mode.text.trim().toUpperCase(),
+          // Resolved against the freq/band this save settles on, like every
+          // other mode a person types: a typed `SSB` is not a mode a radio can
+          // be in, and storing it would put a generic mode in a log the rest
+          // of the app keeps concrete.
+          'mode': (() {
+            final typed = _mode.text.trim().toUpperCase();
+            final freq = freqFieldUnparseable ? qso.freq : parsedFreqKHz;
+            final band = freqFieldUnparseable ? qso.band : parsedBand;
+            // Nothing to resolve against, and the field was never touched:
+            // the seed is a collapsed view of the stored mode, so writing it
+            // through would swap a recorded `LSB` for a generic `SSB` that no
+            // frequency can ever turn back.
+            if (expectedSideband(freqKHz: freq, band: band) == null) {
+              return typed == _modeSeed ? (qso.mode ?? typed) : typed;
+            }
+            return resolveSideband(typed, freq, band: band) ?? typed;
+          })(),
           'notes': _notes.text,
           'startAtMillis': ?startAtMillis,
         },

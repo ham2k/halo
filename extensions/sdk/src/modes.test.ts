@@ -4,7 +4,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { canonicalMode, modesMatchForDupe } from "./modes.ts"
+import { canonicalMode, expectedSideband, isUnexpectedSideband, modesMatchForDupe } from "./modes.ts"
 
 test("modesMatchForDupe folds the sideband spellings together", () => {
   // The spot board's whole reason for this: POTA and SOTA say SSB where the
@@ -88,4 +88,63 @@ test("canonicalMode answers nothing for a mode that is only whitespace", () => {
   // core scoring does not trim, so this really does arrive.
   assert.equal(canonicalMode(""), "")
   assert.equal(canonicalMode("   "), "")
+})
+
+test("expectedSideband splits on the frequency, with the 60m window as the exception", () => {
+  // A plain split through HF, not a band lookup — so this needs no band table
+  // to agree with the app's, which is what makes the two identical by
+  // construction rather than by maintenance.
+  assert.equal(expectedSideband({ freqKHz: 7185 }), "LSB")
+  assert.equal(expectedSideband({ freqKHz: 14250 }), "USB")
+  assert.equal(expectedSideband({ freqKHz: 5357 }), "USB")
+  // The edges of the 60m window and of the split itself.
+  assert.equal(expectedSideband({ freqKHz: 4999 }), "LSB")
+  assert.equal(expectedSideband({ freqKHz: 5000 }), "USB")
+  assert.equal(expectedSideband({ freqKHz: 5999 }), "USB")
+  assert.equal(expectedSideband({ freqKHz: 6000 }), "LSB")
+  assert.equal(expectedSideband({ freqKHz: 8999 }), "LSB")
+  assert.equal(expectedSideband({ freqKHz: 9000 }), "USB")
+  // Outside every allocation is still answerable, which is the point: an
+  // exported file must not lose a sideband just because the frequency sits in
+  // a gap no band table names.
+  assert.equal(expectedSideband({ freqKHz: 10300 }), "USB")
+  assert.equal(expectedSideband({ freqKHz: 2400 }), "LSB")
+})
+
+test("expectedSideband falls back to the band, both spellings counted", () => {
+  assert.equal(expectedSideband({ band: "40m" }), "LSB")
+  assert.equal(expectedSideband({ band: "20m" }), "USB")
+  assert.equal(expectedSideband({ band: "60m" }), "USB")
+  // A contact carrying the other spelling arrives from an import or a spot
+  // feed; answering upper for it puts the wrong sideband in the file.
+  assert.equal(expectedSideband({ band: "75m" }), "LSB")
+  assert.equal(expectedSideband({ band: "2200m" }), "LSB")
+  // The frequency outranks the band.
+  assert.equal(expectedSideband({ freqKHz: 7185, band: "20m" }), "LSB")
+  // The only undefined left: nothing stated at all.
+  assert.equal(expectedSideband({}), undefined)
+})
+
+test("isUnexpectedSideband fires only on the sideband that place does not run", () => {
+  assert.equal(isUnexpectedSideband("USB", { freqKHz: 7185 }), true)
+  assert.equal(isUnexpectedSideband("LSB", { freqKHz: 7185 }), false)
+  assert.equal(isUnexpectedSideband("lsb", { freqKHz: 14250 }), true)
+  assert.equal(isUnexpectedSideband("LSB", { freqKHz: 5357 }), true)
+  assert.equal(isUnexpectedSideband("USB", { band: "80m" }), true)
+  // A generic SSB names no sideband, so it contradicts nothing — without this
+  // the export would state a submode on every phone contact.
+  assert.equal(isUnexpectedSideband("SSB", { freqKHz: 7185 }), false)
+  assert.equal(isUnexpectedSideband("FT8", { freqKHz: 7185 }), false)
+  assert.equal(isUnexpectedSideband(undefined, { freqKHz: 7185 }), false)
+  // Nothing stated, nothing to contradict.
+  assert.equal(isUnexpectedSideband("LSB", {}), false)
+})
+
+test("isUnexpectedSideband treats whitespace exactly as the Dart twin does", () => {
+  // Neither side trims. Pinned because the pair is documented to answer
+  // identically and only one of them ever did trim — a mode arriving with a
+  // stray space would have been flagged on one side and not the other, which
+  // is the app-versus-file contradiction the pairing exists to prevent.
+  assert.equal(isUnexpectedSideband(" LSB", { freqKHz: 14250 }), false)
+  assert.equal(isUnexpectedSideband("LSB", { freqKHz: 14250 }), true)
 })

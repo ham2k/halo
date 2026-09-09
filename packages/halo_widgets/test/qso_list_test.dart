@@ -2601,4 +2601,72 @@ void main() {
       });
     }
   });
+
+  group('the Mode column and the sideband', () {
+    /// Two phone contacts on the two bands that run OPPOSITE sidebands — the
+    /// log holds `USB` and `LSB`, which is one mode worked.
+    Future<void> pumpTwoBands(WidgetTester tester, {required String fortyMetreMode}) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final first = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'freq': 14250.0,
+        'mode': 'USB',
+        'startAtMillis': 1000,
+      });
+      final second = await qsos.add(operation.uuid, {
+        'their': {'call': 'K2HAM'},
+        'band': '40m',
+        'freq': 7185.0,
+        'mode': fortyMetreMode,
+        'startAtMillis': 2000,
+      });
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: QsoList(qsos: [first, second], onSelect: (_) {})),
+      ));
+    }
+
+    testWidgets('two bands worth of phone is one mode, and grows no column', (tester) async {
+      // The whole point of collapsing the display: `USB` on 20m and `LSB` on
+      // 40m is an operator who worked SSB all day. Counting the STORED modes
+      // makes that two modes and grows a Mode column that repeats a value the
+      // frequency beside it already implies.
+      await pumpTwoBands(tester, fortyMetreMode: 'LSB');
+
+      expect(find.text('SSB'), findsNothing);
+      expect(find.text('USB'), findsNothing);
+      expect(find.text('LSB'), findsNothing);
+    });
+
+    testWidgets('a sideband the band does not run grows the column and paints it', (tester) async {
+      // The sporadic case: one contact out of step still has another mode to
+      // be counted against, so a count alone would find it.
+      await pumpTwoBands(tester, fortyMetreMode: 'USB');
+
+      expect(find.text('SSB'), findsOneWidget); // the 20m contact
+      final odd = tester.widget<Text>(find.text('USB'));
+      expect(odd.style?.color, ThemeData().colorScheme.error);
+    });
+
+    testWidgets('a whole operation on the wrong sideband is still told', (tester) async {
+      // The case a count cannot reach, and the one worth catching: a rig left
+      // in USB on 40m for a whole session displays that one mode on every row,
+      // so `modesUsed` holds a single entry and the column — the only thing
+      // carrying the warning — would be dropped with it.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final only = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '40m',
+        'freq': 7185.0,
+        'mode': 'USB',
+        'startAtMillis': 1000,
+      });
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: QsoList(qsos: [only], onSelect: (_) {})),
+      ));
+
+      final odd = tester.widget<Text>(find.text('USB'));
+      expect(odd.style?.color, ThemeData().colorScheme.error);
+    });
+  });
 }

@@ -2181,7 +2181,9 @@ double _spotLeftColumnWidth(BuildContext context, List<Map<String, dynamic>> spo
       final len = freqDisplayParts(freq, hzDigits: hzDigits).mhz.length;
       if (len > maxMhzLen) maxMhzLen = len;
     }
-    final mode = _modeOf(spot);
+    // The DISPLAYED mode — measuring the stored `LSB` for a row that renders
+    // `SSB` reserves a width no row uses.
+    final mode = displayMode(_modeOf(spot), freqKHz: freq, band: _bandOf(spot));
     if (mode != null && mode.isNotEmpty) modes.add(mode);
   }
 
@@ -2332,6 +2334,9 @@ class _SpotTile extends StatelessWidget {
         accent == null ? style : style?.copyWith(color: accent, fontWeight: FontWeight.w700);
 
     final freqKHz = _freqOf(spot);
+    final spotBand = _bandOf(spot);
+    final spotMode = _modeOf(spot);
+    final modeUnexpected = isUnexpectedSideband(spotMode, freqKHz: freqKHz, band: spotBand);
     final Widget freqField;
     if (freqKHz == null) {
       // No frequency to show on the top line — the mode still shows below it.
@@ -2473,7 +2478,17 @@ class _SpotTile extends StatelessWidget {
         children: [
           line(freqField, callLine),
           SizedBox(height: metrics.spotTileLineGap),
-          line(Text(_modeOf(spot) ?? '', style: accented(proportional, modeAccent) ?? proportional), labelLine),
+          line(
+            Text(
+              displayMode(spotMode, freqKHz: freqKHz, band: spotBand) ?? '',
+              // The error color outranks the `newMode` accent: a sideband this
+              // band doesn't run is a reason not to tap the spot, where a new
+              // mode is a reason to.
+              style: accented(proportional, modeUnexpected ? faded(theme.colorScheme.error) : modeAccent) ??
+                  proportional,
+            ),
+            labelLine,
+          ),
         ],
       ),
     );

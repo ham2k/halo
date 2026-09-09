@@ -166,6 +166,7 @@ Map<String, dynamic> buildQsoEditFormDefinition({
   required String? rstPlaceholder,
   required bool powerShown,
   required bool composing,
+  required String currentMode,
 }) {
   final entity = theirEntityDisplay(their, guess);
   final us = theirIsUS(their, guess);
@@ -183,7 +184,14 @@ Map<String, dynamic> buildQsoEditFormDefinition({
         'key': 'mode',
         'fieldType': 'select',
         'label': widget.modeLabel ?? 'Mode',
-        'options': [for (final m in modes) {'value': m, 'label': m}],
+        // [currentMode] is what the panel SHOWS ([displayMode]), and it is
+        // appended when the option list has no entry for it — a select whose
+        // value matches no option renders empty, and saving that pane would
+        // then clear the mode the contact was worked on.
+        'options': [
+          for (final m in [...modes, if (!modes.contains(currentMode)) currentMode])
+            {'value': m, 'label': m},
+        ],
       },
       // After the mode, with the rest of what describes the transmission
       // rather than the station. Only when power is part of this entry: an

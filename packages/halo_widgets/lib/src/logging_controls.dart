@@ -3807,7 +3807,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (freq != null) {
       final guess = modeForFrequency(freq, ituRegion: widget.ourItuRegion, countryCode: widget.ourCountryCode) ??
           _modeBeforeFreqEdit;
-      if (guess != null && guess != _mode) setState(() => _applyModeGuess(guess));
+      // Compared RESOLVED: a generic `SSB` guess against a generic `SSB` mode
+      // is not a no-op once there is a frequency to resolve against, so the
+      // raw comparison blocked it — and dropping the comparison altogether
+      // rebuilt the whole panel on every keystroke, since a guess almost
+      // always exists.
+      if (guess != null && _modeResolvedToSideband(guess) != _mode) {
+        setState(() => _applyModeGuess(guess));
+      }
     }
     // Only push once there's enough digits to plausibly be a real
     // frequency (mirrors the frequency command's own `length < 3` reject),
@@ -3921,8 +3928,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// [mode] already matches `_mode`, so callers can call it unconditionally
   /// once they have a non-null guess.
   void _applyModeGuess(String mode) {
-    if (mode == _mode) return;
-    _mode = mode;
+    // The band plan says "SSB"; which sideband that is belongs to the band.
+    // Resolved here rather than left to the caller's push because editing an
+    // existing QSO makes no push at all.
+    final resolved = _modeResolvedToSideband(mode);
+    if (resolved == _mode) return;
+    _mode = resolved;
   }
 
   /// Puts the Band and Mode fields back in step with `_band`/`_mode` after
@@ -3952,14 +3963,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _bandFilter = '';
     _modeFilter = '';
     _bandDropdownController.text = _band ?? '';
-    _modeDropdownController.text = _mode;
+    _modeDropdownController.text = _displayedMode;
   }
 
+  /// Takes the picked mode, resolved to a sideband
+  /// ([_modeResolvedToSideband]). `RadioService.setVfo` resolves it too, but
+  /// an edit of an existing QSO never reaches the VFO, and until the rig's own
+  /// reading came back the field held a mode no radio can be in.
   void _setMode(String mode) {
+    final resolved = _modeResolvedToSideband(mode);
     setState(() {
-      _mode = mode;
+      _mode = resolved;
     });
-    if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', mode: mode);
+    if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', mode: resolved);
     // New Mode / New Band notices depend on the mode — rescore the candidate.
     _scheduleScore();
   }
@@ -4845,17 +4861,56 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return '${_fmtTimeWithSeconds(dt)}z';
   }
 
-  String get _radioSummary {
-    final parts = <String>[
-      _freq != null ? fmtFreq(_freq!) : (_band ?? 'Band???'),
-    ];
+  /// `_mode` as the Mode dropdown and the Radio chip show it, per
+  /// docs/design/cat.md's "Showing it back". What gets LOGGED is `_mode`.
+  String get _displayedMode => displayMode(_mode, freqKHz: _freq, band: _band) ?? _mode;
+
+  /// [_displayedMode] for a pane that WRITES the mode back, except where
+  /// nothing was stated to collapse against — there the collapse cannot be
+  /// undone on the way in, so an untouched save would swap a stored sideband
+  /// for a generic `SSB` the select does not even offer back.
+  String get _modeForEditing =>
+      expectedSideband(freqKHz: _freq, band: _band) == null ? _mode : _displayedMode;
+
+  /// [mode] with a generic `SSB` resolved against where the fields stand — the
+  /// panel's own copy of what `RadioService.setVfo` does, because a pick made
+  /// while editing an existing QSO never reaches the VFO.
+  ///
+  /// Guarded on the CONVENTION, not on the fields: nothing stated is the only
+  /// case with no answer, and [resolveSideband] must answer regardless.
+  String _modeResolvedToSideband(String mode) => expectedSideband(freqKHz: _freq, band: _band) == null
+      ? mode
+      : (resolveSideband(mode, _freq, band: _band) ?? mode);
+
+  /// The Radio chip's summary as plain text, for the `summary` every spec must
+  /// carry. Built from [_radioSummaryParts] so the two cannot disagree.
+  String get _radioSummary => _radioSummaryParts().map((p) => p.text).join();
+
+  /// The same summary as colored runs, so the chip can spell one part of it
+  /// wrong without repainting the whole chip. Null [errorColor] (the
+  /// plain-text caller above) leaves every run uncolored.
+  List<SummaryPart> _radioSummaryParts({Color? errorColor}) {
+    final head = _freq != null ? fmtFreq(_freq!) : (_band ?? 'Band???');
     // Out of band takes the mode's place rather than sitting beside it: the
     // pill is the whole warning on a collapsed row, and "not allowed to
-    // transmit here" outranks which mode the log will record. The mode
-    // itself is untouched — [outOfBandMode] is never a value `_mode` can
-    // take, so it can't reach the Mode dropdown or a logged QSO.
-    parts.add(_outOfBand ? outOfBandMode : _mode);
-    return parts.join(' • ');
+    // transmit here" outranks which mode the log will record. `_mode` itself
+    // is untouched — [outOfBandMode] is never a value it can take.
+    //
+    // [displayMode]'s rule, in the error color — suppressed wherever the chip
+    // itself alerts, whose condition this must MATCH (see its `alert:`): error
+    // text on the errorContainer ground is faint, and on a selected chip's
+    // solid error fill invisible. A frequency in a gap between bands alerts
+    // (no band) and still has an expected sideband, so neither half implies
+    // the other.
+    final unexpected = !_outOfBand && _band != null && isUnexpectedSideband(_mode, freqKHz: _freq, band: _band);
+    return [
+      (text: head, color: null),
+      (text: ' • ', color: null),
+      (
+        text: _outOfBand ? outOfBandMode : (displayMode(_mode, freqKHz: _freq, band: _band) ?? _mode),
+        color: unexpected ? errorColor : null,
+      ),
+    ];
   }
 
   // ---- Control identity, order and visibility ----
@@ -5243,7 +5298,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         : enabled.isEmpty
             ? mainModes
             : enabled;
-    return [...options, if (!options.contains(_mode)) _mode];
+    return [...options, if (!options.contains(_displayedMode)) _displayedMode];
   }
 
   /// Menu entries for the active [filter]: a case-insensitive contains
@@ -5304,8 +5359,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   void _onBandDropdownTextChanged() =>
       _onDropdownTextChanged((f) => _bandFilter = f, _bandDropdownController.text, _band ?? '');
-  void _onModeDropdownTextChanged() =>
-      _onDropdownTextChanged((f) => _modeFilter = f, _modeDropdownController.text, _mode);
+  /// Both spellings of the selection count as one: a pick writes the option's
+  /// own label, which for a sideband this band runs is not what the field then
+  /// displays — and the displayed spelling alone captured a picked `USB` as
+  /// filter text, narrowing the menu to that entry.
+  void _onModeDropdownTextChanged() {
+    final text = _modeDropdownController.text;
+    _onDropdownTextChanged((f) => _modeFilter = f, text, text == _mode ? _mode : _displayedMode);
+  }
 
   /// Captures genuinely typed text as the menu [filter] and rebuilds so the
   /// menu re-filters. Two kinds of controller write must NOT become a
@@ -5352,12 +5413,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _commitModeDropdownText() {
     if (!mounted) return;
     final text = _modeDropdownController.text.trim();
-    if (text.isNotEmpty && text != _mode) {
+    if (text.isNotEmpty && text != _displayedMode) {
       final match = _firstMatch(_modeDropdownOptions(), text);
-      if (match != null && match != _mode) _setMode(match);
+      if (match != null && match != _displayedMode) _setMode(match);
     }
     _modeFilter = '';
-    _modeDropdownController.text = _mode;
+    _modeDropdownController.text = _displayedMode;
   }
 
   /// A dropdown field's focus node, wired to [commit] typed text on Enter
@@ -5420,7 +5481,24 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// `_dispatchActions`). Only while composing — editing an existing QSO
   /// applies changes to the QSO, never the VFO.
   void _applyBandPick(String value) {
+    // A stored sideband was derived from the band being left, so a MOVE
+    // re-derives it — `setVfo`'s own condition, for its reason: re-picking the
+    // band you are on must not discard a deliberate far sideband. Editing an
+    // existing QSO reaches no VFO to do this for it. Compared against the
+    // VFO's band, not `_band`, which [_commitBandTypedIntoFreqField] has
+    // already blanked by replacing the text that named the old band.
+    //
+    // Computed BEFORE the setState: clearing the frequency field notifies
+    // `_onFreqChanged` synchronously, and its empty-field branch pushes the
+    // VFO stating the mode — pinning the old band's sideband onto the new band
+    // at the rig while the panel holds the new one, until the next wipe
+    // reseeds the panel from the rig.
+    final leavingBand = widget.editingQso == null ? (widget.radioService?.vfoA.band ?? _band) : _band;
+    final resolved = (value != leavingBand && isSidebandMode(_mode))
+        ? (resolveSideband('SSB', null, band: value) ?? _mode)
+        : _mode;
     setState(() {
+      _mode = resolved;
       _manualBand = value;
       _freqController.clear();
     });
@@ -5464,10 +5542,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   void _stepModeSelection(int delta) {
-    final next = _steppedOption(_filteredOptions(_modeDropdownOptions(), _modeFilter), _mode, delta);
+    final options = _filteredOptions(_modeDropdownOptions(), _modeFilter);
+    // Stepped from the STORED mode wherever the list offers it: from the
+    // displayed one the walk strands on the sideband this band runs, because
+    // the field reads `SSB` again and the next step recomputes from its index.
+    final next = _steppedOption(options, options.contains(_mode) ? _mode : _displayedMode, delta);
     if (next == null) return;
     _setMode(next);
-    _modeDropdownController.text = next;
+    _modeDropdownController.text = _displayedMode;
   }
 
   /// The option [delta] steps away from [current], wrapping like the open
@@ -5491,6 +5573,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // amateurs (e.g. 7250 kHz in ITU Region 1).
         alert: _band == null || _outOfBand,
         summary: _radioSummary,
+        summaryParts: _radioSummaryParts(errorColor: theme.colorScheme.error),
         expandedBuilder: (context) {
           // Resolved once for both dropdowns below. `dropdownTextScale` is the
           // OS accessibility scaler, not the app font scale (UiScale already
@@ -5659,7 +5742,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                   controller: _modeDropdownController,
                   focusNode: _modeDropdownFocus,
                   menuController: _modeMenuController,
-                  initialSelection: _mode,
+                  initialSelection: _displayedMode,
                   label: Text(widget.modeLabel ?? 'Mode'),
                   width: 86,
                   menuHeight: dropdownMenuMaxHeight(context),
@@ -7026,7 +7109,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             _freqController.clear();
           }
           if (mode is String) {
-            _mode = mode;
+            // Resolved like every other mode REQUEST. The command is the last
+            // path that reached here raw, and while editing an existing QSO
+            // `_onRadioVfoChanged` returns early, so nothing downstream would
+            // have corrected a generic `SSB` before it was logged.
+            _mode = _modeResolvedToSideband(mode);
           } else if (freq is num) {
             // HALO-32: the frequency command (typing "14285 " into the call
             // field) doesn't carry a mode of its own — guess it from the
@@ -7338,6 +7425,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         rstPlaceholder: _rstPlaceholder,
         powerShown: _powerShown,
         composing: widget.editingQso == null,
+        currentMode: _modeForEditing,
       ),
       initialState: {
         'theirCall': _call,
@@ -7352,7 +7440,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         'rcvd': _rcvdController.text.trim(),
         'freq': _freq,
         'band': _band ?? '',
-        'mode': _mode,
+        'mode': _modeForEditing,
         'power': _powerWatts,
         'date': _fmtDate(dt),
         'time': _fmtTime(dt),
@@ -7408,7 +7496,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _manualBand = (band == null || band.isEmpty) ? null : band;
       }
 
-      _mode = (result['mode'] as String?) ?? _mode;
+      // Resolved against the freq/band the pane just wrote above, like every
+      // other mode PICK, and never skipped for an untouched select: the pane
+      // can move the frequency, and an untouched `SSB` has to re-derive
+      // against where the contact now is. Lossless because the rule is total
+      // — see docs/design/cat.md's "Showing it back".
+      final panedMode = result['mode'] as String?;
+      if (panedMode != null) _mode = _modeResolvedToSideband(panedMode);
 
       // Written even when the pane didn't offer the field: absent means the
       // form dropped it, and `result` then carries a null this must not read

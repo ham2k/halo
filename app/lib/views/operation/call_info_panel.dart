@@ -531,7 +531,10 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
         : null;
     final parts = [
       if (qso.band != null) qso.band!,
-      if (qso.mode != null) qso.mode!,
+      // The sideband belongs to where you are — see [displayMode]. This line
+      // has no per-part styling, so an unexpected one is spelled out plainly
+      // rather than colored.
+      ?displayMode(qso.mode, freqKHz: qso.freq, band: qso.band),
       _fmtHistoryTime(qso.startAtMillis),
       ?withCall,
     ].where((s) => s.isNotEmpty);

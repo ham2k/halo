@@ -242,6 +242,13 @@ mode, so a connected rig reports the concrete sideband and nothing maps it
 back; treating them as anything else would give an operator with a radio
 attached a three-digit report while one who picked SSB by hand gets two.
 
+What the operator *sees* in the Mode field is the other half of that: the
+sideband that place runs is shown as plain `SSB`, and only the one it does not
+run is spelled out, in the error color. Picking `SSB` sets the sideband the
+frequency calls for. Both rules are the same ones the QSO list and the spot
+rows follow — see [cat.md](cat.md)'s "Showing it back: `SSB` unless it
+contradicts".
+
 **Tab** rotates through the same fields in the same order, and stops there:
 from the last main field it returns to the callsign field, and Shift-Tab
 from the callsign field goes to the last main field. This deliberately

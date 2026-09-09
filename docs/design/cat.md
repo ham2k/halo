@@ -628,11 +628,82 @@ that named a band. `halo_core`'s `resolveSideband` is the one implementation.
 can reach one without passing through this device's VFO (a peer driving a rig we offer). It is
 idempotent, so the second call is a guard, not a decision.
 
-160/80/40 m are lower sideband; everything else is upper, including 60 m, which is channelized USB by
-international agreement despite being below 10 MHz. The band comes from the frequency when there is
-one and from the band when there isn't — a manual band pick leaves exactly that state behind, and
-resolving it without the fallback answered USB on 40 m. With neither, the generic mode stands: there
-is nothing to resolve against, and picking a sideband would be a coin flip.
+**The rule is a split through HF, not a band lookup.** Below 9 MHz voice is lower sideband, at or
+above it upper, and the one exception is 5–6 MHz: 60 m is channelized USB by international agreement
+despite sitting below the split. Every amateur band lands on the correct side, so nothing has to
+agree with a band table for this to be right — and a frequency in a gap between bands, or on an
+allocation no table here carries, still gets the answer an operator would give instead of a shrug.
+Those shrugs were holes: a frequency nothing allocated had no convention, which let a stored sideband
+be silently rewritten and dropped out of an exported file.
+
+With no frequency, the band answers: upper for every band except 160/80/40 m and the LF/MF ones, each
+listed under **both** spellings in circulation (`2190m`/`2200m`, `80m`/`75m`) because a contact
+carrying the other one arrives from an import or a spot feed. A manual band pick leaves exactly that
+state behind.
+
+`expectedSideband` therefore answers **null only when neither a frequency nor a band was stated at
+all** — which is the one thing `resolveSideband` cannot say, since a driver has to be told some
+sideband and it falls back to upper. Callers that must not guess check `expectedSideband` first:
+`RadioService.setVfo`, and the logging panel's `_modeResolvedToSideband` for the picks that never
+reach the VFO.
+
+#### Showing it back: `SSB` unless it contradicts
+
+Resolving on the way in makes the log correct and the display wrong. Which sideband you run is a
+property of where you are, so a panel and a list that spell it out are repeating what the frequency
+beside them already says — and worse, they read as **two modes where one was worked**: an operator
+who works phone on 20 m and 40 m has `USB` and `LSB` in the log, which grew the QSO list a Mode
+column for a single-mode operation.
+
+So the display collapses it. `halo_core`'s **`displayMode`** answers `SSB` for the sideband that
+place runs, and spells out the one it doesn't; **`isUnexpectedSideband`** says which case it is, and
+the spelled-out sideband is painted in the theme's error color. `SSB` itself never contradicts
+anything — it names no sideband.
+
+It applies wherever a mode is *shown*: the Radio chip and its Mode dropdown, QSO rows in the logging
+panel and the Logs view, spot rows, the call-info history line and map popups (the last two are plain
+text a backend renders, so there the odd sideband is spelled out uncoloured). It does **not** apply
+where the point is what the radio is actually doing: the radio front panel shows the driver's own
+`USB`/`LSB`, and so does any other view of exact rig state.
+
+What is **stored** is untouched — the sideband, always. The collapse is a rendering rule, and every
+scorer, dupe check and exporter still sees what the operator worked.
+
+The QSO list's Mode column earns its place on displayed modes, plus an override: any contact on a
+sideband its place does not run forces the column. The count alone cannot reach the case worth
+catching — a rig left in `USB` on 40 m for a whole session shows that one mode on every row, so the
+column, which is the only thing carrying the warning, would be dropped with it.
+
+The **More pane** is seeded with the displayed mode and resolves whatever comes back, without asking
+whether the select moved — the pane can move the frequency, and an untouched `SSB` has to re-derive
+against where the contact now is. The round trip loses nothing wherever anything was stated: the
+sideband a place runs comes back as `SSB` and resolves to that same sideband, and the one it does not
+run is spelled out and passes through untouched.
+
+The exception is the one state with nothing stated at all — neither a frequency nor a band. There the
+collapse cannot be undone on the way back in, so the pane is seeded with the **stored** mode instead
+(`_modeForEditing`); otherwise an untouched save would swap a recorded sideband for a generic `SSB`
+the select does not even offer back. The Logs view's own editor guards the same state the same way.
+
+Where the display's error color goes, `alert` must not: the chip's alert condition and the coloured
+run's are written to match. A frequency in a gap between bands alerts (no band) and still has an
+expected sideband, so neither half implies the other, and error text on the chip's own error ground
+is faint at best and invisible on a selected one.
+
+The one place the two sides meet is the ADIF export (`extensions/core/adif`). ADIF spells voice SSB
+as `MODE=SSB` with `SUBMODE=USB`/`LSB`, and the submode is dropped **only on a positive match** with
+the sideband that place runs — never merely because nothing contradicts it, which is equally true of
+a contact stating neither a frequency nor a band, and there nothing can re-derive what was dropped.
+Submodes that name an emission (`FT4` under `MFSK`) are unconditional: dropping one loses which mode
+was worked.
+
+The rule is a TypeScript twin of the Dart pair, in `@ham2k/extension-sdk`'s `modes.ts`. The two must
+answer identically — the app decides which sideband to log and the exporter decides whether that is
+worth writing down, so where they disagree the file contradicts the panel the operator worked from.
+Being arithmetic plus one small set, rather than a band-table lookup, is what keeps them identical by
+construction instead of by maintenance: an earlier version delegated to lib-operation-data's
+`bandForFrequency`, whose edges are wider, whose 60 m starts at 5300 where ours started at 5250, and
+which retries an unmatched argument as MHz — 10300 kHz came back as `3cm`.
 
 ### A paired device's panel, over the peer link
 

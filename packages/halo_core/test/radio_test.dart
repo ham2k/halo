@@ -714,4 +714,107 @@ void main() {
       expect(looksLikeCallsign('K1ABC,N2XYZ'), isFalse);
     });
   });
+
+  group('sidebands', () {
+    test('a frequency answers on its own, with no band table to agree with', () {
+      // The rule is a plain split through HF, not a band lookup: below 9 MHz
+      // is lower, at or above it is upper, and 5-6 MHz is the 60m exception.
+      // So a frequency in a GAP between bands still gets the answer an
+      // operator would give, instead of a shrug — which is what a band-table
+      // version answered, and what let a stored sideband be silently rewritten
+      // on frequencies nothing allocates.
+      expect(expectedSideband(freqKHz: 7185), 'LSB');
+      expect(expectedSideband(freqKHz: 3800), 'LSB');
+      expect(expectedSideband(freqKHz: 1850), 'LSB');
+      expect(expectedSideband(freqKHz: 14250), 'USB');
+      expect(expectedSideband(freqKHz: 10120), 'USB');
+      // 60m: channelized USB by international agreement despite being below
+      // 9 MHz, and the one thing a bare "lower below 9 MHz" rule gets wrong.
+      expect(expectedSideband(freqKHz: 5357), 'USB');
+      expect(expectedSideband(freqKHz: 5000), 'USB');
+      expect(expectedSideband(freqKHz: 5999), 'USB');
+      // The edges of the 60m window and of the split itself.
+      expect(expectedSideband(freqKHz: 4999), 'LSB');
+      expect(expectedSideband(freqKHz: 6000), 'LSB');
+      expect(expectedSideband(freqKHz: 8999), 'LSB');
+      expect(expectedSideband(freqKHz: 9000), 'USB');
+      // Outside every allocation is still answerable — that is the point.
+      expect(expectedSideband(freqKHz: 5100), 'USB');
+      expect(expectedSideband(freqKHz: 10300), 'USB');
+      expect(expectedSideband(freqKHz: 2400), 'LSB');
+    });
+
+    test('a band answers when there is no frequency, and both spellings count', () {
+      // What a manual band pick leaves behind: a band and nothing else.
+      expect(expectedSideband(band: '40m'), 'LSB');
+      expect(expectedSideband(band: '80m'), 'LSB');
+      expect(expectedSideband(band: '20m'), 'USB');
+      expect(expectedSideband(band: '60m'), 'USB');
+      // The two bands with two names in circulation. A contact carrying the
+      // other spelling arrives from an import or a spot feed, and answering
+      // upper for it puts the wrong sideband on the air.
+      expect(expectedSideband(band: '75m'), 'LSB');
+      expect(expectedSideband(band: '2200m'), 'LSB');
+      expect(expectedSideband(band: '2190m'), 'LSB');
+    });
+
+    test('the frequency outranks the band, and null means neither was stated', () {
+      // The frequency is what every display and the export itself show.
+      expect(expectedSideband(freqKHz: 7185, band: '20m'), 'LSB');
+      // The only null left. It is what tells a writer "nothing to resolve
+      // against" and a display "nothing to accuse" — the two callers that must
+      // not guess where `resolveSideband` has to.
+      expect(expectedSideband(), isNull);
+      expect(expectedSideband(band: ''), isNull);
+    });
+
+    test('resolveSideband still answers with a sideband where nothing was stated', () {
+      // Pins the difference from [expectedSideband] above. A driver has to be
+      // told some sideband, so this one cannot answer null. A caller that must
+      // not guess checks [expectedSideband] first — the logging panel's
+      // `_modeResolvedToSideband` does, and `RadioService.setVfo` guards on its
+      // fields, which for this rule is the same test.
+      expect(resolveSideband('SSB', null), 'USB');
+      // Anything already naming a sideband, or not voice at all, is untouched.
+      expect(resolveSideband('SSB', 7185), 'LSB');
+      expect(resolveSideband('LSB', 14250), 'LSB');
+      expect(resolveSideband('FT8', 7185), 'FT8');
+      expect(resolveSideband(null, 7185), isNull);
+    });
+
+    test('isUnexpectedSideband fires only on the sideband that place does not run', () {
+      expect(isUnexpectedSideband('USB', freqKHz: 7185), isTrue);
+      expect(isUnexpectedSideband('LSB', freqKHz: 7185), isFalse);
+      expect(isUnexpectedSideband('lsb', freqKHz: 14250), isTrue);
+      expect(isUnexpectedSideband('LSB', freqKHz: 5357), isTrue);
+      // A generic SSB names no sideband, so it contradicts nothing — without
+      // this every phone contact would be flagged red.
+      expect(isUnexpectedSideband('SSB', freqKHz: 7185), isFalse);
+      expect(isUnexpectedSideband('FT8', freqKHz: 7185), isFalse);
+      expect(isUnexpectedSideband(null, freqKHz: 7185), isFalse);
+      // Nothing stated, nothing to contradict.
+      expect(isUnexpectedSideband('LSB'), isFalse);
+    });
+
+    test('displayMode collapses the expected sideband and spells out the other', () {
+      // Which sideband you run is a property of where you are, not something
+      // the log should repeat on every contact: a list that spells it out
+      // reads as two modes where one was worked, and grows a Mode column for a
+      // single-mode operation.
+      expect(displayMode('USB', freqKHz: 14250), 'SSB');
+      expect(displayMode('LSB', freqKHz: 7185), 'SSB');
+      expect(displayMode('SSB', freqKHz: 7185), 'SSB');
+      expect(displayMode('USB', band: '20m'), 'SSB');
+      expect(displayMode('LSB', band: '40m'), 'SSB');
+      // The one case worth an operator's attention.
+      expect(displayMode('LSB', freqKHz: 14250), 'LSB');
+      expect(displayMode('USB', band: '40m'), 'USB');
+      // Nothing stated collapses too — the operator is told nothing rather
+      // than shown a sideband nobody can vouch for.
+      expect(displayMode('LSB'), 'SSB');
+      // Never touches a mode that is not voice, and never invents one.
+      expect(displayMode('FT8', freqKHz: 7185), 'FT8');
+      expect(displayMode(null, freqKHz: 7185), isNull);
+    });
+  });
 }

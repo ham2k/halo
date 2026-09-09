@@ -83,7 +83,7 @@ void main() {
         'endAtMillis': DateTime.utc(2026, 7, 1, 12, 3).millisecondsSinceEpoch,
       };
 
-  Future<String> export({required bool includePrivateData}) async {
+  Future<String> export({required bool includePrivateData, Map<String, dynamic>? qsoOverrides}) async {
     final host = await sharedHost(['adif'], cacheKey: 'adif-fields');
     final result = await host.invokeHook(
       'export',
@@ -91,7 +91,7 @@ void main() {
       method: 'generateExport',
       args: {
         'operation': operation(),
-        'qsos': [qso()],
+        'qsos': [qso()..addAll(qsoOverrides ?? const {})],
         'exportType': 'adif',
         'includePrivateData': includePrivateData,
       },
@@ -351,5 +351,51 @@ void main() {
     expect(content, contains('<CNTY:11>CT,Hartford'));
     expect(content, contains('<MY_CNTY:8>CA,Marin'));
     expect(content, contains('<QSLMSG:17>US-0001, KFF-0002'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a sideband the band runs is exported as plain SSB, with no SUBMODE', () async {
+    // The log STORES the sideband — `RadioService` resolves every SSB request
+    // to one — so an exporter that passes it straight through would state
+    // `SUBMODE:USB` on every phone contact ever made on 20m. A reader that
+    // shows the submode then reports a single-mode log as two modes, which is
+    // the same thing the QSO list refuses to do.
+    final content = await export(includePrivateData: true, qsoOverrides: {'mode': 'USB'});
+
+    expect(content, contains('<MODE:3>SSB'));
+    expect(content, isNot(contains('SUBMODE')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('the sideband a band does NOT run is stated, because only that says something', () async {
+    // 14250 kHz is upper anywhere; a contact recorded on lower there is either
+    // deliberate or wrong, and both are things the file must carry. Dropping
+    // this submode too would make the export lossy in the one case it matters.
+    final content = await export(includePrivateData: true, qsoOverrides: {'mode': 'LSB'});
+
+    expect(content, contains('<MODE:3>SSB'));
+    expect(content, contains('<SUBMODE:3>LSB'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a submode that names the emission is never dropped', () async {
+    // Guards the suppression above from widening: `FT4` reaches ADIF as
+    // MODE=MFSK SUBMODE=FT4, and losing that submode loses which mode was
+    // worked — where losing a sideband loses nothing the band does not say.
+    final content = await export(includePrivateData: true, qsoOverrides: {'mode': 'FT4'});
+
+    expect(content, contains('<MODE:4>MFSK'));
+    expect(content, contains('<SUBMODE:3>FT4'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a sideband with no band to vouch for it is written, not dropped', () async {
+    // "Nothing contradicts it" is true both of a sideband that matches the
+    // band and of a contact that has no band at all — and only the first can
+    // be re-derived by a reader. Dropping the second takes the sideband out of
+    // the log for good, which is the opposite of what the suppression is for.
+    final content = await export(
+      includePrivateData: true,
+      qsoOverrides: {'mode': 'LSB', 'freq': null, 'band': null},
+    );
+
+    expect(content, contains('<MODE:3>SSB'));
+    expect(content, contains('<SUBMODE:3>LSB'));
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

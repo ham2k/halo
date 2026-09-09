@@ -14,6 +14,7 @@ import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 import {
   defineExtension,
   entityForCall,
+  expectedSideband,
   hooks,
   oneLine,
   qsoValues,
@@ -239,7 +240,23 @@ function baseFieldsFor(
   add('BAND', qso.band)
   if (freqKHz > 0) add('FREQ', formatAdifFreq(freqKHz))
   add('MODE', mode)
-  add('SUBMODE', submode)
+  // ADIF spells voice SSB as MODE=SSB with SUBMODE=USB/LSB, and which sideband
+  // you run belongs to where you are — a file that states it on every phone
+  // contact is stating the obvious, and readers that show the submode then
+  // report a single-mode log as two modes.
+  //
+  // Dropped only on a POSITIVE match with the sideband that place runs, never
+  // merely because nothing contradicts it. "Nothing contradicts it" is also
+  // true of a contact stating neither a frequency nor a band, and there
+  // nothing can re-derive what was dropped, so the sideband would leave the
+  // log for good. Every other submode (FT4 under MFSK) is unconditional:
+  // those name the emission, and dropping one loses which mode was worked.
+  const sidebandSubmode = submode === 'USB' || submode === 'LSB'
+  const bandsSideband = expectedSideband({
+    freqKHz: freqKHz > 0 ? freqKHz : undefined,
+    band: qso.band == null ? undefined : String(qso.band),
+  })
+  add('SUBMODE', sidebandSubmode && submode === bandsSideband ? undefined : submode)
   add('RST_SENT', our.sent)
   add('RST_RCVD', their.sent)
   add('STATION_CALLSIGN', stationCall)

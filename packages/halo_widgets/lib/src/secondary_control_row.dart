@@ -34,6 +34,10 @@ import 'spacing.dart';
 import 'theme.dart';
 import 'wall_clock.dart';
 
+/// One run of a chip's summary: [text], and the color it paints in — null
+/// keeps the chip's own foreground, which is what all but one run ever wants.
+typedef SummaryPart = ({String text, Color? color});
+
 /// One control the row can show. Built by the screen/panel that owns the
 /// relevant state — some specs wrap a built-in Dart widget (Time, Radio),
 /// others wrap an extension-described input (POTA's refList) rendered
@@ -51,6 +55,19 @@ class SecondaryControlSpec {
   /// shows its result instead of [summary] — the per-second rebuild stays
   /// scoped to the chip's label instead of whatever State owns the spec.
   final ValueGetter<String>? liveSummary;
+
+  /// The summary as colored runs, for a chip where one PART of the value is
+  /// wrong rather than the whole chip (the Radio chip's sideband: `7.185 •
+  /// LSB` with only `LSB` in the error color). When set it renders INSTEAD of
+  /// [summary] — which is still required, and must still spell out the same
+  /// text, because it is what a spec without parts renders and what anything
+  /// reading a spec rather than the built chip sees. Build one from the other
+  /// rather than writing the text twice.
+  ///
+  /// Not a substitute for [alert]: that says the chip's whole value is
+  /// unusable, and it repaints the chip's ground, which would swallow a run's
+  /// color. The two never fire together on the Radio chip — see its call site.
+  final List<SummaryPart>? summaryParts;
 
   /// The control's accent color for its icon (issue #187), or null for the
   /// default theme color. Callers only set this once the field actually
@@ -90,6 +107,7 @@ class SecondaryControlSpec {
     required this.summary,
     required this.expandedBuilder,
     this.liveSummary,
+    this.summaryParts,
     this.iconColor,
     this.focusNode,
     this.enabled = true,
@@ -114,6 +132,7 @@ class SecondaryControlSpec {
     String? summary,
     WidgetBuilder? expandedBuilder,
     ValueGetter<String>? liveSummary,
+    List<SummaryPart>? summaryParts,
     Color? iconColor,
     FocusNode? focusNode,
     bool? enabled,
@@ -125,6 +144,7 @@ class SecondaryControlSpec {
         summary: summary ?? this.summary,
         expandedBuilder: expandedBuilder ?? this.expandedBuilder,
         liveSummary: liveSummary ?? this.liveSummary,
+        summaryParts: summaryParts ?? this.summaryParts,
         iconColor: iconColor ?? this.iconColor,
         focusNode: focusNode ?? this.focusNode,
         enabled: enabled ?? this.enabled,
@@ -890,7 +910,27 @@ class _ControlChip extends StatelessWidget {
       ),
       label: control.liveSummary != null
           ? OncePerSecond(builder: (_, _) => Text(control.liveSummary!(), style: TextStyle(color: foreground)))
-          : Text(control.summary, style: TextStyle(color: foreground)),
+          : control.summaryParts != null
+              ? Text.rich(
+                  TextSpan(
+                    children: [
+                      for (final part in control.summaryParts!)
+                        TextSpan(
+                          text: part.text,
+                          // A run's own color takes the same fade a disabled
+                          // chip gives the foreground, or the one colored run
+                          // would be the only thing on a dimmed chip at full
+                          // strength.
+                          style: TextStyle(
+                            color: part.color == null
+                                ? foreground
+                                : (control.enabled ? part.color! : part.color!.withValues(alpha: part.color!.a * 0.5)),
+                          ),
+                        ),
+                    ],
+                  ),
+                )
+              : Text(control.summary, style: TextStyle(color: foreground)),
       selected: selected,
       showCheckmark: false,
       visualDensity: LayoutDensity.of(context).chipVisualDensity,

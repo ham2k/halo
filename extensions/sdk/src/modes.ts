@@ -88,3 +88,59 @@ export function modesMatchForDupe(worked: string, candidate: string): boolean {
   const superMode = COARSE_SUPER_MODES[c]
   return Boolean(superMode) && KNOWN_MODES.has(w) && superModeForMode(w) === superMode
 }
+
+/// Bands whose voice sits on the lower sideband, for when a contact records a
+/// band and no frequency. Every other band name is upper.
+///
+/// Both spellings of the two bands that have two — `2190m`/`2200m` and
+/// `80m`/`75m` — because a contact carrying either arrives from an import or a
+/// spot feed.
+///
+/// The same set `halo_core`'s `_lsbBands` holds, and the rule below is the
+/// same rule: the app decides which sideband to log and this side decides
+/// whether that sideband is worth writing into an exported file, so where the
+/// two disagree the file contradicts the panel the operator worked from.
+const LSB_BANDS = new Set(['2190m', '2200m', '630m', '560m', '160m', '80m', '75m', '40m'])
+
+/// Below this, voice is lower sideband; at or above it, upper. A plain split
+/// through HF, not a band edge — so this needs no band table to agree with,
+/// which is what keeps it identical to the Dart side by construction.
+const UPPER_SIDEBAND_FLOOR_KHZ = 9000
+
+/// The one stretch below the floor that runs upper: 60 m is channelized USB by
+/// international agreement.
+const SIXTY_METRE_LO_KHZ = 5000
+const SIXTY_METRE_HI_KHZ = 6000
+
+/// The sideband voice conventionally runs on, from [freqKHz] if there is one
+/// and from [band] otherwise, or **undefined** only when there is neither.
+///
+/// Mirrors `halo_core`'s `expectedSideband`, undefined for its null.
+export function expectedSideband({ freqKHz, band }: { freqKHz?: number; band?: string }): string | undefined {
+  if (freqKHz != null) {
+    if (freqKHz >= UPPER_SIDEBAND_FLOOR_KHZ) return 'USB'
+    return freqKHz >= SIXTY_METRE_LO_KHZ && freqKHz < SIXTY_METRE_HI_KHZ ? 'USB' : 'LSB'
+  }
+  if (!band) return undefined
+  return LSB_BANDS.has(band) ? 'LSB' : 'USB'
+}
+
+/// Whether [mode] names the sideband the band does NOT run — the one thing
+/// about a sideband worth writing down or showing.
+///
+/// False wherever there is nothing to contradict: a generic `SSB`, a non-voice
+/// mode, and a contact stating neither a frequency nor a band.
+///
+/// Mirrors `halo_core`'s `isUnexpectedSideband`.
+export function isUnexpectedSideband(
+  mode: string | undefined | null,
+  { freqKHz, band }: { freqKHz?: number; band?: string },
+): boolean {
+  // No trim, because the Dart twin does none: the two are documented to answer
+  // identically, and ` LSB` answering differently across them is exactly the
+  // app-versus-file contradiction that pairing them is meant to prevent.
+  const upper = (mode ?? '').toUpperCase()
+  if (upper !== 'USB' && upper !== 'LSB') return false
+  const expected = expectedSideband({ freqKHz, band })
+  return expected !== undefined && upper !== expected
+}

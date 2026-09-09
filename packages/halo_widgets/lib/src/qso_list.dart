@@ -996,7 +996,16 @@ class _QsoListState extends State<QsoList> {
                   if (plan.showMode) ...[
                     SizedBox(
                       width: _modeWidth,
-                      child: Text(qso.mode ?? '', style: rowMono),
+                      child: Text(
+                        displayMode(qso.mode, freqKHz: freqKHz, band: qso.band) ?? '',
+                        // Same alpha-preserving error color as the frequency
+                        // above: a sideband the band doesn't run is the one
+                        // thing [displayMode] spells out, and it is spelled
+                        // out to be noticed.
+                        style: isUnexpectedSideband(qso.mode, freqKHz: freqKHz, band: qso.band)
+                            ? rowMono.copyWith(color: theme.colorScheme.error.withValues(alpha: rowMono.color?.a ?? 1.0))
+                            : rowMono,
+                      ),
                     ),
                     const SizedBox(width: _columnGap),
                   ],
@@ -1325,6 +1334,7 @@ _QsoListMetrics _computeMetrics({
   var longestCall = '';
   final freqsInKHz = <double?>[];
   final modesUsed = <String>{};
+  var anyUnexpectedSideband = false;
   // Widest band shown in the freq/band column (only null-freq rows fall back
   // to the band) and widest exchange pair, so both columns reserve a
   // list-wide width and stay aligned even on rows that lack them (#354).
@@ -1367,8 +1377,11 @@ _QsoListMetrics _computeMetrics({
     if (exchange.length > longestExchange.length) longestExchange = exchange;
     final rstPair = '${q.sentRST ?? ''} ${q.receivedRST ?? ''}';
     if (rstPair.length > longestRst.length) longestRst = rstPair;
-    final mode = q.mode;
+    // The DISPLAYED mode, so an operation that worked USB on 20m and LSB on
+    // 40m counts as one mode and doesn't grow a Mode column repeating "SSB".
+    final mode = displayMode(q.mode, freqKHz: q.freq, band: q.band);
     if (mode != null) modesUsed.add(mode);
+    if (isUnexpectedSideband(q.mode, freqKHz: q.freq, band: q.band)) anyUnexpectedSideband = true;
     final dxState = _dxStateContentFor(q, ourEntityPrefix, dxFlags);
     if (dxState == null) {
       // no-op — nothing to measure for this row
@@ -1404,7 +1417,13 @@ _QsoListMetrics _computeMetrics({
   final hzDigits = hzDigitsNeeded(freqsInKHz);
   // The Mode column only earns its place when the operation actually mixes
   // modes — otherwise every row would repeat the same value.
-  final usesMultipleModes = modesUsed.length > 1;
+  //
+  // A sideband this place does not run earns it on its own, whatever the count.
+  // The whole-operation case is the one worth catching — a rig left in LSB on
+  // 20m, or an import that put USB on every 40m contact — and it is exactly
+  // the case a count cannot see: every row displays that one sideband, so the
+  // column would be dropped and the warning with it.
+  final usesMultipleModes = modesUsed.length > 1 || anyUnexpectedSideband;
 
   // Reserve the freq/band column at a fixed list-wide width so a QSO with
   // neither still holds it open and Mode/Callsign line up on every row

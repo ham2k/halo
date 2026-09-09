@@ -13382,6 +13382,170 @@ void main() {
       expect(built, greaterThan(0), reason: 'the draft path itself still works');
     });
   });
+
+  // The pane is seeded with the mode as the panel SHOWS it, not as the contact
+  // stores it, and it can move the frequency underneath that. An untouched
+  // `SSB` select therefore has to re-derive against where the contact now is:
+  // skipping the write because the select "did not change" would keep 40m's
+  // lower sideband on a contact the same save just moved to 20m, and the row
+  // would then spell it out in red — correctly.
+  testWidgets('a frequency changed in the More pane re-derives the sideband', (tester) async {
+    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': 1000000,
+          'freq': 7185,
+          'mode': 'LSB',
+        })))!;
+    await tester.pumpWidget(host(editingQso: existingQso));
+
+    await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14250');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+
+    expect(logged.single.freq, 14250);
+    expect(logged.single.mode, 'USB');
+  });
+
+  // The mirror of the above: a sideband the operator chose deliberately, on a
+  // band that does not run it, survives a save that touches nothing else. The
+  // display spells that one out rather than collapsing it, which is exactly
+  // what makes the round trip through the pane lossless.
+  testWidgets('a deliberate far sideband survives an untouched save', (tester) async {
+    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': 1000000,
+          'freq': 7185,
+          'mode': 'USB',
+        })))!;
+    await tester.pumpWidget(host(editingQso: existingQso));
+
+    await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Hiram');
+    await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+
+    expect(logged.single.theirName, 'Hiram', reason: 'the save has to have happened to mean anything');
+    expect(logged.single.mode, 'USB');
+  });
+
+
+  group('a band pick and the sideband', () {
+    TextField modeField(WidgetTester tester) =>
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Mode'));
+
+    // Picking a band re-derives the sideband, because a stored one was derived
+    // from the band being left. The trap is the ORDER: clearing the frequency
+    // field notifies `_onFreqChanged` synchronously, and its empty-field
+    // branch pushes the VFO on the spot. That push STATES the mode, and
+    // `RadioService.setVfo` takes a stated mode as stated — so a re-derive
+    // that happens after the clear pins the old band's sideband onto the new
+    // band at the rig, while the panel holds the new one. The next wipe
+    // reseeds the panel from the rig, and every following contact is logged
+    // and transmitted on the wrong sideband.
+    testWidgets('the rig is told the same sideband the panel holds', (tester) async {
+      final radio = _FakeVfoStore()..setVfo('vfoA', freq: 14285, mode: 'SSB');
+      await tester.pumpWidget(host(radioService: radio));
+      await openControl(tester, MdiIcons.radio);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '40m');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+
+      expect(radio.vfoA.band, '40m');
+      expect(radio.vfoA.mode, 'LSB', reason: 'the rig kept the sideband of the band being left');
+      // And the panel shows the collapsed spelling, not a red LSB.
+      expect(modeField(tester).controller!.text, 'SSB');
+    });
+
+    // A sideband is derived from the BAND, so nothing about re-picking the
+    // band you are already on makes a deliberate far sideband stale — and
+    // `_commitBandTypedIntoFreqField` re-picks unconditionally, by design.
+    testWidgets('re-picking the band already selected keeps a deliberate far sideband', (tester) async {
+      final radio = _FakeVfoStore()..setVfo('vfoA', freq: 7185, mode: 'USB');
+      await tester.pumpWidget(host(radioService: radio));
+      await openControl(tester, MdiIcons.radio);
+
+      await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '40m');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+
+      expect(modeField(tester).controller!.text, 'USB', reason: 'spelled out because 40m runs lower');
+    });
+  });
+
+
+  // The `setVfo` command action stored whatever it was handed. It is the last
+  // path that could put a generic `SSB` into a contact — and while editing an
+  // existing QSO `_onRadioVfoChanged` returns early, so nothing downstream
+  // would have corrected it before the contact was saved.
+  testWidgets('a setVfo command resolves its mode like every other pick', (tester) async {
+    Future<Map<String, dynamic>?> interpret(String input,
+        [Map<String, dynamic>? a, Map<String, dynamic>? b, bool c = false]) async {
+      if (input != 'FORTY') return null;
+      return {
+        'describe': 'Go to 40m?',
+        'confirm': 'Done',
+        'commands': [
+          {
+            'setVfo': {'freq': 7185, 'mode': 'SSB'},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(interpretCommand: interpret));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'FORTY');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    final logged = await waitForQsos(tester, 1);
+
+    expect(logged.single.mode, 'LSB');
+  });
+
+
+
+  // A contact stating neither a frequency nor a band is the one case with
+  // nothing to collapse against — and so the one case where the collapse
+  // cannot be undone on the way back in. Seeding the More pane with the
+  // displayed `SSB` there would let an untouched save swap the stored
+  // sideband for a generic mode the select does not even offer back.
+  testWidgets('the More pane offers the stored sideband when nothing can re-derive it', (tester) async {
+    final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'startAtMillis': 1000000,
+          'mode': 'LSB',
+        })))!;
+    await tester.pumpWidget(host(editingQso: existingQso));
+
+    await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
+    await tester.pumpAndSettle();
+
+    // The pane's Mode field is a select, so what it OFFERS is what shows.
+    expect(find.text('LSB'), findsWidgets);
+    expect(find.text('SSB'), findsNothing);
+  });
+
 }
 
 /// In-memory stand-in for the app's `RadioService` (which lives outside
