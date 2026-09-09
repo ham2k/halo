@@ -1045,7 +1045,7 @@
         "repeatOff": "No",
         "repeatAfter": "After $n seconds",
         "recordHelpTitle": "$model Notes:",
-        "recordHelpFtdx10": "Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.",
+        "recordHelpYaesuDvs": "Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.",
         "recordHelpFt891": "Wait for the [REC] indicator to blink at least four times, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.",
         "pill": "Voice",
         "play": "Play memory $n",

@@ -605,6 +605,7 @@ const ft710Model = EquipmentModel(
   manufacturer: 'Yaesu',
   category: kCategoryTransceiver,
   name: _ft710Name,
+  recordingHelp: _yaesuDvsRecordingHelp,
   variants: [
     EquipmentVariant(
       key: _ft710SerialKey,
@@ -630,9 +631,7 @@ const ftdx10Model = EquipmentModel(
   manufacturer: 'Yaesu',
   category: kCategoryTransceiver,
   name: _ftdx10Name,
-  // The FT-891's procedure without its wait: this radio's REC indicator
-  // does not need watching first.
-  recordingHelp: _ftdx10RecordingHelp,
+  recordingHelp: _yaesuDvsRecordingHelp,
   variants: [
     EquipmentVariant(
       key: _ftdx10SerialKey,
@@ -788,7 +787,11 @@ List<Map<String, dynamic>> _yaesuBinarySerialNotes() => [
       },
     ];
 
-String _ftdx10RecordingHelp() => t.settings.radio.voiceMessages.recordHelpFtdx10;
+/// Shared by the FTDX10 and the FT-710: the same DVS procedure, and one
+/// string rather than two copies that can drift apart in translation. The
+/// FT-891's is its own — that radio wants its REC indicator counted through
+/// four blinks first, where these two only wait for it to appear.
+String _yaesuDvsRecordingHelp() => t.settings.radio.voiceMessages.recordHelpYaesuDvs;
 
 /// Any Yaesu speaking CAT over a serial port — the entry for a radio with no
 /// definition of its own.

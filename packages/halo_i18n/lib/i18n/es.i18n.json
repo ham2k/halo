@@ -1045,7 +1045,7 @@
         "repeatOff": "No",
         "repeatAfter": "Tras $n segundos",
         "recordHelpTitle": "Notas del $model:",
-        "recordHelpFtdx10": "Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.",
+        "recordHelpYaesuDvs": "Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.",
         "recordHelpFt891": "Espera a que el indicador [REC] parpadee al menos cuatro veces, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.",
         "pill": "Voz",
         "play": "Reproducir la memoria $n",

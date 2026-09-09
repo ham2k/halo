@@ -322,6 +322,37 @@ void main() {
     });
   });
 
+  test('the Yaesus that need their front panel say so, each under its own name', () {
+    // Recording a memory is half a CAT command and half a front-panel
+    // procedure, and the halves differ per RADIO while one driver serves all
+    // three — so the note hangs off the model, not the driver.
+    // Named rather than `!`, so a catalogue key that goes away is reported
+    // as the key it was and not as a null-check on an anonymous line.
+    String? noteFor(String key) {
+      final model = registry.modelFor(key);
+      expect(model, isNotNull, reason: '$key has left the catalogue');
+      return model!.recordingHelp;
+    }
+
+    final ft891 = noteFor('ft891');
+    final ftdx10 = noteFor('ftdx10');
+    final ft710 = noteFor('ft710');
+    for (final note in [ft891, ftdx10, ft710]) {
+      expect(note, isNotNull);
+      expect(note, contains('PTT'));
+    }
+    // The FTDX10 and FT-710 share one string rather than two copies that can
+    // drift apart in translation; the FT-891 counts its REC indicator
+    // through four blinks, where these two only wait for it to appear.
+    expect(ftdx10, ft710);
+    expect(ft891, isNot(ftdx10));
+    expect(ft891, contains('four times'));
+
+    // A radio nobody has written a procedure for says nothing at all, rather
+    // than borrowing another rig's.
+    expect(noteFor('yaesu-generic'), isNull);
+  });
+
   // Every shipped pairing now inherits a proven driver, so nothing in the
   // catalogue exercises the override any more — delete the `??` in
   // EquipmentType.hardwareVerified and the rest of this suite stays green.

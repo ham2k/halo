@@ -5803,7 +5803,7 @@ class Translations$settings$radio$voiceMessages$en {
 	String recordHelpTitle({required Object model}) => '${model} Notes:';
 
 	/// en: 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.'
-	String get recordHelpFtdx10 => 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.';
+	String get recordHelpYaesuDvs => 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.';
 
 	/// en: 'Wait for the [REC] indicator to blink at least four times, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.'
 	String get recordHelpFt891 => 'Wait for the [REC] indicator to blink at least four times, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.';
@@ -7098,7 +7098,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.repeatOff' => 'No',
 			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} Notes:',
-			'settings.radio.voiceMessages.recordHelpFtdx10' => 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.',
+			'settings.radio.voiceMessages.recordHelpYaesuDvs' => 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.',
 			'settings.radio.voiceMessages.recordHelpFt891' => 'Wait for the [REC] indicator to blink at least four times, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.',
 			'settings.radio.voiceMessages.pill' => 'Voice',
 			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Play memory ${n}',

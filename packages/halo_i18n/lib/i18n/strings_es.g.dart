@@ -2715,7 +2715,7 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	@override String get repeatOff => 'No';
 	@override String repeatAfter({required Object n}) => 'Tras ${n} segundos';
 	@override String recordHelpTitle({required Object model}) => 'Notas del ${model}:';
-	@override String get recordHelpFtdx10 => 'Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.';
+	@override String get recordHelpYaesuDvs => 'Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.';
 	@override String get recordHelpFt891 => 'Espera a que el indicador [REC] parpadee al menos cuatro veces, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.';
 	@override String get pill => 'Voz';
 	@override String play({required Object n}) => 'Reproducir la memoria ${n}';
@@ -3785,7 +3785,7 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.repeatOff' => 'No',
 			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Notas del ${model}:',
-			'settings.radio.voiceMessages.recordHelpFtdx10' => 'Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.',
+			'settings.radio.voiceMessages.recordHelpYaesuDvs' => 'Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.',
 			'settings.radio.voiceMessages.recordHelpFt891' => 'Espera a que el indicador [REC] parpadee al menos cuatro veces, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.',
 			'settings.radio.voiceMessages.pill' => 'Voz',
 			'settings.radio.voiceMessages.play' => ({required Object n}) => 'Reproducir la memoria ${n}',
