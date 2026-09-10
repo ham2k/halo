@@ -772,6 +772,9 @@ offer, and — because only connected radios are offered — a tune to a rig
 whose link is down, which would otherwise move app state and reach the
 asker looking exactly like the rig confirming.
 
+The pick also decides what KEYS — see § Keying a peer's radio, where the same
+offer says whether that station will key a message for its controller.
+
 Only trusted, established sessions carry any of this (`peer_session.dart`'s
 gates); the pick is what stands between a paired device and a transmitter
 nobody pointed it at. `catStatus`/`catSet` naming a radio is what took
@@ -985,8 +988,11 @@ protocols in this layer (flrig, rigctld, Kenwood) have no such command, "this ra
 must never look like "the text was empty" — and a keyer of its own (a K1EL WinKeyer,
 `kCategoryKeyer`) has no VFO to be a transceiver with. A transceiver that keys implements both.
 
-**What keys is the key in use.** The Station dialog's "Key in Use" pick offers the plain keys, the
-keyers, and — as "via ‹radio›" — every radio whose driver says `canKeyCw`; `CatService.canKeyCw` is
+**What keys is the key in use** — and it can be on another device, once a peer's radio fills radio1
+(§ Keying a peer's radio); everything below is about a key of this station's own. The Station
+dialog's "Key in Use" pick offers the plain keys, the
+keyers, — as "via ‹radio›" — every radio whose driver says `canKeyCw`, and, while a peer's radio
+fills radio1 and its station keys, that peer as "Key on ‹device›"; `CatService.canKeyCw` is
 that designated node's session being a `CwKeyerSession`, and connected. A station with a WinKeyer
 and a keying radio therefore says which one the messages go through in the place a key is already
 chosen, and a radio whose CAT keys is its OWN key until something else is picked (§ The picks belong
@@ -997,7 +1003,8 @@ confirming a change nothing heard.
 
 The Station dialog's **keyer row is laid out from CAPABILITY, never from the link**: it shows
 whenever either side could carry a message (`designatedKeyIsKeyer` for CW, `radio1HasVoiceMemories`
-for voice — the session-free counterpart, off `EquipmentDriver.voiceMemoryCountWith`), both message
+for voice — the session-free counterpart, off `EquipmentDriver.voiceMemoryCountWith`), a peer's
+radio answering both of those from its OFFER, since there is no entry here to ask. Both message
 buttons are always present, and each is disabled only where its own side cannot send at all. A
 control that came and went with the connection would move under the operator every time the radio
 blinked, and "this rig has no voice memories" must not look like "the rig is unplugged". A disabled
@@ -1323,7 +1330,8 @@ no `voiceMessage$n` beside it. A memory is keyed by NUMBER, and every surface of
 as radio1's session says it has (`voiceMemoryCount`: 8 on an Icom, 5 on a Yaesu, 4 on a TS-590, 8
 on a K4, 2 on a KX2/KX3), which is why the labels are eight and a radio with fewer shows fewer.
 
-**Radio1 plays, not the key in use.** `VoiceKeyerSession` (driver.dart) sits beside `CwKeyerSession`,
+**Radio1 plays, not the key in use** — a peer's radio1 included, whose memories play over the link
+and whose labels and measured lengths come with them (§ Keying a peer's radio). `VoiceKeyerSession` (driver.dart) sits beside `CwKeyerSession`,
 a capability for the same reasons — but `CatService.canPlayVoice` is radio1's session being one, and
 connected, with no designation in between: the memories are the transceiver's, a WinKeyer has none,
 and a second radio's are that radio's. A driver shared across a line (Kenwood CAT) creates sessions
@@ -1400,6 +1408,59 @@ most of what it says; every other dialect is still from the manuals and hamlib:
   different switches and is not covered.
 - **FlexRadio** has no voice memories in its API; the **placeholder radio** "plays" for four
   seconds and records until stopped, so the surfaces run on a web build.
+
+## Keying a peer's radio
+
+A remote radio picked as Main VFO (§ A paired device's panel, over the peer link) is keyed as well
+as tuned (HALO-585): F1-F8, the keyer area, `WPM`, Escape and both message dialogs work against it
+exactly as against a rig on this desk, because every one of them reads nothing but `CatService` —
+`canKeyCw`, `sendCw`, `cwProgress`, `canPlayVoice`, `playVoiceMemory` — and that is where the one
+decision about which side keys is made (`app/lib/services/cat/cat_keying.dart`, with the far side's
+state in `peer_keying.dart`).
+
+**The far station keys with its own key in use.** A request names a RADIO; what that station puts
+the message through is its business, so a shack whose keying goes through a WinKeyer can be keyed
+from the phone at the picnic table. That also means a device offering a radio advertises keying only
+when it keys with something of its OWN (`CatKeying.keysCwLocally`): a station whose radio1 is itself
+a third device's rig offers its radios as unkeyable, and a request is never relayed onward — two
+hops would put a transmitter on the air for an operator who picked neither end of them.
+
+**Voice is the radio's, not the station's.** The memories are audio inside the transceiver, so a
+request plays the memory of the radio it names — the per-node path, the voice counterpart of
+`tuneNode`. The COUNT, the labels and the measured lengths all come from the owner: a label written
+here would name somebody else's recording and a length measured here would pace a bar against audio
+this station has never played, so while a peer radio is picked the Voice Messages dialog shows that
+device's names and will not edit them (`CatService.voiceMessagesAreLocal`).
+
+**A peer's key is a default, not a designation.** The key in use is stored per radio in use
+(§ The picks belong to the radio), and a peer's keying is no node of this station to name — so
+`peerKeyIsInUse` answers "nothing was chosen for this radio, and the peer says it keys". An explicit
+None still means None, and a local key chosen for that radio still wins; the Key in Use picker
+lists the peer as `Key on ‹device›` so the choice can be undone. This is also why an ANSWER is
+stored even when it matches the default it replaces (`setDesignated`): "nothing chosen" and "chose
+None" resolve alike today and decide differently tomorrow.
+
+**Progress is relayed, never re-estimated.** `keyStatus` carries the owner's own pacing arithmetic,
+its `CwSendProgress.id` included, plus a WinKeyer's real `sentCount` — the far queue is what is
+actually waiting on those numbers, and a second estimate here would drift against it. A status is
+the WHOLE state every time and an empty one is the state that matters: it is how a message ending
+crosses, which is also what starts a repeat's wait on the controller. The repeat chain stays with
+the operator who armed it (`armKeyerRepeat` supplies the send), and breaks on their own keypress.
+
+**A stop is a stop, whoever asked.** A peer's `stopCw` or `stopVoice` ends the local repeat chain too:
+the transmitter is shared, and a stop that left an unattended CQ re-keying it five seconds later is
+worse than a message cut short. A peer's PLAY arms nothing and ends nothing — the chain belongs to
+the operator who armed it, on their own device.
+
+**Trust is the same trust a tune has** (`catSet`, and the security note at the head of
+`peer_protocol.dart`): a trusted, established session, and a radio the addressee is currently
+offering. Keying puts RF on the air rather than moving a dial, which is a difference of consequence
+and not of permission — the same reason that protocol must never ride a transport admitting anything
+but the operator's own paired devices. A peer that walks away withdraws what it could key while the
+PICK stands, so the strip goes quiet instead of showing a message over a device that is gone — and
+takes with it any repeat chain it was going to end, since the report that would end one can no
+longer arrive. A withdrawn radio's status goes with its offer for the same reason: kept, it would be
+re-adopted when that rig reconnects, as a phantom message over a quiet transmitter.
 
 ## Smart VFO Snap
 

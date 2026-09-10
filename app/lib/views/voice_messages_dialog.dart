@@ -28,6 +28,8 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
+import '../services/cat/cat_service.dart';
+import '../services/peer/peer_station_radios.dart';
 import '../services/settings_service.dart';
 import 'cw_messages_dialog.dart' show cwMessageNumberIcons;
 
@@ -95,8 +97,8 @@ class _VoiceMessagesDialog extends StatelessWidget {
                   leading: Icon(cwMessageNumberIcons[n - 1]),
                   title: Text.rich(TextSpan(children: [
                     TextSpan(text: m.key(n: n), style: const TextStyle(fontWeight: FontWeight.w600)),
-                    if (settings.voiceMessageLabel(n).trim().isNotEmpty)
-                      TextSpan(text: '  ${settings.voiceMessageLabel(n).trim()}'),
+                    if (cat.voiceMessageLabel(n).trim().isNotEmpty)
+                      TextSpan(text: '  ${cat.voiceMessageLabel(n).trim()}'),
                   ])),
                   // What the memory IS — its measured length — unless the
                   // radio is doing something with it right now, which is
@@ -104,11 +106,11 @@ class _VoiceMessagesDialog extends StatelessWidget {
                   subtitle: Text(
                     activity?.memory == n
                         ? (activity!.doubtful ? m.doubtful : (activity.recording ? m.recording : m.playing))
-                        : (settings.voiceMessageDuration(n) > 0
-                            ? voiceDurationText(context, settings.voiceMessageDuration(n))
+                        : (cat.voiceMessageDuration(n) > 0
+                            ? voiceDurationText(context, cat.voiceMessageDuration(n))
                             : m.notMeasured),
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: activity?.memory == n || settings.voiceMessageDuration(n) > 0
+                      color: activity?.memory == n || cat.voiceMessageDuration(n) > 0
                           ? null
                           : theme.colorScheme.onSurface.withValues(alpha: 0.5),
                     ),
@@ -157,7 +159,7 @@ class _VoiceMessageDialog extends StatefulWidget {
 }
 
 class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
-  late final _label = TextEditingController(text: widget.services.settings.voiceMessageLabel(widget.n));
+  late final _label = TextEditingController(text: widget.services.cat.voiceMessageLabel(widget.n));
 
   @override
   void dispose() {
@@ -167,7 +169,12 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
 
   Future<void> _save() async {
     final navigator = Navigator.of(context);
-    await widget.services.settings.setVoiceMessageLabel(widget.n, _label.text.trim());
+    // Nothing to save for a peer's memory: the name is that device's, and
+    // writing this station's own label would rename audio nobody is looking
+    // at.
+    if (widget.services.cat.voiceMessagesAreLocal) {
+      await widget.services.settings.setVoiceMessageLabel(widget.n, _label.text.trim());
+    }
     navigator.pop();
   }
 
@@ -187,7 +194,7 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
         final recording = activity?.memory == widget.n && activity!.recording;
         final playing = activity?.memory == widget.n && !activity!.recording;
         final busy = activity != null;
-        final duration = settings.voiceMessageDuration(widget.n);
+        final duration = cat.voiceMessageDuration(widget.n);
         return HaloDialog(
           title: Text(m.messageTitle(n: widget.n)),
           contentPadding: EdgeInsets.zero,
@@ -199,12 +206,30 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
                 padding: rowInset.copyWith(top: Space.xl, bottom: Space.xl),
                 child: TextField(
                   controller: _label,
-                  autofocus: true,
+                  // Not the operator's to name while the audio is a peer's:
+                  // the label describes THAT radio's recording, and one
+                  // typed here would be saved against this station's own
+                  // memories, which are not what the row above is showing.
+                  readOnly: !cat.voiceMessagesAreLocal,
+                  autofocus: cat.voiceMessagesAreLocal,
                   textCapitalization: TextCapitalization.sentences,
                   decoration: poloFieldDecoration(context, m.labelField),
                   onSubmitted: (_) => _save(),
                 ),
               ),
+              // Whose memories these are, when they are not this device's —
+              // said once, above the buttons, because it explains both the
+              // read-only label and the lengths beside it.
+              if (!cat.voiceMessagesAreLocal)
+                Padding(
+                  padding: rowInset.copyWith(bottom: Space.md),
+                  child: Text(
+                    m.namedOnDevice(device: peerDeviceLabel(cat.followedPeerRadio)),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ),
               // Shown, never asked for: every play times itself, so a memory
               // is measured the first time it is used and there is nothing
               // here to press.
@@ -311,8 +336,19 @@ class _VoiceMessageDialogState extends State<_VoiceMessageDialog> {
 String voiceDurationText(BuildContext context, int millis) =>
     context.t.settings.radio.voiceMessages.durationSeconds(n: (millis / 1000).toStringAsFixed(1));
 
+/// What to CALL the device holding the memories — its name, or its id when a
+/// pick made as the peer dropped stored no name (`PeerRadioSelection`).
+String peerDeviceLabel(PeerRadioSelection? selection) {
+  if (selection == null) return '';
+  return selection.deviceName.isEmpty ? selection.deviceId : selection.deviceName;
+}
+
 /// The label for memory [n] — as set, or the key ("M3") when none is.
-String voiceMessageLabelFor(SettingsService settings, int n, String key) {
-  final label = settings.voiceMessageLabel(n).trim();
+///
+/// Through `CatService` rather than the settings, because the memories can be
+/// a PEER radio's: the label then belongs to the device the audio is in
+/// (docs/design/cat.md § Keying a peer's radio).
+String voiceMessageLabelFor(CatService cat, int n, String key) {
+  final label = cat.voiceMessageLabel(n).trim();
   return label.isEmpty ? key : label;
 }

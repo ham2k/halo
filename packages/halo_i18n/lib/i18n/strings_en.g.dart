@@ -4216,6 +4216,9 @@ class Translations$settings$station$en {
 	/// en: 'CAT Keyer in $radio'
 	String keyViaRadio({required Object radio}) => 'CAT Keyer in ${radio}';
 
+	/// en: 'Key on $device'
+	String keyOnDevice({required Object device}) => 'Key on ${device}';
+
 	/// en: 'Keyer area'
 	String get cwKeyerArea => 'Keyer area';
 
@@ -5826,6 +5829,9 @@ class Translations$settings$radio$voiceMessages$en {
 	/// en: '$model Notes:'
 	String recordHelpTitle({required Object model}) => '${model} Notes:';
 
+	/// en: 'These memories are in $device's radio. Their names and lengths belong to that device.'
+	String namedOnDevice({required Object device}) => 'These memories are in ${device}\'s radio. Their names and lengths belong to that device.';
+
 	/// en: 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.'
 	String get recordHelpYaesuDvs => 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.';
 
@@ -7128,6 +7134,7 @@ extension on Translations {
 			'settings.radio.voiceMessages.repeatOff' => 'No',
 			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'After ${n} seconds',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => '${model} Notes:',
+			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'These memories are in ${device}\'s radio. Their names and lengths belong to that device.',
 			'settings.radio.voiceMessages.recordHelpYaesuDvs' => 'Wait for the [REC] indicator on the radio, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.',
 			'settings.radio.voiceMessages.recordHelpFt891' => 'Wait for the [REC] indicator to blink at least four times, then hold the PTT button and record your message. End it by pressing the STOP button here in the app before releasing PTT to avoid unwanted clicks.',
 			'settings.radio.voiceMessages.pill' => 'Voice',
@@ -7304,9 +7311,9 @@ extension on Translations {
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
-			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
 			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
@@ -7521,6 +7528,7 @@ extension on Translations {
 			'settings.station.newKey' => 'New Key',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL or compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'CAT Keyer in ${radio}',
+			'settings.station.keyOnDevice' => ({required Object device}) => 'Key on ${device}',
 			'settings.station.cwKeyerArea' => 'Keyer area',
 			'settings.station.trackStationInfo' => 'Track Station Info for each QSO',
 			'settings.station.includeStationInfoInAdif' => 'Include in ADIF exports',
@@ -7817,10 +7825,10 @@ extension on Translations {
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
 			'operationLocationScreen.county' => 'County (optional)',
-			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
-			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
 			_ => null,
 		} ?? switch (path) {
+			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
+			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',

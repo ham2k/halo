@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
@@ -111,6 +112,36 @@ void main() {
       expect(find.descendant(of: row, matching: find.byIcon(MdiIcons.powerPlugOff)), findsNothing);
       expect(find.descendant(of: row, matching: find.byIcon(MdiIcons.powerPlug)), findsNothing);
       expect(find.descendant(of: row, matching: find.byIcon(MdiIcons.trashCanOutline)), findsNothing);
+    });
+
+    testWidgets('the Key in Use row names the peer that keys, and the dialog builds', (tester) async {
+      // The row exists for a peer's key even on a device with no key
+      // inventory of its own — the phone this feature is for — or its
+      // operator can neither set the speed nor step off the peer's key. And
+      // the pick shows the PEER: nothing is stored for a default, so a picker
+      // reading the stored value alone says None while F1 keys over the link.
+      await services.settings.setExperimentEnabled('keyer', true);
+      await services.cat.setRadio1(const PeerRadio(pick));
+      services.cat.noteOffer(pick.deviceId, pick.deviceName,
+          const [PeerRadioOffer(id: 'rig-1', name: 'FTDX10', keysCw: true)]);
+
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Key in Use'), findsOneWidget);
+      expect(find.text("Key on VE1SK's iPad"), findsOneWidget);
+      expect(find.text('None selected'), findsNothing);
+    });
+
+    testWidgets('a keying peer adds no key row while the keyer experiment is off', (tester) async {
+      await services.cat.setRadio1(const PeerRadio(pick));
+      services.cat.noteOffer(pick.deviceId, pick.deviceName,
+          const [PeerRadioOffer(id: 'rig-1', name: 'FTDX10', keysCw: true)]);
+
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Key in Use'), findsNothing, reason: 'a bare row with nothing selectable in it');
     });
   });
 

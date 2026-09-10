@@ -543,7 +543,7 @@ class _VoiceButtons extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               for (var n = 1; n <= count; n++)
-                if (enabled || settings.voiceMessageLabel(n).trim().isNotEmpty)
+                if (enabled || cat.voiceMessageLabel(n).trim().isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(right: Space.sm),
                     child: Material(
@@ -567,7 +567,7 @@ class _VoiceButtons extends StatelessWidget {
                               ],
                               const SizedBox(width: Space.xs),
                               Text(
-                                voiceMessageLabelFor(settings, n, m.key(n: n)),
+                                voiceMessageLabelFor(cat, n, m.key(n: n)),
                                 style: TextStyle(
                                   fontFamily: 'RobotoCondensed',
                                   fontSize: 12,
@@ -649,7 +649,7 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
     // A recording has no length to pace: it lasts as long as the operator
     // holds it, which is what the indeterminate bar says.
     if (widget.activity.recording) return;
-    final millis = widget.services.settings.voiceMessageDuration(widget.activity.memory);
+    final millis = widget.cat.voiceMessageDuration(widget.activity.memory);
     if (millis <= 0) return;
     _controller = AnimationController(vsync: this, duration: Duration(milliseconds: millis))..forward();
   }
@@ -658,11 +658,10 @@ class _VoiceActivityViewState extends State<_VoiceActivityView> with TickerProvi
   Widget build(BuildContext context) {
     final activity = widget.activity;
     final cat = widget.cat;
-    final services = widget.services;
     final m = context.t.settings.radio.voiceMessages;
     final theme = Theme.of(context);
     final style = theme.textTheme.bodyMedium ?? const TextStyle();
-    final label = voiceMessageLabelFor(services.settings, activity.memory, m.key(n: activity.memory));
+    final label = voiceMessageLabelFor(cat, activity.memory, m.key(n: activity.memory));
     // Doubt is not shown here. It is a real state — the radio answered
     // "idle" before ever answering "going" — but a question mark on the
     // strip asks the operator something they cannot answer while the memory
@@ -1204,7 +1203,7 @@ class _CwRepeatViewState extends State<_CwRepeatView> with SingleTickerProviderS
     final memory = widget.wait.memory;
     if (memory == null) return widget.wait.text;
     final m = context.t.settings.radio.voiceMessages;
-    return voiceMessageLabelFor(widget.services.settings, memory, m.key(n: memory));
+    return voiceMessageLabelFor(widget.cat, memory, m.key(n: memory));
   }
 
   late final AnimationController _controller;

@@ -15,6 +15,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
+import 'package:ham2k_logger/services/cat/keyer_repeat.dart';
 import 'package:ham2k_logger/services/cat/drivers/placeholder_radio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 
@@ -99,7 +100,7 @@ void main() {
       // the real clock (docs/design/time.md), so elapsing fake timers past
       // it would pass while testing nothing. What is testable is that a
       // re-arm leaves the wait it inherited alone.
-      expect(CatService.keyerRepeatLimit, const Duration(minutes: 5));
+      expect(keyerRepeatLimit, const Duration(minutes: 5));
       await connectPlaceholder();
       cat.sendCw('E');
       cat.armKeyerRepeat(delay: const Duration(seconds: 4), text: 'CQ', send: () {});

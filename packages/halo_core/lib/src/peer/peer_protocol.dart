@@ -12,8 +12,9 @@
 // and anything on the same network segment can claim any id it has seen —
 // the `PeerBeacon` broadcasts that id in the clear, so observing one to replay is
 // trivial. The stakes are physical, not only data: a trusted peer can tune
-// the addressee's rig ([catSet]), so a device that spoofs a confirmed id on
-// the segment can move a real transmitter's VFO. That is an accepted v1 limit
+// the addressee's rig ([catSet]) and key it ([keySet]), so a device that
+// spoofs a confirmed id on the segment can move a real transmitter's VFO and
+// put it on the air. That is an accepted v1 limit
 // for a LAN of trusted devices — the operator's own, or a multi-op team's —
 // NOT a design to extend to the server relay or to an untrusted network. Binding trust to a key the peer
 // must prove it holds is what [peerProtocolVersion] exists to be bumped for.
@@ -117,6 +118,25 @@ abstract final class PeerMessageType {
   /// posture (header above) load-bearing, and why it must never ride a
   /// transport that admits anyone but the operator's own paired devices.
   static const catSet = 'catSet';
+
+  /// Ephemeral, latest-value-wins: what one of the sender's radios is keying
+  /// right now — the keyer speed, the CW message going out, the voice memory
+  /// playing or recording, and what that device calls its memories.
+  ///
+  /// A WHOLE snapshot every time, absences included: no message and no
+  /// activity is the state a controller must be able to reach, since that is
+  /// what a message ending looks like, and a reader that treated an absent
+  /// field as "nothing new" would leave a finished message on the strip
+  /// forever.
+  static const keyStatus = 'keyStatus';
+
+  /// A request to key one of the addressee's radios — a message, a memory, a
+  /// speed, or a stop. Gated exactly as [catSet] is: trusted, established,
+  /// and a radio the addressee currently offers. It puts RF on the air from
+  /// somebody else's transmitter, which is the same standing the header's
+  /// security note gives a tune, and for the same reason must never ride a
+  /// transport admitting anything but the operator's own paired devices.
+  static const keySet = 'keySet';
 
   /// Ephemeral, latest-value-wins: every screen, application and window this
   /// device is currently willing to show (HALO-369). Broadcast when the set
@@ -423,6 +443,29 @@ class PeerMessage {
       freqKHz: freqKHz,
       mode: mode is String && mode.isNotEmpty ? mode : null,
     );
+  }
+
+  static PeerMessage keyStatus(PeerKeyStatusPayload status) =>
+      PeerMessage(PeerMessageType.keyStatus, status.toJson());
+
+  /// Null unless this is a well-formed [PeerMessageType.keyStatus]. An
+  /// otherwise EMPTY status — no speed, no message, no memory — is the one
+  /// that matters most: it is how a radio says it has stopped keying.
+  PeerKeyStatusPayload? get keyStatusOrNull {
+    if (type != PeerMessageType.keyStatus) return null;
+    return PeerKeyStatusPayload.from(fields);
+  }
+
+  static PeerMessage keySet(PeerKeyRequestPayload request) =>
+      PeerMessage(PeerMessageType.keySet, request.toJson());
+
+  /// Null unless this is a [PeerMessageType.keySet] naming a radio and an
+  /// operation this build knows, with what that operation needs. A request
+  /// this side cannot read is dropped rather than guessed at: every guess
+  /// here ends with a transmitter doing something nobody asked for.
+  PeerKeyRequestPayload? get keyRequestOrNull {
+    if (type != PeerMessageType.keySet) return null;
+    return PeerKeyRequestPayload.from(fields);
   }
 
   static PeerMessage screenSources(List<PeerScreenSource> sources) => PeerMessage(
@@ -776,25 +819,363 @@ class PeerRadioOffer {
   final String id;
   final String name;
 
-  const PeerRadioOffer({required this.id, required this.name});
+  /// Whether asking this device to key a message on that radio reaches a
+  /// keyer at all — the offerer's key in use answering for it, not a fact
+  /// about the radio's own CAT: a station keying through a WinKeyer offers
+  /// its radio as keyable, and one whose key in use is None does not.
+  final bool keysCw;
 
-  Map<String, dynamic> toJson() => {'id': id, 'name': name};
+  /// How many voice memories that radio has, zero for a rig with none.
+  /// Unlike [keysCw] this IS a fact about the radio: the audio is in it.
+  final int voiceMemories;
+
+  /// Whether a memory can be recorded over the link — the far radio's CAT
+  /// answering, since most of these lines record from the front panel only.
+  final bool recordsVoice;
+
+  const PeerRadioOffer({
+    required this.id,
+    required this.name,
+    this.keysCw = false,
+    this.voiceMemories = 0,
+    this.recordsVoice = false,
+  });
+
+  /// Every keying field is omitted when it says no, so an offer from a
+  /// station that keys nothing is byte-for-byte what a build without any of
+  /// this sends — and reads the same on both.
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'name': name,
+        if (keysCw) 'cw': true,
+        if (voiceMemories > 0) 'voice': voiceMemories,
+        if (recordsVoice) 'rec': true,
+      };
 
   /// Null for anything malformed, so one bad entry costs that entry rather
-  /// than the peer's whole offer.
+  /// than the peer's whole offer. The keying fields absent read as "keys
+  /// nothing", which is exactly what an older peer's offer means.
   static PeerRadioOffer? from(Object? raw) {
     if (raw is! Map) return null;
     final id = raw['id'];
     if (id is! String || id.isEmpty) return null;
     final name = raw['name'];
-    return PeerRadioOffer(id: id, name: name is String && name.isNotEmpty ? name : id);
+    final memories = (raw['voice'] as num?)?.toInt() ?? 0;
+    return PeerRadioOffer(
+      id: id,
+      name: name is String && name.isNotEmpty ? name : id,
+      keysCw: raw['cw'] == true,
+      voiceMemories: memories > 0 ? memories : 0,
+      recordsVoice: raw['rec'] == true,
+    );
   }
 
   @override
-  bool operator ==(Object other) => other is PeerRadioOffer && other.id == id && other.name == name;
+  bool operator ==(Object other) =>
+      other is PeerRadioOffer &&
+      other.id == id &&
+      other.name == name &&
+      other.keysCw == keysCw &&
+      other.voiceMemories == voiceMemories &&
+      other.recordsVoice == recordsVoice;
 
   @override
-  int get hashCode => Object.hash(id, name);
+  int get hashCode => Object.hash(id, name, keysCw, voiceMemories, recordsVoice);
+}
+
+/// What one of a peer's radios is keying right now (`keyStatus`), whole.
+///
+/// Every field is optional and each absence is a STATE: no [cw] is no message
+/// going out, no [voice] is nothing playing or recording. A reader applies
+/// all of it or none of it — treating an absent field as "unchanged" leaves a
+/// message that ended on the far strip until the next one starts.
+class PeerKeyStatusPayload {
+  /// Which of the sender's radios this is about — a [PeerRadioOffer.id].
+  final String radioId;
+
+  /// The speed that radio's keyer is on, as the radio last answered.
+  final int? keyerSpeedWpm;
+
+  /// The speeds that keyer accepts, so a controller's picker offers exactly
+  /// those — the range is the far keyer's, and a WPM this side invented
+  /// would be one the radio clamps without saying so.
+  final int? keyerSpeedMin;
+  final int? keyerSpeedMax;
+
+  final PeerCwProgressPayload? cw;
+  final PeerVoiceActivityPayload? voice;
+
+  /// What the OFFERER calls its memories, and how long each one runs — the
+  /// labels name that radio's actual audio and the durations were measured
+  /// against it, so both belong to the device the memories are in rather
+  /// than to whoever is pressing the buttons. Indexed from memory 1; a
+  /// shorter list means the rest are unnamed or unmeasured.
+  final List<String> voiceLabels;
+  final List<int> voiceDurationsMs;
+
+  const PeerKeyStatusPayload({
+    required this.radioId,
+    this.keyerSpeedWpm,
+    this.keyerSpeedMin,
+    this.keyerSpeedMax,
+    this.cw,
+    this.voice,
+    this.voiceLabels = const [],
+    this.voiceDurationsMs = const [],
+  });
+
+  Map<String, dynamic> toJson() => {
+        'radioId': radioId,
+        'wpm': ?keyerSpeedWpm,
+        'wpmMin': ?keyerSpeedMin,
+        'wpmMax': ?keyerSpeedMax,
+        'cw': ?cw?.toJson(),
+        'voice': ?voice?.toJson(),
+        if (voiceLabels.isNotEmpty) 'labels': voiceLabels,
+        if (voiceDurationsMs.isNotEmpty) 'durations': voiceDurationsMs,
+      };
+
+  /// Null for a status naming no radio — not a status about "the" radio.
+  static PeerKeyStatusPayload? from(Map<String, dynamic> fields) {
+    final radioId = fields['radioId'];
+    if (radioId is! String || radioId.isEmpty) return null;
+    final wpm = (fields['wpm'] as num?)?.toInt();
+    final min = (fields['wpmMin'] as num?)?.toInt();
+    final max = (fields['wpmMax'] as num?)?.toInt();
+    final labels = fields['labels'];
+    final durations = fields['durations'];
+    return PeerKeyStatusPayload(
+      radioId: radioId,
+      keyerSpeedWpm: wpm != null && wpm > 0 ? wpm : null,
+      // Both halves or neither, and nothing wider than a keyer could be: a
+      // picker builds ONE ITEM PER WPM from this, so a garbled or hostile
+      // `wpmMax` is a menu that takes the app down while it materializes.
+      // Every real keyer here sits inside 4-99.
+      keyerSpeedMin: _speedRangeOrNull(min, max) == null ? null : min,
+      keyerSpeedMax: _speedRangeOrNull(min, max) == null ? null : max,
+      cw: PeerCwProgressPayload.from(fields['cw']),
+      voice: PeerVoiceActivityPayload.from(fields['voice']),
+      voiceLabels: labels is List ? [for (final entry in labels) entry is String ? entry : ''] : const [],
+      voiceDurationsMs:
+          durations is List ? [for (final entry in durations) entry is num ? entry.toInt() : 0] : const [],
+    );
+  }
+}
+
+/// The widest speed range worth believing — see [PeerKeyStatusPayload].
+const _maxKeyerSpeedWpm = 200;
+
+/// The range [min]..[max] when it is one a keyer could have, else null.
+({int min, int max})? _speedRangeOrNull(int? min, int? max) {
+  if (min == null || max == null) return null;
+  if (min <= 0 || max < min || max > _maxKeyerSpeedWpm) return null;
+  return (min: min, max: max);
+}
+
+/// A CW message on its way out of the far radio.
+///
+/// [characterEndsMs] is the offerer's own pacing arithmetic, relayed rather
+/// than recomputed: it is what that station's queue is actually waiting on,
+/// and on a keyer that reports its progress (a WinKeyer's echo, [sentCount])
+/// there is nothing to recompute it from anyway.
+class PeerCwProgressPayload {
+  /// The sender's own id for this message, kept across the reports one
+  /// message gets as the queue behind it changes — so a controller animating
+  /// through it knows a re-report is not a fresh start, exactly as the
+  /// owner's own strip does.
+  final int id;
+  final String text;
+  final List<int> characterEndsMs;
+  final List<String> pending;
+
+  /// [pending]'s ids in the same order, so a controller can drop one of the
+  /// far queue's messages by name ([PeerKeyOp.dropCw]) — the tap on a
+  /// waiting message is the same tap wherever the queue is.
+  final List<int> pendingIds;
+  final int? sentCount;
+
+  const PeerCwProgressPayload({
+    required this.id,
+    required this.text,
+    this.characterEndsMs = const [],
+    this.pending = const [],
+    this.pendingIds = const [],
+    this.sentCount,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'text': text,
+        if (characterEndsMs.isNotEmpty) 'ends': characterEndsMs,
+        if (pending.isNotEmpty) 'pending': pending,
+        if (pendingIds.isNotEmpty) 'pendingIds': pendingIds,
+        'sent': ?sentCount,
+      };
+
+  /// Null for absent or malformed — and absent is the common case, meaning
+  /// nothing is keying.
+  static PeerCwProgressPayload? from(Object? raw) {
+    if (raw is! Map) return null;
+    final id = (raw['id'] as num?)?.toInt();
+    final text = raw['text'];
+    if (id == null || text is! String) return null;
+    final ends = raw['ends'];
+    final pending = raw['pending'];
+    final pendingIds = raw['pendingIds'];
+    // Never past the message: the strip takes `text.substring(0, sentCount)`,
+    // and the invariant a local keyer maintains is not re-established by the
+    // wire. A count beyond the text throws inside build on the controller.
+    final sent = (raw['sent'] as num?)?.toInt().clamp(0, text.length);
+    final texts = pending is List ? [for (final entry in pending) if (entry is String) entry] : const <String>[];
+    final ids =
+        pendingIds is List ? [for (final entry in pendingIds) entry is num ? entry.toInt() : 0] : const <int>[];
+    return PeerCwProgressPayload(
+      id: id,
+      text: text,
+      characterEndsMs: ends is List ? [for (final entry in ends) entry is num ? entry.toInt() : 0] : const [],
+      // One fact in two lists, so a mis-pair drops BOTH: a surface walks the
+      // texts and indexes the ids by the same position, so keeping the texts
+      // alone is a tap that throws rather than a tap that drops nothing.
+      pending: ids.length == texts.length ? texts : const [],
+      pendingIds: ids.length == texts.length ? ids : const [],
+      sentCount: sent != null && sent >= 0 ? sent : null,
+    );
+  }
+}
+
+/// A voice memory playing or recording on the far radio. [doubtful] is the
+/// far side's own doubt about a play it cannot confirm, carried as doubt
+/// rather than resolved: the controller shows the same question mark the
+/// owner's strip does.
+class PeerVoiceActivityPayload {
+  final int memory;
+  final bool recording;
+  final bool doubtful;
+
+  const PeerVoiceActivityPayload({
+    required this.memory,
+    this.recording = false,
+    this.doubtful = false,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'n': memory,
+        if (recording) 'rec': true,
+        if (doubtful) 'doubt': true,
+      };
+
+  static PeerVoiceActivityPayload? from(Object? raw) {
+    if (raw is! Map) return null;
+    final memory = (raw['n'] as num?)?.toInt();
+    if (memory == null || memory <= 0) return null;
+    return PeerVoiceActivityPayload(
+      memory: memory,
+      recording: raw['rec'] == true,
+      doubtful: raw['doubt'] == true,
+    );
+  }
+}
+
+/// What a controller can ask a peer's radio to do (`keySet`).
+abstract final class PeerKeyOp {
+  /// Key [PeerKeyRequestPayload.text] — already rendered, since a template
+  /// is rendered against the ASKER's draft contact and means nothing on the
+  /// far side. Sanitizing it is still the far queue's job, as it is for a
+  /// message typed at that device.
+  static const cw = 'cw';
+
+  /// Stop what is keying and drop what is queued behind it, the far side's
+  /// own `stopCw` — which on some radios empties the queue and lets the
+  /// piece already going play out.
+  static const stopCw = 'stopCw';
+
+  /// Drop the message waiting in the far queue under
+  /// [PeerKeyRequestPayload.queuedId] — never the one already keying, which
+  /// is [stopCw]'s business.
+  static const dropCw = 'dropCw';
+
+  /// Put the far keyer on [PeerKeyRequestPayload.wpm].
+  static const wpm = 'wpm';
+
+  /// Play voice memory [PeerKeyRequestPayload.memory].
+  static const voice = 'voice';
+
+  /// Record into voice memory [PeerKeyRequestPayload.memory].
+  static const record = 'record';
+
+  /// Stop whatever memory is playing or recording.
+  static const stopVoice = 'stopVoice';
+}
+
+/// One keying request, naming the addressee's radio and one [PeerKeyOp].
+class PeerKeyRequestPayload {
+  final String radioId;
+  final String op;
+  final String text;
+  final int? wpm;
+  final int? memory;
+
+  /// The far queue's own id for a message waiting behind the one keying —
+  /// [PeerCwProgressPayload.pendingIds] handed back.
+  final int? queuedId;
+
+  const PeerKeyRequestPayload({
+    required this.radioId,
+    required this.op,
+    this.text = '',
+    this.wpm,
+    this.memory,
+    this.queuedId,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'radioId': radioId,
+        'op': op,
+        if (text.isNotEmpty) 'text': text,
+        'wpm': ?wpm,
+        'n': ?memory,
+        'queued': ?queuedId,
+      };
+
+  /// Null unless the request names a radio, an operation this build knows,
+  /// and whatever that operation needs to mean anything — an empty message,
+  /// a speed of nothing, a memory zero. A request read as far as "some sort
+  /// of keying" and no further is one this side must not act on: the thing
+  /// on the other end of every guess here is a transmitter.
+  static PeerKeyRequestPayload? from(Map<String, dynamic> fields) {
+    final radioId = fields['radioId'];
+    final op = fields['op'];
+    if (radioId is! String || radioId.isEmpty) return null;
+    if (op is! String || op.isEmpty) return null;
+    final text = fields['text'] is String ? fields['text'] as String : '';
+    final wpm = (fields['wpm'] as num?)?.toInt();
+    final memory = (fields['n'] as num?)?.toInt();
+    final queuedId = (fields['queued'] as num?)?.toInt();
+    switch (op) {
+      case PeerKeyOp.cw:
+        if (text.trim().isEmpty) return null;
+      case PeerKeyOp.dropCw:
+        if (queuedId == null) return null;
+      case PeerKeyOp.wpm:
+        if (wpm == null || wpm <= 0) return null;
+      case PeerKeyOp.voice:
+      case PeerKeyOp.record:
+        if (memory == null || memory <= 0) return null;
+      case PeerKeyOp.stopCw:
+      case PeerKeyOp.stopVoice:
+        break;
+      default:
+        return null;
+    }
+    return PeerKeyRequestPayload(
+      radioId: radioId,
+      op: op,
+      text: text,
+      wpm: wpm,
+      memory: memory,
+      queuedId: queuedId,
+    );
+  }
 }
 
 /// One outbox row in flight.

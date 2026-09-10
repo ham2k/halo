@@ -25,6 +25,7 @@ import '../peer/peer_station_radios.dart';
 import '../radio_service.dart';
 import '../settings_service.dart';
 import 'auto_connect_guard.dart';
+import 'cat_keying.dart';
 import 'equipment_tag.dart';
 import 'radio_proof.dart';
 import 'discovery.dart';
@@ -32,9 +33,16 @@ import 'driver.dart';
 import 'drivers/meter_calibration.dart';
 import 'drivers/cw_send_queue.dart' show CwSendProgress;
 import 'equipment.dart';
+import 'keyer_repeat.dart';
+import 'peer_keying.dart';
 import 'equipment_registry.dart';
 import 'transport.dart';
 import 'vfo_snap.dart';
+
+// The keyer area names a wait; it reads everything else about keying off
+// this service, so the type comes with it rather than through a second
+// import of an implementation file.
+export 'keyer_repeat.dart' show KeyerRepeatWait;
 
 const _uuidGenerator = Uuid();
 
@@ -182,22 +190,8 @@ String uniqueEquipmentName(String base, Iterable<String> taken) {
   return '$base $n';
 }
 
-/// A repeat's wait: how long until message 1 goes again, and what went out
-/// last time — the keyer area's countdown runs on the first and labels
-/// itself with the second. [memory] names a VOICE memory instead, whose
-/// label the strip resolves itself, since what is repeating there is audio
-/// in the radio rather than text the app rendered.
-class KeyerRepeatWait {
-  final Duration delay;
-  final String text;
 
-  /// Null for a CW message; the memory number for a voice one.
-  final int? memory;
-
-  const KeyerRepeatWait({required this.delay, required this.text, this.memory});
-}
-
-class CatService extends ChangeNotifier implements PeerStationRadios {
+class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStation {
   final SettingsService _settings;
   final EquipmentRegistry registry;
 
@@ -431,6 +425,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     _trackRadio('radio_connect_failed', node, extra: {'reason': reason, ...extra});
   }
 
+  @override
   List<EquipmentNode> get nodes => List.unmodifiable(_nodes.values);
 
   /// The nodes this launch will not connect on its own, and why an operator
@@ -458,6 +453,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     };
   }
 
+  @override
   EquipmentNode? nodeFor(String uuid) => _nodes[uuid];
 
   // ---------------------------------------------------------- main VFO
@@ -550,6 +546,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // CONNECTED rigs fires no _setState, and a peer pick would leave the tag
     // naming a local radio.
     _updateEquipmentTag();
+    // The incoming radio's keying is whatever its device last told this one —
+    // picking a radio is not the far station changing, so nothing else would
+    // arrive to fill it in.
+    _adoptPeerKeying();
     await _save();
     notifyListeners();
   }
@@ -561,11 +561,37 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         for (final node in _nodes.values)
           if (registry.typeFor(node.typeKey)?.category == kCategoryTransceiver &&
               stateFor(node.uuid).status == EquipmentStatus.connected)
-            PeerRadioOffer(id: node.uuid, name: node.name),
+            PeerRadioOffer(
+              id: node.uuid,
+              name: node.name,
+              // CW is the STATION's answer, the same for every radio it
+              // offers: a request is keyed by whatever this device keys
+              // with, which may be a paddle-side keyer rather than the rig
+              // named. Voice is the RADIO's, because the audio is in it.
+              //
+              // What this device keys with ITSELF, never [canKeyCw]: a
+              // station whose own radio1 is some third device's rig keys
+              // nothing here, and offering that as keyable would advertise a
+              // relay nothing implements.
+              //
+              // All of it behind this device's own keying experiment: a
+              // station whose operator has no keyer area and no Escape
+              // handler must not be keyed from elsewhere, because nothing
+              // here could stop it.
+              keysCw: _keyingEnabled && _keying.keysCwLocally,
+              voiceMemories: _keyingEnabled ? (_keying.voiceKeyerFor(node.uuid)?.voiceMemoryCount ?? 0) : 0,
+              recordsVoice: _keyingEnabled && (_keying.voiceKeyerFor(node.uuid)?.canRecordVoice ?? false),
+            ),
       ];
 
   @override
   void noteOffer(String deviceId, String deviceName, List<PeerRadioOffer> radios) {
+    // Kept for every radio that device offers, picked or not — see
+    // [_adoptPeerKeying]. The whole of that device's offer replaces what it
+    // last said, absences included: an offer that stops naming a radio is
+    // how a station says that rig went away.
+    _peerKeying.rememberOffers(deviceId, radios);
+    _adoptPeerKeying();
     final selection = followedPeerRadio;
     if (selection == null || selection.deviceId != deviceId) return;
     for (final radio in radios) {
@@ -608,6 +634,107 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       return;
     }
     tuneNode(radioId, VfoReading(freqKHz: freqKHz, mode: resolveSideband(mode, freqKHz)));
+  }
+
+  // --------------------------------------------- keying, over the link
+
+  /// The picked peer radio's keying — what it says it can be asked to do,
+  /// what it last reported, and how a request reaches it (peer_keying.dart).
+  /// Every keying surface reads it through the same getters a local rig
+  /// answers, so a peer that walks off mid-message leaves them empty rather
+  /// than addressing a device that is not there.
+  final _peerKeying = PeerKeying();
+
+  @override
+  Listenable get keyingChanges => _keying.keyingChanges;
+
+  @override
+  void Function(PeerKeyRequestPayload request)? get sendPeerKeyRequest => _peerKeying.send;
+
+  @override
+  set sendPeerKeyRequest(void Function(PeerKeyRequestPayload request)? send) => _peerKeying.send = send;
+
+  /// What one of [offeredRadios] is keying, for a controller — null for a
+  /// radio this device is not offering, the same guard [vfoForOfferedRadio]
+  /// applies and for the same reason.
+  ///
+  /// The CW half is the STATION's, so two controllers following two radios
+  /// of this station are both told about the one message going out. There is
+  /// one key in use here, and that message is what it is keying. The labels
+  /// and lengths are this device's because the audio is: these memories were
+  /// named and timed here.
+  @override
+  PeerKeyStatusPayload? keyStatusForOfferedRadio(String radioId) {
+    // Behind the same experiment the offer is: with keying off there is
+    // nothing to report, and the memory labels are this operator's own words.
+    if (!_keyingEnabled) return null;
+    if (!offeredRadios.any((radio) => radio.id == radioId)) return null;
+    return _keying.statusForOfferedRadio(radioId);
+  }
+
+
+  /// Keys, stops, or sets a speed on this device's own station for a peer —
+  /// through the same funnels a local function key takes, and only for a
+  /// radio this device is currently offering.
+  ///
+  /// Every arm keys HERE or not at all. A request is never relayed onward to
+  /// whatever radio1 this device is itself following: an operator who picked
+  /// this station's rig asked for this station's rig, and a chain of them
+  /// would put a transmitter two devices away on the air for somebody who
+  /// picked neither.
+  @override
+  void handleKeyRequest(PeerKeyRequestPayload request) {
+    // Checked again rather than trusted to the offer: the experiment can go
+    // off under an established session, and a controller holding a stale
+    // offer would go on keying a station that can no longer see it.
+    if (!_keyingEnabled) return;
+    if (!offeredRadios.any((radio) => radio.id == request.radioId)) return;
+    _keying.handleRequest(request);
+  }
+
+
+  /// The far side's account of what the picked radio is keying. Dropped
+  /// unless it is about the radio this operator picked — a device offering
+  /// radios hears its own controllers' reports too, and a second source
+  /// writing the strip fights the first.
+  @override
+  void notePeerKeyStatus(String deviceId, PeerKeyStatusPayload status) {
+    _peerKeying.rememberStatus(deviceId, status);
+    if (!(followedPeerRadio?.matches(deviceId, status.radioId) ?? false)) return;
+    final before = _keying.peerShownState;
+    _keying.notePeerStatus(status);
+    // Only when what the SURFACES read has moved. The notifiers this wrote
+    // rebuild the strip on their own, and a status arrives per character from
+    // a keyer that echoes them — a full notification each would rebuild every
+    // equipment row in the Station panel, which is the cost [cwProgress] is a
+    // notifier at all to avoid.
+    if (_keying.peerShownState != before) notifyListeners();
+  }
+
+  /// Points the keying half at whatever the CURRENT pick's device last said
+  /// about it — on a new pick, and on a fresh offer. What it remembers, and
+  /// why it has to, is [PeerKeying]'s.
+  void _adoptPeerKeying() {
+    final selection = followedPeerRadio;
+    final deviceId = selection?.deviceId;
+    final radioId = selection?.radioId;
+    if (!_keying.adoptPeer(
+        _peerKeying.offerFor(deviceId, radioId), _peerKeying.statusFor(deviceId, radioId))) {
+      return;
+    }
+    notifyListeners();
+  }
+
+
+  /// That peer's radios are out of reach — it left. The PICK stands, the
+  /// same as it does for tuning: what goes is only what it could do, so the
+  /// surfaces go quiet instead of addressing a device that is not there.
+  @override
+  void forgetPeerRadios(String deviceId) {
+    _peerKeying.forgetDevice(deviceId);
+    if (followedPeerRadio?.deviceId != deviceId) return;
+    if (!_keying.forgetPeer()) return;
+    notifyListeners();
   }
 
   // ------------------------------------------------------ antenna1 / key1
@@ -653,7 +780,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// what [setDesignated]'s stored entry then outranks, None included.
   ///
   /// Antennas have no equivalent: nothing about a radio says which wire is
-  /// on it. Nor do peer radios, whose keying is the other device's business.
+  /// on it. Neither does a peer's radio, whose keying is the other device's
+  /// key in use — that default is [peerKeyIsInUse] rather than an answer
+  /// here, because what keys there is not a node of this station to name.
   String? _defaultDesignation(String category) {
     if (category != kCategoryKey) return null;
     if (!_settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) return null;
@@ -680,9 +809,19 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   Future<void> setDesignated(String category, String? uuid) async {
     final previousUuid = designatedFor(category);
-    if (previousUuid == uuid) return;
+    // An ANSWER is stored even when it matches the default it replaces:
+    // "nothing chosen" and "chose None" resolve alike right now but are not
+    // the same state, and the difference decides whether a default can take
+    // over later — a peer radio whose operator said None keys nothing, and
+    // one whose operator said nothing keys through that peer.
+    final answered = _designated[_designationKey()]?.containsKey(category) ?? false;
+    if (answered && previousUuid == uuid) return;
     _designateNow(category, uuid);
-    if (category == kCategoryKey) _onKeyInUseChanged(previousUuid);
+    // Only a real CHANGE of key owes the outgoing one anything. A dropdown
+    // reports the already-selected item being tapped, and abandoning the
+    // message going out because the operator re-picked the key that is
+    // keying it would stop a CQ mid-word.
+    if (category == kCategoryKey && previousUuid != uuid) _onKeyInUseChanged(previousUuid);
     await _save();
     notifyListeners();
   }
@@ -706,19 +845,9 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// something else. The old keyer's message would otherwise finish with
   /// nothing showing it and nothing to stop it; the new one's speed is read
   /// so the row is not left on the old one's.
-  void _onKeyInUseChanged(String? previousUuid) {
-    final previous = _runtimes[previousUuid]?.session;
-    if (previous is CwKeyerSession && previous.cwSending) {
-      try {
-        previous.stopCw();
-      } catch (e, st) {
-        ErrorReportingService.report(e, st, context: 'cat:stop-cw');
-      }
-    }
-    cwProgress.value = null;
-    refreshKeyerSpeed();
-  }
+  void _onKeyInUseChanged(String? previousUuid) => _keying.abandonKeying(previousUuid);
 
+  @override
   EquipmentState stateFor(String uuid) => _runtimes[uuid]?.state ?? const EquipmentState();
 
   /// [radio1]'s own power reading, when its driver can report one — the
@@ -767,491 +896,127 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     }
   }
 
-  /// The node keying for the app: the designated key ([kCategoryKey]'s
-  /// designation), when it is connected through a [CwKeyerSession] — a
-  /// Winkeyer, or a radio whose CAT can key and was picked as the key in
-  /// use. Null otherwise. Every keying surface (the keyer row in the Station
-  /// dialog, F1-F8, the WPM command) exists only while this is non-null.
-  ///
-  /// The designation, not radio1: a station with both a Winkeyer and a
-  /// keying radio has to say which one the messages go through, and the
-  /// "key in use" pick is where a key is already chosen.
-  String? get _cwKeyerUuid {
-    final uuid = designatedFor(kCategoryKey);
-    if (uuid == null) return null;
-    final runtime = _runtimes[uuid];
-    if (runtime?.state.status != EquipmentStatus.connected) return null;
-    if (runtime!.session is! CwKeyerSession) return null;
-    // A session class serves a whole line (Kenwood's), so being a
-    // CwKeyerSession is not being a keyer: the node's entry decides.
-    final node = _nodes[uuid];
-    if (node != null && !_isKeyerNode(node)) return null;
-    return uuid;
-  }
-
-  CwKeyerSession? get _cwKeyer {
-    final uuid = _cwKeyerUuid;
-    if (uuid == null) return null;
-    return _runtimes[uuid]!.session as CwKeyerSession;
-  }
-
-  /// Whether the designated key is connected and can key CW.
-  bool get canKeyCw => _cwKeyer != null;
-
-  /// Whether the designated key COULD key — a keyer, or a radio whose
-  /// driver keys — whether or not it is connected right now. What decides
-  /// the Station dialog shows the keyer row at all: a disconnected Winkeyer
-  /// still wants its connect button and its messages reachable.
-  bool get designatedKeyIsKeyer {
-    final uuid = designatedFor(kCategoryKey);
-    if (uuid == null) return false;
-    final node = nodeFor(uuid);
-    if (node == null) return false;
-    return _isKeyerNode(node);
-  }
-
-  /// The designated key's node, when [designatedKeyIsKeyer].
-  EquipmentNode? get designatedKeyerNode {
-    if (!designatedKeyIsKeyer) return null;
-    return nodeFor(designatedFor(kCategoryKey)!);
-  }
-
-  /// Every node the "key in use" pick may offer as a keying source: keyers,
-  /// and radios whose driver can key.
-  List<EquipmentNode> get keyerCandidates => [
-        for (final node in nodes)
-          if (_isKeyerNode(node)) node,
-      ];
-
-  bool _isKeyerNode(EquipmentNode node) => typeFor(node)?.category == kCategoryKeyer || _radioKeysCw(node);
-
-  /// The keyer's speed as it reported it, or null while unknown — also null
-  /// when nothing can key.
-  int? get keyerSpeed {
-    final uuid = _cwKeyerUuid;
-    if (uuid == null) return null;
-    return stateFor(uuid).keyerSpeed;
-  }
-
-  /// The speeds the key in use accepts — for a picker to offer exactly
-  /// those. Null when nothing can key.
-  ({int min, int max})? get keyerSpeedRange => _cwKeyer?.keyerSpeedRange;
-
-  /// Whether the key in use is still keying something [sendCw] gave it.
-  bool get cwSending => _cwKeyer?.cwSending ?? false;
-
-  /// What the key in use is sending for the app right now, or null — for
-  /// the status bar's indicator. Its own notifier rather than a field on
-  /// [EquipmentState]: it changes with every message and clears seconds
-  /// later, and a state change rebuilds every equipment row for a value only
-  /// one small widget reads.
-  final cwProgress = ValueNotifier<CwSendProgress?>(null);
-
-  /// Whether the keyer area is shown — the logging panel's strip follows
-  /// it, the Station dialog's toggle and the KEYER command set it, and the
-  /// area's own X and its linger clear it.
-  late final keyerAreaShown = ValueNotifier<bool>(_settings.keyerAreaShown);
-
-  /// Bumped by every [showKeyerArea], shown already or not: the area's
-  /// linger has to end on an explicit ask even when the flag does not move.
-  final keyerShowRequests = ValueNotifier<int>(0);
-
-  void showKeyerArea() {
-    // Only when it MOVES: a message starting shows the area, so an
-    // unconditional write would re-encode the whole radio group — the
-    // message sets included — and rebuild every settings listener on each
-    // press of a function key.
-    final moved = !keyerAreaShown.value;
-    keyerAreaShown.value = true;
-    keyerShowRequests.value++;
-    if (moved) unawaited(_settings.setKeyerAreaShown(true));
-  }
-
-  void hideKeyerArea() {
-    if (!keyerAreaShown.value) return;
-    keyerAreaShown.value = false;
-    unawaited(_settings.setKeyerAreaShown(false));
-  }
+  /// The repeat chain (keyer_repeat.dart) — one engine for both keyers,
+  /// since a message and a memory differ only in what is sent again.
+  final _repeat = KeyerRepeat();
 
   /// The wait between message 1 finishing and it being keyed again — non-null
   /// only while that wait is running, so the keyer area's countdown bar is
-  /// mounted exactly then. [KeyerRepeatWait.text] is what was keyed, since the
-  /// message is re-rendered for each repeat and there is nothing else to show
-  /// while nothing is on the air.
-  final keyerRepeat = ValueNotifier<KeyerRepeatWait?>(null);
+  /// mounted exactly then.
+  ValueNotifier<KeyerRepeatWait?> get keyerRepeat => _repeat.wait;
 
   /// Whether a chain is running at all — armed, keying, waiting, or in the
   /// gap between the wait ending and the next message reaching the radio.
-  /// Its own notifier rather than [keyerRepeating]: the strip has to REBUILD on
-  /// the gap's edges, and a getter notifies nobody — the buttons would
-  /// flash back for the length of a template render.
-  final keyerRepeatActive = ValueNotifier<bool>(false);
-
-  /// Keys message 1 again — supplied by whoever armed the repeat, since
-  /// rendering a template against the draft contact is the operation view's
-  /// job, not this service's.
-  void Function()? _repeatSend;
-  Duration _repeatDelay = Duration.zero;
-  String _repeatText = '';
-
-  /// The voice memory repeating, or null for a CW message — so the wait is
-  /// started by the right keyer's end and not by the other one's.
-  int? _repeatMemory;
-  Timer? _repeatTimer;
-
-  /// When the repeats stop whatever else happens, as real milliseconds: a
-  /// deadline whose remainder becomes a Timer duration must not travel with
-  /// the app clock (docs/design/time.md).
-  int? _repeatUntil;
-
-  /// How long a chain of repeats may run before it stops on its own — an
-  /// unattended CQ that keys forever is a transmitter nobody is watching.
-  static const keyerRepeatLimit = Duration(minutes: 5);
+  ValueNotifier<bool> get keyerRepeatActive => _repeat.active;
 
   /// Whether a repeat is armed or counting down.
-  bool get keyerRepeating => _repeatSend != null;
+  bool get keyerRepeating => _repeat.running;
 
-  /// Every stop here is one the operator makes in the app — a key, Escape,
-  /// a tap, the setting. The radio keying on its own (a mic or a paddle
-  /// during the wait) does NOT stop the chain, because nothing reports
-  /// transmit state upward: no driver has a TX read wired to a sink, so
-  /// there is no signal to listen to. Adding one is a driver capability,
-  /// not a check that belongs here.
-
-  /// Arms message 1 to go again [delay] after the one now keying finishes.
-  /// Re-arming inside a chain keeps the deadline the chain started with, so
-  /// five minutes is five minutes from the first send and not a limit that
-  /// each repeat pushes further away.
+  /// Arms message 1 to go again [delay] after the one now keying finishes —
+  /// see [KeyerRepeat.arm], which is where the five-minute limit lives.
   void armKeyerRepeat({
     required Duration delay,
     required String text,
     required void Function() send,
     int? memory,
-  }) {
-    if (delay <= Duration.zero) return;
-    _repeatTimer?.cancel();
-    _repeatTimer = null;
-    _repeatSend = send;
-    _repeatDelay = delay;
-    _repeatText = text;
-    _repeatMemory = memory;
-    _repeatUntil ??= realNowMillis() + keyerRepeatLimit.inMilliseconds;
-    keyerRepeat.value = null;
-    keyerRepeatActive.value = true;
-  }
+  }) =>
+      _repeat.arm(delay: delay, text: text, send: send, memory: memory);
 
   /// Ends the chain — every stop the operator can make lands here.
-  void cancelKeyerRepeat() {
-    _repeatTimer?.cancel();
-    _repeatTimer = null;
-    _repeatSend = null;
-    _repeatMemory = null;
-    _repeatUntil = null;
-    if (keyerRepeat.value != null) keyerRepeat.value = null;
-    keyerRepeatActive.value = false;
+  void cancelKeyerRepeat() => _repeat.cancel();
+
+  /// See [KeyerRepeat.deadlineMillis] — the tests' way in.
+  @visibleForTesting
+  int? get keyerRepeatDeadlineMillis => _repeat.deadlineMillis;
+
+  /// Keying (cat_keying.dart) — which session keys, what it is keying, the
+  /// speed, the memories. The API stays HERE: every surface that keys reads
+  /// this service and nothing below it, whether the rig answering is plugged
+  /// in here or on a peer's desk.
+  late final _keying = CatKeying(
+    station: this,
+    settings: _settings,
+    chain: _repeat,
+    peer: _peerKeying,
+  );
+
+  bool get canKeyCw => _keying.canKeyCw;
+  bool get designatedKeyIsKeyer => _keying.designatedKeyIsKeyer;
+  EquipmentNode? get designatedKeyerNode => _keying.designatedKeyerNode;
+  List<EquipmentNode> get keyerCandidates => _keying.keyerCandidates;
+  int? get keyerSpeed => _keying.keyerSpeed;
+  ({int min, int max})? get keyerSpeedRange => _keying.keyerSpeedRange;
+  bool get cwSending => _keying.cwSending;
+  ValueNotifier<CwSendProgress?> get cwProgress => _keying.cwProgress;
+  ValueNotifier<bool> get keyerAreaShown => _keying.keyerAreaShown;
+  ValueNotifier<int> get keyerShowRequests => _keying.keyerShowRequests;
+  void showKeyerArea() => _keying.showKeyerArea();
+  void hideKeyerArea() => _keying.hideKeyerArea();
+  void sendCw(String text) => _keying.sendCw(text);
+  void stopCw() => _keying.stopCw();
+  void dropQueuedCw(int id) => _keying.dropQueuedCw(id);
+  bool setKeyerSpeed(int wpm) => _keying.setKeyerSpeed(wpm);
+  void refreshKeyerSpeed() => _keying.refreshKeyerSpeed();
+
+  bool get canPlayVoice => _keying.canPlayVoice;
+  bool get radio1HasVoiceMemories => _keying.radio1HasVoiceMemories;
+  int get voiceMemoryCount => _keying.voiceMemoryCount;
+  bool get canRecordVoice => _keying.canRecordVoice;
+  bool get voiceMessagesAreLocal => _keying.voiceMessagesAreLocal;
+  String voiceMessageLabel(int n) => _keying.voiceMessageLabel(n);
+  int voiceMessageDuration(int n) => _keying.voiceMessageDuration(n);
+  ({String model, String text})? get voiceRecordingHelp => _keying.voiceRecordingHelp;
+  ValueNotifier<VoiceActivity?> get voiceActivity => _keying.voiceActivity;
+  void playVoiceMemory(int n, {bool repeat = true}) => _keying.playVoiceMemory(n, repeat: repeat);
+  void recordVoiceMemory(int n) => _keying.recordVoiceMemory(n);
+  void stopVoice() => _keying.stopVoice();
+
+  // --------------------------------------- what keying asks of the station
+
+  /// The key in use, as a node uuid — null for None, and null for a peer's
+  /// own keying, which is no node of this station ([peerKeyIsInUse]).
+  @override
+  String? get keyInUse => designatedFor(kCategoryKey);
+
+  /// Whether what keys is the picked peer's own key. The DEFAULT for a peer
+  /// radio, because its keying is not a node here to designate (see
+  /// [_defaultDesignation]) — but an explicit None still means None, and an
+  /// explicit local key still wins.
+  @override
+  bool get peerKeyIsInUse {
+    final selection = followedPeerRadio;
+    if (selection == null) return false;
+    final picks = _designated[_designationKey()];
+    if (picks == null || !picks.containsKey(kCategoryKey)) return true;
+    return picks[kCategoryKey] == peerRadioValue(selection);
   }
 
-  /// The message the repeat was armed on has stopped keying: either the wait
-  /// starts, or the chain has run its five minutes.
-  void _startRepeatWait() {
-    final send = _repeatSend;
-    if (send == null || _repeatTimer != null) return;
-    if ((_repeatUntil ?? 0) <= realNowMillis()) {
-      cancelKeyerRepeat();
-      return;
-    }
-    keyerRepeat.value = KeyerRepeatWait(delay: _repeatDelay, text: _repeatText, memory: _repeatMemory);
-    _repeatTimer = Timer(_repeatDelay, () {
-      _repeatTimer = null;
-      keyerRepeat.value = null;
-      // The deadline is checked again HERE, not only above: a wait that
-      // started inside the five minutes can end outside them.
-      if (_repeatSend == null) return;
-      if ((_repeatUntil ?? 0) <= realNowMillis()) {
-        cancelKeyerRepeat();
-        return;
-      }
-      send();
-    });
-  }
+  @override
+  String? get peerRadioId => followedPeerRadio?.radioId;
 
-  /// Keys [text] on the key in use — a no-op, not an error, when nothing can key:
-  /// the surfaces that call this only exist while [canKeyCw], so reaching
-  /// here without a keyer is the radio dropping between the check and the
-  /// keypress.
-  void sendCw(String text) {
-    final session = _cwKeyer;
-    if (session == null) return;
-    try {
-      session.sendCw(text);
-    } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'cat:send-cw');
-    }
-  }
+  /// Whether this device's own keying surfaces exist at all — the `keyer`
+  /// experiment, which gates what it offers a peer as much as what it shows
+  /// its own operator.
+  bool get _keyingEnabled => _settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
 
-  /// Stops whatever [sendCw] still has to send — see [CwKeyerSession.stopCw]
-  /// for how much of what is already on the radio this can reach.
-  void stopCw() {
-    // A stop is a stop: the operator who cut this message short did not ask
-    // for it again in five seconds.
-    cancelKeyerRepeat();
-    final session = _cwKeyer;
-    if (session == null) return;
-    try {
-      session.stopCw();
-    } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'cat:stop-cw');
-    }
-  }
+  /// Whether the picked peer radio's station says it will key CW for this
+  /// operator. What puts it in the Key in Use list — a device that keys
+  /// nothing is not a key.
+  bool get peerOffersCwKeying => _peerKeying.keysCw;
 
-  /// Drops one message waiting behind the one the key in use is keying — see
-  /// [CwKeyerSession.dropQueuedCw].
-  void dropQueuedCw(int id) {
-    final session = _cwKeyer;
-    if (session == null) return;
-    try {
-      session.dropQueuedCw(id);
-    } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'cat:drop-queued-cw');
-    }
-  }
+  @override
+  bool isKeyerNode(EquipmentNode node) =>
+      typeFor(node)?.category == kCategoryKeyer || _radioKeysCw(node);
 
-  /// Sets the key in use's keyer speed. Returns false when nothing can key, or the
-  /// send threw, so the WPM command can say so rather than confirm a change
-  /// that never left the app.
-  ///
-  /// No echo guard, unlike [setPower]: power is re-sent on every VFO
-  /// notification and needs one, while this is only ever an operator's
-  /// explicit ask — and neither radio announces a front-panel knob turn,
-  /// so the last value the app saw is not the value the radio is on.
-  bool setKeyerSpeed(int wpm) {
-    final uuid = _cwKeyerUuid;
-    final session = _cwKeyer;
-    if (uuid == null || session == null) return false;
-    try {
-      session.setKeyerSpeed(wpm);
-    } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'cat:set-keyer-speed');
-      return false;
-    }
-    _rememberKeyerSpeed(uuid, wpm);
-    return true;
-  }
-
-  /// Stores the speed on the node, for equipment that cannot be asked what
-  /// its speed is ([EquipmentDriver.remembersKeyerSpeed]).
-  ///
-  /// From the OPERATOR'S set only, never from [EquipmentSink.reportKeyerSpeed].
-  /// A report is also how a speed pot answers — and on a keyer whose pot is
-  /// absent, how its floating ADC answers — so remembering reports would
-  /// write that reading to disk and hand it back on every connect after.
-  /// What is worth keeping is the speed somebody chose.
-  void _rememberKeyerSpeed(String uuid, int wpm) {
-    final node = _nodes[uuid];
-    if (node == null) return;
-    if (typeFor(node)?.driver.remembersKeyerSpeed != true) return;
-    if (node.config[keyerSpeedConfigKey] == wpm) return;
-    unawaited(
-      updateNode(node.copyWith(config: {...node.config, keyerSpeedConfigKey: wpm})).catchError(
-        (Object e, StackTrace st) => ErrorReportingService.report(e, st, context: 'cat:remember-keyer-speed'),
-      ),
-    );
-  }
-
-  /// Asks the key in use for its keyer speed again — for a surface about to show it,
-  /// since sessions read it once at connect and the radio never volunteers a
-  /// knob turn.
-  void refreshKeyerSpeed() {
-    final session = _cwKeyer;
-    if (session == null) return;
-    try {
-      session.refreshKeyerSpeed();
-    } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'cat:refresh-keyer-speed');
-    }
-  }
-
-  /// [radio1]'s session, when it is connected and has voice memories to
-  /// play. Radio1 and not the key in use: the memories are audio held by
-  /// the transceiver itself, so there is nothing to designate — a WinKeyer
-  /// has none, and a second radio's memories are that radio's. Every voice
-  /// surface (the Phone-mode message buttons, F1-F8 in a Phone mode, the
-  /// Voice Messages dialog's Play and Record) exists only while this is
-  /// non-null.
-  VoiceKeyerSession? get _voiceKeyer {
-    final uuid = _localRadio1;
-    if (uuid == null) return null;
+  @override
+  EquipmentSession? connectedSession(String uuid) {
     final runtime = _runtimes[uuid];
     if (runtime?.state.status != EquipmentStatus.connected) return null;
-    final session = runtime!.session;
-    if (session is! VoiceKeyerSession || session.voiceMemoryCount <= 0) return null;
-    return session;
+    return runtime!.session;
   }
 
-  /// Whether radio1 is connected and can play its voice memories.
-  bool get canPlayVoice => _voiceKeyer != null;
-
-  /// Whether radio1 COULD play voice memories — its entry holds some —
-  /// whether or not it is connected right now. The voice counterpart of
-  /// [designatedKeyIsKeyer], and what the Station panel lays the keyer row
-  /// out from: a radio that keys is a fact about the station, and a row that
-  /// appeared on connecting and vanished on dropping would move under the
-  /// operator every time the link blinked.
-  ///
-  /// Never a substitute for [canPlayVoice] at the moment of PLAYING: only a
-  /// live session knows what the radio actually answered.
-  bool get radio1HasVoiceMemories {
-    final uuid = _localRadio1;
-    if (uuid == null) return false;
-    final node = _nodes[uuid];
-    if (node == null) return false;
-    final type = typeFor(node);
-    if (type == null) return false;
-    return type.driver.voiceMemoryCountWith(type.driverConfig(node.config)) > 0;
-  }
-
-  /// How many memories radio1 has, 0 when nothing can play — the surfaces
-  /// offer exactly that many.
-  int get voiceMemoryCount => _voiceKeyer?.voiceMemoryCount ?? 0;
-
-  /// Whether radio1's CAT can also record a memory (docs/design/cat.md
-  /// § Voice keying lists which can).
-  bool get canRecordVoice => _voiceKeyer?.canRecordVoice ?? false;
-
-  /// How to record a memory on radio1, where the radio needs saying — see
-  /// [EquipmentModel.recordingHelp]. Null when nothing can record, or when
-  /// the radio's own procedure needs no explaining. Carries the model's NAME
-  /// with it: the note is about one rig's front panel, and the operator has
-  /// to know which rig is being described.
-  ({String model, String text})? get voiceRecordingHelp {
-    if (_voiceKeyer?.canRecordVoice != true) return null;
-    // The LOCAL node: a peer's rig has a front panel nobody here can reach.
-    final uuid = _localRadio1;
-    if (uuid == null) return null;
-    final node = nodeFor(uuid);
-    if (node == null) return null;
-    final model = typeFor(node)?.model;
-    final text = model?.recordingHelp;
-    if (model == null || text == null) return null;
-    return (model: model.name, text: text);
-  }
-
-  /// What radio1's voice keyer is doing for the app, or null — for the keyer
-  /// area. Its own notifier for the same reason [cwProgress] is.
-  final voiceActivity = ValueNotifier<VoiceActivity?>(null);
-
-  /// Plays memory [n] on radio1 — a no-op, not an error, when nothing can
-  /// play: the surfaces that call this only exist while [canPlayVoice], so
-  /// reaching here without one is the radio dropping between the check and
-  /// the keypress.
-  /// [repeat] is what separates KEYING a memory from auditioning one: the
-  /// editor's Play is the operator listening to what they recorded, and a CQ
-  /// that started repeating from inside a settings dialog would be one
-  /// nobody was watching the air for.
-  void playVoiceMemory(int n, {bool repeat = true}) {
-    final session = _voiceKeyer;
-    if (session == null) return;
-    try {
-      // Message 1 only, the same rule as CW (SettingsService.voiceRepeatDelay).
-      // Armed HERE rather than at the surfaces, because a memory needs no
-      // rendering: the app has nothing to prepare, so every way of playing
-      // one — a key, a button, the dialog — repeats alike. Any OTHER memory
-      // ends a chain: the operator has moved on.
-      cancelKeyerRepeat();
-      _startMeasurement(n);
-      session.playVoiceMemory(n);
-      // Armed only once the session has taken it: a throw above would
-      // otherwise leave a chain armed with nothing playing, and nothing
-      // ending to start its next wait.
-      if (repeat && n == 1 && _settings.voiceRepeatDelay > Duration.zero) {
-        armKeyerRepeat(
-          delay: _settings.voiceRepeatDelay,
-          text: '',
-          memory: n,
-          send: () => playVoiceMemory(n),
-        );
-      }
-    } catch (e, st) {
-      cancelKeyerRepeat();
-      ErrorReportingService.report(e, st, context: 'cat:play-voice-memory');
-    }
-  }
-
-  /// Starts recording memory [n] on radio1 — see [VoiceKeyerSession.recordVoiceMemory].
-  void recordVoiceMemory(int n) {
-    final session = _voiceKeyer;
-    if (session == null || !session.canRecordVoice) return;
-    try {
-      session.recordVoiceMemory(n);
-    } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'cat:record-voice-memory');
-    }
-  }
-
-  /// Real milliseconds at the play that is being timed, and which memory it
-  /// is — real, because the length of a message must not stretch with the
-  /// app clock (docs/design/time.md). Null while nothing is being timed.
-  int? _playStart;
-  int? _playMemory;
-
-  /// Whether the radio ever DOUBTED this play — answered "not going" before
-  /// it ever answered "going" (voice_activity_tracker.dart). That is what a
-  /// refused memory looks like, and it is not something to measure.
-  bool _playDoubted = false;
-
-  /// Times the play that just started, so ordinary use measures the memory:
-  /// every play is a measurement, and no operator has to ask for one. Safe
-  /// on any radio, since it times what the radio itself reports rather than
-  /// anything it is told.
-  void _startMeasurement(int n) {
-    _playStart = realNowMillis();
-    _playMemory = n;
-    _playDoubted = false;
-  }
-
-  /// Stores what the play lasted, when the radio said it was playing at all.
-  /// In milliseconds, as measured: the number paces a progress bar, and a
-  /// value rounded to the second finishes visibly early or late.
-  ///
-  /// Three plays are NOT measurements. One the radio DOUBTED: "idle" before
-  /// ever "going" is a refused memory, and storing its doubt linger as a
-  /// length invents one. One the CEILING stopped: that timed the app's own
-  /// limit, not the audio. And a recording, which times how long the
-  /// operator held the button — [stopVoice] drops the timing outright, since
-  /// a play the operator cut short did not reach its end either.
-  Future<void> _endMeasurement() async {
-    final memory = _playMemory;
-    final start = _playStart;
-    final doubted = _playDoubted;
-    _playMemory = null;
-    _playStart = null;
-    _playDoubted = false;
-    if (memory == null || start == null || doubted) return;
-    final elapsed = realNowMillis() - start;
-    final ceiling = _voiceKeyer?.voiceMemoryCeiling ?? voiceActivityCeiling;
-    if (elapsed >= ceiling.inMilliseconds) return;
-    if (elapsed <= 0) return;
-    await _settings.setVoiceMessageDuration(memory, elapsed);
-  }
-
-  /// Stops whatever radio1's voice keyer is playing or recording.
-  void stopVoice() {
-    // A stop is a stop, the same as [stopCw]'s.
-    cancelKeyerRepeat();
-    // And what it stopped is NOT a measurement: the memory did not play to
-    // its end, so timing it would store a length shorter than the audio and
-    // pace every later bar to finish early.
-    _playMemory = null;
-    _playStart = null;
-    _playDoubted = false;
-    final session = _voiceKeyer;
-    if (session == null) return;
-    try {
-      session.stopVoice();
-    } catch (e, st) {
-      ErrorReportingService.report(e, st, context: 'cat:stop-voice');
-    }
-  }
+  @override
+  String? get localRadio1 => _localRadio1;
 
   /// Routes an antenna switch's device port to one of its antenna ports.
   ///
@@ -1319,6 +1084,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// The type handling [node], or null if it isn't in the catalogue — a
   /// record written by a newer build, or by a driver that has since been
   /// removed. The node stays in the list and says so rather than vanishing.
+  @override
   EquipmentType? typeFor(EquipmentNode node) => registry.typeFor(node.typeKey);
 
   /// What to call [node] in the UI: the operator's own name for it, or the
@@ -1502,6 +1268,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     return stored;
   }
 
+  @override
   Future<void> updateNode(EquipmentNode node) async {
     final previous = _nodes[node.uuid];
     if (previous == null) return;
@@ -2062,17 +1829,17 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         // A keyer has no VFO to feed the silence watch with — see the
         // reasoning at onSwitchState.
         _noteAlive(uuid, runtime);
-        // Only the designated key keys for the app, so only it is shown.
-        if (uuid == _cwKeyerUuid) {
-          cwProgress.value = progress;
-          // Nothing left keying is where a CW repeat's wait begins.
-          if (progress == null && _repeatMemory == null) _startRepeatWait();
-        }
+        // Only the designated key keys for the app, so only its progress is
+        // shown — and reported to a peer following one of this station's
+        // radios, which is why it crosses whether or not anything here is
+        // looking at the strip.
+        _keying.noteCwProgress(uuid, progress);
       },
       onKeyerSpeed: (wpm) {
         if (runtime.connection != connection) return;
         _noteAlive(uuid, runtime);
         if (stateFor(uuid).keyerSpeed != wpm) _setState(uuid, stateFor(uuid).copyWith(keyerSpeed: wpm));
+        if (uuid == keyInUse) _keying.onKeyingChanged();
       },
       onVoiceActivity: (activity) {
         if (runtime.connection != connection) return;
@@ -2080,27 +1847,7 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         // app's own keypress and at a local ceiling timer, never from a byte
         // off the radio, so it says nothing about the link. The poll answers
         // that end one feed the watch through the normal reading path.
-        // Only radio1's memories play for the app, so only its are shown.
-        // `_localRadio1`, not `_radio1`: radio1 can now be a PEER's rig, and
-        // a peer's memories are not this station's to play or time.
-        if (uuid != _localRadio1) return;
-        voiceActivity.value = activity;
-        if (_playMemory == null) return;
-        // These same reports time the play: a doubtful one is the radio
-        // never confirming, and the end is what the clock stops at.
-        if (activity == null) {
-          unawaited(_endMeasurement());
-        } else if (activity.doubtful) {
-          // The radio said "not going" before it ever said "going": a
-          // refused memory, whose "length" would be the doubt linger rather
-          // than any audio. Watched rather than asked about, because a
-          // confirmed play reports nothing new to see (the tracker only
-          // re-reports an activity whose doubt it is WITHDRAWING).
-          _playDoubted = true;
-        }
-        // The memory ending is where a voice repeat's wait begins — the
-        // counterpart of cwProgress going null for a message.
-        if (activity == null && _repeatMemory != null) _startRepeatWait();
+        _keying.noteVoiceActivity(uuid, activity);
       },
       onProblem: (message) {
         if (runtime.connection != connection) return;
@@ -2779,8 +2526,16 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // freshly-reconnected radio silently disagreeing.
     runtime.lastSent = null;
     runtime.lastSentPower = null;
-    if (identical(_runtimes[designatedFor(kCategoryKey)], runtime)) cwProgress.value = null;
-    if (_localRadio1 != null && identical(_runtimes[_localRadio1], runtime)) voiceActivity.value = null;
+    // Whatever this node was keying is not keying now — and a radio that is
+    // gone is playing nothing, which a peer following it has to be told.
+    for (final entry in _runtimes.entries) {
+      if (!identical(entry.value, runtime)) continue;
+      _keying.forgetNode(
+        entry.key,
+        wasKeyInUse: entry.key == keyInUse,
+        wasRadio1: entry.key == _localRadio1,
+      );
+    }
     // A pending snap belongs to the session that reported the movement. It
     // has nowhere to be sent now, and the next session's first reading is a
     // fresh resting point, not the continuation of a knob turn. Only for the
@@ -2834,12 +2589,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // After the teardowns, whose synchronous prefix clears cwProgress for
     // the designated radio — a notifier disposed first would be notified.
     cancelKeyerRepeat();
-    cwProgress.dispose();
-    keyerRepeat.dispose();
-    keyerRepeatActive.dispose();
-    voiceActivity.dispose();
-    keyerAreaShown.dispose();
-    keyerShowRequests.dispose();
+    _keying.dispose();
+    _repeat.dispose();
     _runtimes.clear();
     super.dispose();
   }

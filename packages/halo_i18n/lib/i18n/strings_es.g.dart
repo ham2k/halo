@@ -1989,6 +1989,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get newKey => 'Nuevo manipulador';
 	@override String get newKeyer => 'WinKeyer (K1EL o compatible)';
 	@override String keyViaRadio({required Object radio}) => 'Manipulador CAT en ${radio}';
+	@override String keyOnDevice({required Object device}) => 'Manipulador en ${device}';
 	@override String get cwKeyerArea => 'Área del manipulador';
 	@override String get trackStationInfo => 'Registrar datos de la estación en cada QSO';
 	@override String get includeStationInfoInAdif => 'Incluir en las exportaciones ADIF';
@@ -2723,6 +2724,7 @@ class _Translations$settings$radio$voiceMessages$es extends Translations$setting
 	@override String get repeatOff => 'No';
 	@override String repeatAfter({required Object n}) => 'Tras ${n} segundos';
 	@override String recordHelpTitle({required Object model}) => 'Notas del ${model}:';
+	@override String namedOnDevice({required Object device}) => 'Estas memorias están en la radio de ${device}. Sus nombres y duraciones pertenecen a ese dispositivo.';
 	@override String get recordHelpYaesuDvs => 'Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.';
 	@override String get recordHelpFt891 => 'Espera a que el indicador [REC] parpadee al menos cuatro veces, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.';
 	@override String get pill => 'Voz';
@@ -3795,6 +3797,7 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.repeatOff' => 'No',
 			'settings.radio.voiceMessages.repeatAfter' => ({required Object n}) => 'Tras ${n} segundos',
 			'settings.radio.voiceMessages.recordHelpTitle' => ({required Object model}) => 'Notas del ${model}:',
+			'settings.radio.voiceMessages.namedOnDevice' => ({required Object device}) => 'Estas memorias están en la radio de ${device}. Sus nombres y duraciones pertenecen a ese dispositivo.',
 			'settings.radio.voiceMessages.recordHelpYaesuDvs' => 'Espera al indicador [REC] en la radio, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.',
 			'settings.radio.voiceMessages.recordHelpFt891' => 'Espera a que el indicador [REC] parpadee al menos cuatro veces, luego mantén pulsado el PTT y graba tu mensaje. Termínalo pulsando el botón DETENER aquí en la app antes de soltar el PTT para evitar clics indeseados.',
 			'settings.radio.voiceMessages.pill' => 'Voz',
@@ -3971,9 +3974,9 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
-			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esto continuará automáticamente en cuanto lo hagas.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esto continuará automáticamente en cuanto lo hagas.',
 			'settings.accounts.loginNoResponse' => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cancela e intenta conectar de nuevo.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
@@ -4215,6 +4218,7 @@ extension on TranslationsEs {
 			'settings.station.newKey' => 'Nuevo manipulador',
 			'settings.station.newKeyer' => 'WinKeyer (K1EL o compatible)',
 			'settings.station.keyViaRadio' => ({required Object radio}) => 'Manipulador CAT en ${radio}',
+			'settings.station.keyOnDevice' => ({required Object device}) => 'Manipulador en ${device}',
 			'settings.station.cwKeyerArea' => 'Área del manipulador',
 			'settings.station.trackStationInfo' => 'Registrar datos de la estación en cada QSO',
 			'settings.station.includeStationInfoInAdif' => 'Incluir en las exportaciones ADIF',
@@ -4484,10 +4488,10 @@ extension on TranslationsEs {
 			'notices.webStorageUnreliable' => 'Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.',
 			'notices.preferencesRestoredTitle' => 'Ajustes restaurados desde una copia',
 			'notices.preferencesRestored' => 'No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.',
-			'notices.preferencesResetTitle' => 'Ajustes reiniciados',
-			'notices.preferencesReset' => 'No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json.',
 			_ => null,
 		} ?? switch (path) {
+			'notices.preferencesResetTitle' => 'Ajustes reiniciados',
+			'notices.preferencesReset' => 'No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} no se conectó automáticamente',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo dejó de responder la última vez que empezó a conectarse a ${name}, así que esta vez no lo intentó para no repetirlo. Comprueba que la radio esté encendida y su cable conectado, y luego pulsa Conectar en ella dentro de Ajustes.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Cuenta anónima (#${id})',

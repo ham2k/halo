@@ -352,6 +352,18 @@ EquipmentModel _fakeModel(EquipmentDriver driver, EquipmentTransport transport) 
 /// moves the floor toward the deadline until a healthy shortcut misses it.
 const idleRetryFloor = Duration(milliseconds: 20);
 
+/// Long enough that the idle loop cannot fire DURING a test — for the ones
+/// that assert on what a burst left behind rather than on the loop itself.
+///
+/// The trap it exists for: `_reconnectWithRetries` schedules the idle retry as
+/// its last act and returns, so `await burst` completes with that timer armed.
+/// Twenty milliseconds of wall clock is plenty on an idle machine and no time
+/// at all on a loaded one, and when it fires it starts a fresh attempt — which
+/// writes a fresh mark and sets the node `connecting`. A test asserting the
+/// mark is clear, or the node is in error, then fails for a reason that has
+/// nothing to do with what it is testing, and only when the suite is busy.
+const idleRetryQuiet = Duration(minutes: 5);
+
 /// How far above the floor a tune must land. Ten times, so an isolate has to
 /// stall for a fifth of a second before a machine hiccup can fail the test.
 const _tuningDeadlineFactor = 10;
@@ -368,6 +380,7 @@ void main() {
 
   Future<CatService> makeService({
     void Function(String event, [Map<String, Object?> properties])? onTrack,
+    Duration? idleRetryFirst,
   }) async {
     settings = SettingsService(await SharedPreferences.getInstance());
     log = [];
@@ -386,8 +399,10 @@ void main() {
       reconnectDelay: Duration.zero,
       // Short, not zero: the backoff doubles it, and zero doubled is a tight
       // loop. Long enough that a test which does NOT want a retry can pump the
-      // queue without tripping one.
-      idleRetryFirst: idleRetryFloor,
+      // queue without tripping one — but that is WALL CLOCK, so a test whose
+      // assertions must not race the idle loop passes [idleRetryQuiet] rather
+      // than relying on the machine being quick enough.
+      idleRetryFirst: idleRetryFirst ?? idleRetryFloor,
       // The real window is 30 s. Long enough that no test trips it by
       // accident while pumping the queue, short enough to wait out on
       // purpose.
@@ -2495,7 +2510,10 @@ void main() {
         SharedPreferencesStorePlatform.instance = refusing;
         SharedPreferences.resetStatic();
       }
-      final service = await makeService();
+      // The idle loop is nothing this group asserts on, and every assertion
+      // below is taken after a burst has been left to schedule one — see
+      // [idleRetryQuiet].
+      final service = await makeService(idleRetryFirst: idleRetryQuiet);
       addTearDown(service.dispose);
       return service;
     }

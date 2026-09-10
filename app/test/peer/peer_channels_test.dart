@@ -104,8 +104,52 @@ class _FakeStation extends ChangeNotifier implements PeerStationRadios {
   final List<String> tuneRequests = [];
 
   @override
-  List<PeerRadioOffer> get offeredRadios =>
-      [if (offeredId case final id?) PeerRadioOffer(id: id, name: offeredName)];
+  List<PeerRadioOffer> get offeredRadios => [
+        if (offeredId case final id?)
+          PeerRadioOffer(id: id, name: offeredName, keysCw: keysCw, voiceMemories: voiceMemories),
+      ];
+
+  /// What this station says it can be asked to do with the radio it offers.
+  bool keysCw = false;
+  int voiceMemories = 0;
+
+  /// What it reports that radio is keying, and what it was asked to key.
+  /// Requests are recorded whether or not the radio is offered: the refusal
+  /// is what several of these tests assert on, exactly as for [tuneRequests].
+  PeerKeyStatusPayload? keying;
+  final List<PeerKeyRequestPayload> keyRequests = [];
+
+  /// The peers' keying, as this station was told about it — and the peers it
+  /// was told to forget.
+  final List<PeerKeyStatusPayload> notedKeyStatus = [];
+  final List<String> forgottenPeers = [];
+
+  final _keyingRevision = ValueNotifier<int>(0);
+
+  /// Announces a change in what is keying, the way a keyer's report does —
+  /// deliberately NOT [notifyListeners], since that is the offer's channel.
+  void keyingChanged() => _keyingRevision.value++;
+
+  @override
+  Listenable get keyingChanges => _keyingRevision;
+
+  @override
+  PeerKeyStatusPayload? keyStatusForOfferedRadio(String radioId) {
+    if (offeredId != radioId) return null;
+    return keying ?? PeerKeyStatusPayload(radioId: radioId);
+  }
+
+  @override
+  void handleKeyRequest(PeerKeyRequestPayload request) => keyRequests.add(request);
+
+  @override
+  void notePeerKeyStatus(String deviceId, PeerKeyStatusPayload status) => notedKeyStatus.add(status);
+
+  @override
+  void forgetPeerRadios(String deviceId) => forgottenPeers.add(deviceId);
+
+  @override
+  void Function(PeerKeyRequestPayload request)? sendPeerKeyRequest;
 
   @override
   VfoReading? vfoForOfferedRadio(String radioId) {
@@ -123,6 +167,7 @@ class _FakeStation extends ChangeNotifier implements PeerStationRadios {
   @override
   void dispose() {
     radio.removeListener(notifyListeners);
+    _keyingRevision.dispose();
     super.dispose();
   }
 }
@@ -569,6 +614,122 @@ void main() {
       await laptop.service.setEnabled(false);
       await waitFor('the offer to be forgotten', () => phone.remoteRadios.all.isEmpty);
 
+      expect(phone.station.followedPeerRadio?.radioId, laptop.radioId);
+    });
+  });
+
+  group('keying over the link (HALO-585)', () {
+    test('what the owner is keying reaches the controller, snapshot first', () async {
+      phone.control(laptop);
+      laptop.station.keysCw = true;
+      laptop.station.keying = PeerKeyStatusPayload(
+        radioId: laptop.radioId,
+        keyerSpeedWpm: 24,
+        cw: const PeerCwProgressPayload(id: 3, text: 'CQ TEST', characterEndsMs: [100, 200]),
+      );
+      await paired();
+
+      await waitFor('the establish-time snapshot', () => phone.station.notedKeyStatus.isNotEmpty);
+      expect(phone.station.notedKeyStatus.last.cw?.text, 'CQ TEST');
+      expect(phone.station.notedKeyStatus.last.keyerSpeedWpm, 24);
+
+      // And live, on the owner's own report — which is what the strip paces
+      // on, so it must not wait for the next thing the operator does.
+      laptop.station.keying = PeerKeyStatusPayload(radioId: laptop.radioId);
+      laptop.station.keyingChanged();
+      await waitFor('the message ending to cross',
+          () => phone.station.notedKeyStatus.last.cw == null);
+    });
+
+    test('keying is announced on its OWN listenable, not the offer\'s', () async {
+      // A message advances character by character. Reported off the station's
+      // ordinary notifications it would drag every offer and every VFO with
+      // it, which is why the two channels are separate — and why this asserts
+      // that a keying change alone produces a keying message.
+      phone.control(laptop);
+      await paired();
+      await waitFor('the snapshot', () => phone.station.notedKeyStatus.isNotEmpty);
+      final before = phone.station.notedKeyStatus.length;
+
+      laptop.station.keying = PeerKeyStatusPayload(
+        radioId: laptop.radioId,
+        cw: const PeerCwProgressPayload(id: 9, text: 'TU'),
+      );
+      laptop.station.keyingChanged();
+
+      await waitFor('the report', () => phone.station.notedKeyStatus.length > before);
+      expect(phone.station.notedKeyStatus.last.cw?.text, 'TU');
+    });
+
+    test('an unchanged status is not sent again', () async {
+      // Keying changes fire per character a WinKeyer echoes, and every status
+      // carries the memory labels, their lengths and the whole per-character
+      // timeline — over the BLE gateway that is a lot of bytes to repeat to
+      // peers following nothing.
+      phone.control(laptop);
+      laptop.station.keysCw = true;
+      await paired();
+      await waitFor('the snapshot', () => phone.station.notedKeyStatus.isNotEmpty);
+      final before = phone.station.notedKeyStatus.length;
+
+      laptop.station.keyingChanged();
+      laptop.station.keyingChanged();
+      laptop.station.keyingChanged();
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+
+      expect(phone.station.notedKeyStatus.length, before, reason: 'nothing about it changed');
+    });
+
+    test('the controller\'s request reaches the picked radio, and only it', () async {
+      // Addressed, never broadcast: a keying request is RF out of somebody
+      // else's transmitter, so a second trusted device offering a radio with
+      // the same uuid must hear nothing.
+      final clone = _Device('device-c', 'Spare Laptop', lan.host(), prefs: prefs, ownsRadio: true);
+      addTearDown(clone.dispose);
+      clone.station.setOffered(laptop.radioId);
+      await clone.service.trust.trust('device-b', name: 'Phone');
+      await phone.service.trust.trust('device-c', name: 'Spare Laptop');
+
+      phone.control(laptop);
+      await paired();
+      await clone.service.setEnabled(true);
+      await waitFor('the clone to join too',
+          () => phone.service.peers['device-c']?.session?.established ?? false);
+
+      phone.station.sendPeerKeyRequest!(
+          PeerKeyRequestPayload(radioId: laptop.radioId, op: PeerKeyOp.cw, text: 'CQ TEST'));
+
+      await waitFor('the request to land', () => laptop.station.keyRequests.isNotEmpty);
+      expect(laptop.station.keyRequests.single.text, 'CQ TEST');
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(clone.station.keyRequests, isEmpty,
+          reason: 'one operator pressing F1 must not key a rig in someone else\'s shack');
+    });
+
+    test('a request for a radio the operator did not pick is not sent', () async {
+      // The pick is what stands between a paired device and a transmitter:
+      // the router refuses to address a request that names anything else,
+      // rather than trusting the caller to have checked.
+      phone.control(laptop);
+      await paired();
+
+      phone.station.sendPeerKeyRequest!(
+          const PeerKeyRequestPayload(radioId: 'rig-nobody-picked', op: PeerKeyOp.cw, text: 'CQ'));
+
+      await Future<void>.delayed(const Duration(milliseconds: 300));
+      expect(laptop.station.keyRequests, isEmpty);
+    });
+
+    test('a peer walking away withdraws what it could key', () async {
+      // The pick stands — that is the offer's rule too — but the strip and
+      // the buttons must not go on addressing a device that is gone.
+      phone.control(laptop);
+      await paired();
+      await waitFor('the offer', () => phone.remoteRadios.all.isNotEmpty);
+
+      await laptop.service.setEnabled(false);
+
+      await waitFor('the station to be told', () => phone.station.forgottenPeers.contains('device-a'));
       expect(phone.station.followedPeerRadio?.radioId, laptop.radioId);
     });
   });

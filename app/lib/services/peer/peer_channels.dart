@@ -27,6 +27,7 @@
 // nobody pointed it at.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
@@ -61,6 +62,8 @@ class PeerChannels {
     location.addListener(_onLocationChanged);
     radio?.addListener(_onRadioChanged);
     station?.addListener(_onStationChanged);
+    station?.keyingChanges.addListener(_onKeyingChanged);
+    station?.sendPeerKeyRequest = _sendKeyRequest;
   }
 
   final PeerService peers;
@@ -144,6 +147,10 @@ class PeerChannels {
     location.removeListener(_onLocationChanged);
     radio?.removeListener(_onRadioChanged);
     station?.removeListener(_onStationChanged);
+    station?.keyingChanges.removeListener(_onKeyingChanged);
+    // Same `==` reasoning as the callbacks above: another router's sender
+    // must survive this one's disposal.
+    if (station?.sendPeerKeyRequest == _sendKeyRequest) station?.sendPeerKeyRequest = null;
     _sharingGps = false;
     // The bump makes an in-flight start's completion release what it takes;
     // the stop below balances a take that already landed.
@@ -286,6 +293,13 @@ class PeerChannels {
   void _onStationChanged() {
     _announceOffers();
     _reportOfferedVfos();
+    // Keying as well, not only on [_onKeyingChanged]: a radio that connects
+    // after the session established gets its offer here and nothing else, so
+    // a controller picking it would see no speed, no memory names and no
+    // measured lengths until that station happened to key something. Deduped,
+    // so the usual case — a reading from a rig nobody is keying — sends
+    // nothing.
+    _reportKeying();
     _followNewSelection();
   }
 
@@ -310,6 +324,7 @@ class PeerChannels {
     // silence against a value the controller never heard.
     final ids = {for (final offer in offers) offer.id};
     _lastSentVfo.removeWhere((id, _) => !ids.contains(id));
+    _lastSentKeying.removeWhere((id, _) => !ids.contains(id));
     final message = PeerMessage.catOffer(offers);
     if (to != null) {
       to.sendEphemeral(message);
@@ -333,6 +348,52 @@ class PeerChannels {
         peers.broadcastEphemeral(message);
       }
     }
+  }
+
+  /// What this device's own radios are keying, so a peer driving one can
+  /// watch its message go out. Broadcast like [_reportOfferedVfos] and read
+  /// by the one controller that picked the radio — a status nobody picked
+  /// costs a reader one comparison.
+  ///
+  /// Deduped per radio like [_reportOfferedVfos], against the whole encoded
+  /// status: keying changes fire on every character a WinKeyer echoes, and
+  /// each message carries the memory labels, their lengths and the message's
+  /// whole per-character timeline. A status identical to the last one says
+  /// nothing new — and over the BLE gateway, says it expensively.
+  void _reportKeying({PeerSession? to}) {
+    final station = this.station;
+    if (station == null) return;
+    for (final offer in station.offeredRadios) {
+      final status = station.keyStatusForOfferedRadio(offer.id);
+      if (status == null) continue;
+      final message = PeerMessage.keyStatus(status);
+      final encoded = jsonEncode(message.fields);
+      if (to == null && _lastSentKeying[offer.id] == encoded) continue;
+      _lastSentKeying[offer.id] = encoded;
+      if (to != null) {
+        to.sendEphemeral(message);
+      } else {
+        peers.broadcastEphemeral(message);
+      }
+    }
+  }
+
+  /// The last keying status sent for each radio, encoded — see
+  /// [_reportKeying]. Cleared with the offer for the same reason
+  /// [_lastSentVfo] is: a radio that stopped being offered must re-state what
+  /// it is doing rather than be deduped against a value no controller heard.
+  final Map<String, String> _lastSentKeying = {};
+
+  void _onKeyingChanged() => _reportKeying();
+
+  /// This device's operator asked for something to be keyed on the radio
+  /// they picked. Addressed to that peer alone, never broadcast: a keying
+  /// request is a transmitter, and the only device that may act on this one
+  /// is the one whose radio was chosen.
+  void _sendKeyRequest(PeerKeyRequestPayload request) {
+    final selection = station?.followedPeerRadio;
+    if (selection == null || selection.radioId != request.radioId) return;
+    peers.peers[selection.deviceId]?.session?.sendEphemeral(PeerMessage.keySet(request));
   }
 
   /// This device's `vfoA` moved. Forwarded only when its operator picked a
@@ -366,6 +427,10 @@ class PeerChannels {
     _broadcastOwnFix(to: session);
     _announceOffers(to: session);
     _reportOfferedVfos(to: session);
+    // Including what is keying right now: a controller that engages
+    // mid-message otherwise shows a quiet strip over a transmitter that is
+    // on the air, and hears nothing more about it until the NEXT message.
+    _reportKeying(to: session);
     final peerDeviceId = session.peer?.deviceId;
     if (peerDeviceId != null) {
       _establishedPeers.add(peerDeviceId);
@@ -387,7 +452,9 @@ class PeerChannels {
   }
 
   void _reconcileDepartedPeers() {
-    if (screens == null && views == null && drafts == null && remoteRadios == null) return;
+    if (screens == null && views == null && drafts == null && remoteRadios == null && station == null) {
+      return;
+    }
     final live = <String>{
       for (final entry in peers.peers.entries)
         if (entry.value.session?.established ?? false) entry.key,
@@ -402,6 +469,10 @@ class PeerChannels {
       // only what it is offering, so the picker says unavailable rather
       // than listing a radio nobody can reach.
       remoteRadios?.forgetPeer(gone);
+      // Nor what it could be asked to KEY: a strip left showing that peer's
+      // last message, over buttons addressing a device that is not there,
+      // is worse than a strip that has gone quiet.
+      station?.forgetPeerRadios(gone);
       _peerVfos.removeWhere((key, _) => key.startsWith('$gone/'));
     }
     _establishedPeers
@@ -490,6 +561,31 @@ class PeerChannels {
       final vfo = message.vfoOrNull;
       if (vfo != null) {
         station?.tuneOfferedRadio(vfo.radioId, freqKHz: vfo.freqKHz, mode: vfo.mode);
+      }
+      return;
+    }
+    if (message.type == PeerMessageType.keyStatus) {
+      // What one of that peer's radios is keying — applied only for the
+      // radio this operator picked, which the station decides. Dropped for
+      // every other, sender included: a device that offers radios hears its
+      // own controllers' reports of them.
+      final status = message.keyStatusOrNull;
+      if (status != null) station?.notePeerKeyStatus(peerDeviceId, status);
+      return;
+    }
+    if (message.type == PeerMessageType.keySet) {
+      // A keying request for one of THIS device's radios, honored only for a
+      // radio it is currently offering and through the same funnel a local
+      // function key takes. The session already refused anything untrusted;
+      // this is where that trust becomes RF.
+      final request = message.keyRequestOrNull;
+      if (request == null) {
+        // Reported rather than dropped in silence: a build that renames a
+        // field lands here, and every message would go quiet with no sign of
+        // why — on the one feature whose failure is a dead function key.
+        debugPrint('[peer] unreadable keySet from $peerDeviceId');
+      } else {
+        station?.handleKeyRequest(request);
       }
       return;
     }

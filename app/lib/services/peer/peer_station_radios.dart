@@ -129,6 +129,41 @@ abstract class PeerStationRadios implements Listenable {
   /// same path and echo guards a local operator's tune takes.
   void tuneOfferedRadio(String radioId, {double? freqKHz, String? mode});
 
+  /// What one of [offeredRadios] is keying — the speed, the message going
+  /// out, the memory playing, and what this device calls its memories. Null
+  /// for a radio not offered, the same guard [vfoForOfferedRadio] applies.
+  PeerKeyStatusPayload? keyStatusForOfferedRadio(String radioId);
+
+  /// Keys one of this device's own radios on a peer's behalf, through the
+  /// same funnels a local function key takes. The station honors it only for
+  /// a radio it is currently offering.
+  void handleKeyRequest(PeerKeyRequestPayload request);
+
+  /// Fires when what an offered radio is keying changes.
+  ///
+  /// Separate from this object's own notifications on purpose: those fire on
+  /// every reading from every rig and are what the Station panel rebuilds
+  /// on, while a message advances character by character. The router reports
+  /// keying off this and offers off the other.
+  Listenable get keyingChanges;
+
+  /// What the picked peer's radio is keying, as that peer reports it. The
+  /// station drops anything about a radio its operator did not pick — a
+  /// device that offers radios hears its own controllers' reports too.
+  void notePeerKeyStatus(String deviceId, PeerKeyStatusPayload status);
+
+  /// That peer's radios are out of reach. The PICK stands — the same rule
+  /// the offer follows — and what goes is only what it could be asked to do.
+  void forgetPeerRadios(String deviceId);
+
+  /// Where this station's own keying requests go when the radio filling
+  /// radio1 is a peer's. Set by the router while it is up, and cleared with
+  /// it: on a build with no bridge this is null, which is what makes a peer
+  /// radio unkeyable there rather than swallowing messages that reach
+  /// nothing. The router addresses them — it knows which device the pick
+  /// names, and the station only knows the request.
+  abstract void Function(PeerKeyRequestPayload request)? sendPeerKeyRequest;
+
   /// The peer radio this device's `vfoA` follows, or null when `vfoA` is a
   /// local rig's or nothing's. Read fresh on every message: the operator can
   /// change the pick while sessions are up.

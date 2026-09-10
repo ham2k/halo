@@ -1074,7 +1074,12 @@ class StationPanel extends StatelessWidget {
             // The key and what it is set to, side by side: the speed is a
             // fact about the key named beside it, which is why they share a
             // row rather than sitting one under the other.
-            if (keys.isNotEmpty) _keyRow(context, inset: rowInset, keys: keys),
+            // Shown for a peer's key too, though it is no node of this
+            // station: the phone this feature is for has no key inventory of
+            // its own, and without this row its operator could neither set
+            // the speed nor step off the peer's key.
+            if (keys.isNotEmpty || (keyerExperiment && _cat.peerOffersCwKeying))
+              _keyRow(context, inset: rowInset, keys: keys),
 
             // One keyer row for both keyers: the messages to edit, and the
             // switch that shows the logging panel's strip. In BOTH layouts,
@@ -1236,6 +1241,9 @@ class StationPanel extends StatelessWidget {
   Widget _keyRow(BuildContext context, {required EdgeInsets inset, required List<EquipmentNode> keys}) {
     final st = context.t.settings.station;
     final keyerExperiment = services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
+    // The peer whose radio drives the VFO, when one does: its own key is
+    // what keys for this operator unless they pick otherwise (HALO-585).
+    final peer = _cat.followedPeerRadio;
     final canKey = _cat.canKeyCw;
     final range = _cat.keyerSpeedRange;
     final speed = _cat.keyerSpeed;
@@ -1246,15 +1254,33 @@ class StationPanel extends StatelessWidget {
         children: [
           Expanded(
             child: _DesignationDropdown(
-              key: ValueKey(_cat.designatedFor(kCategoryKey)),
+              key: ValueKey('${_cat.designatedFor(kCategoryKey)}:${_cat.peerKeyIsInUse}'),
               label: st.keyInUse,
               nodes: keys,
-              selected: _cat.designatedFor(kCategoryKey),
+              // The peer's key is a default, so nothing is stored for it —
+              // and a picker reading the stored value alone would say None
+              // while F1 keys over the link.
+              selected: peer != null && _cat.peerKeyIsInUse && _cat.peerOffersCwKeying
+                  ? peerRadioValue(peer)
+                  : _cat.designatedFor(kCategoryKey),
               // A radio in this list is its keyer, not the radio.
               displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver
                   ? st.keyViaRadio(radio: _displayName(node))
                   : _displayName(node),
               noneLabel: st.noneSelected,
+              // The peer whose radio drives the VFO keys for this operator
+              // unless they say otherwise — offered here so saying otherwise
+              // can be undone. Only while it OFFERS keying: a device that
+              // keys nothing is not a key.
+              extras: [
+                if (keyerExperiment && peer != null && _cat.peerOffersCwKeying)
+                  (
+                    value: peerRadioValue(peer),
+                    label: st.keyOnDevice(
+                      device: peer.deviceName.isEmpty ? peer.deviceId : peer.deviceName,
+                    ),
+                  ),
+              ],
               onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
             ),
           ),
@@ -1541,6 +1567,12 @@ class _DesignationDropdown extends StatelessWidget {
   final String noneLabel;
   final void Function(String? uuid) onChanged;
 
+  /// Picks that are not nodes of this station — the peer whose radio keys
+  /// (HALO-585). Listed like the rest so an operator who pointed this radio
+  /// at a local key has a way back to it; a menu whose default is missing
+  /// from its own list is one that cannot be re-chosen.
+  final List<({String value, String label})> extras;
+
   const _DesignationDropdown({
     super.key,
     required this.label,
@@ -1549,13 +1581,15 @@ class _DesignationDropdown extends StatelessWidget {
     required this.displayName,
     required this.noneLabel,
     required this.onChanged,
+    this.extras = const [],
   });
 
   @override
   Widget build(BuildContext context) {
+    final known = nodes.any((n) => n.uuid == selected) || extras.any((e) => e.value == selected);
     return DropdownButtonFormField<String?>(
       isExpanded: true,
-      initialValue: nodes.any((n) => n.uuid == selected) ? selected : null,
+      initialValue: known ? selected : null,
       icon: dropdownTrailingIcon,
       decoration: poloFieldDecoration(context, label),
       menuMaxHeight: dropdownMenuMaxHeight(context),
@@ -1563,6 +1597,11 @@ class _DesignationDropdown extends StatelessWidget {
         DropdownMenuItem<String?>(value: null, child: Text(noneLabel)),
         for (final node in nodes)
           DropdownMenuItem<String?>(value: node.uuid, child: Text(displayName(node), overflow: TextOverflow.ellipsis)),
+        for (final extra in extras)
+          DropdownMenuItem<String?>(
+            value: extra.value,
+            child: Text(extra.label, overflow: TextOverflow.ellipsis),
+          ),
       ],
       onChanged: onChanged,
     );
