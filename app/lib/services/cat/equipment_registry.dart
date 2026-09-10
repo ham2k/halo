@@ -994,6 +994,32 @@ List<Map<String, dynamic>> _elecraftSerialNotes() => [
       },
     ];
 
+/// Where CI-V sits when an Icom presents more than one USB serial port OF ITS
+/// OWN — which is what limits who may declare it.
+///
+/// Icom calls them Port A and Port B, ships both set to CI-V, and puts CI-V
+/// on Port A — the first the OS enumerates. The picker POINTS at that port
+/// and hides nothing (serial_transport_config.dart), which is what makes one
+/// claim across the catalogue reasonable: a radio whose ports the platform
+/// cannot split is unaffected, and a radio that turns out to differ costs a
+/// bold row on the wrong one while the right one stays a tap away. It is
+/// also why the operator who deliberately moved CI-V to Port B is not shut
+/// out: were this a filter rather than a ranking, that operator would face a
+/// picker offering only the port their radio does not answer on.
+///
+/// A radio with one USB port, or none at all — the IC-706MKIIG reaches CI-V
+/// through a level converter — declares nothing. On those the only ports to
+/// rank are the operator's own cable's, and Icom's convention says nothing
+/// about which channel of somebody else's dual bridge carries CI-V; the
+/// other one is usually PTT, which picks and then answers nothing.
+///
+/// OBSERVED on exactly one radio: an IC-705 over USB on Android, which
+/// presents both ports under its own name with nothing else to tell them
+/// apart. Every other model here is INFERRED from Icom's convention and
+/// their shared CDC/ACM shape, where Port A is the first data interface.
+/// Treat a report that contradicts it as the better evidence.
+const _icomCatPort = {'index': 0};
+
 /// Any Icom transceiver over CI-V on a serial port — the IC-705's USB
 /// connection, and equally an IC-7300 or IC-9700 with a different address.
 ///
@@ -1024,6 +1050,7 @@ const icomGenericModel = EquipmentModel(
         cwKeyerConfigKey: false,
         voiceMemoriesConfigKey: 0,
       },
+      restrictions: {'port': _icomCatPort},
       notes: _icomGenericSerialNotes,
     ),
   ],
@@ -1141,7 +1168,11 @@ const ic706mkiigModel = EquipmentModel(
 
 String _ic706mkiigName() => t.settings.station.models.ic706mkiig;
 
-List<Map<String, dynamic>> _ic7610SerialNotes() => _civSerialNotes();
+/// The address note plus the family's two-port one: this radio presents both
+/// ports and now has one of them marked, so the operator gets the reason for
+/// the marker and the escape hatch if it points the wrong way.
+List<Map<String, dynamic>> _ic7610SerialNotes() =>
+    _civSerialNotes(extra: '\n\n${t.settings.station.icomCivTroubleshooting}');
 
 /// Icom IC-7610 over its built-in USB CI-V port.
 ///
@@ -1161,6 +1192,7 @@ const ic7610Model = EquipmentModel(
       transport: SerialTransport(),
       defaultConfig: {'civAddress': '98', 'baudRate': 9600},
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
+      restrictions: {'port': _icomCatPort},
       notes: _ic7610SerialNotes,
     ),
   ],
@@ -1188,6 +1220,7 @@ const ic7760Model = EquipmentModel(
       transport: SerialTransport(),
       defaultConfig: {'civAddress': 'B2', 'baudRate': 19200},
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: civVoiceMemoryCount, voiceCeilingConfigKey: _icomVoiceSeconds},
+      restrictions: {'port': _icomCatPort},
       notes: _ic7760SerialNotes,
     ),
   ],
@@ -1292,10 +1325,9 @@ const ic705Model = EquipmentModel(
         voiceMemoriesConfigKey: civVoiceMemoryCount,
         voiceCeilingConfigKey: _icomVoiceSeconds,
       },
-      // Two USB serial ports under one name, CI-V on the first: the picker
-      // points at that one where the platform can tell them apart, and
-      // still lists the other — either port can be switched to CI-V.
-      restrictions: {'port': {'index': 0}},
+      // The radio [_icomCatPort] was actually observed on: two ports under
+      // one name, nothing but their order to tell them apart.
+      restrictions: {'port': _icomCatPort},
       notes: _ic705SerialNotes,
     ),
   ],

@@ -14,6 +14,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
+import 'package:ham2k_logger/services/cat/equipment_brands.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transport.dart';
 import 'package:ham2k_logger/services/cat/transports/serial_port_sightings.dart';
@@ -532,11 +533,52 @@ void main() {
       expect(registry.typeFor('x6100-serial')!.restrictions['port'], {'index': 1});
     });
 
-    test('the IC-705 speaks CI-V on the first of the two ports it presents', () {
-      // Both ports carry the radio's own name on Android, so the picker's
-      // labels are no help; the restriction is the only thing that tells
-      // them apart.
-      expect(registry.typeFor('ic705-serial')!.restrictions['port'], {'index': 0});
+    // Which Icoms claim Port A, named rather than derived. A filter on the
+    // manufacturer would let an entry drop out of the set silently — renamed
+    // brand string, re-keyed variant — and a guard that shrinks to nothing
+    // still passes.
+    const claimsPortA = {'icom-generic-serial', 'ic705-serial', 'ic7610-serial', 'ic7760-serial'};
+    const noPortOfItsOwn = {'ic7300-serial', 'ic7300mk2-serial', 'ic706mkiig-serial'};
+
+    test('the Icoms with two USB ports of their own claim the first', () {
+      for (final key in claimsPortA) {
+        final port = registry.typeFor(key)?.restrictions['port'] as Map?;
+        // The INDEX, not the whole map: an Icom shipped behind a known
+        // bridge may legitimately add a `suggest` clause the way the CP2105
+        // Yaesus do below, and deep equality would fail it for being more
+        // specific. The map's shape is pinned by the self-check above.
+        expect(port?['index'], 0, reason: key);
+      }
+    });
+
+    test('a radio whose ports are the operator\'s cable claims nothing', () {
+      // The IC-706MKIIG reaches CI-V through a level converter and the two
+      // IC-7300s present one port each, so the only ports these could ever
+      // rank belong to somebody else's bridge — whose second channel is
+      // usually PTT, which picks and then answers nothing. Icom's Port A
+      // convention is about Icom's own USB and says nothing about that.
+      for (final key in noPortOfItsOwn) {
+        expect(registry.typeFor(key)!.restrictions.containsKey('port'), isFalse, reason: key);
+      }
+    });
+
+    test('every Icom serial pairing is accounted for, one way or the other', () {
+      // The trap: a new Icom added to the catalogue reaching neither list,
+      // so nobody decided whether it points at Port A. Both sets above pass
+      // happily while saying nothing about it.
+      final icoms = {
+        for (final type in registry.types)
+          if (type.model.manufacturer == icomBrand && type.transportKey == 'serial') type.key,
+      };
+      expect(icoms, claimsPortA.union(noPortOfItsOwn));
+    });
+
+    test('the claim is unscoped, so it survives a radio the platform reads no ids for', () {
+      // macOS reads no vendorId at all. A vendor gate here would switch the
+      // claim off on the platform whose device nodes are the hardest to tell
+      // apart, which is where it is worth most.
+      final port = registry.typeFor('ic705-serial')!.restrictions['port'] as Map;
+      expect(port.containsKey('vendorId'), isFalse);
     });
 
     test('the CP2105 Yaesus speak CAT on the Enhanced port, the first, and only on a Silicon Labs bridge', () {
@@ -550,8 +592,12 @@ void main() {
       }
     });
 
-    test('the generics declare nothing: their adapter is whatever the operator plugged in', () {
-      for (final key in ['icom-generic-serial', 'yaesu-serial', 'kenwood-serial', 'elecraft-serial']) {
+    test('the other generics declare nothing: their adapter is whatever the operator plugged in', () {
+      // Icom's generic is the exception and earns it: that maker puts CI-V
+      // on Port A across the line, and the entry's own troubleshooting note
+      // already tells the operator so. The three below have no such
+      // convention, so a claim about their port would be invention.
+      for (final key in ['yaesu-serial', 'kenwood-serial', 'elecraft-serial']) {
         expect(registry.typeFor(key)!.restrictions.containsKey('port'), isFalse, reason: key);
       }
     });
