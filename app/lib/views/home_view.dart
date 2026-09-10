@@ -4,15 +4,12 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 
 import '../config/dev_bridge.dart';
-import '../config/release_notes.dart';
-import '../config/dev_flags.dart';
-import '../config/web_preview_label.dart';
+import '../config/dev_label.dart';
 import '../services/command_actions.dart';
 import '../services/halo_services.dart';
 import 'app_shell/home_rail_state.dart';
@@ -24,6 +21,7 @@ import '../tools/worked_before_label.dart';
 import 'command_engine.dart';
 import 'dock_host.dart';
 import 'header_profile_label.dart';
+import 'home_branding_pane.dart';
 import 'home_navigation_rail.dart';
 import 'logs_view.dart';
 import 'operation/call_info_panel.dart';
@@ -33,24 +31,7 @@ import 'operation_view.dart';
 import 'settings_view.dart';
 import 'ham2k_logo.dart';
 import 'panel_use_tracker.dart';
-import 'release_overlay.dart';
-import 'version_label.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-
-/// A free-form developer label shown in the home header after the edition
-/// badge — marks which dev build/session is running. Set with
-/// `--dart-define=DEV_LABEL=…` or (off web) a `DEV_LABEL` environment variable;
-/// that explicit label is dev-only (stripped in release). Web preview
-/// deployments are themselves release builds, so they instead fall back to the
-/// preview name derived from the URL. Empty
-/// otherwise. Resolved once (a lazy top-level final).
-final String _devLabel = _resolveDevLabel();
-
-String _resolveDevLabel() {
-  final explicit = debugEnvFlag(const String.fromEnvironment('DEV_LABEL'), 'DEV_LABEL');
-  if (explicit.isNotEmpty) return explicit;
-  return webPreviewLabel();
-}
 
 /// HaLo home-screen style row: bold "CALL title" line with count pill,
 /// subtitle line with refs/description and right-aligned date.
@@ -771,13 +752,57 @@ class _HomeViewState extends State<HomeView>
     );
   }
 
+  /// The dev label's own style — shared by the label and by the measurement
+  /// that decides whether the header still fits on one line.
+  TextStyle _headerDevLabelStyle(ThemeData theme) => TextStyle(
+        fontSize: 13,
+        fontStyle: FontStyle.italic,
+        color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary).withValues(alpha: 0.8),
+      );
+
+  /// What sits beside (or under) the product name, or null when there is
+  /// nothing: a free-form dev label (DEV_LABEL) marking which dev
+  /// build/session is running, which TAKES THE EDITION BADGE'S PLACE rather
+  /// than stacking with it, and is absent in release builds.
+  ///
+  /// [inline] is the one-line header, where the badge has a product name
+  /// beside it to align against: there it is carried as a baseline-aligned
+  /// WidgetSpan, because a Row aligned by baseline puts a child that reports
+  /// none at the TOP of the row and an SvgPicture reports none. A
+  /// placeholder's baseline is its own bottom edge, so the wordmark lands ON
+  /// the baseline and then takes its optical nudge below it. Stacked, there
+  /// is no baseline to meet and the art goes in raw.
+  Widget? _headerTrailing(ThemeData theme, {required bool inline}) {
+    if (devLabel.isNotEmpty) return Text(devLabel, style: _headerDevLabelStyle(theme));
+    if (ham2kEditionBadgeAsset == null) return null;
+    // Zero-offset shadows read as a glow: black for Next, white for Dev.
+    final art = Ham2kEditionBadge(
+      height: _headerEditionBadgeHeight,
+      shadows: ham2kHeaderEditionBadgeShadows,
+    );
+    if (!inline) return art;
+    return Text.rich(
+      WidgetSpan(
+        alignment: PlaceholderAlignment.baseline,
+        baseline: TextBaseline.alphabetic,
+        // Translated, not padded: padding would grow the placeholder, and its
+        // baseline is its height, so the art would ride back up by whatever
+        // was added.
+        child: Transform.translate(offset: const Offset(0, headerEditionBadgeBaselineNudge), child: art),
+      ),
+      // A minimal line box, so the enclosing paragraph adds no leading of its
+      // own around the art.
+      style: const TextStyle(fontSize: 1, height: 1),
+    );
+  }
+
   Widget _homeScaffold(BuildContext context, ThemeData theme, bool isTwoPane) {
     final railPresent = HomeNavigationRail.presentIn(context, expanded: _navExpandedSetting);
     return Scaffold(
       // Full height behind the on-screen keyboard so each pane paints its own
       // bottom — the Quick Lookup bar's teal on the left, the branding on the
       // right — and a two-pane split reflects through. Each keeps its content
-      // above the keyboard itself (HomeQuickLookup / _BrandingPane).
+      // above the keyboard itself (HomeQuickLookup / BrandingPane).
       resizeToAvoidBottomInset: false,
       appBar: AppBar(
         flexibleSpace: windowHeaderGestureArea(),
@@ -794,42 +819,85 @@ class _HomeViewState extends State<HomeView>
         // start on the same vertical line rather than a few pixels apart.
         titleSpacing: Space.xl,
         leading: const SizedBox.shrink(),
-        // "Desktop Logger" / "Portable Logger" is the in-app main-screen
+        // "Power Logger" / "Portable Logger" is the in-app main-screen
         // title — independent of the OS-level app name ("Ham2K Logger" on
         // desktop, "HaLo" on mobile; see macos/Runner/Configs/AppInfo.xcconfig,
         // ios/Runner/Info.plist, android's AndroidManifest.xml).
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            // The product name gets priority over the edition badge/dev
-            // label when the header is too narrow to fit both at full size
-            // — a 3:1 flex split shrinks the trailing group
-            // first and further, rather than shrinking both equally.
-            Flexible(flex: 3, child: shrinkToFitText(Text(ham2kProductName))),
-            if (ham2kEditionBadgeAsset != null || _devLabel.isNotEmpty) ...[
-              const SizedBox(width: Space.md),
-              Flexible(
-                child: shrinkToFit(
-                  // A free-form dev label (DEV_LABEL) — marks which dev build/session
-                  // is running — takes the edition badge's place when present, rather
-                  // than stacking with it; absent in release builds.
-                  _devLabel.isNotEmpty
-                      ? Text(
-                          _devLabel,
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontStyle: FontStyle.italic,
-                            color: (theme.appBarTheme.foregroundColor ?? theme.colorScheme.onPrimary)
-                                .withValues(alpha: 0.8),
-                          ),
-                        )
-                      // Zero-offset shadows read as a glow: black for Next, white for Dev.
-                      : Ham2kEditionBadge(height: 15, shadows: ham2kHeaderEditionBadgeShadows),
-                ),
-              ),
-            ],
-          ],
+        title: LayoutBuilder(
+          builder: (context, constraints) {
+            // Measured against the space the TITLE actually gets, not the
+            // window's width: the leading reserve for the rail's mark and the
+            // trailing actions both vary, so a window-width breakpoint would
+            // stack a header that had room and keep one that did not.
+            final trailingWidth = devLabel.isNotEmpty
+                ? textWidth(context, devLabel, _headerDevLabelStyle(theme))
+                // The art's own width needs the SVG loaded; this estimate is
+                // enough to choose a layout with.
+                : _headerEditionBadgeHeight * ham2kEditionBadgeWidthRatio;
+            // Height is checked as well as width, and the AppBar's own bar is
+            // the budget: the title is laid out with an INFINITE height and
+            // its box then clamped to the toolbar with the child centred in
+            // it, so a title taller than the bar spills over the header
+            // silently — no overflow stripes, no thrown error, release too.
+            // When two lines will not fit, the one-line row is the safer
+            // answer: it is only ever as tall as its tallest child, and gives
+            // up width through `shrinkToFit` instead.
+            final trailingHeight = devLabel.isNotEmpty
+                ? spansHeight(context, [TextSpan(text: devLabel)], _headerDevLabelStyle(theme))
+                : _headerEditionBadgeHeight;
+            final stackedHeight =
+                spansHeight(context, [TextSpan(text: ham2kProductName)], const TextStyle()) +
+                    _headerStackGap +
+                    trailingHeight;
+            final stacked = _headerTrailing(theme, inline: true) != null &&
+                constraints.maxWidth.isFinite &&
+                textWidth(context, ham2kProductName, const TextStyle()) + Space.md + trailingWidth >
+                    constraints.maxWidth &&
+                stackedHeight <= (theme.appBarTheme.toolbarHeight ?? kToolbarHeight);
+
+            if (stacked) {
+              // Two lines, name over badge. No baseline to align to here, so
+              // the badge goes in raw — no WidgetSpan, no optical nudge, both
+              // of which exist only to place it against the name beside it.
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  shrinkToFitText(Text(ham2kProductName)),
+                  const SizedBox(height: _headerStackGap),
+                  shrinkToFit(_headerTrailing(theme, inline: false)!),
+                ],
+              );
+            }
+
+            return Row(
+              mainAxisSize: MainAxisSize.min,
+              // The trailing slot carries one of two things, and they want
+              // different alignments. The edition wordmark goes on the product
+              // name's BASELINE (plus its nudge) — bottom-aligning would drop
+              // it by the name's whole descent. The dev label keeps the
+              // box-bottom alignment it has always had: baseline-aligning
+              // would lift it by the difference of the two descents, and it
+              // reads right where it is. `shrinkToFitText` rebuilds its Text
+              // at the smaller size, so its baseline stays true; `shrinkToFit`
+              // is a FittedBox, which forwards its child's baseline UNSCALED —
+              // exact at scale 1, and the header stacks before the trailing
+              // slot is ever squeezed, which is what keeps it there.
+              crossAxisAlignment: devLabel.isNotEmpty ? CrossAxisAlignment.end : CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                // The product name gets priority over the edition badge/dev
+                // label when the header is too narrow to fit both at full size
+                // — a 3:1 flex split shrinks the trailing group
+                // first and further, rather than shrinking both equally.
+                Flexible(flex: 3, child: shrinkToFitText(Text(ham2kProductName))),
+                if (_headerTrailing(theme, inline: true) case final trailing?) ...[
+                  const SizedBox(width: Space.md),
+                  Flexible(child: shrinkToFit(trailing)),
+                ],
+              ],
+            );
+          },
         ),
         actions: [
           // The settings cog, for the one arrangement with no rail to put it
@@ -928,7 +996,7 @@ class _HomeViewState extends State<HomeView>
 
   Map<String, Widget> _panes(BuildContext context, ThemeData theme) => {
     HomeView.operationsPanelId: KeyedSubtree(key: _operationsPaneKey, child: _operationsPane(context, theme)),
-    HomeView.versionPanelId: const _BrandingPane(),
+    HomeView.versionPanelId: const BrandingPane(),
   };
 
   /// The operation list with the New Operation FAB over it — one pane, because
@@ -1195,119 +1263,18 @@ class _NewOperationNudgeState extends State<_NewOperationNudge> with SingleTicke
   }
 }
 
-/// The home view's right column on two-pane layouts: the operation list has
-/// nothing useful to spend the extra width on, so it shows the wordmark and
-/// version instead.
-class _BrandingPane extends StatelessWidget {
-  const _BrandingPane();
+/// The gap between the header's two lines when it stacks.
+const double _headerStackGap = 2;
 
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        // The current release's photo, behind everything. A FutureBuilder
-        // rather than a field: the notes are parsed from a bundled YAML once
-        // per launch and cached by [loadReleaseNotes], so this costs one
-        // already-resolved future after the first pane to ask.
-        //
-        // Every failure here paints NOTHING and leaves the pane on its own
-        // background: a release with no photo committed yet, an asset that
-        // fails to decode, or notes that will not parse. The pane's job is
-        // the version, and it still does it.
-        FutureBuilder<List<ReleaseNotesEntry>>(
-          future: loadReleaseNotes(),
-          builder: (context, snapshot) {
-            final release = snapshot.data?.firstOrNull;
-            if (release == null) return const SizedBox.shrink();
-            return ReleasePhoto(
-              imageAssetPath: release.imageAssetPath,
-              errorBuilder: (_, _, _) => const SizedBox.shrink(),
-            );
-          },
-        ),
-        // A scrim, not a tint on the text: the photo is a real photograph and
-        // its brightness is not ours to predict, so the contrast the branding
-        // needs is bought here rather than assumed.
-        //
-        // Strong enough to carry `onSurfaceVariant` text over an arbitrary
-        // photo, light enough that the photo still reads as one — past about
-        // 0.7 it stops being a background and becomes a tint nobody can tell
-        // from a flat fill. Heavier in dark mode, where the text is light and
-        // a bright photo is what would swallow it.
-        Positioned.fill(
-          child: ColoredBox(
-            color: theme.colorScheme.surface.withValues(
-              alpha: theme.brightness == Brightness.dark ? 0.62 : 0.55,
-            ),
-          ),
-        ),
-        _brandingContent(context, theme),
-      ],
-    );
-  }
+/// The height the header's edition wordmark is drawn at.
+const double _headerEditionBadgeHeight = 15;
 
-  Widget _brandingContent(BuildContext context, ThemeData theme) {
-    return Container(
-      alignment: Alignment.center,
-      // No keyboard padding here: `StatusBarOverlay` holds the keyboard's
-      // height back for the whole app and consumes the inset, so this pane is
-      // already only as tall as the space above the keyboard. Padding by
-      // `viewInsets.bottom` as well would shrink the branding to a sliver
-      // pinned near the top on iPad landscape.
-      // Scale the branding down rather than overflow when the pane is short —
-      // e.g. landscape two-pane with the keyboard up shrinks it well below
-      // the logo+text's natural height. No effect at full height.
-      child: FittedBox(
-        fit: BoxFit.scaleDown,
-        child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SvgPicture.asset(ham2kSquareLogoAsset, width: 180),
-          const SizedBox(height: Space.xs),
-          // The square mark already says "Ham2K", so per the branding rules
-          // (docs/design/user-interface.md) only the product name — "Mac
-          // Logger", "Browser Logger", etc. — goes below it.
-          Text(
-            ham2kProductName,
-            style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w800),
-          ),
-          // Edition badge below the name, centered, a bit smaller (Regular has none).
-          if (ham2kEditionBadgeAsset != null) ...[
-            const SizedBox(height: Space.md),
-            SvgPicture.asset(ham2kEditionBadgeAsset!, width: 130),
-          ],
-          // A free-form dev label (DEV_LABEL) — marks which dev build/session is
-          // running; absent in release builds. Unlike the header (where it takes the
-          // badge's place), here it's shown alongside it, between the badge and the
-          // version name.
-          if (_devLabel.isNotEmpty) ...[
-            const SizedBox(height: Space.md),
-            Text(
-              _devLabel,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontStyle: FontStyle.italic,
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-          const SizedBox(height: Space.xl),
-          // The release name, without the edition qualifier (the edition is
-          // already shown by the badge SVG above), over its patch and build
-          // line — a bug report from a release build is the one that most
-          // needs to say which build it came from.
-          VersionLabel(
-            nameAndBuild: true,
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-            detailStyle: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-        ],
-        ),
-      ),
-    );
-  }
-}
+/// How far the header's edition wordmark sits BELOW the product name's
+/// baseline. All-caps art with a flat bottom edge reads high when that edge
+/// lands exactly on a baseline that lowercase descenders hang under, so it
+/// takes a small optical drop. Named because the header test asserts the
+/// badge lands here, not merely somewhere near the baseline.
+const double headerEditionBadgeBaselineNudge = 2;
 
 class HomeQuickLookup extends StatefulWidget {
   final HaLoServices services;

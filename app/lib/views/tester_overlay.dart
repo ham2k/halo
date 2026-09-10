@@ -295,13 +295,25 @@ class _TesterPanel extends StatelessWidget {
                           errorBuilder: (context, error, stackTrace) => const ColoredBox(color: _photoFallbackColor),
                         ),
                 ),
-                SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
-                    // `bareBuildNumber`: this header's number is a notes KEY,
-                    // not a build identity — see versionBuildLine.
-                    child: overlayVersionHeader(context, logoWidth: 180, bareBuildNumber: true),
+                // Bounded to the photo above the band, not left to fill the
+                // whole stack: `overlayVersionHeader` scales itself down to
+                // the box it is given, and a box the full height of the view
+                // is one it always fits — so the header would grow under the
+                // band instead of shrinking, and its version line would stop
+                // being reachable.
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  bottom: bandHeight,
+                  child: SafeArea(
+                    bottom: false,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: Space.xxl, vertical: Space.xl),
+                      // `bareBuildNumber`: this header's number is a notes KEY,
+                      // not a build identity — see versionBuildLine.
+                      child: overlayVersionHeader(context, logoWidth: 180, bareBuildNumber: true),
+                    ),
                   ),
                 ),
                 Positioned(

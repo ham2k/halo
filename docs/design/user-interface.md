@@ -9,18 +9,23 @@
 
 ## Branding
 
-The app is formally called "Ham2K Logger". On desktop it identifies itself as
-"Ham2K Logger"; on mobile, "Ham2K Portable Logger".
+The app is formally called "Ham2K Logger". On desktop and the web it identifies
+itself as "Ham2K Power Logger"; on iOS and Android, "Ham2K Portable Logger".
 
 - The package name / identifier is `com.ham2k.logger`.
 - "HaLo" (or "halo") is used internally — package names, identifiers — but
   never in content shown to users.
 - Where the app name stands alone (headers, dialog titles), use the Ham2K
-  wordmark graphic plus the text "Logger" or "Portable Logger", either to the
-  right of the logo (left-aligned, vertically centered) or below it
+  wordmark graphic plus the text "Power Logger" or "Portable Logger", either
+  to the right of the logo (left-aligned, vertically centered) or below it
   (centered).
-- When mentioning the app in text, use the formal name "Ham2K Logger" or
-  "Ham2K Portable Logger" — never "HaLo".
+- The name the OS shows — the Dock/Finder label, the Windows title bar, the
+  installers, the web manifests — is a separate thing that follows this one
+  everywhere but Windows, which still says "Windows Logger" because that
+  string keys the operator's stored credentials (see
+  [releases.md §2.6](../releases.md)).
+- When mentioning the app in text, use the formal name "Ham2K Logger",
+  "Ham2K Power Logger" or "Ham2K Portable Logger" — never "HaLo".
 
 ### Splash screens
 
@@ -49,18 +54,24 @@ Two distinct things are both loosely called "the splash" — keep them separate:
   instead (`release_overlay.dart`'s `overlayVersionHeader`, which the tester and
   onboarding overlays share; the home screen's right pane scales its branding
   column, which scales the version lines along with the logo). That header
-  measures only itself and never the notes band below it: on a phone-sized
-  viewport the band covers the version lines entirely, which predates the
-  two-line treatment and is the cost of not having the header chase a height
-  that lives in another coordinate space and animates. The tester overlay, the
-  onboarding overlay and the home pane show the same two lines, and none of
-  them repeats the edition, which the brand mark's badge already carries.
+  measures only itself and never the notes band below it, EXCEPT in the tester
+  overlay, whose header is bounded to the space above its band so the block
+  scales instead of sliding under it. That overlay can afford it because its
+  band is a fixed fraction of the height; the release and onboarding bands
+  animate open, and a header chasing a height in another coordinate space that
+  moves is the cost this rule exists to avoid — there, on a phone-sized
+  viewport, the band still covers the version lines entirely. The tester
+  overlay, the onboarding overlay and the home pane show the same two lines,
+  and none of them repeats the edition, which the brand mark's badge already
+  carries.
 
-  The tester overlay is the one deliberate divergence: its build number is a
-  notes KEY, so it names the binary's number alone — no code push, no SHA, and
-  named even on a Dev build where the others suppress it (`bareBuildNumber`).
-  Making it match the rest would break the link between that header and the
-  notes listed under it.
+  Two of them name the binary's build number alone — no code push, no SHA, and
+  named even on a Dev build where the rest suppress it (`bareBuildNumber`), for
+  different reasons. The tester overlay's number is a notes KEY, and making it
+  match the others would break the link between that header and the notes under
+  it. The home pane needs a number at all: a Dev build otherwise shows a SHA,
+  and a local run — which bakes none — shows nothing. On Dev that number is the
+  last release's, not the running build; `version_label.dart` states the trade.
 
 ### Overlays that pin their own palette
 
@@ -103,8 +114,8 @@ The app has three main views:
 The Home View shows all operations in an "Operation List Panel", sorted most
 recent first, with a button to start a new operation.
 
-The header shows "Desktop Logger" on desktop platforms and "Portable Logger"
-on mobile, plus a button that opens the Settings View.
+The header shows "Power Logger" on desktop and the web, and "Portable Logger"
+on iOS and Android, plus a button that opens the Settings View.
 
 At the bottom, a "Quick Lookup Panel" has a field where the user can enter a
 callsign to see information about it, or enter commands. Results appear just

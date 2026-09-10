@@ -685,7 +685,7 @@ void main() {
   });
 
   // Anything padding by `viewInsets.bottom` below the overlay double-pads for
-  // the same reason (`_BrandingPane`, the split-view divider handle).
+  // the same reason (`BrandingPane`, the split-view divider handle).
   testWidgets('a descendant reading viewInsets sees them already consumed', (tester) async {
     await on(TargetPlatform.iOS, () async {
       raiseKeyboard(tester);

@@ -500,7 +500,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
                                   },
                                   child: KeyedSubtree(
                                     key: ValueKey(_step),
-                                    child: _buildStep(theme, isHeightConstrained),
+                                    child: _buildStep(theme),
                                   ),
                                 ),
                               ),
@@ -520,7 +520,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     );
   }
 
-  Widget _buildStep(ThemeData theme, bool isHeightConstrained) {
+  Widget _buildStep(ThemeData theme) {
     final s = context.t.onboarding;
     final titleStyle = theme.textTheme.titleLarge?.copyWith(
       fontFamily: 'RobotoSlab',
@@ -544,7 +544,6 @@ class _OnboardingContentState extends State<_OnboardingContent> {
           ),
           primaryLabel: s.kContinue,
           onPrimary: () => _goTo(_OnboardingStep.callsign),
-          isHeightConstrained: isHeightConstrained,
         );
       case _OnboardingStep.callsign:
         const callsignBorder = OutlineInputBorder();
@@ -589,7 +588,6 @@ class _OnboardingContentState extends State<_OnboardingContent> {
           onSecondary: () => _goTo(_OnboardingStep.welcome),
           primaryLabel: s.kContinue,
           onPrimary: _nextFromCallsign,
-          isHeightConstrained: isHeightConstrained,
         );
       case _OnboardingStep.linkAccount:
         return _stepScaffold(
@@ -607,7 +605,6 @@ class _OnboardingContentState extends State<_OnboardingContent> {
           onSecondary: () {},
           primaryLabel: '',
           onPrimary: () {},
-          isHeightConstrained: isHeightConstrained,
         );
       case _OnboardingStep.activities:
         return _stepScaffold(
@@ -646,7 +643,6 @@ class _OnboardingContentState extends State<_OnboardingContent> {
           onSecondary: () => _goTo(_OnboardingStep.callsign),
           primaryLabel: s.kContinue,
           onPrimary: () => _goTo(_OnboardingStep.consent),
-          isHeightConstrained: isHeightConstrained,
         );
       case _OnboardingStep.consent:
         return _stepScaffold(
@@ -687,7 +683,6 @@ class _OnboardingContentState extends State<_OnboardingContent> {
           onSecondary: _finishingSetup ? null : () => _goTo(_OnboardingStep.activities),
           primaryLabel: s.done,
           onPrimary: _finishingSetup ? null : _finish,
-          isHeightConstrained: isHeightConstrained,
         );
     }
   }
@@ -701,7 +696,6 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     required String primaryLabel,
     required VoidCallback? onPrimary,
     ButtonStyle? secondaryButtonStyle,
-    required bool isHeightConstrained,
   }) {
     final bodyWidget = SingleChildScrollView(child: body);
     // Caps the step's fields/buttons at the ideal reading width, centered,
@@ -711,45 +705,59 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: idealPaneWidth),
-        child: Column(
-          key: key,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          mainAxisSize: isHeightConstrained ? MainAxisSize.max : MainAxisSize.min,
-          children: [
-            title,
-            const SizedBox(height: Space.lg),
-            // One Flexible in both cases, never `constrained ? Expanded(body)
-            // : body`: swapping the widget AT this slot re-inflates the whole
-            // body, and the soft keyboard opening is exactly what flips
-            // [isHeightConstrained]. A step with State of its own — the
-            // callsign field's focus, the link-account pane's mode — would be
-            // reset by the keystroke that opened the keyboard. flex 0 keeps
-            // the body inflexible when the band is unbounded, which a flexible
-            // child in an unbounded Column is not allowed to be.
-            Flexible(
-              flex: isHeightConstrained ? 1 : 0,
-              fit: isHeightConstrained ? FlexFit.tight : FlexFit.loose,
-              child: bodyWidget,
-            ),
-            const SizedBox(height: Space.md),
-            Row(
+        // Whether the band is bounded is read from the constraints this step
+        // is ACTUALLY given, never from a flag passed down at build time.
+        // AnimatedSwitcher keeps the outgoing step as a retained widget and
+        // does not rebuild it, so on the way back to Welcome — where the
+        // band's SizedBox height goes null and the switcher's Stack goes
+        // loose — a build-time flag would still claim `max`/flex 1 while the
+        // constraints have gone unbounded underneath it. Reading them here
+        // means a retained subtree re-answers under whatever it is handed.
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final bounded = constraints.hasBoundedHeight;
+            return Column(
+              key: key,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: bounded ? MainAxisSize.max : MainAxisSize.min,
               children: [
-                // An empty label means the step has no button for that slot,
-                // same as the primary below — a TextButton around empty text
-                // is invisible but still takes a tap.
-                if (secondaryLabel.isNotEmpty)
-                  TextButton(
-                    onPressed: onSecondary,
-                    style: secondaryButtonStyle,
-                    child: Text(secondaryLabel),
-                  ),
-                if (primaryLabel.isNotEmpty) ...[
-                  const Spacer(),
-                  FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
-                ],
+                title,
+                const SizedBox(height: Space.lg),
+                // One Flexible in both cases, never `bounded ? Expanded(body)
+                // : body`: swapping the widget AT this slot re-inflates the
+                // whole body, and the soft keyboard opening is exactly what
+                // flips the band. A step with State of its own — the callsign
+                // field's focus, the link-account pane's mode — would be
+                // reset by the keystroke that opened the keyboard. flex 0
+                // keeps the body inflexible when the band is unbounded, which
+                // a flexible child in an unbounded Column is not allowed to
+                // be.
+                Flexible(
+                  flex: bounded ? 1 : 0,
+                  fit: bounded ? FlexFit.tight : FlexFit.loose,
+                  child: bodyWidget,
+                ),
+                const SizedBox(height: Space.md),
+                Row(
+                  children: [
+                    // An empty label means the step has no button for that
+                    // slot, same as the primary below — a TextButton around
+                    // empty text is invisible but still takes a tap.
+                    if (secondaryLabel.isNotEmpty)
+                      TextButton(
+                        onPressed: onSecondary,
+                        style: secondaryButtonStyle,
+                        child: Text(secondaryLabel),
+                      ),
+                    if (primaryLabel.isNotEmpty) ...[
+                      const Spacer(),
+                      FilledButton(onPressed: onPrimary, child: Text(primaryLabel)),
+                    ],
+                  ],
+                ),
               ],
-            ),
-          ],
+            );
+          },
         ),
       ),
     );

@@ -105,7 +105,7 @@ class _Translations$onboarding$es extends Translations$onboarding$en {
 
 	// Translations
 	@override String get welcomeTitle => '¡Bienvenido a Ham2K Portable Logger!';
-	@override String get welcomeTitleDesktop => '¡Bienvenido a Ham2K Logger!';
+	@override String get welcomeTitleDesktop => '¡Bienvenido a Ham2K Power Logger!';
 	@override String get welcomeBody => 'Tenemos algunas preguntas para ayudarnos a servirte mejor.';
 	@override String get skip => 'Omitir';
 	@override String get kContinue => 'Continuar';
@@ -2962,7 +2962,7 @@ extension on TranslationsEs {
 			'common.expand' => 'Expandir',
 			'common.collapse' => 'Contraer',
 			'onboarding.welcomeTitle' => '¡Bienvenido a Ham2K Portable Logger!',
-			'onboarding.welcomeTitleDesktop' => '¡Bienvenido a Ham2K Logger!',
+			'onboarding.welcomeTitleDesktop' => '¡Bienvenido a Ham2K Power Logger!',
 			'onboarding.welcomeBody' => 'Tenemos algunas preguntas para ayudarnos a servirte mejor.',
 			'onboarding.skip' => 'Omitir',
 			'onboarding.kContinue' => 'Continuar',

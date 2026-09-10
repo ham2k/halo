@@ -15,13 +15,16 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/config/release_notes.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
+import 'package:ham2k_logger/views/ham2k_logo.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/release_overlay.dart';
 
 import '../support/halo_test_support.dart';
 
-Future<void> _pumpHome(WidgetTester tester) async {
-  tester.view.physicalSize = const Size(1200, 800);
+Future<void> _pumpHome(WidgetTester tester) => _pumpHomeAt(tester, const Size(1200, 800));
+
+Future<void> _pumpHomeAt(WidgetTester tester, Size size) async {
+  tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.reset);
   final HaLoHarness(:services) = await makeHaLoServices();
@@ -83,6 +86,86 @@ void main() {
       'assets/images/releases/26.8-photo.jpg',
       reason: 'the NEWEST entry decides, via its MAJOR.MINOR prefix',
     );
+    await _endOfTest(tester);
+  });
+
+  testWidgets('the header sets the edition badge on the product name\'s baseline', (tester) async {
+    setReleaseNotesForTesting(const []);
+    await _pumpHome(tester);
+
+    // Bottom-aligning the two boxes (CrossAxisAlignment.end) instead drops the
+    // badge by the whole descent of the name — the mutation this exists to
+    // catch. Measured against the name's real baseline rather than a pixel
+    // constant, so it still means something at a different title size.
+    final name = find.descendant(of: find.byType(AppBar), matching: find.text(ham2kProductName));
+    expect(name, findsOneWidget);
+    final nameRect = tester.getRect(name);
+    // Measured from the title's OWN resolved style (shrinkToFitText hands the
+    // Text a complete one), not from the render tree: getDistanceToBaseline is
+    // only legal during layout. The baseline sits one descent above the box.
+    final painter = TextPainter(
+      text: TextSpan(text: ham2kProductName, style: tester.widget<Text>(name).style),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    addTearDown(painter.dispose);
+    final descent = painter.height - painter.computeDistanceToActualBaseline(TextBaseline.alphabetic);
+    final baselineY = nameRect.bottom - descent;
+    expect(descent, greaterThan(1), reason: 'a zero descent would make this test unable to fail');
+
+    final badge = find.descendant(of: find.byType(AppBar), matching: find.byType(Ham2kEditionBadge));
+    expect(badge, findsOneWidget, reason: 'Dev and Next builds carry the badge; Regular has none');
+    expect(
+      tester.getRect(badge).bottom,
+      moreOrLessEquals(baselineY + headerEditionBadgeBaselineNudge, epsilon: 0.5),
+      reason: "the wordmark's bottom edge IS its baseline, plus its optical nudge",
+    );
+    await _endOfTest(tester);
+  });
+
+  testWidgets('a header too narrow for one line stacks the badge under the name', (tester) async {
+    setReleaseNotesForTesting(const []);
+    await _pumpHomeAt(tester, const Size(420, 800));
+
+    final name = find.descendant(of: find.byType(AppBar), matching: find.text(ham2kProductName));
+    final badge = find.descendant(of: find.byType(AppBar), matching: find.byType(Ham2kEditionBadge));
+    expect(name, findsOneWidget);
+    expect(badge, findsOneWidget);
+
+    // Stacked means BELOW, not merely shrunk beside: side by side the badge
+    // overlaps the name's band vertically and starts to its right, and the
+    // one-line layout satisfies neither of these.
+    final nameRect = tester.getRect(name);
+    final badgeRect = tester.getRect(badge);
+    expect(badgeRect.top, greaterThanOrEqualTo(nameRect.bottom - 1));
+    expect(badgeRect.left, moreOrLessEquals(nameRect.left, epsilon: 1));
+
+    // Two lines have to fit the toolbar: `shrinkToFitText` buys width, never
+    // height, so nothing below rescues a title that outgrows the bar — it
+    // overflows, and an AppBar paints that across the header.
+    expect(badgeRect.bottom, lessThanOrEqualTo(tester.getRect(find.byType(AppBar)).bottom));
+    expect(tester.takeException(), isNull);
+    await _endOfTest(tester);
+  });
+
+  testWidgets('a narrow header at a large text size does not spill out of the toolbar', (tester) async {
+    // The AppBar lays its title out with an INFINITE height budget and then
+    // clamps its own box to the toolbar and centres what it got, so a title
+    // taller than the bar neither overflows nor throws — it just spills over
+    // the header, silently, in release too. Nothing but a measurement catches
+    // it, and stacking is the layout that can grow tall enough to do it.
+    tester.platformDispatcher.textScaleFactorTestValue = 1.34;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    setReleaseNotesForTesting(const []);
+    await _pumpHomeAt(tester, const Size(420, 800));
+
+    final appBar = tester.getRect(find.byType(AppBar));
+    final name = find.descendant(of: find.byType(AppBar), matching: find.text(ham2kProductName));
+    final badge = find.descendant(of: find.byType(AppBar), matching: find.byType(Ham2kEditionBadge));
+    // Stacked, or this asserts nothing: the inline row is only ever as tall as
+    // its tallest child and could never have spilled.
+    expect(tester.getRect(badge).top, greaterThanOrEqualTo(tester.getRect(name).bottom - 1));
+    expect(tester.getRect(name).top, greaterThanOrEqualTo(appBar.top - 0.5));
+    expect(tester.getRect(badge).bottom, lessThanOrEqualTo(appBar.bottom + 0.5));
     await _endOfTest(tester);
   });
 

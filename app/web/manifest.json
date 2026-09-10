@@ -1,6 +1,6 @@
 {
-    "name": "Ham2K Browser Logger (Dev)",
-    "short_name": "Browser Logger (Dev)",
+    "name": "Ham2K Power Logger (Dev)",
+    "short_name": "Power Logger (Dev)",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FBFCFE",

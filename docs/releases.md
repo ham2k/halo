@@ -388,10 +388,14 @@ update feeds to contact follow the same switch. A public checkout can only resol
 `dev`; Next and Regular resolve only where `app_dist/` is present.
 
 Each platform reads the same `HALO_EDITION` through its own native idiom, and each
-carries a per-edition app icon plus a platform-specific display name (the name sits
-beside the icon, so it drops the "Ham2K" prefix — "Mac Logger", "Windows Logger",
-"Linux Logger", "Portable Logger" on mobile, "Browser Logger" on web — with the
-edition suffix `" (Dev)"` / `" Next"` / none):
+carries a per-edition app icon plus a display name (the name sits beside the icon,
+so it drops the "Ham2K" prefix — "Power Logger" on macOS, Linux and the web,
+"Portable Logger" on iOS and Android — with the edition suffix `" (Dev)"` /
+`" Next"` / none). **Windows still says "Windows Logger"**, alone among them:
+`flutter_secure_storage_windows` derives its folder from the exe's own
+`ProductName` version resource (`%APPDATA%\<CompanyName>\<ProductName>`), so
+renaming it orphans an installed operator's stored credentials and needs a
+one-time migration rather than an edit:
 
 | Platform | Edition switch | Icon selection |
 |---|---|---|

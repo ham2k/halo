@@ -9,6 +9,7 @@ upcoming:
     - "BG2FX FX-4CR in the radio list, on the Kenwood protocol — tell us how it behaves"
     - "Phone contacts now read as SSB, not USB/LSB — an unexpected sideband shows red"
     - "A radio that knows which of its ports carries CAT now points at it, without hiding the others"
+    - "Desktop and web builds now say Power Logger; phones keep Portable Logger"
 
 "164":
   changes:

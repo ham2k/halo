@@ -162,27 +162,32 @@ String get platformToken {
 /// has to ask this instead.
 bool get isWebPlatform => kIsWeb;
 
-/// The **product name**, tailored per platform so each build reads naturally.
-/// Shown wherever the app names itself in the UI (splash, home header + right
-/// pane, About, onboarding). It stands beneath a HAM2K graphic — which already
-/// carries the brand — so it omits "Ham2K":
-///   macOS → `Mac Logger`, Windows → `Windows Logger`, Linux → `Linux Logger`,
-///   iOS/Android → `Portable Logger`, Web → `Browser Logger`.
+/// The **product name**. Shown wherever the app names itself in the UI
+/// (splash, home header + right pane, About, onboarding). It stands beneath
+/// a HAM2K graphic — which already carries the brand — so it omits "Ham2K":
+///   iOS/Android → `Portable Logger`, everywhere else → `Power Logger`.
+/// The split is the app's two personalities — the one that travels in a
+/// pocket and the one that sits on a desk — not the host OS, so macOS,
+/// Windows, Linux and the browser all read the same.
+///
+/// The OS-level name follows this one everywhere but Windows, which still
+/// says "Windows Logger": that string is the exe's `ProductName` version
+/// resource, and `flutter_secure_storage_windows` derives its folder from it
+/// (`%APPDATA%\<CompanyName>\<ProductName>`), so renaming it orphans an
+/// installed operator's stored credentials and needs a migration rather than
+/// an edit.
 /// See `Ham2kBrandMark` in the app's `views/ham2k_logo.dart`.
 String get ham2kProductName {
-  if (kIsWeb) return 'Browser Logger';
+  if (kIsWeb) return 'Power Logger';
   return switch (defaultTargetPlatform) {
-    TargetPlatform.macOS => 'Mac Logger',
-    TargetPlatform.windows => 'Windows Logger',
-    TargetPlatform.linux => 'Linux Logger',
     TargetPlatform.iOS || TargetPlatform.android => 'Portable Logger',
-    _ => 'Logger',
+    _ => 'Power Logger',
   };
 }
 
 /// The **full self-identification name** — [ham2kProductName] with the "Ham2K"
-/// brand prefixed, e.g. `Ham2K Mac Logger`. For **human-facing** places the name
-/// stands on its own without a HAM2K graphic — e.g. the About screen's copyable
+/// brand prefixed, e.g. `Ham2K Power Logger`. For **human-facing** places the
+/// name stands on its own without a HAM2K graphic — e.g. the About screen's copyable
 /// version text. Distinct from the OS-level window/task-switcher title
 /// (`main.dart`'s "HaLo"). For machine-facing strings use [ham2kMachineName].
 String get ham2kAppName => 'Ham2K $ham2kProductName';

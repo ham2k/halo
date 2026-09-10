@@ -16,14 +16,14 @@ HALO_EDITION = dev
 
 // Per-edition display name — the Dock/Finder/menu label + the .app file name.
 // Carries the "Ham2K" brand: the .app stands on its own in /Applications, where
-// the short platform-only "Mac Logger" read as generic. The bundle id is a plain
+// a bare "Power Logger" would read as generic. The bundle id is a plain
 // `.<edition>` suffix, but the names aren't a uniform pattern, so they are mapped
 // here and selected by nested substitution: $(HALO_PRODUCT_NAME_$(HALO_EDITION)).
 // The edition qualifier stays so the editions install side by side. (The
 // distributable artifact FILE keeps "Ham2K Logger …" — see build-macos.sh.)
-HALO_PRODUCT_NAME_dev = Ham2K Mac Logger (Dev)
-HALO_PRODUCT_NAME_next = Ham2K Mac Logger (Next)
-HALO_PRODUCT_NAME_prod = Ham2K Mac Logger
+HALO_PRODUCT_NAME_dev = Ham2K Power Logger (Dev)
+HALO_PRODUCT_NAME_next = Ham2K Power Logger (Next)
+HALO_PRODUCT_NAME_prod = Ham2K Power Logger
 
 // The application's name — drives the Dock/Finder icon label, the app
 // menu (top-left), and the About/Quit menu items (MainMenu.xib's "APP_NAME"

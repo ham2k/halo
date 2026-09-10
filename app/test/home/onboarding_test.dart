@@ -98,6 +98,31 @@ void main() {
     await drainTimers(tester);
   });
 
+  testWidgets('stepping back to Welcome lays out cleanly while the callsign step slides out', (tester) async {
+    // The trap is that both steps are fine AT REST — only the
+    // frames between them fail, so a test that settles after each tap sees
+    // nothing. On Welcome the band's SizedBox height goes null (unbounded)
+    // and the switcher's Stack goes loose, while AnimatedSwitcher keeps the
+    // OUTGOING callsign step as a retained widget it never rebuilds — so a
+    // flex captured from the previous build meets unbounded constraints
+    // mid-slide. Mutating `flex`/`mainAxisSize` back to the passed-in
+    // isHeightConstrained must fail this.
+    final services = await makeServices();
+    await pumpApp(tester, services);
+
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text("What's your callsign?"), findsOneWidget);
+
+    await tester.tap(find.text('Back'));
+    await tester.pump(); // the transition starts; both steps are now mounted
+    await tester.pump(const Duration(milliseconds: 120)); // mid-slide
+    expect(tester.takeException(), isNull);
+
+    await tester.pumpAndSettle();
+    await drainTimers(tester);
+  });
+
   testWidgets('BootGate: a broken release-notes asset does not block boot for a first run', (tester) async {
     // Regression test for main.dart's BootGateState: _prepareOnboardingPhoto
     // (loadReleaseNotes + precacheImage) used to run outside the try/catch

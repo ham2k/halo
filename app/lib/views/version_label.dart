@@ -115,10 +115,14 @@ String localizedVersionName({
 /// empty (its caller then renders no second line at all).
 ///
 /// [bareBuildNumber] names the BINARY — the build number alone, no code push
-/// and no SHA, on a Dev build too. Only the tester overlay wants this: its
-/// notes are KEYED by that number, and a header reading `build 130.2 - 04e3d1`
-/// over notes titled "What's new in build 130" names an identity the notes
-/// index doesn't contain.
+/// and no SHA, on a Dev build too. Two callers want it, for different reasons.
+/// The tester overlay's notes are KEYED by that number, and a header reading
+/// `build 130.2 - 04e3d1` over notes titled "What's new in build 130" names an
+/// identity the notes index doesn't contain. The home branding pane wants a
+/// number at all: without this a Dev build shows a SHA, and a local run — which
+/// bakes none — shows nothing, leaving the pane whose job is the version
+/// silent about it. The trade is real and is the operator's to know about: on
+/// Dev the number is the LAST RELEASE's, not the build in front of them.
 ///
 /// [version]/[edition]/[build]/[sha]/[codePush]/[stageLabel] default to this
 /// process's values and exist only so tests can reach the other cells of that
@@ -180,8 +184,8 @@ class VersionLabel extends StatelessWidget {
   /// in the home pane), and no single ratio off [style] reads well at both.
   final TextStyle? detailStyle;
 
-  /// Name the BINARY's build number — see [versionBuildLine]. Only the tester
-  /// overlay sets this.
+  /// Name the BINARY's build number — see [versionBuildLine], which says what
+  /// each of its two callers is trading away for it.
   final bool bareBuildNumber;
 
   const VersionLabel({

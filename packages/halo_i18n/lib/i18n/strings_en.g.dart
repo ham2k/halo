@@ -136,8 +136,8 @@ class Translations$onboarding$en {
 	/// en: 'Welcome to Ham2K Portable Logger!'
 	String get welcomeTitle => 'Welcome to Ham2K Portable Logger!';
 
-	/// en: 'Welcome to Ham2K Logger!'
-	String get welcomeTitleDesktop => 'Welcome to Ham2K Logger!';
+	/// en: 'Welcome to Ham2K Power Logger!'
+	String get welcomeTitleDesktop => 'Welcome to Ham2K Power Logger!';
 
 	/// en: 'We have a few questions to help us better suit your needs.'
 	String get welcomeBody => 'We have a few questions to help us better suit your needs.';
@@ -6299,7 +6299,7 @@ extension on Translations {
 			'common.expand' => 'Expand',
 			'common.collapse' => 'Collapse',
 			'onboarding.welcomeTitle' => 'Welcome to Ham2K Portable Logger!',
-			'onboarding.welcomeTitleDesktop' => 'Welcome to Ham2K Logger!',
+			'onboarding.welcomeTitleDesktop' => 'Welcome to Ham2K Power Logger!',
 			'onboarding.welcomeBody' => 'We have a few questions to help us better suit your needs.',
 			'onboarding.skip' => 'Skip',
 			'onboarding.kContinue' => 'Continue',
