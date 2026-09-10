@@ -337,9 +337,17 @@ second; a CP2105's or FT2232's two vendor-class ones) could only ever reach one.
 splits such a device into `<device>#<interface>` entries labelled "port N of M" in descriptor order,
 passing the index through to `create()`. A radio that knows which port carries CAT declares it as a
 `port` restriction on its variant — `{'index': n}`, plus `'vendorId'` to confine it to one maker's
-bridges — and the picker then offers only that port of a split device, under a plain label. The
-restriction acts only on ports the transport split itself and never hides one the OS named, so on
-desktop the model notes keep saying which port to pick.
+bridges — and the picker then **points at** that port of a split device: it sorts first, renders bold
+and is tagged, with every sibling still listed under it.
+
+**It ranks; it never excludes.** What the catalogue knows is where CAT usually is, not where it must
+be. Both of an IC-705's ports leave the factory set to CI-V and either can be switched; the same
+radio reached through somebody else's two-port cable has a different answer again; and an operator
+who moved CI-V deliberately would face a picker with no way to say so and nothing on screen
+explaining what became of the other port. A wrong guess costs a bold row. A wrong exclusion costs the
+radio. The ordinal stays in the label for the same reason — with both ports on screen under one
+description, "port 2 of 2" is the only thing telling them apart. On desktop, where nothing is split,
+the model notes still say which port to pick.
 
 **A picker entry reads as hardware.** The port field is not a `DropdownButtonFormField` but a
 `RowSelectField` (halo_widgets), reached by any `select` whose options carry a `trailing` or `tags`:
@@ -365,10 +373,10 @@ appends the port index to the device's serial number — a CP2105 presents `cu.u
 device (`SerialTransportConfig.withInferredSiblings`). That is the only thing on that platform that
 says so: the USB ids do not read, and the OS named the ports separately. The rows then carry the same
 "port N of M" Android's split does, and a radio's declared `index` narrows its SUGGESTION to the one
-port. It never hides the sibling there: the restriction's vendor gate cannot be checked without the
-ids, and the OS named both ports itself — suggesting is a claim the operator can ignore, hiding is
-not. Deliberately macOS-only: Linux's `ttyUSB0`/`ttyUSB1` have the identical shape and are usually two
-separate adapters, and that platform reads the ids that say what is really one device.
+port — the same claim it makes everywhere else. `vendorId` scopes that claim and nothing else: it
+cannot be checked on macOS, where no ids read, so gating a `match` pattern on it would switch off the
+one clause that works on that platform. Deliberately macOS-only: Linux's `ttyUSB0`/`ttyUSB1` have the
+identical shape and are usually two separate adapters, and that platform reads the ids that say what is really one device.
 
 **The picker ranks what it cannot narrow.** Where the ports are siblings only the operator can see —
 desktop, where the restriction above has nothing to act on — the same `port` restriction may carry a

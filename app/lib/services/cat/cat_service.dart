@@ -25,6 +25,8 @@ import '../peer/peer_station_radios.dart';
 import '../radio_service.dart';
 import '../settings_service.dart';
 import 'auto_connect_guard.dart';
+import 'equipment_tag.dart';
+import 'radio_proof.dart';
 import 'discovery.dart';
 import 'driver.dart';
 import 'drivers/meter_calibration.dart';
@@ -293,6 +295,20 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   /// tests and standalone use.
   void Function()? onAutoConnectHoldLifted;
 
+  /// Called the first time in a session that a node's radio reports BOTH a
+  /// frequency and a mode of its own — the pairing proved, as against merely
+  /// connected, which a rig that answers nothing also reaches.
+  ///
+  /// This service decides only that it happened; the consent gate and the
+  /// persisted mark are HaLoServices'. A CAT service that reached the
+  /// reporting backend itself would put an upload behind every driver's
+  /// reading path.
+  void Function(EquipmentNode node)? onRadioProven;
+
+  /// Nodes [onRadioProven] has fired for this session, so a reconnect does
+  /// not ask again.
+  final Set<String> _provenThisSession = {};
+
   CatService(this._settings,
       {EquipmentRegistry? registry,
       this._radio,
@@ -530,6 +546,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
       _cancelSnap(null);
       _radio1 = next;
     });
+    // No status change carries this one: switching vfoA between two
+    // CONNECTED rigs fires no _setState, and a peer pick would leave the tag
+    // naming a local radio.
+    _updateEquipmentTag();
     await _save();
     notifyListeners();
   }
@@ -1589,6 +1609,10 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     for (final field in registry.allSecretFields) {
       await _settings.setEquipmentSecret(uuid, field, null);
     }
+    // A node re-added later can take the same uuid, and a mark left behind
+    // would silence the report for the setup somebody just rebuilt by hand.
+    await clearRadioProof(_settings.prefs, uuid);
+    _provenThisSession.remove(uuid);
     // Both clears below can move the key in use — off the removed node, or
     // off a radio that is going with it — and a keyer that is NOT the node
     // being removed goes on sending regardless.
@@ -1769,8 +1793,23 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   void _setState(String uuid, EquipmentState state, {bool notify = true}) {
     if (_disposed) return;
     _runtimeFor(uuid).state = state;
+    if (isRadio1(uuid)) _updateEquipmentTag();
     if (notify) notifyListeners();
   }
+
+  /// What every crash report says the operator was driving ([EquipmentTag]).
+  /// Fed from [_setState], the one funnel every status change passes
+  /// through — including the ones that are not a connect at all.
+  void _updateEquipmentTag() {
+    final uuid = _localRadio1;
+    final node = uuid == null ? null : _nodes[uuid];
+    final connected = node != null && stateFor(uuid!).status == EquipmentStatus.connected;
+    // The VARIANT key, which says the transport too: an IC-705 that fails
+    // over WiFi and one that fails over USB are different reports.
+    _equipmentTag.update(connected ? registry.typeFor(node.typeKey)?.key ?? node.typeKey : null);
+  }
+
+  final _equipmentTag = EquipmentTag();
 
   Future<void> connect(String uuid) async {
     // Asking for it back cancels a previous Disconnect, so the idle retry may
@@ -2113,6 +2152,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
     runtime.connection = connection;
     runtime.session = session;
+    // This connection has heard nothing yet, whatever the last one heard.
+    runtime.proof.reset();
     runtime.subscription = connection.data.listen((chunk) {
       try {
         session.handleData(chunk);
@@ -2416,6 +2457,24 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     });
   }
 
+  /// Fires [onRadioProven] on the reading that completes the pair. [reading]
+  /// is the driver's RAW frame — [RadioProofWatch] says why that matters.
+  void _noteProven(String uuid, _NodeRuntime runtime, VfoReading reading) {
+    if (!runtime.proof.note(reading)) return;
+    if (!_provenThisSession.add(uuid)) return;
+    final node = _nodes[uuid];
+    if (node == null) return;
+    // Never let a reporting failure reach the reading path: this runs on
+    // every frame a radio sends, and a throw here would take down the
+    // session that is working — the one outcome a success report must not
+    // produce.
+    try {
+      onRadioProven?.call(node);
+    } catch (e, st) {
+      ErrorReportingService.report(e, st, context: 'cat:radio-proven');
+    }
+  }
+
   void _applyReading(String uuid, VfoReading reading) {
     final runtime = _runtimeFor(uuid);
     // The radio said something, so it is not silent — whatever it said.
@@ -2429,6 +2488,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
     // frequency and band back to where the rig came from. `lastSent` falls
     // back per field, so a deliberately cleared frequency (a band pick)
     // still reads through to the radio's value rather than resurrecting one.
+    _noteProven(uuid, runtime, reading);
+
     final sent = runtime.lastSent;
     final merged = VfoReading(
       freqKHz: reading.freqKHz ?? sent?.freqKHz ?? runtime.state.vfo.freqKHz,
@@ -2807,6 +2868,9 @@ class _NodeRuntime {
   /// direction — the echo guard. Without it an app→radio tune and the
   /// radio's confirmation of it keep re-triggering each other.
   VfoReading? lastSent;
+
+  /// What this connection has heard the radio itself say ([RadioProofWatch]).
+  final proof = RadioProofWatch();
 
   /// [lastSent]'s counterpart for transmit power, which travels on its own
   /// commands rather than inside a [VfoReading].

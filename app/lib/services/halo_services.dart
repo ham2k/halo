@@ -46,8 +46,10 @@ import 'extension_dev_client.dart';
 import 'extension_service.dart';
 import 'opened_files_service.dart';
 import 'geoshape_service.dart';
-import 'cat/equipment.dart' show EquipmentStatus, kCategoryTransceiver;
+import 'cat/equipment.dart' show EquipmentNode, EquipmentStatus, kCategoryTransceiver;
 import 'cat/cat_service.dart';
+import 'cat/equipment_details.dart';
+import 'cat/radio_proof.dart';
 import 'peer/ble/peer_ble.dart';
 import 'peer/peer_channels.dart';
 import 'peer/peer_drafts.dart';
@@ -391,7 +393,8 @@ class HaLoServices {
   /// built over a fake transport — the real one can only reach `connected`
   /// through hardware.
   final CatService? _catOverride;
-  late final CatService cat = _catOverride ?? CatService(settings, radio: radio, onTrack: track);
+  late final CatService cat = _catOverride ??
+      (CatService(settings, radio: radio, onTrack: track)..onRadioProven = reportWorkingRadio);
   /// Injectable like [_exportsOverride]: `permissionDenied` and `unavailable`
   /// are reachable only by denying an OS permission or losing a GPS fix, so a
   /// widget test of what those states put on screen has no other way in.
@@ -1235,6 +1238,71 @@ class HaLoServices {
   void track(String event, [Map<String, Object?> properties = const {}]) {
     if (!settings.consentAppData) return;
     metrics.logEvent(event, properties: properties);
+  }
+
+  /// Uploads what a radio was configured with, the first time it proves it
+  /// can read a frequency and a mode (docs/design/telemetry.md § Radios).
+  ///
+  /// Why this and not the `radio_connected` event beside it: that one is a
+  /// count. It says a pairing reached `connected`, which a rig that holds a
+  /// session and answers nothing also does — and it carries the catalogue key
+  /// only, so it can never say WHICH port, speed or CI-V address got a
+  /// generic driver talking. That is the whole question the catalogue's
+  /// defaults are guessing at.
+  ///
+  /// Three gates, all of them deliberate:
+  ///
+  ///  * `consentAppData`, checked live here rather than at startup, exactly as
+  ///    [track] checks it — this ships the radio's configuration, including a
+  ///    USB adapter's serial number, and an operator who turns the setting off
+  ///    has turned this off with it.
+  ///  * a persisted mark per radio AND per configuration (radio_proof.dart),
+  ///    so this is not a per-launch upload — and so that changing a port or a
+  ///    baud rate to get a rig talking re-arms it, that change being the most
+  ///    useful thing an operator could tell us.
+  ///  * [ErrorReportingService.reportingEnabled], since an OSS build has no
+  ///    backend to send to and would otherwise write a mark for a report that
+  ///    never left.
+  ///
+  /// Best-effort throughout. A radio that works is the news; a report about it
+  /// that fails is not worth a notice, and never worth the connection.
+  void reportWorkingRadio(EquipmentNode node) {
+    if (!settings.consentAppData || !ErrorReportingService.reportingEnabled) return;
+    unawaited(() async {
+      try {
+        if (isRadioProven(settings.prefs, node, cat.registry)) return;
+        final type = cat.registry.typeFor(node.typeKey);
+        if (type == null) return;
+        // ANDROID lists its ports through a MethodChannel round-trip, cached
+        // by this hook and by nothing else — and a radio reconnected at boot
+        // never opens the equipment editor that normally calls it. Without
+        // this the body reads "not among the 0 port(s) the app can see", and
+        // the mark written below makes that the only report this
+        // configuration ever sends.
+        await type.transport.prepareConfigElements();
+        final lines = equipmentSetupLines(
+          node: node,
+          type: type,
+          state: cat.stateFor(node.uuid),
+          registry: cat.registry,
+        );
+        // Titled by the pairing, so Sentry groups every operator's IC-705 on
+        // one issue and the bodies underneath are the shack-by-shack detail.
+        // The node's own name stays OUT of the title for the same reason: an
+        // operator's label for their rig would mint an issue per shack.
+        if (!ErrorReportingService.diagnostic(
+          title: 'Radio working: ${type.key}',
+          body: lines.join('\n'),
+        )) {
+          // The backend refused it, so nothing was reported: leaving the mark
+          // unwritten is what lets the next launch try again.
+          return;
+        }
+        await markRadioProven(settings.prefs, node, cat.registry);
+      } catch (e, st) {
+        ErrorReportingService.report(e, st, context: 'cat:report-working-radio');
+      }
+    }());
   }
 
   /// Sets the sync device identity + operator callsign in one call. Writes

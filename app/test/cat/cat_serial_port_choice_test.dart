@@ -63,43 +63,65 @@ void main() {
     expect(ports.portChoices(null).first.label, 'CP2102 (bus/usb/001/002)');
   });
 
-  test('an index picks that port of every split device, and drops the ordinal from its label', () {
-    // The X6100's rule: CI-V on the second port, whatever the bridge.
+  test('an index points at that port of every split device WITHOUT hiding its siblings', () {
+    // The X6100's rule: CI-V on the second port, whatever the bridge. It is
+    // a claim about where CAT usually is, not about where it may be — both
+    // ports of an IC-705 leave the factory set to CI-V and either can be
+    // switched, so an operator who moved it must still be able to pick the
+    // other one. Every port stays; the claimed ones lead.
     final choices = ports.portChoices({'index': 1});
-    expect([for (final c in choices) c.name], ['/dev/bus/usb/001/002', '$cp2105#1', '$ft2232#1', '$x6100#1']);
-    expect(choices.last.label, isNot(contains('port')));
-    expect(choices.last.label, contains('X6100'));
+    expect([for (final c in choices) c.name],
+        ['$cp2105#1', '$ft2232#1', '$x6100#1', '/dev/bus/usb/001/002', '$cp2105#0', '$ft2232#0', '$x6100#0']);
+    expect([for (final c in choices) if (c.suggested) c.name], ['$cp2105#1', '$ft2232#1', '$x6100#1']);
+    // The ordinal STAYS, unlike when this rule hid the sibling: with both on
+    // screen under one description, "port 2 of 2" is the only thing telling
+    // the operator which row they are looking at.
+    expect(choices.first.label, contains('port 2 of 2'));
   });
 
-  test('a vendor id confines the rule to that maker, so another adapter still offers both ports', () {
-    // A Yaesu reached through its own CP2105 gets the Enhanced port only;
-    // the same radio on an FTDI cable is somebody else's wiring. That
-    // surviving port leads the list because the same declaration suggests
-    // it — on desktop, where there is nothing to narrow, that is the whole
-    // of what the radio's definition can do.
-    expect(names(Ft891Driver.cp2105CatPort), ['$cp2105#0', '/dev/bus/usb/001/002', '$ft2232#0', '$ft2232#1', '$x6100#0', '$x6100#1']);
+  test('a vendor id confines the claim to that maker, so another adapter is pointed at nothing', () {
+    // A Yaesu reached through its own CP2105 gets the Enhanced port marked;
+    // the same radio on an FTDI cable is somebody else's wiring, and a
+    // confident guess about hardware this definition has never seen is worse
+    // than no guess. Every port is still listed either way.
+    final choices = ports.portChoices(Ft891Driver.cp2105CatPort);
+    expect([for (final c in choices) if (c.suggested) c.name], ['$cp2105#0']);
+    expect([for (final c in choices) c.name], hasLength(7));
   });
 
-  test('an index the device does not have leaves it listed whole rather than empty', () {
+  test('an index the device does not have points at nothing rather than at the wrong port', () {
     // Either side of the range: a too-large index matches no port, and a
     // negative one would match none while claiming every device.
-    expect(names({'index': 3}), names(null));
-    expect(names({'index': -1}), names(null));
+    for (final restriction in [
+      {'index': 3},
+      {'index': -1},
+    ]) {
+      expect(names(restriction), names(null), reason: '$restriction');
+      expect([for (final c in ports.portChoices(restriction)) if (c.suggested) c.name], isEmpty,
+          reason: '$restriction');
+    }
   });
 
-  test('a restriction that is not a map, or an index that is not a number, narrows nothing', () {
-    expect(names('second'), names(null));
-    expect(names({'index': '1'}), names(null));
+  test('a restriction that is not a map, or an index that is not a number, claims nothing', () {
+    for (final restriction in ['second', {'index': '1'}]) {
+      expect(names(restriction), names(null), reason: '$restriction');
+      expect([for (final c in ports.portChoices(restriction)) if (c.suggested) c.name], isEmpty,
+          reason: '$restriction');
+    }
   });
 
   test('the port field the editor renders is built from these choices, not the raw port list', () {
     // The seam: with this line reverted to `availablePorts`, every test
-    // above still passes and no radio ever picks its port.
+    // above still passes and no radio ever points at its port.
     final field = ports.configElements(restrictions: {
       'port': {'index': 1},
     }).firstWhere((e) => e['key'] == 'port');
-    final offered = [for (final o in field['options'] as List) (o as Map)['value']];
-    expect(offered, ['/dev/bus/usb/001/002', '$cp2105#1', '$ft2232#1', '$x6100#1']);
+    final options = (field['options'] as List).cast<Map<String, dynamic>>();
+    expect([for (final o in options) o['value']],
+        ['$cp2105#1', '$ft2232#1', '$x6100#1', '/dev/bus/usb/001/002', '$cp2105#0', '$ft2232#0', '$x6100#0']);
+    // And the claim survives into the form as emphasis, or the row leads the
+    // list looking exactly like the six below it.
+    expect(options.first['emphasis'], isTrue);
   });
 
   group('a radio that names its bridge gets it offered first, in bold, and tagged', () {
@@ -279,7 +301,10 @@ void main() {
     final field = ports.configElements(restrictions: {'port': Ft891Driver.cp2105CatPort})
         .firstWhere((e) => e['key'] == 'port');
     final first = (field['options'] as List).cast<Map<String, dynamic>>().first;
-    expect(first['label'], 'CP2105');
+    // The ordinal is part of the NAME now that the sibling is never hidden:
+    // both rows read `CP2105` otherwise, and the suggested one has to say
+    // which of the two it is.
+    expect(first['label'], 'CP2105 (port 1 of 2)');
     expect(first['tags'], ['suggested']);
     expect(first['icon'], 'usb');
     expect(first['trailing'], 'bus/usb/001/007#0');

@@ -193,8 +193,8 @@ class Translations$onboarding$en {
 	/// en: 'To help us make the app better, we'd like to collect performance, crash, and app usage data.'
 	String get consentUsageBody => 'To help us make the app better, we\'d like to collect performance, crash, and app usage data.';
 
-	/// en: 'Share Usage Data'
-	String get consentUsageLabel => 'Share Usage Data';
+	/// en: 'Share app usage data'
+	String get consentUsageLabel => 'Share app usage data';
 
 	/// en: 'Some features might involve sharing your operation data with other users. You can opt-out at any time.'
 	String get consentOperationBody => 'Some features might involve sharing your operation data with other users. You can opt-out at any time.';
@@ -4113,14 +4113,14 @@ class Translations$settings$station$en {
 	/// en: ' - The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.'
 	String get ic7300Mk2Note => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.';
 
-	/// en: ' - The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them. On Android only that one is listed.'
-	String get ic705PortNote => '\n- The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them. On Android only that one is listed.';
+	/// en: ' - The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them, which is the one the picker points at.'
+	String get ic705PortNote => '\n- The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them, which is the one the picker points at.';
 
 	/// en: ' - The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.'
 	String get ic7760PortNote => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.';
 
-	/// en: ' - The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents. On Android only that one is listed.'
-	String get x6100PortNote => '\n- The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents. On Android only that one is listed.';
+	/// en: ' - The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents, and the one the picker points at.'
+	String get x6100PortNote => '\n- The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents, and the one the picker points at.';
 
 	/// en: 'If the app cannot connect'
 	String get rigctldTroubleshootingTitle => 'If the app cannot connect';
@@ -5952,8 +5952,8 @@ class Translations$settings$privacy$shareAppData$en {
 	/// en: 'Share app usage data'
 	String get title => 'Share app usage data';
 
-	/// en: 'Help us improve the app by sharing usage, crash and performance data'
-	String get descriptionOn => 'Help us improve the app by sharing usage, crash and performance data';
+	/// en: 'Help us improve the app by sharing usage, configuration, crash and performance data'
+	String get descriptionOn => 'Help us improve the app by sharing usage, configuration, crash and performance data';
 
 	/// en: 'Keep app usage data private. The Ham2K team won't be able to detect crashes or other issues.'
 	String get descriptionOff => 'Keep app usage data private.\nThe Ham2K team won\'t be able to detect crashes or other issues.';
@@ -6312,7 +6312,7 @@ extension on Translations {
 			'onboarding.activityWwff' => 'World Wide Flora & Fauna',
 			'onboarding.consentTitle' => 'Data & Privacy',
 			'onboarding.consentUsageBody' => 'To help us make the app better, we\'d like to collect performance, crash, and app usage data.',
-			'onboarding.consentUsageLabel' => 'Share Usage Data',
+			'onboarding.consentUsageLabel' => 'Share app usage data',
 			'onboarding.consentOperationBody' => 'Some features might involve sharing your operation data with other users. You can opt-out at any time.',
 			'onboarding.consentOperationLabel' => 'Share Operation Data',
 			'onboarding.finishingSetup' => 'Finishing setup — downloading reference data…',
@@ -7171,7 +7171,7 @@ extension on Translations {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacy',
 			'settings.privacy.shareAppData.title' => 'Share app usage data',
-			'settings.privacy.shareAppData.descriptionOn' => 'Help us improve the app by sharing usage, crash and performance data',
+			'settings.privacy.shareAppData.descriptionOn' => 'Help us improve the app by sharing usage, configuration, crash and performance data',
 			'settings.privacy.shareAppData.descriptionOff' => 'Keep app usage data private.\nThe Ham2K team won\'t be able to detect crashes or other issues.',
 			'settings.privacy.shareOpData.title' => 'Share operation data',
 			'settings.privacy.shareOpData.descriptionOn' => 'Share some operation data publicly and with other users',
@@ -7474,9 +7474,9 @@ extension on Translations {
 			'settings.station.civAddressTroubleshootingTitle' => 'If the radio never answers',
 			'settings.station.civAddressTroubleshooting' => '- **The CI-V address must match** the radio\'s own menu. This entry prefills the address the model ships with, but a rig sharing a CI-V bus is exactly where that gets changed. A frame sent to the wrong address is ignored in silence, which looks exactly like a dead cable.\n- **Speed must match** the radio\'s CI-V BAUD RATE — or set the radio to Auto, which simply follows this app.\n- **Another app may hold the port** — WSJT-X, fldigi and rigctld all keep it open.',
 			'settings.station.ic7300Mk2Note' => '\n- The **IC-7300 MK2** ships on address `B6`, not the `94` prefilled here — pick the IC-7300 MK2 entry instead.',
-			'settings.station.ic705PortNote' => '\n- The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them. On Android only that one is listed.',
+			'settings.station.ic705PortNote' => '\n- The **IC-705** presents two USB serial ports, both named after the radio. CI-V is on the **first** of them, which is the one the picker points at.',
 			'settings.station.ic7760PortNote' => '\n- The **IC-7760** speaks CI-V on **Port A** of the two USB serial ports it presents.',
-			'settings.station.x6100PortNote' => '\n- The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents. On Android only that one is listed.',
+			'settings.station.x6100PortNote' => '\n- The **X6100** speaks CI-V on its **DEV** port — the second of the two serial ports it presents, and the one the picker points at.',
 			'settings.station.rigctldTroubleshootingTitle' => 'If the app cannot connect',
 			'settings.station.rigctldTroubleshooting' => 'This connects to a **rigctld daemon you run yourself**, not to the radio directly — Hamlib\'s own backend talks to the radio and supports hundreds of models.\n\n- **The daemon must already be running**, e.g. `rigctld -m 1035 -r /dev/ttyUSB0`. Find your radio\'s model number with `rigctl -l`.\n- **From another machine**, start it with `-T 0.0.0.0` — by default rigctld only accepts connections from the machine it runs on.\n- **Port** is 4532 unless you started the daemon with `-t`.\n- Once connected, a missing frequency usually means the daemon itself cannot reach the radio — test it with `rigctl -m 2 f` on the daemon\'s machine.',
 			'settings.station.flrigTroubleshootingTitle' => 'If the app cannot connect',

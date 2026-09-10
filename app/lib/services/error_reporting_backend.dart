@@ -22,6 +22,15 @@ abstract class ErrorReportingBackend {
   /// Updates the backend's user-identifying context. Both null clears it.
   void updateUserContext({String? callsign, String? accountId});
 
+  /// Names the radio the app is driving, so every later event says what was
+  /// on the other end of the cable. Null clears it — nothing is connected.
+  ///
+  /// [radio] is an [EquipmentVariant] key from our own catalogue
+  /// (`ic705-serial`), which is why this needs no consent: it is bounded by
+  /// what we ship and identifies nobody. No config value belongs here — see
+  /// docs/design/telemetry.md § Radios.
+  void updateEquipmentContext({String? radio});
+
   /// Records a breadcrumb (ErrorReportingService.breadcrumb()) — session-wide
   /// state a backend can attach to whatever it captures next, including a
   /// native crash this app's own Dart error hooks never see (crashpad
@@ -38,8 +47,12 @@ abstract class ErrorReportingBackend {
   /// or routes by kind needs to be able to tell them apart, which is why this
   /// is its own entry point rather than a flag on an existing one.
   ///
-  /// Never called on this app's own initiative: an operator ran a command and
-  /// is waiting to be told what it found.
+  /// Two callers, and only one of them has an operator waiting: a command the
+  /// operator ran (a benchmark, a device profile), and the first-success
+  /// report a working radio sends on the app's own initiative. The second is
+  /// gated on `consentAppData` at its call site, since it carries the
+  /// radio's configuration — docs/design/telemetry.md § Radios owns that
+  /// distinction. A backend must not assume anyone is looking at the result.
   void captureDiagnostic({required String title, required String body});
 }
 
@@ -54,6 +67,9 @@ class NoopErrorReportingBackend implements ErrorReportingBackend {
 
   @override
   void updateUserContext({String? callsign, String? accountId}) {}
+
+  @override
+  void updateEquipmentContext({String? radio}) {}
 
   @override
   void addBreadcrumb(String message, {String? category}) {}

@@ -132,6 +132,19 @@ class ErrorReportingService {
     }
   }
 
+  /// Names the radio the app is driving on every later report — see
+  /// [ErrorReportingBackend.updateEquipmentContext]. Swallows a synchronous
+  /// backend failure for the same reason [breadcrumb] does: this rides along
+  /// with a radio connecting, and a reporting backend that cannot take a tag
+  /// must not take the connection down with it.
+  static void updateEquipmentContext({String? radio}) {
+    try {
+      _backend.updateEquipmentContext(radio: radio);
+    } catch (error, stackTrace) {
+      debugPrint('[equipment-context] backend threw, ignoring: $error\n$stackTrace');
+    }
+  }
+
   /// Uploads a diagnostic report the operator asked for — see
   /// [ErrorReportingBackend.captureDiagnostic]. Swallows a SYNCHRONOUS backend
   /// failure for the same reason [breadcrumb] does: the operator is waiting on

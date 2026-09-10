@@ -27,8 +27,8 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
 import '../services/cat/equipment.dart';
+import '../services/cat/equipment_details.dart';
 import '../services/cat/equipment_registry.dart';
-import '../services/cat/transports/serial_transport_config.dart';
 
 /// What the operator says happened, and what that makes the card.
 ///
@@ -221,21 +221,7 @@ EquipmentReport buildEquipmentReport({
     // A list, not bare lines: consecutive lines collapse into one paragraph
     // in markdown, and this block is read as a table of facts.
     '- Reported as: $manufacturer $model — ${outcome.titleWord}',
-    '- Configured as: ${type.model.name} (`${type.key}`)',
-    '- Connection: ${type.transportLabel}',
-    '- Driver: `${type.driver.key}`',
-    ..._configLines(node, type, registry),
-    ..._serialPortLines(node, type),
-    '- Status: ${state.status.name}',
-    // The raw exception's own words when the row shows a translated
-    // stand-in instead — a developer triaging this needs the address, port
-    // or errno a friendly message drops.
-    if (state.error != null) '- Error: ${state.errorDetail ?? state.error}',
-    // The devMode readout — what a driver worked out about the rig it was
-    // talking to (a Kenwood's learned IF offset, say). Meaningless to the
-    // operator, which is why it is normally hidden, and exactly what a
-    // report about that rig is for.
-    if (state.diagnostic != null) '- Diagnostic: ${state.diagnostic}',
+    ...equipmentSetupLines(node: node, type: type, state: state, registry: registry),
   ].join('\n');
 
   return (
@@ -244,152 +230,6 @@ EquipmentReport buildEquipmentReport({
     kind: outcome.kind,
   );
 }
-
-/// The radio's own settings, labelled the way the editor labels them.
-///
-/// Credentials are excluded by DECLARATION, never by name, and the question is
-/// asked of the WHOLE CATALOGUE rather than of the pairing this node is on.
-/// That distinction is the registry's own, and `allSecretFields` states why:
-/// the editor renders every variant's fields at once, so a node bound to a
-/// transport with no credentials can still be carrying the password belonging
-/// to the transport beside it. "What does this connection need?" is the
-/// pairing's question; "may this leave the device?" is the catalogue's, and
-/// this is the only code that ships a config value off the machine.
-///
-/// A key is dropped if any pairing calls it a secret or renders it as a secret
-/// field. Either test alone covers the shipped catalogue; the second is what
-/// keeps a credential added later out of reports from the moment it exists,
-/// rather than until someone remembers this function.
-///
-/// Labels come from the node's own pairing — the wording the operator saw.
-/// So do the VALUES of picker fields: a stored `COM8` identifies nothing,
-/// while the option the operator picked reads "COM8 — CP2105 Dual USB to
-/// UART Bridge". A value no option matches — a port since unplugged — falls
-/// back to the raw one, which is still the truth about the config.
-List<String> _configLines(EquipmentNode node, EquipmentType type, EquipmentRegistry registry) {
-  final secrets = {...registry.allSecretFields};
-  for (final candidate in registry.types) {
-    for (final element in _elementsOf(candidate)) {
-      final key = element['key'];
-      if (key is String && element['fieldType'] == 'secret') secrets.add(key);
-    }
-  }
-
-  final labels = <String, String>{};
-  final optionLabels = <String, Map<String, String>>{};
-  for (final element in _elementsOf(type)) {
-    final key = element['key'];
-    if (key is! String) continue;
-    final label = element['label'];
-    if (label is String && label.isNotEmpty) labels[key] = label;
-    final options = element['options'];
-    if (options is List) {
-      optionLabels[key] = {
-        for (final option in options)
-          if (option is Map && option['value'] != null && option['label'] is String && option['label'] != '')
-            '${option['value']}': option['label'] as String,
-      };
-    }
-  }
-
-  return [
-    for (final entry in node.config.entries)
-      if (!secrets.contains(entry.key) && entry.value != null && '${entry.value}'.isNotEmpty)
-        '- ${labels[entry.key] ?? entry.key}: '
-            '${_shownValue('${entry.value}', optionLabels[entry.key])}',
-  ];
-}
-
-/// A pairing's form elements, or none when asking for them throws.
-///
-/// Asking is not free and not safe: a serial pairing's elements come from a
-/// live enumeration, which opens each port to read its descriptors. This runs
-/// while composing a report the operator has already written and can no
-/// longer get back — the form pane closed when they pressed Send — so a rig
-/// misbehaving at exactly the moment it is being reported must cost a label,
-/// never the report.
-///
-/// Secrets survive an empty answer: the exclusion set starts from
-/// [EquipmentRegistry.allSecretFields], which every transport DECLARES, and
-/// this scan only adds the ones a form renders as secret without declaring
-/// them. A key that reaches the card because both routes failed at once would
-/// need a transport that neither declares its credential nor can list its
-/// fields.
-List<Map<String, dynamic>> _elementsOf(EquipmentType type) {
-  try {
-    return type.configElements();
-  } catch (e) {
-    debugPrint('[report] ${type.key}: config elements unavailable ($e)');
-    return const [];
-  }
-}
-
-/// A picker's value the way the operator saw it, without losing the value.
-///
-/// A label that already contains the stored value replaces it outright — a
-/// serial port's label is `COM8 — CP2105 …`, and printing the name twice on
-/// one line reads as a mistake. A label that does not keeps the value beside
-/// it: `switchLayout` renders as a translated, count-interpolated sentence,
-/// and a card that says only "8 antennas, 1 radio" — in the operator's
-/// language — cannot be turned into a change to anything.
-String _shownValue(String raw, Map<String, String>? optionLabels) {
-  final label = optionLabels?[raw];
-  if (label == null) return raw;
-  return label.contains(raw) ? label : '$label (`$raw`)';
-}
-
-/// What the app can see of the chosen serial port, beyond its own name.
-///
-/// The identifiers first: two adapters can carry the same description and
-/// differ only in VID:PID, which is what says whether a report is about a
-/// CP2105 or an FT232, and the serial number is what tells two of the same
-/// adapter apart. Whatever descriptor text the picker's label did NOT already
-/// show follows — on macOS the label is often the bare device name, because
-/// reading a descriptor there means opening the port and that fails.
-///
-/// Says so when the port is not in the enumeration at all, rather than going
-/// quiet: "the app cannot see the port" is the answer to a large share of the
-/// reports this feature exists to collect, and silence there reads exactly
-/// like a port that was found and had nothing to say.
-List<String> _serialPortLines(EquipmentNode node, EquipmentType type) {
-  final transport = type.transport;
-  if (transport is! SerialTransportConfig) return const [];
-
-  final selected = SerialTransportConfig.serialPort(node.config);
-  if (selected.isEmpty) return const [];
-
-  final List<SerialPortOption> ports;
-  try {
-    ports = transport.availablePorts;
-  } catch (e) {
-    // A live hardware scan, run while composing a report the operator has
-    // already written and can no longer get back — the form pane closed when
-    // they pressed Send. libserialport opens each port to read its
-    // descriptors, so a throw here is a real possibility and losing the
-    // report to it is the one outcome worse than a missing detail line.
-    debugPrint('[report] serial enumeration failed while building a report: $e');
-    return ['- Port details: enumeration failed ($e)'];
-  }
-
-  for (final port in ports) {
-    if (port.name != selected) continue;
-    final label = port.label;
-    final details = [
-      if (port.serialNumber != null && port.serialNumber!.isNotEmpty) 'serial ${port.serialNumber}',
-      if (port.vendorId != null && port.productId != null) 'USB ${_usbId(port.vendorId!)}:${_usbId(port.productId!)}',
-      for (final text in [port.description, port.manufacturer, port.productName])
-        if (text != null && text.isNotEmpty && !label.contains(text)) text,
-    ];
-    // One line, bullet-separated: consecutive lines would collapse into an
-    // unpunctuated run-on in markdown, same as the block around it.
-    return details.isEmpty ? const [] : ['- Port details: ${details.join(' • ')}'];
-  }
-  return ['- Port details: `$selected` is not among the ${ports.length} port(s) the app can see'];
-}
-
-/// The four-digit hex a USB id is written as everywhere it is looked up —
-/// `10c4:ea60`, not `4292:59984`.
-String _usbId(int value) => value.toRadixString(16).padLeft(4, '0');
 
 /// Sends the report and says what happened. Nothing to fill in — it starts
 /// working the moment it opens, because the operator has already pressed Send

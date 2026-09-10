@@ -57,6 +57,11 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   final breadcrumbs = <RecordedBreadcrumb>[];
   final diagnostics = <(String, String)>[];
 
+  /// Every value the equipment tag has been set to, nulls included — the
+  /// nulls are what say a disconnect cleared it, and a test that only kept
+  /// the names could not tell a cleared tag from one never set.
+  final equipmentContextCalls = <String?>[];
+
   /// Simulates the backend's own init failing before it ever calls
   /// startBody (e.g. a real Sentry init throwing) — the caller must still
   /// run the app via its own fallback.
@@ -99,6 +104,11 @@ class FakeErrorReportingBackend implements ErrorReportingBackend {
   @override
   void updateUserContext({String? callsign, String? accountId}) {
     userContextCalls.add(RecordedUserContext(callsign, accountId));
+  }
+
+  @override
+  void updateEquipmentContext({String? radio}) {
+    equipmentContextCalls.add(radio);
   }
 
   @override

@@ -72,14 +72,16 @@ class Ft891Driver extends EquipmentDriver {
   /// CAT is on the CP2105's Enhanced port, the first of its two; the
   /// Standard port carries PTT and keying. A `port` restriction for the
   /// serial transport: where the platform can tell the two apart, the
-  /// picker offers only the first, and only on a Silicon Labs bridge —
-  /// a radio reached through some other adapter's two ports gets both.
+  /// picker points at the first, and only on a Silicon Labs bridge —
+  /// a radio reached through some other adapter's two ports is pointed at
+  /// neither, a guess about hardware this definition has never seen being
+  /// worse than no guess. Nothing is ever hidden: the Standard port stays
+  /// pickable for the operator who wired PTT the other way round.
   ///
-  /// Where it cannot — desktop, where the OS named both ports itself and
-  /// nothing knows they are siblings — `suggest` is all that is left: the
-  /// bridge is named rather than hidden, so the picker puts it first and
-  /// says so. Both clauses describe the same chip, because neither works
-  /// everywhere: the USB pair is exact but unreadable on macOS, and the
+  /// Where the platform cannot tell siblings apart — desktop, where the OS
+  /// named both ports itself — `suggest` is all that is left: the bridge is
+  /// named, so the picker puts it first and says so. Both clauses describe
+  /// the same chip, because neither works everywhere: the USB pair is exact but unreadable on macOS, and the
   /// pattern is what carries that platform, where the description reads
   /// back in full. Neither tells the bridge's two ports apart on its own —
   /// what does is the sibling inference in `serial_transport_config.dart`,

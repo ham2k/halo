@@ -1428,10 +1428,16 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   List<String> get enabledBands => _loggingList('bands', defaultBands);
   List<String> get enabledModes => _loggingList('modes', defaultModes);
 
-  /// Privacy consents, both opt-in (default false). Same keys as app-polo
-  /// (`consentAppData`/`consentOpData`) for cross-app parity. Nothing in the
-  /// OSS app consumes them yet — MetricsService is a no-op — but
-  /// distribution builds gate their telemetry on these.
+  /// Privacy consents. The fallback here is false, but that is not the same
+  /// as "off for operators": onboarding shows `consentAppData` PRE-CHECKED
+  /// and writes it on finish either way, so in the field it behaves as
+  /// opt-out — see docs/design/telemetry.md § Privacy model before putting
+  /// anything new behind it. `consentOpData` really is off unless asked for.
+  /// Same keys as app-polo
+  /// (`consentAppData`/`consentOpData`) for cross-app parity. Distribution
+  /// builds gate their telemetry on these; in the OSS app `MetricsService`
+  /// is a no-op, but the gate itself is not dead code —
+  /// `HaLoServices.reportWorkingRadio` reads `consentAppData` directly.
   bool get consentAppData => (settingValue(privacyGroup, 'consentAppData') as bool?) ?? false;
   bool get consentOpData => (settingValue(privacyGroup, 'consentOpData') as bool?) ?? false;
 

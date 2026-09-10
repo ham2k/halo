@@ -303,14 +303,22 @@ mixin SerialTransportConfig implements EquipmentTransport {
   ///
   /// `{'index': n}` says which of a multi-port device's serial ports the
   /// radio's CAT is on, counted from 0 in descriptor order — the X6100's
-  /// CI-V is on 1, a Yaesu's on its CP2105's 0. That device then shows
-  /// only that port, under a label with no "port N of M". With
-  /// `'vendorId'` the rule applies only to that maker's bridges, so a
-  /// radio reached through some other adapter's two ports still offers
-  /// both. A device the platform could not split, or with fewer ports
-  /// than the index names, is listed whole: the restriction narrows what
-  /// this transport knows to be siblings and never hides a port the OS
-  /// named on its own.
+  /// CI-V is on 1, a Yaesu's on its CP2105's 0.
+  ///
+  /// **It RANKS, it does not hide.** That port sorts first, renders bold and
+  /// is tagged; every other port stays in the list. What the catalogue knows
+  /// is where CAT usually is, not where it must be: both ports of an IC-705
+  /// leave the factory set to CI-V and either can be switched, the same
+  /// radio reached through somebody else's two-port cable has a different
+  /// answer again, and an operator who moved CI-V deliberately would
+  /// otherwise face a picker with no way to say so and nothing on screen
+  /// explaining the absence. A wrong guess costs a bold row; a wrong
+  /// exclusion costs the radio.
+  ///
+  /// With `'vendorId'` the claim applies only to that maker's bridges, so a
+  /// radio reached through some other adapter's two ports is left unranked
+  /// rather than pointed at the wrong one. A device the platform could not
+  /// split, or with fewer ports than the index names, is simply not ranked.
   ///
   /// `'suggest'` ranks rather than narrows — see [portSuggests]. A
   /// suggested port sorts first, renders bold and is tagged; a port that
@@ -318,19 +326,9 @@ mixin SerialTransportConfig implements EquipmentTransport {
   /// Within each group the order is alphabetical, so a list nobody has
   /// anything to say about is stable between one refresh and the next.
   List<PortChoice> portChoices(Object? restriction) {
-    final index = restriction is Map ? restriction['index'] : null;
-    final vendorId = restriction is Map ? restriction['vendorId'] : null;
-    bool decides(SerialPortOption port) =>
-        index is int &&
-        index >= 0 &&
-        port.portIndex != null &&
-        index < (port.portCount ?? 0) &&
-        (vendorId == null || port.vendorId == vendorId);
-
     final ports = withInferredSiblings(availablePorts);
-    // Every enumeration is a sighting, including the ones a restriction is
-    // about to hide: what the machine has is not what this one radio may
-    // pick, and a port's age is a fact about the machine.
+    // Every enumeration is a sighting: what the machine has is not what this
+    // one radio may pick, and a port's age is a fact about the machine.
     SerialPortSightings.observe([for (final port in ports) port.name]);
     // "Just now" points one port out of several. With a single port there is
     // nothing to point away from, and a sparkle on the only option is noise.
@@ -342,24 +340,14 @@ mixin SerialTransportConfig implements EquipmentTransport {
 
     final choices = <PortChoice>[
       for (final port in ports)
-        if (!decides(port))
-          PortChoice(
-            name: port.name,
-            label: port.label,
-            hardware: port.hardware(withPort: true),
-            device: port.shortName,
-            suggested: portSuggests(restriction, port),
-            justNow: markRecent && recent.contains(port.name),
-          )
-        else if (port.portIndex == index)
-          PortChoice(
-            name: port.name,
-            label: port.bareLabel,
-            hardware: port.hardware(withPort: false),
-            device: port.shortName,
-            suggested: portSuggests(restriction, port),
-            justNow: markRecent && recent.contains(port.name),
-          ),
+        PortChoice(
+          name: port.name,
+          label: port.label,
+          hardware: port.hardware(withPort: true),
+          device: port.shortName,
+          suggested: portSuggests(restriction, port),
+          justNow: markRecent && recent.contains(port.name),
+        ),
     ];
     choices.sort((a, b) {
       // Suggested outranks just-now: what the radio's own definition knows
@@ -421,15 +409,34 @@ mixin SerialTransportConfig implements EquipmentTransport {
   /// equipment editor down with it. A registry self-check pins the shape so
   /// a typo is caught in the suite instead.
   static bool portSuggests(Object? restriction, SerialPortOption port) {
-    final suggest = restriction is Map ? restriction['suggest'] : null;
-    if (suggest is! Map) return false;
+    if (restriction is! Map) return false;
+    final suggest = restriction['suggest'];
 
     // A declared index narrows the suggestion to ONE port of a bridge whose
     // siblings are known. Without this the whole chip is suggested — both
     // ports of a CP2105 match its pattern equally — which points the operator
     // at a pair, one of which is the PTT line that looks like a dead cable.
-    final index = restriction is Map ? restriction['index'] : null;
+    final index = restriction['index'];
+    final vendorId = restriction['vendorId'];
     if (index is int && port.portIndex != null && port.portIndex != index) return false;
+
+    // An index ALONE is a claim — the case where nothing else can tell two
+    // ports apart. The IC-705 presents both of its under one name, with no
+    // descriptor, USB id or pattern that differs between them; its position
+    // is the entire distinguishing fact, so requiring a `suggest` clause
+    // beside it would leave that radio unable to say the one thing it knows.
+    //
+    // `vendorId` scopes THIS claim and nothing else. It must not gate the
+    // clauses below: macOS reads no USB ids at all, so a vendor test there
+    // fails for every port, and gating `match` on it would switch off the
+    // one clause that works on that platform — see the pattern's own note.
+    if (suggest is! Map) {
+      return index is int &&
+          index >= 0 &&
+          port.portIndex != null &&
+          index < (port.portCount ?? 0) &&
+          (vendorId == null || port.vendorId == vendorId);
+    }
 
     final usb = suggest['usb'];
     if (usb is List) {

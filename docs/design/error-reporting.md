@@ -128,6 +128,19 @@ right before their own `dispose()`, which must always still run); an
 asynchronous one is not — same as any other unawaited call — and can still
 reach the fallback zone above.
 
+`ErrorReportingService.diagnostic(title:, body:)` and
+`updateEquipmentContext(radio:)` are outside the policy for the same reason:
+neither is an error, so there is nothing to decide. The diagnostic is an
+info-level report that groups by its title — a benchmark result, or the
+first-success radio report, which is app-initiated and gated on
+`consentAppData` at its call site ([telemetry.md](telemetry.md) § Radios owns
+that rule). The equipment context is a scope tag naming the connected radio's
+catalogue key, so every later event says what was on the other end of the
+cable. Both swallow a synchronous backend failure, exactly as `breadcrumb`
+does and for the same reason: they ride along with something the operator
+actually asked for, and a reporting backend that cannot send must not take
+that with it.
+
 ## Vendor split
 
 The public repo contains only the `ErrorReportingBackend` interface (no-op by

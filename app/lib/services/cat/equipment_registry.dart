@@ -1218,8 +1218,8 @@ const x6100Model = EquipmentModel(
       // Keys through 0x17 like the Icoms it imitates; whether it has voice
       // memories reachable over CI-V is undocumented, so none are offered.
       overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
-      // CI-V is on the second of the radio's two serial ports; where the
-      // platform can tell them apart, the picker offers only that one.
+      // CI-V is on the second of the radio's two serial ports; the picker
+      // points at that one where it can, and never hides the other.
       restrictions: {'port': {'index': 1}},
       notes: _x6100SerialNotes,
     ),
@@ -1292,9 +1292,9 @@ const ic705Model = EquipmentModel(
         voiceMemoriesConfigKey: civVoiceMemoryCount,
         voiceCeilingConfigKey: _icomVoiceSeconds,
       },
-      // The radio presents two USB serial ports under one name, and only
-      // the first carries CI-V; where the platform can tell them apart, the
-      // picker offers only that one.
+      // Two USB serial ports under one name, CI-V on the first: the picker
+      // points at that one where the platform can tell them apart, and
+      // still lists the other — either port can be switched to CI-V.
       restrictions: {'port': {'index': 0}},
       notes: _ic705SerialNotes,
     ),

@@ -38,6 +38,23 @@ void main() {
     ic705Serial.model,
     EquipmentVariant(key: ic705Serial.key, driver: ic705Serial.driver, transport: const _FakePortsTransport()),
   );
+  // macOS names a port after the DEVICE's serial with a port digit appended,
+  // which is what makes redaction a question about the whole line rather
+  // than about one field.
+  final macPortsType = EquipmentType(
+    ic705Serial.model,
+    EquipmentVariant(key: ic705Serial.key, driver: ic705Serial.driver, transport: const _MacPortsTransport()),
+  );
+  // The same macOS port with every descriptor probe refused — what a port
+  // held by a live session answers.
+  final busyMacPortsType = EquipmentType(
+    ic705Serial.model,
+    EquipmentVariant(key: ic705Serial.key, driver: ic705Serial.driver, transport: const _BusyMacPortsTransport()),
+  );
+  final shortSerialPortsType = EquipmentType(
+    ic705Serial.model,
+    EquipmentVariant(key: ic705Serial.key, driver: ic705Serial.driver, transport: const _ShortSerialPortsTransport()),
+  );
   final throwingPortsType = EquipmentType(
     ic705Serial.model,
     EquipmentVariant(key: ic705Serial.key, driver: ic705Serial.driver, transport: const _ThrowingPortsTransport()),
@@ -237,12 +254,48 @@ void main() {
 
     test('the USB identity the label had no room for rides along', () {
       // The label carries `description` alone, and two adapters can share
-      // one — the serial number and VID:PID are what say which silicon
-      // answered. Hex because that is how every USB id is written down;
-      // "4292:60016" matches nothing anyone can look up.
+      // one — VID:PID is what says which silicon answered. Hex because that
+      // is how every USB id is written down; "4292:60016" matches nothing
+      // anyone can look up.
       final report = reportFor(type: portsType, config: {'port': 'COM8'});
-      expect(report.body, contains('serial 01AF7D0E'));
       expect(report.body, contains('USB 10c4:ea70'));
+    });
+
+    test('the adapter\'s serial number reaches no report, in any of its hiding places', () {
+      // It fingerprints one physical device and answers nothing a report
+      // asks. Removing the `serial …` detail is the easy half: MACOS BUILDS
+      // THE DEVICE NODE OUT OF IT, so the same string comes back through the
+      // port name, through the picker label quoted beside it, and through the
+      // `- Port:` config line. A test that only checked for the word "serial"
+      // would pass against a body still carrying all three.
+      final report = reportFor(type: macPortsType, config: {'port': '/dev/cu.usbserial-01AF7D0E1'});
+      expect(report.body, isNot(contains('01AF7D0E')));
+      // Still says WHICH port, which is the whole reason the line exists.
+      expect(report.body, contains('<serial>'));
+      expect(report.body, contains('CP2105'));
+    });
+
+    test('a busy port hides its serial in its own name, and is redacted anyway', () {
+      // The case the report is ACTUALLY composed in. Descriptors are read by
+      // opening the port; the port is busy because this app's own CAT
+      // session is holding the radio that just started working, so the probe
+      // answers null and serial_transport_io caches that for half a minute.
+      // A redaction that needed the serial READ would therefore do nothing
+      // precisely here — while the device node still spells it out.
+      final report = reportFor(type: busyMacPortsType, config: {'port': '/dev/cu.usbserial-01AF7D0E1'});
+      expect(report.body, isNot(contains('01AF7D0E')));
+      expect(report.body, contains('<serial>'));
+      // The node still says it is a usbserial port, which is what the line is
+      // for — only the identifier goes.
+      expect(report.body, contains('usbserial-'));
+    });
+
+    test('a serial too short to be a fingerprint is left alone', () {
+      // Some adapters answer `1`. Redacting that would eat a character out
+      // of every unrelated word in the line while hiding nothing.
+      final report = reportFor(type: shortSerialPortsType, config: {'port': 'COM3'});
+      expect(report.body, contains('COM3'));
+      expect(report.body, isNot(contains('<serial>')));
     });
 
     test('a port the app cannot see says so, rather than going quiet', () {
@@ -381,6 +434,66 @@ class _FakePortsTransport extends EquipmentTransport with SerialTransportConfig 
           vendorId: 0x10c4,
           productId: 0xea70,
         ),
+      ];
+
+  @override
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
+      throw UnimplementedError();
+}
+
+/// A macOS enumeration: the node is the adapter's serial number with the port
+/// index on the end, and the descriptors read as they do on that platform.
+class _MacPortsTransport extends EquipmentTransport with SerialTransportConfig {
+  const _MacPortsTransport();
+
+  @override
+  String get key => 'serial';
+
+  @override
+  List<SerialPortOption> get availablePorts => const [
+        SerialPortOption(
+          name: '/dev/cu.usbserial-01AF7D0E1',
+          description: 'CP2105 Dual USB to UART Bridge',
+          serialNumber: '01AF7D0E',
+          vendorId: 0x10c4,
+          productId: 0xea70,
+        ),
+      ];
+
+  @override
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
+      throw UnimplementedError();
+}
+
+/// An adapter whose serial is one character — real, and shorter than
+/// anything worth redacting.
+class _ShortSerialPortsTransport extends EquipmentTransport with SerialTransportConfig {
+  const _ShortSerialPortsTransport();
+
+  @override
+  String get key => 'serial';
+
+  @override
+  List<SerialPortOption> get availablePorts => const [
+        SerialPortOption(name: 'COM3', description: 'USB Serial Port', serialNumber: '1'),
+      ];
+
+  @override
+  Future<EquipmentConnection> connect(Map<String, dynamic> target, {required CatCancelToken cancel}) =>
+      throw UnimplementedError();
+}
+
+/// The macOS port with every probe refused — no description, no ids, no
+/// serial — which is what libserialport answers for a port already open.
+class _BusyMacPortsTransport extends EquipmentTransport with SerialTransportConfig {
+  const _BusyMacPortsTransport();
+
+  @override
+  String get key => 'serial';
+
+  @override
+  List<SerialPortOption> get availablePorts => const [
+        SerialPortOption(name: '/dev/cu.usbserial-01AF7D0E1'),
       ];
 
   @override
