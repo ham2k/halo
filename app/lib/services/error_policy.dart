@@ -37,6 +37,7 @@ import 'package:http/http.dart' show ClientException;
 import 'bottom_chrome_squeezed.dart' show BottomChromeSqueezed;
 import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'connectivity_service.dart' show ConnectivityService;
+import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'catalog_service.dart' show CatalogUnreachable;
 import 'extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
@@ -265,6 +266,14 @@ class ErrorPolicy {
           'keeps trying',
       disposition: ErrorDisposition.logOnly,
       matches: _isCatEquipmentUnreachable,
+    ),
+    ErrorRule(
+      id: 'peer-media-unreachable',
+      reason: 'a peer refused or never answered the media link a screen pane dials (a firewall '
+          'between the two, a peer that left mid-dial); the pane says "not connected" and '
+          're-dials on its own, and a firewall between two peers is not a defect',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isPeerMediaUnreachable,
     ),
     ErrorRule(
       id: 'keychain-locked',
@@ -665,6 +674,16 @@ class ErrorPolicy {
     if (error is! CatConnectFailure) return false;
     final cause = error.cause;
     return cause is SocketException || cause is TimeoutException || cause is CatUnreachable;
+  }
+
+  /// `IOException` rather than the two shapes a refusal usually takes: a
+  /// peer that closes mid-dial reaches `WebSocket.connect` as an
+  /// `HttpException`, which is neither a `SocketException` nor a
+  /// `WebSocketException` and is the rule's own headline case.
+  static bool _isPeerMediaUnreachable(Object error, FlutterErrorDetails? details) {
+    if (error is! PeerMediaDialFailure) return false;
+    final cause = error.cause;
+    return cause is IOException || cause is TimeoutException;
   }
 
   /// `_hostFetch`'s own transport call — `http.Client.send`, or either of

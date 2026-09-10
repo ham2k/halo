@@ -212,6 +212,12 @@ class PeerScreens extends ChangeNotifier {
 
   bool isWatched(String sourceId) => (_watchers[sourceId] ?? const {}).isNotEmpty;
 
+  /// Whether [peerDeviceId] has redeemed its grant — its media link is up
+  /// and frames can go. Distinct from being a watcher: a watcher is
+  /// registered on the subscription, before any link exists.
+  @visibleForTesting
+  bool hasMediaLink(String peerDeviceId) => _mediaLinks.containsKey(peerDeviceId);
+
   /// Who is watching one source. Watcher ids: a peer's device id, or
   /// [localViewerWatcher] for a pane on this very device.
   Set<String> watchersOf(String sourceId) => {...?_watchers[sourceId]};

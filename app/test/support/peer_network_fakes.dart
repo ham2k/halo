@@ -153,6 +153,11 @@ class FakeHost {
   /// cannot reach.
   bool broadcastRefused = false;
 
+  /// When set, every dial FROM this host throws it instead of connecting —
+  /// a firewall between the two devices (`SocketException`), or a bug in
+  /// the transport (anything else).
+  Object? dialFailure;
+
   /// Hand this to `openPeerBeaconSocket(bind: host.binder)` to run the real
   /// beacon socket, retry ladder and all, over the fake segment.
   Future<RawDatagramSocket> binder(int port) async {
@@ -194,6 +199,7 @@ class _FakePeerNetwork implements PeerNetwork {
 
   @override
   Future<PeerLink> dial(String address, int port, {String? mediaTicket}) async {
+    if (host.dialFailure case final failure?) throw failure;
     final server = host.lan._linkServers['$address:$port'];
     // Nothing listening answers the way a dial to a peer that has left does:
     // an exception, not a link that never delivers.

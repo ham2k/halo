@@ -19,6 +19,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
+import '../error_reporting_service.dart';
+import 'peer_link_types.dart';
 import 'peer_screens.dart';
 import 'peer_service.dart';
 
@@ -671,6 +673,10 @@ class PeerScreenViews extends ChangeNotifier {
     unawaited(_mediaSubscriptions.remove(peerDeviceId)?.cancel());
     unawaited(_mediaLinks.remove(peerDeviceId)?.close());
     _dialling.remove(peerDeviceId);
+    // The dial streak means "stuck right now". A count that spanned the
+    // peer's absence would report its first failure on return as three in
+    // a row — or, parked past the threshold, never report it at all.
+    ErrorReportingService.recordSuccess(_dialStreakKey(peerDeviceId));
     _pacedTargets.removeWhere((target) => target.peerDeviceId == peerDeviceId);
     _croppingTargets.removeWhere((target) => target.peerDeviceId == peerDeviceId);
     _droppedCropFor.removeWhere((target) => target.peerDeviceId == peerDeviceId);
@@ -869,6 +875,12 @@ class PeerScreenViews extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// The failure streak one peer's media dials report under.
+  @visibleForTesting
+  static String dialStreakKey(String peerDeviceId) => _dialStreakKey(peerDeviceId);
+
+  static String _dialStreakKey(String peerDeviceId) => 'peer-media-dial:$peerDeviceId';
+
   Future<void> _dialMedia(String peerDeviceId, PeerScreenGrant grant) async {
     final address = peers.peers[peerDeviceId]?.beacon.address;
     if (address == null) {
@@ -895,11 +907,15 @@ class PeerScreenViews extends ChangeNotifier {
       // suppressed and the pane says "not connected" forever, holding a live
       // connection to a device that is.
       link = await peers.network.dial(address, grant.port, mediaTicket: grant.ticket);
-    } catch (e) {
-      // Not an error notice: a media link that will not open is this
-      // feature failing, not the app, and the pane says so itself
-      // (docs/design/error-reporting.md).
+    } catch (e, st) {
       debugPrint('[peer] media link to $peerDeviceId failed: $e');
+      // Wrapped for the report only: the policy needs to know the exception
+      // came from a dial (`peer-media-unreachable`). Through the streak,
+      // because the retry below fires every few seconds while the pane is
+      // open.
+      ErrorReportingService.reportIfRepeated(_dialStreakKey(peerDeviceId),
+          PeerMediaDialFailure(peerDeviceId, e), st,
+          context: 'PeerScreenViews:dialMedia');
       for (final target in _views.keys.toList()) {
         if (target.peerDeviceId != peerDeviceId) continue;
         _views[target] = _views[target]!._with(status: PeerScreenViewStatus.peerUnreachable);
@@ -911,6 +927,7 @@ class PeerScreenViews extends ChangeNotifier {
       return;
     }
     _dialling.remove(peerDeviceId);
+    ErrorReportingService.recordSuccess(_dialStreakKey(peerDeviceId));
 
     // The peer may have gone while this was dialling. Installing the link
     // now would leave one nothing tears down, and suppress every later dial.

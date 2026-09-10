@@ -219,6 +219,11 @@ class ErrorReportingService {
   @visibleForTesting
   static void resetFailureStreaks() => _failureStreaks.clear();
 
+  /// [key]'s current streak — what a test reads for the count a call site
+  /// left behind.
+  @visibleForTesting
+  static int failureStreak(String key) => _failureStreaks[key] ?? 0;
+
   /// Called once bootstrap() has services; from then on the first runtime
   /// error of the session also posts a dismissible StatusBar notice.
   static void attachStatusBar(StatusBarService statusBar) {

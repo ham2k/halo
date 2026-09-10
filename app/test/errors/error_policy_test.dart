@@ -11,7 +11,7 @@
 // where, what the operator sees) is error_reporting_test.dart's job.
 
 import 'dart:async' show TimeoutException;
-import 'dart:io' show FileSystemException, HandshakeException, SocketException;
+import 'dart:io' show FileSystemException, HandshakeException, HttpException, SocketException, WebSocketException;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show MissingPluginException, PlatformException;
@@ -21,6 +21,7 @@ import 'package:halo_extension_host/halo_extension_host.dart'
 import 'package:http/http.dart' show ClientException;
 
 import 'package:ham2k_logger/services/cat/transport.dart' show CatConnectFailure;
+import 'package:ham2k_logger/services/peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'package:ham2k_logger/services/catalog_service.dart' show CatalogUnreachable;
 // The io implementations directly, as cat_ic705_network_test.dart does: the
 // conditional export resolves to the web stub under the analyzer, and these
@@ -469,6 +470,34 @@ void main() {
             'address = 10.0.0.66, port = 4992')),
         ErrorDisposition.notify,
       );
+    });
+  });
+
+  group('peer media unreachable', () {
+    // The view reports a stuck dial once per episode, through the failure
+    // streak; this rule is what keeps that one upload out of the backend
+    // when the cause is a firewall between two peers rather than a defect.
+    test('a peer that refuses or never answers the media link is console-only', () {
+      for (final cause in <Object>[
+        const SocketException('Connection refused'),
+        const WebSocketException("Connection to 'ws://10.0.0.2:41000/media' was not upgraded to websocket"),
+        // A peer that closes mid-dial: what the real socket raises, and
+        // neither of the two shapes above.
+        const HttpException('Connection closed before full header was received'),
+        TimeoutException('peer dial to 10.0.0.2:41000 timed out'),
+      ]) {
+        expect(dispositionFor(PeerMediaDialFailure('device-b', cause)), ErrorDisposition.logOnly,
+            reason: '$cause');
+      }
+    });
+
+    test('a bug raised by the dial is still loud', () {
+      // The reason the cause is inspected rather than the rule matching the
+      // wrapper outright: the dial goes through an injectable PeerNetwork,
+      // and an implementation throwing out of its own state is a defect
+      // that the pane shows as the same "not connected" as a firewall.
+      expect(dispositionFor(PeerMediaDialFailure('device-b', StateError('lost its own state'))),
+          ErrorDisposition.notify);
     });
   });
 

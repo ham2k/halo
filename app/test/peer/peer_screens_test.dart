@@ -24,8 +24,10 @@ import 'dart:typed_data';
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:ham2k_logger/services/error_reporting_service.dart';
 import 'package:ham2k_logger/services/location_service.dart';
 import 'package:ham2k_logger/services/peer/peer_channels.dart';
+import 'package:ham2k_logger/services/peer/peer_link_types.dart';
 import 'package:ham2k_logger/services/peer/peer_screen_views.dart';
 import 'package:ham2k_logger/services/peer/peer_screens.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
@@ -33,6 +35,7 @@ import 'package:ham2k_logger/services/screen_capture_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../support/error_reporting_fakes.dart';
 import '../support/peer_network_fakes.dart';
 
 Future<void> waitFor(
@@ -184,7 +187,7 @@ class _Device {
   _Device(
     this.deviceId,
     this.name,
-    FakeHost host, {
+    this.host, {
     required this.settings,
     required List<PeerScreenSource> sources,
   }) {
@@ -216,6 +219,7 @@ class _Device {
 
   final String deviceId;
   final String name;
+  final FakeHost host;
   final SettingsService settings;
   late final HaLoDatabase db;
   late final PeerOutbox outbox;
@@ -264,6 +268,9 @@ void main() {
   late _Device tablet;
 
   setUp(() async {
+    // Streaks are process-wide and keyed by peer device id, which every
+    // test here shares.
+    ErrorReportingService.resetFailureStreaks();
     lan = FakeLan();
     SharedPreferences.setMockInitialValues({});
     settings = SettingsService(await SharedPreferences.getInstance());
@@ -430,6 +437,39 @@ void main() {
     // change" would keep listing a source that is gone.
     await waitFor('the offer is emptied', () => tablet.views.offers['device-b']?.isEmpty ?? false);
   });
+
+  test('a media link the transport breaks on is uploaded, through the streak', () async {
+    // The retry runs every few seconds for as long as the pane is open, so
+    // the report goes through the failure streak: what this pins is that
+    // the bug is uploaded at all, that it is the streak reporting it (a
+    // plain `report` would upload on the first dial and every retry after),
+    // and that a dial that succeeds closes the episode. Firing once per
+    // episode is the streak's own contract, proven where it lives.
+    final backend = FakeErrorReportingBackend();
+    await withErrorHooks(() async {
+      await paired();
+      await sharing([_display.id]);
+      await waitFor('offered', () => tablet.views.offers['device-b']?.isNotEmpty ?? false);
+      const target = PeerScreenTarget('device-b', 'display:1');
+
+      tablet.host.dialFailure = StateError('the dialler lost its own state');
+      tablet.views.subscribe('remoteScreen#1', target);
+      await waitFor('the bug reaches the backend', () => backend.exceptions.isNotEmpty,
+          timeout: PeerScreenViews.retryDelay * 4);
+      final reported = backend.exceptions.single;
+      expect(reported.error, isA<PeerMediaDialFailure>()
+          .having((f) => f.peerDeviceId, 'peer', 'device-b')
+          .having((f) => f.cause, 'cause', isA<StateError>()));
+      expect(reported.context, contains('failed 3 times in a row'));
+      expect(tablet.views.viewFor(target)!.status, PeerScreenViewStatus.peerUnreachable);
+
+      // The next dial succeeds, which is what closes the episode: a later
+      // failure starts a new count instead of never reaching the threshold.
+      tablet.host.dialFailure = null;
+      await waitFor('the link comes up', () => shack.screens.hasMediaLink('device-a'));
+      expect(ErrorReportingService.failureStreak(PeerScreenViews.dialStreakKey('device-b')), 0);
+    }, backend: backend);
+  }, timeout: const Timeout(Duration(seconds: 90)));
 
   test('a peer going away leaves the pane its last picture and a reason', () async {
     await paired();
@@ -930,7 +970,7 @@ void main() {
       final seq = PeerScreenFrame.decode(bytes)?.sequence;
       if (seq != null) received.add(seq);
     });
-    await waitFor('the producer sees the media link', () => shack.screens.watchers.isNotEmpty);
+    await waitFor('the producer sees the media link', () => shack.screens.hasMediaLink('device-a'));
 
     // Numbered from 5000, as a capture that has been running a while is.
     // Starting at one would make the count of frames in flight and the
@@ -970,7 +1010,7 @@ void main() {
     addTearDown(media.close);
     var received = 0;
     media.inbound.listen((_) => received++);
-    await waitFor('the producer sees the media link', () => shack.screens.watchers.isNotEmpty);
+    await waitFor('the producer sees the media link', () => shack.screens.hasMediaLink('device-a'));
 
     for (var seq = 1; seq < 30; seq++) {
       shack.capture.emit('display:1', seq, [seq & 0xFF]);
@@ -1013,7 +1053,8 @@ void main() {
     final link = await _dialMedia(viewerDevice, shackDevice, grant!);
     final client = _MediaClient(link, acks: acks);
     addTearDown(client.close);
-    await waitFor('the producer sees the media link', () => shackDevice.screens.watchers.isNotEmpty);
+    await waitFor('the producer sees the media link',
+        () => shackDevice.screens.hasMediaLink(viewerDevice.deviceId));
     return client;
   }
 

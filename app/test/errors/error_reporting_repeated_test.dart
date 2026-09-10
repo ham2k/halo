@@ -8,8 +8,11 @@
 // at-or-above the threshold and a permanently broken call floods anyway;
 // forget to reset on success and a long enough session reports everything.
 
+import 'dart:io' show SocketException;
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
+import 'package:ham2k_logger/services/peer/peer_link_types.dart' show PeerMediaDialFailure;
 
 import '../support/error_reporting_fakes.dart';
 
@@ -44,6 +47,19 @@ void main() {
       failOnce('a');
       expect(backend.exceptions, hasLength(1));
       expect(backend.exceptions.single.context, contains('failed 3 times in a row'));
+    }, backend: backend);
+  });
+
+  test('a streak of known noise stays noise', () async {
+    // Still policy-gated at the threshold: a call site whose common failure
+    // the policy keeps to the console (a screen pane dialling a firewalled
+    // peer) must not turn it into an upload by failing three times.
+    await withErrorHooks(() async {
+      for (var i = 0; i < 3; i++) {
+        ErrorReportingService.reportIfRepeated('quiet',
+            const PeerMediaDialFailure('device-b', SocketException('Connection refused')), StackTrace.empty);
+      }
+      expect(backend.exceptions, isEmpty);
     }, backend: backend);
   });
 

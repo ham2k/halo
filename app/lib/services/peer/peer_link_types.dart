@@ -24,6 +24,20 @@ class PeerMediaConnection {
   const PeerMediaConnection({required this.ticket, required this.link});
 }
 
+/// A media link that would not open (HALO-369), with what the dial said.
+/// The wrapper is what scopes `ErrorPolicy`'s `peer-media-unreachable`
+/// rule to a dial: a bare `SocketException` from anywhere else has no peer
+/// to blame.
+class PeerMediaDialFailure implements Exception {
+  final String peerDeviceId;
+  final Object cause;
+
+  const PeerMediaDialFailure(this.peerDeviceId, this.cause);
+
+  @override
+  String toString() => 'Media link to $peerDeviceId failed: $cause';
+}
+
 /// Accepts incoming peer links, however they arrive.
 ///
 /// An interface rather than the WebSocket class itself so a test can hand
