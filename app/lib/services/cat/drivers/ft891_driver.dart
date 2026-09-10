@@ -110,8 +110,6 @@ class Ft891Driver extends EquipmentDriver {
   @override
   String get name => 'Yaesu FT-891';
 
-  @override
-  bool get hardwareVerified => true;
 
   /// The same claim [cp2105CatPort]'s `suggest` clause makes, for a caller
   /// holding the ids rather than a port.
@@ -238,6 +236,10 @@ class Ft891Driver extends EquipmentDriver {
         telemetryIntervalConfigKey => validateTelemetryInterval(value),
         _ => null,
       };
+
+  @override
+  int voiceMemoryCountWith(Map<String, dynamic> config) =>
+      voiceMemoriesFromConfig(config, fallback: 0).clamp(0, yaesuVoiceMemoryCount);
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => Ft891Session(

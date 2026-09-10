@@ -70,8 +70,6 @@ class FlexRadioDriver extends EquipmentDriver {
   @override
   String get name => 'FlexRadio (SmartSDR)';
 
-  @override
-  bool get hardwareVerified => true;
 
   /// A FLEX-6600 runs up to eight slices; smaller models run fewer, and the
   /// radio says how many in its `radio slices=` status. Offering all eight
@@ -131,8 +129,14 @@ class FlexRadioDriver extends EquipmentDriver {
 
   @override
   String? describeSuffix(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) {
+    final channel = describeChannel(config, overrides: overrides);
+    return channel == null ? null : ' · $channel';
+  }
+
+  @override
+  String? describeChannel(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) {
     if (overrides.containsKey(sliceConfigKey)) return null;
-    return ' · ${t.settings.station.flexSliceLabel(letter: sliceLabel(sliceFromConfig(config)))}';
+    return t.settings.station.flexSliceLabel(letter: sliceLabel(sliceFromConfig(config)));
   }
 
   /// The configured slice, defaulting to 0 — a node stored before this

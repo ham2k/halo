@@ -121,9 +121,6 @@ class YaesuBinaryDriver extends EquipmentDriver {
   @override
   String get name => 'Yaesu FT-817/857/897 CAT';
 
-  /// Written from the manual and sent to no radio — see the file header.
-  @override
-  bool get hardwareVerified => false;
 
   /// This protocol has no keyer command and no voice memory command: the
   /// chart's seventeen opcodes are frequency, mode, PTT, repeater and tone

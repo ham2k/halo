@@ -425,14 +425,6 @@ abstract class EquipmentDriver {
   /// Display name of the protocol/radio family.
   String get name;
 
-  /// Whether this driver has been exercised against the actual hardware.
-  ///
-  /// Not decoration: polo shipped one verified driver, deleted one it
-  /// could never make reliable, and caveated a third it never tested. The
-  /// type picker shows this rather than presenting all drivers as equally
-  /// trustworthy.
-  bool get hardwareVerified;
-
   /// Which meters this driver can read, if the radio answers — see
   /// [EquipmentSink.reportMeter]. Empty for a driver that reads none, and
   /// for everything that is not a transceiver.
@@ -506,6 +498,19 @@ abstract class EquipmentDriver {
   /// asks THIS, never the bare getter: a generic Icom picked for a rig with
   /// no keyer must not be offered as the key in use.
   bool canKeyCwWith(Map<String, dynamic> config) => canKeyCw;
+
+  /// How many voice memories a node configured like [config] holds — known
+  /// without a session, the way [canKeyCwWith] is, so a panel can offer the
+  /// voice messages of a radio that is not connected.
+  ///
+  /// Zero for every driver whose sessions are not [VoiceKeyerSession]s, and
+  /// for a node on a driver that keys voice but whose entry pins no count:
+  /// a generic entry does not know which rig is behind it. A driver
+  /// answering above zero must create sessions whose [
+  /// VoiceKeyerSession.voiceMemoryCount] agrees — the session is what plays,
+  /// and a panel that offered memories the session does not have would open
+  /// an editor onto nothing.
+  int voiceMemoryCountWith(Map<String, dynamic> config) => 0;
 
   /// [config] is the node's stored configuration — the same map the type's
   /// `configElements` collected. Most drivers ignore it; a CI-V driver needs
@@ -603,4 +608,15 @@ abstract class EquipmentDriver {
   /// sees) should suppress the suffix too, the same way it suppresses the
   /// field.
   String? describeSuffix(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) => null;
+
+  /// Which of this radio's [channelKey] channels a node is on, as a bare
+  /// label — "Slice A", not " · Slice A". Null for equipment that has one of
+  /// whatever it has, which is everything without a [channelKey].
+  ///
+  /// Separate from [describeSuffix] because a channel is a fact about the
+  /// EQUIPMENT and not about where it is: the panel puts this beside the
+  /// radio's name and leaves the address line to say only the address. A
+  /// driver whose suffix IS its channel builds one from the other rather
+  /// than spelling the label twice.
+  String? describeChannel(Map<String, dynamic> config, {Map<String, dynamic> overrides = const {}}) => null;
 }

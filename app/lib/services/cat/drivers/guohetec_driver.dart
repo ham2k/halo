@@ -74,9 +74,6 @@ class GuohetecDriver extends EquipmentDriver {
   @override
   String get name => 'Guohetec (Q900, PMR-171)';
 
-  /// Written from the manual and sent to no radio — see the file header.
-  @override
-  bool get hardwareVerified => false;
 
   /// This protocol has a keyer speed and a sidetone, but no command that
   /// keys TEXT — nothing that takes a message and sends it as CW. Nothing

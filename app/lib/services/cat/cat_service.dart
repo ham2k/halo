@@ -360,6 +360,12 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
   static String _failureReason(Object error) {
     if (error is TimeoutException) return 'timeout';
     if (error.runtimeType.toString() == 'SocketException') return 'network';
+    // A real type test, not a name match: SerialPortProblem lives in
+    // transport.dart precisely so the two serial transports — which never
+    // compile into the same binary — can both be recognized here. Its own
+    // classification is carried from the throw site, which is the only place
+    // that knows whether the port was absent, held or refused.
+    if (error is SerialPortProblem) return 'serial:${error.failure.name}';
     return 'other';
   }
 
@@ -375,7 +381,20 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
         return t.settings.station.connectFailedTimeout;
       case 'network':
         return t.settings.station.connectFailedNetwork;
+      // "Could not open /dev/cu.usbserial-FTB6SPL3: No such file or directory"
+      // names a path the operator never typed and a POSIX errno they cannot
+      // act on. Each of these says what to do about it instead — and they are
+      // three different things to do, which is why one message for all of
+      // them would send an operator to check a cable that is fine.
+      case 'serial:missing':
+        return t.settings.station.connectFailedDevice;
+      case 'serial:busy':
+        return t.settings.station.connectFailedBusy;
+      case 'serial:denied':
+        return t.settings.station.connectFailedDenied;
       default:
+        // 'serial:other' included: a cause the transport could not place
+        // keeps its own words rather than being translated into a guess.
         return '$error';
     }
   }
@@ -1051,6 +1070,25 @@ class CatService extends ChangeNotifier implements PeerStationRadios {
 
   /// Whether radio1 is connected and can play its voice memories.
   bool get canPlayVoice => _voiceKeyer != null;
+
+  /// Whether radio1 COULD play voice memories — its entry holds some —
+  /// whether or not it is connected right now. The voice counterpart of
+  /// [designatedKeyIsKeyer], and what the Station panel lays the keyer row
+  /// out from: a radio that keys is a fact about the station, and a row that
+  /// appeared on connecting and vanished on dropping would move under the
+  /// operator every time the link blinked.
+  ///
+  /// Never a substitute for [canPlayVoice] at the moment of PLAYING: only a
+  /// live session knows what the radio actually answered.
+  bool get radio1HasVoiceMemories {
+    final uuid = _localRadio1;
+    if (uuid == null) return false;
+    final node = _nodes[uuid];
+    if (node == null) return false;
+    final type = typeFor(node);
+    if (type == null) return false;
+    return type.driver.voiceMemoryCountWith(type.driverConfig(node.config)) > 0;
+  }
 
   /// How many memories radio1 has, 0 when nothing can play — the surfaces
   /// offer exactly that many.

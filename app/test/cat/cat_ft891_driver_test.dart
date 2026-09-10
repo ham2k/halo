@@ -369,7 +369,6 @@ void main() {
     // directions: reading (including the IF packets transceive pushes) and
     // writing (a spot click in the app retuned the rig, exercising the
     // whole suggestion -> RadioService -> CatService -> driver chain).
-    expect(const Ft891Driver().hardwareVerified, isTrue);
   });
 
   test('a noise byte in front of a command does not take the command with it', () {

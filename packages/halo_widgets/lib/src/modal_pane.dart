@@ -66,6 +66,14 @@ Future<T?> showHaloDialog<T>({
 /// settings gear. Unlike [trailing] they sit ALONGSIDE whatever dismissal the
 /// header carries rather than replacing it, which is what a pane needs when it
 /// wants an extra control and the usual dismissal both.
+///
+/// [fillHeight] takes the DIALOG presentation's full height instead of
+/// shrink-wrapping the body, for a pane whose content changes size as the
+/// operator works it — a list under a filter, sections that fold. Without it
+/// the card grows and shrinks under the pointer and every row moves. The
+/// full-screen presentation already fills the screen, so this changes
+/// nothing there. Leave it off for a body that is simply short: a half-empty
+/// full-height card is worse than a small one.
 Future<T?> showModalPane<T>(
   BuildContext context, {
   required WidgetBuilder builder,
@@ -77,6 +85,7 @@ Future<T?> showModalPane<T>(
   List<Widget> headerActions = const [],
   String closeLabel = 'Close',
   bool closeButton = true,
+  bool fillHeight = false,
 }) => Navigator.of(context).push(
   ModalPaneRoute<T>(
     builder: builder,
@@ -88,6 +97,7 @@ Future<T?> showModalPane<T>(
     headerActions: headerActions,
     closeLabel: closeLabel,
     closeButton: closeButton,
+    fillHeight: fillHeight,
   ),
 );
 
@@ -132,6 +142,11 @@ class ModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
   /// the leading control is the platform's back button, not a close box.
   final bool closeButton;
 
+  /// Whether the DIALOG presentation takes its full allowed height rather
+  /// than shrink-wrapping the body — see [showModalPane]. The full-screen
+  /// presentation fills the screen either way.
+  final bool fillHeight;
+
   /// Carries the body's Element (and State) across the presentation flip:
   /// the two presentations have different widget trees, so without this
   /// GlobalKey a resize across the S/L boundary would re-inflate the body
@@ -148,6 +163,7 @@ class ModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
     this.headerActions = const [],
     this.closeLabel = 'Close',
     this.closeButton = true,
+    this.fillHeight = false,
   }) : _tapOutsideDismissible = barrierDismissible;
 
   @override
@@ -317,6 +333,9 @@ class _ModalPaneScaffold extends StatelessWidget {
                   // is what a flex Column does with a bounded height — so it
                   // gets the determinate height it needs without forcing a
                   // body that wants less (a short form) into a full-height card.
+                  // [ModalPaneRoute.fillHeight] is the exception, and it needs
+                  // no floor here: the Column below takes this box's max on
+                  // its own once its mainAxisSize says to.
                   constraints: dialogConstraints,
                   child: Material(
                     color: theme.dialogTheme.backgroundColor ?? haloDialogBandColor(context),
@@ -354,6 +373,12 @@ class _ModalPaneScaffold extends StatelessWidget {
                         // on the nearest Material ancestor.
                         if (route.scrollable)
                           Flexible(
+                            // Tight under fillHeight, and that ONE word is
+                            // what fills the card: a tight flex child claims
+                            // the whole of the box's max height, which the
+                            // Column then takes whatever its mainAxisSize
+                            // says. Loose, the card is as tall as the body.
+                            fit: route.fillHeight ? FlexFit.tight : FlexFit.loose,
                             child: Material(
                               color: theme.colorScheme.surface,
                               child: SizedBox(
@@ -369,9 +394,11 @@ class _ModalPaneScaffold extends StatelessWidget {
                           Flexible(
                             // Edge to edge, no padding — a non-scrollable body
                             // manages its own layout (see showModalPane's doc).
-                            // Flexible, not Expanded: it OFFERS the remaining
-                            // height rather than forcing it, so a body that
-                            // wants less gets a card that fits it.
+                            // Loose by default: it OFFERS the remaining height
+                            // rather than forcing it, so a body that wants less
+                            // gets a card that fits it. fillHeight is exactly
+                            // the opposite ask — see the scrollable branch.
+                            fit: route.fillHeight ? FlexFit.tight : FlexFit.loose,
                             child: Material(color: theme.colorScheme.surface, child: _body()),
                           ),
                       ],

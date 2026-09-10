@@ -505,8 +505,6 @@ void main() {
       // answers are allowed to differ, and a pairing that goes back to
       // unproven has to say so here rather than inheriting a driver's word
       // for a transport it was never tested on.
-      expect(type.driver.hardwareVerified, isTrue, reason: 'the CI-V driver itself is proven');
-      expect(type.hardwareVerified, isTrue, reason: 'and proven over serial too, not only over WiFi');
     });
 
     test('defaults to the IC-705 address and Icom\'s CI-V default speed', () {

@@ -229,19 +229,21 @@ what the user configured; everything about a connection is rebuilt at runtime.
 4. **Placeholder Radio** — a catalogue entry, not a test fixture: a transport with no I/O at all
    and a driver that holds frequency, mode and power and reports every set straight back
    (`placeholder_transport.dart`, `placeholder_radio_driver.dart`). Offered to every operator, in
-   every edition — its name, "Generic Placeholder Radio (no control)", is the whole warning. It
+   every edition — its entry says what it is for — a rig to name on the log, controlling nothing. It
    proves nothing about any driver — what it makes reachable is everything *above* one, on a build
    where §Platforms leaves no other radio connectable: the Station panel, Smart VFO Snap, zero
    beat, the radio1/radio2 assignment, power. Its knobs (connect delay, drop-after, refuse to
    connect, reply delay) are there because the states worth checking by hand are the slow and
-   failing ones. It claims `hardwareVerified` — the one entry for which that flag's usual meaning
-   does not apply, since the caveat below warns about a driver that may not survive contact with a
-   radio and this one never meets one. A protocol emulator — real driver bytes parsed and answered
-   — would live at the transport and is a different thing; this is not it.
+   failing ones. A protocol emulator — real driver bytes parsed and answered — would live at the
+   transport and is a different thing; this is not it.
 
-None of that tests what a radio actually emits. Polo shipped **one** hardware-verified driver and
-deleted the one it could not make reliable. `EquipmentDriver.hardwareVerified` records which is
-which, and the type picker shows it, rather than presenting every driver as equally trustworthy.
+None of that tests what a radio actually emits. Polo shipped **one** driver proven against real
+hardware and deleted the one it could not make reliable. What each driver has and has not met is
+recorded in its own header comment and nowhere else. Deliberately not in the UI: a caveat on a
+catalogue entry reads as a warning about the RADIO rather than about our definition of it, and an
+operator picking the only entry their rig has cannot act on it either way — so it worries everyone
+and helps no one. What a driver has been tried against belongs in the source, where the person who
+could change it is reading.
 
 ## Serial, and what it costs
 
@@ -541,6 +543,16 @@ Two rules the UI follows:
   what left the second slice reachable only by typing the address in from the catalogue.
 
 Discovery holds a bound socket, so it runs only while the Add dialog that shows its results is open.
+What it found is the dialog's FIRST shelf and the one that opens itself; its spinner is a row of that
+shelf, retired after a few seconds, because a UDP listen has no terminal state and a spinner tied to
+the activity would turn for the whole visit.
+
+The rest of the dialog is the catalogue, shelved by maker: one shelf per brand in `featuredBrands`
+(equipment_brands.dart), then the software intermediaries — flrig and rigctld, which name a program
+rather than a maker — then Other Brands, then the equipment added by name rather than picked by
+model. One shelf open at a time, headers pinned. A QUERY flattens the lot into one list across every
+shelf, since the answer to "which brand?" is the row itself and headings over one-row groups would be
+most of what came back.
 A bind that fails — the port already held, or a sandbox refusing it — surfaces as a reason in that
 dialog rather than an empty list, since "nothing found" and "we never got to look" are otherwise
 indistinguishable.
@@ -937,8 +949,8 @@ writing it:
   `equipment_registry.dart`'s `ic705Model` overrides it to the IC-705's real 10W SSB/CW ceiling
   instead of the assumed 100W; below that ceiling the 0-255 level actually resolves to sub-watt
   steps, so the driver reports one decimal place there instead of rounding to a whole watt. None of
-  the six drivers' power path has met real hardware; `hardwareVerified` on each driver still reflects
-  only its frequency/mode verification, since that flag is per-driver, not per-capability.
+  the six drivers' power path has met real hardware — each driver's header says what it has been
+  tried against, and that is always its frequency/mode path rather than every capability it carries.
 - The IC-705's SET level (0x14 0x0A) doesn't drop when it's running off its own battery, even though
   actual output does — confirmed LIVE (5W actual against a 10W SET level on battery). CI-V has no
   command for actual transmitted power outside a live transmission (the RF-power METER, 0x15 0x11,
@@ -970,10 +982,19 @@ keyers, and — as "via ‹radio›" — every radio whose driver says `canKeyCw
 that designated node's session being a `CwKeyerSession`, and connected. A station with a WinKeyer
 and a keying radio therefore says which one the messages go through in the place a key is already
 chosen, and a radio whose CAT keys is its OWN key until something else is picked (§ The picks belong
-to the radio). The keyer row, the function keys and
-the WPM command all exist only while `canKeyCw` holds; `setKeyerSpeed` returns whether anything could
+to the radio). The function keys and
+the WPM command exist only while `canKeyCw` holds; `setKeyerSpeed` returns whether anything could
 take the value, so the WPM command fails out loud ("No connected radio can key CW") instead of
-confirming a change nothing heard. Four sessions implement it — the Icom CI-V driver, the Yaesu one,
+confirming a change nothing heard.
+
+The Station dialog's **keyer row is laid out from CAPABILITY, never from the link**: it shows
+whenever either side could carry a message (`designatedKeyIsKeyer` for CW, `radio1HasVoiceMemories`
+for voice — the session-free counterpart, off `EquipmentDriver.voiceMemoryCountWith`), both message
+buttons are always present, and each is disabled only where its own side cannot send at all. A
+control that came and went with the connection would move under the operator every time the radio
+blinked, and "this rig has no voice memories" must not look like "the rig is unplugged". A disabled
+button says why in `Semantics` or nowhere — the app has no hover tooltips
+([user-interface.md](user-interface.md)). Four sessions implement it — the Icom CI-V driver, the Yaesu one,
 FlexRadio's and the WinKeyer's — so the IC-7300 and IC-705, the FT-891, FT-710 and FTDX10, the
 FLEX-6000 line and a K1EL WinKeyer — plus the placeholder radio, which keys nothing but remembers a
 speed, so the surfaces can be driven on a web build with no rig. A fifth, the Kenwood driver, keys
@@ -1133,8 +1154,8 @@ Whether either radio actually TRANSMITS is its own break-in setting; with break-
 the sidetone. Deliberately not touched from here — an app that flips break-in on so its message goes
 out has put RF on the air from a radio the operator set up not to.
 
-The CW path has still not met hardware; both drivers say so in their headers, and `hardwareVerified`
-still reflects only the frequency/mode path. The VOICE path has — see below.
+The CW path has still not met hardware; both drivers say so in their headers, which is where what a
+driver has been tried against is recorded. The VOICE path has — see below.
 
 ## Telemetry: what the radio is doing
 

@@ -19,9 +19,9 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/halo_services.dart';
-import 'accordion_section.dart';
+import 'add_equipment_dialog.dart';
+import 'equipment_glyphs.dart';
 import '../settings/settings_target_dialog.dart';
-import '../services/cat/discovery.dart';
 import '../services/cat/equipment.dart';
 import '../services/cat/telemetry_poller.dart';
 import '../services/cat/drivers/antenna_genius_driver.dart';
@@ -109,7 +109,7 @@ class StationPanel extends StatelessWidget {
     // even if the dialog throws, or `isDiscovering` stays true and every
     // later Add silently reuses an orphaned subscription.
     if (canDiscover) _cat.startDiscovery();
-    final _AddChoice? choice;
+    final AddChoice? choice;
     try {
       choice = await _showAddDialog(context, showDiscovery: canDiscover);
     } finally {
@@ -123,7 +123,12 @@ class StationPanel extends StatelessWidget {
       return;
     }
 
-    final model = choice.model!;
+    // A pane row that reports rather than offers (AddChoice.none) never pops
+    // with itself, so this cannot fire today — but the type admits it, and a
+    // bare `!` here would be a crash the day a new inert row forgets to
+    // disable its own tap.
+    final model = choice.model;
+    if (model == null) return;
     final variants = _supportedVariants(model);
     if (variants.isEmpty) return;
     final values = await _editValues(
@@ -142,10 +147,26 @@ class StationPanel extends StatelessWidget {
     await _cat.addNode(typeKey: values.typeKey, name: values.name, config: values.config);
   }
 
-  Future<_AddChoice?> _showAddDialog(BuildContext context, {required bool showDiscovery}) {
-    return showHaloDialog<_AddChoice>(
-      context: context,
-      builder: (context) => _AddEquipmentDialog(
+  /// A Modal Pane, not a dialog card: the catalogue is a long list under
+  /// pinned brand headers, and a header only earns its pin against the full
+  /// height a pane gives it. `scrollable: false` because the pane scrolls
+  /// nothing itself — the dialog's two flex regions manage their own.
+  ///
+  /// No "Done" button: a pane carries its own dismissal in the header, and
+  /// there is never a choice to discard — every row here either pops with a
+  /// pick or adds nothing.
+  Future<AddChoice?> _showAddDialog(BuildContext context, {required bool showDiscovery}) {
+    return showModalPane<AddChoice>(
+      context,
+      title: context.t.settings.station.addTitle,
+      scrollable: false,
+      // Full height, always: the catalogue changes size as the operator works
+      // it — a shelf folds open, a query narrows the list — and a card that
+      // resized with it would walk every row under the pointer between one
+      // keystroke and the next.
+      fillHeight: true,
+      closeLabel: context.t.common.done,
+      builder: (context) => AddEquipmentDialog(
         cat: _cat,
         showDiscovery: showDiscovery,
         showAntennaAndKey: services.settings.trackStationInfo &&
@@ -154,6 +175,29 @@ class StationPanel extends StatelessWidget {
         supportedVariants: _supportedVariants,
       ),
     );
+  }
+
+  /// The inventory cut into its sections, in the order they are listed.
+  ///
+  /// Everything that is not a radio or an antenna shares the last one:
+  /// keys, keyers and antenna switches are each one or two nodes in a shack,
+  /// and a heading apiece would be more heading than list.
+  List<({String title, List<EquipmentNode> nodes})> _inventorySections(
+    BuildContext context,
+    List<EquipmentNode> nodes,
+  ) {
+    final st = context.t.settings.station;
+    List<EquipmentNode> inCategory(bool Function(String?) matches) =>
+        [for (final node in nodes) if (matches(_cat.typeFor(node)?.category)) node];
+
+    final transceivers = inCategory((category) => category == kCategoryTransceiver);
+    final antennas = inCategory((category) => category == kCategoryAntenna);
+    final other = inCategory((category) => category != kCategoryTransceiver && category != kCategoryAntenna);
+    return [
+      if (transceivers.isNotEmpty) (title: st.sectionTransceivers, nodes: transceivers),
+      if (antennas.isNotEmpty) (title: st.sectionAntennas, nodes: antennas),
+      if (other.isNotEmpty) (title: st.sectionOtherEquipment, nodes: other),
+    ];
   }
 
   /// The pairings of [model] this platform could actually connect — web has
@@ -554,15 +598,7 @@ class StationPanel extends StatelessWidget {
               'description': st.transportDescription,
               'options': [
                 for (final candidate in variants)
-                  {
-                    'value': candidate.transportKey,
-                    // The short marker, not the sentence the Add list uses: a
-                    // dropdown item is one unwrapped row, and the full wording
-                    // overflows it.
-                    'label': candidate.hardwareVerified
-                        ? candidate.transportLabel
-                        : '${candidate.transportLabel} (${st.unverifiedShort})',
-                  },
+                  {'value': candidate.transportKey, 'label': candidate.transportLabel},
               ],
             },
           for (final candidate in variants)
@@ -923,7 +959,7 @@ class StationPanel extends StatelessWidget {
           children: [
             // What the station IS right now: the choices that decide how the
             // rest of the app behaves. Today that is one question.
-            SectionHeader(st.currentConfiguration),
+            CategoryBand(st.currentConfiguration),
             Padding(
               // Trailing edge short by the tune button's own padding, so the
               // glyph lands on the inset rather than the button's box does.
@@ -1046,14 +1082,29 @@ class StationPanel extends StatelessWidget {
             // directly above, so a full page that named the key and then had
             // nothing to say about it would send the operator to the compact
             // dialog to finish the job.
-            if (keyerExperiment && (_cat.designatedKeyIsKeyer || _cat.canPlayVoice))
+            // Capability, not connection: see _keyerRow. With neither side
+            // able to carry a message there is nothing for the row to open.
+            if (keyerExperiment && (_cat.designatedKeyIsKeyer || _cat.radio1HasVoiceMemories))
               _keyerRow(context, inset: rowInset),
 
             // What the station is made OF. Compact shows only what is in use
             // — the rig driving the main VFO, and the key if it is a device
             // of its own — as quick-glance connect/status rows, not the whole
             // catalogue Add Equipment and the other radios imply.
-            SectionHeader(compact ? st.equipmentInUse : st.equipmentInventory),
+            CategoryBand(
+              compact ? st.equipmentInUse : st.equipmentInventory,
+              // In the heading rather than as a last row: adding is what this
+              // category is FOR, and a row at the bottom of a long inventory
+              // is the one place an operator has to scroll to find it. Absent
+              // in compact, which lists what is in use and adds nothing.
+              trailing: compact
+                  ? null
+                  : FilledButton.icon(
+                      icon: const Icon(MdiIcons.plus, size: 18),
+                      label: Text(st.add),
+                      onPressed: () => _addEquipment(context),
+                    ),
+            ),
             if (compact) ...[
               // A peer's radio drives the same one `vfoA` a local one does,
               // so it belongs in this section — which is the only place the
@@ -1096,34 +1147,34 @@ class StationPanel extends StatelessWidget {
                     ),
             ] else ...[
               if (nodes.isEmpty) ListTile(title: Text(st.none)),
-              for (final node in nodes)
-                _EquipmentTile(
-                  node: node,
-                  type: _cat.typeFor(node),
-                  state: _cat.stateFor(node.uuid),
-                  developerMode: services.settings.developerMode,
-                  displayName: _displayName(node),
-                  isMainVfo: _cat.isRadio1(node.uuid),
-                  onEdit: () => _editEquipment(context, node),
-                  onRemoveUnknown: () => _removeEquipment(context, node),
-                  onConnect: () => _cat.connect(node.uuid),
-                  onDisconnect: () => _cat.disconnect(node.uuid),
-                ),
-              ListTile(
-                leading: const Icon(MdiIcons.plus),
-                title: Text(st.add),
-                onTap: () => _addEquipment(context),
-                mouseCursor: SystemMouseCursors.click,
-              ),
+              // Under the category, one section per kind — a shack's radios
+              // are not a list its antennas belong in. A section with nothing
+              // in it is absent rather than empty: an operator with no
+              // antennas configured is not owed a heading saying so.
+              for (final section in _inventorySections(context, nodes)) ...[
+                SectionHeader(section.title),
+                for (final node in section.nodes)
+                  _EquipmentTile(
+                    node: node,
+                    type: _cat.typeFor(node),
+                    state: _cat.stateFor(node.uuid),
+                    developerMode: services.settings.developerMode,
+                    displayName: _displayName(node),
+                    isMainVfo: _cat.isRadio1(node.uuid),
+                    onEdit: () => _editEquipment(context, node),
+                    onRemoveUnknown: () => _removeEquipment(context, node),
+                    onConnect: () => _cat.connect(node.uuid),
+                    onDisconnect: () => _cat.disconnect(node.uuid),
+                  ),
+              ],
             ],
             if (compact) _powerField(context, inset: rowInset),
             if (!compact) ...[
               const SizedBox(height: Space.xl * 2),
-              // A section of its own — Space.xl of top padding from
-              // SectionHeader, same as Equipment Inventory above it — rather
-              // than tacking the toggle onto the equipment list it has
+              // A category of its own, like Equipment Inventory above it,
+              // rather than tacking the toggle onto the equipment list it has
               // nothing to do with.
-              SectionHeader(st.otherOptions),
+              CategoryBand(st.otherOptions),
               // What to remember about EACH QSO, rather than the station's
               // own current setup above — off by default, since most
               // operators log with one radio, one antenna and one key, and a
@@ -1191,57 +1242,47 @@ class StationPanel extends StatelessWidget {
     final inRange = speed != null && range != null && speed >= range.min && speed <= range.max;
     return Padding(
       padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _DesignationDropdown(
-                  key: ValueKey(_cat.designatedFor(kCategoryKey)),
-                  label: st.keyInUse,
-                  nodes: keys,
-                  selected: _cat.designatedFor(kCategoryKey),
-                  // A radio in this list is its keyer, not the radio.
-                  displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver
-                      ? st.keyViaRadio(radio: _displayName(node))
-                      : _displayName(node),
-                  noneLabel: st.noneSelected,
-                  onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
-                ),
-              ),
-              if (keyerExperiment && _cat.designatedKeyIsKeyer) ...[
-                const SizedBox(width: Space.md),
-                Expanded(
-                  child: DropdownButtonFormField<int>(
-                    // Keyed on the value for the same reason the main VFO
-                    // dropdown is: FormFieldState reads initialValue once, and
-                    // the radio's answer arrives after the first build.
-                    key: ValueKey('keyerSpeed:${inRange ? speed : null}:$canKey'),
-                    isExpanded: true,
-                    initialValue: inRange ? speed : null,
-                    icon: dropdownTrailingIcon,
-                    decoration: poloFieldDecoration(context, context.t.settings.radio.keyerSpeed.title),
-                    menuMaxHeight: dropdownMenuMaxHeight(context),
-                    items: [
-                      if (range != null)
-                        for (var wpm = range.min; wpm <= range.max; wpm++)
-                          DropdownMenuItem<int>(
-                            value: wpm,
-                            child: Text('$wpm ${context.t.settings.radio.keyerSpeed.unit}'),
-                          ),
-                    ],
-                    onChanged: canKey ? (wpm) => wpm == null ? null : _cat.setKeyerSpeed(wpm) : null,
-                  ),
-                ),
-              ],
-            ],
-          ),
-          if (keyerExperiment && _cat.designatedKeyIsKeyer && !canKey)
-            Padding(
-              padding: const EdgeInsets.only(top: Space.xs),
-              child: Text(st.cwKeyerNotAvailable, style: Theme.of(context).textTheme.bodySmall),
+          Expanded(
+            child: _DesignationDropdown(
+              key: ValueKey(_cat.designatedFor(kCategoryKey)),
+              label: st.keyInUse,
+              nodes: keys,
+              selected: _cat.designatedFor(kCategoryKey),
+              // A radio in this list is its keyer, not the radio.
+              displayName: (node) => _cat.typeFor(node)?.category == kCategoryTransceiver
+                  ? st.keyViaRadio(radio: _displayName(node))
+                  : _displayName(node),
+              noneLabel: st.noneSelected,
+              onChanged: (uuid) => unawaited(_cat.setDesignated(kCategoryKey, uuid)),
             ),
+          ),
+          if (keyerExperiment && _cat.designatedKeyIsKeyer) ...[
+            const SizedBox(width: Space.md),
+            Expanded(
+              child: DropdownButtonFormField<int>(
+                // Keyed on the value for the same reason the main VFO
+                // dropdown is: FormFieldState reads initialValue once, and
+                // the radio's answer arrives after the first build.
+                key: ValueKey('keyerSpeed:${inRange ? speed : null}:$canKey'),
+                isExpanded: true,
+                initialValue: inRange ? speed : null,
+                icon: dropdownTrailingIcon,
+                decoration: poloFieldDecoration(context, context.t.settings.radio.keyerSpeed.title),
+                menuMaxHeight: dropdownMenuMaxHeight(context),
+                items: [
+                  if (range != null)
+                    for (var wpm = range.min; wpm <= range.max; wpm++)
+                      DropdownMenuItem<int>(
+                        value: wpm,
+                        child: Text('$wpm ${context.t.settings.radio.keyerSpeed.unit}'),
+                      ),
+                ],
+                onChanged: canKey ? (wpm) => wpm == null ? null : _cat.setKeyerSpeed(wpm) : null,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1252,16 +1293,23 @@ class StationPanel extends StatelessWidget {
   ///
   /// One row rather than two, because an operator has ONE keyer area and the
   /// switch that shows it cannot sensibly appear twice. Which editors are
-  /// offered still differs: CW messages are the app's own and need only a
-  /// key that keys, while the voice memories are radio1's and are only worth
-  /// opening while it is connected and has some.
+  /// offered still differs: CW messages are the app's own and need a key
+  /// that keys, while the voice memories are radio1's own.
+  ///
+  /// Laid out from CAPABILITY, never from the link: the row shows whenever
+  /// either side could carry a message, both buttons are always present, and
+  /// each is disabled only where its own side cannot send at all. A control
+  /// that came and went with the connection would move under the operator
+  /// every time the radio blinked, and "this rig has no voice memories" must
+  /// not look like "the rig is unplugged".
   ///
   /// Icons, not labelled buttons: the row's own caption already says what
-  /// they are for. No hover tooltips (docs/design/user-interface.md), so the
-  /// accessible name is the only place each is named.
+  /// they are for. No hover tooltips (docs/design/user-interface.md), so a
+  /// disabled button says why in [Semantics] or nowhere.
   Widget _keyerRow(BuildContext context, {required EdgeInsets inset}) {
     final st = context.t.settings.station;
-    final canKey = _cat.canKeyCw;
+    final canKey = _cat.designatedKeyIsKeyer;
+    final canVoice = _cat.radio1HasVoiceMemories;
     return Padding(
       padding: EdgeInsets.fromLTRB(inset.left, 0, inset.right, Space.md),
       child: Row(
@@ -1278,7 +1326,7 @@ class StationPanel extends StatelessWidget {
               label: st.cwKeyerArea,
               child: Switch(
                 value: shown,
-                onChanged: canKey || _cat.canPlayVoice ? (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea() : null,
+                onChanged: (on) => on ? _cat.showKeyerArea() : _cat.hideKeyerArea(),
               ),
             ),
           ),
@@ -1289,21 +1337,21 @@ class StationPanel extends StatelessWidget {
           ),
           const SizedBox(width: Space.sm),
           // The same icon on both: what they open is a list of messages
-          // either way, and the labels are what tell them apart.
-          if (_cat.designatedKeyIsKeyer)
-            TextButton.icon(
-              icon: const Icon(MdiIcons.messageBulleted),
-              label: Text(st.cwMessagesButton),
-              onPressed: () => showCwMessagesDialog(context, services),
-            ),
-          // Shown even where nothing can play, and disabled there: a radio
-          // without voice keying is a fact about the station worth SEEING —
-          // absent, the row looks the same as one on a rig whose memories
-          // simply have not loaded yet.
-          TextButton.icon(
-            icon: const Icon(MdiIcons.messageBulleted),
-            label: Text(st.voiceMessagesButton),
-            onPressed: _cat.canPlayVoice ? () => showVoiceMessagesDialog(context, services) : null,
+          // either way, and the labels are what tell them apart. Both are
+          // always here — a side that cannot send is a fact about the
+          // station worth SEEING, and one that disappeared would leave a row
+          // indistinguishable from a rig whose memories have not loaded yet.
+          _MessagesButton(
+            label: st.cwMessagesButton,
+            enabled: canKey,
+            disabledReason: st.notSupportedByThisRadio,
+            onPressed: () => showCwMessagesDialog(context, services),
+          ),
+          _MessagesButton(
+            label: st.voiceMessagesButton,
+            enabled: canVoice,
+            disabledReason: st.notSupportedByThisRadio,
+            onPressed: () => showVoiceMessagesDialog(context, services),
           ),
         ],
       ),
@@ -1387,550 +1435,6 @@ class StationPanel extends StatelessWidget {
   }
 }
 
-/// How far the equipment list has to scroll before the discovery section
-/// folds away. Plain logical pixels, deliberately: every Scrollable lives
-/// BELOW the app's UiScale wrapper, so `metrics.pixels` is already in the
-/// same scaled space this constant is written in — multiplying by the font
-/// scale would double-scale it (docs/design/ui-scaling.md). Matches the
-/// threshold the Home screen's FAB collapse uses.
-const _discoveryCollapseAfter = 10.0;
-
-/// Picking what to add: every radio the app knows, filtered by a search box,
-/// with whatever announced itself on the network pinned underneath.
-///
-/// Stateful because two things here are the dialog's own and belong to
-/// nothing else — the filter text and whether the discovery section is
-/// currently folded away.
-class _AddEquipmentDialog extends StatefulWidget {
-  final CatService cat;
-
-  /// False when no pairing on this platform could discover anything, in
-  /// which case the section is absent rather than permanently empty.
-  final bool showDiscovery;
-
-  /// Whether the operator has opted to track an antenna or a key against
-  /// QSOs — see [SettingsService.stationInfoTrackedFields]. Off, the "Other
-  /// Equipment" section would only ever grow a list nothing reads.
-  final bool showAntennaAndKey;
-
-  /// Whether "Other Equipment" offers a CW keyer — behind the keyer
-  /// experiment, with everything that keys.
-  final bool showKeyer;
-
-  final List<EquipmentType> Function(EquipmentModel model) supportedVariants;
-
-  const _AddEquipmentDialog({
-    required this.cat,
-    required this.showDiscovery,
-    required this.showAntennaAndKey,
-    required this.showKeyer,
-    required this.supportedVariants,
-  });
-
-  @override
-  State<_AddEquipmentDialog> createState() => _AddEquipmentDialogState();
-}
-
-class _AddEquipmentDialogState extends State<_AddEquipmentDialog> {
-  final _searchController = TextEditingController();
-
-  /// Closed by default — antennas and keys are the rare add, not the common
-  /// one, and starting open would push the radio catalogue below the fold
-  /// on every visit to this dialog.
-  var _otherEquipmentExpanded = false;
-
-  /// Folded away once the operator scrolls into the list. Starts open: with
-  /// a short list nothing ever scrolls, and the section is the whole point
-  /// of the dialog for a radio that announces itself.
-  var _discoveryExpanded = true;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  /// Decides the fold from a scrollable's current metrics.
-  ///
-  /// Folding gives the list the room the section was using, which can stop
-  /// the list overflowing at all — so this reads `maxScrollExtent` as well as
-  /// `pixels`. A list with nowhere left to scroll is not being browsed, and
-  /// the operator has no way to scroll back up to ask for the section
-  /// either, so it comes back.
-  ///
-  /// The consequence, which is the intended one: a list that overflows by
-  /// less than the section gives up settles back OPEN after one frame,
-  /// because folding it away bought nothing. Only a list still scrollable
-  /// after the fold stays folded.
-  void _applyScrollMetrics(ScrollMetrics metrics) {
-    if (metrics.maxScrollExtent <= 0) return _setDiscoveryExpanded(true);
-    _setDiscoveryExpanded(metrics.pixels <= _discoveryCollapseAfter);
-  }
-
-  void _setDiscoveryExpanded(bool expanded) {
-    if (_discoveryExpanded == expanded) return;
-    setState(() => _discoveryExpanded = expanded);
-  }
-
-  /// Matches the radio's name, its brand and the ways it can be reached, so
-  /// "usb" finds every rig with a cable and "705" finds the one radio — an
-  /// operator searching this list is as likely to know how a radio plugs in
-  /// as what its family is called. The brand is its own clause because a
-  /// model's name need not carry it: an X6100 is named for what is written
-  /// on the radio, and "Xiegu" has to reach it.
-  bool _matches(({EquipmentModel model, List<EquipmentType> variants, String name}) row, String query) {
-    if (query.isEmpty) return true;
-    if (row.name.toLowerCase().contains(query)) return true;
-    if (row.model.manufacturer?.toLowerCase().contains(query) ?? false) return true;
-    return row.variants.any((type) => type.transportLabel.toLowerCase().contains(query));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListenableBuilder(
-      listenable: widget.cat,
-      builder: (context, _) {
-        final st = context.t.settings.station;
-        final query = _searchController.text.trim().toLowerCase();
-        // A radio whose transport can't connect on this platform at all
-        // (TCP, Icom network, on web) would only fail loudly once picked —
-        // no point offering it.
-        // Resolved ONCE per model. Both the variants and the name cost real
-        // work — `supportedVariants` scans the type list per variant, and
-        // `name` is a localization lookup — and every one of them would
-        // otherwise be repeated for the filter, the subtitle, the glyphs and
-        // each comparison the sort makes, on every keystroke in the search box.
-        // Antenna switches are left out here and listed under "Other
-        // Equipment" instead: an operator searching this list is looking for
-        // their radio, and a switch is station plumbing they add once.
-        final rows = [
-          for (final model in widget.cat.registry.models)
-            if (!model.hiddenFromCatalog && model.category != kCategoryAntennaSwitch)
-              if (widget.supportedVariants(model) case final variants when variants.isNotEmpty)
-                (model: model, variants: variants, name: model.name),
-        ]
-          // Sorted HERE rather than in the registry, because a model's name is
-          // read from the current locale at call time — an order fixed at
-          // declaration would be alphabetical in whichever language happened
-          // to be active first. Case-insensitive, so a lower-case brand name
-          // doesn't sort below every capitalised one.
-          ..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-        final models = [
-          for (final row in rows)
-            if (_matches(row, query)) row,
-        ];
-        // Named makes and models, unlike the antenna and key rows they sit
-        // with — a switch is picked from the catalogue, it just isn't picked
-        // from THAT catalogue. Sorted for the same locale reason as [rows].
-        final switches = [
-          for (final model in widget.cat.registry.models)
-            if (!model.hiddenFromCatalog && model.category == kCategoryAntennaSwitch)
-              if (widget.supportedVariants(model) case final variants when variants.isNotEmpty)
-                (model: model, variants: variants, name: model.name),
-        ]..sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-        final searchBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(8));
-
-        return HaloDialog(
-          // Rows run edge to edge and the content scrolls itself, so the
-          // shell must not also try to scroll it — halo_dialog.dart says an
-          // Expanded/self-scrolling child REQUIRES scrollable: false.
-          wide: true,
-          scrollable: false,
-          contentPadding: EdgeInsets.zero,
-          title: Text(st.addTitle),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (widget.showDiscovery) ..._discoverySection(context),
-              // The catalogue's own section header, and the field IS the
-              // heading: a band saying "Equipment" with a search box under it
-              // would spend a row of a dialog that has none to spare saying
-              // what the hint text already says.
-              _sectionBand(
-                context,
-                child: TextField(
-                  // Per docs/design/user-interface.md: focusing a field must
-                  // not select what is in it.
-                  selectAllOnFocus: false,
-                  controller: _searchController,
-                  onChanged: (_) => setState(() {}),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    // Against the band's own tint, so the box reads as a
-                    // control sitting ON the header rather than a hole in it.
-                    filled: true,
-                    fillColor: Theme.of(context).colorScheme.surface,
-                    prefixIcon: const Icon(MdiIcons.magnify, size: 18),
-                    suffixIcon: query.isEmpty
-                        ? null
-                        : IconButton(
-                            icon: Icon(MdiIcons.close, size: 18, semanticLabel: context.t.formChrome.clear),
-                            onPressed: () => setState(_searchController.clear),
-                          ),
-                    hintText: st.searchHint,
-                    border: searchBorder,
-                    enabledBorder: searchBorder,
-                    focusedBorder: haloFocusedBorder(searchBorder, context),
-                  ),
-                ),
-              ),
-              // BOTH scrolling regions are flex children, and that is what
-              // keeps this dialog from overflowing: with `scrollable: false`
-              // an inflexible child takes its full height off the top, so a
-              // handful of announced radios would squeeze the catalogue to
-              // nothing and one more would overflow the card outright.
-              //
-              // Loose flex, so neither claims room it does not want: on a tall
-              // dialog each takes its natural height and the card shrink-wraps.
-              // The weighting only decides who yields when there is not enough
-              // — and the catalogue is what the operator came for.
-              Flexible(
-                flex: 4,
-                // TWO listeners, and the second is not redundant. A scroll
-                // position corrected during LAYOUT — the list shrinking under
-                // a filter, or growing back when one is cleared, or gaining
-                // the room the fold just freed — moves `pixels` without ever
-                // dispatching a ScrollNotification. Only ScrollMetricsNotification
-                // reports it, and it is not a ScrollNotification. Listening to
-                // the first alone leaves the section folded shut with an
-                // un-scrollable list under it and no gesture that reopens it.
-                child: NotificationListener<ScrollMetricsNotification>(
-                  onNotification: (notification) {
-                    _applyScrollMetrics(notification.metrics);
-                    return false;
-                  },
-                  child: NotificationListener<ScrollNotification>(
-                    onNotification: (notification) {
-                      _applyScrollMetrics(notification.metrics);
-                      // Keep bubbling: these listeners observe, they do not consume.
-                      return false;
-                    },
-                    child: models.isEmpty
-                      ? Padding(
-                          padding: const EdgeInsets.symmetric(vertical: Space.xxl, horizontal: Space.xl),
-                          child: Text(st.noMatches, textAlign: TextAlign.center),
-                        )
-                      : ListView(
-                          // Filtered per keystroke, and every row picks a
-                          // model on tap (docs/quirks.md).
-                          key: listContentsKey([for (final row in models) row.name]),
-                          shrinkWrap: true,
-                          padding: const EdgeInsets.only(bottom: Space.md),
-                          children: [
-                            for (final row in models)
-                              ListTile(
-                                leading: Icon(_iconForCategory(row.model.category)),
-                                title: Text(row.name),
-                                subtitle: _modelSubtitle(context, row.variants),
-                                // The glyphs belong beside the radio's NAME,
-                                // not halfway down the row. Material 3 centres
-                                // `leading`/`trailing` against the whole tile
-                                // unless told otherwise, so a row carrying an
-                                // untested caveat would otherwise drop them a
-                                // line — wrapping them in a shrink-wrapping
-                                // Column does NOT do this, only the alignment
-                                // does.
-                                titleAlignment: ListTileTitleAlignment.top,
-                                trailing: _TransportIcons(types: row.variants),
-                                onTap: () => Navigator.of(context).pop(_AddChoice.model(row.model)),
-                                mouseCursor: SystemMouseCursors.click,
-                              ),
-                          ],
-                        ),
-                  ),
-                ),
-              ),
-              if (widget.showAntennaAndKey || widget.showKeyer || switches.isNotEmpty)
-                _otherEquipmentSection(context, switches: switches),
-            ],
-          ),
-          // "Done", not "Cancel": the "Other Equipment" section below can add
-          // an antenna or key node directly, with no further pane to confirm
-          // through, so closing this dialog is never discarding a choice.
-          cancel: TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: Text(context.t.common.done),
-          ),
-        );
-      },
-    );
-  }
-
-  /// One section's header band — the same tint the "Other Equipment"
-  /// accordion draws its own header in, so the dialog's three sections read
-  /// as siblings rather than as one styled heading among plain ones. No
-  /// arrow: neither of these two folds by hand.
-  ///
-  /// [title] and [child] are alternatives — a heading with an optional
-  /// [trailing] control, or a control that IS the heading (the search box).
-  Widget _sectionBand(BuildContext context, {String? title, Widget? trailing, Widget? child}) {
-    final theme = Theme.of(context);
-    final onHeaderColor = theme.colorScheme.onSurfaceVariant;
-    return Material(
-      color: haloDialogBandColorAt(context),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(Space.xl, Space.sm, Space.lg, Space.sm),
-        child: child ??
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title ?? '',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.titleSmall?.copyWith(color: onHeaderColor, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                if (trailing != null) ...[const SizedBox(width: Space.md), trailing],
-              ],
-            ),
-      ),
-    );
-  }
-
-  /// Antennas and keys, added by name and type rather than picked from a
-  /// catalogue — there is exactly one of each, unlike the radio list above.
-  /// Closed by default (see [_otherEquipmentExpanded]): visible only when
-  /// [_AddEquipmentDialog.showAntennaAndKey] says the operator tracks at
-  /// least one of these against a QSO, so the section never grows a list
-  /// nothing reads.
-  Widget _otherEquipmentSection(
-    BuildContext context, {
-    required List<({EquipmentModel model, List<EquipmentType> variants, String name})> switches,
-  }) {
-    final st = context.t.settings.station;
-    final theme = Theme.of(context);
-    final headerColor = haloDialogBandColorAt(context);
-    final onHeaderColor = theme.colorScheme.onSurfaceVariant;
-
-    return AccordionSection(
-      title: Text(
-        st.otherEquipment,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.titleSmall?.copyWith(color: onHeaderColor, fontWeight: FontWeight.w600),
-      ),
-      expanded: _otherEquipmentExpanded,
-      onToggle: () => setState(() => _otherEquipmentExpanded = !_otherEquipmentExpanded),
-      headerColor: headerColor,
-      onHeaderColor: onHeaderColor,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (widget.showAntennaAndKey) ...[
-            ListTile(
-              leading: const Icon(MdiIcons.antenna),
-              title: Text(st.newAntenna),
-              onTap: () => Navigator.of(context).pop(_AddChoice.model(antennaModel)),
-              mouseCursor: SystemMouseCursors.click,
-            ),
-            ListTile(
-              leading: const Icon(MdiIcons.key),
-              title: Text(st.newKey),
-              onTap: () => Navigator.of(context).pop(_AddChoice.model(keyModel)),
-              mouseCursor: SystemMouseCursors.click,
-            ),
-          ],
-          // Beside the plain key rather than in the catalogue: a keyer is
-          // where an operator looks for their key, whatever its make.
-          if (widget.showKeyer)
-            ListTile(
-              leading: const Icon(MdiIcons.keyboardVariant),
-              title: Text(st.newKeyer),
-              // A named make with a cable, unlike the two inert rows above
-              // it: the glyph says how it plugs in, the same way it does in
-              // the catalogue.
-              trailing: _TransportIcons(types: widget.supportedVariants(winkeyerModel)),
-              onTap: () => Navigator.of(context).pop(_AddChoice.model(winkeyerModel)),
-              mouseCursor: SystemMouseCursors.click,
-            ),
-          // Real makes and models, so these carry the same subtitle and
-          // transport glyphs their rows had in the catalogue above.
-          for (final row in switches)
-            ListTile(
-              leading: Icon(_iconForCategory(row.model.category)),
-              title: Text(row.name),
-              subtitle: _modelSubtitle(context, row.variants),
-              titleAlignment: ListTileTitleAlignment.top,
-              trailing: _TransportIcons(types: row.variants),
-              onTap: () => Navigator.of(context).pop(_AddChoice.model(row.model)),
-              mouseCursor: SystemMouseCursors.click,
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// What announced itself, under a title that never changes.
-  ///
-  /// The title is permanent on purpose: discovery runs for as long as this
-  /// dialog is open, so a heading that switched between "searching" and
-  /// "found" would be describing the same unfinished activity twice, and the
-  /// section would jump around as radios appeared.
-  ///
-  /// Spread into the dialog's own Column rather than returned as one widget:
-  /// the body has to be a flex sibling of the equipment list for the two to
-  /// share a short dialog, and a nested Column would hide it from that.
-  List<Widget> _discoverySection(BuildContext context) {
-    final st = context.t.settings.station;
-    final theme = Theme.of(context);
-    final found = widget.cat.discovered;
-    final error = widget.cat.discoveryError;
-
-    return [
-        // The spinner rides the title rather than taking a row of its own:
-        // discovery runs for as long as this dialog is open, so a row that
-        // exists only to say so pushed the catalogue down the whole time.
-        _sectionBand(
-          context,
-          title: st.detectedEquipment,
-          trailing: error != null
-              ? null
-              : const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
-        // AnimatedSize alone, with no controller: the collapse is a plain
-        // implicit animation, the way the Home screen's FAB does it. No
-        // settle-epoch guard like that one either — a RenderAnimatedSize can
-        // be stranded mid-flight by a muted ticker, but this lives in a modal
-        // that is rebuilt from scratch every time it opens.
-        Flexible(
-          flex: 1,
-          child: AnimatedSize(
-          duration: layoutAnimationDuration,
-          curve: layoutAnimationCurve,
-          // Fold upward, so the rows slide out under the title rather than
-          // the title walking down the dialog.
-          alignment: Alignment.topCenter,
-          child: !_discoveryExpanded
-              ? const SizedBox(width: double.infinity)
-              : SingleChildScrollView(
-                    child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    if (error != null)
-                      ListTile(
-                        leading: Icon(MdiIcons.wifiOff, color: theme.colorScheme.error),
-                        title: Text(st.discoveryUnavailable(error: error)),
-                      )
-                    else
-                      for (final device in found)
-                        ListTile(
-                          leading: Icon(_iconForCategory(widget.cat.registry.typeFor(device.typeKey)?.category)),
-                          title: Text(device.name),
-                          subtitle: device.detail == null ? null : Text(device.detail!),
-                          titleAlignment: ListTileTitleAlignment.top,
-                          trailing: switch (widget.cat.registry.typeFor(device.typeKey)) {
-                            final type? => _TransportIcons(types: [type]),
-                            _ => null,
-                          },
-                          onTap: () => Navigator.of(context).pop(_AddChoice.discovered(device)),
-                          mouseCursor: SystemMouseCursors.click,
-                        ),
-                    ],
-                    ),
-                ),
-        ),
-        ),
-        const Divider(height: 1),
-    ];
-  }
-}
-
-/// Either a device that announced itself (ready to add as-is) or a type to
-/// configure by hand.
-class _AddChoice {
-  /// The radio, not the pairing: how it is connected is chosen in the
-  /// editor, alongside the settings that choice decides.
-  final EquipmentModel? model;
-  final DiscoveredEquipment? discovered;
-
-  const _AddChoice.model(this.model) : discovered = null;
-  const _AddChoice.discovered(this.discovered) : model = null;
-}
-
-/// The glyph the logging panel's own Radio control falls back to when no
-/// CAT radio is configured — this list is what configures one.
-IconData _iconForCategory(String? category) => switch (category) {
-      kCategoryTransceiver => MdiIcons.radio,
-      kCategoryAntenna => MdiIcons.antenna,
-      kCategoryKey => MdiIcons.key,
-      kCategoryKeyer => MdiIcons.keyboardVariant,
-      kCategoryAntennaSwitch => MdiIcons.directionsFork,
-      _ => MdiIcons.developerBoard,
-    };
-
-/// What the Add list says under a radio's name: which of its pairings have
-/// never met a radio, and nothing else.
-///
-/// Only the caveat, because the transports themselves are now the row's
-/// trailing glyphs — naming them here as well would say the same thing twice
-/// in one row. A model with every pairing untested carries the caveat whole
-/// rather than per transport; a MIXED one has to name which, since the
-/// IC-705's WiFi is proven on hardware and its USB side has never been
-/// pointed at a radio, and one marker for the model would be wrong either
-/// way round.
-Widget? _modelSubtitle(BuildContext context, List<EquipmentType> variants) {
-  final st = context.t.settings.station;
-  final untested = [
-    for (final type in variants)
-      if (!type.hardwareVerified) type,
-  ];
-  if (untested.isEmpty) return null;
-  if (untested.length == variants.length) return Text(st.unverified);
-  return Text(untested.map((type) => '${type.transportLabel} (${st.unverifiedShort})').join(' · '));
-}
-
-/// How a pairing is plugged in, as a glyph — see `transportIconNameFor`.
-///
-/// Null when the transport has no glyph, so a caller leaves the slot empty.
-/// Deliberately not defaulted to something generic: `resolveIconName` answers
-/// an unknown name with a puzzle piece, and a puzzle piece next to a radio
-/// says less than nothing.
-IconData? _iconForTransport(EquipmentType type) {
-  final name = type.transportIconName;
-  return name == null ? null : resolveIconName(name);
-}
-
-/// The transport glyphs of a model's pairings, in one small row.
-///
-/// Size is spelled out because this is not a ListTile slot — those inherit 24
-/// from the tile's own IconTheme, and this sits beside body text.
-class _TransportIcons extends StatelessWidget {
-  final List<EquipmentType> types;
-
-  const _TransportIcons({required this.types});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final icons = [
-      for (final type in types)
-        if (_iconForTransport(type) case final icon?) (icon: icon, label: type.transportLabel),
-    ];
-    if (icons.isEmpty) return const SizedBox.shrink();
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // By index, not by `entry != icons.first`: these are records, which
-        // compare by VALUE, so two pairings sharing a glyph and a label would
-        // both count as the first and the second would lose its gap.
-        for (final (index, entry) in icons.indexed) ...[
-          if (index > 0) const SizedBox(width: Space.xs),
-          Icon(
-            entry.icon,
-            size: 16,
-            // The app has no hover tooltips, so this is the only place the
-            // glyph is named for anyone who cannot see it.
-            semanticLabel: entry.label,
-            color: theme.colorScheme.onSurfaceVariant,
-          ),
-        ],
-      ],
-    );
-  }
-}
 
 /// The Power field's own text state, kept in a controller rather than
 /// [TextFormField]'s bare `initialValue` — the field's value has TWO writers
@@ -2086,7 +1590,7 @@ class _PeerVfoTile extends StatelessWidget {
     final theme = Theme.of(context);
 
     return ListTile(
-      leading: Icon(_iconForCategory(kCategoryTransceiver)),
+      leading: Icon(iconForCategory(kCategoryTransceiver)),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -2144,6 +1648,40 @@ class _PeerVfoTile extends StatelessWidget {
               style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
             ),
     );
+  }
+}
+
+/// One "… Messages" button in the keyer row: the same icon and shape either
+/// way, disabled where that side of the station cannot send at all.
+///
+/// [disabledReason] rides in [Semantics] rather than a tooltip
+/// (docs/design/user-interface.md) — a disabled control has no hover label to
+/// give, and this is the only place the reason can be said.
+class _MessagesButton extends StatelessWidget {
+  final String label;
+  final bool enabled;
+  final String disabledReason;
+  final VoidCallback onPressed;
+
+  const _MessagesButton({
+    required this.label,
+    required this.enabled,
+    required this.disabledReason,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final button = TextButton.icon(
+      icon: const Icon(MdiIcons.messageBulleted),
+      label: Text(label),
+      onPressed: enabled ? onPressed : null,
+    );
+    if (enabled) return button;
+    // `container` is load-bearing: without it the annotation merges into
+    // whatever node the row already had, and the reason reaches nothing that
+    // can be found by label.
+    return Semantics(container: true, label: '$label. $disabledReason', excludeSemantics: true, child: button);
   }
 }
 
@@ -2215,9 +1753,9 @@ class _EquipmentTile extends StatelessWidget {
     // category here would have left it with no plug to pull.
     if (resolvedType.transportKey == NoneTransport.transportKey) {
       return ListTile(
-        leading: Icon(_iconForCategory(resolvedType.category)),
+        leading: Icon(iconForCategory(resolvedType.category)),
         title: Text(displayName),
-        subtitle: Text(resolvedType.describeTarget(node.config)),
+        subtitle: AddressText(resolvedType.describeTarget(node.config)),
         onTap: onEdit,
         mouseCursor: SystemMouseCursors.click,
       );
@@ -2255,7 +1793,7 @@ class _EquipmentTile extends StatelessWidget {
     // at the END of the row, which keeps the right-hand items from reaching
     // the edge.
     return ListTile(
-      leading: Icon(_iconForCategory(resolvedType.category)),
+      leading: Icon(iconForCategory(resolvedType.category)),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -2268,6 +1806,22 @@ class _EquipmentTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Flexible(child: Text(displayName, overflow: TextOverflow.ellipsis)),
+                // Which channel of the radio this node is, beside its name:
+                // a shack with two Flex slices has two rows whose addresses
+                // are identical, and the slice is the only thing telling them
+                // apart. Neutral rather than accented — it names the node,
+                // it does not flag anything about it, unlike the Main VFO
+                // pill it sits next to.
+                if (resolvedType.describeChannel(node.config) case final channel?) ...[
+                  const SizedBox(width: Space.md),
+                  Flexible(
+                    child: _Pill(
+                      label: channel,
+                      background: theme.colorScheme.surfaceContainerHighest,
+                      foreground: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
                 // Beside the name: which radio drives the logging panel is
                 // part of what this equipment IS, not what it is doing.
                 if (isMainVfo) ...[
@@ -2299,16 +1853,15 @@ class _EquipmentTile extends StatelessWidget {
                   // glyph off the row — the glyph is a fixed width competing
                   // with text that can be any length.
                   Flexible(
-                    child: Text(
+                    child: AddressText(
                       resolvedType.describeTarget(node.config),
                       textAlign: TextAlign.right,
-                      overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
                     ),
                   ),
                   const SizedBox(width: Space.sm),
                   // How it is plugged in, right where it says where it is.
-                  _TransportIcons(types: [resolvedType]),
+                  TransportIcons(types: [resolvedType]),
                 ],
               ),
             ),

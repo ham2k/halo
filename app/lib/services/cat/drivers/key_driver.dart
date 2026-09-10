@@ -22,8 +22,6 @@ class KeyDriver extends TypeOnlyEquipmentDriver {
   @override
   String get name => 'CW Key';
 
-  @override
-  bool get hardwareVerified => true;
 
   @override
   String get typeFieldKey => 'morseKeyType';

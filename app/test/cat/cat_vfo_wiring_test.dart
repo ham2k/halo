@@ -153,8 +153,6 @@ class _FakeDriver extends EquipmentDriver {
   String get key => 'fake-driver';
   @override
   String get name => 'Fake Radio';
-  @override
-  bool get hardwareVerified => false;
   /// What the manager actually handed the driver — not what the user typed.
   final configs = <Map<String, dynamic>>[];
 

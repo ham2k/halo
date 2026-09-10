@@ -263,7 +263,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     if (!port.openReadWrite()) {
       final reason = SerialPort.lastError?.message;
       port.dispose();
-      throw SerialPortUnavailable(name, reason);
+      throw SerialPortUnavailable.fromSystem(name, reason);
     }
 
     try {
@@ -328,7 +328,7 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
       }
     }
     if (device == null) {
-      throw SerialPortUnavailable(name, 'no longer plugged in — pick it again from the port list');
+      throw SerialPortUnavailable(name, 'no longer plugged in', failure: SerialFailure.missing);
     }
     // A device path is reused by whatever is plugged in next, so a stored
     // index can name an interface that is now audio, or nothing at all.
@@ -386,7 +386,9 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     } catch (e) {
       throw SerialPortUnavailable(name, '$e');
     }
-    if (!opened) throw SerialPortUnavailable(name, 'permission denied, or the port is already in use');
+    // Android's open() gives no reason of its own; both causes end here, and
+    // "in use" is the one an operator is least likely to guess at.
+    if (!opened) throw SerialPortUnavailable(name, 'permission denied, or already in use', failure: SerialFailure.busy);
 
     try {
       await port.setPortParameters(
@@ -414,12 +416,36 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
   }
 }
 
-/// The port could not be opened, with the reason libserialport gave.
-class SerialPortUnavailable implements CatUnreachable {
+/// The port could not be opened, with the reason libserialport gave and, as
+/// far as the throw site could tell, which KIND of failure it was.
+///
+/// The kind is set where it is known — the catch site in [CatService] can
+/// only see the exception, and "Device or resource busy" is a very different
+/// thing to tell an operator than "Device not found".
+class SerialPortUnavailable implements SerialPortProblem {
   final String portName;
   final String? reason;
 
-  const SerialPortUnavailable(this.portName, this.reason);
+  @override
+  final SerialFailure failure;
+
+  const SerialPortUnavailable(this.portName, this.reason, {this.failure = SerialFailure.other});
+
+  /// libserialport hands back the OS's own wording rather than a code, so the
+  /// kind has to be read out of it. Matched case-insensitively on the
+  /// substrings POSIX and Windows agree on; anything else stays
+  /// [SerialFailure.other] and keeps its own words.
+  factory SerialPortUnavailable.fromSystem(String portName, String? reason) {
+    final text = (reason ?? '').toLowerCase();
+    final failure = text.contains('busy')
+        ? SerialFailure.busy
+        : text.contains('permission denied') || text.contains('access is denied')
+            ? SerialFailure.denied
+            : text.contains('no such file') || text.contains('no such device') || text.contains('cannot find')
+                ? SerialFailure.missing
+                : SerialFailure.other;
+    return SerialPortUnavailable(portName, reason, failure: failure);
+  }
 
   @override
   String toString() =>

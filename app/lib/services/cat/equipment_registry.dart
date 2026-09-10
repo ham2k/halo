@@ -30,7 +30,6 @@ import 'drivers/antenna_genius_driver.dart';
 import 'drivers/placeholder_radio_driver.dart';
 import 'drivers/winkeyer_driver.dart';
 import 'drivers/flexradio_driver.dart';
-import 'drivers/flrig_driver.dart';
 import 'drivers/guohetec_driver.dart';
 import 'drivers/ft891_driver.dart';
 import 'drivers/meter_calibration.dart';
@@ -41,9 +40,10 @@ import 'drivers/yaesu_cat_codec.dart' show yaesuVoiceMemoryCount;
 import 'drivers/yaesu_binary_driver.dart';
 import 'drivers/kenwood_driver.dart';
 import 'drivers/key_driver.dart';
-import 'drivers/rigctld_driver.dart';
 import 'drivers/sierra_coax_driver.dart';
 import 'equipment.dart';
+import 'equipment_brands.dart';
+import 'equipment_bridges.dart';
 import 'transport.dart';
 import 'transports/placeholder_transport.dart';
 import 'transports/icom_network_protocol.dart';
@@ -94,16 +94,6 @@ class EquipmentVariant {
   /// didn't already have.
   final Map<String, dynamic> restrictions;
 
-  /// Overrides [driver.hardwareVerified] when this specific pairing's
-  /// hardware status differs from the driver's own. A driver proven on one
-  /// transport says nothing about the same driver on another, and the flag
-  /// belongs to what has actually met a radio.
-  ///
-  /// Null for every pairing today — each one either inherits a proven driver
-  /// or is unproven along with it. The hook stays because the next driver to
-  /// gain a transport nobody has tried arrives in exactly that state.
-  final bool? hardwareVerifiedOverride;
-
   /// Set when this pairing's equipment announces itself on the network.
   final EquipmentDiscoverer? discoverer;
 
@@ -131,7 +121,6 @@ class EquipmentVariant {
     this.defaultConfig = const {},
     this.overrides = const {},
     this.restrictions = const {},
-    this.hardwareVerifiedOverride,
     this.discoverer,
     this.extraValidate,
     List<Map<String, dynamic>> Function()? notes,
@@ -161,16 +150,19 @@ class EquipmentModel {
   /// [EquipmentVariant.notes].
   final String Function() _nameBuilder;
 
-  /// Who makes it. Null where the model is named after a protocol or a
-  /// program — the bridges, and a family generic whose driver's name already
-  /// IS the brand. Declared wherever it is not: [elecraftGenericModel] is a
-  /// generic too, but it rides the Kenwood driver and would otherwise file
-  /// itself as a Kenwood.
+  /// Who makes it. Null only where the model is named after a protocol or a
+  /// program rather than a maker — the bridges, and the placeholder rig.
+  /// Every real make declares it, family generics included:
+  /// [elecraftGenericModel] rides the Kenwood driver and would otherwise
+  /// file itself as a Kenwood.
   ///
-  /// Read only by the equipment report's prefill, which otherwise derives a
-  /// manufacturer from the driver's name. That derivation is right whenever
-  /// the protocol family IS the brand and wrong the moment it is not — a QMX
-  /// on the Kenwood driver would arrive labelled "Kenwood".
+  /// Read by two things, and the second is why a generic cannot leave it
+  /// blank. The equipment report's prefill otherwise derives a manufacturer
+  /// from the driver's name, which is right whenever the protocol family IS
+  /// the brand and wrong the moment it is not — a QMX on the Kenwood driver
+  /// would arrive labelled "Kenwood". The Add dialog shelves its catalogue by
+  /// this value against [featuredBrands], matched EXACTLY: anything else,
+  /// blank included, lands under "Other Brands".
   ///
   /// Not localized: a brand is spelled the same in every language.
   final String? manufacturer;
@@ -278,7 +270,6 @@ class EquipmentType {
   /// UI can leave the slot empty rather than draw a wrong one.
   String? get transportIconName => transportIconNameFor(transportKey);
 
-  bool get hardwareVerified => variant.hardwareVerifiedOverride ?? driver.hardwareVerified;
 
   /// False for a pairing whose transport can't connect on this platform at
   /// all (TCP and Icom-network on web) — used to keep the Add dialog from
@@ -328,11 +319,21 @@ class EquipmentType {
       driver.defaultTelemetryInterval(_merged(config));
 
   /// A one-line "where is it" for the equipment list.
+  ///
+  /// The CHANNEL is deliberately not in it — see [describeChannel]. A slice
+  /// is not part of an address, and a row that ran the two together clipped
+  /// to "…Slice A" in a narrow column, naming the one part the operator
+  /// could have guessed.
   String describeTarget(Map<String, dynamic> config) {
     final merged = _merged(config);
-    final suffix = driver.describeSuffix(merged, overrides: overrides) ?? '';
+    final suffix = describeChannel(config) != null ? '' : (driver.describeSuffix(merged, overrides: overrides) ?? '');
     return '${transport.describeTarget(merged)}$suffix';
   }
+
+  /// Which channel of a multi-channel radio this node is — see
+  /// [EquipmentDriver.describeChannel].
+  String? describeChannel(Map<String, dynamic> config) =>
+      driver.describeChannel(_merged(config), overrides: overrides);
 
   /// Per-field version, for the editor: FormRenderer validates one field at
   /// a time and anchors the message on that field. Tries the transport
@@ -413,8 +414,6 @@ String? transportIconNameFor(String transportKey) => switch (transportKey) {
     };
 
 const _flexRadioTcpKey = 'flexradio-tcp';
-const _flrigTcpKey = 'flrig-tcp';
-const _rigctldTcpKey = 'rigctld-tcp';
 const _ft891SerialKey = 'ft891-serial';
 const _ft710SerialKey = 'ft710-serial';
 const _ftdx10SerialKey = 'ftdx10-serial';
@@ -451,6 +450,7 @@ const _sierraCoaxSerialKey = 'sierra-coax-serial';
 /// announces, and neither app-polo branch had a manual path at all.
 const flexRadioModel = EquipmentModel(
   key: 'flexradio',
+  manufacturer: flexBrand,
   category: kCategoryTransceiver,
   name: _flexRadioName,
   variants: [
@@ -466,78 +466,6 @@ const flexRadioModel = EquipmentModel(
 
 String _flexRadioName() => t.settings.station.models.flexRadio;
 
-/// Any radio Hamlib has a backend for, through a `rigctld` daemon the
-/// operator already runs — the app connects to the daemon, never to the
-/// radio. No discoverer: rigctld announces nothing, so it is always typed
-/// in by address, defaulting to the same machine.
-const rigctldModel = EquipmentModel(
-  key: 'rigctld',
-  category: kCategoryTransceiver,
-  name: _rigctldName,
-  variants: [
-    EquipmentVariant(
-      key: _rigctldTcpKey,
-      driver: RigctldDriver(),
-      transport: TcpTransport(),
-      defaultConfig: {'host': '127.0.0.1', 'port': RigctldDriver.defaultPort},
-      // The failure this pairing actually produces is a refused or
-      // unanswered connection, and every cause lives outside the app: the
-      // daemon isn't running, is listening only on localhost, or is on
-      // another port.
-      notes: _rigctldTcpNotes,
-    ),
-  ],
-);
-
-String _rigctldName() => t.settings.station.models.rigctld;
-
-List<Map<String, dynamic>> _rigctldTcpNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.rigctldTroubleshootingTitle}**\n\n'
-            '${t.settings.station.rigctldTroubleshooting}',
-      },
-    ];
-
-/// Any radio flrig has a definition for, through an flrig instance the
-/// operator already runs — the app connects to flrig's XML-RPC server,
-/// never to the radio. No discoverer: flrig announces nothing, so it is
-/// always typed in by address, defaulting to the same machine.
-const flrigModel = EquipmentModel(
-  key: 'flrig',
-  category: kCategoryTransceiver,
-  name: _flrigName,
-  variants: [
-    EquipmentVariant(
-      key: _flrigTcpKey,
-      driver: FlrigDriver(),
-      transport: TcpTransport(),
-      defaultConfig: {'host': '127.0.0.1', 'port': FlrigDriver.defaultPort},
-      // The failure this pairing actually produces is a refused or
-      // unanswered connection, and every cause lives outside the app: flrig
-      // isn't running, its server is on another port, or it can't reach the
-      // radio.
-      notes: _flrigTcpNotes,
-    ),
-  ],
-);
-
-String _ft891RecordingHelp() => t.settings.radio.voiceMessages.recordHelpFt891;
-
-String _flrigName() => t.settings.station.models.flrig;
-
-List<Map<String, dynamic>> _flrigTcpNotes() => [
-      {
-        'type': 'markdown',
-        'collapsible': true,
-        'title': t.settings.station.troubleshootingNotes,
-        'text': '**${t.settings.station.flrigTroubleshootingTitle}**\n\n'
-            '${t.settings.station.flrigTroubleshooting}',
-      },
-    ];
-
 /// Yaesu FT-891 over its built-in USB-to-serial CAT bridge.
 ///
 /// Baud is the operator's to set, deliberately. app-polo hardcoded 4800 with
@@ -545,6 +473,7 @@ List<Map<String, dynamic>> _flrigTcpNotes() => [
 /// whose CAT menu says 38400 answers with garbage and no error at all.
 const ft891Model = EquipmentModel(
   key: 'ft891',
+  manufacturer: yaesuBrand,
   category: kCategoryTransceiver,
   name: _ft891Name,
   // `LM0n;` arms the DVS, but the audio comes off the microphone with the
@@ -581,6 +510,7 @@ const ft891Model = EquipmentModel(
   ],
 );
 
+String _ft891RecordingHelp() => t.settings.radio.voiceMessages.recordHelpFt891;
 String _ft891Name() => t.settings.station.models.ft891;
 
 List<Map<String, dynamic>> _ft891SerialNotes() => [
@@ -602,7 +532,7 @@ List<Map<String, dynamic>> _ft891SerialNotes() => [
 /// actually ships on is the one prefilled.
 const ft710Model = EquipmentModel(
   key: 'ft710',
-  manufacturer: 'Yaesu',
+  manufacturer: yaesuBrand,
   category: kCategoryTransceiver,
   name: _ft710Name,
   recordingHelp: _yaesuDvsRecordingHelp,
@@ -628,7 +558,7 @@ String _ft710Name() => t.settings.station.models.ft710;
 /// reasoning as [ft710Model].
 const ftdx10Model = EquipmentModel(
   key: 'ftdx10',
-  manufacturer: 'Yaesu',
+  manufacturer: yaesuBrand,
   category: kCategoryTransceiver,
   name: _ftdx10Name,
   recordingHelp: _yaesuDvsRecordingHelp,
@@ -664,7 +594,7 @@ String _ftdx10Name() => t.settings.station.models.ftdx10;
 /// and the 818 answer the same chart the original does.
 const ft817Model = EquipmentModel(
   key: 'ft817',
-  manufacturer: 'Yaesu',
+  manufacturer: yaesuBrand,
   category: kCategoryTransceiver,
   name: _ft817Name,
   variants: [
@@ -693,7 +623,7 @@ String _ft817Name() => t.settings.station.models.ft817;
 /// changes mode to something nobody asked for.
 const ft857Model = EquipmentModel(
   key: 'ft857',
-  manufacturer: 'Yaesu',
+  manufacturer: yaesuBrand,
   category: kCategoryTransceiver,
   name: _ft857Name,
   variants: [
@@ -714,7 +644,7 @@ String _ft857Name() => t.settings.station.models.ft857;
 /// [ft857Model].
 const ft897Model = EquipmentModel(
   key: 'ft897',
-  manufacturer: 'Yaesu',
+  manufacturer: yaesuBrand,
   category: kCategoryTransceiver,
   name: _ft897Name,
   variants: [
@@ -808,6 +738,7 @@ String _yaesuDvsRecordingHelp() => t.settings.radio.voiceMessages.recordHelpYaes
 /// proves is the protocol, never another radio's mode table.
 const yaesuGenericModel = EquipmentModel(
   key: 'yaesu-generic',
+  manufacturer: yaesuBrand,
   category: kCategoryTransceiver,
   name: _yaesuGenericName,
   variants: [
@@ -853,6 +784,7 @@ List<Map<String, dynamic>> _yaesuSerialNotes() => [
 /// kenwood_driver.dart.
 const kenwoodGenericModel = EquipmentModel(
   key: 'kenwood-generic',
+  manufacturer: kenwoodBrand,
   category: kCategoryTransceiver,
   name: _kenwoodGenericName,
   variants: [
@@ -962,7 +894,7 @@ String _fx4crName() => t.settings.station.models.fx4cr;
 /// mismatch there is answered with silence, not an error.
 const elecraftGenericModel = EquipmentModel(
   key: 'elecraft-generic',
-  manufacturer: _elecraftBrand,
+  manufacturer: elecraftBrand,
   category: kCategoryTransceiver,
   name: _elecraftGenericName,
   variants: [
@@ -989,7 +921,7 @@ const elecraftGenericModel = EquipmentModel(
 /// entry pins nothing — the rest of the line has not been seen.
 const kx2Model = EquipmentModel(
   key: 'kx2',
-  manufacturer: _elecraftBrand,
+  manufacturer: elecraftBrand,
   category: kCategoryTransceiver,
   name: _kx2Name,
   variants: [
@@ -1014,7 +946,7 @@ const kx2Model = EquipmentModel(
 /// See [kx2Model] — the same radio family, the same settings.
 const kx3Model = EquipmentModel(
   key: 'kx3',
-  manufacturer: _elecraftBrand,
+  manufacturer: elecraftBrand,
   category: kCategoryTransceiver,
   name: _kx3Name,
   variants: [
@@ -1036,7 +968,6 @@ const kx3Model = EquipmentModel(
   ],
 );
 
-const _elecraftBrand = 'Elecraft';
 
 /// How long an Icom voice memory holds — "up to 1.5 minutes" per the
 /// IC-7300's manual, and the line's figure.
@@ -1075,6 +1006,7 @@ List<Map<String, dynamic>> _elecraftSerialNotes() => [
 /// is what an IC-7300 and an IC-706MKIIG both run on here.
 const icomGenericModel = EquipmentModel(
   key: 'icom-generic',
+  manufacturer: icomBrand,
   category: kCategoryTransceiver,
   name: _icomGenericName,
   variants: [
@@ -1117,7 +1049,7 @@ List<Map<String, dynamic>> _icomGenericSerialNotes({String extra = ''}) => [
 /// its own entry — see [ic7300mk2Model].
 const ic7300Model = EquipmentModel(
   key: 'ic7300',
-  manufacturer: 'Icom',
+  manufacturer: icomBrand,
   category: kCategoryTransceiver,
   name: _ic7300Name,
   variants: [
@@ -1159,7 +1091,7 @@ List<Map<String, dynamic>> _ic7300mk2SerialNotes() => _civSerialNotes();
 /// differ only in the address they ship on.
 const ic7300mk2Model = EquipmentModel(
   key: 'ic7300mk2',
-  manufacturer: 'Icom',
+  manufacturer: icomBrand,
   category: kCategoryTransceiver,
   name: _ic7300mk2Name,
   variants: [
@@ -1183,7 +1115,7 @@ List<Map<String, dynamic>> _ic706mkiigSerialNotes() => _civSerialNotes();
 /// rig; only the factory address differs.
 const ic706mkiigModel = EquipmentModel(
   key: 'ic706mkiig',
-  manufacturer: 'Icom',
+  manufacturer: icomBrand,
   category: kCategoryTransceiver,
   name: _ic706mkiigName,
   variants: [
@@ -1219,7 +1151,7 @@ List<Map<String, dynamic>> _ic7610SerialNotes() => _civSerialNotes();
 /// agree, which is a change made in two places, not one.
 const ic7610Model = EquipmentModel(
   key: 'ic7610',
-  manufacturer: 'Icom',
+  manufacturer: icomBrand,
   category: kCategoryTransceiver,
   name: _ic7610Name,
   variants: [
@@ -1246,7 +1178,7 @@ List<Map<String, dynamic>> _ic7760SerialNotes() =>
 /// the wrong one connects and then says nothing.
 const ic7760Model = EquipmentModel(
   key: 'ic7760',
-  manufacturer: 'Icom',
+  manufacturer: icomBrand,
   category: kCategoryTransceiver,
   name: _ic7760Name,
   variants: [
@@ -1310,6 +1242,7 @@ String _x6100Name() => t.settings.station.models.x6100;
 /// of the radio, with the cable as the second question.
 const ic705Model = EquipmentModel(
   key: 'ic705',
+  manufacturer: icomBrand,
   category: kCategoryTransceiver,
   name: _ic705Name,
   // WiFi first: the editor opens on a model's first variant, and this is the

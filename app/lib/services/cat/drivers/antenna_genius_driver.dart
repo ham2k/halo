@@ -128,11 +128,6 @@ class AntennaGeniusDriver extends EquipmentDriver {
   @override
   String get name => 'Antenna Genius';
 
-  /// Verified against an 8x2 on firmware 4.1.16 — the verb set was
-  /// enumerated on that switch, including the write path, since 4O3A's
-  /// protocol document is not published.
-  @override
-  bool get hardwareVerified => true;
 
   /// Every model in the Genius series this driver covers has eight — the
   /// 8x1 and the 8x2 differ in device ports, not antenna ports.

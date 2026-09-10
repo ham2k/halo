@@ -109,18 +109,6 @@ class IcomCivDriver extends EquipmentDriver {
   @override
   String get name => 'Icom (CI-V)';
 
-  /// Exercised against a real IC-705: connected through the app, held for
-  /// ten minutes, frequency tracking the VFO throughout. Ten minutes
-  /// deliberately — without periodic reauth these sessions go silent at about
-  /// two (see `_reauthInterval` in icom_network_transport_io.dart), so any
-  /// shorter run would have looked perfect and proved nothing.
-  ///
-  /// The same driver over USB serial is proven separately, by an IC-7300 and
-  /// an IC-706MKIIG. Both halves matter and neither stands in for the other:
-  /// this flag documents the DRIVER, and a pairing's own status can still
-  /// differ from it, which is what a variant's own override is for.
-  @override
-  bool get hardwareVerified => true;
 
   /// Icom publishes ONE set of meter breakpoints for the current CI-V line,
   /// so the scale is the driver's rather than each entry's — unlike Yaesu,
@@ -160,6 +148,10 @@ class IcomCivDriver extends EquipmentDriver {
   /// otherwise through [cwKeyerConfigKey].
   @override
   bool canKeyCwWith(Map<String, dynamic> config) => cwKeyerFromConfig(config, fallback: true);
+
+  @override
+  int voiceMemoryCountWith(Map<String, dynamic> config) =>
+      voiceMemoriesFromConfig(config, fallback: 0).clamp(0, civVoiceMemoryCount);
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => IcomCivSession(

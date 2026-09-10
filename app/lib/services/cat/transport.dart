@@ -50,6 +50,37 @@ class CatCancelledException implements Exception {
 /// tagged with it is silent by design.
 abstract class CatUnreachable implements Exception {}
 
+/// Why a serial port could not be opened, as far as the transport can tell.
+///
+/// Declared here rather than beside either transport because the two —
+/// `serial_transport_io.dart` and `serial_transport_web.dart` — never compile
+/// into the same binary, and [CatService] has to classify a failure from
+/// whichever one it got. A shared type is what lets it do that with an `is`
+/// test instead of matching a class name.
+enum SerialFailure {
+  /// Nothing is at that port: unplugged since it was picked, or a path that
+  /// named something else entirely.
+  missing,
+
+  /// Another program holds it — WSJT-X, fldigi and rigctld are the usual
+  /// three, and the one an operator is least likely to guess at.
+  busy,
+
+  /// The OS refused: a macOS sandbox without the `device.serial`
+  /// entitlement, a Web Serial grant revoked, a Linux user outside `dialout`.
+  denied,
+
+  /// Anything the transport could not place. Keeps its own words rather than
+  /// being translated into a guess.
+  other,
+}
+
+/// A serial open that failed, with [failure] saying which of the causes it
+/// was — see [SerialFailure]. Implemented by both serial transports.
+abstract class SerialPortProblem implements CatUnreachable {
+  SerialFailure get failure;
+}
+
 /// A failed connect, tagged with the equipment type it was aimed at.
 ///
 /// [CatService] wraps every throw out of [EquipmentTransport.connect] in this

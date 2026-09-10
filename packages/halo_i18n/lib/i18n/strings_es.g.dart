@@ -1838,8 +1838,6 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String reportSent({required Object ref}) => 'Gracias — tu informe se archivó como ${ref}.';
 	@override String get reportSentNoRef => 'Gracias — tu informe se envió.';
 	@override String reportFailed({required Object error}) => 'El informe no se envió: ${error}';
-	@override String get unverified => 'No probado con este hardware';
-	@override String get unverifiedShort => 'sin probar';
 	@override String get troubleshootingNotes => 'Notas de resolución de problemas';
 	@override String get mainVfo => 'VFO principal';
 	@override String get useAsMainVfo => 'Usar como VFO principal';
@@ -1875,6 +1873,9 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get radioPass => 'Contraseña de la radio';
 	@override String get radioLoginDescription => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.';
 	@override String get radioUserRequired => 'Se requiere el usuario de control remoto de la radio';
+	@override String get connectFailedBusy => 'Dispositivo en uso';
+	@override String get connectFailedDenied => 'Acceso denegado';
+	@override String get connectFailedDevice => 'Dispositivo no encontrado';
 	@override String get connectFailedNetwork => 'No se encuentra la radio en la red. Comprueba su dirección y que esté encendida y accesible.';
 	@override String get connectFailedTimeout => 'La radio no respondió a tiempo. Comprueba que esté encendida y accesible.';
 	@override late final _Translations$settings$station$models$es models = _Translations$settings$station$models$es._(_root);
@@ -1894,6 +1895,9 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get statusConnected => 'Conectado';
 	@override String get currentConfiguration => 'Configuración actual';
 	@override String get transceiverForMainVfo => 'Transceptor para el VFO principal';
+	@override String get sectionTransceivers => 'Transceptores';
+	@override String get sectionAntennas => 'Antenas';
+	@override String get sectionOtherEquipment => 'Otros equipos';
 	@override String get equipmentInventory => 'Inventario de equipos';
 	@override String get equipmentInUse => 'Equipos en uso';
 	@override String get noTransceiver => 'Ninguno';
@@ -1921,7 +1925,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get statusDisconnecting => 'Desconectando…';
 	@override String get statusError => 'Fallo de conexión';
 	@override String get currentRadioSettings => 'Ajustes de la radio actual';
-	@override String get cwKeyerNotAvailable => 'Conecta una radio que pueda manipular CW para enviar mensajes desde aquí.';
+	@override String get notSupportedByThisRadio => 'No compatible con esta radio';
 	@override String get keyerRowLabel => 'Manipulador:';
 	@override String get cwMessagesButton => 'Mensajes de CW';
 	@override String get voiceMessagesButton => 'Mensajes de voz';
@@ -1937,6 +1941,7 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get placeholderMode => 'Modo';
 	@override String get placeholderModeDescription => 'El modo con el que arranca la radio simulada, por ejemplo USB, CW, FT8.';
 	@override String get placeholderPower => 'Potencia (vatios)';
+	@override String get placeholderPurpose => 'Usa esta radio para registrar con qué equipo estás operando';
 	@override String get placeholderReplyDelay => 'Retraso de respuesta (ms)';
 	@override String get placeholderReplyDelayDescription => 'Cuánto tarda la radio simulada en informar de un cambio. Vacío o 0 responde de inmediato.';
 	@override String get cwKeyerField => 'Manipulador de CW por CAT';
@@ -1976,6 +1981,8 @@ class _Translations$settings$station$es extends Translations$settings$station$en
 	@override String get antennaTypeRequired => 'Elige un tipo de antena';
 	@override String get keyType => 'Tipo de manipulador';
 	@override String get keyTypeRequired => 'Elige un tipo de manipulador';
+	@override String get softwareIntermediaries => 'Intermediarios de software';
+	@override String get otherBrands => 'Otras marcas';
 	@override String get otherEquipment => 'Otros equipos (antenas, manipuladores, etc.)';
 	@override String get otherOptions => 'Otras opciones';
 	@override String get newAntenna => 'Nueva antena';
@@ -2833,10 +2840,12 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get ic706mkiig => 'Icom IC-706MKIIG';
 	@override String get ic7610 => 'Icom IC-7610';
 	@override String get ic7760 => 'Icom IC-7760';
-	@override String get x6100 => 'X6100';
-	@override String get rigctld => 'Radio genérica vía rigctld';
-	@override String get flrig => 'Radio genérica vía flrig';
-	@override String get placeholderRadio => 'Radio genérica simulada (sin control)';
+	@override String get x6100 => 'Xiegu X6100';
+	@override String get rigctld => 'Radio controlada vía rigctld';
+	@override String get rigctldNodeName => 'Mi radio (vía rigctld)';
+	@override String get flrig => 'Radio controlada vía flrig';
+	@override String get flrigNodeName => 'Mi radio (vía flrig)';
+	@override String get placeholderRadio => 'Radio genérica (marcador)';
 	@override String get placeholderRadioNodeName => 'Mi radio';
 	@override String get antenna => 'Antena';
 	@override String get key => 'Manipulador';
@@ -4020,8 +4029,6 @@ extension on TranslationsEs {
 			'settings.station.reportSent' => ({required Object ref}) => 'Gracias — tu informe se archivó como ${ref}.',
 			'settings.station.reportSentNoRef' => 'Gracias — tu informe se envió.',
 			'settings.station.reportFailed' => ({required Object error}) => 'El informe no se envió: ${error}',
-			'settings.station.unverified' => 'No probado con este hardware',
-			'settings.station.unverifiedShort' => 'sin probar',
 			'settings.station.troubleshootingNotes' => 'Notas de resolución de problemas',
 			'settings.station.mainVfo' => 'VFO principal',
 			'settings.station.useAsMainVfo' => 'Usar como VFO principal',
@@ -4057,6 +4064,9 @@ extension on TranslationsEs {
 			'settings.station.radioPass' => 'Contraseña de la radio',
 			'settings.station.radioLoginDescription' => 'El inicio de sesión Red → Remoto de la radio, no la contraseña del WiFi.',
 			'settings.station.radioUserRequired' => 'Se requiere el usuario de control remoto de la radio',
+			'settings.station.connectFailedBusy' => 'Dispositivo en uso',
+			'settings.station.connectFailedDenied' => 'Acceso denegado',
+			'settings.station.connectFailedDevice' => 'Dispositivo no encontrado',
 			'settings.station.connectFailedNetwork' => 'No se encuentra la radio en la red. Comprueba su dirección y que esté encendida y accesible.',
 			'settings.station.connectFailedTimeout' => 'La radio no respondió a tiempo. Comprueba que esté encendida y accesible.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
@@ -4081,10 +4091,12 @@ extension on TranslationsEs {
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
-			'settings.station.models.x6100' => 'X6100',
-			'settings.station.models.rigctld' => 'Radio genérica vía rigctld',
-			'settings.station.models.flrig' => 'Radio genérica vía flrig',
-			'settings.station.models.placeholderRadio' => 'Radio genérica simulada (sin control)',
+			'settings.station.models.x6100' => 'Xiegu X6100',
+			'settings.station.models.rigctld' => 'Radio controlada vía rigctld',
+			'settings.station.models.rigctldNodeName' => 'Mi radio (vía rigctld)',
+			'settings.station.models.flrig' => 'Radio controlada vía flrig',
+			'settings.station.models.flrigNodeName' => 'Mi radio (vía flrig)',
+			'settings.station.models.placeholderRadio' => 'Radio genérica (marcador)',
 			'settings.station.models.placeholderRadioNodeName' => 'Mi radio',
 			'settings.station.models.antenna' => 'Antena',
 			'settings.station.models.key' => 'Manipulador',
@@ -4109,6 +4121,9 @@ extension on TranslationsEs {
 			'settings.station.statusConnected' => 'Conectado',
 			'settings.station.currentConfiguration' => 'Configuración actual',
 			'settings.station.transceiverForMainVfo' => 'Transceptor para el VFO principal',
+			'settings.station.sectionTransceivers' => 'Transceptores',
+			'settings.station.sectionAntennas' => 'Antenas',
+			'settings.station.sectionOtherEquipment' => 'Otros equipos',
 			'settings.station.equipmentInventory' => 'Inventario de equipos',
 			'settings.station.equipmentInUse' => 'Equipos en uso',
 			'settings.station.noTransceiver' => 'Ninguno',
@@ -4136,7 +4151,7 @@ extension on TranslationsEs {
 			'settings.station.statusDisconnecting' => 'Desconectando…',
 			'settings.station.statusError' => 'Fallo de conexión',
 			'settings.station.currentRadioSettings' => 'Ajustes de la radio actual',
-			'settings.station.cwKeyerNotAvailable' => 'Conecta una radio que pueda manipular CW para enviar mensajes desde aquí.',
+			'settings.station.notSupportedByThisRadio' => 'No compatible con esta radio',
 			'settings.station.keyerRowLabel' => 'Manipulador:',
 			'settings.station.cwMessagesButton' => 'Mensajes de CW',
 			'settings.station.voiceMessagesButton' => 'Mensajes de voz',
@@ -4152,6 +4167,7 @@ extension on TranslationsEs {
 			'settings.station.placeholderMode' => 'Modo',
 			'settings.station.placeholderModeDescription' => 'El modo con el que arranca la radio simulada, por ejemplo USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Potencia (vatios)',
+			'settings.station.placeholderPurpose' => 'Usa esta radio para registrar con qué equipo estás operando',
 			'settings.station.placeholderReplyDelay' => 'Retraso de respuesta (ms)',
 			'settings.station.placeholderReplyDelayDescription' => 'Cuánto tarda la radio simulada en informar de un cambio. Vacío o 0 responde de inmediato.',
 			'settings.station.cwKeyerField' => 'Manipulador de CW por CAT',
@@ -4191,6 +4207,8 @@ extension on TranslationsEs {
 			'settings.station.antennaTypeRequired' => 'Elige un tipo de antena',
 			'settings.station.keyType' => 'Tipo de manipulador',
 			'settings.station.keyTypeRequired' => 'Elige un tipo de manipulador',
+			'settings.station.softwareIntermediaries' => 'Intermediarios de software',
+			'settings.station.otherBrands' => 'Otras marcas',
 			'settings.station.otherEquipment' => 'Otros equipos (antenas, manipuladores, etc.)',
 			'settings.station.otherOptions' => 'Otras opciones',
 			'settings.station.newAntenna' => 'Nueva antena',
@@ -4468,6 +4486,8 @@ extension on TranslationsEs {
 			'notices.preferencesRestored' => 'No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Ajustes reiniciados',
 			'notices.preferencesReset' => 'No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json.',
+			_ => null,
+		} ?? switch (path) {
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} no se conectó automáticamente',
 			'notices.autoConnectHeld' => ({required Object name}) => 'HaLo dejó de responder la última vez que empezó a conectarse a ${name}, así que esta vez no lo intentó para no repetirlo. Comprueba que la radio esté encendida y su cable conectado, y luego pulsa Conectar en ella dentro de Ajustes.',
 			'syncAccount.anonymous' => ({required Object id}) => 'Cuenta anónima (#${id})',
@@ -4477,8 +4497,6 @@ extension on TranslationsEs {
 			'deepLink.waitingInOperation' => 'Ese contacto está esperando en la operación detrás de esta pantalla',
 			'deepLink.unknownActivities' => ({required Object refs}) => 'Este dispositivo no tiene la actividad ${refs}, así que esas referencias quedaron fuera',
 			'deepLink.activitiesUnavailable' => ({required Object refs}) => 'No se pudo consultar tus actividades, así que ${refs} quedó fuera — reintenta ese enlace',
-			_ => null,
-		} ?? switch (path) {
 			'confirmDevice.title' => 'Confirmar un dispositivo',
 			'confirmDevice.codePrompt' => 'Introduce el código que muestra el dispositivo que quiere unirse a esta cuenta.',
 			'confirmDevice.code' => 'Código',

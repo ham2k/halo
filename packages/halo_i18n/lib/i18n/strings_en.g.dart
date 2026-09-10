@@ -3888,12 +3888,6 @@ class Translations$settings$station$en {
 	/// en: 'The report wasn't sent: ${error}'
 	String reportFailed({required Object error}) => 'The report wasn\'t sent: ${error}';
 
-	/// en: 'Not tested against this hardware'
-	String get unverified => 'Not tested against this hardware';
-
-	/// en: 'untested'
-	String get unverifiedShort => 'untested';
-
 	/// en: 'Troubleshooting Notes'
 	String get troubleshootingNotes => 'Troubleshooting Notes';
 
@@ -3999,6 +3993,15 @@ class Translations$settings$station$en {
 	/// en: 'The radio's remote-control username is required'
 	String get radioUserRequired => 'The radio\'s remote-control username is required';
 
+	/// en: 'Device is in use'
+	String get connectFailedBusy => 'Device is in use';
+
+	/// en: 'Access denied'
+	String get connectFailedDenied => 'Access denied';
+
+	/// en: 'Device not found'
+	String get connectFailedDevice => 'Device not found';
+
 	/// en: 'Cannot find the radio over the network. Check its address and that it's powered on and reachable.'
 	String get connectFailedNetwork => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.';
 
@@ -4052,6 +4055,15 @@ class Translations$settings$station$en {
 
 	/// en: 'Transceiver for Main VFO'
 	String get transceiverForMainVfo => 'Transceiver for Main VFO';
+
+	/// en: 'Transceivers'
+	String get sectionTransceivers => 'Transceivers';
+
+	/// en: 'Antennas'
+	String get sectionAntennas => 'Antennas';
+
+	/// en: 'Other Equipment'
+	String get sectionOtherEquipment => 'Other Equipment';
 
 	/// en: 'Equipment Inventory'
 	String get equipmentInventory => 'Equipment Inventory';
@@ -4146,8 +4158,8 @@ class Translations$settings$station$en {
 	/// en: 'Current radio settings'
 	String get currentRadioSettings => 'Current radio settings';
 
-	/// en: 'Connect a radio that can key CW to send messages from here.'
-	String get cwKeyerNotAvailable => 'Connect a radio that can key CW to send messages from here.';
+	/// en: 'Not supported by this radio'
+	String get notSupportedByThisRadio => 'Not supported by this radio';
 
 	/// en: 'Keyer:'
 	String get keyerRowLabel => 'Keyer:';
@@ -4179,6 +4191,12 @@ class Translations$settings$station$en {
 	String get keyTypeRequired => 'Choose a key type';
 
 	late final Translations$settings$station$keyTypes$en keyTypes = Translations$settings$station$keyTypes$en.internal(_root);
+
+	/// en: 'Software Intermediaries'
+	String get softwareIntermediaries => 'Software Intermediaries';
+
+	/// en: 'Other Brands'
+	String get otherBrands => 'Other Brands';
 
 	/// en: 'Other Equipment (Antennas, Keys, etc)'
 	String get otherEquipment => 'Other Equipment (Antennas, Keys, etc)';
@@ -4257,6 +4275,9 @@ class Translations$settings$station$en {
 
 	/// en: 'Power (watts)'
 	String get placeholderPower => 'Power (watts)';
+
+	/// en: 'Use this radio to keep track of which rig you're using for logging purposes'
+	String get placeholderPurpose => 'Use this radio to keep track of which rig you\'re using for logging purposes';
 
 	/// en: 'Reply delay (ms)'
 	String get placeholderReplyDelay => 'Reply delay (ms)';
@@ -6030,14 +6051,20 @@ class Translations$settings$station$models$en {
 	/// en: 'Icom IC-7760'
 	String get ic7760 => 'Icom IC-7760';
 
-	/// en: 'X6100'
-	String get x6100 => 'X6100';
+	/// en: 'Xiegu X6100'
+	String get x6100 => 'Xiegu X6100';
 
-	/// en: 'Generic Radio via rigctld'
-	String get rigctld => 'Generic Radio via rigctld';
+	/// en: 'Radio controlled via rigctld'
+	String get rigctld => 'Radio controlled via rigctld';
 
-	/// en: 'Generic Radio via flrig'
-	String get flrig => 'Generic Radio via flrig';
+	/// en: 'My Radio (via rigctld)'
+	String get rigctldNodeName => 'My Radio (via rigctld)';
+
+	/// en: 'Radio controlled via flrig'
+	String get flrig => 'Radio controlled via flrig';
+
+	/// en: 'My Radio (via flrig)'
+	String get flrigNodeName => 'My Radio (via flrig)';
 
 	/// en: 'Antenna'
 	String get antenna => 'Antenna';
@@ -6048,8 +6075,8 @@ class Translations$settings$station$models$en {
 	/// en: 'WinKeyer'
 	String get winkeyer => 'WinKeyer';
 
-	/// en: 'Generic Placeholder Radio (no control)'
-	String get placeholderRadio => 'Generic Placeholder Radio (no control)';
+	/// en: 'Generic Radio (Placeholder)'
+	String get placeholderRadio => 'Generic Radio (Placeholder)';
 
 	/// en: 'My Radio'
 	String get placeholderRadioNodeName => 'My Radio';
@@ -7335,8 +7362,6 @@ extension on Translations {
 			'settings.station.reportSent' => ({required Object ref}) => 'Thanks — your report was filed as ${ref}.',
 			'settings.station.reportSentNoRef' => 'Thanks — your report was sent.',
 			'settings.station.reportFailed' => ({required Object error}) => 'The report wasn\'t sent: ${error}',
-			'settings.station.unverified' => 'Not tested against this hardware',
-			'settings.station.unverifiedShort' => 'untested',
 			'settings.station.troubleshootingNotes' => 'Troubleshooting Notes',
 			'settings.station.mainVfo' => 'Main VFO',
 			'settings.station.useAsMainVfo' => 'Use as Main VFO',
@@ -7372,6 +7397,9 @@ extension on Translations {
 			'settings.station.radioPass' => 'Radio password',
 			'settings.station.radioLoginDescription' => 'The radio\'s own Network → Remote login, not your WiFi password.',
 			'settings.station.radioUserRequired' => 'The radio\'s remote-control username is required',
+			'settings.station.connectFailedBusy' => 'Device is in use',
+			'settings.station.connectFailedDenied' => 'Access denied',
+			'settings.station.connectFailedDevice' => 'Device not found',
 			'settings.station.connectFailedNetwork' => 'Cannot find the radio over the network. Check its address and that it\'s powered on and reachable.',
 			'settings.station.connectFailedTimeout' => 'The radio didn\'t respond in time. Check it\'s powered on and reachable.',
 			'settings.station.models.flexRadio' => 'FlexRadio (SmartSDR)',
@@ -7396,13 +7424,15 @@ extension on Translations {
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
-			'settings.station.models.x6100' => 'X6100',
-			'settings.station.models.rigctld' => 'Generic Radio via rigctld',
-			'settings.station.models.flrig' => 'Generic Radio via flrig',
+			'settings.station.models.x6100' => 'Xiegu X6100',
+			'settings.station.models.rigctld' => 'Radio controlled via rigctld',
+			'settings.station.models.rigctldNodeName' => 'My Radio (via rigctld)',
+			'settings.station.models.flrig' => 'Radio controlled via flrig',
+			'settings.station.models.flrigNodeName' => 'My Radio (via flrig)',
 			'settings.station.models.antenna' => 'Antenna',
 			'settings.station.models.key' => 'CW Key',
 			'settings.station.models.winkeyer' => 'WinKeyer',
-			'settings.station.models.placeholderRadio' => 'Generic Placeholder Radio (no control)',
+			'settings.station.models.placeholderRadio' => 'Generic Radio (Placeholder)',
 			'settings.station.models.placeholderRadioNodeName' => 'My Radio',
 			'settings.station.models.antennaGenius' => '4O3A Antenna Genius',
 			'settings.station.models.sierraCoax' => 'Sierra Radio CX-1 Coax Switch',
@@ -7425,6 +7455,9 @@ extension on Translations {
 			'settings.station.statusConnected' => 'Connected',
 			'settings.station.currentConfiguration' => 'Current Configuration',
 			'settings.station.transceiverForMainVfo' => 'Transceiver for Main VFO',
+			'settings.station.sectionTransceivers' => 'Transceivers',
+			'settings.station.sectionAntennas' => 'Antennas',
+			'settings.station.sectionOtherEquipment' => 'Other Equipment',
 			'settings.station.equipmentInventory' => 'Equipment Inventory',
 			'settings.station.equipmentInUse' => 'Equipment in Use',
 			'settings.station.noTransceiver' => 'None',
@@ -7456,7 +7489,7 @@ extension on Translations {
 			'settings.station.statusDisconnecting' => 'Disconnecting…',
 			'settings.station.statusError' => 'Connection failed',
 			'settings.station.currentRadioSettings' => 'Current radio settings',
-			'settings.station.cwKeyerNotAvailable' => 'Connect a radio that can key CW to send messages from here.',
+			'settings.station.notSupportedByThisRadio' => 'Not supported by this radio',
 			'settings.station.keyerRowLabel' => 'Keyer:',
 			'settings.station.cwMessagesButton' => 'CW Messages',
 			'settings.station.voiceMessagesButton' => 'Voice Messages',
@@ -7480,6 +7513,8 @@ extension on Translations {
 			'settings.station.keyTypes.dualPaddle' => 'Dual Paddle',
 			'settings.station.keyTypes.computerDriven' => 'Computer Driven',
 			'settings.station.keyTypes.other' => 'Other',
+			'settings.station.softwareIntermediaries' => 'Software Intermediaries',
+			'settings.station.otherBrands' => 'Other Brands',
 			'settings.station.otherEquipment' => 'Other Equipment (Antennas, Keys, etc)',
 			'settings.station.otherOptions' => 'Other Options',
 			'settings.station.newAntenna' => 'New Antenna',
@@ -7506,6 +7541,7 @@ extension on Translations {
 			'settings.station.placeholderMode' => 'Mode',
 			'settings.station.placeholderModeDescription' => 'The mode the placeholder radio starts on, e.g. USB, CW, FT8.',
 			'settings.station.placeholderPower' => 'Power (watts)',
+			'settings.station.placeholderPurpose' => 'Use this radio to keep track of which rig you\'re using for logging purposes',
 			'settings.station.placeholderReplyDelay' => 'Reply delay (ms)',
 			'settings.station.placeholderReplyDelayDescription' => 'How long the placeholder radio takes to report a change back. Blank or 0 replies at once.',
 			'settings.station.cwKeyerField' => 'CAT CW keyer',
@@ -7783,6 +7819,8 @@ extension on Translations {
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
+			_ => null,
+		} ?? switch (path) {
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'No notices yet',
 			'notices.webStorageInMemory' => 'This browser could not provide persistent storage — the log lives in memory only and will be LOST when this tab closes. Use a current Chrome, Firefox, Safari or Edge.',
@@ -7792,8 +7830,6 @@ extension on Translations {
 			'notices.logFromNewerBuildNoLocation' => ({required Object storage, required Object understood}) => 'Your log was written by a newer version of HaLo (storage version ${storage}; this one understands ${understood}), so it cannot be opened and nothing you log now will be saved. Open this log with that newer version instead.',
 			'notices.preferencesRestoredTitle' => 'Settings restored from a backup',
 			'notices.preferencesRestored' => 'The settings file could not be read, so HaLo restored the last good copy of it. Anything you changed in your previous session may need setting again. The unreadable file is kept alongside it, named shared_preferences.corrupt-….json.',
-			_ => null,
-		} ?? switch (path) {
 			'notices.preferencesResetTitle' => 'Settings reset',
 			'notices.preferencesReset' => 'The settings file could not be read and there was no backup to fall back on, so HaLo started with its defaults. The unreadable file is kept in the app\'s data folder, named shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} was not connected automatically',

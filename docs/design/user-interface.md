@@ -703,7 +703,13 @@ and these rules are what keep it one:
   to a viewport fails the whole list, not just the section that returned it.
   A list assembled as a flat row list, bands among them, says
   `SectionedListView` and is cut into those groups for it;
-  `FormRenderer(sliver: true)` does the same for a declared form. The band is
+  `FormRenderer(sliver: true)` does the same for a declared form. That cut
+  reads BOTH heading levels: a `CategoryBand` among the rows opens a category
+  and the `SectionHeader`s after it are gathered into it, so their bands pin
+  UNDER the category's rather than pushing it off — the two-deep stack the
+  Settings panel gets from its accordion, for a surface whose categories do
+  not fold (the Station panel's Current Configuration, Equipment Inventory
+  and Other Options). The band is
   a `PinnedHeaderSliver`, so it is as tall as it lays out to — a title that
   wraps at a large font scale takes the room it needs rather than a stated
   extent's guess — and nested bands STACK: a section band pins under whatever
@@ -713,7 +719,10 @@ and these rules are what keep it one:
   own top level takes the filled band with no chevron and nothing to collapse
   — `CategoryBand`, which a declared form asks for with
   `style: 'category'` (the station equipment editor's Current State and
-  Wiring). Its ground runs to the surface's edges and only its title takes the
+  Wiring). It takes an optional `trailing` control that belongs to the whole
+  category — the Station panel's Add Equipment button — because a control over
+  a category has nowhere else to sit: as the last ROW of a long list it is the
+  one thing an operator has to scroll to find. Its ground runs to the surface's edges and only its title takes the
   row inset, so a host that pads its content horizontally has to spend that
   padding on its rows instead — `showFormPane` does, through the row theme —
   or the band floats in a gutter and reads as one highlighted row.

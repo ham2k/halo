@@ -84,8 +84,6 @@ class _RadioDriver extends EquipmentDriver {
   @override
   String get name => 'Gate Radio';
   @override
-  bool get hardwareVerified => false;
-  @override
   Set<RadioMeter> get telemetryMeters => const {RadioMeter.swr};
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
@@ -120,8 +118,6 @@ class _SwitchDriver extends EquipmentDriver {
   String get key => 'gate-switch';
   @override
   String get name => 'Gate Switch';
-  @override
-  bool get hardwareVerified => false;
   @override
   int get antennaPortCount => 4;
   @override

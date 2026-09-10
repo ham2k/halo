@@ -273,8 +273,6 @@ class _FakeDriver extends EquipmentDriver {
   @override
   String get name => 'Fake Radio';
 
-  @override
-  bool get hardwareVerified => false;
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {
@@ -310,8 +308,6 @@ class _PlainDriver extends EquipmentDriver {
   String get key => 'plain';
   @override
   String get name => 'Plain Radio';
-  @override
-  bool get hardwareVerified => false;
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) => _PlainSession();
 }
@@ -2090,6 +2086,55 @@ void main() {
       expect(state.errorDetail, socketError.toString());
     });
 
+    /// Fails a connect with a serial problem of [failure] and answers the row.
+    Future<EquipmentState> failSerial(SerialFailure failure) async {
+      final node = await addRadio();
+      final connecting = cat.connect(node.uuid);
+      await pumpEventQueue();
+      transport.attempts.single.completer.completeError(_FakeSerialProblem(failure));
+      await connecting;
+      return cat.stateFor(node.uuid);
+    }
+
+    test('an unplugged serial port says the device is missing, not what POSIX called it', () async {
+      // "Could not open /dev/cu.usbserial-FTB6SPL3: No such file or
+      // directory" names a path the operator never typed and an errno they
+      // cannot act on.
+      final state = await failSerial(SerialFailure.missing);
+      expect(state.status, EquipmentStatus.error);
+      expect(state.error, t.settings.station.connectFailedDevice);
+      expect(state.error, isNot(contains('/dev/')));
+      // The path survives where a developer reads it, and only there.
+      expect(state.errorDetail, contains('/dev/cu.usbserial-FTB6SPL3'));
+    });
+
+    test('a port another program holds says so, rather than sending the operator to the cable', () async {
+      // The trap this exists to catch: one message for every serial failure.
+      // WSJT-X, fldigi or rigctld holding the port is the commonest of them,
+      // and "Device not found" sends the operator to check a cable that is
+      // plugged in and working.
+      final state = await failSerial(SerialFailure.busy);
+      expect(state.error, t.settings.station.connectFailedBusy);
+      expect(state.error, isNot(t.settings.station.connectFailedDevice));
+    });
+
+    test('a port the OS refuses says that, not that the device is absent', () async {
+      // A macOS sandbox without the device.serial entitlement, or a revoked
+      // Web Serial grant: the device is right there, and re-seating the cable
+      // does nothing at all for it.
+      final state = await failSerial(SerialFailure.denied);
+      expect(state.error, t.settings.station.connectFailedDenied);
+      expect(state.error, isNot(t.settings.station.connectFailedDevice));
+    });
+
+    test('a serial failure the transport could not place keeps its own words', () async {
+      // Translating an unrecognized cause into one of the three above would
+      // be a guess, and a confident one — the raw text at least describes
+      // what happened.
+      final state = await failSerial(SerialFailure.other);
+      expect(state.error, contains('/dev/cu.usbserial-FTB6SPL3'));
+    });
+
     test('an unusable configuration is refused before any socket is opened', () async {
       final node = await cat.addNode(typeKey: 'fake-type', config: {'host': ''});
       await cat.connect(node.uuid);
@@ -2580,4 +2625,17 @@ void main() {
           reason: 'the hold outlived the Connect that lifted it, and comes back on the next launch');
     });
   });
+}
+
+/// Stands in for either transport's `SerialPortUnavailable`: the classifier
+/// tests for `SerialPortProblem`, which is the whole point of that type
+/// living in transport.dart rather than beside either transport.
+class _FakeSerialProblem implements SerialPortProblem {
+  @override
+  final SerialFailure failure;
+
+  const _FakeSerialProblem(this.failure);
+
+  @override
+  String toString() => 'Could not open /dev/cu.usbserial-FTB6SPL3: No such file or directory';
 }

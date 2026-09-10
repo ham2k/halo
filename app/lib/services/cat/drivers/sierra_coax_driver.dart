@@ -90,12 +90,6 @@ class SierraCoaxDriver extends EquipmentDriver {
   @override
   String get name => 'Sierra Radio CX-1';
 
-  /// Verified against a CX-1: every payload shape in sierra_dcn_codec.dart
-  /// is something that module actually said, including the two the published
-  /// manuals get wrong or omit — the plain-text `LABEL` answer, and `SELn`
-  /// replying with the new state on its own.
-  @override
-  bool get hardwareVerified => true;
 
   @override
   int get antennaPortCount => cx1PortCount;

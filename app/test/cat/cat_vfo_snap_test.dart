@@ -120,8 +120,6 @@ class _FakeDriver extends EquipmentDriver {
   String get key => 'fake-driver';
   @override
   String get name => 'Fake Radio';
-  @override
-  bool get hardwareVerified => false;
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) {

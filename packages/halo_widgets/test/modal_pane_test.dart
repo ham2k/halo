@@ -263,6 +263,61 @@ void main() {
     expect(find.byType(BackButton), findsOneWidget);
   });
 
+  testWidgets('fillHeight holds the card at full height while its body changes size', (tester) async {
+    // The defect it exists for: a body that grows and shrinks as the operator
+    // works it — a list under a filter, a section folding — takes the card
+    // with it, and every row walks up or down under the pointer between one
+    // keystroke and the next. Shrink-wrapping stays the DEFAULT, so this has
+    // to assert the flag, not the shape.
+    setWidth(tester, 900);
+    addTearDown(tester.view.reset);
+    final context = await pumpHost(tester);
+
+    var tall = true;
+    late StateSetter setBody;
+    unawaited(showModalPane<void>(
+      context,
+      title: 'Catalogue',
+      scrollable: false,
+      fillHeight: true,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          setBody = setState;
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [SizedBox(height: tall ? 400 : 40, child: const Text('body'))],
+          );
+        },
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final full = maxPaneHeightOf(tester);
+    expect(tester.getSize(card()).height, full);
+
+    setBody(() => tall = false);
+    await tester.pumpAndSettle();
+    expect(tester.getSize(card()).height, full, reason: 'a body a tenth the size must not shrink the card');
+  });
+
+  testWidgets('without fillHeight the card still fits a short body', (tester) async {
+    // The other half of the pair: the flag is opt-in, and a plain short pane
+    // must not have been dragged to full height along with it.
+    setWidth(tester, 900);
+    addTearDown(tester.view.reset);
+    final context = await pumpHost(tester);
+
+    unawaited(showModalPane<void>(
+      context,
+      title: 'Note',
+      scrollable: false,
+      builder: (context) => const SizedBox(height: 40, child: Text('body')),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(tester.getSize(card()).height, lessThan(maxPaneHeightOf(tester) * 0.5));
+  });
+
   testWidgets('barrier tap dismisses the dialog presentation unless disabled', (tester) async {
     setWidth(tester, 900);
     addTearDown(tester.view.reset);

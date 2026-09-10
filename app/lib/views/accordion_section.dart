@@ -13,8 +13,9 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 /// How long a section takes to open or shut, and the curve it takes —
 /// shared by the box accordion and the sliver one so the two never drift
-/// into different animations of the same gesture.
-const accordionDuration = Duration(milliseconds: 200);
+/// into different animations of the same gesture, and by the caret and the
+/// body so the turn and the fold finish together.
+const accordionDuration = Duration(milliseconds: 300);
 const accordionCurve = Curves.easeInOut;
 
 /// The tinted, tappable bar at the top of a section: the chevron, the title,
@@ -52,8 +53,16 @@ class AccordionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final arrow = IconButton(
+      // Right when shut, down when open — the disclosure triangle every file
+      // tree draws, where the arrow points at what opening would reveal. One
+      // glyph rotated rather than two swapped, so the turn is continuous and
+      // the operator sees the section open rather than a caret blink.
+      //
+      // Negative turns: `chevronDown` at rest points down, and a quarter turn
+      // ANTI-clockwise from there is right. The positive quarter would point
+      // it left, at nothing.
       icon: AnimatedRotation(
-        turns: expanded ? 0.5 : 0,
+        turns: expanded ? 0 : -0.25,
         duration: accordionDuration,
         curve: accordionCurve,
         child: Icon(
@@ -166,8 +175,14 @@ class SliverAccordionSection extends StatelessWidget {
   /// See [AccordionHeader.headerInset].
   final EdgeInsetsGeometry headerInset;
 
+  /// A key on the header's own box, for a host that has to SCROLL to this
+  /// section — the sliver itself has no RenderBox for `ensureVisible` to
+  /// work against, and the header is the part worth revealing anyway.
+  final Key? headerKey;
+
   const SliverAccordionSection({
     super.key,
+    this.headerKey,
     required this.title,
     required this.expanded,
     required this.onToggle,
@@ -183,6 +198,7 @@ class SliverAccordionSection extends StatelessWidget {
         slivers: [
           PinnedHeaderSliver(
             child: AccordionHeader(
+              key: headerKey,
               title: title,
               expanded: expanded,
               onToggle: onToggle,

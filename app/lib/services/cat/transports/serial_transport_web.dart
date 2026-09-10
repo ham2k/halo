@@ -162,7 +162,8 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
     final name = target['port'] as String? ?? '';
     final port = _grantedPorts[name];
     if (port == null) {
-      throw SerialPortUnavailable(name, 'no longer granted — pick it again from the port list');
+      // A revoked grant is the browser refusing, not the device going away.
+      throw SerialPortUnavailable(name, 'no longer granted', failure: SerialFailure.denied);
     }
 
     final baudRate = (target['baudRate'] as num?)?.toInt() ?? 4800;
@@ -202,11 +203,14 @@ class SerialTransport extends EquipmentTransport with SerialTransportConfig {
 /// gives no event for that beyond the next `getPorts()` simply not listing
 /// it. Same shape as the io transport's exception of the same name; never
 /// both compiled into one binary, so nothing forces them to match.
-class SerialPortUnavailable implements CatUnreachable {
+class SerialPortUnavailable implements SerialPortProblem {
   final String portName;
   final String reason;
 
-  const SerialPortUnavailable(this.portName, this.reason);
+  @override
+  final SerialFailure failure;
+
+  const SerialPortUnavailable(this.portName, this.reason, {this.failure = SerialFailure.other});
 
   @override
   String toString() => 'Could not open $portName: $reason';

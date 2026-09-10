@@ -95,6 +95,9 @@ class PlaceholderTransport extends EquipmentTransport {
     Map<String, dynamic> restrictions = const {},
   }) =>
       [
+        // Developer mode only, like the driver's own knobs: these shape a
+        // SIMULATED link, and an operator using this entry to name their rig
+        // has no link to shape.
         if (!overrides.containsKey('placeholderConnectDelay'))
           {
             'type': 'field',
@@ -102,6 +105,7 @@ class PlaceholderTransport extends EquipmentTransport {
             'key': 'placeholderConnectDelay',
             'label': t.settings.station.placeholderConnectDelay,
             'description': t.settings.station.placeholderConnectDelayDescription,
+            'devMode': true,
           },
         if (!overrides.containsKey('placeholderDropAfter'))
           {
@@ -110,6 +114,7 @@ class PlaceholderTransport extends EquipmentTransport {
             'key': 'placeholderDropAfter',
             'label': t.settings.station.placeholderDropAfter,
             'description': t.settings.station.placeholderDropAfterDescription,
+            'devMode': true,
           },
         if (!overrides.containsKey('placeholderFailConnect'))
           {
@@ -117,6 +122,7 @@ class PlaceholderTransport extends EquipmentTransport {
             'fieldType': 'checkbox',
             'key': 'placeholderFailConnect',
             'label': t.settings.station.placeholderFailConnect,
+            'devMode': true,
           },
       ];
 

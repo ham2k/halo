@@ -131,10 +131,12 @@ void main() {
       expect(find.widgetWithText(TextButton, 'Messages'), findsNothing);
     });
 
-    testWidgets('a keyer designated but not connected: pick disabled, messages reachable, area toggle off', (tester) async {
+    testWidgets('a capable radio, never connected, drives the whole row from what it CAN do', (tester) async {
       await services.settings.setExperimentEnabled('keyer', true);
       // Added, never connected — auto-designated as the key in use because
-      // it can key and nothing else was.
+      // it can key and nothing else was. The trap this catches is laying the
+      // row out from the LINK: everything below is a fact about the rig, and
+      // an unplugged cable changes none of it.
       await services.cat.addNode(
         typeKey: 'placeholder-radio',
         name: 'Bench Rig',
@@ -144,15 +146,44 @@ void main() {
       await tester.pumpAndSettle();
 
       final pick = tester.widget<DropdownButtonFormField<int>>(find.byType(DropdownButtonFormField<int>));
-      expect(pick.onChanged, isNull, reason: 'the speed is the keyer\'s; nothing connected can take one');
-      expect(find.text('Connect a radio that can key CW to send messages from here.'), findsOneWidget);
-      expect(find.widgetWithText(TextButton, 'CW Messages'), findsOneWidget,
+      expect(pick.onChanged, isNull, reason: 'the speed is the keyer\'s; only a live session can take one');
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed, isNotNull,
           reason: 'the messages are settings, editable without a radio');
-      // Shown even where nothing can play, and disabled there: absent, the
-      // row would look the same as one whose memories have not loaded yet.
-      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Voice Messages')).onPressed, isNull);
-      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNull, reason: 'no area to show for a keyer that is not connected');
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Voice Messages')).onPressed, isNotNull,
+          reason: 'the rig holds memories whether or not it is plugged in');
+      expect(tester.widget<Switch>(find.byType(Switch)).onChanged, isNotNull,
+          reason: 'the keyer area is worth showing for a rig that can key');
       expect(find.text('CAT Keyer in Bench Rig'), findsOneWidget, reason: 'a radio in the key pick is its keyer');
+    });
+
+    testWidgets('a side the station cannot send on is disabled, and says why where it can be said', (tester) async {
+      await services.settings.setExperimentEnabled('keyer', true);
+      // A keyer of its own beside a rig that keys neither: CW can go out, no
+      // voice memory can. Disabling on capability is the point — a hover
+      // tooltip is not available to say so (docs/design/user-interface.md),
+      // so the reason has to reach a screen reader or nowhere.
+      final keyer = await services.cat.addNode(
+        typeKey: 'placeholder-radio',
+        name: 'Bench Keyer',
+        config: placeholderRadioModel.variants.single.defaultConfig,
+      );
+      await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Main Radio');
+      await services.cat.setDesignated(kCategoryKey, keyer.uuid);
+      expect(services.cat.radio1HasVoiceMemories, isFalse, reason: 'sanity: a generic Kenwood pins no memory count');
+
+      // The reason lives ONLY in the semantics tree, which is off by default
+      // in a widget test — without this handle the label search below cannot
+      // fail, whatever the widget says.
+      final semantics = tester.ensureSemantics();
+      await tester.pumpWidget(wrap(StationPanel(services: services, compact: true, onMoreSettings: () {})));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'CW Messages')).onPressed, isNotNull);
+      expect(tester.widget<TextButton>(find.widgetWithText(TextButton, 'Voice Messages')).onPressed, isNull);
+      expect(find.bySemanticsLabel('Voice Messages. Not supported by this radio'), findsOneWidget);
+      expect(find.bySemanticsLabel('CW Messages. Not supported by this radio'), findsNothing,
+          reason: 'a button that works must not carry a reason it does not');
+      semantics.dispose();
     });
 
     testWidgets('a radio keying through its own CAT session draws ONE equipment row', (tester) async {

@@ -144,9 +144,6 @@ class WinkeyerDriver extends EquipmentDriver {
   @override
   String get name => 'K1EL WinKeyer';
 
-  /// Written from the host-interface documents alone.
-  @override
-  bool get hardwareVerified => false;
 
   @override
   bool get canKeyCw => true;

@@ -14,7 +14,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
-import 'package:ham2k_logger/services/cat/drivers/ft891_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 import 'package:ham2k_logger/services/cat/equipment_registry.dart';
 import 'package:ham2k_logger/services/cat/transports/none_transport.dart';
@@ -256,9 +255,6 @@ void main() {
         prefills.forEach((field, value) => expect(type.defaultConfig[field], value));
       });
 
-      test('$key carries no untested caveat — an operator has run this radio', () {
-        expect(registry.typeFor(key)!.hardwareVerified, isTrue);
-      });
     });
   });
 
@@ -267,11 +263,6 @@ void main() {
   // "worth trying" and "probably pointless". Each is proven by a specific
   // radio: an IC-7300 and an IC-706MKIIG for Icom, an FT-710 for Yaesu, a
   // QRP Labs QMX for Kenwood, a KX2 and a KX3 for Elecraft.
-  test('the generic serial entries are no longer marked untested', () {
-    for (final key in ['icom-generic-serial', 'yaesu-serial', 'kenwood-serial', 'elecraft-serial']) {
-      expect(registry.typeFor(key)!.hardwareVerified, isTrue, reason: '$key is proven on hardware');
-    }
-  });
 
   // Elecraft answers at 38400 while the Kenwood driver's own default is
   // 9600, and a mismatch is answered with silence rather than an error —
@@ -317,9 +308,6 @@ void main() {
     // — not a claim that anyone has run an FX-4CR at 115200. Pinning the
     // rate is the bet this entry makes; the operator can change it in one
     // dropdown, which is why it lives in defaultConfig and not overrides.
-    test('ships with no untested caveat, on a driver radios have answered', () {
-      expect(registry.typeFor('fx4cr-serial')!.hardwareVerified, isTrue);
-    });
   });
 
   test('the Yaesus that need their front panel say so, each under its own name', () {
@@ -351,33 +339,6 @@ void main() {
     // A radio nobody has written a procedure for says nothing at all, rather
     // than borrowing another rig's.
     expect(noteFor('yaesu-generic'), isNull);
-  });
-
-  // Every shipped pairing now inherits a proven driver, so nothing in the
-  // catalogue exercises the override any more — delete the `??` in
-  // EquipmentType.hardwareVerified and the rest of this suite stays green.
-  // That matters because the flag is what the next driver-on-a-new-transport
-  // will reach for, and a hook nothing covers is one that silently stops
-  // working: without this, a pairing declaring itself untested would inherit
-  // its driver's `true` and ship with no caveat at all.
-  test('a variant may still declare itself untested against a proven driver', () {
-    const model = EquipmentModel(
-      key: 'synthetic',
-      category: kCategoryTransceiver,
-      name: _syntheticName,
-      variants: [
-        EquipmentVariant(
-          key: 'synthetic-serial',
-          driver: Ft891Driver(),
-          transport: SerialTransport(),
-          hardwareVerifiedOverride: false,
-        ),
-      ],
-    );
-    final type = EquipmentRegistry(models: const [model]).typeFor('synthetic-serial')!;
-
-    expect(type.driver.hardwareVerified, isTrue);
-    expect(type.hardwareVerified, isFalse, reason: 'the pairing overrides what its driver claims');
   });
 
   for (final model in registry.models) {
@@ -504,7 +465,6 @@ void main() {
   });
 }
 
-String _syntheticName() => 'Synthetic Radio';
 
 /// Enough of a sink to construct a session. Nothing here sends or reads —
 /// these tests only ask a session to describe itself.

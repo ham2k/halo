@@ -3,6 +3,7 @@
 
 import 'package:flutter/material.dart';
 
+import 'category_band.dart';
 import 'section_header.dart';
 
 /// A settings-shaped list whose [SectionHeader] bands PIN: each band holds
@@ -66,30 +67,48 @@ List<Widget> sectionSlivers(BuildContext context, List<Widget> children) {
   var rows = <Widget>[];
   SectionHeader? band;
 
+  // The category currently open, and everything cut for it so far. A category
+  // owns its sections: they are gathered into its group so their bands pin
+  // UNDER its band rather than pushing it off, which is the hierarchy the two
+  // headings exist to show (see [CategoryBand]).
+  CategoryBand? category;
+  var categorySlivers = <Widget>[];
+
+  void emit(Widget sliver) => (category == null ? slivers : categorySlivers).add(sliver);
+
   void flush() {
     if (band == null && rows.isEmpty) return;
     final list = SliverList(delegate: SliverChildListDelegate(rows));
-    slivers.add(band == null
-        ? list
-        : SliverMainAxisGroup(slivers: [band!.asPinnedSliver(context), list]));
+    emit(band == null ? list : SliverMainAxisGroup(slivers: [band!.asPinnedSliver(context), list]));
     rows = [];
     band = null;
   }
 
+  void closeCategory() {
+    flush();
+    if (category == null) return;
+    slivers.add(SliverMainAxisGroup(slivers: [category!.asPinnedSliver, ...categorySlivers]));
+    categorySlivers = [];
+    category = null;
+  }
+
   for (final child in children) {
-    if (child is SectionHeader) {
+    if (child is CategoryBand) {
+      closeCategory();
+      category = child;
+    } else if (child is SectionHeader) {
       flush();
       band = child;
     } else if (child is SectionedSlivers) {
       // Already cut, and it ends whatever section it follows: its own first
       // band heads its own rows.
       flush();
-      slivers.add(child);
+      emit(child);
     } else {
       rows.add(child);
     }
   }
-  flush();
+  closeCategory();
   return slivers;
 }
 

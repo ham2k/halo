@@ -30,7 +30,14 @@ class CategoryBand extends StatelessWidget {
   /// Under the title, in the ordinary body face.
   final Widget? subtitle;
 
-  const CategoryBand(this.title, {super.key, this.color, this.subtitle});
+  /// A control belonging to the category as a whole — the Station panel's Add
+  /// Equipment button. Right-aligned in the band, opposite the title, because
+  /// a control that acts on a whole category has nowhere else to be: as the
+  /// last ROW of a long list it is the one thing an operator has to scroll to
+  /// find.
+  final Widget? trailing;
+
+  const CategoryBand(this.title, {super.key, this.color, this.subtitle, this.trailing});
 
   @override
   Widget build(BuildContext context) {
@@ -43,11 +50,18 @@ class CategoryBand extends StatelessWidget {
       color: haloDialogBandColorAt(context),
       child: Padding(
         padding: EdgeInsets.fromLTRB(inset.left, Space.md, inset.right, Space.md),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            Text(title, style: SectionHeader.titleStyle(context, color: color)),
-            if (subtitle != null) ...[const SizedBox(height: Space.xs), subtitle!],
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: SectionHeader.titleStyle(context, color: color)),
+                  if (subtitle != null) ...[const SizedBox(height: Space.xs), subtitle!],
+                ],
+              ),
+            ),
+            if (trailing != null) ...[const SizedBox(width: Space.md), trailing!],
           ],
         ),
       ),

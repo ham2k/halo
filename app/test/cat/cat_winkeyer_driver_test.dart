@@ -75,7 +75,6 @@ void main() {
 
   test('the driver says it keys, and its sessions are keyers with no VFO', () {
     expect(const WinkeyerDriver().canKeyCw, isTrue);
-    expect(const WinkeyerDriver().hardwareVerified, isFalse, reason: 'written from the documents');
     expect(session, isA<CwKeyerSession>());
     expect(session, isNot(isA<TransceiverSession>()));
     expect(session.expectedUpdateInterval, isNull, reason: 'status, echo and pot arrive as they happen');

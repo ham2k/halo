@@ -217,6 +217,31 @@ void main() {
     });
   });
 
+  group('web semantics node map inconsistency', () {
+    // The engine dumps both trees into the message; only the first line is
+    // stable, and it is what the rule matches on.
+    StateError inconsistentMap() => StateError(
+          'Semantics node map was inconsistent after update:\n\nBEFORE: ...\n\nAFTER: ...\n',
+        );
+
+    test('is console-only — the assert it comes from is compiled out of every build a user runs', () {
+      ErrorPolicy.debugTreatAsWeb = true;
+      expect(dispositionFor(inconsistentMap()), ErrorDisposition.logOnly);
+    });
+
+    test('the same StateError off web stays loud', () {
+      // Only the web engine keeps a semantics node map; a native build
+      // raising this text is something else wearing a familiar sentence.
+      ErrorPolicy.debugTreatAsWeb = false;
+      expect(dispositionFor(inconsistentMap()), ErrorDisposition.notify);
+    });
+
+    test('an unrelated StateError on web stays loud', () {
+      ErrorPolicy.debugTreatAsWeb = true;
+      expect(dispositionFor(StateError('Bad state: no element')), ErrorDisposition.notify);
+    });
+  });
+
   group('a hot reload/restart stranding a live object', () {
     // What DDC actually reports when a private Dart field is read off an
     // instance whose class no longer declares it — the framework's own

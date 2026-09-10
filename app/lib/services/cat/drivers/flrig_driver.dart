@@ -74,11 +74,6 @@ class FlrigDriver extends EquipmentDriver {
   @override
   String get name => 'flrig';
 
-  /// Exercised against a real IC-705 behind a real flrig 2.0.12 over USB
-  /// serial — connect, follow, and set all proven end to end. Which rigs
-  /// flrig itself handles well is flrig's contract, not this driver's.
-  @override
-  bool get hardwareVerified => true;
 
   /// Everything flrig publishes a meter method for. Its power meter answers
   /// watts outright and its SWR a ratio, so this is the one driver here

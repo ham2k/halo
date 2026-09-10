@@ -49,8 +49,6 @@ class KenwoodDriver extends EquipmentDriver {
   @override
   String get name => 'Kenwood (CAT)';
 
-  @override
-  bool get hardwareVerified => true;
 
   /// A radio whose `IF` layout we DO know — a specific model built on this
   /// driver — pins the mode's offset here rather than letting the session
@@ -99,6 +97,9 @@ class KenwoodDriver extends EquipmentDriver {
   /// the named ones pin it, the generics ask under developer mode.
   @override
   bool canKeyCwWith(Map<String, dynamic> config) => cwDialectFrom(config) != null;
+
+  @override
+  int voiceMemoryCountWith(Map<String, dynamic> config) => voiceMemoriesFrom(config);
 
   @override
   Set<String> get recognizedConfigKeys =>

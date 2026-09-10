@@ -417,8 +417,6 @@ class _NeverConnectsDriver extends EquipmentDriver {
   @override
   String get name => 'fake';
 
-  @override
-  bool get hardwareVerified => false;
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>

@@ -103,12 +103,6 @@ class RigctldDriver extends EquipmentDriver {
   @override
   String get name => 'Hamlib rigctld';
 
-  /// Exercised against a real IC-705 behind `rigctld -m 3085` over USB
-  /// serial, not just the dummy backend (`-m 1`) — a real backend proves
-  /// the daemon's answers track an actual radio. Which rigs rigctld
-  /// itself handles well is Hamlib's contract, not this driver's.
-  @override
-  bool get hardwareVerified => true;
 
   /// The levels Hamlib defines for these, all of them read-only meters. No
   /// ALC-free or SWR-free backend is excluded by declaring them: a level a

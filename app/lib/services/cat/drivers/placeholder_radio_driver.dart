@@ -91,11 +91,6 @@ class PlaceholderRadioDriver extends EquipmentDriver {
   @override
   String get name => 'Placeholder Radio';
 
-  /// True, not because a radio was ever on the bench but because there is
-  /// none to be: the picker's caveat is about a driver that might not work
-  /// against real hardware, and this one has no hardware to disappoint.
-  @override
-  bool get hardwareVerified => true;
 
   @override
   bool get canKeyCw => true;
@@ -113,11 +108,24 @@ class PlaceholderRadioDriver extends EquipmentDriver {
       PlaceholderRadioSession(sink, config);
 
   @override
+  int voiceMemoryCountWith(Map<String, dynamic> config) => placeholderVoiceMemoryCount;
+
+  @override
   List<Map<String, dynamic>> configElements({
     Map<String, dynamic> overrides = const {},
     Map<String, dynamic> restrictions = const {},
   }) =>
       [
+        // What the entry is FOR, said first: an operator reaching this form
+        // wants a rig on their log, and every field below it is a simulator
+        // knob that only a developer has any use for.
+        {
+          'type': 'markdown',
+          'text': t.settings.station.placeholderPurpose,
+        },
+        // Under developer mode, all of them. The name is the whole form for
+        // everyone else — and the values still exist, prefilled from
+        // defaultConfig, so a hidden field never blocks a submit.
         if (!overrides.containsKey('placeholderFreq'))
           {
             'type': 'field',
@@ -125,6 +133,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
             'key': 'placeholderFreq',
             'label': t.settings.station.placeholderFreq,
             'description': t.settings.station.placeholderFreqDescription,
+            'devMode': true,
           },
         if (!overrides.containsKey('placeholderMode'))
           {
@@ -133,6 +142,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
             'key': 'placeholderMode',
             'label': t.settings.station.placeholderMode,
             'description': t.settings.station.placeholderModeDescription,
+            'devMode': true,
           },
         if (!overrides.containsKey('placeholderPower'))
           {
@@ -140,6 +150,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
             'fieldType': 'number',
             'key': 'placeholderPower',
             'label': t.settings.station.placeholderPower,
+            'devMode': true,
           },
         if (!overrides.containsKey('placeholderSwr'))
           {
@@ -148,8 +159,9 @@ class PlaceholderRadioDriver extends EquipmentDriver {
             'key': 'placeholderSwr',
             'label': t.settings.station.placeholderSwr,
             'description': t.settings.station.placeholderSwrDescription,
+            'devMode': true,
           },
-        telemetryConfigElement(),
+        {...telemetryConfigElement(), 'devMode': true},
         if (!overrides.containsKey('placeholderReplyDelay'))
           {
             'type': 'field',
@@ -157,6 +169,7 @@ class PlaceholderRadioDriver extends EquipmentDriver {
             'key': 'placeholderReplyDelay',
             'label': t.settings.station.placeholderReplyDelay,
             'description': t.settings.station.placeholderReplyDelayDescription,
+            'devMode': true,
           },
       ];
 

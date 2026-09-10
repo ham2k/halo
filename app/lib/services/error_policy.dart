@@ -195,6 +195,13 @@ class ErrorPolicy {
       matches: _isRenderFlexOverflow,
     ),
     ErrorRule(
+      id: 'web-semantics-node-map-inconsistent',
+      reason: 'the web engine left an orphan in its semantics node map: a debug-only assertion, '
+          'over a tree only dev builds ask for',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isWebSemanticsNodeMapInconsistent,
+    ),
+    ErrorRule(
       id: 'set-state-during-build',
       reason: 'setState()/markNeedsBuild() during build: a build-ordering bug to fix locally, '
           'harmless to the operator',
@@ -463,6 +470,28 @@ class ErrorPolicy {
 
   static bool _isRenderFlexOverflow(Object error, FlutterErrorDetails? details) =>
       error is FlutterError && error.toString().contains('A RenderFlex overflowed by');
+
+  /// The web engine's own check that every node it still holds is reachable
+  /// from the root of the semantics tree, thrown when a subtree is replaced
+  /// wholesale in one update and a leaf of the old one is left behind in the
+  /// map (`_finalizeTree` walks the detached subtree to purge it, and misses
+  /// a child whose parent was itself replaced). The orphan costs a DOM node
+  /// and a map entry; nothing on screen changes.
+  ///
+  /// Two things bound it, and both have to hold for this to be quiet. The
+  /// throw lives inside an `assert`, so no release build runs it. And the app
+  /// only turns the accessibility tree on at all in dev (`main.dart`'s
+  /// `ensureSemantics`, for agent tooling) — a user reaches this code only by
+  /// switching accessibility on themselves, in a build where the assert is
+  /// compiled out.
+  ///
+  /// Reproduced by the pinned `AccordionHeader`s of the Settings pane, which
+  /// enter the tree as siblings of the scroll group; upstream, it is the
+  /// family of flutter/flutter#170753.
+  static bool _isWebSemanticsNodeMapInconsistent(Object error, FlutterErrorDetails? details) =>
+      (debugTreatAsWeb ?? kIsWeb) &&
+      error is StateError &&
+      error.message.contains('Semantics node map was inconsistent after update');
 
   /// A stale object stranded by a hot reload or hot restart: DDC reads a
   /// private Dart field off an instance whose class no longer declares it,

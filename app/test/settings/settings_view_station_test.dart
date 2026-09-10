@@ -15,6 +15,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
+import 'package:ham2k_logger/views/accordion_section.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
 import '../support/halo_test_support.dart';
@@ -90,20 +91,30 @@ void main() {
     // inset that rides the ambient ListTileTheme. A hand-built row that names
     // a spacing rung instead spans the whole pane, and the fields sit a
     // couple of hundred pixels left of every row around them.
-    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1600, 1200));
+    // A configured radio, because the reference below has to be a plain row
+    // of the list: Add Equipment is a button in the Inventory heading now,
+    // and a heading stands proud of the rows rather than lining up with them.
+    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1600, 1200), equipment: {
+      'version': 1,
+      'radio1': 'radio-1',
+      'nodes': {
+        'radio-1': {
+          'typeKey': 'flexradio-tcp',
+          'name': 'Left Radio',
+          'config': {'host': 'flex.local', 'port': 4992},
+        },
+      },
+    });
     await tester.tap(find.text('Station Configuration'));
     await tester.pumpAndSettle();
 
     final field = tester.getRect(find.widgetWithText(DropdownButtonFormField<String?>, 'Transceiver for Main VFO'));
     // The leading glyph of a plain row in the same list — where a row's
     // contents actually start, inset and centring included.
-    final row = tester.getRect(find.widgetWithText(ListTile, 'Add equipment'));
-    final rowContentLeft = tester
-        .getRect(find.descendant(
-          of: find.widgetWithText(ListTile, 'Add equipment'),
-          matching: find.byType(Icon),
-        ))
-        .left;
+    final rowFinder = find.widgetWithText(ListTile, 'Left Radio');
+    final row = tester.getRect(rowFinder.first);
+    final rowContentLeft =
+        tester.getRect(find.descendant(of: rowFinder.first, matching: find.byType(Icon)).first).left;
 
     expect(field.left, rowContentLeft);
     // And that both of them are where a WIDE pane puts them. Comparing the
@@ -137,7 +148,14 @@ void main() {
     // Configuration, once as its own row in Equipment Inventory.
     expect(find.text('Left Radio'), findsNWidgets(2));
     // Where it is, and that nothing is pretending to be connected on load.
-    expect(find.textContaining('flex.local:4992'), findsOneWidget);
+    // Read off the SEMANTICS rather than the painted string: the row clips an
+    // address that does not fit, and clips it from the FRONT (AddressText),
+    // so what paints here is a tail. The whole address stays in the semantics
+    // tree — a screen reader has no width to run out of — and a RegExp
+    // because the label carries the channel suffix after it.
+    final semantics = tester.ensureSemantics();
+    expect(find.bySemanticsLabel(RegExp(r'flex\.local:4992')), findsOneWidget);
+    semantics.dispose();
     // No status word at all now — state and control are one icon: an unplugged plug, which connects when
     // pressed. No localized word, so nothing here can grow and squeeze the
     // live frequency out of the row.
@@ -146,6 +164,59 @@ void main() {
     // The sole transceiver is auto-designated radio1, so it wears the pill —
     // a one-radio shack never has to choose.
     expect(find.text('Main VFO'), findsOneWidget);
+  });
+
+  testWidgets('the panel is categories over sections, and both pin', (tester) async {
+    // Two heading levels, and the difference between them is what says which
+    // is which: a category runs edge to edge on the dialog band's ground, a
+    // section is accent-on-surface over a rule inside one. Both hold the top
+    // of the pane while their rows scroll under them.
+    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1200, 900), equipment: {
+      'version': 1,
+      'radio1': 'radio-1',
+      'nodes': {
+        'radio-1': {'typeKey': 'flexradio-tcp', 'name': 'Left Radio', 'config': {'host': 'flex.local', 'port': 4992}},
+        'ant-1': {'typeKey': 'antenna-none', 'name': 'Dipole', 'config': <String, dynamic>{}},
+      },
+    });
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+
+    for (final title in ['Current Configuration', 'Equipment Inventory', 'Other Options']) {
+      expect(find.widgetWithText(CategoryBand, title), findsOneWidget, reason: '"$title" is a category');
+    }
+    // The inventory's own kinds, as sections under it.
+    expect(find.widgetWithText(SectionHeader, 'Transceivers'), findsOneWidget);
+    expect(find.widgetWithText(SectionHeader, 'Antennas'), findsOneWidget);
+    // A kind with nothing in it gets no heading at all.
+    expect(find.widgetWithText(SectionHeader, 'Other Equipment'), findsNothing);
+
+    // Pinned, both levels — SectionedListView cuts on either.
+    expect(
+      find.ancestor(of: find.byType(CategoryBand), matching: find.byType(PinnedHeaderSliver)),
+      findsWidgets,
+    );
+    expect(
+      find.ancestor(of: find.widgetWithText(SectionHeader, 'Transceivers'), matching: find.byType(PinnedHeaderSliver)),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('Add Equipment is a button in the Inventory heading', (tester) async {
+    // It was the last ROW of the inventory, which on a long one is the single
+    // place an operator has to scroll to reach.
+    await pumpSettings(tester, catEnabled: true);
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+
+    final button = find.widgetWithText(FilledButton, 'Add equipment');
+    expect(button, findsOneWidget);
+    expect(find.widgetWithText(ListTile, 'Add equipment'), findsNothing, reason: 'and no longer a row');
+    expect(
+      find.ancestor(of: button, matching: find.widgetWithText(CategoryBand, 'Equipment Inventory')),
+      findsOneWidget,
+      reason: 'it rides the heading it belongs to',
+    );
   });
 
   testWidgets('adding by hand goes through the type list into that type\'s own form', (tester) async {
@@ -163,14 +234,19 @@ void main() {
     // own — a radio on another subnet, or behind a router that doesn't
     // forward broadcasts, is reached from the same list as everything else.
     expect(find.text('Add by address'), findsNothing);
+    // Shut, every one of them: the operator picks the make before the model.
+    expect(find.text('Icom IC-705'), findsNothing, reason: 'the Icom shelf is closed');
+
+    await tester.tap(find.text('Icom'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
     // The RADIO is what the operator picks, named as it is on its own front
     // panel — how it is connected is the next question, not part of this one.
-    // Sampled from the top of the sorted list, because the list is lazy: a
-    // name further down is absent because it was never built, not because
-    // the catalogue lost it.
-    expect(find.text('FlexRadio (SmartSDR)'), findsOneWidget);
     expect(find.text('Icom IC-705'), findsOneWidget);
     expect(find.text('Icom IC-7300'), findsOneWidget);
+    // Opening one shelf does not open the rest.
+    expect(find.text('FlexRadio (SmartSDR)'), findsNothing);
 
     // The section names itself and stays named: discovery runs for as long
     // as this dialog is open, so a heading that flipped between "searching"
@@ -188,10 +264,28 @@ void main() {
     // count is exact rather than a bare "at least one": a second untested
     // definition sorting into view is the change these assertions exist to
     // catch, and `findsWidgets` would let one through.
+    // Shut again, so the shelf below it is not pushed off the bottom of a
+    // lazy list that never builds what it cannot reach.
+    await tester.tap(find.text('Icom'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Icom IC-705'), findsNothing);
+
+    await tester.tap(find.text('Other Brands'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('Guohetec Q900'), findsOneWidget);
-    expect(find.text('Not tested against this hardware'), findsOneWidget);
+    // No hardware-verification caveat anywhere, in either wording: the Q900's
+    // definition has never met a radio and its row says nothing about it.
+    expect(find.text('Not tested against this hardware'), findsNothing);
     expect(find.textContaining('(untested)'), findsNothing);
 
+    await tester.tap(find.text('Other Brands'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+    await tester.tap(find.text('FlexRadio'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.text('FlexRadio (SmartSDR)'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
@@ -206,14 +300,6 @@ void main() {
     // renderer's English fallbacks.
     expect(find.text('Cancel'), findsWidgets);
   });
-
-  /// What the fold actually hides: the found-devices body under the permanent
-  /// title. The title and its spinner never fold, so they cannot stand in for
-  /// the section's state.
-  final discoveryBody = find.descendant(
-    of: find.byType(AnimatedSize),
-    matching: find.byType(SingleChildScrollView),
-  );
 
   /// Opens Station Configuration and the Add dialog. Never pumpAndSettle:
   /// while nothing has announced itself the discovery section holds a
@@ -231,51 +317,303 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
   }
 
-  testWidgets('the equipment list is alphabetical, not grouped by brand', (tester) async {
-    // Sorted at BUILD time, from the names as the current locale renders
-    // them. An order fixed where the catalogue is declared would be
-    // alphabetical only in whichever language happened to be active first.
-    //
-    // Mutation check: drop the sort and this fails on the Icom pair, since
-    // the catalogue declares the IC-705 before Icom - Generic.
-    //
-    // The sample stops where the lazy list does — a name below the fold is
-    // never built, so its position says nothing either way.
+  /// The one shelf whose heading is not simply a brand.
+  const otherEquipment = 'Other Equipment (Antennas, Keys, etc)';
+
+  /// The pane's own catalogue, for scoping a find away from the Settings
+  /// panel behind it — every model name here also appears in the Main VFO
+  /// dropdown once one is added.
+  final catalogue = find.byType(CustomScrollView).last;
+
+  /// Opens one brand's shelf. Every group starts shut, so nothing names a
+  /// radio until this runs.
+  Future<void> openBrand(WidgetTester tester, String brand) async {
+    await tester.tap(find.text(brand));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+  }
+
+  testWidgets('what announced itself is the first shelf, and it opens itself', (tester) async {
+    // The one shelf that starts open: a radio the app has already found is
+    // the shortest path to a configured one, and it costs nothing to see it
+    // before hunting by make. Everything else starts shut.
+    await pumpSettings(tester, catEnabled: true);
+    await openAddDialog(tester);
+
+    final detected = tester.getRect(
+      find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(AccordionHeader)),
+    );
+    final elecraft = tester.getRect(
+      find.ancestor(of: find.text('Elecraft'), matching: find.byType(AccordionHeader)),
+    );
+    expect(detected.top, lessThan(elecraft.top), reason: 'first in the list');
+
+    // The spinner is a ROW, not something in the header: discovery never ends
+    // while the pane is open, so a header spinner would spin at the operator
+    // the whole time, and one above the list would push every found radio
+    // down a line as it arrived.
+    final spinner = find.byType(CircularProgressIndicator);
+    expect(spinner, findsOneWidget);
+    expect(
+      find.ancestor(of: spinner, matching: find.byType(ListTile)),
+      findsOneWidget,
+      reason: 'it rides a row of the list',
+    );
+    expect(
+      find.descendant(of: find.byType(AccordionHeader), matching: spinner),
+      findsNothing,
+      reason: 'and not the shelf heading',
+    );
+
+    // Centred in the row, not parked in the leading slot: it stands for the
+    // search itself, so there is no name beside it to line up with.
+    final spinnerRect = tester.getRect(spinner);
+    final rowRect = tester.getRect(find.ancestor(of: spinner, matching: find.byType(ListTile)).first);
+    expect(spinnerRect.center.dx, closeTo(rowRect.center.dx, 2));
+
+    // Shutting it is the operator's to do, and doing so takes the spinner
+    // with it — the search goes on, the row saying so does not.
+    await openBrand(tester, 'Detected Equipment');
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+  });
+
+  testWidgets('the spinner gives up after a few seconds, while the listening does not', (tester) async {
+    // UDP discovery has no terminal state — it listens for as long as the
+    // pane is open — so a spinner tied to the actual activity would turn for
+    // the whole visit and become furniture. It says the search STARTED.
+    final services = await pumpSettings(tester, catEnabled: true);
+    await openAddDialog(tester);
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+
+    // The shelf stays, and so does the search behind it: a radio announcing
+    // itself after this still has somewhere to appear.
+    expect(find.text('Detected Equipment'), findsOneWidget);
+    expect(services.cat.isDiscovering, isTrue, reason: 'the spinner stopping is not the search stopping');
+  });
+
+  testWidgets('opening a shelf leaves the ones above it where they were', (tester) async {
+    // Pinning every opened shelf to the top scrolls the shelves above it
+    // away, so opening a brand made "Detected Equipment" vanish and come
+    // back. The reveal moves by the LEAST that puts the opened shelf on
+    // screen, and by nothing at all when it already is.
+    // A window short enough that the list scrolls — at full height nothing
+    // moves whatever the reveal does, and the assertion would hold either way.
+    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1000, 620));
+    await openAddDialog(tester);
+
+    final before = tester.getRect(
+      find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(AccordionHeader)),
+    );
+    // Icom is far enough down that pinning it to the top would scroll the
+    // first shelf clean off, and near enough that it is already visible — so
+    // the right answer is to move nothing at all.
+    await openBrand(tester, 'Icom');
+
+    expect(find.text('Detected Equipment'), findsOneWidget, reason: 'it does not go anywhere');
+    final after = tester.getRect(
+      find.ancestor(of: find.text('Detected Equipment'), matching: find.byType(AccordionHeader)),
+    );
+    expect(after.top, closeTo(before.top, 1), reason: 'and it does not move');
+    expect(find.text('Icom IC-705'), findsOneWidget, reason: 'while the opened shelf is on screen');
+  });
+
+  testWidgets('the catalogue is shelved by brand, in a fixed order, everything else last', (tester) async {
+    // The order is the point: the five brands come first and in one settled
+    // order, and the two catch-alls come last however many radios each holds.
+    // A group derived from whatever the catalogue happens to declare would
+    // reorder itself the day a model is added.
     await pumpSettings(tester, catEnabled: true);
     await openAddDialog(tester);
 
     const expected = [
-      'FlexRadio (SmartSDR)',
-      'Generic Radio via flrig',
-      'Generic Radio via rigctld',
-      'Icom - Generic',
-      'Icom IC-705',
-      'Icom IC-706MKIIG',
-      'Icom IC-7300',
-      'Icom IC-7300 MK2',
+      'Elecraft',
+      'FlexRadio',
+      'Icom',
+      'Kenwood',
+      'Yaesu',
+      'Software Intermediaries',
+      'Other Brands',
+      otherEquipment,
     ];
     final tops = [
-      for (final name in expected)
-        tester.getTopLeft(find.descendant(of: find.byType(HaloDialog), matching: find.text(name))).dy,
+      for (final name in expected) tester.getTopLeft(find.descendant(of: catalogue, matching: find.text(name))).dy,
     ];
     for (var i = 1; i < tops.length; i++) {
-      expect(tops[i], greaterThan(tops[i - 1]),
-          reason: '"${expected[i]}" should sit below "${expected[i - 1]}"');
+      expect(tops[i], greaterThan(tops[i - 1]), reason: '"${expected[i]}" should sit below "${expected[i - 1]}"');
     }
+  });
+
+  testWidgets('opening a shelf animates, rather than snapping open', (tester) async {
+    // The pane remounts its whole scroll view when a shelf opens, because
+    // every row below it moves and the web hit-tests stale geometry
+    // (docs/quirks.md). A remount would also re-inflate the caret's
+    // AnimatedRotation already at its new angle — the section would appear
+    // open with no turn and no cross-fade. The GlobalKey on each shelf is
+    // what keeps the State across it.
+    //
+    // Mutation check: drop that key and the State identity below changes.
+    await pumpSettings(tester, catEnabled: true);
+    await openAddDialog(tester);
+
+    final before = tester.state(find.byType(AnimatedRotation).first);
+    await tester.tap(find.text('Icom'));
+    await tester.pump();
+    expect(tester.state(find.byType(AnimatedRotation).first), same(before),
+        reason: 'the caret has to be the same widget mid-turn, not a fresh one at the far angle');
+
+    // ...and it is genuinely between the two angles part-way through. Scoped
+    // to the caret's own AnimatedRotation: the pane's slide and the shelf's
+    // cross-fade put Transforms of their own ahead of it in the tree.
+    await tester.pump(const Duration(milliseconds: 100));
+    final rotated = tester.widget<Transform>(
+      find.descendant(of: find.byType(AnimatedRotation).first, matching: find.byType(Transform)).first,
+    );
+    expect(rotated.transform.entry(0, 1).abs(), greaterThan(0.01), reason: 'mid-turn, not parked at either angle');
+
+    // Not pumpAndSettle: the discovery spinner never settles.
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('Icom IC-705'), findsOneWidget);
+  });
+
+  testWidgets('a shelf heading is styled like a Settings category, not like a plain band', (tester) async {
+    // Same kind of thing, one pane apart: a shelf of rows under a band that
+    // folds. Two styles for that would read as two mechanisms, so the heading
+    // takes SectionHeader.titleStyle whole — the slab face and the accent.
+    await pumpSettings(tester, catEnabled: true);
+    await openAddDialog(tester);
+
+    final context = tester.element(find.text('Elecraft'));
+    final expected = SectionHeader.titleStyle(context);
+    final heading = tester.widget<Text>(find.text('Elecraft'));
+    expect(heading.style?.fontFamily, expected.fontFamily);
+    expect(heading.style?.fontFamily, 'RobotoSlab', reason: 'the slab face, spelled out so a theme change is visible here');
+    expect(heading.style?.fontWeight, expected.fontWeight);
+    expect(heading.style?.color, expected.color);
+
+    // And the search strip must NOT be that same band: at full strength it
+    // merges with the collapsed shelves under it into one block of tint with
+    // no edge between them — the trap the Settings panel's own search strip
+    // is washed to 50% to avoid.
+    Color? bandBehind(Finder of) {
+      for (final element in find.ancestor(of: of, matching: find.byType(Material)).evaluate()) {
+        if ((element.widget as Material).color case final color?) return color;
+      }
+      return null;
+    }
+
+    final shelfBand = bandBehind(find.text('Elecraft'));
+    final searchBand = bandBehind(find.widgetWithText(TextField, 'Search equipment'));
+    expect(shelfBand, haloDialogBandColorAt(context), reason: 'the shelf keeps the category band');
+    expect(searchBand, isNot(shelfBand), reason: 'and the strip above it does not');
+  });
+
+  testWidgets('a shelf lists its models alphabetically, in the current locale', (tester) async {
+    // Sorted at BUILD time, from the names as the current locale renders
+    // them. An order fixed where the catalogue is declared would be
+    // alphabetical only in whichever language happened to be active first.
+    //
+    // Mutation check: drop the sort and this fails on the pair below, since
+    // the catalogue declares the IC-705 before Icom - Generic.
+    await pumpSettings(tester, catEnabled: true);
+    await openAddDialog(tester);
+    await openBrand(tester, 'Icom');
+
+    const expected = ['Icom - Generic', 'Icom IC-705', 'Icom IC-706MKIIG', 'Icom IC-7300', 'Icom IC-7300 MK2'];
+    final tops = [
+      for (final name in expected) tester.getTopLeft(find.descendant(of: catalogue, matching: find.text(name))).dy,
+    ];
+    for (var i = 1; i < tops.length; i++) {
+      expect(tops[i], greaterThan(tops[i - 1]), reason: '"${expected[i]}" should sit below "${expected[i - 1]}"');
+    }
+  });
+
+  testWidgets('only one shelf is open at a time, and the one just opened is on screen', (tester) async {
+    // Several open at once puts the shelf you wanted back below the fold,
+    // which is the state closing them was for. And shutting a tall shelf
+    // ABOVE the one being opened pulls everything up under the pointer — the
+    // header just tapped can land above the viewport with its rows nowhere on
+    // screen, which is what the scroll correction exists to undo.
+    //
+    // A short window, so the list actually scrolls; at full height every
+    // shelf fits and the correction is unreachable.
+    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1000, 620));
+    await openAddDialog(tester);
+
+    await openBrand(tester, 'Icom');
+    expect(find.text('Icom IC-705'), findsOneWidget);
+
+    // Scrolled to, because with Icom open it is below the fold — which is
+    // also what makes the correction matter: the shelf being shut is above
+    // this one, so everything is about to move.
+    await tester.scrollUntilVisible(find.text('Other Brands'), 200,
+        scrollable: find.descendant(of: catalogue, matching: find.byType(Scrollable)).last);
+    await tester.tap(find.text('Other Brands'));
+    // Not pumpAndSettle: the discovery spinner never settles.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+    expect(find.text('Icom IC-705'), findsNothing, reason: 'opening one shelf shuts the other');
+    expect(find.text('Xiegu X6100'), findsOneWidget);
+
+    // Fully on screen and at the top of it: the shelf that just shut was above
+    // this one, so without the correction the collapse leaves this header
+    // wherever it lands — which for a shelf this far down is above the
+    // viewport with its rows off it. The BAND, not its text: the title sits
+    // inset inside the header, so a text-based measure is off by that padding.
+    final header = tester.getRect(
+      find.ancestor(of: find.text('Other Brands'), matching: find.byType(AccordionHeader)),
+    );
+    final viewport = tester.getRect(find.byType(CustomScrollView).last);
+    expect(header.top, greaterThanOrEqualTo(viewport.top - 1), reason: 'not clipped off the top');
+    expect(header.top, lessThan(viewport.top + header.height), reason: 'at the top, not merely somewhere');
+    expect(find.text('Xiegu X6100'), findsOneWidget, reason: 'so its first rows are under it');
+
+  });
+
+  testWidgets('a radio whose brand has no shelf of its own falls to Other Brands', (tester) async {
+    // Matched EXACTLY against featuredBrands: a model spelling its maker any
+    // other way, or naming none at all, lands here rather than silently
+    // creating a sixth brand nobody ordered.
+    await pumpSettings(tester, catEnabled: true);
+    await openAddDialog(tester);
+    await openBrand(tester, 'Other Brands');
+
+    expect(find.text('Xiegu X6100'), findsOneWidget);
+    expect(find.text('Guohetec Q900'), findsOneWidget);
+    expect(find.text('Radio controlled via rigctld'), findsNothing, reason: 'a bridge is not a radio with an odd maker');
+  });
+
+  testWidgets('the bridges get a shelf of their own, away from the radios', (tester) async {
+    // They answer a different question: an operator browsing brands is
+    // looking for what is on their desk, while one reaching for flrig
+    // already knows their radio is not directly reachable. Keyed by model
+    // rather than derived, so a bridge left off the list falls in with the
+    // radios rather than quietly forming a shelf of one.
+    await pumpSettings(tester, catEnabled: true);
+    await openAddDialog(tester);
+    await openBrand(tester, 'Software Intermediaries');
+
+    expect(find.text('Radio controlled via flrig'), findsOneWidget);
+    expect(find.text('Radio controlled via rigctld'), findsOneWidget);
+    expect(find.text('Xiegu X6100'), findsNothing, reason: 'a radio with an unshelved maker is not a bridge');
   });
 
   testWidgets('the search box filters by radio name and by how it plugs in', (tester) async {
     await pumpSettings(tester, catEnabled: true);
     await openAddDialog(tester);
 
+    // A query FLATTENS the shelves: the answer to "which brand?" is the row
+    // itself, and headers over one-row groups would be most of what came
+    // back. So a match shows without its group ever being opened, which is
+    // also what makes these assertions mean anything.
     await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'icom');
     await tester.pump();
     expect(find.text('Icom IC-705'), findsOneWidget);
     expect(find.text('Icom - Generic'), findsOneWidget);
-    // The absent name has to be one the UNFILTERED list would have built:
-    // the Yaesus sort last and are below the fold either way, so looking for
-    // one of those passes whether the filter ran or not. FlexRadio sorts
-    // first.
+    expect(find.text('Icom'), findsNothing, reason: 'the shelf headings go with the shelves');
     expect(find.text('FlexRadio (SmartSDR)'), findsNothing);
 
     // Matching the transport too is the point: an operator with a cable in
@@ -284,22 +622,21 @@ void main() {
     await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'usb');
     await tester.pump();
     expect(find.text('Icom IC-705'), findsOneWidget, reason: 'it has a USB serial pairing');
-    expect(find.text('Generic Radio via rigctld'), findsNothing, reason: 'network only');
+    expect(find.text('Radio controlled via rigctld'), findsNothing, reason: 'network only');
     // The Yaesus sort below the fold, and a lazy list never builds what is
     // down there — findsNothing on one of them would pass whether the filter
     // worked or not, so they are scrolled to rather than merely looked for.
     await tester.scrollUntilVisible(find.text('Yaesu FT-891'), 200,
-        scrollable: find.descendant(of: find.byType(HaloDialog), matching: find.byType(Scrollable)).last);
+        scrollable: find.descendant(of: catalogue, matching: find.byType(Scrollable)).last);
     expect(find.text('Yaesu FT-891'), findsOneWidget);
     expect(find.text('Yaesu - Generic'), findsOneWidget);
 
-    // The brand is searchable even when the model's name doesn't carry it:
-    // the X6100 is named for what is written on the radio, and an operator
-    // hunting for "Xiegu" has to reach it. Drop the manufacturer from the
-    // match and this finds nothing.
+    // The brand is searchable even where the model's name carries it and the
+    // shelf would have said it anyway — flattening throws the heading away,
+    // so the haystack has to hold what the heading held.
     await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'xiegu');
     await tester.pump();
-    expect(find.text('X6100'), findsOneWidget);
+    expect(find.text('Xiegu X6100'), findsOneWidget);
     expect(find.text('Icom - Generic'), findsNothing);
 
     await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'zzzz');
@@ -307,34 +644,21 @@ void main() {
     expect(find.text('No equipment matches'), findsOneWidget);
   });
 
-  testWidgets('scrolling the equipment list folds the discovery section away', (tester) async {
-    // A window short enough that the catalogue overflows — at full size the
-    // list never scrolls and this behaviour is unreachable.
-    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1000, 620));
+  testWidgets('a search reaches the equipment that is added by name, not picked by model', (tester) async {
+    // "Other Equipment" is a shelf like any other now, so the keyer an
+    // operator searches for by make has to come back from the same box that
+    // finds their radio — nobody hunting "winkey" knows it lives under a
+    // heading rather than in the catalogue.
+    final services = await pumpSettings(tester, catEnabled: true);
+    await services.settings.setExperimentEnabled('keyer', true);
+    await tester.pumpAndSettle();
     await openAddDialog(tester);
 
-    // The title and its spinner are permanent — discovery is still running,
-    // and the fold is about the found-devices body below them.
-    expect(find.text('Detected Equipment'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    expect(discoveryBody, findsOneWidget);
-
-    // The dialog's own list, not the settings sidebar behind it.
-    final list = find.byType(ListView).last;
-    await tester.drag(list, const Offset(0, -120));
+    await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'winkey');
     await tester.pump();
-
-    expect(discoveryBody, findsNothing, reason: 'scrolling into the list gives its room to the list');
-    // The title and its spinner stay: they are what tell the operator
-    // discovery is still running, and losing them would read as it having
-    // stopped.
-    expect(find.text('Detected Equipment'), findsOneWidget);
-    expect(find.byType(CircularProgressIndicator), findsOneWidget);
-
-    await tester.drag(list, const Offset(0, 400));
-    await tester.pump();
-    expect(discoveryBody, findsOneWidget,
-        reason: 'back at the top, what announced itself is worth the room again');
+    expect(find.text('WinKeyer (K1EL or compatible)'), findsOneWidget);
+    expect(find.text(otherEquipment), findsNothing, reason: 'a query flattens every shelf, this one included');
+    expect(find.text('Icom IC-705'), findsNothing);
   });
 
   testWidgets('a transport glyph is pinned beside the radio\'s name, not centred down the row',
@@ -352,43 +676,12 @@ void main() {
     // still needs this, and so does the next radio that ships untested.
     await pumpSettings(tester, catEnabled: true);
     await openAddDialog(tester);
+    await openBrand(tester, 'Icom');
 
     expect(
       tester.widget<ListTile>(find.widgetWithText(ListTile, 'Icom IC-705')).titleAlignment,
       ListTileTitleAlignment.top,
     );
-  });
-
-  testWidgets('the fold reopens when the list stops being scrollable under it', (tester) async {
-    // The trap: a scroll position corrected during LAYOUT — the list shrinking
-    // under a filter, or growing back when one is cleared — moves `pixels`
-    // without dispatching any ScrollNotification. Watching only that
-    // notification leaves the section folded shut over a list that no longer
-    // scrolls, with no gesture anywhere that reopens it.
-    //
-    // Mutation check: drop the ScrollMetricsNotification listener and the
-    // final expectation here fails.
-    await pumpSettings(tester, catEnabled: true, viewSize: const Size(1000, 620));
-    await openAddDialog(tester);
-
-    final list = find.byType(ListView).last;
-    await tester.drag(list, const Offset(0, -120));
-    await tester.pump();
-    expect(discoveryBody, findsNothing, reason: 'folded, as it should be');
-
-    // Filter to nothing: the ListView unmounts entirely and takes its
-    // Scrollable with it.
-    await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), 'zzzz');
-    await tester.pump();
-    expect(find.text('No equipment matches'), findsOneWidget);
-
-    // Clearing it mounts a FRESH scrollable at offset 0. The operator is
-    // looking at a full, unscrolled list — the section has to be back.
-    await tester.enterText(find.widgetWithText(TextField, 'Search equipment'), '');
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-    expect(discoveryBody, findsOneWidget,
-        reason: 'the list is back at the top, so what announced itself is worth the room again');
   });
 
   testWidgets('a short window does not overflow the dialog', (tester) async {
@@ -408,30 +701,31 @@ void main() {
   testWidgets('a new radio is named after the model, numbered once that name is taken', (tester) async {
     await pumpSettings(tester, catEnabled: true, secureStorage: FakeSecureStorage());
     await openAddDialog(tester);
+    await openBrand(tester, 'Software Intermediaries');
 
-    await tester.tap(find.text('Generic Radio via rigctld'));
+    await tester.tap(find.text('Radio controlled via rigctld'));
     await tester.pumpAndSettle();
 
     // Prefilled, and prefilled EDITABLY — the operator sees what it will be
-    // called before agreeing to it.
+    // called before agreeing to it. NOT the catalogue row's own words: that
+    // entry describes the PATH to a radio, so the node takes the model's
+    // suggestedName instead and ends up named after the rig.
     expect(
       tester.widget<TextField>(find.widgetWithText(TextField, 'Name').first).controller?.text,
-      'Generic Radio via rigctld',
+      'My Radio (via rigctld)',
     );
     await tester.tap(find.text('Save').last);
     await tester.pumpAndSettle();
 
     await openAddDialog(tester);
-    // Scoped to the dialog: the name is now also on the equipment row and in
+    await openBrand(tester, 'Software Intermediaries');
+    // Scoped to the pane: the name is now also on the equipment row and in
     // the Main VFO dropdown behind it.
-    await tester.tap(find.descendant(
-      of: find.byType(HaloDialog),
-      matching: find.text('Generic Radio via rigctld'),
-    ));
+    await tester.tap(find.descendant(of: catalogue, matching: find.text('Radio controlled via rigctld')));
     await tester.pumpAndSettle();
     expect(
       tester.widget<TextField>(find.widgetWithText(TextField, 'Name').first).controller?.text,
-      'Generic Radio via rigctld 2',
+      'My Radio (via rigctld) 2',
       reason: 'the shack already has one, and two identical rows cannot be told apart',
     );
   });
@@ -454,6 +748,7 @@ void main() {
     await tester.tap(find.text('Add equipment'));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
+    await openBrand(tester, 'Icom');
 
     await tester.tap(find.text('Icom IC-705'));
     await tester.pumpAndSettle();
@@ -621,6 +916,45 @@ void main() {
     await tester.tap(find.text('Right Radio').last);
     await tester.pumpAndSettle();
     expect(services.cat.radio1, LocalRadio('radio-2'));
+  });
+
+  testWidgets("a multi-channel radio wears its channel beside the name, not in the address", (tester) async {
+    // Two slices of one Flex are two rows with the SAME address, so the slice
+    // is the only thing telling them apart — which is why it belongs with the
+    // name and not appended to the address, where a narrow column clipped it
+    // to "…Slice A" and dropped the address entirely.
+    await pumpSettings(tester, catEnabled: true, equipment: {
+      'version': 1,
+      'radio1': 'radio-1',
+      'nodes': {
+        'radio-1': {
+          'typeKey': 'flexradio-tcp',
+          'name': 'Shack Flex',
+          'config': {'host': 'flex.local', 'port': 4992, 'slice': '1'},
+        },
+      },
+    });
+    await tester.tap(find.text('Station Configuration'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Slice B'), findsOneWidget);
+
+    // Beside the NAME, not in the address column — the row is a 3:2 split and
+    // the address sits at its right end, so a slice still tacked onto the
+    // address would be over there.
+    final pill = tester.getRect(find.text('Slice B'));
+    final name = tester.getRect(find.text('Shack Flex').last);
+    expect(pill.left, greaterThan(name.left), reason: 'after the name');
+
+    // And gone from the ADDRESS, which now says only where the radio is. Read
+    // off that row's semantics rather than its painted string, which is a
+    // clipped tail (AddressText) — and off that row alone, since the pill's
+    // own text is in the semantics tree too.
+    final address = tester
+        .widgetList<Text>(find.byType(Text))
+        .map((text) => text.semanticsLabel)
+        .firstWhere((label) => label != null && label.contains('flex.local'));
+    expect(address, 'flex.local:4992', reason: 'the slice is no longer tacked onto it');
   });
 
   testWidgets('a node whose type no longer exists says so instead of vanishing', (tester) async {
