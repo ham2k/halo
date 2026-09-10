@@ -31,7 +31,12 @@ abstract class PeerNetwork {
   /// dial out, but the caller has to know so it can say so.
   Future<PeerLinkServer> bindLinkServer();
 
-  Future<PeerLink> dial(String address, int port);
+  /// With [mediaTicket], a media link (HALO-369): the same listener a
+  /// control link dials, told apart by its path and admitted by the ticket
+  /// rather than by a hello. Every dial the peer layer makes goes through
+  /// here — a direct `dialPeerLink` from app code is the bug, because it is
+  /// the one socket a test segment cannot carry.
+  Future<PeerLink> dial(String address, int port, {String? mediaTicket});
 }
 
 /// The real one: UDP broadcast for discovery, WebSocket over TCP for links.
@@ -45,5 +50,6 @@ class RealPeerNetwork implements PeerNetwork {
   Future<PeerLinkServer> bindLinkServer() => bindPeerLinkServer();
 
   @override
-  Future<PeerLink> dial(String address, int port) => dialPeerLink(address, port);
+  Future<PeerLink> dial(String address, int port, {String? mediaTicket}) =>
+      dialPeerLink(address, port, mediaTicket: mediaTicket);
 }

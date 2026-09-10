@@ -79,6 +79,15 @@ class FakeLan {
   /// is invisible to anything but a count.
   int get openLinkServers => _linkServers.values.where((s) => !s._closed).length;
 
+  /// Link ends still open, control and media alike, across every host. A
+  /// media link is held by `PeerScreens` on one side and `PeerScreenViews`
+  /// on the other, and neither is a socket or a server — so a teardown that
+  /// forgot one would leave both counters above at zero. Closing one end
+  /// closes the other, so a leaked pair counts as two.
+  int get openLinks => _links.where((l) => !l._isClosed).length;
+
+  final List<_FakeLink> _links = [];
+
   /// A device on this segment. The address is what its beacons arrive
   /// carrying, so tests can tell two devices apart the way `PeerService`
   /// does when it decides where to dial.
@@ -184,15 +193,22 @@ class _FakePeerNetwork implements PeerNetwork {
   }
 
   @override
-  Future<PeerLink> dial(String address, int port) async {
+  Future<PeerLink> dial(String address, int port, {String? mediaTicket}) async {
     final server = host.lan._linkServers['$address:$port'];
     // Nothing listening answers the way a dial to a peer that has left does:
     // an exception, not a link that never delivers.
     if (server == null || server._closed) {
       throw SocketException('Connection refused', address: InternetAddress(address), port: port);
     }
-    final (dialled, accepted) = _linkPair();
-    server._accept(accepted);
+    // A media upgrade with no ticket is refused at the door rather than
+    // accepted and dropped — a socket nobody owns is a socket nobody closes
+    // — so the dialler sees a failed dial, not a dead link. Pinned against
+    // the real server in `peer_transport_test.dart`.
+    if (mediaTicket != null && mediaTicket.isEmpty) {
+      throw const WebSocketException('media link refused: no ticket');
+    }
+    final (dialled, accepted) = _linkPair(host.lan);
+    server._accept(accepted, ticket: mediaTicket);
     return dialled;
   }
 }
@@ -329,15 +345,17 @@ class _FakeLinkServer implements PeerLinkServer {
 
   final _controller = StreamController<PeerLink>.broadcast();
 
-  /// Always empty. A media link (HALO-369) is dialled straight through
-  /// `dialPeerLink` by `peer_screen_views.dart`, not through [PeerNetwork],
-  /// so nothing on a fake segment ever produces one — an empty stream is the
-  /// honest answer rather than a stub that could be mistaken for coverage.
+  /// Media links (HALO-369), ticket and all — a dial with a `mediaTicket`
+  /// lands here and never on [connections], as the real server sorts an
+  /// upgraded socket by its path.
   final _mediaController = StreamController<PeerMediaConnection>.broadcast();
   bool _closed = false;
 
-  void _accept(PeerLink link) {
-    if (_closed || _controller.isClosed) {
+  /// One accept for both kinds, branching once on [ticket] where the real
+  /// server branches once on the path (`peer_link_io.dart`): a rule about
+  /// accept ordering that lived in two copies would be tightened in one.
+  void _accept(PeerLink link, {String? ticket}) {
+    if (_closed) {
       unawaited(link.close());
       return;
     }
@@ -346,11 +364,15 @@ class _FakeLinkServer implements PeerLinkServer {
     // test that depended on it landing synchronously would be pinning
     // ordering the sockets do not give.
     scheduleMicrotask(() {
-      if (_closed || _controller.isClosed) {
+      if (_closed) {
         unawaited(link.close());
         return;
       }
-      _controller.add(link);
+      if (ticket == null) {
+        _controller.add(link);
+      } else {
+        _mediaController.add(PeerMediaConnection(ticket: ticket, link: link));
+      }
     });
   }
 
@@ -369,12 +391,14 @@ class _FakeLinkServer implements PeerLinkServer {
   }
 }
 
-/// Two ends of one link, each delivering into the other.
-(PeerLink, PeerLink) _linkPair() {
+/// Two ends of one link, each delivering into the other, registered on
+/// [lan] so [FakeLan.openLinks] can count them.
+(PeerLink, PeerLink) _linkPair(FakeLan lan) {
   final a = _FakeLink();
   final b = _FakeLink();
   a._peer = b;
   b._peer = a;
+  lan._links.addAll([a, b]);
   return (a, b);
 }
 

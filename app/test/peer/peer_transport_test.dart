@@ -13,8 +13,10 @@
 //  - The link server runs on REAL loopback sockets. It binds port 0 and lets
 //    the OS choose, so nothing is guessed and nothing is held; what it proves
 //    — the 400 for a non-upgrade request, the Origin-header refusal, message
-//    boundaries surviving the wire — is exactly the behaviour a fake would be
-//    asserting about itself.
+//    boundaries surviving the wire, a media ticket surviving the URL — is
+//    exactly the behaviour a fake would be asserting about itself. Loopback
+//    only: nothing here needs the LAN, so a runner without macOS's Local
+//    Network grant still runs it.
 //  - The beacon socket runs the REAL socket over a fake segment
 //    (`peer_network_fakes.dart`) under `fakeAsync`. Its failures are the
 //    thing under test, and every one of them — a held port, a send with no
@@ -51,6 +53,40 @@ void main() {
       final dialled = await dialPeerLink('127.0.0.1', server.port);
       addTearDown(dialled.close);
       expect(await accepted, isA<PeerLink>());
+    });
+
+    test('a media dial lands on mediaConnections with its ticket, never on connections', () async {
+      // The only place the dialler's URL and the server's parse of it meet.
+      // A ticket is the sole thing admitting a media link, so it has to
+      // survive the query string — `=` and `+`, which base64url padding and
+      // a naive encoder would both produce — and the link has to land on the
+      // stream `PeerService` hands to `PeerScreens`, NOT on `connections`,
+      // where it would be handshaken as a peer and refused as a stranger.
+      final strays = <PeerLink>[];
+      final watching = server.connections.listen(strays.add);
+      addTearDown(watching.cancel);
+      final mediaFuture = server.mediaConnections.first;
+
+      final dialled = await dialPeerLink('127.0.0.1', server.port, mediaTicket: 'ticket+1==');
+      addTearDown(dialled.close);
+      final media = await mediaFuture.timeout(const Duration(seconds: 5));
+      expect(media.ticket, 'ticket+1==');
+
+      final arrived = media.link.inbound.first;
+      dialled.send(utf8.encode('frame'));
+      expect(utf8.decode(await arrived.timeout(const Duration(seconds: 5))), 'frame');
+      expect(strays, isEmpty, reason: 'a media link is not a control link');
+    });
+
+    test('a media dial with no ticket fails as a dial, not as a dead link', () async {
+      // Refused at the upgrade: a media socket with nothing to match it to
+      // is a socket nobody owns and nobody closes. The dialler has to see
+      // the refusal as an exception, which is what `_dialMedia`'s catch
+      // turns into `peerUnreachable` and a retry.
+      await expectLater(
+        dialPeerLink('127.0.0.1', server.port, mediaTicket: ''),
+        throwsA(isA<WebSocketException>()),
+      );
     });
 
     test('messages cross intact, in order, with boundaries preserved', () async {
@@ -599,6 +635,44 @@ void main() {
       await expectLater(
         lan.host().network.dial('10.99.99.99', server.port),
         throwsA(isA<SocketException>()),
+      );
+    });
+
+    test('a media dial lands on mediaConnections with its ticket, never on connections', () async {
+      // The real-socket test of the same name is the reference. A fake that
+      // put a media link on `connections` would have every screen-sharing
+      // test pass against a PeerService that handshakes the viewer as a
+      // stranger in the field.
+      final lan = FakeLan();
+      final listener = lan.host();
+      final server = await listener.network.bindLinkServer();
+      addTearDown(server.close);
+      final strays = <PeerLink>[];
+      final watching = server.connections.listen(strays.add);
+      addTearDown(watching.cancel);
+      final mediaFuture = server.mediaConnections.first;
+
+      final dialled = await lan.host().network.dial(listener.address, server.port, mediaTicket: 'ticket+1==');
+      addTearDown(dialled.close);
+      final media = await mediaFuture.timeout(const Duration(seconds: 5));
+      expect(media.ticket, 'ticket+1==');
+
+      final arrived = media.link.inbound.first;
+      dialled.send(utf8.encode('frame'));
+      expect(utf8.decode(await arrived.timeout(const Duration(seconds: 5))), 'frame');
+      expect(strays, isEmpty, reason: 'a media link is not a control link');
+    });
+
+    test('a media dial with no ticket fails as a dial, not as a dead link', () async {
+      // The real-socket test of the same name is the reference.
+      final lan = FakeLan();
+      final listener = lan.host();
+      final server = await listener.network.bindLinkServer();
+      addTearDown(server.close);
+
+      await expectLater(
+        lan.host().network.dial(listener.address, server.port, mediaTicket: ''),
+        throwsA(isA<WebSocketException>()),
       );
     });
   });

@@ -1,11 +1,15 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Screen sharing end to end (HALO-369): two real PeerServices on loopback
-// sockets, real PeerChannels routing the offer and the subscription between
-// them, and a real second WebSocket carrying the frames. Only the CAPTURE is
-// faked — a VM test has no screen — so what these prove is everything from
-// the operator picking a source to the bytes arriving in a viewer's pane.
+// Screen sharing end to end (HALO-369): two real PeerServices on one
+// in-memory segment (`peer_network_fakes.dart`), real PeerChannels routing
+// the offer and the subscription between them, and a second link on the
+// same segment carrying the frames. The CAPTURE is faked — a VM test has no
+// screen — and so is the wire, so what these prove is everything from the
+// operator picking a source to the bytes arriving in a viewer's pane, with
+// the machine's network having no say in it: a real beacon socket broadcasts
+// to the LAN, which macOS gates behind a Local Network grant the test runner
+// may not hold.
 //
 // The media link is the reason this is an integration test rather than a
 // unit one. It is admitted by a ticket the control link handed over, dialled
@@ -15,7 +19,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:drift/native.dart';
@@ -23,7 +26,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:ham2k_logger/services/location_service.dart';
 import 'package:ham2k_logger/services/peer/peer_channels.dart';
-import 'package:ham2k_logger/services/peer/peer_link.dart';
 import 'package:ham2k_logger/services/peer/peer_screen_views.dart';
 import 'package:ham2k_logger/services/peer/peer_screens.dart';
 import 'package:ham2k_logger/services/peer/peer_service.dart';
@@ -31,12 +33,7 @@ import 'package:ham2k_logger/services/screen_capture_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-Future<int> freeUdpPort() async {
-  final probe = await RawDatagramSocket.bind(InternetAddress.loopbackIPv4, 0);
-  final port = probe.port;
-  probe.close();
-  return port;
-}
+import '../support/peer_network_fakes.dart';
 
 Future<void> waitFor(
   String what,
@@ -150,8 +147,8 @@ class _FakeCapture extends ScreenCaptureService {
   }
 }
 
-/// A viewer's media link, driven by hand: it dials for real and chooses
-/// whether to acknowledge. The only way to model a viewer wedged behind a
+/// A viewer's media link driven by hand, over a link the test dialled
+/// itself: it chooses whether to acknowledge. The only way to model a viewer wedged behind a
 /// congested link, which is exactly what no transport signal reveals.
 class _MediaClient {
   _MediaClient(this._link, {required bool acks}) : acking = acks {
@@ -187,7 +184,7 @@ class _Device {
   _Device(
     this.deviceId,
     this.name,
-    int beaconPort, {
+    FakeHost host, {
     required this.settings,
     required List<PeerScreenSource> sources,
   }) {
@@ -204,7 +201,8 @@ class _Device {
       qsos: qsos,
       localDeviceId: deviceId,
       localDeviceName: name,
-      beaconPort: beaconPort,
+      beaconPort: fakeBeaconPort,
+      network: host.network,
     );
     screens = PeerScreens(settings: settings, peers: service, capture: capture);
     views = PeerScreenViews(peers: service);
@@ -243,26 +241,55 @@ class _Device {
 const _display = PeerScreenSource(id: 'display:1', name: 'Built-in', kind: 'display');
 const _window = PeerScreenSource(id: 'window:99', name: 'WSJT-X', kind: 'window');
 
+/// A media link from [viewer] to [producer], dialled by hand exactly the way
+/// `PeerScreenViews._dialMedia` does it — through the viewer's own network,
+/// to the address the VIEWER's service heard the producer's beacon from. Over
+/// loopback both addresses would be the same string and a swap would go
+/// unnoticed; the segment keys its listeners by address, so a dial to the
+/// wrong one finds nothing.
+Future<PeerLink> _dialMedia(_Device viewer, _Device producer, PeerScreenGrant grant) {
+  // A peer first heard as an INBOUND session has a runtime with no address
+  // until its beacon lands, and `paired()` waits on sessions, not beacons —
+  // which production answers with `peerUnreachable` and a retry, and a
+  // bare null-check would answer with a stack trace.
+  final address = viewer.service.peers[producer.deviceId]?.beacon.address;
+  expect(address, isNotNull, reason: 'the viewer has not heard the producer\'s beacon yet');
+  return viewer.service.network.dial(address!, grant.port, mediaTicket: grant.ticket);
+}
+
 void main() {
-  late int beaconPort;
+  late FakeLan lan;
   late SettingsService settings;
   late _Device shack;
   late _Device tablet;
 
   setUp(() async {
-    beaconPort = await freeUdpPort();
+    lan = FakeLan();
     SharedPreferences.setMockInitialValues({});
     settings = SettingsService(await SharedPreferences.getInstance());
     // 'device-a' sorts lower, so the tablet dials the shack machine. Only the
     // shack machine has screens; the tablet is a pure viewer, which is the
     // real deployment.
-    tablet = _Device('device-a', 'Tablet', beaconPort, settings: settings, sources: const []);
-    shack = _Device('device-b', 'Shack PC', beaconPort, settings: settings, sources: const [_display, _window]);
+    tablet = _Device('device-a', 'Tablet', lan.host(), settings: settings, sources: const []);
+    shack = _Device('device-b', 'Shack PC', lan.host(), settings: settings, sources: const [_display, _window]);
   });
 
   tearDown(() async {
     await shack.dispose();
+    // BETWEEN the two disposes, not after both: closing one end of a link
+    // closes the other, so once the tablet is down too, a media link the
+    // producer forgot is closed by the viewer's own teardown and nothing is
+    // left to count. Here only the producer has gone, so an open link is
+    // one `PeerScreens.dispose` left behind. (The viewer's own close is not
+    // provable this way — whichever device goes first closes everything —
+    // and neither socket nor server counter sees a media link at all.)
+    expect(lan.openLinks, 0, reason: 'the producer left a media link open');
     await tablet.dispose();
+    // Over a segment no later bind can fail, so a dispose that stopped
+    // releasing its beacon socket or link server would look exactly like
+    // one that did — the counters are the only evidence.
+    expect(lan.openSockets, 0, reason: 'a beacon socket outlived its device');
+    expect(lan.openLinkServers, 0, reason: 'a link server outlived its device');
   });
 
   Future<void> paired() async {
@@ -303,7 +330,7 @@ void main() {
     await waitFor('the shack machine starts capturing', () => shack.capture.started.isNotEmpty);
     expect(shack.capture.started, ['display:1']);
 
-    // The media link is a second socket the viewer dials on a ticket the
+    // The media link is a second link the viewer dials on a ticket the
     // control link handed over. Nothing below arrives until it is up.
     shack.capture.emit('display:1', 1, [1, 2, 3, 4]);
     await waitFor('a frame lands in the tablet\'s view', () {
@@ -883,7 +910,7 @@ void main() {
     await paired();
     await sharing([_display.id]);
 
-    // A hand-rolled viewer: it dials the media link for real and reads
+    // A hand-rolled viewer: it dials the media link itself and reads
     // frames, but never sends an ack. That is a viewer wedged behind a
     // congested link, which is the case no transport signal can reveal.
     PeerScreenGrant? grant;
@@ -896,10 +923,7 @@ void main() {
         const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5, acks: true));
     await waitFor('the grant arrives', () => grant != null);
 
-    final media = await dialPeerLink(
-        shack.service.peers['device-a']!.beacon.address ?? '127.0.0.1',
-        grant!.port,
-        mediaTicket: grant!.ticket);
+    final media = await _dialMedia(tablet, shack, grant!);
     addTearDown(media.close);
     final received = <int>[];
     media.inbound.listen((bytes) {
@@ -942,10 +966,7 @@ void main() {
         const PeerScreenSubscription(sourceId: 'display:1', maxWidth: 640, fps: 5));
     await waitFor('the grant arrives', () => grant != null);
 
-    final media = await dialPeerLink(
-        shack.service.peers['device-a']!.beacon.address ?? '127.0.0.1',
-        grant!.port,
-        mediaTicket: grant!.ticket);
+    final media = await _dialMedia(tablet, shack, grant!);
     addTearDown(media.close);
     var received = 0;
     media.inbound.listen((_) => received++);
@@ -989,10 +1010,7 @@ void main() {
         viewerDevice.deviceId,
         PeerScreenSubscription(sourceId: sourceId, maxWidth: 640, fps: 5, acks: declareAcks));
     await waitFor('the grant arrives', () => grant != null);
-    final link = await dialPeerLink(
-        shackDevice.service.peers[viewerDevice.deviceId]!.beacon.address ?? '127.0.0.1',
-        grant!.port,
-        mediaTicket: grant!.ticket);
+    final link = await _dialMedia(viewerDevice, shackDevice, grant!);
     final client = _MediaClient(link, acks: acks);
     addTearDown(client.close);
     await waitFor('the producer sees the media link', () => shackDevice.screens.watchers.isNotEmpty);

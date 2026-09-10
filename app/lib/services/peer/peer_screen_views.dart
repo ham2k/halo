@@ -19,7 +19,6 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:halo_core/halo_core.dart';
 
-import 'peer_link.dart';
 import 'peer_screens.dart';
 import 'peer_service.dart';
 
@@ -895,7 +894,7 @@ class PeerScreenViews extends ChangeNotifier {
       // opened in `_mediaLinks` — after which every future grant is
       // suppressed and the pane says "not connected" forever, holding a live
       // connection to a device that is.
-      link = await dialPeerLink(address, grant.port, mediaTicket: grant.ticket);
+      link = await peers.network.dial(address, grant.port, mediaTicket: grant.ticket);
     } catch (e) {
       // Not an error notice: a media link that will not open is this
       // feature failing, not the app, and the pane says so itself
