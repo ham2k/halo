@@ -664,7 +664,7 @@ state behind.
 `expectedSideband` therefore answers **null only when neither a frequency nor a band was stated at
 all** — which is the one thing `resolveSideband` cannot say, since a driver has to be told some
 sideband and it falls back to upper. Callers that must not guess check `expectedSideband` first:
-`RadioService.setVfo`, and the logging panel's `_modeResolvedToSideband` for the picks that never
+`RadioService.setVfo`, and the logging panel's `RadioControlModel.resolveMode` for the picks that never
 reach the VFO.
 
 #### Showing it back: `SSB` unless it contradicts
@@ -702,7 +702,7 @@ run is spelled out and passes through untouched.
 
 The exception is the one state with nothing stated at all — neither a frequency nor a band. There the
 collapse cannot be undone on the way back in, so the pane is seeded with the **stored** mode instead
-(`_modeForEditing`); otherwise an untouched save would swap a recorded sideband for a generic `SSB`
+(`RadioControlModel.modeForEditing`); otherwise an untouched save would swap a recorded sideband for a generic `SSB`
 the select does not even offer back. The Logs view's own editor guards the same state the same way.
 
 Where the display's error color goes, `alert` must not: the chip's alert condition and the coloured
@@ -792,18 +792,18 @@ stale. Writes are now debounced (2 s trailing) and chained rather than concurren
 
 ### Never over the operator
 
-The panel follows the VFO only when the operator has nothing newer. The guard is a `_freqTouched`
-dirty flag, **not** a focus check: expanding the Radio control focuses the frequency field, so
+The panel follows the VFO only when the operator has nothing newer. The guard is `RadioControlModel`'s
+`_freqTouched` dirty flag (`logging_controls_radio.dart`), **not** a focus check: expanding the Radio control focuses the frequency field, so
 refusing to follow while focused would refuse exactly when the operator is watching the radio.
 
 The dirty flag is set on a real edit only. A `TextEditingController` notifies on *selection* changes
 too, and focusing the field moves the cursor — so without a text baseline, merely opening the Radio
-control would look like an edit. `_onTimeOrDateFieldChanged` had already hit this exact trap and
-solved it the same way; `_lastFreqText` mirrors `_lastTimeDateText`.
+control would look like an edit. The Time control (`TimeControlModel`) had already hit this exact trap and
+solved it the same way; the radio model's `_lastFreqText` mirrors the time model's `_lastText`.
 
 Seeding also had a latent bug that live CAT would have made obvious: it set the mode without
 re-deriving the default RSTs, so a radio on CW left `59` sitting in the report fields. It now does
-what `_setMode` and the setVfo command both do — re-derive them, unless the operator has edited one.
+what the model's `setMode` and the setVfo command both do — re-derive them, unless the operator has edited one.
 
 The flag holds off the **frequency**, not the whole update. A mode the rig reports while a frequency
 is being typed still lands — otherwise it is dropped, and the pending push then sends the panel's

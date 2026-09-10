@@ -45,7 +45,7 @@ void main() {
     keyboardAccessory = KeyboardAccessoryController();
     // A mode as well as a frequency: a station on the air has both, and an
     // unset mode is one of the things that pops the Radio control open on
-    // mount (see `_vfoIsUnset`), which would steal focus in every test here.
+    // mount (see `RadioControlModel.vfoIsUnset`), which would steal focus in every test here.
     tunedRadio = _FakeVfoStore()..setVfo('vfoA', freq: 14285, mode: 'SSB');
   });
 
@@ -6174,8 +6174,8 @@ void main() {
     // 5332 kHz (a 60m channel) is a frequency the band plan has no single
     // mode for. Both edits happen inside the same continuous session (the
     // field never settles/blurs between them), so a null guess here falls
-    // back to `_modeBeforeFreqEdit` — the mode as it stood before this
-    // session started (SSB) — rather than leaving it stuck on the earlier
+    // back to the mode as it stood before this session started (SSB) —
+    // rather than leaving it stuck on the earlier
     // FT8 guess, which would otherwise survive purely because it happened
     // to be the last edit that DID match something.
     await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '5332');
@@ -8026,8 +8026,8 @@ void main() {
       'HALO-32: a radio-driven frequency-only update (no mode of its own) never runs the band-plan mode guess',
       (tester) async {
     // The test above can't actually tell a broken `_populating` guard from a
-    // working one: _seedFromRadioService's own `if (vfo.mode != null) _mode
-    // = vfo.mode!` unconditionally overwrites any stray guess right after,
+    // working one: `RadioControlModel.seedFromVfo`'s own `if (vfo.mode != null)
+    // mode = vfo.mode!` unconditionally overwrites any stray guess right after,
     // as long as the radio reports SOME mode. Here `fakeRadio` never has a
     // mode set (`_FakeVfoStore`'s Vfo starts with mode: null, and this test
     // never passes one), so that overwrite never fires — a stray guess, if
@@ -9002,7 +9002,7 @@ void main() {
 
   testWidgets('a rig that moves the mode wins over half-typed text in the Mode field', (tester) async {
     // The trap: the operator starts typing a mode, the rig moves underneath
-    // them, and the field keeps showing the keystrokes. `_mode` has already
+    // them, and the field keeps showing the keystrokes. The model's mode has already
     // followed the rig, so nothing on screen says the two disagree — and the
     // commit on the way out resolves 'F' to FT8 and pushes it, retuning a rig
     // that had just reported CW on the strength of a keystroke older than the
@@ -13473,7 +13473,7 @@ void main() {
 
     // A sideband is derived from the BAND, so nothing about re-picking the
     // band you are already on makes a deliberate far sideband stale — and
-    // `_commitBandTypedIntoFreqField` re-picks unconditionally, by design.
+    // `RadioControlModel.commitBandTypedIntoFreqField` re-picks unconditionally, by design.
     testWidgets('re-picking the band already selected keeps a deliberate far sideband', (tester) async {
       final radio = _FakeVfoStore()..setVfo('vfoA', freq: 7185, mode: 'USB');
       await tester.pumpWidget(host(radioService: radio));

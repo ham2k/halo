@@ -6,7 +6,12 @@ ergonomics are a contract rather than a nicety (see [DESIGN.md](../../DESIGN.md)
 §7). They have three parts: the main logging controls, the information area,
 and the secondary logging controls.
 
-Implemented in `packages/halo_widgets/lib/src/logging_controls.dart`.
+Implemented in `packages/halo_widgets/lib/src/logging_controls.dart`, which owns a model per concern
+beside it: the Radio control (`logging_controls_radio.dart`), the callsign lookup and scoring
+(`logging_controls_lookup.dart`), the command being typed (`logging_controls_command.dart`), the Time
+and Spotting controls (`logging_controls_time.dart`, `logging_controls_spotting.dart`); the call
+field's reading rules are `call_field_text.dart`, the row's sizing arithmetic
+`logging_controls_metrics.dart`, and the information area `logging_info_area.dart`.
 
 ## The three parts
 

@@ -38,16 +38,23 @@ import 'package:flutter/services.dart';
 
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 
+import 'call_field_text.dart';
 import 'call_info_summary.dart';
-import 'density.dart';
 import 'halo_dialog.dart';
 import 'icon_resolver.dart';
 import 'inline_markdown.dart';
 import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
+import 'logging_controls_command.dart';
 import 'logging_controls_controller.dart';
+import 'logging_controls_lookup.dart';
+import 'logging_controls_radio.dart';
+import 'logging_controls_metrics.dart';
+import 'logging_controls_spotting.dart';
+import 'logging_controls_time.dart';
+import 'logging_controls_types.dart';
+import 'logging_info_area.dart';
 import 'mdi_icons.g.dart';
 import 'modal_pane.dart' show showHaloDialog;
 import 'option_matching.dart';
@@ -63,126 +70,6 @@ import 'theme.dart';
 import 'timed_undo_slot.dart';
 import 'wall_clock.dart';
 
-/// Async callsign enrichment (name, location, grid…) from lookup sources —
-/// the hardcoded callsign-annotation pre-step plus every registered
-/// `lookup` hook, merged with locationScope-aware rules. `qso`/`operation`
-/// give QSO-scoped hooks (e.g. POTA) access to refs already on the
-/// in-progress QSO; `online: false` asks every hook to skip network access,
-/// for a fast local-data-only preview pass. Returns `{lookups, guess}`, or
-/// null meaning "nothing known". Must never throw.
-///
-/// `recentContext` additionally runs the lookup sources whose answer only
-/// makes sense for a contact being composed right now — spot history, and
-/// whatever else comes to describe what a station is doing at this moment.
-/// Optional (defaulting to false in implementations) so a caller that only
-/// wants to know who a callsign belongs to needn't say so.
-typedef CallLookup = Future<Map<String, dynamic>?> Function(
-  String call, {
-  required Map<String, dynamic> qso,
-  required Map<String, dynamic> operation,
-  required bool online,
-  bool recentContext,
-});
-
-/// When the log's earlier contacts with [call] started (epoch millis) — the
-/// compact call-info's worked-before pill. [excludingQsoUuid] is the QSO
-/// being edited, when there is one, so its own row is not a prior contact.
-/// Fetched by the app layer, which owns the log; the widget only asks.
-typedef WorkedBefore = Future<List<int>> Function(String call, {String? excludingQsoUuid});
-
-/// Tries the input as an extension-registered command (band/freq/mode
-/// shortcuts, and eventually spotting/operator commands). Returns a
-/// field-change map (`{freq?, band?, mode?}`) or a named `{action: ...}`
-/// (e.g. `SYNCALL`), or null for "not a command". Must never throw.
-/// [execute] is true only for the final call made right before actually
-/// running a complete interpretation — see CommandHook.interpret's `execute`
-/// doc (extensions/sdk/src/types.ts): a hook whose `commands` are expensive
-/// to compute (e.g. SEED) may return a cheap describe-only result otherwise,
-/// since this is also the function called on every typing-debounce preview.
-typedef CommandInterpreter = Future<Map<String, dynamic>?> Function(
-  String input, [
-  Map<String, dynamic>? operation,
-  Map<String, dynamic>? qso,
-  bool execute,
-]);
-
-/// Handles a named command action — a closed set the core recognizes, not
-/// arbitrary state (DESIGN.md §4). `params` carries whatever JSON payload
-/// came with that action (e.g. `devNotice`'s icon/title/text).
-typedef CommandActionHandler = Future<void> Function(String action, [Map<String, dynamic>? params]);
-
-/// Applies a command's `CommandAction`s. This widget's own dispatcher is the
-/// only one that can service the QSO-scoped fields — `setVfo`, `addQso`,
-/// `updateQso`, `setCallField`, `sendSpots` all need the live in-progress QSO
-/// and controllers — so it hands this out via
-/// [LoggingControls.onDispatcherChanged] for callers outside the logging
-/// panel (the ⌘K command dialog) to route through instead of reimplementing.
-typedef CommandActionsDispatcher = Future<void> Function(
-  List<dynamic> actions, {
-  bool skipOnlineLookup,
-});
-
-/// Which `spots` hooks currently offer self- or other-spotting — `qso: null`
-/// asks about self-spotting the operation, `qso` set asks about spotting
-/// that QSO's station. Mirrors `ExtensionService.suggestSpotSources`.
-typedef SuggestSpotSources = Future<List<Map<String, dynamic>>> Function({
-  required Map<String, dynamic> operation,
-  Map<String, dynamic>? qso,
-});
-
-/// Posts a spot via every hook in `sources` and returns `{hookKey:
-/// PostResult}`. Mirrors `ExtensionService.sendSpot`.
-typedef SendSpot = Future<Map<String, Map<String, dynamic>>> Function({
-  required List<Map<String, dynamic>> sources,
-  required Map<String, dynamic> operation,
-  Map<String, dynamic>? qso,
-  double? freq,
-  String? mode,
-  String? comment,
-  String? spotterCall,
-});
-
-/// Builds the info area's default (no-call) statistics — 0–2 preformatted
-/// lines ("{n} QSOs in {time}", "{rate} Q/h for last 10"). The app layer owns
-/// the i18n and number/duration formatting; it reads the current time itself,
-/// so the widget's 1 Hz clock ticker keeps a live "since last" figure fresh.
-/// An empty list renders nothing.
-typedef OperationStatsLines = List<String> Function(List<Qso> qsos);
-
-/// Formats the call-info panel's line-1 location string from a lookup `guess`
-/// — distance (and bearing, if the setting is on) plus a location label — or
-/// null when there's nothing to show. The app layer owns the distance units,
-/// the bearing setting, and the operation's own grid; the widget renders the
-/// entity flag (`guess['flag']`) alongside whatever this returns.
-typedef CallLocationLine = String? Function(Map<String, dynamic> guess);
-
-/// Scores the in-progress QSO for the call-info notices line — returns
-/// `{notices, alerts}` lists of scoring keys, or null. Mirrors
-/// `ExtensionService.scoreQso`.
-typedef ScoreQso = Future<Map<String, dynamic>?> Function({
-  required Map<String, dynamic> operation,
-  required Map<String, dynamic> qso,
-  String? excludeUuid,
-  List<Map<String, dynamic>>? segments,
-});
-
-/// Fires when the current call-info changes (call/lookup/score), or null when
-/// the call-info panel isn't showing. Deduped by the widget.
-typedef CallInfoChanged = void Function(CallInfoData? info);
-
-/// The QSO being composed, in QSON, as it stands right now — the same shape
-/// that would be logged if the operator hit Enter.
-typedef QsoDraftChanged = void Function(Map<String, dynamic> qso);
-
-/// One main logging field, as a peer's panel renders it: what it is called,
-/// what the operator typed, and the suggestion standing in while they have
-/// not. An empty [value] beside a [hint] is the app's answer; a non-empty
-/// [value] is the operator's own.
-typedef PeerDraftField = ({String key, String label, String value, String? hint});
-
-/// The draft, plus the main logging fields in the order the sender's own row
-/// shows them — see [LoggingControls.onPeerDraftChanged].
-typedef PeerDraftChanged = void Function(Map<String, dynamic> qso, List<PeerDraftField> fields);
 
 /// A secondary control's identity for ordering/visibility purposes — the
 /// settings dialog's list and `_effectiveControlOrder` deal in these; the
@@ -213,117 +100,11 @@ class _ControlDescriptor {
   });
 }
 
-/// Horizontal padding around the panel's fields — also handed to
-/// [SecondaryControlRow] so its expanded control panel can bleed past it
-/// and reach the view's true edges.
-const _secondaryPanelHorizontalInset = 12.0;
 
 /// The floating pills a `kind: 'options'` exchange field offers. Named because a
 /// focused TextField carries a `CompositedTransformFollower` of its own for
 /// selection handles, so "the follower" is ambiguous without it.
 const exchangeSuggestionsKey = ValueKey('exchange.suggestions');
-
-/// What a main logging field asks for when the row has the room: an RST, a
-/// state or a grid at [_fixedFieldMinWidth]; a contest exchange a little
-/// wider, since it can be a zone, a serial or a section name.
-///
-/// **Minimums, not fixed sizes.** When the enabled fields don't all fit, they
-/// render narrower than this — see `_resolveMainFieldLayout`.
-const _fixedFieldMinWidth = 64.0;
-const _exchangeFieldMinWidth = 76.0;
-
-/// The gap that precedes a main field: [_mainFieldGap] between two of a kind
-/// (the two RSTs, consecutive exchanges), [_mainFieldGroupGap] where a new
-/// kind starts, and [_logButtonGap] before the log button itself.
-const _mainFieldGap = 8.0;
-const _mainFieldGroupGap = 10.0;
-const _logButtonGap = 12.0;
-
-/// The Radio control's Station Configuration icon — plain [Icon], not
-/// [IconButton], so this is its actual glyph size rather than a tap target.
-/// The radio name beside it is capped at 3x this, ellipsized past that.
-const _stationConfigIconSize = 24.0;
-
-/// Strips Material 3's default toggle-button fill from the Band/Mode
-/// dropdowns' trailing arrow — see the wrapping `IconButtonTheme` at each
-/// `DropdownMenu` for why one exists at all. Shared so the two can't drift.
-const _dropdownArrowTheme = IconButtonThemeData(
-  style: ButtonStyle(
-    backgroundColor: WidgetStatePropertyAll(Colors.transparent),
-    padding: WidgetStatePropertyAll(EdgeInsets.zero),
-    minimumSize: WidgetStatePropertyAll(Size.zero),
-    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-  ),
-);
-
-/// The left+right `contentPadding` `poloFieldDecoration` (theme.dart) gives a
-/// main field, before the text scaler is applied to it.
-const _mainFieldContentPadding = 8.0;
-
-/// The left+right padding Material adds to every `filled` field **on top of**
-/// `contentPadding`, of its own accord: `input_decorator.dart`'s
-/// `_kInputExtraPadding`, 4 a side, not text-scaled and not exposed by any
-/// `InputDecoration` field.
-///
-/// The row can still have it back. A **negative** content padding cancels it
-/// exactly — nothing in `InputDecorator` requires a positive one — which is
-/// what lets a fully squeezed field run its value right to its own edge
-/// instead of stopping 8pt short with no way to say otherwise.
-const _materialFilledInputGap = 8.0;
-
-/// The strip `RenderEditable` keeps clear for the caret — its 1pt gap plus
-/// the 2pt cursor. Without it a value that exactly fills its field has its
-/// last character scrolled out from under the cursor.
-const _caretAllowance = 3.0;
-
-/// The callsign field's floor, in characters of its own value: a full call
-/// with a portable suffix (`W1AW/4`).
-const _callFieldMinChars = 6;
-
-/// Every other main field's floor. Two characters is enough to tell a filled
-/// field from an empty one and to aim a click at it — and focusing it brings
-/// it straight back to the width it asked for, so this is only ever what a
-/// field the operator isn't in looks like.
-const _mainFieldMinChars = 2;
-
-/// How long a main field takes to reach a new width. Deliberately brief: once
-/// the row is squeezed it reflows on every focus move, and anything slower
-/// reads as the layout lagging behind the keyboard rather than following it.
-const _fieldWidthDuration = Duration(milliseconds: 100);
-
-/// One of the main logging fields that follow the callsign, as the row needs
-/// it: the gap before it, the width it asks for, the node whose focus exempts
-/// it from being squeezed, and how to build it at whatever width and inner
-/// padding it ends up with.
-typedef _MainField = ({
-  double gapBefore,
-  double minWidth,
-  FocusNode focusNode,
-  Widget Function(double width, double padding, Duration duration) build,
-});
-
-/// One main logging field as everything OUTSIDE the row needs it: what it is
-/// called, what the operator has typed into it, and the hint standing in while
-/// they have not.
-///
-/// [hint] is what lets a peer's block tell the operator's own answers from the
-/// app's without a second channel saying so: an untouched field carries an
-/// empty controller and its suggestion here. A report is the case that needs
-/// it — `_rstOrDefault` folds the placeholder into the DRAFT, where a default
-/// `59` and a typed `59` become the same three characters.
-typedef _PrimaryField = ({
-  String key,
-  String label,
-  FocusNode focus,
-  TextEditingController controller,
-  String? hint,
-});
-
-/// What [_LoggingControlsState._resolveMainFieldLayout] settles on for the
-/// row: a width for each trailing field, and — once even the floors don't fit
-/// — how much of the declared gaps survives and how much horizontal padding is
-/// left inside every field, callsign included.
-typedef _MainFieldLayout = ({List<double> widths, double gapScale, double fieldPadding});
 
 class LoggingControls extends StatefulWidget {
   final Operation operation;
@@ -1005,11 +786,24 @@ class LoggingControls extends StatefulWidget {
 
 class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingObserver {
   final _callController = TextEditingController();
+
+  /// The Radio control's state — frequency, band and mode, the Band/Mode
+  /// dropdowns, and the VFO mirror. See [RadioControlModel]; what stays here
+  /// is when it moves and what moves with it.
+  late final _radio = RadioControlModel(
+    config: () => (
+      radioService: widget.radioService,
+      editingQso: widget.editingQso,
+      ituRegion: widget.ourItuRegion,
+      countryCode: widget.ourCountryCode,
+      enabledBands: widget.enabledBands,
+      enabledModes: widget.enabledModes,
+    ),
+    isPopulating: () => _populating,
+    onRescore: _lookup.scheduleScore,
+  );
   final _sentController = TextEditingController();
   final _rcvdController = TextEditingController();
-  final _freqController = TextEditingController();
-  final _timeController = TextEditingController();
-  final _dateController = TextEditingController();
   final _gridController = TextEditingController();
   final _stateController = TextEditingController();
   /// The Power control's watts. Mirrors the VFO's power while composing
@@ -1022,127 +816,77 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   final _eventTextController = TextEditingController();
   final _eventTextFocus = FocusNode();
   bool _eventTodoDone = false;
-  // The Radio control's Band/Mode dropdown text. Owned here (not left to
-  // DropdownMenu's internal controller) so typed text can drive the entry
-  // filter and be committed to the first match — see
-  // `_commitBandDropdownText` / `_commitModeDropdownText`.
-  final _bandDropdownController = TextEditingController();
-  final _modeDropdownController = TextEditingController();
-  final _bandMenuController = MenuController();
-  final _modeMenuController = MenuController();
-  // The active menu filter — what the user actually typed — kept separate
-  // from the field's display text, which arrow navigation overwrites with
-  // full option labels. Reset when a field gains focus, so each fresh
-  // interaction starts unfiltered.
-  String _bandFilter = '';
-  String _modeFilter = '';
-  // True while an arrow key is stepping/walking the selection, so the
-  // resulting display-text write (ours when the menu is closed,
-  // DropdownMenu's own when it's open) is not mistaken for typed input and
-  // does not clobber the filter.
-  bool _navigatingDropdown = false;
-  // Built in initState (not a `late final` initializer), so `dispose` never
-  // forces their construction just to tear them down when the Radio control
-  // was never expanded.
-  late final FocusNode _bandDropdownFocus;
-  late final FocusNode _modeDropdownFocus;
   final _callFocus = FocusNode();
   final _sentFocus = FocusNode();
   final _rcvdFocus = FocusNode();
-  final _freqFocus = FocusNode();
-  final _timeFocus = FocusNode();
-  final _dateFocus = FocusNode();
   final _gridFocus = FocusNode();
   final _stateFocus = FocusNode();
   final _powerFocus = FocusNode();
 
-  String _mode = 'SSB';
 
-  /// Band set via a "20m " command when no frequency is entered.
-  String? _manualBand;
-
-  /// The band of the most recent non-empty frequency, remembered so that
-  /// clearing the frequency field keeps that band ([_onFreqChanged]) rather
-  /// than dropping to no band.
-  String? _lastBandFromFreq;
-
-  /// The operator has typed a frequency the VFO hasn't been told about
-  /// yet, so their intent is newer than anything the VFO reports. Set on a
-  /// real edit, cleared whenever the field and the VFO are back in sync
-  /// (pushed to it, or seeded from it).
-  ///
-  /// Deliberately not a focus check: `_onSelectControl` focuses the
-  /// frequency field when the Radio control is expanded, so refusing to
-  /// follow while focused would refuse exactly when the operator is
-  /// watching the radio.
-  bool _freqTouched = false;
-
-  /// `_mode` as it stood before the current frequency-typing session
-  /// started, snapshotted once on the session's first keystroke ([_freqTouched]
-  /// transitioning false→true) — the band-plan guess in [_onFreqChanged]
-  /// falls back to this when the fully-typed frequency has no guess of its
-  /// own (HALO-32). Without it, a transient mid-typing prefix that DOES
-  /// match a segment (e.g. "1800" while typing "18001", a real gap between
-  /// 160m and 17m) would leave `_mode` stuck on that guess instead of
-  /// restoring what the operator had before they started editing.
-  String? _modeBeforeFreqEdit;
-
-  /// The frequency text as of the last notification — the baseline that
-  /// tells a real edit from a bare cursor move. Same idiom, and the same
-  /// reason, as `_lastTimeDateText`.
-  String _lastFreqText = '';
-
-  /// The frequency text as the field gained focus — the baseline for
-  /// "did the operator change this?", which is a different question from
-  /// [_lastFreqText]'s "did this change since the last notification?" and
-  /// has to survive across the keystrokes of one editing session.
-  /// [_commitBandTypedIntoFreqField] is its only reader.
-  String _freqTextOnFocus = '';
 
   /// Which secondary control (if any) currently has its input expanded.
   String? _selectedControlKey;
 
-  /// The last command message pushed to the parent via
-  /// `onCommandMessageChanged`, so the callback only fires on a real change.
-  /// Firing `null` unconditionally per keystroke makes the parent
-  /// (LoggingPanel) answer with a setState that rebuilds the whole QsoList —
-  /// day-bucketing, per-column TextPainter measurement, the scores map, all
-  /// O(n) over the log, per keystroke. Starts null, matching the parent's
-  /// own initial "no message" state, so a redundant null is a no-op.
-  String? _lastSentCommandMessage;
+  /// The callsign lookup, the worked-before answer and the live score for the
+  /// call at the cursor — see [CallLookupModel]. What stays here is what a
+  /// resolved lookup does to the entry ([_onLookupResolved]) and when the
+  /// whole thing is forgotten.
+  late final _lookup = CallLookupModel(
+    config: () => (
+      lookup: widget.lookup,
+      workedBefore: widget.workedBefore,
+      scoreQso: widget.scoreQso,
+      editingQso: widget.editingQso,
+      operation: widget.operation,
+    ),
+    activeCall: () => _callAtCursor,
+    isCallInfoActive: () => _callInfoActive,
+    qsoData: (call) => _getCurrentQsoData(callOverride: call),
+    segmented: () => _segmented,
+    onResolved: _onLookupResolved,
+    // A stale QSO-scoped placeholder/transform must not linger onto the next
+    // entry — see [_refreshedActivityControls].
+    onCleared: () => _refreshedActivityControls = null,
+  );
 
-  /// Overrides the QSO's timestamp when set via the Time control; null
-  /// means "use the current time at the moment of logging."
-  int? _manualStartAtMillis;
+  /// The command being typed into the call field — see
+  /// [CommandInterpretationModel]. Running one is still this panel's
+  /// ([_log] dispatches the actions), and so is the field's own reading
+  /// ([_callText]).
+  late final _command = CommandInterpretationModel(
+    config: () => (
+      interpretCommand: widget.interpretCommand,
+      editingQso: widget.editingQso,
+      operationData: () => _operationDataForCommands,
+      onMessageChanged: widget.onCommandMessageChanged,
+    ),
+    callText: () => _callText,
+    qsoData: _getCurrentQsoData,
+  );
 
-  Timer? _lookupDebounce;
-  String? _lookupFor;
-  Map<String, dynamic>? _lookupResult;
+  /// The Time control — when the entry is stamped. See [TimeControlModel].
+  late final _time = TimeControlModel(
+    config: () => (editingQso: widget.editingQso),
+    isPopulating: () => _populating,
+  );
 
-  /// The worked-before start times and the [_workedBeforeKey] they answer
-  /// for. The key is set when the fetch is ISSUED, not when it lands, so a
-  /// second request for the same key is never issued and a late answer to a
-  /// superseded one is dropped.
-  ///
-  /// Never cached across call changes the way `_lookupCache` is: logging a
-  /// QSO and typing the same call again must show one more, and the fetch is
-  /// one column of a local query.
-  String? _workedBeforeFor;
-  List<int>? _workedBefore;
-
-  /// Lookups resolved during the current compose session, keyed by call, so
-  /// re-typing a call already looked up this session (KI2D → KI2DX → KI2D)
-  /// shows its result instantly with no refetch. Cleared on wipe/log/populate.
-  /// A cached `null` (a call that resolved to nothing) is distinct from absent.
-  final Map<String, Map<String, dynamic>?> _lookupCache = {};
-
-  /// Live scoring for the call-info notices line (issue #40) — debounced like
-  /// the lookup. `_scoreFor` is the call the current keys belong to, so a
-  /// stale result from a call the user has since edited past is ignored.
-  Timer? _scoreDebounce;
-  String? _scoreFor;
-  List<String> _scoreAlertKeys = const [];
-  List<String> _scoreNoticeKeys = const [];
+  /// The Spotting control — see [SpottingControlModel].
+  late final _spotting = SpottingControlModel(
+    config: () => (
+      sendSpot: widget.sendSpot,
+      suggestSpotSources: widget.suggestSpotSources,
+      radioService: widget.radioService,
+      editingQso: widget.editingQso,
+      operation: widget.operation,
+      spottingLabel: widget.spottingLabel,
+      spottingSelfLabel: widget.spottingSelfLabel,
+      spotSelfLabel: widget.spotSelfLabel,
+      spotOtherLabel: widget.spotOtherLabel,
+      spotTooLateLabel: widget.spotTooLateLabel,
+      spotNoFreqLabel: widget.spotNoFreqLabel,
+    ),
+  );
 
   /// Drives the info area's cross-fade (issue #40): `_infoGeneration` bumps
   /// only when `_infoAreaSignature` changes, giving the AnimatedSwitcher a
@@ -1192,99 +936,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     };
   }
 
-  /// Pending push of a manually-typed frequency to `widget.radioService` —
-  /// see `_onFreqChanged` and `_pushVfoToRadioService`.
-  Timer? _vfoDebounce;
 
-  Map<String, dynamic>? _currentInterpretation;
-  Timer? _commandDescribeDebounce;
-  StreamSubscription<Map<String, dynamic>>? _interpretationUpdatesSub;
-
-  /// The last interpret() result retained for the call field's INPUT MODE —
-  /// deliberately a separate field from [_currentInterpretation], which
-  /// resets synchronously on every keystroke (for the describe-message UI):
-  /// the field's formatters/capitalization must not flicker back to
-  /// uppercase-only between keystrokes while a command's parameters are
-  /// still being typed. Updated only through [_retainInterpretation]; reset
-  /// when the field empties, on log/wipe, and whenever a QSO context is
-  /// populated (spot tap, edit selection, undo restore). One retained map
-  /// instead of parallel per-flag booleans, so a reset site can't clear one
-  /// flag and miss another.
-  Map<String, dynamic>? _retainedInterpretation;
-
-  /// Whether the call field is in command free-text mode — space is a
-  /// literal character and the callsign character filter is lifted, but
-  /// input stays uppercase-only unless [_commandMixedCase] also holds.
-  /// Two ways in, both requiring a retained command:
-  /// - the command is a recognized prefix still awaiting its parameters
-  ///   ("RELOAD" before its target — `expectsParams`), or
-  /// - the text already holds characters the callsign formatters would
-  ///   destroy (a space, mid-parameter). Without this, a typing pause after
-  ///   "EXP L" lets the debounced interpret retain a COMPLETE
-  ///   interpretation (token "L"), and the returning callsign filter would
-  ///   rewrite the whole field on the very next keystroke — "EXP LA"
-  ///   snapping to "EXPLA". Same guard [_retainInterpretation] applies to
-  ///   the null-result path, for the same reason.
-  bool get _commandExpectsParams =>
-      _retainedInterpretation != null &&
-      (_retainedInterpretation!['expectsParams'] == true || !_callsignModeSafeText.hasMatch(_callController.text));
-
-  /// Whether the retained command declared `mixedCase: true` — only such
-  /// commands (e.g. NOTE, whose parameter is free prose) release the call
-  /// field from its uppercase-only rule. Extensions return it on BOTH the
-  /// bare-prefix and complete results (see CommandInterpretation in the SDK
-  /// types), so it stays in effect while "NOTE Hello…" keeps being typed.
-  bool get _commandMixedCase => _retainedInterpretation?['mixedCase'] == true;
-
-  /// Whether the call field is currently taking spaces as literal characters
-  /// rather than as "next field". The single source of truth for that question:
-  /// the field's `inputFormatters` pick the space-accepting interceptor on
-  /// exactly this condition, and `_handleSpace` decides the double-space exit
-  /// on it, so the two can't drift into disagreeing about which mode the field
-  /// is in.
-  bool get _fieldAcceptsSpaces => _commandMixedCase || _commandExpectsParams;
-
-  /// Matches text the callsign-mode formatters would pass through except
-  /// for case — see [_retainInterpretation].
-  static final _callsignModeSafeText = RegExp(r'^[a-zA-Z0-9/.,]*$');
-
-  /// Folds a fresh interpret() result into [_retainedInterpretation]. A
-  /// non-null result always replaces the previous one. A null result (the
-  /// text no longer matches any command) only clears it when the current
-  /// text would survive the returning callsign formatters: those rewrite
-  /// the ENTIRE field on the next keystroke, so snapping back while it
-  /// holds free prose ("NOT Called Bob" after backspacing a typo in
-  /// "NOTE") would irrecoverably strip every space. Uppercasing alone is
-  /// the field's normal behavior, so case differences don't block the
-  /// reset — only characters the filter would delete do. The retained mode
-  /// then clears via the empty-field/log/wipe/populate resets instead.
-  void _retainInterpretation(Map<String, dynamic>? result) {
-    if (result != null) {
-      _retainedInterpretation = result;
-    } else if (_callsignModeSafeText.hasMatch(_callController.text)) {
-      _retainedInterpretation = null;
-    }
-  }
-
-  /// The mid-stack expansion input ("//W1AW") already spent on the draft
-  /// being composed — a key expands AT MOST ONCE per entry.
-  ///
-  /// The escape hatch for a note key that is also a real callsign, the
-  /// common case for a stacked segment: without it, restoring the segment
-  /// to the key (deleting what the expansion added) and pressing Enter just
-  /// expands it again, so that station could never be logged on its own. A
-  /// whole-field "//KEY" needs no such hatch and doesn't consult this —
-  /// there the "//" is the operator explicitly asking to expand, where in a
-  /// stack it's only the separator between calls.
-  ///
-  /// Reset wherever the draft itself is (log/wipe, the field emptying, a QSO
-  /// context being populated), so the same key expands freely on the next
-  /// entry — never on a mere keystroke, which would defeat the hatch by
-  /// forgetting the expansion the operator just undid.
-  String? _lastExpandedInput;
-
-  Timer? _executeMessageTimer;
-  String? _commandMessage;
   final Map<String, dynamic> _currentQsoExtra = {};
 
   /// Fields of the contact's `our` block the full-edit pane overrides — who
@@ -2100,16 +1752,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   final _notesController = TextEditingController();
   final _notesFocus = FocusNode();
 
-  /// Spotting control state (ham2k/halo-dist#10) — lives here, not in
-  /// `expandedBuilder`'s closure, since that's a plain render function
-  /// re-invoked on every build, not a separately-stateful widget.
-  final _spotCommentController = TextEditingController();
-  final _spotCommentFocus = FocusNode();
-  List<Map<String, dynamic>> _spotSources = const [];
-  final Map<String, bool?> _spotStatus = {}; // hookKey -> ok/failed/neutral(null)
-  Timer? _spotStatusClearTimer;
-  bool _spotSending = false;
-
   /// True while `didUpdateWidget` is populating controllers from a newly
   /// selected `editingQso` — suppresses `_onCallChanged`'s lookup/command
   /// side effects, which would otherwise re-query and overwrite stored
@@ -2213,18 +1855,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // some unrelated rebuild happens to notice — and stays locked after the
     // clock comes back.
     ClockTravel.instance.addListener(_onClockTravelChanged);
-    _bandDropdownFocus = _dropdownCommitFocusNode(
-      commit: _commitBandDropdownText,
-      clearFilter: () => _bandFilter = '',
-      menu: _bandMenuController,
-      step: _stepBandSelection,
-    );
-    _modeDropdownFocus = _dropdownCommitFocusNode(
-      commit: _commitModeDropdownText,
-      clearFilter: () => _modeFilter = '',
-      menu: _modeMenuController,
-      step: _stepModeSelection,
-    );
+    _radio.addListener(_onModelChanged);
+    _lookup.addListener(_onModelChanged);
+    _command.addListener(_onModelChanged);
+    _time.addListener(_onModelChanged);
+    _spotting.addListener(_onModelChanged);
     // Population normally happens in didUpdateWidget, as editingQso
     // transitions from null to a selected QSO — but if this widget is ever
     // constructed with editingQso already set (rather than transitioning
@@ -2252,23 +1887,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _rememberSuggestedCall(tentative: widget.suggestedQsoIsTentative);
       }
     }
-    _seedTimeFields();
+    _time.seedFields();
     _callController.addListener(_onCallChanged);
-    _interpretationUpdatesSub = widget.interpretationUpdates?.listen(_onInterpretationUpdate);
-    _freqController.addListener(_onFreqChanged);
-    _timeController.addListener(_onTimeOrDateFieldChanged);
-    _dateController.addListener(_onTimeOrDateFieldChanged);
+    _command.bind(widget.interpretationUpdates);
+    _radio.bind();
+    _time.bind();
     // After the seed above, so the initial state doesn't arrive twice.
     widget.radioUpdates?.addListener(_onRadioVfoChanged);
-    // Start in sync with whatever the fields already hold: an initial seed
-    // that ran before these listeners existed notified nobody, and an
-    // out-of-date baseline reads the first cursor move as an edit.
-    //
-    // The frequency needs this most: a `suggestedQso` applied above (a spot
-    // deeplinked into a cold start) writes the field before this listener
-    // exists, so `_onFreqChanged` never fires to move the baseline itself.
-    _recordTimeDateText();
-    _recordFreqText();
+    // The time and frequency baselines are taken by `_time.bind()` and
+    // `_radio.bind()` above, from whatever the fields already hold: an
+    // initial seed that ran before the listeners existed notified nobody,
+    // and an out-of-date baseline reads the first cursor move as an edit — a
+    // `suggestedQso` (a spot deeplinked into a cold start) writes the
+    // frequency before the model's listener exists.
     // Sent/Rcvd don't otherwise need a rebuild on every keystroke, but the
     // info row's second button (_buildWipeOrEditButton) re-evaluates
     // _qsoDataChanged() on every build, which reads these controllers —
@@ -2293,8 +1924,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Same reason again, plus the Power chip's own summary, which reads the
     // field rather than the VFO (blur is what commits one to the other).
     _powerController.addListener(_onSentOrRcvdChanged);
-    _bandDropdownController.addListener(_onBandDropdownTextChanged);
-    _modeDropdownController.addListener(_onModeDropdownTextChanged);
     // All fields place the cursor at the end on focus, rather than selecting
     // the existing text — switching fields (e.g. cycling back to the call
     // field via space without logging) shouldn't put you one keystroke away
@@ -2306,9 +1935,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       (_callFocus, _callController),
       (_sentFocus, _sentController),
       (_rcvdFocus, _rcvdController),
-      (_freqFocus, _freqController),
-      (_timeFocus, _timeController),
-      (_dateFocus, _dateController),
+      (_radio.freqFocus, _radio.freqController),
+      (_time.timeFocus, _time.timeController),
+      (_time.dateFocus, _time.dateController),
       (_gridFocus, _gridController),
       (_stateFocus, _stateController),
       (_powerFocus, _powerController),
@@ -2319,19 +1948,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           controller.selection = TextSelection.collapsed(
             offset: _takePendingCaretOffset(focus, controller) ?? controller.text.length,
           );
-          if (identical(focus, _freqFocus)) _freqTextOnFocus = _freqController.text;
-        } else if (identical(focus, _freqFocus)) {
-          // Ahead of the flush below: a band empties the field, and a push
-          // carrying the band the operator just named beats one carrying the
-          // digits they named it with.
-          _commitBandTypedIntoFreqField();
-          // Flush a pending debounced push immediately on blur, rather than
-          // making the user wait out the rest of the 5s window. Never fires
-          // while editing an existing QSO — see _onFreqChanged.
-          _vfoDebounce?.cancel();
-          if (widget.editingQso == null && _freqController.text.trim().length > 3) {
-            _pushVfoToRadioService();
-          }
+          if (identical(focus, _radio.freqFocus)) _radio.onFreqFocusChanged(hasFocus: true);
+        } else if (identical(focus, _radio.freqFocus)) {
+          _radio.onFreqFocusChanged(hasFocus: false);
         } else if (identical(focus, _powerFocus)) {
           // Committed on blur rather than on every keystroke: typing "100"
           // passes through 1 and 10, and each would be a power command sent
@@ -2343,11 +1962,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // are done with the field — the save expands it either way
           // (`_rstOrDefault`), so without this the record would carry a
           // report the field never displayed.
-          final expanded = expandRST(controller.text, _mode);
+          final expanded = expandRST(controller.text, _radio.mode);
           if (expanded != controller.text) controller.text = expanded;
         }
         // A squeezed row hands the focused field its full width back
-        // (`_resolveMainFieldLayout`), which can only happen if a focus change
+        // (`resolveMainFieldLayout`), which can only happen if a focus change
         // rebuilds. Off a squeezed row it would be a rebuild that changes
         // nothing, so it's gated on that — focus alone rebuilds nothing here
         // otherwise (see [_textFocusFor], where the exchange fields' own
@@ -2366,7 +1985,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     for (final node in [_callFocus, _sentFocus, _rcvdFocus, _stateFocus, _gridFocus]) {
       node.onKeyEvent = _onPrimaryFieldKeyEvent;
     }
-    _refreshSpotSources();
+    _spotting.refreshSources();
     // Constructed already editing a QSO (rather than transitioning into it via
     // didUpdateWidget): score it so its pills show, and enqueue it for a
     // background lookup if it never got one — same as _populateFromEditingQso
@@ -2376,8 +1995,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // caller's own queue.
     if (widget.editingQso != null) {
       if (_callInfoActive) {
-        _scheduleScore();
-        _refreshWorkedBefore();
+        _lookup.scheduleScore();
+        _lookup.refreshWorkedBefore();
       }
       widget.enqueueLookup?.call(widget.editingQso!);
     }
@@ -2405,27 +2024,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // `_onSelectControl` calls setState, which initState cannot.
     if (widget.editingQso == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        // `_vfoIsUnset` is read here rather than above, because a
+        // `_radio.vfoIsUnset` is read here rather than above, because a
         // `suggestedQso` (a spot deeplinked into a cold start) pushes its own
         // freq/mode to the store from its own post-frame callback, registered
         // just before this one. Popping the control open over a frequency the
         // operator was handed a moment ago would be pure noise.
-        if (mounted && _selectedControlKey == null && _vfoIsUnset) _onSelectControl('radio');
+        if (mounted && _selectedControlKey == null && _radio.vfoIsUnset) _onSelectControl('radio');
       });
     }
-  }
-
-  /// Nothing has ever been stored in the VFO: no band *and* no frequency, or
-  /// no mode. This is the fresh-install state — `RadioService` persists the
-  /// VFO device-wide, so once the operator answers it is false forever after.
-  ///
-  /// Mode counts even though [_mode] itself always has a value: it falls back
-  /// to a hardcoded 'SSB' the operator never chose, and `vfoA.mode` being null
-  /// is what distinguishes "defaulted" from "confirmed".
-  bool get _vfoIsUnset {
-    final vfo = widget.radioService?.vfoA;
-    if (vfo == null) return false; // no radio state at all to be missing
-    return (vfo.freq == null && vfo.band == null) || vfo.mode == null;
   }
 
   /// Sets a primary field as if typed — the controller listeners fire, so the
@@ -2525,12 +2131,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _refreshedActivityControls = null;
       _activityControlsGeneration++;
       // `_scheduleLookup` only re-fetches per-QSO controls when the active
-      // call CHANGES (`_lookupFor == activeCall` short-circuits it) — so
+      // call CHANGES (`_lookup.lookupFor == activeCall` short-circuits it) — so
       // clearing the cache here would otherwise silently drop an
       // already-resolved lookup's guessed field (a suggested grid, say)
       // for the rest of the composing session, with nothing left to bring
       // it back except retyping the callsign.
-      if (_lookupFor != null) unawaited(_refreshActivityControlsFor(_lookupFor!));
+      if (_lookup.lookupFor != null) unawaited(_refreshActivityControlsFor(_lookup.lookupFor!));
       unawaited(_refreshSerialPreviews());
     }
     // The source is the panel's only handle on its held number: a source
@@ -2591,7 +2197,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // back on top of the blank fields _resetLocalFields just seeded.
           _populating = true;
           _applyFieldsFromData(composingSnapshot);
-          _manualStartAtMillis = composingSnapshot['startAtMillis'] as int?;
+          _time.manualStartAtMillis = composingSnapshot['startAtMillis'] as int?;
           // _applyFieldsFromData only sets the controllers' text — it never
           // touches these, and _resetLocalFields just cleared them. A
           // grid/state the operator had typed (present in the snapshot only
@@ -2605,21 +2211,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           setState(() {});
           _populating = false;
           // Same reasoning as _restoreFromUndoSlot: _populating suppressed
-          // _onCallChanged's own _scheduleLookup()/_scheduleScore(), and
+          // _onCallChanged's own _scheduleLookup()/_lookup.scheduleScore(), and
           // _resetLocalFields already cleared the lookup cache and score
           // notices — without this the restored callsign sits unenriched,
           // without its dupe/New-* pills, until the operator edits the call
           // field again.
           _scheduleLookup();
-          _scheduleScore();
+          _lookup.scheduleScore();
         }
       }
       // Self- vs other-spot eligibility can differ per extension (e.g. only
       // self-spotting an operation with an activation ref) — re-fetch
       // whenever what's being spotted changes.
-      _spotSources = const [];
-      _spotStatus.clear();
-      _refreshSpotSources();
+      _spotting.forgetSources();
+      _spotting.refreshSources();
       // The fields are this panel's own again, which is exactly what anything
       // parked was waiting for — and this branch returns, so it has to drain
       // here rather than leave it to the bottom of the method.
@@ -2634,7 +2239,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // operation's own activation refs (not editingQso, which stays null
     // throughout) — refresh when those refs change too.
     if (!identical(oldWidget.operation.data['refs'], widget.operation.data['refs'])) {
-      _refreshSpotSources();
+      _spotting.refreshSources();
     }
 
     // A new suggestion (e.g. tapping a different spot) — same reset scope
@@ -2650,9 +2255,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _resetEditingSessionState();
       _applySuggestedQso(widget.suggestedQso!);
       _rememberSuggestedCall(tentative: widget.suggestedQsoIsTentative);
-      _spotSources = const [];
-      _spotStatus.clear();
-      _refreshSpotSources();
+      _spotting.forgetSources();
+      _spotting.refreshSources();
       // A suggestion means "work THIS station", so Enter must be able to log
       // it right away — the tap that produced it landed outside the logging
       // fields, leaving nothing focused for Enter to reach. Focus the
@@ -2870,15 +2474,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _wipeUndoSlot.clear();
   }
 
-  /// Which `spots` hooks currently offer self- or other-spotting, for the
-  /// Spotting control's icon row — shown before sending, not just after.
-  Future<void> _refreshSpotSources() async {
-    final suggest = widget.suggestSpotSources;
-    if (suggest == null) return;
-    final sources = await suggest(operation: widget.operation.data, qso: widget.editingQso?.data);
-    if (mounted) setState(() => _spotSources = sources);
-  }
-
   /// Populates controllers/state from an existing QSO selected for editing.
   /// Local-state only — never calls parent-notifying callbacks (this runs
   /// from `didUpdateWidget`, where a synchronous `setState` back up the
@@ -2897,15 +2492,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // never reads these controllers).
       _seedFromRadioService();
     }
-    _manualStartAtMillis = null; // _effectiveStartAtMillis falls back to editingQso.startAtMillis
+    _time.manualStartAtMillis = null; // _time.effectiveStartAtMillis falls back to editingQso.startAtMillis
     setState(() {});
     _populating = false;
     // Score the edited QSO (excluding itself) so its dupe/New-* pills show, the
     // same way they do while composing — populate suppressed _onCallChanged's
     // own trigger. The worked-before pill likewise: an edit runs no live
     // lookup (the saved guess stands), so the lookup path never fetches it.
-    _scheduleScore();
-    _refreshWorkedBefore();
+    _lookup.scheduleScore();
+    _lookup.refreshWorkedBefore();
     // A QSO logged before its online lookup ever ran (e.g. offline, or a
     // quick log with the runtime still booting) should get one now rather
     // than sit unenriched until the next background pass — `enqueueLookup`
@@ -2936,25 +2531,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Read from `data`, since `_applyFieldsFromData` strips the key rather
     // than carrying it into `_currentQsoExtra`.
     final suggestedStart = data['startAtMillis'];
-    _manualStartAtMillis = suggestedStart is int ? suggestedStart : null;
+    _time.manualStartAtMillis = suggestedStart is int ? suggestedStart : null;
     setState(() {});
     _populating = false;
     // A tapped spot starts a contact as surely as a typed call does, and it
     // bypasses `_onCallChanged` — so the serial number is taken here.
     unawaited(_refreshSerialPreviews());
     // Populating a suggestion sets the call without the user typing, so
-    // `_populating` suppressed _onCallChanged's own _scheduleLookup()/
-    // _scheduleScore(). Any source that sets the current QSO's callsign must
+    // `_populating` suppressed _onCallChanged's own lookup and score
+    // scheduling. Any source that sets the current QSO's callsign must
     // still trigger a lookup — spots (#315) and a future deeplink both arrive
     // here — so run them explicitly, like `_restoreFromUndoSlot` does.
-    // `_applyFieldsFromData` cleared `_lookupFor`/`_lookupCache` above, so the
-    // "only when changed" guard won't wrongly short-circuit. Guarded on
+    // The lookup was reset above, so the "only when changed" guard won't
+    // wrongly short-circuit. Guarded on
     // `_callInfoActive` (a real call is present) so both only schedule their
     // timers and never setState synchronously — this also runs from initState
     // for a deeplink cold-start (see the editingQso init path above).
     if (_callInfoActive) {
       _scheduleLookup();
-      _scheduleScore();
+      _lookup.scheduleScore();
     }
     // A suggestion is specific operator intent — "work THIS station" — so
     // unlike the ambient VFO seed it overrides, it moves the VFO, and with
@@ -2967,7 +2562,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // station, there is nothing more to wait for.
     if (widget.editingQso == null &&
         (data['freq'] != null || data['band'] != null || data['mode'] != null)) {
-      _vfoDebounce?.cancel();
+      _radio.cancelPendingPush();
       // AFTER the frame, not now. Both callers — initState and
       // didUpdateWidget — run inside the build phase, and `setVfo` notifies
       // its listeners synchronously; SpotsPanel listens and calls setState,
@@ -2977,7 +2572,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // operator nothing visible and would have gone unnoticed — but the
       // panel can silently miss its rebuild for that frame.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _pushVfoToRadioService();
+        if (mounted) _radio.pushVfo();
       });
     }
   }
@@ -3002,17 +2597,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final theirName = asQsonString(their['name'])?.trim();
     _theirNameOverride = (theirName == null || theirName.isEmpty) ? null : theirName;
     final freq = asQsonNum(data['freq'])?.toDouble();
-    // Full precision (not fmtFreq's 100Hz display rounding): selecting a QSO
-    // logged at 14074.25 must not flag it as changed or save "14074.3" back.
-    _freqController.text = freq != null ? fmtFreqInput(freq) : '';
-    _mode = asQsonString(data['mode']) ?? _mode;
-    _manualBand = freq == null ? asQsonString(data['band']) : null;
+    if (freq != null) {
+      _radio.setFrequency(freq);
+    } else {
+      _radio.setBand(asQsonString(data['band']));
+    }
+    _radio.mode = asQsonString(data['mode']) ?? _radio.mode;
     final power = asQsonNum(data['power']);
     _powerOnRecord = power != null;
     _powerController.text = power == null ? '' : '$power';
     // A wholesale repopulate — a spot tapped, a QSO opened for editing —
     // replaces every field, so nothing in a dropdown survives it either.
-    _resyncDropdownFieldsToSelection();
+    _radio.resyncDropdownFields();
     // Restore the More pane's operator/position overrides for the same reason
     // the name above is restored: wipe-then-undo, and stepping into an edit
     // and back out, both round-trip the draft through here, and a dropped
@@ -3102,14 +2698,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _unmatchedRefs.add(ref);
       }
     }
-    _lookupFor = null;
-    _lookupResult = null;
-    _workedBeforeFor = null;
-    _workedBefore = null;
-    _refreshedActivityControls = null;
+    _lookup.reset();
     _selectedControlKey = null;
-    _clearScoreNotices();
-    _lookupCache.clear();
     // Command state must never survive into a freshly populated QSO
     // context: this runs under `_populating`, so _onCallChanged's own
     // per-keystroke reset is suppressed. Without this, typing "NOTE hi",
@@ -3118,10 +2708,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // stale complete interpretation would make Space insert a literal
     // space (or Enter execute the old command) instead of acting on the
     // callsign.
-    _currentInterpretation = null;
-    _retainedInterpretation = null;
-    _lastExpandedInput = null;
-    _commandMessage = null;
+    _command.reset();
   }
 
   /// Populates the NOTE/TODO inline editor from an event row's `event` map
@@ -3151,7 +2738,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// carry no other editable field yet, so only the timestamp moves for them.
   Map<String, dynamic> _eventDataForSave(Qso editingQso) {
     final data = Map<String, dynamic>.from(editingQso.data);
-    final startAtMillis = _effectiveStartAtMillis;
+    final startAtMillis = _time.effectiveStartAtMillis;
     if (startAtMillis != null) data['startAtMillis'] = startAtMillis;
     final kind = editingQso.eventKind;
     if (kind == 'note' || kind == 'todo') {
@@ -3190,32 +2777,26 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return data;
   }
 
-  /// Seeds freq/band/mode from the operation's `vfoA` — the operation's
-  /// last-known radio state, rather than a hardcoded default. Never called
-  /// while editing an existing *contact*, whose own recorded freq/band/mode
-  /// always takes priority (`_applyFieldsFromData`); an event's freq/mode
-  /// are sentinels instead of a record, so `_populateFromEditingQso` calls
-  /// this for one anyway, same as composing.
-  /// [skipFrequency] leaves the frequency field (and its band) alone while
-  /// taking the mode: a pending edit is the operator's and newer, but only
-  /// as far as the field they are actually typing in.
+  /// One of the panel's models changed something it paints — a typed
+  /// frequency, a resolved lookup, a command's describe preview. None of
+  /// them notifies during build (the Radio control's one build-phase write
+  /// defers itself a frame), so a direct `setState` here is safe.
+  void _onModelChanged() {
+    if (!mounted) return;
+    setState(() {});
+  }
+
+  /// Seeds the Radio control from the operation's `vfoA`
+  /// ([RadioControlModel.seedFromVfo]), and the Power field with it — that
+  /// one is the panel's, with its own rule about whose typing it may
+  /// overwrite. Never called while editing an existing *contact*, whose own
+  /// recorded values always take priority (`_applyFieldsFromData`); an
+  /// event's freq/mode are sentinels instead of a record, so
+  /// `_populateFromEditingQso` calls this for one anyway, same as composing.
   void _seedFromRadioService({bool skipFrequency = false}) {
     final vfo = widget.radioService?.vfoA;
     if (vfo == null) return;
-    if (!skipFrequency) {
-      final freq = vfo.freq;
-      final text = freq != null ? fmtFreqInput(freq) : '';
-      // Only when it differs: assigning `text` collapses the selection, so an
-      // unconditional write would move the caret every time a connected radio
-      // restated the frequency it is already on.
-      if (_freqController.text != text) _freqController.text = text;
-      _recordFreqText();
-      _manualBand = freq == null ? vfo.band : null;
-      _freqTouched = false;
-    }
-    if (vfo.mode != null && vfo.mode != _mode) {
-      _mode = vfo.mode!;
-    }
+    _radio.seedFromVfo(skipFrequency: skipFrequency);
     // Never over the operator's own typing, and never over a QSO already
     // logged — an existing record's power is its own (`_applyFieldsFromData`
     // seeds it), not whatever the rig happens to be set to now.
@@ -3235,10 +2816,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // freq/mode are sentinels, not a record — its Radio control keeps
     // following the live VFO the whole time it's open, same as composing.
     if (widget.editingQso != null && !widget.editingQso!.isEvent) return;
-    final previousBand = _band;
-    final previousMode = _mode;
+    final previousBand = _radio.band;
+    final previousMode = _radio.mode;
     setState(() {
-      // Suppresses `_onFreqChanged`'s push-back. Without it, seeding a
+      // Suppresses the frequency listener's push-back. Without it, seeding a
       // value the radio just reported arms the 5s debounce and sends it
       // straight back at the radio, forever.
       final wasPopulating = _populating;
@@ -3248,49 +2829,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // pending push would then send the panel's stale mode back — taking a
       // rig the operator had just put into CW back out of it, and logging
       // USB at 59.
-      _seedFromRadioService(skipFrequency: _freqTouched);
+      _seedFromRadioService(skipFrequency: _radio.freqTouched);
       _populating = wasPopulating;
     });
-    // `_populating` above suppressed `_onFreqChanged`'s own rescore, and the
+    // `_populating` above suppressed the frequency listener's own rescore, and the
     // mode never had one. The dupe / New Band / New Mode pills are scored
     // against band and mode, so without this a rig retuned at its own front
     // panel left them describing the band the operator has left. Debounced
     // and gated on a plausible callsign, so a spun VFO knob costs nothing.
-    if (_band != previousBand || _mode != previousMode) {
-      _resyncDropdownFieldsToSelection();
-      _scheduleScore();
+    if (_radio.band != previousBand || _radio.mode != previousMode) {
+      _radio.resyncDropdownFields();
+      _lookup.scheduleScore();
     }
-  }
-
-  /// Ends a pending frequency edit at a QSO boundary — logging, wiping, or
-  /// an editing session closing.
-  ///
-  /// `_freqTouched` switches live radio follow off, and nothing else resets
-  /// it: a partial entry of three characters or fewer arms no debounce, so
-  /// without this the Radio control stops following the rig for the rest of
-  /// the session. A push that is still pending is flushed rather than
-  /// dropped — the operator typed it, and the field still shows it.
-  ///
-  /// [flush] is false on the one caller that runs inside `didUpdateWidget`:
-  /// `setVfo` notifies, and a listener calling `setState` during the build
-  /// phase errors. That caller is discarding the composing form anyway.
-  void _settlePendingFreqEdit({bool flush = true}) {
-    if (flush && (_vfoDebounce?.isActive ?? false)) {
-      _vfoDebounce!.cancel();
-      _pushVfoToRadioService();
-      return;
-    }
-    _freqTouched = false;
-    _recordFreqText();
-  }
-
-  /// Pushes the current freq/band/mode to `widget.radioService` as `vfoA`.
-  void _pushVfoToRadioService() {
-    widget.radioService?.setVfo('vfoA', freq: _freq, band: _band, mode: _mode);
-    // The field and the VFO agree again: not a pending edit, and the
-    // baseline moves with it.
-    _freqTouched = false;
-    _recordFreqText();
   }
 
   /// Clears local fields when an editing session ends (mirrors the
@@ -3307,20 +2857,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _stateController.clear();
     _gridTouched = false;
     _stateTouched = false;
-    _lookupDebounce?.cancel();
-    // `_freqTouched` outlives this reset otherwise, and live radio follow
+    _lookup.cancelLookup();
+    // `_radio.freqTouched` outlives this reset otherwise, and live radio follow
     // stays switched off for the rest of the session.
-    _settlePendingFreqEdit(flush: false);
-    _vfoDebounce?.cancel();
-    _commandDescribeDebounce?.cancel();
-    _executeMessageTimer?.cancel();
-    _lookupFor = null;
-    _lookupResult = null;
-    _workedBeforeFor = null;
-    _workedBefore = null;
-    _refreshedActivityControls = null;
-    _clearScoreNotices();
-    _lookupCache.clear();
+    _radio.settlePendingFreqEdit(flush: false);
+    _lookup.reset();
     _controlRefs.clear();
     _guessedRefs = const [];
     _guessedRefsForCall = null;
@@ -3330,24 +2871,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _notesController.clear();
     _ourExtra.clear();
     _theirExtra.clear();
-    _manualStartAtMillis = null;
-    _manualBand = null;
+    _time.manualStartAtMillis = null;
+    _radio.manualBand = null;
     _selectedControlKey = null;
     _clearPowerEntry();
     // Back to composing a new QSO — the Radio control goes back to
     // mirroring the operation's VFO, not whatever the just-edited QSO's
     // own freq/band/mode happened to be.
     _seedFromRadioService();
-    setState(() {
-      _commandMessage = null;
-      _currentInterpretation = null;
-      _retainedInterpretation = null;
-      _lastExpandedInput = null;
-    });
+    setState(_command.reset);
     _populating = false;
   }
 
-  @override
   @override
   void dispose() {
     // Leaving the operation lets its number go (docs/design/contests.md
@@ -3365,16 +2900,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     widget.radioUpdates?.removeListener(_onRadioVfoChanged);
     ClockTravel.instance.removeListener(_onClockTravelChanged);
     WidgetsBinding.instance.removeObserver(this);
-    _lookupDebounce?.cancel();
-    _scoreDebounce?.cancel();
-    _vfoDebounce?.cancel();
-    _commandDescribeDebounce?.cancel();
-    _interpretationUpdatesSub?.cancel();
-    _executeMessageTimer?.cancel();
+    _lookup.dispose();
+    _command.dispose();
     _wipeUndoSlot.dispose();
-    _spotStatusClearTimer?.cancel();
-    _spotCommentController.dispose();
-    _spotCommentFocus.dispose();
+    _spotting.dispose();
     _notesController.dispose();
     _notesFocus.dispose();
     for (final controller in _controlTextControllers.values) {
@@ -3395,38 +2924,36 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
-    _freqController.dispose();
-    _timeController.dispose();
-    _dateController.dispose();
     _gridController.dispose();
     _stateController.dispose();
     _powerController.dispose();
     _eventTextController.dispose();
     _eventTextFocus.dispose();
-    _bandDropdownController.dispose();
-    _modeDropdownController.dispose();
-    _bandDropdownFocus.dispose();
-    _modeDropdownFocus.dispose();
     _callFocus.dispose();
     _sentFocus.dispose();
     _rcvdFocus.dispose();
-    _freqFocus.dispose();
     _gridFocus.dispose();
     _stateFocus.dispose();
     _powerFocus.dispose();
-    _timeFocus.dispose();
-    _dateFocus.dispose();
+    _time.dispose();
+    _radio.dispose();
     super.dispose();
   }
 
-  String get _call => _callController.text.trim().toUpperCase();
+  /// The call field as the panel reads it — see [CallFieldText] for the
+  /// rules. A fresh snapshot of the text and the cursor on every read, so a
+  /// rule never sees a cursor that moved after the text it was paired with.
+  CallFieldText get _callText => CallFieldText(
+        _callController.text,
+        cursor: _callController.selection.baseOffset,
+        stacking: widget.editingQso == null,
+      );
 
-  /// Trimmed call-field text WITHOUT forcing uppercase — used only for
-  /// command interpretation, so free-text parameters (e.g. NOTE's captured
-  /// text) keep the case the user actually typed. Command prefixes
-  /// themselves are matched case-insensitively by every extension, so this
-  /// is safe to use in place of `_call` for that one purpose.
-  String get _commandInput => _callController.text.trim();
+  String get _call => _callText.call;
+  List<String> get _callList => _callText.callList;
+  bool get _isCallStackField => _callText.isStack;
+  Iterable<String> get _callsInField => _callText.callsInField;
+  String get _callAtCursor => _callText.callAtCursor;
 
   /// The operation QSON with `uuid` folded in — same shape as the Dart
   /// side's `qsonPayloadFor` gives every coarse hook call. Command hooks
@@ -3438,215 +2965,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         'uuid': widget.operation.uuid,
       };
 
-  /// Comma-separated calls typed into the call field — "W1AW, K1ABC" logs
-  /// one QSO per call (issue #7) rather than one QSO whose call is the
-  /// literal joined string. A single call with no comma is just a one-item
-  /// list, so this also covers the common case.
-  List<String> get _callList => _call.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
-
-  /// Whether the call field is using "//" stack syntax (issue #7). The one
-  /// predicate every stacking-aware getter below shares, so they can't drift
-  /// out of agreement about which fields are stacks.
-  ///
-  /// A field STARTING with "//" is a stack too — its first segment is just
-  /// empty — so "//KEY//W1AW" is both note-expansion syntax (issue #17) and
-  /// a stack, and gets both. Whole-field expansion still wins on Enter, but
-  /// by ORDER (see [_log]), not by this predicate carving it out — exclude
-  /// it here and "//KEY//W1AW" is neither syntax, so Enter does nothing at
-  /// all.
-  bool get _isCallStackField => widget.editingQso == null && _callController.text.contains('//');
-
-  /// Every callsign the field currently holds, under either multi-call
-  /// syntax: the comma-separated list, or the "//" stack's segments — each
-  /// of which may itself be a comma list ("KI2D//W1AB,W1AC"), so a stack is
-  /// split on both separators, not just "//".
-  ///
-  /// This is what tells a call being CORRECTED — it leaves the field — from
-  /// one merely being typed alongside others, which moves the cursor off it
-  /// without replacing it. See the guessed-ref clearing in
-  /// [_scheduleLookup].
-  Iterable<String> get _callsInField {
-    final text = _callController.text;
-    final segments = _isCallStackField ? text.split('//') : [text];
-    return segments
-        .expand((segment) => segment.split(','))
-        .map((s) => s.trim().toUpperCase())
-        .where((s) => s.isNotEmpty);
-  }
-
-  /// The single call that's actually relevant right now — the whole field
-  /// for a plain callsign, whichever "//"-stacked segment
-  /// `_pickStackedCall` would pick (issue #7's call stacking, new QSOs
-  /// only), or whichever comma-separated segment the cursor sits in (issue
-  /// #7's call lists, new or editing). Neither the on-screen lookup
-  /// preview nor the DUPE chip make sense against the raw, multi-call
-  /// field text, so both key off this instead. "//" takes priority over
-  /// "," — a field can't meaningfully be both a stack and a list at once,
-  /// and "//" is the more specific syntax.
-  String get _callAtCursor {
-    final text = _callController.text;
-    if (_isCallStackField) {
-      final picked = _pickStackedCall();
-      if (picked == null) return _call;
-      // A stacked segment can itself be a comma list ("KI2D//W1AB,W1AC") —
-      // follow the cursor inside it exactly as a top-level list does, but
-      // only when the cursor is actually in that segment: the scan-left
-      // fallback picks a segment the cursor never entered, and there the
-      // first call is the best answer available.
-      final stack = _stackSegments();
-      if (picked.index == stack.cursorIndex) {
-        // Floored at 0, but only once there IS a selection: a cursor parked
-        // between the two slashes belongs to the segment that follows, and a
-        // bare subtraction would hand over a negative offset, which reads as
-        // "no selection" and picks the segment's LAST comma entry instead of
-        // its first. A genuinely unfocused field keeps its own negative
-        // offset, where that last-entry fallback is the intended answer.
-        final cursor = _callController.selection.baseOffset;
-        return _commaSegmentAtCursor(
-          stack.segments[picked.index],
-          cursor < 0 ? cursor : math.max(0, cursor - stack.starts[picked.index]),
-        );
-      }
-      return picked.calls.first;
-    }
-    return _commaSegmentAtCursor(text, _callController.selection.baseOffset);
-  }
-
-  /// The comma-separated segment of [text] that [cursor] — an offset into
-  /// [text] — sits in, uppercased and trimmed. A cursor outside the text
-  /// (negative, i.e. no selection) falls back to the LAST segment, the one
-  /// an unfocused field was most recently typing into.
-  String _commaSegmentAtCursor(String text, int cursor) {
-    if (!text.contains(',')) return text.trim().toUpperCase();
-    final segments = text.split(',');
-    var index = segments.length - 1;
-    if (cursor >= 0) {
-      var offset = 0;
-      for (var i = 0; i < segments.length; i++) {
-        offset += segments[i].length;
-        if (cursor <= offset) {
-          index = i;
-          break;
-        }
-        offset += 1; // the "," separator
-      }
-    }
-    return segments[index].trim().toUpperCase();
-  }
-
-  /// The "//"-separated segments of the call field, each one's start offset
-  /// in the field text, and the index of the segment holding the cursor
-  /// (the last segment when there is no selection). The single place that
-  /// locates the cursor within a stack, so stacking, the cursor's own call
-  /// and mid-stack note expansion can't disagree about which segment the
-  /// operator is on.
-  ({List<String> segments, List<int> starts, int cursorIndex}) _stackSegments() {
-    final segments = _callController.text.split('//');
-    final starts = <int>[];
-    var offset = 0;
-    for (final segment in segments) {
-      starts.add(offset);
-      offset += segment.length + 2; // the "//" separator
-    }
-    final cursor = _callController.selection.baseOffset;
-    var cursorIndex = segments.length - 1;
-    if (cursor >= 0) {
-      for (var i = 0; i < segments.length; i++) {
-        if (cursor <= starts[i] + segments[i].length) {
-          cursorIndex = i;
-          break;
-        }
-      }
-    }
-    // A note key's leading "//" is a separator, not a segment the operator
-    // can be inside. Offset 0 otherwise resolves to that empty first segment,
-    // which has nothing to expand and nothing to log — so Enter on "//KEY"
-    // would do nothing at all, and one character to the right would work.
-    if (cursorIndex == 0 && segments.length > 1 && segments[0].trim().isEmpty) {
-      cursorIndex = 1;
-    }
-    return (segments: segments, starts: starts, cursorIndex: cursorIndex);
-  }
-
-  double? get _freq => parseFreq(_freqController.text);
-  String? get _band => _freq != null ? bandForFrequency(_freq!) : _manualBand;
-
-  /// Whether the band plan puts the frequency in the field outside the
-  /// operator's own allocation — scoped by their region/country, so it stays
-  /// false while we don't know where they are (see [isOutOfBandFrequency]).
-  /// Only a typed/tuned frequency can be out of band: a manually picked band
-  /// names no one point to check.
-  bool get _outOfBand {
-    final freq = _freq;
-    return freq != null &&
-        isOutOfBandFrequency(freq, ituRegion: widget.ourItuRegion, countryCode: widget.ourCountryCode);
-  }
-
   bool get _canLog {
     // Call stacking (issue #7): "//" takes priority over a comma-separated
     // list — "//"-separated calls/fragments aren't a single valid callsign,
     // but log is still possible as long as one of the stacked segments is —
-    // see _pickStackedCall. Only while composing a new QSO.
+    // see [CallFieldText.pickStackedCall]. Only while composing a new QSO.
     if (_isCallStackField) {
-      return _pickStackedCall() != null;
+      return _callText.pickStackedCall() != null;
     }
     return _callList.isNotEmpty && _callList.every(looksLikeCallsign);
-  }
-
-  /// Whether the call field holds a recognized command that [_log] would act
-  /// on — as opposed to a callsign, an incomplete command still awaiting its
-  /// parameters (`expectsParams`), or plain text. Drives the submit button so
-  /// it accepts a command the same way Enter already does (the field's
-  /// `onSubmitted` and the panel's Enter/numpadEnter shortcut both call
-  /// [_log]). The button is otherwise gated on [_canLog], which is false for a
-  /// command because a command isn't a valid callsign — so on mobile, where
-  /// this button is the primary submit affordance, a command could only be run
-  /// from the on-screen keyboard's return key.
-  ///
-  /// Reads the same interpretation state the describe-message UI does, so the
-  /// button enables in step with the command preview appearing. [_log]
-  /// re-interprets the live text when actually run, so a momentarily stale
-  /// retained value here at worst enables the button for an
-  /// interpret-and-fall-through no-op, never a wrong action.
-  bool get _hasExecutableCommand {
-    if (widget.editingQso != null || widget.interpretCommand == null || _call.isEmpty) {
-      return false;
-    }
-    final interpretation = _currentInterpretation ?? _retainedInterpretation;
-    return interpretation != null && interpretation['expectsParams'] != true;
-  }
-
-  /// Call stacking (issue #7): the call field holds "//"-separated calls or
-  /// fragments (e.g. "K1ABC//W1AW" — a second call typed in while the first
-  /// is still queued up). Scanning left from the cursor, picks the first
-  /// segment that reads as a callsign — or as a comma-separated list of
-  /// them, the shape a mid-stack note expansion leaves behind
-  /// ("KI2D//W1AB,W1AC") — and returns its calls alongside the remaining
-  /// segments (still "//"-joined) to leave in the field for the next QSO.
-  /// Every call in the picked segment logs, exactly as a top-level comma
-  /// list does; the segment leaves the field either way. Only applies to
-  /// new QSOs, not editing an existing one.
-  ///
-  /// A field starting with "//" is a stack whose first segment is empty —
-  /// that segment holds no calls, so it is simply skipped. `//W1AW` whose
-  /// key matches a note never reaches here at all: [_log] runs the
-  /// whole-field command first and returns. One that matches nothing does,
-  /// and logs W1AW as the plain callsign it looks like.
-  ({List<String> calls, String remainder, int index})? _pickStackedCall() {
-    if (!_isCallStackField) return null;
-    final stack = _stackSegments();
-    for (var i = stack.cursorIndex; i >= 0; i--) {
-      final calls = stack.segments[i]
-          .split(',')
-          .map((s) => s.trim().toUpperCase())
-          .where((s) => s.isNotEmpty)
-          .toList();
-      if (calls.isNotEmpty && calls.every(looksLikeCallsign)) {
-        final remainder = [...stack.segments]..removeAt(i);
-        return (calls: calls, remainder: remainder.join('//'), index: i);
-      }
-    }
-    return null;
   }
 
   /// Note expansion inside a stack (issue #17 × issue #7): asks the command
@@ -3668,11 +2995,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // answer for the segment the hook was asked about into whichever segment
     // the cursor had since wandered into — destroying a call that was never
     // part of this expansion.
-    final stack = _stackSegments();
-    final input = _expansionInputFor(stack);
+    final stack = _callText.stackSegments();
+    final input = _command.expansionInputFor(stack);
     if (input == null) return false;
     final before = _callController.text;
-    final qsoData = _getCurrentQsoData();
 
     // Preview first (`execute: false`), same discipline as the whole-field
     // command path: this probe runs on EVERY stacked Enter, the ordinary
@@ -3681,21 +3007,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // batch of generated QSOs (see CommandHook.interpret's `execute` doc).
     // Only once the preview says this really is an expansion is it worth
     // asking for the executable one, whose `commands` are the real ones.
-    final preview = await widget.interpretCommand!(input, _operationDataForCommands, qsoData);
+    final preview = await _command.interpret(input);
     if (!mounted || _callController.text != before) return false;
-    if (_expandedCallText(preview) == null) return false;
+    if (CommandInterpretationModel.expandedCallText(preview) == null) return false;
 
-    final executable = await widget.interpretCommand!(input, _operationDataForCommands, qsoData, true);
+    final executable = await _command.interpret(input, execute: true);
     // Stale — the field changed while awaiting a JS runtime round trip, so
     // the captured segment offsets no longer describe this text.
     if (!mounted || _callController.text != before) return false;
-    final text = _expandedCallText(executable);
+    final text = CommandInterpretationModel.expandedCallText(executable);
     if (text == null) return false;
 
     final segments = [...stack.segments];
     segments[stack.cursorIndex] = text;
     // The cursor stays on the segment it expanded, at its end — that's the
-    // segment the next Enter has to pick, and [_pickStackedCall] reads the
+    // segment the next Enter has to pick, and [CallFieldText.pickStackedCall] reads the
     // cursor to decide. Focus goes with it for the same reason: an unfocused
     // field reports no selection at all, and the fallback there is the LAST
     // segment, which in a three-segment stack is a different call entirely.
@@ -3704,131 +3030,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       selection: TextSelection.collapsed(offset: stack.starts[stack.cursorIndex] + text.length),
     );
     _callFocus.requestFocus();
-    _lastExpandedInput = input;
+    _command.markExpanded(input);
     return true;
-  }
-
-  /// The command input that would expand [stack]'s cursor segment ("//1AB"),
-  /// or null when that segment is empty. Split out so the Enter path can ask
-  /// about the segments it captured before its own awaits, while the typing
-  /// preview asks about the live ones.
-  String? _expansionInputFor(({List<String> segments, List<int> starts, int cursorIndex}) stack) {
-    final key = stack.segments[stack.cursorIndex].trim();
-    if (key.isEmpty) return null;
-    final input = '//$key';
-    // The cursor segment IS the whole field ("//KEY"), so [_log]'s command
-    // path has already asked this exact question and acted on the answer.
-    // Asking again buys nothing and costs a second JS round trip on the
-    // Enter path, widening the window two auto-repeated Enters race in.
-    if (input == _commandInput) return null;
-    // Already spent on this draft — see [_lastExpandedInput]. Checked here,
-    // in the one place both the Enter path and the typing preview build
-    // their input, so the preview can't go on offering an expansion Enter
-    // will no longer perform.
-    return input == _lastExpandedInput ? null : input;
-  }
-
-  /// The command input that would expand the stacked segment under the
-  /// cursor right now, or null when the field isn't a stack, no command
-  /// hooks are wired, or the cursor sits on an empty segment.
-  String? get _stackExpansionInput {
-    if (widget.editingQso != null || widget.interpretCommand == null) return null;
-    if (!_isCallStackField) return null;
-    return _expansionInputFor(_stackSegments());
-  }
-
-  /// The replacement text an interpretation's `setCallField` action carries,
-  /// or null for anything else. Only that one action can be spliced into a
-  /// single stacked segment; every other action is field-wide (or has
-  /// nothing to do with the call field at all) and stays the whole-field
-  /// command path's business.
-  String? _expandedCallText(Map<String, dynamic>? interpretation) {
-    if (interpretation == null || interpretation['error'] is String) return null;
-    final commands = interpretation['commands'];
-    if (commands is! List || commands.length != 1) return null;
-    final action = commands.single;
-    if (action is! Map || action['setCallField'] is! Map) return null;
-    final text = (action['setCallField'] as Map)['text'];
-    return (text is String && text.trim().isNotEmpty) ? text : null;
-  }
-
-  void _onFreqChanged() {
-    final freq = _freq;
-    if (freq != null) {
-      _manualBand = null;
-      // Remember the band so clearing the frequency can fall back to it.
-      _lastBandFromFreq = bandForFrequency(freq);
-    } else if (_freqController.text.trim().isEmpty) {
-      // Frequency cleared: stay on the band it was last, rather than dropping
-      // to no band. Deferential (`??=`) so a band the user set by hand wins.
-      _manualBand ??= _lastBandFromFreq;
-    }
-    setState(() {});
-    // Band (derived from frequency) drives the New Band notice — rescore.
-    if (!_populating) _scheduleScore();
-    // Editing an existing QSO applies changes to the QSO, never the VFO —
-    // only a new (composing) QSO's Radio control mirrors/edits the VFO.
-    // A TextEditingController notifies on SELECTION changes too, and
-    // expanding the Radio control focuses this field (`_expandedFocusFor`),
-    // which moves the cursor. Without this guard merely opening the control
-    // would look like an edit: live follow would switch itself off, and a
-    // pointless push to the radio would be armed. Same trap, and the same
-    // fix, as `_onTimeOrDateFieldChanged`.
-    //
-    // The baseline moves BEFORE the guards below — exactly as
-    // `_onTimeOrDateFieldChanged` does it, and for the same reason. A
-    // programmatic write (a suggestion, an editing session ending) runs
-    // under `_populating`; if the baseline didn't move with it, the next
-    // bare cursor click would compare against a stale value, read as an
-    // edit, and silently switch live follow off.
-    final text = _freqController.text;
-    final changed = text != _lastFreqText;
-    _lastFreqText = text;
-    if (_populating || widget.editingQso != null) return;
-    if (!changed) return;
-    // The session's first keystroke: snapshot the mode as it stood before
-    // this edit, for the band-plan guess below to fall back to. Guarded on
-    // `!_freqTouched` so it captures once per session, not on every
-    // keystroke — otherwise it would just track whatever the guess itself
-    // last set `_mode` to.
-    if (!_freqTouched) _modeBeforeFreqEdit = _mode;
-    // The operator's own edit — newer than whatever the VFO says, so live
-    // follow must leave it alone until it's been pushed.
-    _freqTouched = true;
-    // HALO-32: a frequency the operator typed themselves — guess its mode
-    // from the band plan, same as a radio-driven change (_seedFromRadioService)
-    // or a suggested QSO (_applySuggestedQso) already set `_mode` from their
-    // own source. Falls back to `_modeBeforeFreqEdit` (not left at whatever
-    // the previous keystroke's guess happened to be) when this keystroke's
-    // frequency has no band-plan opinion — typing digit by digit can pass
-    // through a prefix that does match before landing on a final value that
-    // doesn't (e.g. "1800", a real match, mid-typing "18001", a real gap
-    // between 160m and 17m).
-    if (freq != null) {
-      final guess = modeForFrequency(freq, ituRegion: widget.ourItuRegion, countryCode: widget.ourCountryCode) ??
-          _modeBeforeFreqEdit;
-      // Compared RESOLVED: a generic `SSB` guess against a generic `SSB` mode
-      // is not a no-op once there is a frequency to resolve against, so the
-      // raw comparison blocked it — and dropping the comparison altogether
-      // rebuilt the whole panel on every keystroke, since a guess almost
-      // always exists.
-      if (guess != null && _modeResolvedToSideband(guess) != _mode) {
-        setState(() => _applyModeGuess(guess));
-      }
-    }
-    // Only push once there's enough digits to plausibly be a real
-    // frequency (mirrors the frequency command's own `length < 3` reject),
-    // debounced so we're not writing to the operation on every keystroke.
-    _vfoDebounce?.cancel();
-    if (_freqController.text.trim().length > 3) {
-      _vfoDebounce = Timer(const Duration(seconds: 5), _pushVfoToRadioService);
-    } else if (_freqController.text.trim().isEmpty) {
-      // Clearing the field is unambiguous — push it immediately rather than
-      // debouncing, so dependents reading radioService.vfoA (e.g. the
-      // Spotting control) drop the stale frequency right away.
-      widget.radioService?.setVfo('vfoA', clearFreq: true, band: _manualBand, mode: _mode);
-      _freqTouched = false;
-    }
   }
 
   void _onSentOrRcvdChanged() => setState(() {});
@@ -3860,7 +3063,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (!widget.jumpAfterRST || _populating || !focus.hasFocus) return;
     // Null on the FT modes, whose report has no fixed length — there is no
     // moment to call "done", so the setting simply doesn't apply.
-    final full = rstLengthFor(_mode);
+    final full = rstLengthFor(_radio.mode);
     if (full == null) return;
     if (previous < full && length >= full) _advancePrimaryFocus();
   }
@@ -3883,7 +3086,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   String? get _rstPlaceholder => widget.editingQso == null ? _defaultRST : null;
 
   String get _defaultRST => defaultRSTFor(
-        _mode,
+        _radio.mode,
         phone: widget.defaultReport,
         cw: widget.defaultReportCW,
         snr: widget.defaultReportFT8,
@@ -3897,7 +3100,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The expansion has to happen here as well as on losing focus: Enter never
   /// blurs (§ "Enter and focus"), so the field the operator logs from is one
   /// that never left focus, and a bare `5` would otherwise reach the record.
-  String _rstOrDefault(String text) => text.isEmpty ? (_rstPlaceholder ?? '') : expandRST(text, _mode);
+  String _rstOrDefault(String text) => text.isEmpty ? (_rstPlaceholder ?? '') : expandRST(text, _radio.mode);
 
   /// The two report fields in display order, which `switchSentRcvd` reverses.
   ///
@@ -3917,68 +3120,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// than by controller — the pane round-trips values through a `Map`, not
   /// through [_rstPair]'s controllers, so it needs the order in its own terms.
   List<String> get _rstPaneKeyOrder => widget.switchSentRcvd ? const ['rcvd', 'sent'] : const ['sent', 'rcvd'];
-
-  /// Sets `_mode` to a band-plan guess (HALO-32) — shared by [_onFreqChanged]
-  /// and the frequency-command branch of [_dispatchActions], both of which
-  /// need exactly this and nothing more: unlike [_setMode], no immediate
-  /// radio push (the caller's own debounce, or its own batched push alongside
-  /// freq/band, handles that) and no rescore (the caller already schedules one
-  /// for the frequency/band change this guess rides along with). Callers must wrap
-  /// this in their own `setState` (or already be inside one). A no-op when
-  /// [mode] already matches `_mode`, so callers can call it unconditionally
-  /// once they have a non-null guess.
-  void _applyModeGuess(String mode) {
-    // The band plan says "SSB"; which sideband that is belongs to the band.
-    // Resolved here rather than left to the caller's push because editing an
-    // existing QSO makes no push at all.
-    final resolved = _modeResolvedToSideband(mode);
-    if (resolved == _mode) return;
-    _mode = resolved;
-  }
-
-  /// Puts the Band and Mode fields back in step with `_band`/`_mode` after
-  /// something other than the dropdowns themselves moved them — a connected
-  /// rig, a spot the operator tapped, a QSO opened for editing.
-  ///
-  /// A filter the operator had typed is dropped rather than kept. It was an
-  /// in-progress edit of a value that has since moved, so keeping it leaves
-  /// the field describing a mode that no longer applies — and the commit on
-  /// the way out then pushes that stale text back over the change, taking a
-  /// rig that just reported CW and retuning it to FT8 on the strength of a
-  /// keystroke that predates the report.
-  ///
-  /// Writing the controllers here rather than leaving it to
-  /// `DropdownMenu.initialSelection` is the point: that sync fires only when
-  /// the new value is among the entries the menu was last given, so a
-  /// filtered menu — the only state this method has to repair — is exactly
-  /// the state it skips.
-  ///
-  /// Callers must have established that the value actually changed: an
-  /// unconditional call from a path a connected radio drives (a VFO
-  /// notification restating the mode it is already on) would wipe whatever
-  /// the operator is typing at the time. The command paths in
-  /// [_dispatchActions] need none of this — a command is typed into the call
-  /// field, so no dropdown holds a filter when one lands.
-  void _resyncDropdownFieldsToSelection() {
-    _bandFilter = '';
-    _modeFilter = '';
-    _bandDropdownController.text = _band ?? '';
-    _modeDropdownController.text = _displayedMode;
-  }
-
-  /// Takes the picked mode, resolved to a sideband
-  /// ([_modeResolvedToSideband]). `RadioService.setVfo` resolves it too, but
-  /// an edit of an existing QSO never reaches the VFO, and until the rig's own
-  /// reading came back the field held a mode no radio can be in.
-  void _setMode(String mode) {
-    final resolved = _modeResolvedToSideband(mode);
-    setState(() {
-      _mode = resolved;
-    });
-    if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', mode: resolved);
-    // New Mode / New Band notices depend on the mode — rescore the candidate.
-    _scheduleScore();
-  }
 
   // ---- Secondary control row ----
 
@@ -4022,15 +3163,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (key == null) return null;
     switch (key) {
       case 'time':
-        return _timeFocus;
+        return _time.timeFocus;
       // Frequency, not the Band dropdown: it is the field you actually type
       // into, and on touch platforms the dropdowns refuse focus outright.
       case 'radio':
-        return _freqFocus;
+        return _radio.freqFocus;
       case 'power':
         return _powerFocus;
       case 'spotting':
-        return _spotState.showComment ? _spotCommentFocus : null;
+        return _spotting.state.showComment ? _spotting.commentFocus : null;
       case 'notes':
         return _notesFocus;
       default:
@@ -4056,17 +3197,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   List<(FocusNode, TextEditingController)> _expandedFieldOrderFor(String key) {
     switch (key) {
       case 'time':
-        return [(_timeFocus, _timeController), (_dateFocus, _dateController)];
+        return [(_time.timeFocus, _time.timeController), (_time.dateFocus, _time.dateController)];
       case 'radio':
         return [
-          (_bandDropdownFocus, _bandDropdownController),
-          (_freqFocus, _freqController),
-          (_modeDropdownFocus, _modeDropdownController),
+          (_radio.bandFocus, _radio.bandController),
+          (_radio.freqFocus, _radio.freqController),
+          (_radio.modeFocus, _radio.modeController),
         ];
       case 'power':
         return [(_powerFocus, _powerController)];
       case 'spotting':
-        return _spotState.showComment ? [(_spotCommentFocus, _spotCommentController)] : const [];
+        return _spotting.state.showComment ? [(_spotting.commentFocus, _spotting.commentController)] : const [];
       case 'notes':
         return [(_notesFocus, _notesController)];
       default:
@@ -4187,7 +3328,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       return;
     }
     setState(() {
-      if (key == 'time' && _selectedControlKey != 'time') _seedTimeFields();
+      if (key == 'time' && _selectedControlKey != 'time') _time.seedFields();
       _selectedControlKey = key;
     });
     final fields = _expandedFieldOrderFor(key);
@@ -4436,10 +3577,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // same as Enter from any main field reaches Log.
       if (key == 'spotting' &&
           (logicalKey == LogicalKeyboardKey.enter || logicalKey == LogicalKeyboardKey.numpadEnter) &&
-          _spotCommentFocus.hasFocus &&
-          _spotState.enabled &&
-          !_spotSending) {
-        unawaited(_sendSpot());
+          _spotting.commentFocus.hasFocus &&
+          _spotting.state.enabled &&
+          !_spotting.sending) {
+        unawaited(_spotting.send());
       }
       _closeExpandedControl(key);
       return KeyEventResult.handled;
@@ -4484,7 +3625,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       return;
     }
     setState(() {
-      if (key == 'time' && _selectedControlKey != 'time') _seedTimeFields();
+      if (key == 'time' && _selectedControlKey != 'time') _time.seedFields();
       _selectedControlKey = key;
     });
     final target = _expandedFocusFor(key);
@@ -4503,69 +3644,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
-  /// Shared look for the primary logging row (Their call/Sent/Rcvd) — same
-  /// font size and field padding across all three, and the label always
-  /// pinned to the top-left corner (not the "large placeholder until
-  /// focused" default) so the row's shape doesn't shift as you type. Built
-  /// on the app-wide poloFieldDecoration (theme.dart), tinted to read
-  /// against this panel's tertiaryContainer background.
-  TextStyle _primaryFieldStyle(BuildContext context, {required FontWeight fontWeight}) =>
-      haloMonoStyle(context, fontSize: 15, fontWeight: fontWeight);
-
-  /// The underline an exchange field wears while its value isn't one this
-  /// contest recognizes — the same one a reference field wears for a code that
-  /// fails its program's pattern (theme.dart).
-  UnderlineInputBorder _invalidUnderline(BuildContext context, {required double width}) =>
-      haloInvalidInputBorder(context, width: width);
-
-  /// [horizontalPadding] is the field's **total** effective left+right inset,
-  /// the last thing the row gives up when the fields won't fit at their floors
-  /// (see [_resolveMainFieldLayout]). Effective, so [_materialFilledInputGap]
-  /// comes out of it here: at full padding that leaves exactly the content
-  /// padding the theme asks for, and at zero it leaves a negative one that
-  /// cancels Material's own.
-  ///
-  /// The vertical padding is left alone: it sets the row's height, and
-  /// squeezing that would move every control and the submit button as the
-  /// panel narrowed.
-  InputDecoration _primaryFieldDecoration(
-    BuildContext context,
-    String label, {
-    String? hintText,
-    required double horizontalPadding,
-  }) {
-    final base = poloFieldDecoration(
-      context,
-      label,
-      labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-      hintText: hintText,
-      // A squeezed field is narrower than its own label ("Their call" over 6
-      // characters, "State" over 2), and a label left to wrap makes the
-      // decorator taller — which through the row's IntrinsicHeight widens the
-      // submit button, taking back more room than the squeeze just found.
-      labelMaxLines: 1,
-    );
-    final side = (horizontalPadding - _materialFilledInputGap) / 2;
-    final padding = base.contentPadding! as EdgeInsets;
-    return base.copyWith(contentPadding: padding.copyWith(left: side, right: side));
-  }
-
-  /// The width [chars] characters of a main field's monospace value paint at,
-  /// plus the caret's reserved strip — everything a field needs EXCEPT its own
-  /// horizontal padding, which the caller adds because the row can take that
-  /// padding away again.
-  ///
-  /// Every width this row states in characters goes through here, so they all
-  /// track OS/accessibility text scaling together — a 6-character minimum
-  /// measured at one scale and hardcoded would be five characters at the next.
-  double _valueWidthForChars(BuildContext context, int chars) =>
-      textWidth(context, 'W' * chars, _primaryFieldStyle(context, fontWeight: FontWeight.w500)) +
-      _caretAllowance;
-
   /// Whether the last layout couldn't give every main field its declared
-  /// minimum. Read by the focus listeners: the focused field renders at full
-  /// width, which only happens if a focus change rebuilds — and off a squeezed
-  /// row it would be a rebuild that changes nothing.
+  /// minimum ([resolveMainFieldLayout]). Read by the focus listeners: the
+  /// focused field renders at full width, which only happens if a focus
+  /// change rebuilds — and off a squeezed row it would be a rebuild that
+  /// changes nothing.
   bool _mainFieldsSqueezed = false;
 
   /// The geometry the row was last laid out against, so a change in the space
@@ -4573,7 +3656,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// [_mainFieldWidthDuration].
   (double, double)? _lastRowGeometry;
 
-  /// How long the fields take to reach a new width: [_fieldWidthDuration] when
+  /// How long the fields take to reach a new width: [fieldWidthDuration] when
   /// the space available hasn't changed, and **instantly** when it has.
   ///
   /// Animating a resize would be worse, not better. The callsign is `Expanded`
@@ -4593,94 +3676,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final geometry = (rowWidth, buttonWidth);
     final changed = _lastRowGeometry != geometry;
     _lastRowGeometry = geometry;
-    return changed ? Duration.zero : _fieldWidthDuration;
-  }
-
-  /// Resolves how the main logging row fills [maxWidth].
-  ///
-  /// Concessions, in the order the row makes them:
-  ///
-  /// 1. **Everything fits.** Each of [fields] renders at its declared minimum
-  ///    and the callsign takes whatever is left.
-  /// 2. **They don't.** The shortfall is split **evenly** across them — the
-  ///    same number of pixels off each, not the same share of each — down to
-  ///    [_mainFieldMinChars] characters, with whatever a floored field can't
-  ///    give up re-spread over the ones that still have room. The **focused
-  ///    field is left out of the split entirely**: it renders at its full
-  ///    declared minimum and its neighbours carry its share, which is what
-  ///    keeps a squeezed row usable to type in.
-  /// 3. **Not even at their floors.** The gaps between the fields and the
-  ///    padding inside them go next, together and *gradually* — a single
-  ///    fraction of both, falling with the width rather than snapping off at
-  ///    some breakpoint. Note this shrinks the floors too: two characters
-  ///    without padding is narrower than two with.
-  /// 4. **Still not.** The callsign gives up its own [_callFieldMinChars] — it
-  ///    is the last thing left to give, and a callsign field too narrow reads
-  ///    better than a row of overflow stripes.
-  ///
-  /// The callsign is never in [fields]: it is `Expanded` over what they leave,
-  /// and this arithmetic only reserves its minimum before dividing up the rest.
-  _MainFieldLayout _resolveMainFieldLayout(
-    BuildContext context,
-    List<_MainField> fields,
-    double maxWidth,
-    double buttonWidth,
-  ) {
-    // Everything between a field's edge and its value: the theme's own content
-    // padding, which scales with OS text size, plus Material's fixed extra,
-    // which doesn't. Both are the row's to give away.
-    final fullPadding = _mainFieldContentPadding * MediaQuery.textScalerOf(context).scale(1.0) +
-        _materialFilledInputGap;
-    var fullGaps = _logButtonGap;
-    for (final field in fields) {
-      fullGaps += field.gapBefore;
-    }
-
-    // Concession 3, solved rather than iterated: the narrowest this row can be
-    // is linear in how much gap and padding it keeps, so the largest fraction
-    // that still fits is one division. 1 — nothing given up — whenever
-    // squeezing the fields alone is enough, which is almost always.
-    final callValue = _valueWidthForChars(context, _callFieldMinChars);
-    final fieldValue = _valueWidthForChars(context, _mainFieldMinChars);
-    final incompressible = buttonWidth + callValue + fields.length * fieldValue;
-    final compressible = fullGaps + (fields.length + 1) * fullPadding;
-    final scale = compressible <= 0 ? 1.0 : ((maxWidth - incompressible) / compressible).clamp(0.0, 1.0);
-
-    final padding = fullPadding * scale;
-    final widths = [for (final field in fields) field.minWidth];
-    final reserved = buttonWidth + fullGaps * scale + callValue + padding;
-    var deficit = widths.fold(0.0, (sum, w) => sum + w) - (maxWidth - reserved);
-    _mainFieldsSqueezed = deficit > 0;
-    if (deficit <= 0) return (widths: widths, gapScale: scale, fieldPadding: padding);
-
-    final floor = fieldValue + padding;
-    final open = {
-      for (var i = 0; i < fields.length; i++)
-        if (!fields[i].focusNode.hasFocus) i,
-    };
-    // Water-filling: an even share each pass, and anything a field that hit
-    // its floor couldn't absorb goes back into the pot for the next one.
-    // Terminates because every pass either clears the deficit or drops a field
-    // out of `open`. A sub-pixel remainder isn't worth another pass.
-    while (deficit > 0.5 && open.isNotEmpty) {
-      final share = deficit / open.length;
-      deficit = 0;
-      for (final i in open.toList()) {
-        // Never above what the field asked for: at a large enough OS text
-        // scale two characters are wider than the declared minimum, and a
-        // "floor" over the ceiling would quietly widen the field instead.
-        final limit = floor < fields[i].minWidth ? floor : fields[i].minWidth;
-        final shrunk = widths[i] - share;
-        if (shrunk <= limit) {
-          deficit += limit - shrunk;
-          widths[i] = limit;
-          open.remove(i);
-        } else {
-          widths[i] = shrunk;
-        }
-      }
-    }
-    return (widths: widths, gapScale: scale, fieldPadding: padding);
+    return changed ? Duration.zero : fieldWidthDuration;
   }
 
   /// One of the narrow secondary logging fields — Sent, Rcvd, State, Grid —
@@ -4691,8 +3687,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// off iOS spell check; the smart types stop "-" → "–"). Uppercased like
   /// all logging input, and Enter logs.
   ///
-  /// [width] and [padding] are resolved by [_resolveMainFieldLayout], not
-  /// chosen here: [_fixedFieldMinWidth] whenever the row has room, and less
+  /// [width] and [padding] are resolved by [resolveMainFieldLayout], not
+  /// chosen here: [fixedFieldMinWidth] whenever the row has room, and less
   /// when it doesn't.
   Widget _fixedField(
     BuildContext context, {
@@ -4721,7 +3717,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         focusNode: focusNode,
         selectAllOnFocus: false,
         enabled: enabled,
-        style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
+        style: mainFieldStyle(context, fontWeight: FontWeight.w500),
         keyboardType: keyboardType,
         textCapitalization: textCapitalization,
         autocorrect: false,
@@ -4729,7 +3725,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         smartDashesType: SmartDashesType.disabled,
         smartQuotesType: SmartQuotesType.disabled,
         inputFormatters: [_virtualSpace, ?filter, const UpperCaseTextFormatter()],
-        decoration: _primaryFieldDecoration(context, label, hintText: hintText, horizontalPadding: padding),
+        decoration: mainFieldDecoration(context, label, hintText: hintText, horizontalPadding: padding),
         onChanged: onChanged,
         onEditingComplete: () => _finishEditingWithoutBlur(controller),
         onSubmitted: (_) => _log(),
@@ -4767,151 +3763,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// radio control's field moves focus to its pill itself on submit.
   ///
   void _finishEditingWithoutBlur(TextEditingController controller) => controller.clearComposing();
-
-  String _fmtTime(DateTime dt) =>
-      '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-  String _fmtTimeWithSeconds(DateTime dt) =>
-      '${_fmtTime(dt)}:${dt.second.toString().padLeft(2, '0')}';
-  String _fmtDate(DateTime dt) =>
-      '${dt.year.toString().padLeft(4, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.day.toString().padLeft(2, '0')}';
-
-  /// The best-known timestamp for the entry being composed/edited: a manual
-  /// override if one's been set, else the existing QSO's recorded time when
-  /// editing one, else null — meaning "still automatic, tracks live now."
-  int? get _effectiveStartAtMillis => _manualStartAtMillis ?? widget.editingQso?.startAtMillis;
-
-  /// (Re-)populates the time/date fields from [_effectiveStartAtMillis], or
-  /// from the current time if that's null — called whenever the Time
-  /// control is opened, so it never shows a stale snapshot from an earlier
-  /// open.
-  void _seedTimeFields() {
-    final millis = _effectiveStartAtMillis;
-    final dt = millis != null
-        ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
-        : nowUtc();
-    // Display-only refresh: without the _populating guard, these programmatic
-    // sets fire _onTimeOrDateFieldChanged, which would read the seeded value
-    // back as a manual override — freezing auto-timestamping just for opening
-    // the Time chip, and making "Now" re-freeze the clock it just released.
-    final wasPopulating = _populating;
-    _populating = true;
-    _timeController.text = _fmtTime(dt);
-    _dateController.text = _fmtDate(dt);
-    _recordTimeDateText();
-    _populating = wasPopulating;
-  }
-
-  /// The time/date text as of the last notification, so a selection-only one
-  /// can be told apart from a real edit. Kept current even while [_populating]
-  /// — a seeded value that never got recorded here would look like an edit the
-  /// next time the cursor moved.
-  String _lastTimeDateText = '';
-
-  /// Re-baselines [_lastTimeDateText] after a programmatic write. Needed even
-  /// when the write notified (the listener records it anyway) because an
-  /// assignment of the SAME text notifies nothing at all — and a seed that
-  /// happens before the listeners are attached notifies nobody either.
-  void _recordTimeDateText() => _lastTimeDateText = '${_timeController.text} ${_dateController.text}';
-
-  /// Re-baselines the frequency edit detector. Call wherever the field is
-  /// written by something other than the operator, or the next bare cursor
-  /// move is misread as an edit and live follow switches itself off.
-  void _recordFreqText() => _lastFreqText = _freqController.text;
-
-  void _onTimeOrDateFieldChanged() {
-    // A TextEditingController notifies on SELECTION changes too, not just
-    // text. Focusing a field moves the cursor to the end (see the focus
-    // listeners in initState), so without this guard merely EXPANDING the
-    // Time control would read its own seeded value back as a manual override:
-    // auto-timestamping would freeze and the "Now" button would appear,
-    // without the operator typing anything.
-    final text = '${_timeController.text} ${_dateController.text}';
-    final changed = text != _lastTimeDateText;
-    _lastTimeDateText = text;
-    if (_populating || !changed) return;
-    final time = _timeController.text.split(':');
-    final date = _dateController.text.split('-');
-    if (time.length != 2 || date.length != 3) return;
-    final hour = int.tryParse(time[0]);
-    final minute = int.tryParse(time[1]);
-    final year = int.tryParse(date[0]);
-    final month = int.tryParse(date[1]);
-    final day = int.tryParse(date[2]);
-    if (hour == null || minute == null || year == null || month == null || day == null) {
-      return;
-    }
-    setState(() {
-      _manualStartAtMillis = DateTime.utc(year, month, day, hour, minute).millisecondsSinceEpoch;
-    });
-  }
-
-  void _resetTimeToNow() {
-    setState(() {
-      _manualStartAtMillis = null;
-      _seedTimeFields();
-    });
-  }
-
-  String get _timeSummary {
-    final millis = _effectiveStartAtMillis;
-    final dt = millis == null ? nowUtc() : DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true);
-    // Always shows seconds, even when they're not meaningful (a manually
-    // entered/edited time has none — it comes from a plain HH:MM field —
-    // so it's always :00 rather than the pill silently switching formats).
-    return '${_fmtTimeWithSeconds(dt)}z';
-  }
-
-  /// `_mode` as the Mode dropdown and the Radio chip show it, per
-  /// docs/design/cat.md's "Showing it back". What gets LOGGED is `_mode`.
-  String get _displayedMode => displayMode(_mode, freqKHz: _freq, band: _band) ?? _mode;
-
-  /// [_displayedMode] for a pane that WRITES the mode back, except where
-  /// nothing was stated to collapse against — there the collapse cannot be
-  /// undone on the way in, so an untouched save would swap a stored sideband
-  /// for a generic `SSB` the select does not even offer back.
-  String get _modeForEditing =>
-      expectedSideband(freqKHz: _freq, band: _band) == null ? _mode : _displayedMode;
-
-  /// [mode] with a generic `SSB` resolved against where the fields stand — the
-  /// panel's own copy of what `RadioService.setVfo` does, because a pick made
-  /// while editing an existing QSO never reaches the VFO.
-  ///
-  /// Guarded on the CONVENTION, not on the fields: nothing stated is the only
-  /// case with no answer, and [resolveSideband] must answer regardless.
-  String _modeResolvedToSideband(String mode) => expectedSideband(freqKHz: _freq, band: _band) == null
-      ? mode
-      : (resolveSideband(mode, _freq, band: _band) ?? mode);
-
-  /// The Radio chip's summary as plain text, for the `summary` every spec must
-  /// carry. Built from [_radioSummaryParts] so the two cannot disagree.
-  String get _radioSummary => _radioSummaryParts().map((p) => p.text).join();
-
-  /// The same summary as colored runs, so the chip can spell one part of it
-  /// wrong without repainting the whole chip. Null [errorColor] (the
-  /// plain-text caller above) leaves every run uncolored.
-  List<SummaryPart> _radioSummaryParts({Color? errorColor}) {
-    final head = _freq != null ? fmtFreq(_freq!) : (_band ?? 'Band???');
-    // Out of band takes the mode's place rather than sitting beside it: the
-    // pill is the whole warning on a collapsed row, and "not allowed to
-    // transmit here" outranks which mode the log will record. `_mode` itself
-    // is untouched — [outOfBandMode] is never a value it can take.
-    //
-    // [displayMode]'s rule, in the error color — suppressed wherever the chip
-    // itself alerts, whose condition this must MATCH (see its `alert:`): error
-    // text on the errorContainer ground is faint, and on a selected chip's
-    // solid error fill invisible. A frequency in a gap between bands alerts
-    // (no band) and still has an expected sideband, so neither half implies
-    // the other.
-    final unexpected = !_outOfBand && _band != null && isUnexpectedSideband(_mode, freqKHz: _freq, band: _band);
-    return [
-      (text: head, color: null),
-      (text: ' • ', color: null),
-      (
-        text: _outOfBand ? outOfBandMode : (displayMode(_mode, freqKHz: _freq, band: _band) ?? _mode),
-        color: unexpected ? errorColor : null,
-      ),
-    ];
-  }
 
   // ---- Control identity, order and visibility ----
   //
@@ -5043,6 +3894,40 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return order;
   }
 
+  SecondaryControlSpec _timeControlSpec() => SecondaryControlSpec(
+        key: 'time',
+        icon: MdiIcons.clockOutline,
+        summary: _time.summary,
+        // Live clock only while nothing overrides the timestamp (a manually
+        // set time, or editing an existing — necessarily historical — QSO);
+        // the chip re-reads this once per second without rebuilding the
+        // panel (a panel-level ticker calling setState on all of
+        // _LoggingControlsState would cost a full panel rebuild per tick).
+        liveSummary: _time.isLive ? () => _time.summary : null,
+        expandedBuilder: (context) => TimeControlFields(
+          model: _time,
+          timeLabel: widget.timeLabel ?? 'Time (UTC)',
+          dateLabel: widget.dateLabel ?? 'Date',
+          nowLabel: widget.nowLabel ?? 'Now',
+        ),
+      );
+
+  SecondaryControlSpec _spottingControlSpec(ThemeData theme, HaLoColors poloColors) {
+    final state = _spotting.state;
+    return SecondaryControlSpec(
+      key: 'spotting',
+      icon: MdiIcons.handWave,
+      summary: state.summary,
+      expandedBuilder: (context) => SpottingControlFields(
+        model: _spotting,
+        state: state,
+        theme: theme,
+        colors: poloColors,
+        commentHint: widget.spotCommentHint ?? 'Comment',
+      ),
+    );
+  }
+
   List<SecondaryControlSpec> _buildSecondaryControls(
     ThemeData theme,
     HaLoColors poloColors, {
@@ -5103,21 +3988,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final kind = editingQso.eventKind;
     final event = editingQso.event;
     final label = kind?.toUpperCase() ?? 'EVENT';
-    final textStyle = _primaryFieldStyle(context, fontWeight: FontWeight.w500)
+    final textStyle = mainFieldStyle(context, fontWeight: FontWeight.w500)
         .copyWith(color: theme.colorScheme.onTertiaryContainer);
 
     Widget trailing;
     if (kind == 'note' || kind == 'todo') {
-      final decoration = _primaryFieldDecoration(
+      final decoration = mainFieldDecoration(
         context,
         kind == 'todo' ? (widget.todoFieldLabel ?? 'Todo') : (widget.noteFieldLabel ?? 'Note'),
-        horizontalPadding: _materialFilledInputGap,
+        horizontalPadding: materialFilledInputGap,
       );
       trailing = TextField(
         controller: _eventTextController,
         focusNode: _eventTextFocus,
         enabled: !fieldsLocked,
-        style: _primaryFieldStyle(context, fontWeight: FontWeight.w400),
+        style: mainFieldStyle(context, fontWeight: FontWeight.w400),
         // The done checkbox rides in the field's own prefixIcon slot rather
         // than sitting beside it in the row: a Checkbox can't answer the
         // dry-baseline query `IntrinsicHeight`/`CrossAxisAlignment.baseline`
@@ -5177,7 +4062,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         enabled: false,
         maxLines: 1,
         style: style,
-        decoration: _primaryFieldDecoration(context, '', horizontalPadding: _materialFilledInputGap).copyWith(
+        decoration: mainFieldDecoration(context, '', horizontalPadding: materialFilledInputGap).copyWith(
           filled: false,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
@@ -5206,669 +4091,48 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         ),
       );
 
-  SecondaryControlSpec _timeControlSpec() => SecondaryControlSpec(
-        key: 'time',
-        icon: MdiIcons.clockOutline,
-        summary: _timeSummary,
-        // Live clock only while nothing overrides the timestamp (a manually
-        // set time, or editing an existing — necessarily historical — QSO);
-        // the chip re-reads this once per second without rebuilding the
-        // panel (a panel-level ticker calling setState on all of
-        // _LoggingControlsState would cost a full panel rebuild per tick).
-        liveSummary: _effectiveStartAtMillis == null ? () => _timeSummary : null,
-        expandedBuilder: (context) => Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              // Same width as the date field below — wide enough to fit a
-              // full "2026-07-11", even though the time value itself
-              // ("16:54") is shorter.
-              width: 120,
-              child: TextField(
-                controller: _timeController,
-                focusNode: _timeFocus,
-                selectAllOnFocus: false,
-                style: haloMonoStyle(
-                  context,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: poloFieldDecoration(
-                  context,
-                  widget.timeLabel ?? 'Time (UTC)',
-                  labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9:]')),
-                ],
-              ),
-            ),
-            const SizedBox(width: Space.md),
-            SizedBox(
-              width: 120,
-              child: TextField(
-                controller: _dateController,
-                focusNode: _dateFocus,
-                style: haloMonoStyle(
-                  context,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
-                decoration: poloFieldDecoration(
-                  context,
-                  widget.dateLabel ?? 'Date',
-                  labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-                ),
-                inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[0-9-]')),
-                ],
-              ),
-            ),
-            // Only offer to reset back to automatic timestamping while
-            // composing a new QSO with a manual override in effect — there's
-            // no "automatic" time to reset to when editing an existing,
-            // necessarily historical, entry.
-            if (widget.editingQso == null && _manualStartAtMillis != null) ...[
-              const SizedBox(width: Space.md),
-              TextButton(onPressed: _resetTimeToNow, child: Text(widget.nowLabel ?? 'Now')),
-            ],
-          ],
-        ),
-      );
-
-  /// The Band dropdown's options: the enabled list ([LoggingControls.enabledBands]),
-  /// the common tier when that's empty, the full catalog when null — with
-  /// the current value appended when it's not in the list (see the field's
-  /// doc for why each fallback exists).
-  List<String> _bandDropdownOptions() {
-    final enabled = widget.enabledBands;
-    final options = enabled == null
-        ? [for (final b in bands) b.name]
-        : enabled.isEmpty
-            ? popularBands
-            : enabled;
-    final band = _band;
-    return [...options, if (band != null && !options.contains(band)) band];
-  }
-
-  List<String> _modeDropdownOptions() {
-    final enabled = widget.enabledModes;
-    final options = enabled == null
-        ? modes
-        : enabled.isEmpty
-            ? mainModes
-            : enabled;
-    return [...options, if (!options.contains(_displayedMode)) _displayedMode];
-  }
-
-  /// Menu entries for the active [filter]: a case-insensitive contains
-  /// match. An empty filter (nothing typed, or cleared on focus) and a
-  /// filter matching nothing both mean "no filter" — the latter so a typo
-  /// shows the full menu rather than an empty one. The filter only ever
-  /// holds genuinely typed text (see [_onDropdownTextChanged]), so typing a
-  /// complete short name like "2m" narrows to it rather than showing all.
-  List<String> _filteredOptions(List<String> options, String filter) {
-    final typed = filter.trim();
-    if (typed.isEmpty) return options;
-    final q = typed.toLowerCase();
-    final matches = [for (final o in options) if (o.toLowerCase().contains(q)) o];
-    return matches.isEmpty ? options : matches;
-  }
-
-  /// An exact (case-insensitive) match wins over the first contains-match,
-  /// so e.g. "2m" can never resolve to another band that merely contains
-  /// it as a substring.
-  String? _firstMatch(List<String> options, String text) {
-    final q = text.toLowerCase();
-    for (final o in options) {
-      if (o.toLowerCase() == q) return o;
-    }
-    for (final o in options) {
-      if (o.toLowerCase().contains(q)) return o;
-    }
-    return null;
-  }
-
-  // The menu-entry lists are memoized on the joined option values and reused
-  // while unchanged: DropdownMenu compares entries by LIST IDENTITY in
-  // didUpdateWidget and resets its highlight state on any change, so passing
-  // a freshly built list on every rebuild (this widget rebuilds each second
-  // for the clock alone) would break walking the open menu with the arrow
-  // keys. Keyed on the values rather than deep-compared, so re-deriving the
-  // entries costs one join, not an element-wise scan.
-  String? _bandMenuKey;
-  String? _modeMenuKey;
-  List<DropdownMenuEntry<String>> _bandMenuEntries = const [];
-  List<DropdownMenuEntry<String>> _modeMenuEntries = const [];
-
-  /// Returns [cache] unchanged when [values] matches [cacheKey], else
-  /// rebuilds the entries and updates [cacheKey] via [setKey]. `\x00`
-  /// joins the values — a separator that can't appear in a band/mode name,
-  /// so distinct value lists never collide on the same key.
-  List<DropdownMenuEntry<String>> _memoEntries(
-    String? cacheKey,
-    List<DropdownMenuEntry<String>> cache,
-    List<String> values,
-    void Function(String key) setKey,
-  ) {
-    final key = values.join('\x00');
-    if (key == cacheKey) return cache;
-    setKey(key);
-    return [for (final v in values) DropdownMenuEntry(value: v, label: v)];
-  }
-
-  void _onBandDropdownTextChanged() =>
-      _onDropdownTextChanged((f) => _bandFilter = f, _bandDropdownController.text, _band ?? '');
-  /// Both spellings of the selection count as one: a pick writes the option's
-  /// own label, which for a sideband this band runs is not what the field then
-  /// displays — and the displayed spelling alone captured a picked `USB` as
-  /// filter text, narrowing the menu to that entry.
-  void _onModeDropdownTextChanged() {
-    final text = _modeDropdownController.text;
-    _onDropdownTextChanged((f) => _modeFilter = f, text, text == _mode ? _mode : _displayedMode);
-  }
-
-  /// Captures genuinely typed text as the menu [filter] and rebuilds so the
-  /// menu re-filters. Two kinds of controller write must NOT become a
-  /// filter: arrow navigation ([_navigatingDropdown]), and the full-label
-  /// writes a pick / external selection change / commit push through the
-  /// controller — those equal the current [selection], and treating them as
-  /// a filter would narrow the menu down to just the selected entry (and,
-  /// for the arrow-step's rebuild-time [DropdownMenu.initialSelection] sync,
-  /// strand the stepping on a single entry). The rebuild is deferred when
-  /// the change lands during build — DropdownMenu writes to the controller
-  /// from its own initState/didUpdateWidget, where a synchronous setState
-  /// would throw.
-  void _onDropdownTextChanged(ValueChanged<String> setFilter, String text, String selection) {
-    if (!mounted) return;
-    if (!_navigatingDropdown && text != selection) setFilter(text);
-    if (SchedulerBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() {});
-      });
-    } else {
-      setState(() {});
-    }
-  }
-
-  /// Applies typed-but-not-picked Band text: the first matching option
-  /// becomes the selection, exactly as if picked from the menu; no match
-  /// reverts the text to the current selection. Runs on Enter (before the
-  /// root CallbackShortcuts logs the QSO, so the QSO gets the new band) and
-  /// when focus leaves the dropdown. The `mounted` guard matters because
-  /// this is invoked from a `scheduleMicrotask` in the blur handler, which
-  /// can outlive the widget (e.g. the operation view closing while a
-  /// dropdown holds focus) — `setState` on a defunct State would throw.
-  void _commitBandDropdownText() {
-    if (!mounted) return;
-    final text = _bandDropdownController.text.trim();
-    if (text.isNotEmpty && text != (_band ?? '')) {
-      final match = _firstMatch(_bandDropdownOptions(), text);
-      if (match != null && match != _band) _applyBandPick(match);
-    }
-    _bandFilter = '';
-    _bandDropdownController.text = _band ?? '';
-  }
-
-  void _commitModeDropdownText() {
-    if (!mounted) return;
-    final text = _modeDropdownController.text.trim();
-    if (text.isNotEmpty && text != _displayedMode) {
-      final match = _firstMatch(_modeDropdownOptions(), text);
-      if (match != null && match != _displayedMode) _setMode(match);
-    }
-    _modeFilter = '';
-    _modeDropdownController.text = _displayedMode;
-  }
-
-  /// A dropdown field's focus node, wired to [commit] typed text on Enter
-  /// (letting the event continue toward the root Enter-logs-the-QSO
-  /// shortcut, so a logged QSO gets the just-committed value) and on focus
-  /// leaving the field — which also closes [menu], so the overlay doesn't
-  /// linger after a Tab or a click elsewhere. The focus-loss commit is
-  /// deferred a microtask: clicking a menu entry can move focus out before
-  /// onSelected fires, and the pick must win over the typed text. Gaining
-  /// focus [clearFilter]s, so each fresh interaction starts unfiltered.
-  ///
-  /// Arrow keys with the menu CLOSED [step] the actual selection directly;
-  /// with the menu open they're left to DropdownMenu's own shortcuts, which
-  /// walk the highlight and write each entry into the field. Either way the
-  /// stepping stays within the current filter — [_navigatingDropdown]
-  /// guards the resulting text write from resetting it.
-  FocusNode _dropdownCommitFocusNode({
-    required VoidCallback commit,
-    required VoidCallback clearFilter,
-    required MenuController menu,
-    required void Function(int delta) step,
-  }) {
-    final node = FocusNode();
-    node.addListener(() {
-      if (node.hasFocus) {
-        clearFilter();
-      } else {
-        if (menu.isOpen) menu.close();
-        scheduleMicrotask(commit);
-      }
-    });
-    node.onKeyEvent = (n, event) {
-      if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
-      final key = event.logicalKey;
-      if (key == LogicalKeyboardKey.enter || key == LogicalKeyboardKey.numpadEnter) {
-        commit();
-        return KeyEventResult.ignored;
-      }
-      if (key == LogicalKeyboardKey.arrowDown || key == LogicalKeyboardKey.arrowUp) {
-        // The upcoming display-text write — ours below, or DropdownMenu's
-        // own when the menu is open — must not be read back as a new
-        // filter. Cleared next microtask, once this event is fully handled.
-        _navigatingDropdown = true;
-        scheduleMicrotask(() => _navigatingDropdown = false);
-        if (!menu.isOpen) {
-          step(key == LogicalKeyboardKey.arrowDown ? 1 : -1);
-          return KeyEventResult.handled;
-        }
-      }
-      return KeyEventResult.ignored;
-    };
-    return node;
-  }
-
-  /// The Band dropdown's onSelected effect, shared with the typed-text
-  /// commit and the arrow-key step: picking a band directly is mutually
-  /// exclusive with a manual frequency, since `_band` prefers the
-  /// freq-derived value whenever `_freq` is set (matches the
-  /// `setVfo{band: ...}` command action's convention — see
-  /// `_dispatchActions`). Only while composing — editing an existing QSO
-  /// applies changes to the QSO, never the VFO.
-  void _applyBandPick(String value) {
-    // A stored sideband was derived from the band being left, so a MOVE
-    // re-derives it — `setVfo`'s own condition, for its reason: re-picking the
-    // band you are on must not discard a deliberate far sideband. Editing an
-    // existing QSO reaches no VFO to do this for it. Compared against the
-    // VFO's band, not `_band`, which [_commitBandTypedIntoFreqField] has
-    // already blanked by replacing the text that named the old band.
-    //
-    // Computed BEFORE the setState: clearing the frequency field notifies
-    // `_onFreqChanged` synchronously, and its empty-field branch pushes the
-    // VFO stating the mode — pinning the old band's sideband onto the new band
-    // at the rig while the panel holds the new one, until the next wipe
-    // reseeds the panel from the rig.
-    final leavingBand = widget.editingQso == null ? (widget.radioService?.vfoA.band ?? _band) : _band;
-    final resolved = (value != leavingBand && isSidebandMode(_mode))
-        ? (resolveSideband('SSB', null, band: value) ?? _mode)
-        : _mode;
-    setState(() {
-      _mode = resolved;
-      _manualBand = value;
-      _freqController.clear();
-    });
-    if (widget.editingQso == null) widget.radioService?.setVfo('vfoA', band: value);
-  }
-
-  /// HALO-158: the frequency field also takes a band — "20", "20m", "70cm".
-  /// Resolved when the operator is done with the field (blur, which Space and
-  /// Enter both reach) rather than per keystroke, so a frequency typed digit
-  /// by digit never flickers through a band on its way: "20" en route to
-  /// "20450" is a prefix, not a request for 20m.
-  ///
-  /// A frequency wins whenever the text names one, so this can only claim
-  /// numbers no band covers — see [parseBandInput] for why that leaves the
-  /// bare-number form unambiguous.
-  ///
-  /// Only text the operator changed while the field held focus is eligible.
-  /// The band numbers are all outside the amateur bands, but a general-
-  /// coverage rig reports whatever it is tuned to: parked on WWVB at 60 kHz,
-  /// the field reads "60", and merely opening the Radio control (which focuses
-  /// this field) and leaving it would otherwise swallow the reading and push
-  /// 60m back at the rig. `_freqTouched` can't serve as the gate — it is never
-  /// set while editing an existing QSO, which is a case this must still work
-  /// in.
-  void _commitBandTypedIntoFreqField() {
-    final text = _freqController.text;
-    if (text == _freqTextOnFocus) return;
-    final freq = parseFreq(text);
-    if (freq != null && bandForFrequency(freq) != null) return;
-    final band = parseBandInput(text);
-    // Unconditional even when the band is already selected: the field still
-    // holds the text that named it, and clearing that is half of the point.
-    if (band != null) _applyBandPick(band);
-  }
-
-  void _stepBandSelection(int delta) {
-    final next = _steppedOption(_filteredOptions(_bandDropdownOptions(), _bandFilter), _band, delta);
-    if (next == null) return;
-    _applyBandPick(next);
-    _bandDropdownController.text = next;
-  }
-
-  void _stepModeSelection(int delta) {
-    final options = _filteredOptions(_modeDropdownOptions(), _modeFilter);
-    // Stepped from the STORED mode wherever the list offers it: from the
-    // displayed one the walk strands on the sideband this band runs, because
-    // the field reads `SSB` again and the next step recomputes from its index.
-    final next = _steppedOption(options, options.contains(_mode) ? _mode : _displayedMode, delta);
-    if (next == null) return;
-    _setMode(next);
-    _modeDropdownController.text = _displayedMode;
-  }
-
-  /// The option [delta] steps away from [current], wrapping like the open
-  /// menu's own highlight does. No current value: down starts at the first
-  /// option, up at the last.
-  String? _steppedOption(List<String> options, String? current, int delta) {
-    if (options.isEmpty) return null;
-    final i = current == null ? -1 : options.indexOf(current);
-    if (i < 0) return delta > 0 ? options.first : options.last;
-    return options[(i + delta) % options.length];
-  }
-
-  SecondaryControlSpec _radioControlSpec(ThemeData theme) => SecondaryControlSpec(
-        key: 'radio',
-        icon: _radioChipIcon,
-        iconColor: _radioStatusColor(theme, selected: _selectedControlKey == 'radio'),
-        // `_band` is null both when nothing is tuned at all and when the
-        // frequency in the field falls outside every ham band; `_outOfBand`
-        // catches the case a band name can't — a frequency inside a ham band
-        // that the operator's own region or country doesn't allocate to
-        // amateurs (e.g. 7250 kHz in ITU Region 1).
-        alert: _band == null || _outOfBand,
-        summary: _radioSummary,
-        summaryParts: _radioSummaryParts(errorColor: theme.colorScheme.error),
-        expandedBuilder: (context) {
-          // Resolved once for both dropdowns below. `dropdownTextScale` is the
-          // OS accessibility scaler, not the app font scale (UiScale already
-          // handles that one) — the same treatment poloFieldDecoration gives
-          // its own padding, so the two stay the same height under OS text
-          // scaling as well as under density.
-          final dropdownMetrics = LayoutDensity.metricsOf(context);
-          final dropdownTextScale = MediaQuery.textScalerOf(context).scale(1.0);
-          final band = _band;
-          _bandMenuEntries = _memoEntries(_bandMenuKey, _bandMenuEntries,
-              _filteredOptions(_bandDropdownOptions(), _bandFilter), (k) => _bandMenuKey = k);
-          _modeMenuEntries = _memoEntries(_modeMenuKey, _modeMenuEntries,
-              _filteredOptions(_modeDropdownOptions(), _modeFilter), (k) => _modeMenuKey = k);
-          // DropdownMenu treats an explicit focusNode's canRequestFocus as
-          // overriding its per-platform requestFocusOnTap default, so
-          // restore that default here: type-to-filter is a keyboard
-          // (desktop) affordance; on touch platforms tapping stays a plain
-          // pick, without popping the on-screen keyboard.
-          final typeable = switch (Theme.of(context).platform) {
-            TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.fuchsia => false,
-            _ => true,
-          };
-          _bandDropdownFocus.canRequestFocus = typeable;
-          _modeDropdownFocus.canRequestFocus = typeable;
-          return Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // DropdownMenu's own trailing arrow is a plain, unstyled
-              // IconButton (see dropdown_menu.dart) — with no style of its
-              // own it picks up Material 3's default toggle-button
-              // treatment, which paints a filled circle behind the glyph
-              // even when the menu is closed.
-              IconButtonTheme(
-                data: _dropdownArrowTheme,
-                child: DropdownMenu<String>(
-                  trailingIcon: dropdownTrailingIcon,
-                  selectedTrailingIcon: dropdownSelectedTrailingIcon,
-                  controller: _bandDropdownController,
-                  focusNode: _bandDropdownFocus,
-                  menuController: _bandMenuController,
-                  initialSelection: band,
-                  label: Text(widget.bandLabel ?? 'Band'),
-                  width: 86,
-                  menuHeight: dropdownMenuMaxHeight(context),
-                  // Pick-only menus. With search on (the default), every
-                  // rebuild whose field text matches an entry re-runs
-                  // scrollToHighlight — and this widget rebuilds every second
-                  // (the Time chip's clock), so an open menu kept snapping
-                  // back to the selected item while the user scrolled.
-                  enableSearch: false,
-                  textStyle: haloMonoStyle(
-                    context,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  inputDecorationTheme: InputDecorationTheme(
-                    isDense: true,
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                    floatingLabelBehavior: FloatingLabelBehavior.always,
-                    floatingLabelStyle: TextStyle(
-                      fontSize: 14,
-                      color: theme.colorScheme.onTertiaryContainer,
-                    ),
-                    // The same density-resolved pair poloFieldDecoration gives
-                    // the sibling Frequency field. A `DropdownMenu` takes an
-                    // inputDecorationTheme rather than an InputDecoration, so it
-                    // cannot share that helper and has to restate the values —
-                    // held together by the "same height as its siblings" test.
-                    // A const here froze both dropdowns at one height while the
-                    // field beside them ran 46 to 65 across the ladder.
-                    contentPadding: EdgeInsets.fromLTRB(
-                      Space.xs,
-                      dropdownMetrics.fieldPaddingTop * dropdownTextScale,
-                      Space.xs,
-                      dropdownMetrics.fieldPaddingBottom * dropdownTextScale,
-                    ),
-                    // Without this the trailing arrow's 48px min tap target
-                    // makes the field taller (56px) than the sibling
-                    // poloFieldDecoration TextFields (53px); the whole field
-                    // is tappable, so the shrunken icon target costs nothing.
-                    suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 24),
-                    // This theme replaces the app's rather than extending it, so
-                    // the focus indicator has to be restated too — otherwise this
-                    // field focuses `primary` while the Frequency field beside it
-                    // focuses white. Underline is already the shape here (no
-                    // `border` is set), so this recolors without reshaping.
-                    focusedBorder: haloFocusedInputBorder(theme.brightness == Brightness.dark),
-                  ),
-                  dropdownMenuEntries: _bandMenuEntries,
-                  onSelected: (value) {
-                    if (value == null) return;
-                    // A pick is a selection, never a filter. DropdownMenu
-                    // writes the picked label into the controller BEFORE this
-                    // fires, while `_band` still holds the old value, so
-                    // `_onDropdownTextChanged`'s `text != selection` test reads
-                    // that write as typed text. Left set, the filter narrows the
-                    // menu to the entry just picked — and, worse, DropdownMenu
-                    // only syncs the field to a changed `initialSelection` when
-                    // that value is among the entries it was given, so the
-                    // field then can't follow a later band-plan or radio change
-                    // and strands a stale value that the next commit pushes
-                    // back over the real one. Assigned outside `setState` on
-                    // the strength of [_applyBandPick] rebuilding
-                    // unconditionally — a guard added there would leave the
-                    // menu narrowed with nothing to repaint it.
-                    _bandFilter = '';
-                    // A discrete dropdown pick, not a keystroke — push to the
-                    // VFO immediately rather than debouncing like frequency
-                    // typing (see _applyBandPick).
-                    _applyBandPick(value);
-                    _callFocus.requestFocus();
-                  },
-                ),
-              ),
-              const SizedBox(width: Space.sm),
-              SizedBox(
-                width: 90,
-                child: TextField(
-                  controller: _freqController,
-                  focusNode: _freqFocus,
-                  selectAllOnFocus: false,
-                  style: haloMonoStyle(
-                    context,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  decoration: poloFieldDecoration(
-                    context,
-                    widget.freqLabel ?? 'Frequency',
-                    labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-                  ),
-                  // iOS: NumbersAndPunctuation (has the decimal separators, the
-                  // symbols, and a space bar for Space-to-advance); other
-                  // platforms keep the decimal pad.
-                  keyboardType: _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true),
-                  // No autocorrect/suggestions/smart punctuation — see Sent.
-                  autocorrect: false,
-                  enableSuggestions: false,
-                  smartDashesType: SmartDashesType.disabled,
-                  smartQuotesType: SmartQuotesType.disabled,
-                  inputFormatters: [
-                    _virtualSpace,
-                    // `m`/`c` are here for the band forms the field also takes
-                    // ("20m", "70cm" — see _commitBandTypedIntoFreqField), not
-                    // for frequencies. A letter left in a frequency makes
-                    // `parseFreq` return null, and the field says nothing about
-                    // it: the value simply doesn't reach the QSO or the VFO,
-                    // the same as any other text this field can't read.
-                    FilteringTextInputFormatter.allow(RegExp(r'[0-9.,mMcC]')),
-                  ],
-                  // Enter closes the control rather than logging (APP-19) —
-                  // the same thing `_onExpandedKeyEvent` does with the raw
-                  // key, for the platforms where the engine turns Enter into
-                  // a text-input action before the framework sees it.
-                  onSubmitted: (_) => _closeExpandedControl('radio'),
-                ),
-              ),
-              const SizedBox(width: Space.sm),
-              // Same reasoning as the Band dropdown's own wrapper above.
-              IconButtonTheme(
-                data: _dropdownArrowTheme,
-                child: DropdownMenu<String>(
-                  trailingIcon: dropdownTrailingIcon,
-                  selectedTrailingIcon: dropdownSelectedTrailingIcon,
-                  controller: _modeDropdownController,
-                  focusNode: _modeDropdownFocus,
-                  menuController: _modeMenuController,
-                  initialSelection: _displayedMode,
-                  label: Text(widget.modeLabel ?? 'Mode'),
-                  width: 86,
-                  menuHeight: dropdownMenuMaxHeight(context),
-                  // See the Band dropdown: search off so rebuilds don't
-                  // re-scroll the open menu to the selection.
-                  enableSearch: false,
-                  textStyle: haloMonoStyle(
-                    context,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                  inputDecorationTheme: InputDecorationTheme(
-                    isDense: true,
-                    filled: true,
-                    fillColor: theme.colorScheme.surface,
-                    floatingLabelBehavior: FloatingLabelBehavior.always,
-                    floatingLabelStyle: TextStyle(
-                      fontSize: 14,
-                      color: theme.colorScheme.onTertiaryContainer,
-                    ),
-                    // The same density-resolved pair poloFieldDecoration gives
-                    // the sibling Frequency field. A `DropdownMenu` takes an
-                    // inputDecorationTheme rather than an InputDecoration, so it
-                    // cannot share that helper and has to restate the values —
-                    // held together by the "same height as its siblings" test.
-                    // A const here froze both dropdowns at one height while the
-                    // field beside them ran 46 to 65 across the ladder.
-                    contentPadding: EdgeInsets.fromLTRB(
-                      Space.xs,
-                      dropdownMetrics.fieldPaddingTop * dropdownTextScale,
-                      Space.xs,
-                      dropdownMetrics.fieldPaddingBottom * dropdownTextScale,
-                    ),
-                    // Same height trim, and same restated focus indicator, as the
-                    // Band dropdown above.
-                    suffixIconConstraints: const BoxConstraints(maxHeight: 38, maxWidth: 24),
-                    focusedBorder: haloFocusedInputBorder(theme.brightness == Brightness.dark),
-                  ),
-                  dropdownMenuEntries: _modeMenuEntries,
-                  onSelected: (value) {
-                    if (value == null) return;
-                    // Same clear, same reason, and the same dependency on
-                    // [_setMode] rebuilding unconditionally, as the Band
-                    // dropdown above.
-                    _modeFilter = '';
-                    _setMode(value);
-                    _callFocus.requestFocus();
-                  },
-                ),
-              ),
-              if (widget.onOpenStationConfig != null) ...[
-                const SizedBox(width: Space.sm),
-                Semantics(
-                  identifier: 'action.stationConfig',
-                  label: widget.stationConfigLabel ?? 'Station Configuration',
-                  button: true,
-                  enabled: widget.editingQso == null,
-                  child: InkWell(
-                    key: const ValueKey('stationConfigButton'),
-                    // Not one of Radio's fields (docs/design/logging-fields.md
-                    // names exactly Band, Frequency, Mode) — the ancestor
-                    // Focus that intercepts Tab for this control only knows
-                    // about those three, so a mouse click's default focus
-                    // grab here would make Tab compute currentIndex == -1
-                    // and jump backward to Band instead of exhausting the
-                    // control and crossing to the next pill.
-                    canRequestFocus: false,
-                    onTap: widget.editingQso != null ? null : widget.onOpenStationConfig,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      // Left-aligned so the icon and the (usually wider)
-                      // name both start flush against the Mode dropdown
-                      // beside them.
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ExcludeSemantics(
-                          child: Icon(
-                            MdiIcons.cat,
-                            size: _stationConfigIconSize,
-                            color: _stationConfigIconColor(theme),
-                          ),
-                        ),
-                        if (widget.radioName != null)
-                          ExcludeSemantics(
-                            child: ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: _stationConfigIconSize * 3),
-                              child: Text(
-                                widget.radioName!,
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  color: theme.colorScheme.onTertiary.withValues(
-                                    alpha: widget.editingQso != null ? 0.38 : 1,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          );
-        },
-      );
-
   /// The glyph both the Radio chip and its settings-dialog entry use — a
   /// transceiver should look like one thing throughout this row.
   IconData get _radioChipIcon => widget.hasConfiguredRadio ? MdiIcons.cat : MdiIcons.radio;
 
-  /// Red (configured but not connected) or green (connected) — the same
-  /// red/green convention [CallInfoSummary]'s notice pills use. Null when there's no radio to
-  /// report on, so a caller can fall back to the theme default.
-  ///
-  /// [selected] is the pill's own — the SAME `iconColor` renders on two
-  /// different fills: `colorScheme.tertiary` when the Radio control is
-  /// selected/expanded (also the expanded button's own background), and the
-  /// lighter `HaLoColors.tertiaryLight` when it's a plain unselected chip.
-  /// Which of those two is the DARKER one flips between light and dark mode
-  /// (light mode: tertiary is a dark amber, tertiaryLight a light tan; dark
-  /// mode: tertiary is a light-ish amber, tertiaryLight a near-black brown)
-  /// — so which color pair reads well flips with `selected`, not just with
-  /// the theme.
+  SecondaryControlSpec _radioControlSpec(ThemeData theme) => SecondaryControlSpec(
+        key: 'radio',
+        icon: _radioChipIcon,
+        iconColor: radioStatusColor(
+          theme,
+          hasConfiguredRadio: widget.hasConfiguredRadio,
+          connected: widget.radioConnected,
+          selected: _selectedControlKey == 'radio',
+        ),
+        // `band` is null both when nothing is tuned at all and when the
+        // frequency in the field falls outside every ham band; `outOfBand`
+        // catches the case a band name can't — a frequency inside a ham band
+        // that the operator's own region or country doesn't allocate to
+        // amateurs (e.g. 7250 kHz in ITU Region 1).
+        alert: _radio.band == null || _radio.outOfBand,
+        summary: _radio.summary,
+        summaryParts: _radio.summaryParts(errorColor: theme.colorScheme.error),
+        expandedBuilder: (context) => RadioControlFields(
+          model: _radio,
+          theme: theme,
+          hasConfiguredRadio: widget.hasConfiguredRadio,
+          radioConnected: widget.radioConnected,
+          bandLabel: widget.bandLabel ?? 'Band',
+          freqLabel: widget.freqLabel ?? 'Frequency',
+          modeLabel: widget.modeLabel ?? 'Mode',
+          stationConfigLabel: widget.stationConfigLabel ?? 'Station Configuration',
+          radioName: widget.radioName,
+          onOpenStationConfig: widget.onOpenStationConfig,
+          freqInputFormatters: [_virtualSpace],
+          // iOS: NumbersAndPunctuation (has the decimal separators, the
+          // symbols, and a space bar for Space-to-advance); other platforms
+          // keep the decimal pad.
+          freqKeyboardType: _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true),
+          onFreqSubmitted: () => _closeExpandedControl('radio'),
+          onPicked: _callFocus.requestFocus,
+        ),
+      );
+
   /// The watts in the Power field, or null when it is empty (or holds
   /// nothing parseable — a lone "." mid-typing).
   num? get _powerWatts => num.tryParse(_powerController.text.trim());
@@ -5938,247 +4202,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           ],
         ),
       );
-
-  Color? _radioStatusColor(ThemeData theme, {required bool selected}) {
-    if (!widget.hasConfiguredRadio) return null;
-    final dark = theme.brightness == Brightness.dark;
-    final connected = widget.radioConnected;
-    if (dark != selected) {
-      // light+selected or dark+unselected: sitting on the darker fill —
-      // needs a light pastel pair.
-      return connected ? const Color(0xFF81C784) : const Color(0xFFFF8A80);
-    }
-    if (dark) {
-      // dark+selected: sitting on dark mode's `colorScheme.tertiary`
-      // (#D9904C), a LIGHT amber — so this branch needs a dark pair, like
-      // light+unselected below, not the light pastels above. Notably neither
-      // `colorScheme.error` (dark mode's is a pale #F79797: 1.23:1 on that
-      // amber, and it simply vanishes) nor the shared [positiveGreen], which
-      // is tuned for its own dark fills and lands at 1.97:1 here.
-      //
-      // The amber is not the only fill this cell paints on: editing a logged
-      // QSO swaps the panel's accent to `secondary` (#5B9EDE), where the same
-      // pair reads 2.96:1 and 3.00:1 — at the threshold rather than above it.
-      // Retuning `secondary` is what would push it under.
-      //
-      // Both are FULLY SATURATED at the darkness the amber forces, rather
-      // than the muddier tones a burgundy/forest pair would use: 3:1 caps
-      // luminance at 0.083 on this fill, and spending all of that on one
-      // channel is what keeps them reading as red and green rather than as
-      // two dark browns. 3.2:1 both.
-      return connected ? const Color(0xFF005A00) : const Color(0xFFA00000);
-    }
-    // light+unselected: tertiaryLight is a fairly bright tan — needs a
-    // properly dark pair to clear 3:1.
-    return connected ? const Color(0xFF1B5E20) : const Color(0xFFB71C1C);
-  }
-
-  /// The Station Configuration button's color: [_radioStatusColor] on the
-  /// expanded panel's fill (the button only ever renders selected), or — a
-  /// radio that isn't configured at all barely registers — a lighter tint of
-  /// that same fill. Dimmed further while editing a logged QSO, when the
-  /// button is disabled: retuning the shack shouldn't read as an action on
-  /// a QSO that's already in the log.
-  Color _stationConfigIconColor(ThemeData theme) {
-    final status =
-        _radioStatusColor(theme, selected: true) ?? Color.lerp(theme.colorScheme.tertiary, Colors.white, 0.4)!;
-    return widget.editingQso != null ? status.withValues(alpha: 0.38) : status;
-  }
-
-  /// UI-level policy, not a per-source value: how recently a QSO must have
-  /// started for the button to offer spotting it at all. This is deliberately
-  /// NOT part of `SpotEligibility` — no spots source today needs a different
-  /// tolerance (POTA is the only `postOtherSpot` implementation; SOTA has no
-  /// posting support yet, see DESIGN notes on ham2k/halo-dist#10), so
-  /// making it hook-reported would be speculative. Revisit if a second
-  /// source ever needs its own window.
-  static const Duration _spotStaleAfter = Duration(minutes: 5);
-
-  /// Resolves the Spotting control's summary/button text and enabled state
-  /// per the issue's exact state machine (ham2k/halo-dist#10): no VFO
-  /// frequency disables self-spotting; editing a QSO switches to spotting
-  /// that QSO's station instead, only while it's recent enough (5min).
-  /// `summary` (the collapsed pill) is always one of the two short, fixed
-  /// labels — "Self-spotting"/"Spotting" — never the longer dynamic
-  /// messages, which are reserved for the button inside the expanded panel.
-  ({String summary, String buttonLabel, bool enabled, bool showComment}) get _spotState {
-    final editingQso = widget.editingQso;
-    if (editingQso != null) {
-      final call = asQsonString(asQsonMap(editingQso.data['their'])?['call']) ?? '?';
-      final ageMillis =
-          editingQso.startAtMillis == null ? null : nowMillis() - editingQso.startAtMillis!;
-      final tooOld = ageMillis == null || ageMillis > _spotStaleAfter.inMilliseconds;
-      final summary = widget.spottingLabel ?? 'Spotting';
-      if (tooOld) {
-        return (
-          summary: summary,
-          buttonLabel: widget.spotTooLateLabel?.call(call) ?? 'Too late to spot $call',
-          enabled: false,
-          showComment: false,
-        );
-      }
-      final freqLabel = editingQso.freq == null ? '' : fmtFreq(editingQso.freq!);
-      return (
-        summary: summary,
-        buttonLabel: widget.spotOtherLabel?.call(call, freqLabel) ?? 'Spot $call at $freqLabel',
-        enabled: true,
-        showComment: true,
-      );
-    }
-
-    final summary = widget.spottingSelfLabel ?? 'Self-spotting';
-    final vfoFreq = widget.radioService?.vfoA.freq;
-    if (vfoFreq == null) {
-      return (
-        summary: summary,
-        buttonLabel: widget.spotNoFreqLabel ?? 'First set a frequency to spot',
-        enabled: false,
-        showComment: false,
-      );
-    }
-    final freqLabel = fmtFreq(vfoFreq);
-    return (
-      summary: summary,
-      buttonLabel: widget.spotSelfLabel?.call(freqLabel) ?? 'Self-spot at $freqLabel',
-      enabled: true,
-      showComment: true,
-    );
-  }
-
-  /// The operation as a spot sees it: its shared data plus `local`, this
-  /// device's own — where the multi-station identifier that turns `KI2D` into
-  /// `KI2D/OP1` lives. Mirrors app-polo's `operation.local`;
-  /// `ExtensionService.spotCallForSelfSpot` is what reads it.
-  ///
-  /// Only the identifier, not the whole of `localData`: the scoring cache and
-  /// the title fragments live there too, and neither belongs on the wire to
-  /// every spot extension on every spot.
-  Map<String, dynamic> get _spotOperationPayload => {
-        ...widget.operation.data,
-        'local': {'multiIdentifier': widget.operation.localData['multiIdentifier']},
-      };
-
-  Future<void> _sendSpot() async {
-    final sendSpot = widget.sendSpot;
-    if (sendSpot == null || _spotSending) return;
-    final editingQso = widget.editingQso;
-    final vfo = widget.radioService?.vfoA;
-    // Snapshot the sources being spotted now — `_spotSources` can be reset
-    // and repopulated by `didUpdateWidget` (e.g. the user switches to
-    // editing a different QSO) while this send is still in flight, and the
-    // status-coloring below must key off what was actually sent, not
-    // whatever `_spotSources` holds once the await resolves.
-    final sentSources = _spotSources;
-    // Colors from a previous attempt would misread as THIS attempt's
-    // results while the send is in flight — back to neutral gray first.
-    setState(() {
-      _spotSending = true;
-      _spotStatus.clear();
-    });
-    try {
-      final comment = _spotCommentController.text.trim();
-      final results = await sendSpot(
-        sources: sentSources,
-        operation: _spotOperationPayload,
-        qso: editingQso?.data,
-        freq: editingQso == null ? vfo?.freq : null,
-        mode: editingQso == null ? vfo?.mode : null,
-        comment: comment.isEmpty ? null : comment,
-      );
-      if (!mounted) return;
-      setState(() {
-        for (final source in sentSources) {
-          final hookKey = source['hookKey'] as String? ?? '';
-          final result = results[hookKey];
-          _spotStatus[hookKey] = result == null ? null : result['ok'] == true;
-        }
-        _spotCommentController.clear();
-      });
-      _spotStatusClearTimer?.cancel();
-      // Explicit 3-minute color-clear (no app-polo equivalent to diverge
-      // from — its own SpotterControl only resets colors on the next
-      // attempt).
-      _spotStatusClearTimer = Timer(const Duration(minutes: 3), () {
-        if (mounted) setState(_spotStatus.clear);
-      });
-    } finally {
-      if (mounted) setState(() => _spotSending = false);
-    }
-  }
-
-  SecondaryControlSpec _spottingControlSpec(ThemeData theme, HaLoColors poloColors) {
-    final state = _spotState;
-    return SecondaryControlSpec(
-      key: 'spotting',
-      icon: MdiIcons.handWave,
-      summary: state.summary,
-      expandedBuilder: (context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          if (state.showComment)
-            SizedBox(
-              width: 160,
-              child: TextField(
-                controller: _spotCommentController,
-                focusNode: _spotCommentFocus,
-                // Explicitly mixed-case, like Name/Notes: a spot comment is
-                // free prose for other operators, not logging data.
-                style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
-                decoration: poloFieldDecoration(
-                  context,
-                  widget.spotCommentHint ?? 'Comment',
-                  labelColor: theme.colorScheme.onTertiaryContainer,
-                ),
-              ),
-            ),
-          const SizedBox(width: Space.sm),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: theme.colorScheme.tertiaryContainer,
-              foregroundColor: theme.colorScheme.onTertiaryContainer,
-              disabledBackgroundColor: theme.colorScheme.tertiaryContainer.withValues(alpha: 0.4),
-            ),
-            onPressed: state.enabled && !_spotSending ? _sendSpot : null,
-            icon: _spotSending
-                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Icon(MdiIcons.handWave),
-            label: Text(state.buttonLabel),
-          ),
-          // Up to 3 source-status icons per column, wrapping into another
-          // column to the right once a column fills up.
-          for (var i = 0; i < _spotSources.length; i += 3)
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                for (final source in _spotSources.skip(i).take(3))
-                  Padding(
-                    padding: const EdgeInsets.only(left: Space.xs, top: Space.xxs, bottom: Space.xxs),
-                    child: Icon(
-                      resolveIconName(source['icon'] as String?, fallback: MdiIcons.radioTower),
-                      size: 16,
-                      color: switch (_spotStatus[source['hookKey'] as String? ?? '']) {
-                        true => poloColors.important,
-                        false => theme.colorScheme.error,
-                        null => theme.colorScheme.onTertiaryContainer,
-                      },
-                      shadows: glyphGlow(theme),
-                    ),
-                  ),
-              ],
-            ),
-        ],
-      ),
-    );
-  }
-
-  /// Whether the lookup should also run the `recentContextLookup` sources —
-  /// true only while composing a new contact, which is the one case where
-  /// "what is this station doing right now" is a question about the QSO
-  /// being made. Editing a saved record is a question about the past: what
-  /// a spot says now has no bearing on a contact already logged, and
-  /// [_applyGuessRefs] would refuse the answer anyway.
-  bool get _recentContext => widget.editingQso == null;
 
   /// Applies references a `lookup` hook proposed for this call — the park or
   /// summit `spot-history` mined out of a recent spot — onto the QSO being
@@ -6291,21 +4314,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       return control['key'] as String?;
     }
     return null;
-  }
-
-  /// Re-runs the callsign lookup after the QSO's refs change (e.g. adding a
-  /// hunted POTA park or SOTA summit). The POTA/SOTA `lookup` hooks read the
-  /// QSO's refs to resolve a park/summit grid, but the lookup is otherwise
-  /// keyed and cached by callsign alone — so a ref added after the call would
-  /// never reach the guess. Invalidate the cache entry for the active call and
-  /// re-schedule (ham2k/halo-dist#185).
-  void _relookupForRefsChanged() {
-    if (_populating || widget.lookup == null) return;
-    final activeCall = _callAtCursor;
-    if (!looksLikeCallsign(activeCall)) return;
-    _lookupCache.remove(activeCall);
-    _lookupFor = null;
-    _scheduleLookup();
   }
 
   SecondaryControlSpec _activityControlSpec(Map<String, dynamic> control) {
@@ -6424,7 +4432,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       curve: Curves.easeOut,
       // Wider than an RST, narrower than the callsign: an exchange is usually
       // a zone, a serial or a state abbreviation. Resolved by
-      // [_resolveMainFieldLayout] — [_exchangeFieldMinWidth] when the row has
+      // [resolveMainFieldLayout] — [exchangeFieldMinWidth] when the row has
       // room, and less when it doesn't.
       width: width,
       // Linked so the `options` suggestion pills can hang off this field's own
@@ -6439,7 +4447,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         selectAllOnFocus: false,
         enabled: enabled,
         readOnly: isSerial && input['editable'] == false,
-        style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
+        style: mainFieldStyle(context, fontWeight: FontWeight.w500),
         keyboardType: numeric ? _numbersAndPunctuationOnIOS : null,
         textCapitalization: TextCapitalization.characters,
         autocorrect: false,
@@ -6458,10 +4466,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // An unrecognized value tints the field's own underline rather than
         // going through `errorText` — see [haloInvalidInputBorder] for why the
         // error slot is not an option in this row.
-        decoration: _primaryFieldDecoration(context, label, horizontalPadding: padding).copyWith(
+        decoration: mainFieldDecoration(context, label, horizontalPadding: padding).copyWith(
           hintText: input['placeholder'] as String?,
-          enabledBorder: isInvalid ? _invalidUnderline(context, width: 1) : null,
-          focusedBorder: isInvalid ? _invalidUnderline(context, width: 2) : null,
+          enabledBorder: isInvalid ? haloInvalidInputBorder(context, width: 1) : null,
+          focusedBorder: isInvalid ? haloInvalidInputBorder(context, width: 2) : null,
         ),
         onChanged: (text) {
           setState(() {
@@ -6494,11 +4502,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// first opens the group after the callsign, and the second sits a plain
   /// field gap along from it. Reversing the pair alone would carry the wide
   /// gap into the middle of it.
-  List<_MainField> _rstMainFields(BuildContext context, {required bool enabled}) => [
+  List<MainField> _rstMainFields(BuildContext context, {required bool enabled}) => [
         for (final (index, field) in _rstPair.indexed)
           (
-            gapBefore: index == 0 ? _mainFieldGroupGap : _mainFieldGap,
-            minWidth: _fixedFieldMinWidth,
+            gapBefore: index == 0 ? mainFieldGroupGap : mainFieldGap,
+            minWidth: fixedFieldMinWidth,
             focusNode: field.focus,
             build: (width, padding, duration) => _fixedField(
               context,
@@ -6523,29 +4531,29 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// The main logging fields that follow the callsign, in row order.
   ///
-  /// The single source of truth for both [_resolveMainFieldLayout] and the row
+  /// The single source of truth for both [resolveMainFieldLayout] and the row
   /// that renders them in [build], so a field can never be in the layout
   /// arithmetic and missing from the row (or the reverse) — the same drift
   /// [_primaryFields] exists to prevent for the keyboard, and the same order.
   ///
   /// The callsign is deliberately not here: it is `Expanded` over whatever
   /// these leave it, and it is never squeezed.
-  List<_MainField> _trailingMainFields(BuildContext context, {required bool enabled}) => [
+  List<MainField> _trailingMainFields(BuildContext context, {required bool enabled}) => [
         if (widget.showRSTFields) ..._rstMainFields(context, enabled: enabled),
         // Contest exchanges, inline right after the RSTs — see `_textControls`
         // for why these are primary.
         for (final control in _textControls)
           (
-            gapBefore: _mainFieldGap,
-            minWidth: _exchangeFieldMinWidth,
+            gapBefore: mainFieldGap,
+            minWidth: exchangeFieldMinWidth,
             focusNode: _textFocusFor(control['key'] as String),
             build: (width, padding, duration) => _exchangeField(context, control,
                 enabled: enabled, width: width, padding: padding, duration: duration),
           ),
         if (widget.showStateField)
           (
-            gapBefore: _mainFieldGroupGap,
-            minWidth: _fixedFieldMinWidth,
+            gapBefore: mainFieldGroupGap,
+            minWidth: fixedFieldMinWidth,
             focusNode: _stateFocus,
             build: (width, padding, duration) => _fixedField(
               context,
@@ -6565,14 +4573,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 _stateTouched = true;
                 // Scored on (New State / New Province), so a typed state has
                 // to reach the scorer like a band or mode change does.
-                _scheduleScore();
+                _lookup.scheduleScore();
               },
             ),
           ),
         if (widget.showGridField)
           (
-            gapBefore: _mainFieldGroupGap,
-            minWidth: _fixedFieldMinWidth,
+            gapBefore: mainFieldGroupGap,
+            minWidth: fixedFieldMinWidth,
             focusNode: _gridFocus,
             build: (width, padding, duration) => _fixedField(
               context,
@@ -6636,14 +4644,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // double-space, and the test is the SAME one that decides the field
       // accepts them at all (see the call field's inputFormatters) — not the
       // interpretation's flags. There is a third way into free-text mode:
-      // _commandExpectsParams' second arm, text that already holds a space.
+      // the expects-params rule's second arm, text that already holds a space.
       // A complete command reached that way ("EXP LA") carries neither
       // `expectsParams` nor `mixedCase`, so keying the exit to those flags
       // advanced focus while leaving the trailing space in the value.
       //
       // Ahead of the interpret round-trip below because the answer never
       // depended on it, and leaving a field shouldn't wait on a bridge call.
-      if (_fieldAcceptsSpaces && _atTrailingSpace(_callController)) {
+      if (_command.fieldAcceptsSpaces && _atTrailingSpace(_callController)) {
         _removeTrailingSpace(_callController);
         _advancePrimaryFocus();
         return;
@@ -6661,27 +4669,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // behind the latest keystroke, so typing "RELOAD" and hitting space
         // in one fluent motion could otherwise still see the pre-keystroke
         // (stale, not-yet-a-command) interpretation and silently swallow the
-        // space by advancing focus instead of inserting it. Reuses
-        // _currentInterpretation when the debounce already resolved for this
-        // exact text, so this only adds a round trip when genuinely needed.
+        // space by advancing focus instead of inserting it. Reuses the
+        // answer the debounce already resolved for this exact text, so this
+        // only adds a round trip when genuinely needed.
         if (widget.editingQso == null && widget.interpretCommand != null) {
-          var result = _currentInterpretation;
-          if (result == null) {
-            _commandDescribeDebounce?.cancel();
-            final qsoData = _getCurrentQsoData();
-            result = await widget.interpretCommand!(_commandInput, _operationDataForCommands, qsoData);
-            if (!mounted || _call != call) return; // stale — the call changed while awaiting
-            setState(() {
-              _currentInterpretation = result;
-              _retainInterpretation(result);
-              _commandMessage = (result != null && result['describe'] is String)
-                  ? result['describe'] as String
-                  : (result != null && result['error'] is String)
-                      ? result['error'] as String
-                      : null;
-            });
-            _notifyCommandMessage(_commandMessage);
-          }
+          final (interpretation: result, :stale) = await _command.interpretNow(applyToDisplay: true);
+          if (stale || !mounted) return; // stale — the call changed while awaiting
           // A complete mixedCase command (e.g. "NOTE Hello") also keeps
           // space literal — its free-prose parameter is still being typed.
           if (result != null && (result['expectsParams'] == true || result['mixedCase'] == true)) {
@@ -6694,7 +4687,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       }
 
       _advancePrimaryFocus();
-    } else if (_freqFocus.hasFocus) {
+    } else if (_radio.freqFocus.hasFocus) {
       _callFocus.requestFocus();
     } else if (_primaryFocusOrder.any((node) => node.hasFocus)) {
       // An options field accepts the highlighted suggestion first, then advances
@@ -6711,10 +4704,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // primary field can never end up in one and not the other. (Call and Freq
       // are caught above; neither is reachable here.)
       _advancePrimaryFocus();
-    } else if (_spotCommentFocus.hasFocus) {
+    } else if (_spotting.commentFocus.hasFocus) {
       // Free prose, like NOTE's parameter: Space types a literal space —
       // the panel-wide shortcut would otherwise swallow it.
-      _insertAtCursor(_spotCommentController, ' ');
+      _insertAtCursor(_spotting.commentController, ' ');
     } else if (_notesFocus.hasFocus) {
       // A note is a sentence, so the same applies with more force: without
       // this the panel's Space binding eats every word break and the operator
@@ -6747,7 +4740,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ///
   /// Rebuilt on every call: `showRSTFields`/`showStateField`/`showGridField`
   /// change at runtime, and so does the set of contest controls.
-  List<_PrimaryField> get _primaryFields => [
+  List<PrimaryField> get _primaryFields => [
         (
           key: 'call',
           label: widget.theirCallLabel ?? 'Call',
@@ -7093,7 +5086,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         final params = map['setVfo'] as Map;
         // A command's setVfo is already validated by the extension — push
         // it to radioService immediately rather than debouncing like raw
-        // frequency typing. _populating suppresses _onFreqChanged's own
+        // frequency typing. _populating suppresses the frequency listener's own
         // (debounced) push, which would otherwise also fire from the
         // controller text assignment below.
         _populating = true;
@@ -7102,41 +5095,39 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           final band = params['band'];
           final mode = params['mode'];
           if (freq is num) {
-            _freqController.text = fmtFreqInput(freq.toDouble());
-            _manualBand = null;
+            _radio.setFrequency(freq.toDouble());
           } else if (band is String) {
-            _manualBand = band;
-            _freqController.clear();
+            _radio.setBand(band);
           }
           if (mode is String) {
             // Resolved like every other mode REQUEST. The command is the last
             // path that reached here raw, and while editing an existing QSO
             // `_onRadioVfoChanged` returns early, so nothing downstream would
             // have corrected a generic `SSB` before it was logged.
-            _mode = _modeResolvedToSideband(mode);
+            _radio.mode = _radio.resolveMode(mode);
           } else if (freq is num) {
             // HALO-32: the frequency command (typing "14285 " into the call
             // field) doesn't carry a mode of its own — guess it from the
             // band plan, same as typing directly into the Frequency field.
             // Unlike that field, this fires once per dispatched command with
             // a final, already-complete frequency — no mid-typing prefix to
-            // guard against — so a null guess simply leaves `_mode` alone.
+            // guard against — so a null guess simply leaves `_radio.mode` alone.
             final guess = modeForFrequency(
               freq.toDouble(),
               ituRegion: widget.ourItuRegion,
               countryCode: widget.ourCountryCode,
             );
-            if (guess != null) _applyModeGuess(guess);
+            if (guess != null) _radio.applyModeGuess(guess);
           }
         });
         _populating = false;
         if (params['freq'] is num || params['band'] is String || params['mode'] is String) {
-          _pushVfoToRadioService();
+          _radio.pushVfo();
         }
         // The command changed band/mode/freq under `_populating`, which
         // suppressed the field listeners' own rescore — refresh the call-info
         // notices (New Band / New Mode / dupe) for the new radio state.
-        _scheduleScore();
+        _lookup.scheduleScore();
       } else if (map.containsKey('updateQso')) {
         final params = (map['updateQso'] as Map).cast<String, dynamic>();
         setState(() {
@@ -7192,7 +5183,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         }
         final vfo = widget.radioService?.vfoA;
         await widget.onCommandAction?.call('sendSpots', {
-          'operation': _spotOperationPayload,
+          'operation': _spotting.operationPayload,
           'target': target,
           if (qso != null) 'qso': qso.data,
           'comment': ?comment,
@@ -7267,7 +5258,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
-  /// [callOverride] lets call stacking (_pickStackedCall) supply the one
+  /// [callOverride] lets call stacking (`CallFieldText.pickStackedCall`) supply the one
   /// segment it picked out of the "//"-separated field, instead of the raw
   /// (still-stacked) field text.
   ///
@@ -7275,19 +5266,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// `widget.editingQso` currently is — needed to snapshot it for
   /// [_composingSnapshot] from inside `didUpdateWidget`, where `widget`
   /// already reflects the QSO about to be edited by the time this runs, and
-  /// `base`/`_effectiveStartAtMillis` would otherwise pull from THAT record
+  /// `base`/`_time.effectiveStartAtMillis` would otherwise pull from THAT record
   /// instead of from the still-blank-base draft being stepped away from.
   Map<String, dynamic> _getCurrentQsoData({String? callOverride, bool composing = false}) {
     final base = composing ? const <String, dynamic>{} : (widget.editingQso?.data ?? const <String, dynamic>{});
     final call = callOverride ?? _call;
-    final startAtMillis = composing ? _manualStartAtMillis : _effectiveStartAtMillis;
+    final startAtMillis = composing ? _time.manualStartAtMillis : _time.effectiveStartAtMillis;
     final refs = _refsWithTextValues([
       for (final list in _controlRefs.values) ...list,
       ..._unmatchedRefs,
     ]);
     return {
       ...base,
-      // Unconditional (not `if (refs.isNotEmpty)`/`if (_freq != null)`):
+      // Unconditional (not `if (refs.isNotEmpty)`/`if (_radio.freq != null)`):
       // `base` may already carry a non-empty value for these from the
       // record being edited, and a merge-style `...base` above won't drop
       // a stale one just because the live value is now empty/null — these
@@ -7344,12 +5335,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // app-polo's convention: the merged lookup guess stays NESTED under
         // `guess`/`lookups`, never flattened onto `their`'s own fields —
         // readers fall back to `their.guess.x` when `their.x` isn't set.
-        if (_lookupFor == call && _lookupResult != null) 'guess': _lookupResult!['guess'],
-        if (_lookupFor == call && _lookupResult != null) 'lookups': _lookupResult!['lookups'],
+        if (_lookup.resultFor(call) case final result?) ...{'guess': result['guess'], 'lookups': result['lookups']},
       },
-      'freq': _freq,
-      'band': _band,
-      'mode': _mode,
+      'freq': _radio.freq,
+      'band': _radio.band,
+      'mode': _radio.mode,
       // The field owns the QSO's power whenever power is part of the entry
       // at all ([_powerShown]) — which is what keeps a record's own power
       // from being dropped by a save that only corrected its RST. Written
@@ -7387,7 +5377,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   // override maps.
 
   Future<void> _openMoreEditor() async {
-    final millis = _effectiveStartAtMillis;
+    final millis = _time.effectiveStartAtMillis;
     final dt = millis != null
         ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true)
         : nowUtc();
@@ -7400,8 +5390,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Same displayed-vs-edited distinction for date/time: while composing,
     // the pane shows the live clock, and saving an untouched value must
     // not turn it into a manual override that freezes auto-timestamping.
-    final dateBeforePane = _fmtDate(dt);
-    final timeBeforePane = _fmtTime(dt);
+    final dateBeforePane = TimeControlModel.fmtDate(dt);
+    final timeBeforePane = TimeControlModel.fmtTime(dt);
     // What the contact itself says, override included — never the operation's
     // stand-in, which is only ever a placeholder here.
     final ourBeforePane = {...?asQsonMap(widget.editingQso?.data['our']), ..._ourExtra};
@@ -7425,7 +5415,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         rstPlaceholder: _rstPlaceholder,
         powerShown: _powerShown,
         composing: widget.editingQso == null,
-        currentMode: _modeForEditing,
+        currentMode: _radio.modeForEditing,
       ),
       initialState: {
         'theirCall': _call,
@@ -7438,12 +5428,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         'theirState': stateBeforePane,
         'sent': _sentController.text.trim(),
         'rcvd': _rcvdController.text.trim(),
-        'freq': _freq,
-        'band': _band ?? '',
-        'mode': _modeForEditing,
+        'freq': _radio.freq,
+        'band': _radio.band ?? '',
+        'mode': _radio.modeForEditing,
         'power': _powerWatts,
-        'date': _fmtDate(dt),
-        'time': _fmtTime(dt),
+        'date': TimeControlModel.fmtDate(dt),
+        'time': TimeControlModel.fmtTime(dt),
         'notes': (_currentQsoExtra['notes'] as String?) ?? '',
         'operatorCall': operatorBeforePane,
         if (widget.showPositionField) 'multiIdentifier': positionBeforePane,
@@ -7456,7 +5446,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (result == null || !mounted) return;
 
     // Same as the setVfo command dispatch: a deliberate pane Save, not
-    // raw typing — push immediately rather than via _onFreqChanged's
+    // raw typing — push immediately rather than via the frequency field's
     // debounce, and only while composing (rule: editing an existing QSO
     // applies changes to the QSO, never the VFO).
     _populating = true;
@@ -7488,12 +5478,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
       final freq = result['freq'];
       if (freq is num) {
-        _freqController.text = fmtFreqInput(freq.toDouble());
-        _manualBand = null;
+        _radio.setFrequency(freq.toDouble());
       } else {
-        _freqController.clear();
         final band = (result['band'] as String?)?.trim();
-        _manualBand = (band == null || band.isEmpty) ? null : band;
+        _radio.setBand((band == null || band.isEmpty) ? null : band);
       }
 
       // Resolved against the freq/band the pane just wrote above, like every
@@ -7502,7 +5490,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // against where the contact now is. Lossless because the rule is total
       // — see docs/design/cat.md's "Showing it back".
       final panedMode = result['mode'] as String?;
-      if (panedMode != null) _mode = _modeResolvedToSideband(panedMode);
+      if (panedMode != null) _radio.mode = _radio.resolveMode(panedMode);
 
       // Written even when the pane didn't offer the field: absent means the
       // form dropped it, and `result` then carries a null this must not read
@@ -7513,7 +5501,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       }
 
       final stamped = paneStartAtMillis(result, dateBeforePane, timeBeforePane);
-      if (stamped != null) _manualStartAtMillis = stamped;
+      if (stamped != null) _time.manualStartAtMillis = stamped;
 
       final notes = ((result['notes'] as String?) ?? '').trim();
       if (notes.isEmpty) {
@@ -7543,7 +5531,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         if (position != positionBeforePane) _ourExtra['multiIdentifier'] = position;
       }
 
-      _seedTimeFields();
+      _time.seedFields();
     });
     _populating = false;
     if (widget.editingQso == null) {
@@ -7552,7 +5540,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // the pane just returned back to whatever it was before the pane
       // opened, and then commit THAT.
       _commitPower();
-      _pushVfoToRadioService();
+      _radio.pushVfo();
     }
   }
 
@@ -7651,108 +5639,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   // ---- Lookup enrichment ----
 
-  /// Pushes a command message to the parent, but only when it actually
-  /// changed — see `_lastSentCommandMessage`.
-  void _notifyCommandMessage(String? message) {
-    if (_lastSentCommandMessage == message) return;
-    _lastSentCommandMessage = message;
-    widget.onCommandMessageChanged?.call(message);
-  }
-
-  /// Applies an interpret() result (or an [_onInterpretationUpdate] push) to
-  /// the retained/displayed state — describe preview or error only, never
-  /// `commands`: dispatching those is [_log]'s job alone, gated on the user
-  /// actually pressing Enter, not on a command merely being interpreted.
-  void _applyInterpretationResult(Map<String, dynamic>? result) {
-    setState(() {
-      _currentInterpretation = result;
-      _retainInterpretation(result);
-      if (result != null && result['describe'] is String) {
-        _commandMessage = result['describe'] as String;
-      } else if (result != null && result['error'] is String) {
-        _commandMessage = result['error'] as String;
-      } else {
-        _commandMessage = null;
-      }
-    });
-    _notifyCommandMessage(_commandMessage);
-  }
-
-  /// A command hook pushed a later interpretation for an input it was
-  /// already asked to interpret (issue #189) — see [LoggingControls.
-  /// interpretationUpdates]'s doc. Applied only while `input` still matches
-  /// the live call field; a push for input the user has since typed past is
-  /// silently dropped, same staleness idiom [_onCallChanged]'s own debounce
-  /// callback uses for its awaited result.
-  void _onInterpretationUpdate(Map<String, dynamic> event) {
-    if (!mounted || widget.editingQso != null) return;
-    if (event['input'] != _commandInput) return;
-    final interpretation = (event['interpretation'] as Map?)?.cast<String, dynamic>();
-    _applyInterpretationResult(interpretation);
-  }
-
   /// Alphanumeric length of the call about to be logged — the call-info panel
   /// and its live scoring switch on at ≥3 characters (issue #40).
   int get _callInfoAlnumLength => _callAtCursor.replaceAll(RegExp('[^A-Z0-9]'), '').length;
   bool get _callInfoActive => _callInfoAlnumLength >= 3;
-
-  /// Clears the live scoring notices — on wipe/reset/populate, or when the
-  /// call drops below the call-info threshold.
-  void _clearScoreNotices() {
-    _scoreDebounce?.cancel();
-    if (_scoreFor == null && _scoreAlertKeys.isEmpty && _scoreNoticeKeys.isEmpty) return;
-    _scoreFor = null;
-    _scoreAlertKeys = const [];
-    _scoreNoticeKeys = const [];
-  }
-
-  /// (Re)schedules a debounced live-scoring pass for the call-info notices
-  /// line — call/band/mode all feed New Band / New Mode / New DXCC / Dupe, and
-  /// the worked station's state feeds New State / New Province, so this is
-  /// fired whenever any of them changes (and when an existing QSO is selected
-  /// for editing). Debounced on the same 300ms as the offline lookup, so the
-  /// scoring pills land alongside the offline lookup's data rather than
-  /// lagging it.
-  ///
-  /// A lookup RESOLVING must re-fire it too: the state a US station is scored
-  /// on almost always arrives as `guess.state` from the lookup, which lands
-  /// after this debounce has already run against a QSO that had no guess at
-  /// all. Without that, New State only ever appeared for a call already in
-  /// `_lookupCache`. No-op (and clears) below the call-info threshold or with
-  /// no `scoreQso` wired.
-  void _scheduleScore() {
-    final scoreFn = widget.scoreQso;
-    if (scoreFn == null) return;
-    _scoreDebounce?.cancel();
-    final activeCall = _callAtCursor;
-    // Only score a plausible callsign — the same gate the lookup uses. Without
-    // it, command input ("RELOAD", "NOTE hi") and non-callsign junk would each
-    // fire a whole-log getQsos read in the runtime for nothing.
-    if (!_callInfoActive || !looksLikeCallsign(activeCall)) {
-      setState(_clearScoreNotices);
-      return;
-    }
-    _scoreDebounce = Timer(const Duration(milliseconds: 300), () async {
-      // Scored against the CURRENT segment, matching the entry row's own gate
-      // (`_activeRefTypes`): the pills and the fields have to agree about which
-      // activities are running. The timeline goes along so the log the
-      // candidate is judged against is folded per-segment too — otherwise a
-      // contest that started at a break calls a pre-contest contact a dupe.
-      final segmented = _segmented;
-      final result = await scoreFn(
-        operation: {...segmented.current, 'uuid': widget.operation.uuid},
-        qso: _getCurrentQsoData(callOverride: activeCall),
-        excludeUuid: widget.editingQso?.uuid,
-        segments: segmented.isSegmented ? segmented.payload : null,
-      );
-      if (!mounted || _callAtCursor != activeCall) return; // stale — the active call moved on
-      setState(() {
-        _scoreFor = activeCall;
-        _scoreAlertKeys = ((result?['alerts'] as List?) ?? const []).whereType<String>().toList();
-        _scoreNoticeKeys = ((result?['notices'] as List?) ?? const []).whereType<String>().toList();
-      });
-    });
-  }
 
   void _onCallChanged() {
     if (_populating) return;
@@ -7763,246 +5653,96 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     setState(() {});
     // The first character of a call is what takes a serial number.
     unawaited(_refreshSerialPreviews());
-    _lookupDebounce?.cancel();
-    _commandDescribeDebounce?.cancel();
-
-    // Clear any active execution confirmation message when the user types
-    _executeMessageTimer?.cancel();
-    _currentInterpretation = null;
-    _commandMessage = null;
-    _notifyCommandMessage(null);
+    _lookup.cancelLookup();
+    // Whatever was shown for the previous text is gone, an execution
+    // confirmation included.
+    _command.keystroke();
 
     // Live scoring for the call-info notices line — independent of the lookup
     // and command paths below, so schedule it before their early returns.
-    _scheduleScore();
+    _lookup.scheduleScore();
 
     final call = _call;
     if (call.isEmpty) {
-      if (_lookupFor != null || _retainedInterpretation != null) {
+      if (_lookup.lookupFor != null || _command.hasRetained) {
         setState(() {
-          _lookupFor = null;
-          _lookupResult = null;
-          _refreshedActivityControls = null;
-          _retainedInterpretation = null;
-          _lastExpandedInput = null;
+          _lookup.forget();
+          _command.forgetRetained();
         });
       }
       return;
     }
 
     // Command shortcuts only apply while composing a new QSO — see _log().
-    if (widget.editingQso == null && widget.interpretCommand != null) {
-      final rawInput = _commandInput;
-      final expansionInput = _stackExpansionInput;
-      _commandDescribeDebounce = Timer(const Duration(milliseconds: 150), () async {
-        final qsoData = _getCurrentQsoData();
-        final result = await widget.interpretCommand!(
-          rawInput,
-          _operationDataForCommands,
-          qsoData,
-        );
-        if (!mounted || _call != call) return;
-        _applyInterpretationResult(result);
-        // A key stacked alongside other calls ("KI2D//1AB") is never a
-        // command in its own right, so the whole-field interpretation above
-        // came back null — preview what Enter would expand the segment
-        // under the cursor to (see [_expandStackedNote]). Only the describe
-        // MESSAGE is adopted, never the interpretation itself: `_log`
-        // executes a retained interpretation against the whole field, which
-        // would replace the entire stack instead of the one segment.
-        if (result != null || expansionInput == null) return;
-        final expansion = await widget.interpretCommand!(
-          expansionInput,
-          _operationDataForCommands,
-          qsoData,
-        );
-        if (!mounted || _call != call || _stackExpansionInput != expansionInput) return;
-        if (_expandedCallText(expansion) == null) return;
-        setState(() {
-          _commandMessage = expansion!['describe'] as String?;
-        });
-        _notifyCommandMessage(_commandMessage);
-      });
-    }
+    _command.scheduleDescribe();
 
     _scheduleLookup();
   }
 
-  /// Schedules the debounced callsign lookup for the active call. Split out of
-  /// `_onCallChanged` so it can also be re-run when the QSO's refs change — a
-  /// hunted POTA/SOTA ref feeds the POTA/SOTA `lookup` hooks, changing what the
-  /// lookup resolves. See `_relookupForRefsChanged`.
+  /// Schedules the lookup for the call at the cursor, first taking back the
+  /// references a previous call's guess put on the entry.
+  ///
+  /// A guessed ref belongs to the call it was resolved for, and is taken
+  /// back once the field no longer holds that call — including mid-edit,
+  /// with what's left not yet a valid callsign. Waiting for a replacement
+  /// lookup would leave it standing through the intervening keystrokes, and
+  /// a lookup that resolves nothing would never clear it at all. Correcting
+  /// KI2D to KI2E must not log KI2E at KI2D's park.
+  ///
+  /// Keyed on the whole field, NOT on the call at the cursor: adding a
+  /// second call to a stack moves the cursor off the first without
+  /// correcting it, and a reference one stacked call earned is kept for the
+  /// whole stack (refs are shared across the stack anyway — two operators
+  /// at one park is exactly the case that produces a stack in the first
+  /// place).
   void _scheduleLookup() {
-    // Above every early return below, and on its own guard: a call that
-    // returns to itself inside the debounce window — a typo and the
-    // backspace correcting it — leaves `_lookupFor` still naming that call,
-    // so the lookup rightly early-returns, and a pill hung off that return
-    // would never be fetched again. Same reasoning as `_onCallChanged`
-    // hoisting `_scheduleScore()` above its own.
-    _refreshWorkedBefore();
-    _lookupDebounce?.cancel();
-    if (widget.lookup == null) return;
-    // Preview lookup keys off whichever call is actually about to be logged
-    // (issue #7's call stacking) or the segment the cursor is on within a
-    // comma-separated list — the whole joined field text is never itself a
-    // callsign once there's more than one call or stacked segment.
-    final activeCall = _callAtCursor;
-    // A guessed ref belongs to the call it was resolved for, and is taken
-    // back once the field no longer holds that call — including mid-edit,
-    // with what's left not yet a valid callsign. Waiting for a replacement
-    // lookup would leave it standing through the intervening keystrokes, and
-    // a lookup that resolves nothing would never clear it at all. Correcting
-    // KI2D to KI2E must not log KI2E at KI2D's park.
-    //
-    // Keyed on the whole field, NOT on the call at the cursor: adding a
-    // second call to a stack moves the cursor off the first without
-    // correcting it, and a reference one stacked call earned is kept for the
-    // whole stack (refs are shared across the stack anyway — two operators
-    // at one park is exactly the case that produces a stack in the first
-    // place).
     if (_guessedRefsForCall != null && !_callsInField.contains(_guessedRefsForCall) && _clearGuessedRefs()) {
       setState(() {});
     }
-    if (_lookupFor == activeCall) return;
-    if (!looksLikeCallsign(activeCall)) {
-      setState(() {
-        _lookupFor = null;
-        _lookupResult = null;
-        _workedBeforeFor = null;
-        _workedBefore = null;
-        _refreshedActivityControls = null;
-      });
-      return;
-    }
-    // Already looked up this call this session — show it instantly, no refetch.
-    if (_lookupCache.containsKey(activeCall)) {
-      final cached = _lookupCache[activeCall];
-      setState(() {
-        _lookupFor = activeCall;
-        _lookupResult = cached;
-      });
-      _scheduleScore();
-      // Refs are re-applied off the cached result too, not just off a fresh
-      // one. Typing back to a call whose guessed refs were just cleared —
-      // KI2D, corrected to KI2E, corrected back — reaches the lookup only
-      // through this cache hit, and would otherwise show the guess in the
-      // info panel while the park it named is missing from the QSO. Runs
-      // its own setState, so it stays outside the one above.
-      _applyGuessRefs(cached, activeCall);
-      unawaited(_refreshActivityControlsFor(activeCall));
-      return;
-    }
-
-    _lookupDebounce = Timer(const Duration(milliseconds: 300), () async {
-      // Offline pass first: fast, local-data-only, so the user sees
-      // whatever's cheaply available (e.g. the callsign-annotation
-      // pre-step) almost instantly. Then an online pass fills in
-      // network-sourced data (QRZ/HamDB/etc) as soon as it resolves — no
-      // extra artificial delay beyond its own network latency.
-      final offlineResult = await widget.lookup!(
-        activeCall,
-        qso: _getCurrentQsoData(callOverride: activeCall),
-        operation: widget.operation.data,
-        online: false,
-        recentContext: _recentContext,
-      );
-      if (!mounted || _callAtCursor != activeCall) return; // stale — the active call changed
-      _lookupCache[activeCall] = offlineResult;
-      setState(() {
-        _lookupFor = activeCall;
-        _lookupResult = offlineResult;
-      });
-      _scheduleScore();
-      _logLookup('offline', activeCall, offlineResult);
-      // Spot-derived refs land here, off the OFFLINE pass, deliberately
-      // without a `_relookupForRefsChanged`: the online pass below rebuilds
-      // its `qso` argument from scratch, so the POTA/SOTA hooks see the
-      // just-added park/summit on that pass and resolve its grid — a
-      // re-lookup here would instead race the online pass already in flight.
-      _applyGuessRefs(offlineResult, activeCall);
-      // QSO-scoped activity controls (e.g. POTA's DXCC-derived placeholder)
-      // are refreshed off the offline pass ONLY, deliberately not fired
-      // again after the online pass below. Two reasons: (1) the offline
-      // pass's callsign-annotation pre-step already resolves the DXCC
-      // entity a placeholder/prefix depends on — the online pass adds
-      // QRZ/HamDB detail that doesn't change that entity, so a second
-      // refresh would almost always re-fetch the same descriptors; (2) two
-      // independent unawaited refreshes for the same call, with no ordering
-      // guarantee between them, could race — a slower offline-triggered
-      // refresh resolving after a faster online-triggered one would
-      // overwrite the fresher result with a stale one. A single refresh
-      // point sidesteps that entirely.
-      unawaited(_refreshActivityControlsFor(activeCall));
-
-      final onlineResult = await widget.lookup!(
-        activeCall,
-        qso: _getCurrentQsoData(callOverride: activeCall),
-        operation: widget.operation.data,
-        online: true,
-        recentContext: _recentContext,
-      );
-      if (!mounted || _callAtCursor != activeCall) return; // stale — the active call changed
-      // A failed/timed-out online pass (host down, network error) must not
-      // erase an already-shown, still-valid offline preview — keep it.
-      if (onlineResult == null) return;
-      _lookupCache[activeCall] = onlineResult;
-      setState(() {
-        _lookupFor = activeCall;
-        _lookupResult = onlineResult;
-      });
-      _scheduleScore();
-      _logLookup('online', activeCall, onlineResult);
-      // Anything the online pass proposes that the offline one didn't (a spot
-      // fetched in between) has had no chance to reach the activity hooks, so
-      // this one does re-look-up. It cannot cycle: the refs it just applied
-      // are filtered out as already-claimed on the next pass, which then
-      // applies nothing and re-triggers nothing.
-      if (_applyGuessRefs(onlineResult, activeCall)) _relookupForRefsChanged();
-    });
+    _lookup.scheduleLookup();
   }
 
-  /// What a worked-before answer is FOR: the call at the cursor AND the QSO
-  /// left out of it. Both, because opening that same callsign's own QSO for
-  /// editing has to refetch — the count must now exclude it, and a key of
-  /// the call alone would call the already-fetched answer good.
-  String get _workedBeforeKey => '$_callAtCursor|${widget.editingQso?.uuid ?? ''}';
-
-  /// Fetches the worked-before times for the call at the cursor, unless an
-  /// answer is already in hand or in flight for exactly this key. That guard
-  /// is also what keeps this off the keystroke path: the call field notifies
-  /// on cursor moves and re-entered text as well, and only a genuinely new
-  /// key reaches the log.
+  /// What a resolved lookup does to the entry, per pass.
   ///
-  /// Deliberately setStates nothing: this runs from `initState` too (a
-  /// deeplink cold-start reaches `_scheduleLookup` there), and every caller
-  /// rebuilds on its own account anyway.
-  void _refreshWorkedBefore() {
-    final fetch = widget.workedBefore;
-    if (fetch == null || !looksLikeCallsign(_callAtCursor)) return;
-    final key = _workedBeforeKey;
-    if (_workedBeforeFor == key) return;
-    _workedBeforeFor = key;
-    _workedBefore = null;
-    unawaited(_loadWorkedBefore(key, _callAtCursor, fetch));
+  /// Spot-derived refs land off the OFFLINE pass deliberately without a
+  /// re-lookup: the online pass rebuilds its `qso` argument from scratch, so
+  /// the POTA/SOTA hooks see the just-added park/summit on that pass and
+  /// resolve its grid — a re-lookup here would instead race the online pass
+  /// already in flight. Anything the online pass proposes that the offline
+  /// one didn't (a spot fetched in between) has had no chance to reach the
+  /// activity hooks, so that one does re-look-up. It cannot cycle: the refs
+  /// it just applied are filtered out as already-claimed on the next pass,
+  /// which then applies nothing and re-triggers nothing.
+  ///
+  /// QSO-scoped activity controls (e.g. POTA's DXCC-derived placeholder)
+  /// are refreshed off the offline pass ONLY, deliberately not again after
+  /// the online pass. Two reasons: (1) the offline pass's callsign-annotation
+  /// pre-step already resolves the DXCC entity a placeholder/prefix depends
+  /// on — the online pass adds QRZ/HamDB detail that doesn't change that
+  /// entity, so a second refresh would almost always re-fetch the same
+  /// descriptors; (2) two independent unawaited refreshes for the same call,
+  /// with no ordering guarantee between them, could race — a slower
+  /// offline-triggered refresh resolving after a faster online-triggered one
+  /// would overwrite the fresher result with a stale one. A single refresh
+  /// point sidesteps that entirely. A cache hit refreshes too: typing back to
+  /// a call reaches the lookup only through the cache, and its guessed refs
+  /// were just cleared.
+  void _onLookupResolved(String call, Map<String, dynamic>? result, LookupPhase phase) {
+    switch (phase) {
+      case LookupPhase.cached:
+      case LookupPhase.offline:
+        _applyGuessRefs(result, call);
+        unawaited(_refreshActivityControlsFor(call));
+      case LookupPhase.online:
+        if (_applyGuessRefs(result, call)) _relookupForRefsChanged();
+    }
   }
 
-  Future<void> _loadWorkedBefore(String key, String call, WorkedBefore fetch) async {
-    final times = await fetch(call, excludingQsoUuid: widget.editingQso?.uuid);
-    if (!mounted || _workedBeforeFor != key) return; // stale — the call or the edit moved on
-    setState(() => _workedBefore = times);
-  }
-
-  /// Structured dev event (#237) for a resolved call lookup — a compact summary
-  /// of the guess so agents can watch `[lookup]` in the console / recentLog().
-  void _logLookup(String phase, String call, Map<String, dynamic>? result) {
-    DevLog.instance.log('lookup', {
-      'call': call,
-      'phase': phase,
-      'name': result?['name'],
-      'grid': result?['grid'],
-      'entity': result?['entityName'],
-      'source': result?['matchSource'] ?? result?['source'],
-    });
+  /// [CallLookupModel.relookupForRefsChanged], gated on this panel not being
+  /// in the middle of writing the fields itself.
+  void _relookupForRefsChanged() {
+    if (_populating) return;
+    _lookup.relookupForRefsChanged();
   }
 
   /// Re-fetches `activityControls` for [activeCall]'s QSO via
@@ -8093,7 +5833,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     widget.serialNumbers?.release(widget.operation.uuid);
     _suggestedCall = null;
     _suggestionWasTentative = false;
-    _settlePendingFreqEdit();
+    _radio.settlePendingFreqEdit();
     _callController.clear();
     _clearRSTs();
     _gridController.clear();
@@ -8102,16 +5842,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _unmatchedRefs = [];
     _gridTouched = false;
     _stateTouched = false;
-    _lookupDebounce?.cancel();
-    _commandDescribeDebounce?.cancel();
-    _executeMessageTimer?.cancel();
-    _lookupFor = null;
-    _lookupResult = null;
-    _workedBeforeFor = null;
-    _workedBefore = null;
-    _refreshedActivityControls = null;
-    _clearScoreNotices();
-    _lookupCache.clear();
+    _lookup.cancelLookup();
+    _lookup.reset();
     _controlRefs.clear();
     _guessedRefs = const [];
     _guessedRefsForCall = null;
@@ -8120,20 +5852,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _notesController.clear();
     _ourExtra.clear();
     _theirExtra.clear();
-    _manualStartAtMillis = null;
+    _time.manualStartAtMillis = null;
     _selectedControlKey = null;
     _clearPowerEntry();
     // The VFO's power is ambient, not composed — a wipe drops what the entry
     // stated and goes back to mirroring it, the way the Radio control does.
     _seedFromRadioService();
     if (focusCall) _callFocus.requestFocus();
-    setState(() {
-      _commandMessage = null;
-      _currentInterpretation = null;
-      _retainedInterpretation = null;
-      _lastExpandedInput = null;
-    });
-    _notifyCommandMessage(null);
+    setState(_command.reset);
+    _command.keystroke();
   }
 
   // ---- Wipe/undo, delete/undo, revert-changes: the info row's second button ----
@@ -8158,8 +5885,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// don't count; without one, they fall back to the pre-VFO behavior.
   bool get _hasComposedValues =>
       _call.isNotEmpty ||
-      (widget.radioService == null && (_freqController.text.trim().isNotEmpty || _manualBand != null)) ||
-      _manualStartAtMillis != null ||
+      (widget.radioService == null && (_radio.freqController.text.trim().isNotEmpty || _radio.manualBand != null)) ||
+      _time.manualStartAtMillis != null ||
       _theirNameOverride != null ||
       _controlRefs.values.any((refs) => refs.isNotEmpty) ||
       _controlTextValues.values.any((v) => v.trim().isNotEmpty) ||
@@ -8189,17 +5916,17 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (data == null) return;
     _populating = true;
     _applyFieldsFromData(data);
-    _manualStartAtMillis = data['startAtMillis'] as int?;
+    _time.manualStartAtMillis = data['startAtMillis'] as int?;
     setState(() {});
     _populating = false;
     // _populating suppressed _onCallChanged's own _scheduleLookup()/
-    // _scheduleScore() calls above (population isn't the user typing) —
+    // _lookup.scheduleScore() calls above (population isn't the user typing) —
     // the wipe this undoes already cleared the lookup cache and score
     // notices, so a restored call would otherwise sit there unlooked-up
     // and without its dupe/New-* pills until the user edited the field
     // themselves.
     _scheduleLookup();
-    _scheduleScore();
+    _lookup.scheduleScore();
   }
 
   /// Restores (undeletes) the deleted QSO being viewed, then ends the
@@ -8348,13 +6075,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (!mounted) return;
     // A confirm-clear timer from an earlier command would wipe this message
     // moments after it appears — the failure owns the slot now.
-    _executeMessageTimer?.cancel();
-    setState(() {
-      _commandMessage = delete
-          ? (widget.deleteFailedLabel?.call(e) ?? 'Could not delete: $e')
-          : (widget.saveFailedLabel?.call(e) ?? 'Could not save: $e');
-    });
-    _notifyCommandMessage(_commandMessage);
+    _command.showError(delete
+        ? (widget.deleteFailedLabel?.call(e) ?? 'Could not delete: $e')
+        : (widget.saveFailedLabel?.call(e) ?? 'Could not save: $e'));
   }
 
   /// [focusCall] false leaves the focus alone when the entry is wiped after
@@ -8387,15 +6110,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       if (!settled || !mounted || _call != call || _isLogging) return;
     }
     if (widget.editingQso == null && call.isNotEmpty && widget.interpretCommand != null) {
-      _commandDescribeDebounce?.cancel();
-      final qsoData = _getCurrentQsoData();
-      var interpretation = _currentInterpretation;
-      if (interpretation == null) {
-        interpretation = await widget.interpretCommand!(
-          _commandInput,
-          _operationDataForCommands,
-          qsoData,
-        );
+      final (:interpretation, :stale) = await _command.interpretNow(applyToDisplay: false);
+      {
         // Stale — the call changed while awaiting. `_isLogging` is re-checked
         // for a different reason: the entry guard above ran BEFORE this await,
         // and the flag isn't set until one of the branches below commits to
@@ -8405,19 +6121,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // nothing is ever cached and every logging Enter awaits here. The
         // window is real: `interpretCommand` and `_decorated` are both JS
         // runtime round-trips, and key auto-repeat fires well inside them.
-        if (!mounted || _call != call || _isLogging) return;
+        if (stale || !mounted || _call != call || _isLogging) return;
       }
       // A recognized command that can't run in this context (its `error`
       // field is set — see CommandInterpretation) — surface the message,
       // keep the typed input for editing, and execute nothing.
       if (interpretation != null && interpretation['error'] is String) {
-        // A confirm-clear timer from a previous command would wipe this
-        // message moments after it appears — the error owns the slot now.
-        _executeMessageTimer?.cancel();
-        setState(() {
-          _commandMessage = interpretation!['error'] as String;
-        });
-        _notifyCommandMessage(_commandMessage);
+        _command.showError(interpretation['error'] as String);
         return;
       }
       // A command still awaiting parameters (expectsParams) isn't complete
@@ -8432,12 +6142,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // (see CommandHook.interpret's `execute` doc) — re-interpret with
           // execute:true now that we're actually about to run it, so those
           // hooks generate the real commands instead of a stale preview's.
-          final executable = await widget.interpretCommand!(
-            _commandInput,
-            _operationDataForCommands,
-            qsoData,
-            true,
-          );
+          final executable = await _command.interpretForExecution();
           if (!mounted || _call != call) return; // stale — the call changed while awaiting
           if (executable == null) return;
 
@@ -8448,36 +6153,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // including cancelling any pending confirm-clear timer that would
           // otherwise wipe the error moments after it appears.
           if (executable['error'] is String) {
-            _executeMessageTimer?.cancel();
-            setState(() {
-              _commandMessage = executable['error'] as String;
-            });
-            _notifyCommandMessage(_commandMessage);
+            _command.showError(executable['error'] as String);
             return;
           }
 
           _callController.clear();
-          _currentInterpretation = null;
-          _executeMessageTimer?.cancel();
-
-          final confirmMarkdown = executable['confirm'];
-          setState(() {
-            _currentInterpretation = null;
-            if (confirmMarkdown is String) {
-              _commandMessage = confirmMarkdown;
-              _executeMessageTimer = Timer(const Duration(seconds: 5), () {
-                if (mounted) {
-                  setState(() {
-                    _commandMessage = null;
-                  });
-                  _notifyCommandMessage(null);
-                }
-              });
-            } else {
-              _commandMessage = null;
-            }
-          });
-          _notifyCommandMessage(_commandMessage);
+          _command.commandExecuted(confirm: executable['confirm']);
 
           final commands = executable['commands'];
           if (commands is List) {
@@ -8573,7 +6254,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // So refuse, say so, and open the Radio control, which focuses its
     // frequency field (`_expandedFocusFor`) — the answer is one number away,
     // and the focus ladder is unchanged. The message rides the same
-    // `_commandMessage` channel a command's error does, so it renders in the
+    // `_command.message` channel a command's error does, so it renders in the
     // information area right above the fields (`_buildInfoArea`), never as a
     // toast over the logging UI (docs/design/user-interface.md).
     //
@@ -8584,14 +6265,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // something to log rather than shouting at an empty or half-typed field.
     // Editing an existing QSO is covered on purpose — an edit is exactly the
     // moment to repair one of the bandless records this bug already created.
-    if (_canLog && _freq == null && _band == null) {
+    if (_canLog && _radio.freq == null && _radio.band == null) {
       // A confirm-clear timer from an earlier command would wipe this moments
       // after it appears — same reasoning as the command error branches.
-      _executeMessageTimer?.cancel();
-      setState(() {
-        _commandMessage = widget.bandOrFreqRequiredLabel ?? 'Set a frequency or band before logging';
-      });
-      _notifyCommandMessage(_commandMessage);
+      _command.showError(widget.bandOrFreqRequiredLabel ?? 'Set a frequency or band before logging');
       _onSelectControl('radio');
       return;
     }
@@ -8617,7 +6294,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // its calls, then leaves the rest of the stack in the field below.
       // Everything else is identical to a typed list, deliberately — no
       // information carries over between stacked calls either way.
-      final stacked = editingQso == null ? _pickStackedCall() : null;
+      final stacked = editingQso == null ? _callText.pickStackedCall() : null;
       final calls = stacked?.calls ?? _callList;
       final isList = calls.length > 1;
       // `their.call` for the whole batch comes from `dataFor` below, but the
@@ -8710,11 +6387,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // Flush any pending debounced frequency push first, so a value
         // typed just before hitting Enter/Log is reflected in both the VFO
         // and this QSO, rather than only landing after the fact.
-        if (_vfoDebounce != null) {
-          _vfoDebounce!.cancel();
-          _vfoDebounce = null;
-          _pushVfoToRadioService();
-        }
+        _radio.flushPendingPush();
         for (var i = 0; i < calls.length; i++) {
           final Qso qso;
           try {
@@ -8752,7 +6425,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
       // A single rescoring pass after the whole batch, not a score check per
       // call — the on-screen scoring pills already only ever reflect the
-      // cursor's own call (see `_scheduleScore`/`_callAtCursor`).
+      // cursor's own call (see `CallLookupModel.scheduleScore`/`_callAtCursor`).
       if (isList) widget.onCallListLogged?.call();
     } finally {
       _isLogging = false;
@@ -8857,10 +6530,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 // panel's dark area. Left/right add the real device inset
                 // (ham2k/halo-dist#205) — SecondaryControlRow's own
                 // `horizontalBleed` stays keyed to the fixed
-                // `_secondaryPanelHorizontalInset` only, so its expanded
+                // `secondaryPanelHorizontalInset` only, so its expanded
                 // panel still stops short of the physical edge by that
                 // device inset instead of bleeding into it.
-                padding: PaneSafeArea.symmetricOf(context, horizontal: _secondaryPanelHorizontalInset)
+                padding: PaneSafeArea.symmetricOf(context, horizontal: secondaryPanelHorizontalInset)
                     .add(const EdgeInsets.only(bottom: Space.md)),
                 // Scoped so every field's label/underline reads clearly
                 // against the tertiary-tinted panel, without touching the
@@ -8920,7 +6593,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             selectedKey: _selectedControlKey,
                             onSelect: _onSelectControl,
                             onOpenSettings: _openControlSettingsDialog,
-                            horizontalBleed: _secondaryPanelHorizontalInset,
+                            horizontalBleed: secondaryPanelHorizontalInset,
                             expandLabel: widget.expandControlsLabel,
                             collapseLabel: widget.collapseControlsLabel,
                             // The dupe warning (and the other scoring notices)
@@ -8981,7 +6654,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                     // this station's radio, and must not answer
                                     // a tap with a panel about the other one.
                                     child: fieldsLocked
-                                        ? _buildLockedWarning(theme, deletedQso)
+                                        ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso))
                                         : _buildInfoArea(accentTheme),
                                   ),
                                 ),
@@ -9002,8 +6675,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               // inside its slide, so nothing is spent while it
                               // is not showing.
                               padding: EdgeInsets.only(
-                                right: widget.leftieMode ? 0 : (_editButtonDiameter ?? 44) + _logButtonGap,
-                                left: widget.leftieMode ? (_editButtonDiameter ?? 44) + _logButtonGap : 0,
+                                right: widget.leftieMode ? 0 : (_editButtonDiameter ?? 44) + logButtonGap,
+                                left: widget.leftieMode ? (_editButtonDiameter ?? 44) + logButtonGap : 0,
                               ),
                               child: strip,
                             ),
@@ -9031,7 +6704,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       // LayoutBuilder cannot answer an intrinsic-dimension
                       // query, and IntrinsicHeight asks its whole subtree one.
                       // Out here it sees exactly the width the Row will get,
-                      // which is all `_resolveMainFieldLayout` needs.
+                      // which is all `resolveMainFieldLayout` needs.
                       LayoutBuilder(builder: (context, constraints) {
                       // The log button is a circle as tall as the row, so the
                       // height already measured for it is also its width. The
@@ -9078,14 +6751,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               child: FilledButton(
                                 // Disabled while viewing a deleted QSO —
                                 // there's nothing to save; restore first.
-                                // `_hasExecutableCommand` lets the button
+                                // `_command.hasExecutableCommand` lets the button
                                 // accept a command too, matching Enter (a
                                 // command isn't a callsign, so `_canLog` alone
                                 // would leave it disabled — see that getter).
                                 // `_editingEvent` skips both: an event row has
                                 // neither a callsign nor a command to accept.
                                 onPressed: (!deletedQso &&
-                                        (_pendingDelete || _canLog || _hasExecutableCommand || _editingEvent))
+                                        (_pendingDelete || _canLog || _command.hasExecutableCommand || _editingEvent))
                                     ? _log
                                     : null,
                                 style: FilledButton.styleFrom(
@@ -9111,7 +6784,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       // just a kind label and, for NOTE/TODO, the text (and
                       // done state) the annotation commands wrote. Swap the
                       // whole main-fields row for that instead of running it
-                      // through `_trailingMainFields`/`_resolveMainFieldLayout`,
+                      // through `_trailingMainFields`/`resolveMainFieldLayout`,
                       // which only make sense for a QSO's field set.
                       if (_editingEvent) {
                         return IntrinsicHeight(
@@ -9120,13 +6793,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             children: [
                               if (widget.leftieMode) ...[
                                 submitButtonWidget,
-                                SizedBox(width: _logButtonGap),
+                                SizedBox(width: logButtonGap),
                               ],
                               Expanded(
                                 child: _buildEventFields(context, accentTheme, fieldsLocked),
                               ),
                               if (!widget.leftieMode) ...[
-                                SizedBox(width: _logButtonGap),
+                                SizedBox(width: logButtonGap),
                                 submitButtonWidget,
                               ],
                             ],
@@ -9135,11 +6808,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       }
 
                       final trailingFields = _trailingMainFields(context, enabled: !fieldsLocked);
-                      final fieldLayout = _resolveMainFieldLayout(
-                          context, trailingFields, constraints.maxWidth, buttonWidth);
+                      final (layout: fieldLayout, :squeezed) = resolveMainFieldLayout(
+                        fields: trailingFields,
+                        maxWidth: constraints.maxWidth,
+                        buttonWidth: buttonWidth,
+                        floors: mainFieldFloors(context),
+                      );
+                      _mainFieldsSqueezed = squeezed;
                       final widthDuration =
                           _mainFieldWidthDuration(constraints.maxWidth, buttonWidth);
-                      final logButtonGap = SizedBox(width: _logButtonGap * fieldLayout.gapScale);
+                      final logButtonGapBox = SizedBox(width: logButtonGap * fieldLayout.gapScale);
 
                       // IntrinsicHeight + stretch, rather than a guessed
                       // pixel height, so the submit button (an AspectRatio
@@ -9153,7 +6831,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         children: [
                           if (widget.leftieMode) ...[
                             submitButtonWidget,
-                            logButtonGap,
+                            logButtonGapBox,
                           ],
                           Expanded(
                             // #236: stable id for agent/browser tooling.
@@ -9178,8 +6856,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               // normally beats navigation into an operation,
                               // and losing that race only costs one tap.
                               autofocus: !isMobilePlatform || hardwareKeyboardAttached.value,
-                              autocorrect: _commandMixedCase,
-                              enableSuggestions: _commandMixedCase,
+                              autocorrect: _command.mixedCase,
+                              enableSuggestions: _command.mixedCase,
                               // A command awaiting parameters (expectsParams)
                               // switches the field to free-text entry —
                               // spaces allowed, no callsign character
@@ -9188,7 +6866,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               // `mixedCase: true` (e.g. NOTE, whose
                               // parameter is free prose): all logging input
                               // is uppercase unless explicitly mixed-case.
-                              textCapitalization: _commandMixedCase
+                              textCapitalization: _command.mixedCase
                                   ? TextCapitalization.sentences
                                   : TextCapitalization.characters,
                               // In command free-text modes a space is a literal
@@ -9197,21 +6875,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               // space but the double-space that leaves the
                               // field. Normal callsign mode routes every space
                               // to focus/command handling. Asked via
-                              // [_fieldAcceptsSpaces], the same getter
+                              // [_command.fieldAcceptsSpaces], the same getter
                               // `_handleSpace` uses to decide the exit — the two
                               // must never disagree about the field's mode.
-                              inputFormatters: !_fieldAcceptsSpaces
+                              inputFormatters: !_command.fieldAcceptsSpaces
                                   ? [
                                       _virtualSpace,
-                                      FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9/.,]')),
+                                      FilteringTextInputFormatter.allow(RegExp('[$callsignCharacters]')),
                                       if (isMobilePlatform) MobileDotToSlashFormatter(),
                                       const UpperCaseTextFormatter(),
                                     ]
-                                  : _commandMixedCase
+                                  : _command.mixedCase
                                       ? [_commandVirtualSpace]
                                       : [_commandVirtualSpace, const UpperCaseTextFormatter()],
-                              style: _primaryFieldStyle(context, fontWeight: FontWeight.w500),
-                              decoration: _primaryFieldDecoration(
+                              style: mainFieldStyle(context, fontWeight: FontWeight.w500),
+                              decoration: mainFieldDecoration(
                                 context,
                                 widget.theirCallLabel ?? 'Their call',
                                 horizontalPadding: fieldLayout.fieldPadding,
@@ -9221,7 +6899,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             )),
                           ),
                           // Declared and sized in `_trailingMainFields` /
-                          // `_resolveMainFieldLayout` above, so the row and the
+                          // `resolveMainFieldLayout` above, so the row and the
                           // width arithmetic can't disagree about which fields
                           // are on and how much room they take. The gaps carry
                           // the same scale as the padding inside the fields —
@@ -9232,7 +6910,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 .build(fieldLayout.widths[i], fieldLayout.fieldPadding, widthDuration),
                           ],
                           if (!widget.leftieMode) ...[
-                            logButtonGap,
+                            logButtonGapBox,
                             submitButtonWidget,
                           ],
                         ],
@@ -9377,10 +7055,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// back. The saved guess is only used while the call field still matches the
   /// QSO's own call. Empty map means "call known, nothing resolved yet."
   Map<String, dynamic>? get _currentGuess {
-    final result = _lookupResult;
-    final liveGuess = (result != null && _lookupFor == _callAtCursor)
-        ? (result['guess'] as Map<String, dynamic>? ?? const {})
-        : null;
+    final result = _lookup.resultForActiveCall;
+    final liveGuess = result == null ? null : (result['guess'] as Map<String, dynamic>? ?? const {});
 
     Map<String, dynamic>? savedGuess;
     final editing = widget.editingQso;
@@ -9396,80 +7072,73 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return liveGuess ?? savedGuess;
   }
 
-  /// The info area has three states (issue #40): a command message (markdown)
-  /// takes priority; otherwise, once a callsign of ≥3 letters/digits is in the
-  /// field, the call-info panel; otherwise the operation-statistics default.
+  /// The call-info the area shows — null while the call-info panel is not
+  /// showing: fewer than three characters typed, or an event row, whose
+  /// `their.call` (e.g. "NOTE") is a sentinel rather than a real callsign —
+  /// the operation stats are the only sensible default there, same as with
+  /// nothing typed yet.
   ///
-  /// The `options` exchange suggestions are deliberately NOT here: a line in
-  /// this area would cost the call-info panel — the DUPE warning with it — its
-  /// space for as long as an exchange field had focus. They are a menu floating
-  /// over the fields instead (`_buildOptionSuggestionMenu`).
-  Widget _buildInfoArea(ThemeData theme) {
-    // The missing-band/mode warnings ride ABOVE everything else the area can
-    // show, including a command's message: a band that was never set is wrong
-    // before there is anything to work, and the operator has to see it then,
-    // not on the submit the log-time refusal finally blocks. Above the message
-    // in particular because that message OUTLIVES the condition that wrote it
-    // — the refusal is cleared by a call-field keystroke, not by the band pick
-    // that answers it — so a warning underneath it would go quiet exactly
-    // while the operator was fixing the problem, and stay quiet about anything
-    // still missing. Not folded into the call-info pills for the opposite
-    // reason: those belong to the station in the field, and this one doesn't.
-    final warnings = _missingRadioWarnings;
-    if (warnings.isEmpty) return _tappableInfoContent(theme);
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Wraps rather than a plain Row: two pills in a locale that spells
-        // them long ("Sin Banda" + "Sin Modo") reach the width this area has
-        // left after the edit button's reserve at the tightest supported
-        // geometry, and a non-flex Row child would overflow rather than move
-        // to a second line.
-        Wrap(
-          spacing: Space.xs,
-          runSpacing: Space.xxs,
-          children: [for (final warning in warnings) noticePill(theme, warning, level: NoticeLevel.alert)],
-        ),
-        const SizedBox(height: Space.xxs),
-        _tappableInfoContent(theme),
-      ],
+  /// When editing an existing QSO, the data is held until scoring has run
+  /// (`_lookup.scoreFor == _callAtCursor`), so the saved lookup and the pills
+  /// appear together in one update — otherwise the lookup text renders first
+  /// and the pills pop in a moment later. Composing streams in as the user
+  /// types.
+  CallInfoData? get _callInfoForArea {
+    if (!_callInfoActive || _editingEvent) return null;
+    final ready = widget.editingQso == null || widget.scoreQso == null || _lookup.scoreIsCurrent;
+    final guess = ready ? _currentGuess : null;
+    return CallInfoData(
+      call: _callAtCursor,
+      guess: guess,
+      lookups: _currentLookups,
+      alertKeys: ready ? _lookup.currentAlertKeys : const [],
+      noticeKeys: ready ? _lookup.currentNoticeKeys : const [],
+      isEditing: widget.editingQso != null,
+      workedBefore: _lookup.workedBefore,
     );
   }
 
-  /// The area's content, carrying the tap that opens the call-info detail
-  /// panel (a modal on narrow layouts). Only the content: the warning row
-  /// above it says something about our own radio, and a tap there answering
-  /// with a panel about the station being worked would be an answer to a
-  /// question nobody asked — and one the same pill does not give in the
-  /// stats or grid-only states, where there is no gesture at all.
-  Widget _tappableInfoContent(ThemeData theme) {
-    final content = _buildInfoAreaContent(theme);
-    if (!_callInfoActive || _editingEvent || widget.onCallInfoTap == null) return content;
-    return GestureDetector(behavior: HitTestBehavior.opaque, onTap: widget.onCallInfoTap, child: content);
+  /// The info area (issue #40): [LoggingInfoArea] says what it shows and in
+  /// what order; this is where the panel's state becomes its inputs. The
+  /// distance line and the notice labels come from the app layer — only it
+  /// knows the operation's own location and the current locale — and this
+  /// panel is where they arrive.
+  Widget _buildInfoArea(ThemeData theme) {
+    final callInfo = _callInfoForArea;
+    final guess = callInfo?.guess;
+    final message = _command.message;
+    return LoggingInfoArea(
+      theme: theme,
+      warnings: _missingRadioWarnings,
+      message: message,
+      callInfo: callInfo,
+      locationLine: guess == null ? null : widget.callLocationLine?.call(guess),
+      // Asked only when it would show: it walks the exchange fields.
+      gridOnlyLine: message == null && callInfo == null ? _gridOnlyLine : null,
+      statsLines: () => widget.operationStatsLines?.call(widget.qsos) ?? const <String>[],
+      noticeLabel: widget.scoreNoticeLabel,
+      workedBeforeLabel: widget.workedBeforeLabel,
+      onCallInfoTap: widget.onCallInfoTap,
+      onOpenLink: widget.onOpenLink,
+    );
   }
 
-  Widget _buildInfoAreaContent(ThemeData theme) {
-    final message = _commandMessage;
-    if (message != null) {
-      return MarkdownBody(
-        data: message,
-        styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme).copyWith(
-          // The info area sits on the panel's tertiaryContainer fill.
-          p: theme.textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onTertiaryContainer,
-            fontWeight: FontWeight.w500,
-          ),
-        )),
-      );
-    }
-
-    // An event's `their.call` (e.g. "NOTE") is a sentinel, not a real
-    // callsign — the operation stats are the only sensible default here,
-    // same as with nothing typed yet.
-    if (_callInfoActive && !_editingEvent) return _buildCallInfo(theme);
-    if (_gridOnlyLine case final line?) return _buildGridOnlyInfo(theme, line);
-    return _buildOperationStats(theme);
+  /// What the locked form says in place of the info area (ham2k/halo-dist#59).
+  /// The write refusal is checked first: a staged delete on a QSO whose
+  /// operation is also unwritable would otherwise promise a deletion that
+  /// cannot be saved.
+  String _lockedWarningText(bool deletedQso) {
+    final refusal = _writeRefusal;
+    final kind = widget.editingQso?.eventKind?.toUpperCase();
+    return (refusal != null)
+        ? refusal.reason
+        : (kind != null)
+        ? (deletedQso
+            ? (widget.deletedEventWarning?.call(kind) ?? 'Deleted $kind')
+            : (widget.pendingDeleteEventWarning?.call(kind) ?? '$kind will be deleted when you save'))
+        : (deletedQso
+            ? (widget.deletedQsoWarning ?? 'Deleted QSO')
+            : (widget.pendingDeleteWarning ?? 'QSO will be deleted when you save'));
   }
 
   /// What the contact in hand is missing from the radio state that every QSO
@@ -9478,8 +7147,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ///
   /// Never while editing an event row. A NOTE is not a contact and needs no
   /// band, and the `event` band sentinel it carries does not survive into
-  /// `_band`: the record's zero frequency sends `_applyFieldsFromData` down
-  /// its frequency branch, which drops `_manualBand`. On a tuned rig
+  /// `_radio.band`: the record's zero frequency sends `_applyFieldsFromData` down
+  /// its frequency branch, which drops `_radio.manualBand`. On a tuned rig
   /// `_seedFromRadioService` then fills it from the VFO and the question never
   /// arises; on the untuned one these warnings exist for, this guard is all
   /// that stops an annotation being nagged about a field it will never have.
@@ -9493,8 +7162,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // reachable with something loggable in hand today — an event's `NOTE`
       // is not a callsign, and a locked form cannot log — so nothing is lost
       // by staying quiet there.
-      if (_freq == null && _band == null) widget.missingBandLabel ?? 'No Band',
-      if (_mode.trim().isEmpty) widget.missingModeLabel ?? 'No Mode',
+      if (_radio.freq == null && _radio.band == null) widget.missingBandLabel ?? 'No Band',
+      if (_radio.mode.trim().isEmpty) widget.missingModeLabel ?? 'No Mode',
     ];
   }
 
@@ -9662,110 +7331,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // form stays locked for another reason — travel ending over a staged
     // delete — and the warning text changes without `fieldsLocked` moving.
     if (fieldsLocked) return 'locked:$deletedQso:${_writeRefusal != null}';
-    if (_commandMessage != null) return 'message'; // message text updates in place
+    if (_command.message != null) return 'message'; // message text updates in place
     // Coarse on purpose: only the call itself keys the cross-fade. Lookup and
     // score results stream in as in-place updates (no switch), so the panel
     // fills smoothly instead of flashing empty between passes.
     if (_callInfoActive) return 'call:$_callAtCursor';
     if (_gridOnlyLine case final line?) return 'grid:$line';
     return 'stats'; // stable across the ticker
-  }
-
-  /// The read-only warning shown in place of the info area for a staged-delete
-  /// or already-deleted QSO (ham2k/halo-dist#59).
-  Widget _buildLockedWarning(ThemeData theme, bool deletedQso) {
-    // Checked first: a staged delete on a QSO whose operation is also
-    // unwritable would otherwise promise a deletion that cannot be saved.
-    final refusal = _writeRefusal;
-    final kind = widget.editingQso?.eventKind?.toUpperCase();
-    final warning = (refusal != null)
-        ? refusal.reason
-        : (kind != null)
-        ? (deletedQso
-            ? (widget.deletedEventWarning?.call(kind) ?? 'Deleted $kind')
-            : (widget.pendingDeleteEventWarning?.call(kind) ?? '$kind will be deleted when you save'))
-        : (deletedQso
-            ? (widget.deletedQsoWarning ?? 'Deleted QSO')
-            : (widget.pendingDeleteWarning ?? 'QSO will be deleted when you save'));
-    return Row(
-      children: [
-        Icon(MdiIcons.alert, size: 16, color: theme.colorScheme.error),
-        const SizedBox(width: Space.xs),
-        Expanded(
-          child: Text(
-            warning,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium?.copyWith(
-              color: theme.colorScheme.error,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Default state: operation statistics (QSO count, rates) from the app
-  /// layer's `operationStatsLines`, behind a timer icon. The rate lines are
-  /// time-relative, so they re-derive once per second — scoped to this row
-  /// via [OncePerSecond] rather than ticking the whole panel.
-  Widget _buildOperationStats(ThemeData theme) => OncePerSecond(builder: (context, _) {
-    final lines = widget.operationStatsLines?.call(widget.qsos) ?? const <String>[];
-    if (lines.isEmpty) return const SizedBox.shrink();
-    return infoIconRows(
-      theme,
-      // Filled icon in the same accent as the main buttons (tertiary, or
-      // secondary while editing — see `accentTheme`).
-      icon: MdiIcons.timerOutline,
-      iconColor: theme.colorScheme.tertiary,
-      children: [
-        for (final line in lines)
-          Text(
-            line,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodyMedium?.copyWith(color: theme.colorScheme.onTertiaryContainer),
-          ),
-      ],
-    );
-  });
-
-  /// Call-info state — rendered by the shared [CallInfoSummary], the same
-  /// widget Home's Quick Lookup bar uses, so a change to either lands on both.
-  /// The distance line and the notice labels stay here: only the app layer
-  /// knows the operation's own location and the current locale, and this panel
-  /// is where they arrive.
-  Widget _buildCallInfo(ThemeData theme) {
-    // When editing an existing QSO, hold the panel's data until scoring has run
-    // (`_scoreFor == _callAtCursor`), so the saved lookup and the pills appear
-    // together in one update — otherwise the lookup text renders first and the
-    // pills pop in a moment later. Composing streams in as the user types.
-    final ready = widget.editingQso == null || widget.scoreQso == null || _scoreFor == _callAtCursor;
-    final guess = ready ? _currentGuess : null;
-    // Scoring keys only once they belong to the call in the field: stale keys
-    // would paint the previous callsign's DUPE against this one.
-    final scored = ready && _scoreFor == _callAtCursor;
-
-    return CallInfoSummary(
-      data: CallInfoData(
-        call: _callAtCursor,
-        guess: guess,
-        lookups: _currentLookups,
-        alertKeys: scored ? _scoreAlertKeys : const [],
-        noticeKeys: scored ? _scoreNoticeKeys : const [],
-        isEditing: widget.editingQso != null,
-        workedBefore: _workedBeforeFor == _workedBeforeKey ? _workedBefore : null,
-      ),
-      locationLine: guess == null ? null : widget.callLocationLine?.call(guess),
-      noticeLabel: widget.scoreNoticeLabel,
-      workedBeforeLabel: widget.workedBeforeLabel,
-      // The panel's own tertiaryContainer fill, and the accent the main
-      // buttons use (tertiary, or secondary while editing — see `accentTheme`).
-      foregroundColor: theme.colorScheme.onTertiaryContainer,
-      iconColor: theme.colorScheme.tertiary,
-      onOpenLink: widget.onOpenLink,
-    );
   }
 
   /// A complete Maidenhead locator (4, 6 or 8 characters) — the shortest
@@ -9802,23 +7374,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return {'grid': normalizeGrid(grid)};
   }
 
-  /// The call-info panel for a grid with no call — the same shape as
-  /// [_buildCallInfo], minus everything that needs a callsign: no lookup, no
-  /// scoring pills, and nothing to open on tap.
-  Widget _buildGridOnlyInfo(ThemeData theme, String line) => CallInfoSummary(
-        data: const CallInfoData(call: ''),
-        locationLine: line,
-        foregroundColor: theme.colorScheme.onTertiaryContainer,
-        iconColor: theme.colorScheme.tertiary,
-      );
-
   /// The lookup entries backing the current call-info — live results when
   /// available, else the entries saved on the QSO being edited (`their.lookups`,
   /// which carry the call-notes `notes` array the merge doesn't fold into
   /// `guess`).
   List<Map<String, dynamic>> get _currentLookups {
-    final live = asQsonList(_lookupResult?['lookups'])?.whereType<Map<String, dynamic>>().toList();
-    if (live != null && _lookupFor == _callAtCursor) return live;
+    final live = asQsonList(_lookup.resultForActiveCall?['lookups'])?.whereType<Map<String, dynamic>>().toList();
+    if (live != null) return live;
     final their = asQsonMap(widget.editingQso?.data['their']);
     return asQsonList(their?['lookups'])?.whereType<Map<String, dynamic>>().toList() ?? const [];
   }
@@ -9827,16 +7389,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// call-info panel isn't showing.
   CallInfoData? get _currentCallInfoData {
     // Mirror the compact area's priority: a command message wins over call-info.
-    if (!_callInfoActive || _commandMessage != null) return null;
-    final fresh = _scoreFor == _callAtCursor;
+    if (!_callInfoActive || _command.message != null) return null;
     return CallInfoData(
       call: _callAtCursor,
       guess: _currentGuess,
       lookups: _currentLookups,
-      alertKeys: fresh ? _scoreAlertKeys : const [],
-      noticeKeys: fresh ? _scoreNoticeKeys : const [],
+      alertKeys: _lookup.currentAlertKeys,
+      noticeKeys: _lookup.currentNoticeKeys,
       isEditing: widget.editingQso != null,
-      workedBefore: _workedBeforeFor == _workedBeforeKey ? _workedBefore : null,
+      workedBefore: _lookup.workedBefore,
     );
   }
 
@@ -9850,7 +7411,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final g = data?.guess;
     final sig = data == null
         ? null
-        : '${data.call}|$_lookupFor|${data.isEditing}|${g?['name']}|${g?['grid']}|${g?['image']}|${g?['note']}'
+        : '${data.call}|${_lookup.lookupFor}|${data.isEditing}|${g?['name']}|${g?['grid']}|${g?['image']}|${g?['note']}'
             '|${data.alertKeys.join(",")}|${data.noticeKeys.join(",")}';
     if (sig == _lastCallInfoSig) return;
     _lastCallInfoSig = sig;
