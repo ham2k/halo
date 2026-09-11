@@ -291,11 +291,12 @@ accessibility one; `ViewFocusGuard` (`app/lib/services/view_focus_guard.dart`)
 is the net for whatever still gets through, and `DEVHAMMER` reproduces the
 churn on demand.
 
-Widget APIs that let a caller name an icon-only button do so with a `…Label`
-parameter (`closeLabel`, `expandLabel`/`collapseLabel`, `clearLabel`,
-`openPageLabel`) — the app passes a translated string, and the widget package
-defaults it to English so it stays i18n-free. Nothing named `…Tooltip`
-survives; don't add one back.
+An icon-only button still gets an accessible name — a `Semantics` label or
+the icon's `semanticLabel` — read from the strings package like any other
+text (`halo_widgets` reads `t` directly). A `…Label` parameter exists only
+where the caller knows something the widget cannot (`closeLabel` on a pane
+that is shown from several places), never as a way to keep a widget free of
+the strings package. Nothing named `…Tooltip` survives; don't add one back.
 
 ### Links leave the app
 

@@ -412,8 +412,6 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get power => 'Potencia';
 	@override String get powerUnit => 'W';
 	@override String get controlSettings => 'Controles de registro';
-	@override String get expandControls => 'Expandir';
-	@override String get collapseControls => 'Contraer';
 	@override String get spottingControl => 'Spotting';
 	@override String get spottingSelfControl => 'Auto-spot';
 	@override String spotSelfAt({required Object freq}) => 'Auto-spot en ${freq}';
@@ -425,7 +423,7 @@ class _Translations$loggingControls$es extends Translations$loggingControls$en {
 	@override String get missingBand => 'Sin Banda';
 	@override String get missingMode => 'Sin Modo';
 	@override String saveFailed({required Object error}) => 'No se pudo guardar: ${error}';
-	@override String deleteFailed({required Object error}) => 'No se pudo borrar: ${error}';
+	@override String deleteFailed({required Object error}) => 'No se pudo eliminar: ${error}';
 	@override late final _Translations$loggingControls$info$es info = _Translations$loggingControls$info$es._(_root);
 }
 
@@ -487,8 +485,6 @@ class _Translations$qsoEditForm$es extends Translations$qsoEditForm$en {
 	@override String get theirLat => 'Latitud';
 	@override String get theirLon => 'Longitud';
 	@override String get theirPower => 'Su potencia';
-	@override String saveFailed({required Object error}) => 'No se pudo guardar: ${error}';
-	@override String deleteFailed({required Object error}) => 'No se pudo eliminar: ${error}';
 }
 
 // Path: qsoList
@@ -3559,8 +3555,6 @@ extension on TranslationsEs {
 			'loggingControls.power' => 'Potencia',
 			'loggingControls.powerUnit' => 'W',
 			'loggingControls.controlSettings' => 'Controles de registro',
-			'loggingControls.expandControls' => 'Expandir',
-			'loggingControls.collapseControls' => 'Contraer',
 			'loggingControls.spottingControl' => 'Spotting',
 			'loggingControls.spottingSelfControl' => 'Auto-spot',
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Auto-spot en ${freq}',
@@ -3572,7 +3566,7 @@ extension on TranslationsEs {
 			'loggingControls.missingBand' => 'Sin Banda',
 			'loggingControls.missingMode' => 'Sin Modo',
 			'loggingControls.saveFailed' => ({required Object error}) => 'No se pudo guardar: ${error}',
-			'loggingControls.deleteFailed' => ({required Object error}) => 'No se pudo borrar: ${error}',
+			'loggingControls.deleteFailed' => ({required Object error}) => 'No se pudo eliminar: ${error}',
 			'loggingControls.info.noQsos' => 'Aún no hay QSOs... ¡a la carga!',
 			'loggingControls.info.qsoCountOne' => '1 QSO',
 			'loggingControls.info.qsoCountOther' => ({required Object count}) => '${count} QSOs',
@@ -3652,8 +3646,6 @@ extension on TranslationsEs {
 			'qsoEditForm.theirLat' => 'Latitud',
 			'qsoEditForm.theirLon' => 'Longitud',
 			'qsoEditForm.theirPower' => 'Su potencia',
-			'qsoEditForm.saveFailed' => ({required Object error}) => 'No se pudo guardar: ${error}',
-			'qsoEditForm.deleteFailed' => ({required Object error}) => 'No se pudo eliminar: ${error}',
 			'qsoList.empty' => 'Aún no hay QSOs — ¡haz un contacto!',
 			'qsoList.bandOrModeWarning' => 'Verifica que tu banda y modo sean correctos',
 			'qsoList.today' => 'Hoy',
@@ -3999,12 +3991,12 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esto continuará automáticamente en cuanto lo hagas.',
 			'settings.accounts.loginNoResponse' => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cancela e intenta conectar de nuevo.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginIncompleteResponse' => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.',
 			'settings.accounts.noKeyringTitle' => 'No se pueden guardar las cuentas',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',
@@ -4513,12 +4505,12 @@ extension on TranslationsEs {
 			'versionLabel.version' => ({required Object version}) => 'Versión ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Parche ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
-			_ => null,
-		} ?? switch (path) {
 			'notices.emptyHistory' => 'Aún no hay avisos',
 			'notices.webStorageInMemory' => 'Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.',
 			'notices.webStorageUnreliable' => 'Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.',
 			'notices.preferencesRestoredTitle' => 'Ajustes restaurados desde una copia',
+			_ => null,
+		} ?? switch (path) {
 			'notices.preferencesRestored' => 'No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Ajustes reiniciados',
 			'notices.preferencesReset' => 'No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json.',

@@ -345,10 +345,6 @@ class LoggingControls extends StatefulWidget {
   /// [hasConfiguredRadio].
   final VoidCallback? onOpenStationConfig;
 
-  /// Accessible name for the [onOpenStationConfig] button — the app shows no
-  /// hover tooltips, so this is the only place it's named.
-  final String? stationConfigLabel;
-
   /// [hasConfiguredRadio]'s display name — shown in small type below the
   /// Station Configuration icon, past the Mode dropdown, ellipsized past 3x
   /// the icon's own width. Null when there's no radio (nothing to name) or
@@ -460,59 +456,12 @@ class LoggingControls extends StatefulWidget {
   /// detail panel (a modal on narrow layouts, or focuses the Info tab on wide).
   final VoidCallback? onCallInfoTap;
 
-  final String? timeLabel;
-  final String? dateLabel;
-  final String? nowLabel;
-  final String? freqLabel;
-  final String? modeLabel;
-  final String? theirCallLabel;
-  final String? noteFieldLabel;
-  final String? todoFieldLabel;
-  final String? sentLabel;
-  final String? rcvdLabel;
-  final String? moreLabel;
-  final String? revertLabel;
-  final String? deleteLabel;
-  final String? undoDeleteLabel;
-  final String? restoreLabel;
-  final String? wipeLabel;
-  final String? undoLabel;
-  final String? pendingDeleteWarning;
-  final String? deletedQsoWarning;
-  // Same warnings, worded for an event row (`kind` is its uppercased
-  // eventKind, e.g. "NOTE"/"BREAK") — "QSO" is wrong for a row that isn't one.
-  final String Function(String kind)? pendingDeleteEventWarning;
-  final String Function(String kind)? deletedEventWarning;
-  final String? qsoEditFormTitle;
-  final String? operatorCallLabel;
-  final String? positionLabel;
-  final String? theirNameLabel;
-  final String? theirGridLabel;
-  final String? theirStateLabel;
-  final String? notesLabel;
-  final String? bandLabel;
-  final String? timeControlLabel;
-  final String? radioControlLabel;
-  final String? powerControlLabel;
-  final String? powerLabel;
-
   /// The app is capturing the current power onto every QSO it saves
   /// (Station Configuration's "Track Station Info", with `power` among the
   /// tracked fields). The panel doesn't do that capture — the app does, at
   /// save — but it has to know, because a power that is being logged has to
   /// be visible and editable whether or not the Power control is in the row.
   final bool trackingPower;
-  /// The unit shown after the power value ("W"), in the chip's summary and
-  /// beside its field.
-  final String? powerUnitLabel;
-  final String? controlSettingsTitle;
-  final String? saveLabel;
-  final String? cancelLabel;
-
-  /// Accessible names for the secondary control row's grid expand/collapse
-  /// caret (icon-only, and the app has no hover tooltips).
-  final String? expandControlsLabel;
-  final String? collapseControlsLabel;
 
   /// Who the operation says is at the key, and which position this device is
   /// logging as — what the full-edit pane offers as the placeholder for a
@@ -543,44 +492,9 @@ class LoggingControls extends StatefulWidget {
   /// degrades the Radio control elsewhere in this widget.
   final SuggestSpotSources? suggestSpotSources;
   final SendSpot? sendSpot;
-  final String? spottingControlLabel;
-  /// Collapsed-pill label while spotting the QSO being edited — "Spotting".
-  final String? spottingLabel;
-  /// Collapsed-pill label otherwise (composing, or nothing selected) —
-  /// "Self-spotting". Distinct from `spotSelfLabel`, the longer dynamic
-  /// button text shown only in the expanded panel.
-  final String? spottingSelfLabel;
-  final String Function(String freq)? spotSelfLabel;
-  final String Function(String call, String freq)? spotOtherLabel;
-  final String Function(String call)? spotTooLateLabel;
-  final String? spotNoFreqLabel;
-  final String? spotCommentHint;
 
-  /// Shown in the status bar when a submit is refused because the contact
-  /// would carry neither a band nor a frequency (HALO-24) — see [_log].
-  final String? bandOrFreqRequiredLabel;
-
-  /// The warning pills for a contact that would be logged with no band and no
-  /// frequency, or with no mode — the standing version of the refusal
-  /// [bandOrFreqRequiredLabel] delivers only once a submit is attempted. See
-  /// [_missingRadioWarnings]. Null keeps the English defaults.
-  final String? missingBandLabel;
-  final String? missingModeLabel;
-
-  /// Shown in the info area when a QSO write throws ([_log]'s catch blocks) —
-  /// "Could not save: `<error>`". Without an explicit in-panel message a failed
-  /// save is near-silent (the global handler's generic notice shows at most
-  /// once per session) while the panel keeps looking functional, so an
-  /// operator on a full disk loses every QSO from the first failure on
-  /// without ever being told. The typed fields survive: the wipe only runs
-  /// after every write commits. Null keeps the English default.
-  final String Function(Object error)? saveFailedLabel;
-
-  /// Same, for a staged delete whose write throws.
-  final String Function(Object error)? deleteFailedLabel;
-
-  /// A QSO write failed. The panel has already shown [saveFailedLabel] /
-  /// [deleteFailedLabel]; this is the host's hook to report the error
+  /// A QSO write failed. The panel has already shown its own failure message
+  /// in the info area; this is the host's hook to report the error
   /// (Sentry/console). The error does NOT also escape to the zone handler,
   /// so a host that leaves this unwired records nothing.
   final void Function(Object error, StackTrace stackTrace)? onWriteError;
@@ -685,7 +599,6 @@ class LoggingControls extends StatefulWidget {
     this.hasConfiguredRadio = false,
     this.radioConnected = false,
     this.onOpenStationConfig,
-    this.stationConfigLabel,
     this.radioName,
     this.aboveEntryRow,
     this.escapeClaimed,
@@ -705,67 +618,15 @@ class LoggingControls extends StatefulWidget {
     this.onQsoChanged,
     this.onPeerDraftChanged,
     this.onCallInfoTap,
-    this.timeLabel,
-    this.dateLabel,
-    this.nowLabel,
-    this.freqLabel,
-    this.modeLabel,
-    this.theirCallLabel,
-    this.noteFieldLabel,
-    this.todoFieldLabel,
-    this.sentLabel,
-    this.rcvdLabel,
-    this.moreLabel,
-    this.revertLabel,
-    this.deleteLabel,
-    this.undoDeleteLabel,
-    this.restoreLabel,
-    this.wipeLabel,
-    this.undoLabel,
-    this.pendingDeleteWarning,
-    this.deletedQsoWarning,
-    this.pendingDeleteEventWarning,
-    this.deletedEventWarning,
-    this.qsoEditFormTitle,
-    this.operatorCallLabel,
-    this.positionLabel,
     this.defaultOperatorCall = '',
     this.defaultPosition = '',
     this.showPositionField = false,
-    this.theirNameLabel,
-    this.theirGridLabel,
-    this.theirStateLabel,
-    this.notesLabel,
-    this.bandLabel,
-    this.timeControlLabel,
-    this.radioControlLabel,
-    this.powerControlLabel,
-    this.powerLabel,
-    this.powerUnitLabel,
     this.trackingPower = false,
-    this.controlSettingsTitle,
-    this.saveLabel,
-    this.cancelLabel,
-    this.expandControlsLabel,
-    this.collapseControlsLabel,
     this.enabledBands,
     this.enabledModes,
     this.suggestSpotSources,
     this.sendSpot,
-    this.spottingControlLabel,
-    this.spottingLabel,
-    this.spottingSelfLabel,
-    this.spotSelfLabel,
-    this.spotOtherLabel,
-    this.spotTooLateLabel,
-    this.spotNoFreqLabel,
-    this.bandOrFreqRequiredLabel,
-    this.missingBandLabel,
-    this.missingModeLabel,
-    this.saveFailedLabel,
-    this.deleteFailedLabel,
     this.onWriteError,
-    this.spotCommentHint,
     this.showRSTFields = true,
     this.showStateField = false,
     this.showGridField = false,
@@ -879,12 +740,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       radioService: widget.radioService,
       editingQso: widget.editingQso,
       operation: widget.operation,
-      spottingLabel: widget.spottingLabel,
-      spottingSelfLabel: widget.spottingSelfLabel,
-      spotSelfLabel: widget.spotSelfLabel,
-      spotOtherLabel: widget.spotOtherLabel,
-      spotTooLateLabel: widget.spotTooLateLabel,
-      spotNoFreqLabel: widget.spotNoFreqLabel,
     ),
   );
 
@@ -3110,8 +2965,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Sent and which is Rcvd never changes; only where each is drawn does.
   List<({FocusNode focus, TextEditingController controller, String label})> get _rstPair {
     final pair = [
-      (focus: _sentFocus, controller: _sentController, label: widget.sentLabel ?? 'Sent'),
-      (focus: _rcvdFocus, controller: _rcvdController, label: widget.rcvdLabel ?? 'Rcvd'),
+      (focus: _sentFocus, controller: _sentController, label: t.loggingControls.sent),
+      (focus: _rcvdFocus, controller: _rcvdController, label: t.loggingControls.rcvd),
     ];
     return widget.switchSentRcvd ? pair.reversed.toList() : pair;
   }
@@ -3775,13 +3630,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _ControlDescriptor(
           key: 'time',
           icon: MdiIcons.clockOutline,
-          label: widget.timeControlLabel ?? 'Time',
+          label: t.loggingControls.timeControl,
           mandatory: true,
         ),
         _ControlDescriptor(
           key: 'radio',
           icon: _radioChipIcon,
-          label: widget.radioControlLabel ?? 'Radio',
+          label: t.loggingControls.radioControl,
           mandatory: true,
         ),
         // Only with somewhere to keep the value: power lives on the VFO
@@ -3790,14 +3645,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           _ControlDescriptor(
             key: 'power',
             icon: MdiIcons.flash,
-            label: widget.powerControlLabel ?? 'Power',
+            label: t.loggingControls.powerControl,
             defaultHidden: true,
           ),
         if (widget.suggestSpotSources != null && widget.sendSpot != null)
           _ControlDescriptor(
             key: 'spotting',
             icon: MdiIcons.handWave,
-            label: widget.spottingControlLabel ?? 'Spotting',
+            label: t.loggingControls.spottingControl,
           ),
         for (final control in _effectiveActivityControls)
           // `text` controls are primary fields (see `_textControls`), so only
@@ -3821,7 +3676,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         _ControlDescriptor(
           key: 'more',
           icon: MdiIcons.pencil,
-          label: widget.moreLabel ?? 'More',
+          label: t.loggingControls.more,
         ),
       ];
 
@@ -3906,9 +3761,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         liveSummary: _time.isLive ? () => _time.summary : null,
         expandedBuilder: (context) => TimeControlFields(
           model: _time,
-          timeLabel: widget.timeLabel ?? 'Time (UTC)',
-          dateLabel: widget.dateLabel ?? 'Date',
-          nowLabel: widget.nowLabel ?? 'Now',
         ),
       );
 
@@ -3923,7 +3775,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         state: state,
         theme: theme,
         colors: poloColors,
-        commentHint: widget.spotCommentHint ?? 'Comment',
       ),
     );
   }
@@ -3995,7 +3846,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (kind == 'note' || kind == 'todo') {
       final decoration = mainFieldDecoration(
         context,
-        kind == 'todo' ? (widget.todoFieldLabel ?? 'Todo') : (widget.noteFieldLabel ?? 'Note'),
+        kind == 'todo' ? t.loggingControls.todoField : t.loggingControls.noteField,
         horizontalPadding: materialFilledInputGap,
       );
       trailing = TextField(
@@ -4117,10 +3968,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           theme: theme,
           hasConfiguredRadio: widget.hasConfiguredRadio,
           radioConnected: widget.radioConnected,
-          bandLabel: widget.bandLabel ?? 'Band',
-          freqLabel: widget.freqLabel ?? 'Frequency',
-          modeLabel: widget.modeLabel ?? 'Mode',
-          stationConfigLabel: widget.stationConfigLabel ?? 'Station Configuration',
           radioName: widget.radioName,
           onOpenStationConfig: widget.onOpenStationConfig,
           freqInputFormatters: [_virtualSpace],
@@ -4139,7 +3986,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   String get _powerSummary {
     final watts = _powerWatts;
-    return watts == null ? '—' : '$watts ${widget.powerUnitLabel ?? 'W'}';
+    return watts == null ? '—' : '$watts ${t.loggingControls.powerUnit}';
   }
 
   /// Takes power back out of the entry: the field, and the record's own
@@ -4180,7 +4027,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                 style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
                 decoration: poloFieldDecoration(
                   context,
-                  widget.powerLabel ?? 'Power',
+                  t.loggingControls.power,
                   labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
                 ),
                 keyboardType: _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true),
@@ -4196,7 +4043,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             ),
             const SizedBox(width: Space.sm),
             Text(
-              widget.powerUnitLabel ?? 'W',
+              t.loggingControls.powerUnit,
               style: TextStyle(color: Theme.of(context).colorScheme.onTertiaryContainer),
             ),
           ],
@@ -4560,7 +4407,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               controller: _stateController,
               focusNode: _stateFocus,
               enabled: enabled,
-              label: widget.theirStateLabel ?? 'State',
+              label: t.qsoEditForm.theirState,
               width: width,
               padding: padding,
               duration: duration,
@@ -4587,7 +4434,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               controller: _gridController,
               focusNode: _gridFocus,
               enabled: enabled,
-              label: widget.theirGridLabel ?? 'Grid',
+              label: t.qsoEditForm.theirGrid,
               width: width,
               padding: padding,
               duration: duration,
@@ -4624,7 +4471,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   SecondaryControlSpec _moreControlSpec() => SecondaryControlSpec(
         key: 'more',
         icon: MdiIcons.pencil,
-        summary: widget.moreLabel ?? 'More',
+        summary: t.loggingControls.more,
         // Never actually shown — _onSelectControl special-cases 'more' to
         // open the full-edit pane instead of expanding inline.
         expandedBuilder: (context) => const SizedBox.shrink(),
@@ -4743,7 +4590,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   List<PrimaryField> get _primaryFields => [
         (
           key: 'call',
-          label: widget.theirCallLabel ?? 'Call',
+          label: t.loggingControls.theirCall,
           focus: _callFocus,
           controller: _callController,
           hint: null,
@@ -4775,7 +4622,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         if (widget.showStateField)
           (
             key: 'state',
-            label: widget.theirStateLabel ?? 'State',
+            label: t.qsoEditForm.theirState,
             focus: _stateFocus,
             controller: _stateController,
             hint: _currentGuess?['state'] as String?,
@@ -4783,7 +4630,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         if (widget.showGridField)
           (
             key: 'grid',
-            label: widget.theirGridLabel ?? 'Grid',
+            label: t.qsoEditForm.theirGrid,
             focus: _gridFocus,
             controller: _gridController,
             hint: _currentGuess?['grid'] as String?,
@@ -5407,7 +5254,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       context,
       gridBeforePane: gridBeforePane,
       formDefinition: buildQsoEditFormDefinition(
-        widget: widget,
+        defaultOperatorCall: widget.defaultOperatorCall,
+        defaultPosition: widget.defaultPosition,
+        showPositionField: widget.showPositionField,
         their: asQsonMap(widget.editingQso?.data['their']),
         guess: _currentGuess,
         rstPaneKeyOrder: _rstPaneKeyOrder,
@@ -5565,7 +5414,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => HaloDialog(
-          title: Text(widget.controlSettingsTitle ?? 'Logging Controls'),
+          title: Text(t.loggingControls.controlSettings),
           // The ReorderableListView scrolls itself, so the shell must not:
           // nesting two scrollables on one axis leaves the inner list with no
           // scroll extent, and a drag toward the edge has nothing to
@@ -5620,12 +5469,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           ),
           cancel: TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(widget.cancelLabel ?? 'Cancel'),
+            child: Text(t.common.cancel),
           ),
           actions: [
             FilledButton(
               onPressed: () => Navigator.of(dialogContext).pop((order, hidden)),
-              child: Text(widget.saveLabel ?? 'Save'),
+              child: Text(t.common.save),
             ),
           ],
         ),
@@ -6011,11 +5860,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (editingQso == null) {
       if (_wipeUndoSlot.value != null) {
         icon = MdiIcons.undo;
-        actionLabel = widget.undoLabel ?? 'Undo';
+        actionLabel = t.loggingControls.undo;
         onPressed = _restoreFromUndoSlot;
       } else {
         icon = MdiIcons.backspaceOutline;
-        actionLabel = widget.wipeLabel ?? 'Wipe';
+        actionLabel = t.loggingControls.wipe;
         onPressed = _hasComposedValues ? _handleWipeTap : null;
       }
     } else if (editingQso.deleted) {
@@ -6023,7 +5872,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // toggle) — one tap restores it immediately (ham2k/halo-dist#59);
       // no staged-until-save step, since restoring isn't destructive.
       icon = MdiIcons.deleteRestore;
-      actionLabel = widget.restoreLabel ?? 'Restore';
+      actionLabel = t.loggingControls.restore;
       // Disabled rather than merely refused: restore is the one action that
       // deliberately survives `_fieldsLocked` (a deleted QSO is always
       // locked), so without this it is the only enabled control on an
@@ -6031,15 +5880,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       onPressed = _writeRefusal != null ? null : () => _handleRestoreTap(editingQso);
     } else if (_pendingDelete) {
       icon = MdiIcons.undo;
-      actionLabel = widget.undoDeleteLabel ?? 'Undo delete';
+      actionLabel = t.loggingControls.undoDelete;
       onPressed = () => setState(() => _pendingDelete = false);
     } else if (_qsoDataChanged()) {
       icon = MdiIcons.undo;
-      actionLabel = widget.revertLabel ?? 'Revert';
+      actionLabel = t.loggingControls.revert;
       onPressed = () => _populateFromEditingQso(editingQso);
     } else {
       icon = MdiIcons.trashCanOutline;
-      actionLabel = widget.deleteLabel ?? 'Delete';
+      actionLabel = t.common.delete;
       onPressed = () => setState(() => _pendingDelete = true);
     }
 
@@ -6069,14 +5918,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// command error uses — never a toast over the logging UI) and hand it to
   /// the host to report. The caller decides what field bookkeeping
   /// accompanies it; the fields themselves are never wiped on failure.
+  ///
+  /// The in-panel message is load-bearing, not a courtesy: the host's own
+  /// notice for a write error shows at most once per session, so without it
+  /// an operator on a full disk loses every QSO after the first in silence.
   void _reportWriteFailure(Object e, StackTrace stack, {bool delete = false}) {
     widget.onWriteError?.call(e, stack);
     if (!mounted) return;
     // A confirm-clear timer from an earlier command would wipe this message
     // moments after it appears — the failure owns the slot now.
-    _command.showError(delete
-        ? (widget.deleteFailedLabel?.call(e) ?? 'Could not delete: $e')
-        : (widget.saveFailedLabel?.call(e) ?? 'Could not save: $e'));
+    _command.showError(delete ? t.loggingControls.deleteFailed(error: e) : t.loggingControls.saveFailed(error: e));
   }
 
   /// [focusCall] false leaves the focus alone when the entry is wiped after
@@ -6267,7 +6118,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (_canLog && _radio.freq == null && _radio.band == null) {
       // A confirm-clear timer from an earlier command would wipe this moments
       // after it appears — same reasoning as the command error branches.
-      _command.showError(widget.bandOrFreqRequiredLabel ?? 'Set a frequency or band before logging');
+      _command.showError(t.loggingControls.bandOrFreqRequired);
       _onSelectControl('radio');
       return;
     }
@@ -6593,8 +6444,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                             onSelect: _onSelectControl,
                             onOpenSettings: _openControlSettingsDialog,
                             horizontalBleed: secondaryPanelHorizontalInset,
-                            expandLabel: widget.expandControlsLabel,
-                            collapseLabel: widget.collapseControlsLabel,
                             // The dupe warning (and the other scoring notices)
                             // live on the info area's third line — see
                             // `_buildInfoArea` (issue #40).
@@ -6890,7 +6739,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                               style: mainFieldStyle(context, fontWeight: FontWeight.w500),
                               decoration: mainFieldDecoration(
                                 context,
-                                widget.theirCallLabel ?? 'Their call',
+                                t.loggingControls.theirCall,
                                 horizontalPadding: fieldLayout.fieldPadding,
                               ),
                               onEditingComplete: () => _finishEditingWithoutBlur(_callController),
@@ -7128,16 +6977,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// cannot be saved.
   String _lockedWarningText(bool deletedQso) {
     final refusal = _writeRefusal;
+    // Worded for the event row when there is one (`kind` is its uppercased
+    // eventKind, e.g. "NOTE"/"BREAK") — "QSO" is wrong for a row that isn't one.
     final kind = widget.editingQso?.eventKind?.toUpperCase();
     return (refusal != null)
         ? refusal.reason
         : (kind != null)
         ? (deletedQso
-            ? (widget.deletedEventWarning?.call(kind) ?? 'Deleted $kind')
-            : (widget.pendingDeleteEventWarning?.call(kind) ?? '$kind will be deleted when you save'))
-        : (deletedQso
-            ? (widget.deletedQsoWarning ?? 'Deleted QSO')
-            : (widget.pendingDeleteWarning ?? 'QSO will be deleted when you save'));
+            ? t.loggingControls.deletedEventWarning(kind: kind)
+            : t.loggingControls.pendingDeleteEventWarning(kind: kind))
+        : (deletedQso ? t.loggingControls.deletedQsoWarning : t.loggingControls.pendingDeleteWarning);
   }
 
   /// What the contact in hand is missing from the radio state that every QSO
@@ -7161,8 +7010,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // reachable with something loggable in hand today — an event's `NOTE`
       // is not a callsign, and a locked form cannot log — so nothing is lost
       // by staying quiet there.
-      if (_radio.freq == null && _radio.band == null) widget.missingBandLabel ?? 'No Band',
-      if (_radio.mode.trim().isEmpty) widget.missingModeLabel ?? 'No Mode',
+      if (_radio.freq == null && _radio.band == null) t.loggingControls.missingBand,
+      if (_radio.mode.trim().isEmpty) t.loggingControls.missingMode,
     ];
   }
 

@@ -28,6 +28,8 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show OverflowBoxFit;
 
+import 'package:halo_i18n/halo_i18n.dart';
+
 import 'mdi_icons.g.dart';
 import 'density.dart';
 import 'spacing.dart';
@@ -181,12 +183,6 @@ class SecondaryControlRow extends StatefulWidget {
   /// edges instead of stopping at the parent's padding.
   final double horizontalBleed;
 
-  /// The caret's expand/collapse accessible names — nullable with English
-  /// fallbacks so the package stays i18n-free; the app passes translated
-  /// values.
-  final String? expandLabel;
-  final String? collapseLabel;
-
   const SecondaryControlRow({
     super.key,
     required this.controls,
@@ -195,8 +191,6 @@ class SecondaryControlRow extends StatefulWidget {
     this.trailing,
     this.onOpenSettings,
     this.horizontalBleed = 0,
-    this.expandLabel,
-    this.collapseLabel,
   });
 
   @override
@@ -767,9 +761,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
                 curve: Curves.easeInOut,
                 child: Icon(
                   MdiIcons.chevronDown,
-                  semanticLabel: _gridExpanded
-                      ? (widget.collapseLabel ?? 'Collapse')
-                      : (widget.expandLabel ?? 'Expand'),
+                  semanticLabel: _gridExpanded ? t.common.collapse : t.common.expand,
                 ),
               ),
               onPressed: () => setState(() => _gridExpanded = !_gridExpanded),

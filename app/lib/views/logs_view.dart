@@ -2486,7 +2486,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
     } catch (e, stack) {
       ErrorReportingService.report(e, stack, context: 'logsQsoEdit:save');
       if (mounted) {
-        widget.services.statusBar.showNotice(key: 'logsQsoEdit:save', text: context.t.qsoEditForm.saveFailed(error: e));
+        widget.services.statusBar.showNotice(key: 'logsQsoEdit:save', text: context.t.loggingControls.saveFailed(error: e));
       }
       return;
     } finally {
@@ -2503,7 +2503,7 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
       ErrorReportingService.report(e, stack, context: 'logsQsoEdit:delete');
       if (mounted) {
         setState(() => _saving = false);
-        widget.services.statusBar.showNotice(key: 'logsQsoEdit:delete', text: context.t.qsoEditForm.deleteFailed(error: e));
+        widget.services.statusBar.showNotice(key: 'logsQsoEdit:delete', text: context.t.loggingControls.deleteFailed(error: e));
       }
       return;
     }

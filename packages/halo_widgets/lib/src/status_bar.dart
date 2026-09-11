@@ -180,9 +180,8 @@ class StatusBarFooter extends StatefulWidget {
   final List<StatusBarPermaData> perma;
 
   /// Accessible name for an item's dismiss button — it is icon-only, and the
-  /// app has no hover tooltips (docs/design/user-interface.md). English
-  /// default so the package stays i18n-free; the app passes a translated
-  /// value.
+  /// app has no hover tooltips (docs/design/user-interface.md). The caller
+  /// names it; the default stands in for one that does not.
   final String dismissLabel;
 
   /// How tall the EXPANDED list may grow before it scrolls. Same contract as

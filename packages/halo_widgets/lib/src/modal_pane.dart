@@ -128,8 +128,8 @@ class ModalPaneRoute<T> extends PopupRoute<T> implements TapDismissibleRoute {
   final List<Widget> headerActions;
 
   /// The dialog presentation's close-button accessible name (it is icon-only,
-  /// and the app has no hover tooltips) — English default so the package stays
-  /// i18n-free; the app passes a translated value.
+  /// and the app has no hover tooltips). The caller names it, since the pane
+  /// is shown from several places; the default stands in for one that does not.
   final String closeLabel;
 
   /// Whether the dialog presentation heads the pane with an X.

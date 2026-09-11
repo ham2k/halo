@@ -20,6 +20,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 import 'density.dart';
 import 'logging_controls_metrics.dart';
@@ -938,10 +939,6 @@ class RadioControlFields extends StatelessWidget {
     required this.theme,
     required this.hasConfiguredRadio,
     required this.radioConnected,
-    required this.bandLabel,
-    required this.freqLabel,
-    required this.modeLabel,
-    required this.stationConfigLabel,
     required this.radioName,
     required this.onOpenStationConfig,
     required this.freqInputFormatters,
@@ -958,10 +955,6 @@ class RadioControlFields extends StatelessWidget {
 
   final bool hasConfiguredRadio;
   final bool radioConnected;
-  final String bandLabel;
-  final String freqLabel;
-  final String modeLabel;
-  final String stationConfigLabel;
   final String? radioName;
   final VoidCallback? onOpenStationConfig;
 
@@ -1071,7 +1064,7 @@ class RadioControlFields extends StatelessWidget {
             focusNode: model.bandFocus,
             menuController: model.bandMenu,
             initialSelection: model.band,
-            label: Text(bandLabel),
+            label: Text(t.qsoEditForm.band),
             width: 86,
             menuHeight: dropdownMenuMaxHeight(context),
             // Pick-only menus. With search on (the default), every rebuild
@@ -1100,7 +1093,7 @@ class RadioControlFields extends StatelessWidget {
             style: textStyle,
             decoration: poloFieldDecoration(
               context,
-              freqLabel,
+              t.loggingControls.frequency,
               labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
             ),
             keyboardType: freqKeyboardType,
@@ -1133,7 +1126,7 @@ class RadioControlFields extends StatelessWidget {
             focusNode: model.modeFocus,
             menuController: model.modeMenu,
             initialSelection: model.displayedMode,
-            label: Text(modeLabel),
+            label: Text(t.loggingControls.mode),
             width: 86,
             menuHeight: dropdownMenuMaxHeight(context),
             // See the Band dropdown: search off so rebuilds don't re-scroll
@@ -1153,7 +1146,9 @@ class RadioControlFields extends StatelessWidget {
           const SizedBox(width: Space.sm),
           Semantics(
             identifier: 'action.stationConfig',
-            label: stationConfigLabel,
+            // The button is icon-only and the app shows no hover tooltips,
+            // so this label is the ONLY accessible name it has.
+            label: t.settings.station.title,
             button: true,
             enabled: !_editing,
             child: InkWell(

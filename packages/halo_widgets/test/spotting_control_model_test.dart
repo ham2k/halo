@@ -36,12 +36,6 @@ class _Harness {
       radioService: _FakeVfoStore(vfo),
       editingQso: editingQso,
       operation: const Operation(uuid: 'op', data: {'refs': []}, localData: {'multiIdentifier': 'OP1'}),
-      spottingLabel: null,
-      spottingSelfLabel: null,
-      spotSelfLabel: null,
-      spotOtherLabel: null,
-      spotTooLateLabel: null,
-      spotNoFreqLabel: null,
     ),
   )..addListener(() => notifications++);
 }

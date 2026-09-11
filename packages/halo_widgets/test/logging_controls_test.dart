@@ -15,6 +15,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 // WCAG 2.1 relative luminance / contrast ratio, so the focus-indicator test
@@ -25,6 +26,15 @@ double _contrast(Color a, Color b) {
   final la = _luminance(a), lb = _luminance(b);
   final hi = math.max(la, lb), lo = math.min(la, lb);
   return (hi + 0.05) / (lo + 0.05);
+}
+
+/// Runs the rest of the test in Spanish, and puts English back afterwards.
+/// `runAsync`: the Spanish translations are a deferred library, and its load
+/// is a real future that fake async would never complete — a bare
+/// `await LocaleSettings.setLocale` under `testWidgets` hangs to the timeout.
+Future<void> useSpanish(WidgetTester tester) async {
+  await tester.runAsync(() => LocaleSettings.setLocale(AppLocale.es));
+  addTearDown(() => LocaleSettings.setLocaleSync(AppLocale.en));
 }
 
 void main() {
@@ -105,10 +115,7 @@ void main() {
     void Function(Qso qso)? enqueueLookup,
     void Function(Iterable<Qso> qsos)? enqueueAllLookups,
     Widget? trailing,
-    String? bandOrFreqRequiredLabel,
     VoidCallback? onCallInfoTap,
-    String? missingBandLabel,
-    String? missingModeLabel,
     QsosRepository? qsosRepository,
     void Function(Object error, StackTrace stackTrace)? onWriteError,
     int? ourItuRegion,
@@ -145,10 +152,7 @@ void main() {
       // a contact carrying neither band nor frequency (HALO-24), so a test
       // that logs anything needs one. Tests about the untuned, fresh-install
       // state pass `fakeRadio` (or their own store) explicitly.
-      bandOrFreqRequiredLabel: bandOrFreqRequiredLabel,
       onCallInfoTap: onCallInfoTap,
-      missingBandLabel: missingBandLabel,
-      missingModeLabel: missingModeLabel,
       radioService: resolvedRadio,
       // The app passes the same object twice — RadioService is both the
       // store and the Listenable. See LoggingControls.radioUpdates.
@@ -181,26 +185,15 @@ void main() {
       hasConfiguredRadio: hasConfiguredRadio,
       radioConnected: radioConnected,
       onOpenStationConfig: onOpenStationConfig,
-      stationConfigLabel: 'Station Configuration',
       radioName: radioName,
       ourItuRegion: ourItuRegion,
       ourCountryCode: ourCountryCode,
-      spottingControlLabel: 'Spotting',
-      spottingLabel: 'Spotting',
-      spottingSelfLabel: 'Self-spotting',
-      spotSelfLabel: (freq) => 'Self-spot at $freq',
-      spotOtherLabel: (call, freq) => 'Spot $call at $freq',
-      spotTooLateLabel: (call) => 'Too late to spot $call',
-      spotNoFreqLabel: 'First set a frequency to spot',
       // The dupe warning now renders as a line-3 pill in the info area
       // (issue #40); map its key to the same 'DUPE' text the old chip used so
       // the dupe-detection tests can keep asserting on it.
       scoreNoticeLabel: (key) => key == 'duplicate' ? 'DUPE' : key,
       controlOrder: controlOrder,
       hiddenControlKeys: hiddenControlKeys,
-      powerControlLabel: 'Power',
-      powerLabel: 'Power',
-      powerUnitLabel: 'W',
       trackingPower: trackingPower,
     );
     return MaterialApp(
@@ -2010,9 +2003,6 @@ void main() {
           operation: operation,
           qsosRepository: qsos,
           editingQso: existingQso,
-          theirNameLabel: 'Name',
-          theirGridLabel: 'Grid',
-          saveLabel: 'Save',
         ),
       ),
     ));
@@ -7586,12 +7576,13 @@ void main() {
     /// code with the guard removed.
     Future<void> dismissRadioControl(WidgetTester tester) async {
       // The auto-open runs in a post-frame callback, so it takes one more
-      // frame than `pumpWidget` alone gives it.
+      // frame than `pumpWidget` alone gives it. The label is read through `t`
+      // so the helper serves the Spanish-locale tests too.
       await tester.pump();
-      expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget,
+      expect(find.widgetWithText(TextField, t.loggingControls.frequency), findsOneWidget,
           reason: 'an unset VFO should have opened the Radio control on mount');
       await openControl(tester, MdiIcons.radio); // same chip again — collapse
-      expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
+      expect(find.widgetWithText(TextField, t.loggingControls.frequency), findsNothing);
     }
 
     // The proactive half: the operator is shown the fields that need
@@ -7612,12 +7603,26 @@ void main() {
           reason: 'nothing is missing, so nothing should pop open');
     });
 
+    testWidgets('the refusal speaks the operator\'s language', (tester) async {
+      // Every other assertion on this message is English, which a hardcoded
+      // literal would satisfy — this one is what fails if the refusal stops
+      // reading the strings package.
+      await useSpanish(tester);
+      final messages = <String?>[];
+      await tester.pumpWidget(host(radioService: fakeRadio, onCommandMessageChanged: messages.add));
+      await dismissRadioControl(tester);
+      await tester.enterText(find.widgetWithText(TextField, t.loggingControls.theirCall), 'W1AW');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(messages.last, 'Define una frecuencia o banda antes de registrar');
+    });
+
     testWidgets('refuses the contact, says so, and opens the Radio control to ask', (tester) async {
       final messages = <String?>[];
       await tester.pumpWidget(host(
         radioService: fakeRadio,
         onCommandMessageChanged: messages.add,
-        bandOrFreqRequiredLabel: 'Set a frequency or band before logging',
       ));
       await dismissRadioControl(tester);
 
@@ -7848,13 +7853,13 @@ void main() {
       expect(find.text('No Mode'), findsOneWidget);
     });
 
-    // The label is the app's, not the widget's. Every other test here reads
-    // the English fallback, so all of them would still pass with the two
-    // `context.t` lines deleted from logging_panel.dart and a Spanish
-    // operator shown "No Band" in an otherwise Spanish panel. This one
-    // measures the plumbing instead, as the log-time refusal's test does.
-    testWidgets('the pill says what the app tells it to say', (tester) async {
-      await tester.pumpWidget(host(radioService: fakeRadio, missingBandLabel: 'Sin Banda'));
+    // The pills read the strings package directly. Every other test here
+    // asserts the English text, which a hardcoded label would also satisfy —
+    // this one switches the locale, so a pill that stopped reading `t` and
+    // showed a Spanish operator "No Band" fails here and nowhere else.
+    testWidgets('the pill speaks the operator\'s language', (tester) async {
+      await useSpanish(tester);
+      await tester.pumpWidget(host(radioService: fakeRadio));
       await tester.pump();
 
       expect(find.text('Sin Banda'), findsOneWidget);
@@ -7869,7 +7874,6 @@ void main() {
     testWidgets('answering the refusal clears the pill even while its message is still up', (tester) async {
       await tester.pumpWidget(host(
         radioService: fakeRadio,
-        bandOrFreqRequiredLabel: 'Set a frequency or band before logging',
       ));
       await tester.pump();
       // The unset VFO opens the Radio control on mount; collapse it, or Enter
@@ -7919,21 +7923,21 @@ void main() {
       // test is watching rather than sharpen it.
       await tester.binding.setSurfaceSize(const Size(320, 600));
       addTearDown(() => tester.binding.setSurfaceSize(null));
+      // Spanish spells both pills long — the case the Wrap exists for.
+      await useSpanish(tester);
       await tester.pumpWidget(host(
         radioService: fakeRadio,
         interpretCommand: clearsTheMode,
-        missingBandLabel: 'Sin Banda',
-        missingModeLabel: 'Sin Modo',
       ));
       await tester.pump();
       // The unset VFO opens the Radio control on mount; Enter inside an open
       // control closes it rather than running the command.
       await openControl(tester, MdiIcons.radio);
-      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOMODE');
+      await tester.enterText(find.widgetWithText(TextField, t.loggingControls.theirCall), 'NOMODE');
       await tester.pump();
       await tester.sendKeyEvent(LogicalKeyboardKey.enter);
       await tester.pump(const Duration(milliseconds: 200));
-      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.enterText(find.widgetWithText(TextField, t.loggingControls.theirCall), 'W1AW');
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 300));
 

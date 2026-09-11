@@ -27,7 +27,6 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'form_pane.dart';
-import 'logging_controls.dart';
 import 'mdi_icons.g.dart';
 import 'secondary_control_row.dart';
 import 'text_formatters.dart';
@@ -159,7 +158,9 @@ String? _numericGuess(Map<String, dynamic>? guess, String key) {
 /// the operator field. [rstPaneKeyOrder] is the panel's own resolved
 /// Sent/Rcvd order; [powerShown] whether power is part of this entry at all.
 Map<String, dynamic> buildQsoEditFormDefinition({
-  required LoggingControls widget,
+  required String defaultOperatorCall,
+  required String defaultPosition,
+  required bool showPositionField,
   required Map<String, dynamic>? their,
   required Map<String, dynamic>? guess,
   required List<String> rstPaneKeyOrder,
@@ -172,18 +173,18 @@ Map<String, dynamic> buildQsoEditFormDefinition({
   final us = theirIsUS(their, guess);
   final tt = t.qsoEditForm;
   return {
-    'title': widget.qsoEditFormTitle ?? 'Edit QSO',
+    'title': tt.title,
     'elements': [
       {'type': 'header', 'title': tt.sectionQso},
-      {'type': 'field', 'key': 'date', 'fieldType': 'text', 'label': widget.dateLabel ?? 'Date'},
-      {'type': 'field', 'key': 'time', 'fieldType': 'text', 'label': widget.timeLabel ?? 'Time (UTC)'},
-      {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': widget.freqLabel ?? 'Frequency'},
-      {'type': 'field', 'key': 'band', 'fieldType': 'text', 'label': widget.bandLabel ?? 'Band'},
+      {'type': 'field', 'key': 'date', 'fieldType': 'text', 'label': t.loggingControls.date},
+      {'type': 'field', 'key': 'time', 'fieldType': 'text', 'label': t.loggingControls.timeUtc},
+      {'type': 'field', 'key': 'freq', 'fieldType': 'number', 'label': t.loggingControls.frequency},
+      {'type': 'field', 'key': 'band', 'fieldType': 'text', 'label': tt.band},
       {
         'type': 'field',
         'key': 'mode',
         'fieldType': 'select',
-        'label': widget.modeLabel ?? 'Mode',
+        'label': t.loggingControls.mode,
         // [currentMode] is what the panel SHOWS ([displayMode]), and it is
         // appended when the option list has no entry for it — a select whose
         // value matches no option renders empty, and saving that pane would
@@ -196,7 +197,7 @@ Map<String, dynamic> buildQsoEditFormDefinition({
       // After the mode, with the rest of what describes the transmission
       // rather than the station. Only when power is part of this entry: an
       // operator who never states one has no use for the field.
-      if (powerShown) {'type': 'field', 'key': 'power', 'fieldType': 'number', 'label': widget.powerLabel ?? 'Power'},
+      if (powerShown) {'type': 'field', 'key': 'power', 'fieldType': 'number', 'label': t.loggingControls.power},
       // Both reports, together, in this section — app-polo splits them
       // between its Their and Our sections, and here they cannot be split:
       // one place resolves which is drawn first (LoggingControls'
@@ -210,7 +211,7 @@ Map<String, dynamic> buildQsoEditFormDefinition({
           'type': 'field',
           'key': key,
           'fieldType': 'text',
-          'label': (key == 'sent' ? widget.sentLabel ?? 'Sent' : widget.rcvdLabel ?? 'Rcvd'),
+          'label': (key == 'sent' ? t.loggingControls.sent : t.loggingControls.rcvd),
           'uppercase': true,
           'placeholder': rstPlaceholder,
         },
@@ -220,12 +221,12 @@ Map<String, dynamic> buildQsoEditFormDefinition({
       // maps a field's `placeholder` to poloFieldDecoration's hintText) —
       // same "guess as a hint, never a pre-filled value" behaviour as the
       // primary Grid/State.
-      {'type': 'field', 'key': 'theirCall', 'fieldType': 'callsign', 'label': widget.theirCallLabel ?? 'Their call'},
-      {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': widget.theirNameLabel ?? 'Name', 'placeholder': guess?['name'] as String?},
+      {'type': 'field', 'key': 'theirCall', 'fieldType': 'callsign', 'label': t.loggingControls.theirCall},
+      {'type': 'field', 'key': 'theirName', 'fieldType': 'text', 'label': tt.theirName, 'placeholder': guess?['name'] as String?},
       // Their address, coarse to fine. `city` is what ADIF calls QTH and what
       // a lookup answers with.
       {'type': 'field', 'key': 'theirCity', 'fieldType': 'text', 'label': tt.theirCity, 'placeholder': guess?['city'] as String?},
-      {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': widget.theirStateLabel ?? 'State', 'uppercase': true, 'placeholder': guess?['state'] as String?},
+      {'type': 'field', 'key': 'theirState', 'fieldType': 'text', 'label': tt.theirState, 'uppercase': true, 'placeholder': guess?['state'] as String?},
       if (us)
         {'type': 'field', 'key': 'theirCounty', 'fieldType': 'text', 'label': tt.theirCounty, 'placeholder': guess?['county'] as String?},
       if (entity != null)
@@ -234,7 +235,7 @@ Map<String, dynamic> buildQsoEditFormDefinition({
       {'type': 'field', 'key': 'theirItuZone', 'fieldType': 'number', 'label': tt.theirItuZone, 'placeholder': _numericGuess(guess, 'ituZone')},
       if (us)
         {'type': 'field', 'key': 'theirArrlSection', 'fieldType': 'text', 'label': tt.theirArrlSection, 'uppercase': true, 'placeholder': guess?['arrlSection'] as String?},
-      {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': widget.theirGridLabel ?? 'Grid', 'uppercase': true, 'placeholder': guess?['grid'] as String?},
+      {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': tt.theirGrid, 'uppercase': true, 'placeholder': guess?['grid'] as String?},
       // Editable, and cleared by the grid above the moment it is edited (see
       // [showQsoEditPane]'s onChange): a coordinate outranks a grid wherever
       // one is read (docs/design/locations.md), so leaving a stale pair on
@@ -265,22 +266,22 @@ Map<String, dynamic> buildQsoEditFormDefinition({
         'type': 'field',
         'key': 'operatorCall',
         'fieldType': 'callsign',
-        'label': widget.operatorCallLabel ?? 'Operator',
-        'placeholder': composing && widget.defaultOperatorCall.isNotEmpty ? widget.defaultOperatorCall : null,
+        'label': tt.operatorCall,
+        'placeholder': composing && defaultOperatorCall.isNotEmpty ? defaultOperatorCall : null,
       },
-      if (widget.showPositionField)
+      if (showPositionField)
         {
           'type': 'field',
           'key': 'multiIdentifier',
           'fieldType': 'text',
-          'label': widget.positionLabel ?? 'Position',
-          'placeholder': composing && widget.defaultPosition.isNotEmpty ? widget.defaultPosition : null,
+          'label': tt.position,
+          'placeholder': composing && defaultPosition.isNotEmpty ? defaultPosition : null,
         },
 
       {'type': 'header', 'title': tt.sectionNotes},
       // Capitalized, not uppercased — a note is prose. The Notes control in
       // the row applies the same rule to the same value.
-      {'type': 'field', 'key': 'notes', 'fieldType': 'multiline', 'label': widget.notesLabel ?? 'Notes', 'capitalize': true},
+      {'type': 'field', 'key': 'notes', 'fieldType': 'multiline', 'label': tt.notes, 'capitalize': true},
     ],
   };
 }

@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 import 'panel_model.dart';
 import 'spacing.dart';
@@ -162,15 +163,9 @@ class TimeControlFields extends StatelessWidget {
   const TimeControlFields({
     super.key,
     required this.model,
-    required this.timeLabel,
-    required this.dateLabel,
-    required this.nowLabel,
   });
 
   final TimeControlModel model;
-  final String timeLabel;
-  final String dateLabel;
-  final String nowLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -189,7 +184,7 @@ class TimeControlFields extends StatelessWidget {
             focusNode: model.timeFocus,
             selectAllOnFocus: false,
             style: style,
-            decoration: poloFieldDecoration(context, timeLabel, labelColor: labelColor),
+            decoration: poloFieldDecoration(context, t.loggingControls.timeUtc, labelColor: labelColor),
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9:]'))],
           ),
         ),
@@ -200,13 +195,13 @@ class TimeControlFields extends StatelessWidget {
             controller: model.dateController,
             focusNode: model.dateFocus,
             style: style,
-            decoration: poloFieldDecoration(context, dateLabel, labelColor: labelColor),
+            decoration: poloFieldDecoration(context, t.loggingControls.date, labelColor: labelColor),
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9-]'))],
           ),
         ),
         if (model.canResetToNow) ...[
           const SizedBox(width: Space.md),
-          TextButton(onPressed: model.resetToNow, child: Text(nowLabel)),
+          TextButton(onPressed: model.resetToNow, child: Text(t.loggingControls.now)),
         ],
       ],
     );

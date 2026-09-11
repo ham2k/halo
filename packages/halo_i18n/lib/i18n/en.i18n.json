@@ -703,8 +703,6 @@
     "power": "Power",
     "powerUnit": "W",
     "controlSettings": "Logging Controls",
-    "expandControls": "Expand",
-    "collapseControls": "Collapse",
     "spottingControl": "Spotting",
     "spottingSelfControl": "Self-spotting",
     "spotSelfAt": "Self-spot at ${freq}",
@@ -801,9 +799,7 @@
     "theirArrlSection": "ARRL Section",
     "theirLat": "Latitude",
     "theirLon": "Longitude",
-    "theirPower": "Their power",
-    "saveFailed": "Could not save: ${error}",
-    "deleteFailed": "Could not delete: ${error}"
+    "theirPower": "Their power"
   },
   "qsoList": {
     "empty": "No QSOs yet — work someone!",

@@ -865,12 +865,6 @@ class Translations$loggingControls$en {
 	/// en: 'Logging Controls'
 	String get controlSettings => 'Logging Controls';
 
-	/// en: 'Expand'
-	String get expandControls => 'Expand';
-
-	/// en: 'Collapse'
-	String get collapseControls => 'Collapse';
-
 	/// en: 'Spotting'
 	String get spottingControl => 'Spotting';
 
@@ -1052,12 +1046,6 @@ class Translations$qsoEditForm$en {
 
 	/// en: 'Their power'
 	String get theirPower => 'Their power';
-
-	/// en: 'Could not save: ${error}'
-	String saveFailed({required Object error}) => 'Could not save: ${error}';
-
-	/// en: 'Could not delete: ${error}'
-	String deleteFailed({required Object error}) => 'Could not delete: ${error}';
 }
 
 // Path: qsoList
@@ -6907,8 +6895,6 @@ extension on Translations {
 			'loggingControls.power' => 'Power',
 			'loggingControls.powerUnit' => 'W',
 			'loggingControls.controlSettings' => 'Logging Controls',
-			'loggingControls.expandControls' => 'Expand',
-			'loggingControls.collapseControls' => 'Collapse',
 			'loggingControls.spottingControl' => 'Spotting',
 			'loggingControls.spottingSelfControl' => 'Self-spotting',
 			'loggingControls.spotSelfAt' => ({required Object freq}) => 'Self-spot at ${freq}',
@@ -7000,8 +6986,6 @@ extension on Translations {
 			'qsoEditForm.theirLat' => 'Latitude',
 			'qsoEditForm.theirLon' => 'Longitude',
 			'qsoEditForm.theirPower' => 'Their power',
-			'qsoEditForm.saveFailed' => ({required Object error}) => 'Could not save: ${error}',
-			'qsoEditForm.deleteFailed' => ({required Object error}) => 'Could not delete: ${error}',
 			'qsoList.empty' => 'No QSOs yet — work someone!',
 			'qsoList.bandOrModeWarning' => 'Please make sure your band and mode are correct',
 			'qsoList.today' => 'Today',
@@ -7347,12 +7331,12 @@ extension on Translations {
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
 			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginIncompleteResponse' => 'That login attempt didn\'t complete correctly. Please try connecting again.',
 			'settings.accounts.noKeyringTitle' => 'Account logins can’t be saved',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
@@ -7861,12 +7845,12 @@ extension on Translations {
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
 			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',
 			'operationLocationScreen.moreDetails' => 'More Details',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',

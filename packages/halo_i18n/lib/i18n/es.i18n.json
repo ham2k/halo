@@ -703,8 +703,6 @@
     "power": "Potencia",
     "powerUnit": "W",
     "controlSettings": "Controles de registro",
-    "expandControls": "Expandir",
-    "collapseControls": "Contraer",
     "spottingControl": "Spotting",
     "spottingSelfControl": "Auto-spot",
     "spotSelfAt": "Auto-spot en ${freq}",
@@ -716,7 +714,7 @@
     "missingBand": "Sin Banda",
     "missingMode": "Sin Modo",
     "saveFailed": "No se pudo guardar: ${error}",
-    "deleteFailed": "No se pudo borrar: ${error}",
+    "deleteFailed": "No se pudo eliminar: ${error}",
     "info": {
       "noQsos": "Aún no hay QSOs... ¡a la carga!",
       "qsoCountOne": "1 QSO",
@@ -801,9 +799,7 @@
     "theirArrlSection": "Sección ARRL",
     "theirLat": "Latitud",
     "theirLon": "Longitud",
-    "theirPower": "Su potencia",
-    "saveFailed": "No se pudo guardar: ${error}",
-    "deleteFailed": "No se pudo eliminar: ${error}"
+    "theirPower": "Su potencia"
   },
   "qsoList": {
     "empty": "Aún no hay QSOs — ¡haz un contacto!",

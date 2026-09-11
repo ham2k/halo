@@ -13,6 +13,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_i18n/halo_i18n.dart';
 
 import 'call_info_summary.dart';
 import 'icon_resolver.dart';
@@ -31,12 +32,6 @@ typedef SpottingConfig = ({
   VfoStore? radioService,
   Qso? editingQso,
   Operation operation,
-  String? spottingLabel,
-  String? spottingSelfLabel,
-  String Function(String freq)? spotSelfLabel,
-  String Function(String call, String freq)? spotOtherLabel,
-  String Function(String call)? spotTooLateLabel,
-  String? spotNoFreqLabel,
 });
 
 /// The Spotting control's summary, button text and enabled state, resolved
@@ -98,11 +93,11 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       final call = asQsonString(asQsonMap(editingQso.data['their'])?['call']) ?? '?';
       final ageMillis = editingQso.startAtMillis == null ? null : nowMillis() - editingQso.startAtMillis!;
       final tooOld = ageMillis == null || ageMillis > staleAfter.inMilliseconds;
-      final summary = cfg.spottingLabel ?? 'Spotting';
+      final summary = t.loggingControls.spottingControl;
       if (tooOld) {
         return (
           summary: summary,
-          buttonLabel: cfg.spotTooLateLabel?.call(call) ?? 'Too late to spot $call',
+          buttonLabel: t.loggingControls.spotTooLate(call: call),
           enabled: false,
           showComment: false,
         );
@@ -110,18 +105,18 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
       final freqLabel = editingQso.freq == null ? '' : fmtFreq(editingQso.freq!);
       return (
         summary: summary,
-        buttonLabel: cfg.spotOtherLabel?.call(call, freqLabel) ?? 'Spot $call at $freqLabel',
+        buttonLabel: t.loggingControls.spotOtherAt(call: call, freq: freqLabel),
         enabled: true,
         showComment: true,
       );
     }
 
-    final summary = cfg.spottingSelfLabel ?? 'Self-spotting';
+    final summary = t.loggingControls.spottingSelfControl;
     final vfoFreq = cfg.radioService?.vfoA.freq;
     if (vfoFreq == null) {
       return (
         summary: summary,
-        buttonLabel: cfg.spotNoFreqLabel ?? 'First set a frequency to spot',
+        buttonLabel: t.loggingControls.spotNoFreq,
         enabled: false,
         showComment: false,
       );
@@ -129,7 +124,7 @@ class SpottingControlModel extends ChangeNotifier with PanelModel {
     final freqLabel = fmtFreq(vfoFreq);
     return (
       summary: summary,
-      buttonLabel: cfg.spotSelfLabel?.call(freqLabel) ?? 'Self-spot at $freqLabel',
+      buttonLabel: t.loggingControls.spotSelfAt(freq: freqLabel),
       enabled: true,
       showComment: true,
     );
@@ -233,7 +228,6 @@ class SpottingControlFields extends StatelessWidget {
     required this.state,
     required this.theme,
     required this.colors,
-    required this.commentHint,
   });
 
   final SpottingControlModel model;
@@ -245,7 +239,6 @@ class SpottingControlFields extends StatelessWidget {
   /// The panel's accent theme — the row is painted on it.
   final ThemeData theme;
   final HaLoColors colors;
-  final String commentHint;
 
   @override
   Widget build(BuildContext context) {
@@ -263,7 +256,8 @@ class SpottingControlFields extends StatelessWidget {
               // Explicitly mixed-case, like Name/Notes: a spot comment is
               // free prose for other operators, not logging data.
               style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
-              decoration: poloFieldDecoration(context, commentHint, labelColor: theme.colorScheme.onTertiaryContainer),
+              decoration: poloFieldDecoration(context, t.loggingControls.spotComment,
+                  labelColor: theme.colorScheme.onTertiaryContainer),
             ),
           ),
         const SizedBox(width: Space.sm),
