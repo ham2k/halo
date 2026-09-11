@@ -196,7 +196,17 @@ class ErrorReportingService {
   /// over a long session" — pair the two on every call site, or the streak
   /// only ever grows.
   ///
-  /// Still policy-gated, like [report]: a streak of known noise stays noise.
+  /// A failure [ErrorPolicy] keeps quiet neither advances the streak nor
+  /// resets it: known noise is not evidence of being stuck, and it is not a
+  /// success either. Counted, it would spend the one report at the threshold
+  /// on an error nobody uploads and leave every later defect on the key
+  /// silent until a success — which a call that fails quietly by nature
+  /// (a screen pane dialling a firewalled peer, a catalog fetch with no
+  /// internet) may not see for the rest of the session. The call site's own
+  /// console line is the only trace a quiet failure leaves here — every
+  /// site prints one, and a new site must too. So "in a row" in the report
+  /// means loud failures since the last success: a rule that depends on
+  /// state (offline, then not) can put a quiet stretch between them.
   static void reportIfRepeated(
     String key,
     Object error,
@@ -204,6 +214,7 @@ class ErrorReportingService {
     String? context,
     int threshold = repeatedFailureThreshold,
   }) {
+    if (!ErrorPolicy.decide(error).disposition.uploads) return;
     final streak = (_failureStreaks[key] ?? 0) + 1;
     _failureStreaks[key] = streak;
     if (streak != threshold) return;

@@ -474,9 +474,9 @@ void main() {
   });
 
   group('peer media unreachable', () {
-    // The view reports a stuck dial once per episode, through the failure
-    // streak; this rule is what keeps that one upload out of the backend
-    // when the cause is a firewall between two peers rather than a defect.
+    // The view reports through the failure streak, which asks this policy
+    // before counting: a firewall between two peers is not a defect, so the
+    // refusal neither uploads nor spends the streak's one report.
     test('a peer that refuses or never answers the media link is console-only', () {
       for (final cause in <Object>[
         const SocketException('Connection refused'),

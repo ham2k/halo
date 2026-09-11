@@ -423,6 +423,10 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         config = await widget.panels.configFor(panel).timeout(const Duration(seconds: 5));
         ErrorReportingService.recordSuccess('panel:config:${panel.id}');
       } catch (e, stack) {
+        // The console line is this catch's own: a failure the policy keeps
+        // quiet never reaches the streak's report, and nothing else prints
+        // for this leg.
+        debugPrint('[panels] config for ${panel.id} failed: $e');
         ErrorReportingService.reportIfRepeated(
           'panel:config:${panel.id}', e, stack, context: 'panel:config:${panel.id}', threshold: 1);
         config = const {};

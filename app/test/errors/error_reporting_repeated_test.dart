@@ -50,16 +50,43 @@ void main() {
     }, backend: backend);
   });
 
-  test('a streak of known noise stays noise', () async {
-    // Still policy-gated at the threshold: a call site whose common failure
-    // the policy keeps to the console (a screen pane dialling a firewalled
-    // peer) must not turn it into an upload by failing three times.
+  /// One failed attempt of [key] that the policy keeps to the console — a
+  /// screen pane dialling a firewalled peer.
+  void failQuietly(String key) => ErrorReportingService.reportIfRepeated(
+      key, const PeerMediaDialFailure('device-b', SocketException('Connection refused')), StackTrace.empty);
+
+  test('a failure the policy keeps quiet does not count, so the defect behind it still reports', () async {
+    // The trap: a call whose COMMON failure is quiet fails that way for as
+    // long as the world is the problem — a firewall, no internet — and a
+    // streak that counted those would spend its one report on the third
+    // quiet one and then sit past the threshold, silent, for whatever
+    // defect came next.
     await withErrorHooks(() async {
-      for (var i = 0; i < 3; i++) {
-        ErrorReportingService.reportIfRepeated('quiet',
-            const PeerMediaDialFailure('device-b', SocketException('Connection refused')), StackTrace.empty);
+      for (var i = 0; i < 25; i++) {
+        failQuietly('a');
       }
+      expect(backend.exceptions, isEmpty, reason: 'known noise is never an upload');
+      expect(ErrorReportingService.failureStreak('a'), 0, reason: 'and never a count');
+
+      failOnce('a');
+      failOnce('a');
+      failOnce('a');
+      expect(backend.exceptions, hasLength(1));
+      expect(backend.exceptions.single.error, isA<StateError>());
+    }, backend: backend);
+  });
+
+  test('a quiet failure does not reset the streak either', () async {
+    // Not a success: the call still failed. Resetting on it would let a
+    // defect that alternates with the world's noise never reach three.
+    await withErrorHooks(() async {
+      failOnce('a');
+      failOnce('a');
+      failQuietly('a');
       expect(backend.exceptions, isEmpty);
+      failOnce('a');
+      expect(backend.exceptions, hasLength(1));
+      expect(backend.exceptions.single.error, isA<StateError>());
     }, backend: backend);
   });
 
