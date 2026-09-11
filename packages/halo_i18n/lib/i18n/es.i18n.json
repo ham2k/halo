@@ -1670,6 +1670,15 @@
       "locale": "Usar la configuración del dispositivo",
       "period": "Usar siempre punto para decimales",
       "comma": "Usar siempre coma para decimales"
+    },
+    "gridPrecision": "Precisión del localizador",
+    "gridPrecisionOpts": {
+      "six": "6 dígitos (FN31pr)",
+      "eight": "8 dígitos (FN31pr55)"
+    },
+    "gridPrecisionDescription": {
+      "six": "Unos 9 × 5 km — lo que la mayoría de los operadores dice en el aire",
+      "eight": "Unos 700 × 460 m — solo donde la ubicación se conoce con esa precisión"
     }
   },
   "commands": {

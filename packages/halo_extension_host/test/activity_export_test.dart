@@ -13,6 +13,7 @@
 // prove neither.
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 
 import 'support/bundles.dart';
@@ -432,15 +433,28 @@ void main() {
   // the format is ADIF's own degrees-and-decimal-minutes, not the signed
   // degrees QSON stores.
   test('coordinates are written in the ADIF Location format, and only with private data released', () async {
+    // A second host only for the eight-character case: the operator's Grid
+    // Precision reaches the exporter through `getSettings`, and the kernel
+    // caches that answer, so the two precisions cannot share one.
     final host = await startHost();
+    final fineHost = await sharedHost(
+      ['adif', 'pota'],
+      cacheKey: 'grid-precision-eight',
+      onHostCall: (method, params) async => method == 'getSettings' ? {'gridPrecision': 8} : null,
+    );
 
-    Future<String> adifFor({required bool includePrivateData}) async {
-      final result = await host.invokeHook(
+    Future<String> adifFor({required bool includePrivateData, ExtensionHost? from}) async {
+      final result = await (from ?? host).invokeHook(
         'export',
         key: 'adif',
         method: 'generateExport',
         args: {
-          'operation': {...operation(['US-0001']), 'grid': 'FN21rq56', 'lat': 41.6875, 'lon': -74.45},
+          // Grid and coordinate agree: 41.6875 / -74.45 IS the fix FN21sq55
+          // was derived from. A fixture whose two halves named different
+          // squares would make this test pass or fail on which of them the
+          // exporter happened to read, which is the very question it is not
+          // about.
+          'operation': {...operation(['US-0001']), 'grid': 'FN21sq55', 'lat': 41.6875, 'lon': -74.45},
           'qsos': [
             {
               ...qsos.first,
@@ -468,8 +482,8 @@ void main() {
     // six characters. The operation stores eight (it was set from a fix), and
     // writing those verbatim would state the position to a few hundred metres
     // through the same switch that is withholding the coordinate itself.
-    expect(withheld, contains('<MY_GRIDSQUARE:6>FN21rq'));
-    expect(withheld, isNot(contains('FN21rq56')));
+    expect(withheld, contains('<MY_GRIDSQUARE:6>FN21sq'));
+    expect(withheld, isNot(contains('FN21sq55')));
 
     final released = await adifFor(includePrivateData: true);
     // The lookup knew where W0ABC was; the operation knows where we were.
@@ -477,10 +491,73 @@ void main() {
     expect(released, contains('E151 12.600'));
     expect(released, contains('N041 41.250'));
     expect(released, contains('W074 27.000'));
-    expect(released, contains('<MY_GRIDSQUARE:8>FN21rq56'), reason: 'released, the finer locator goes out whole');
+    // Six even with private data released, because that is the claim this
+    // operator makes everywhere else: the setting decides how finely the app
+    // SPEAKS about a location, and a file must not say more than the screen.
+    expect(released, contains('<MY_GRIDSQUARE:6>FN21sq'));
+    expect(released, isNot(contains('FN21sq55')));
+
+    final fine = await adifFor(includePrivateData: true, from: fineHost);
+    expect(fine, contains('<MY_GRIDSQUARE:8>FN21sq55'),
+        reason: 'asked for eight AND released, the finer locator goes out whole');
+    // The privacy rule is the ceiling, not the setting: eight characters is a
+    // ~700 x 460 m square, and shipping it through the very switch that
+    // withholds the coordinate it came from would defeat that switch.
+    final fineWithheld = await adifFor(includePrivateData: false, from: fineHost);
+    expect(fineWithheld, contains('<MY_GRIDSQUARE:6>FN21sq'));
+    expect(fineWithheld, isNot(contains('FN21sq55')));
     // The stored value must not reach the file as-is: a reader taking
     // `-74.45` as ADIF's `XDDD MM.MMM` gets a different place entirely.
     expect(released, isNot(contains('-74.45')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // A locator the operator STATED is a square, and the app stores that
+  // square's own center beside it so everything that measures has a
+  // coordinate (docs/design/locations.md). A file must not restate that
+  // centre as `LAT`/`LON`: ADIF readers take a coordinate over a gridsquare,
+  // so the operator would be published standing at a point inside a square
+  // they only claimed to be somewhere in.
+  test('a grid the operator stated exports as a square, never as the coordinate standing in for it', () async {
+    final host = await startHost();
+    final result = await host.invokeHook(
+      'export',
+      key: 'adif',
+      method: 'generateExport',
+      args: {
+        'operation': {
+          ...operation(['US-0001']),
+          'grid': 'FN21rq',
+          // Read through the same decoder the app writes them with: a
+          // hand-rounded pair is NEAR the center and not the center, and the
+          // rule under test is about a pair that IS one.
+          'lat': gridToLocation('FN21rq')!.latitude,
+          'lon': gridToLocation('FN21rq')!.longitude,
+        },
+        'qsos': [
+          {
+            ...qsos.first,
+            'their': {
+              'call': 'W0ABC',
+              'sent': '59',
+              'grid': 'FN31pr',
+              'lat': gridToLocation('FN31pr')!.latitude,
+              'lon': gridToLocation('FN31pr')!.longitude,
+            },
+          },
+        ],
+        'exportType': 'adif',
+        'includePrivateData': true,
+      },
+      timeout: const Duration(seconds: 20),
+    ) as Map;
+    final content = result['content'] as String;
+
+    // Both operations' pairs above ARE the centers of the grids beside them.
+    expect(content, contains('<MY_GRIDSQUARE:6>FN21rq'));
+    expect(content, contains('<GRIDSQUARE:6>FN31pr'));
+    for (final tag in ['<LAT:', '<LON:', '<MY_LAT:', '<MY_LON:']) {
+      expect(content, isNot(contains(tag)), reason: '$tag states a point the operator never claimed');
+    }
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // What app-polo puts on every guess it syncs to us: lib-country-files' DXCC

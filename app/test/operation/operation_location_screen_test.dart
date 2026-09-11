@@ -214,26 +214,44 @@ void main() {
       expect(popped!['lon'], closeTo(-72.7278, 1e-9));
       // The ref's own `grid` is FN31 — four characters, a 9 x 5 km cell. What
       // gets stored is the locator for the coordinate instead, so the two
-      // cannot describe different places.
-      expect(popped!['grid'], locationToGrid8(41.7135, -72.7278));
+      // cannot describe different places. Its LENGTH is the operator's Grid
+      // Precision, six by default; the coordinate beside it stays exact
+      // either way, which is the whole point of storing both.
+      expect(popped!['grid'], locationToGrid6(41.7135, -72.7278));
     });
 
-    testWidgets('adopting a ref whose program publishes no coordinate stores the grid alone', (tester) async {
+    testWidgets('adopting a ref at eight characters when the operator asked for eight', (tester) async {
+      GridPrecision.configure(GridPrecision.eight);
+      addTearDown(GridPrecision.reset);
+      await open(tester, withPark(lat: 41.7135, lon: -72.7278));
+      await tester.tap(find.text('US-1234'));
+      await tester.pumpAndSettle();
+      await save(tester);
+
+      expect(popped!['grid'], locationToGrid8(41.7135, -72.7278));
+      expect(popped!['lat'], closeTo(41.7135, 1e-9));
+    });
+
+    testWidgets("adopting a ref whose program publishes no coordinate stores the square's center", (tester) async {
       await open(tester, withPark());
       await tester.tap(find.text('US-1234'));
       await tester.pumpAndSettle();
       await save(tester);
 
       expect(popped!['grid'], 'FN31');
-      expect(popped!['lat'], isNull, reason: 'claiming a coordinate here would invent one');
+      // A coordinate, so everything that MEASURES has one — but the center of
+      // the very square that was stated, never a finer claim than the program
+      // published.
+      expect(popped!['lat'], closeTo(gridToLocation('FN31')!.latitude, 1e-9));
+      expect(popped!['lon'], closeTo(gridToLocation('FN31')!.longitude, 1e-9));
     });
 
-    // One mechanism enforces the rule — the text listener drops the coordinate
-    // the moment a key lands — so the case that pins it is the one no
-    // after-the-fact comparison of the field could catch: text identical to
+    // One mechanism enforces the rule — the text listener drops the adopted
+    // coordinate the moment a key lands — so the case that pins it is the one
+    // no after-the-fact comparison of the field could catch: text identical to
     // what was adopted, which is indistinguishable from an untouched field
     // unless something noticed a human typing it.
-    testWidgets('retyping the very same locator by hand still drops the coordinate', (tester) async {
+    testWidgets("retyping the very same locator by hand demotes it to the square's center", (tester) async {
       await open(tester, withPark(lat: 41.7135, lon: -72.7278));
       await tester.tap(find.text('US-1234'));
       await tester.pumpAndSettle();
@@ -242,17 +260,21 @@ void main() {
       // save's own "does the text still match?" check cannot tell this from
       // an untouched field. Only the listener knows a human typed it, and
       // what they stated is a square.
-      final adopted = locationToGrid8(41.7135, -72.7278);
+      final adopted = locationToGrid6(41.7135, -72.7278);
       await tester.enterText(find.byType(TextField).first, adopted);
       await tester.pumpAndSettle();
       await save(tester);
 
       expect(popped!['grid'], adopted);
-      expect(popped!['lat'], isNull);
-      expect(popped!['lon'], isNull);
+      // The park's own fix is gone — it outranks the grid everywhere it is
+      // read, so surviving here would silently discard the correction. What
+      // replaces it says exactly what the typed square said, in both halves.
+      expect(popped!['lat'], closeTo(gridToLocation(adopted)!.latitude, 1e-9));
+      expect(popped!['lon'], closeTo(gridToLocation(adopted)!.longitude, 1e-9));
+      expect(popped!['lat'], isNot(closeTo(41.7135, 1e-9)));
     });
 
-    testWidgets('typing a different locator over an adopted location drops its coordinate', (tester) async {
+    testWidgets("typing a different locator over an adopted location moves to that square's center", (tester) async {
       await open(tester, withPark(lat: 41.7135, lon: -72.7278));
       await tester.tap(find.text('US-1234'));
       await tester.pumpAndSettle();
@@ -262,11 +284,10 @@ void main() {
       await save(tester);
 
       expect(popped!['grid'], 'DM33xk');
-      // The operator stated a square, so a square is all that may be stored:
-      // the coordinate outranks the grid everywhere it is read, and keeping
-      // the park's would put the station straight back at the park.
-      expect(popped!['lat'], isNull);
-      expect(popped!['lon'], isNull);
+      // Keeping the park's coordinate would put the station straight back at
+      // the park, since a coordinate outranks the grid everywhere it is read.
+      expect(popped!['lat'], closeTo(gridToLocation('DM33xk')!.latitude, 1e-9));
+      expect(popped!['lon'], closeTo(gridToLocation('DM33xk')!.longitude, 1e-9));
     });
 
     testWidgets('opening the dialog and saving it unchanged keeps the location it arrived with', (tester) async {

@@ -208,16 +208,22 @@ void main() {
   group('Operation location', () {
     Operation op(Map<String, dynamic> data) => Operation(uuid: 'op', data: data);
 
-    test('measures from the stored coordinate, and shows it as eight characters', () {
+    test("measures from the stored coordinate, and shows it at the operator's precision", () {
       final o = op({'grid': 'FN31', 'lat': 41.7135, 'lon': -72.7278});
       expect(o.exactLocation, const GridLocation(41.7135, -72.7278));
       expect(o.location, const GridLocation(41.7135, -72.7278));
+      // The setting governs how finely the app SPEAKS about the location. It
+      // never reaches [location], which is what every distance measures from.
+      expect(o.displayGrid, hasLength(6));
+      GridPrecision.configure(GridPrecision.eight);
+      addTearDown(GridPrecision.reset);
       expect(o.displayGrid, hasLength(8));
+      expect(o.location, const GridLocation(41.7135, -72.7278));
     });
 
     test('a grid alone still places the operation, at its square centre', () {
       final o = op({'grid': 'FN31pr'});
-      expect(o.exactLocation, isNull, reason: 'a typed grid is not a coordinate');
+      expect(o.exactLocation, isNull, reason: 'a record may still arrive carrying no coordinate');
       expect(o.location, gridToLocation('FN31pr'));
       expect(o.displayGrid, 'FN31pr');
     });

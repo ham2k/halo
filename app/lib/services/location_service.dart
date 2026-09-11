@@ -148,14 +148,14 @@ class LocationService extends ChangeNotifier {
     return resolved == null ? null : locationToGrid6(resolved.latitude, resolved.longitude);
   }
 
-  /// The fix as an 8-character locator — what the operator is SHOWN, and what
-  /// is stored when they adopt this position. A receiver knows where it is far
-  /// better than a 6-character square says, and the coordinate is kept
-  /// alongside it, so the shorter form would be understating a location the
-  /// app is holding exactly.
+  /// The fix as a locator at the operator's [GridPrecision] — what they are
+  /// SHOWN, and what is stored as the grid when they adopt this position. The
+  /// coordinate is stored alongside it either way, so the setting decides how
+  /// finely the app SPEAKS about a fix, never how finely it holds one.
   String? get displayGrid {
     final resolved = position;
-    return resolved == null ? null : locationToGrid8(resolved.latitude, resolved.longitude);
+    if (resolved == null) return null;
+    return gridForLocation(resolved.latitude, resolved.longitude);
   }
 
   /// The fix as a plain coordinate, for everything that measures rather than

@@ -5018,13 +5018,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The operator has stated a locator — from the row's Grid field, the
   /// numbers row above it, or the More pane. Every one of them goes through
   /// here rather than setting the flag itself, because a typed grid also
-  /// takes the contact's coordinate out of the entry: [_getCurrentQsoData]
-  /// writes `lat`/`lon` null for a touched grid, and an override the pane
-  /// recorded would otherwise be spread over that null and put the stale pair
-  /// straight back — which outranks the grid everywhere it is read
-  /// (docs/design/locations.md), silently discarding the correction just
-  /// made. A coordinate the operator types in the same pane visit is recorded
-  /// after this and still wins, which is the intended precedence.
+  /// takes the contact's coordinate out of the entry: a pair the pane
+  /// recorded earlier in this visit would otherwise survive and outrank the
+  /// grid everywhere it is read (docs/design/locations.md), silently
+  /// discarding the correction just made. A coordinate the operator types
+  /// AFTER this, in the same pane visit, is recorded after it and still wins
+  /// — that is the intended precedence.
   void _markGridTouched() {
     _gridTouched = true;
     _theirExtra
@@ -5314,20 +5313,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // stored value gets the conventional Maidenhead casing back
         // (FN31pr) via normalizeGrid; states are plain uppercase.
         if (_gridTouched) 'grid': normalizeGrid(_gridController.text.trim()),
-        // A typed locator replaces any coordinate the record arrived with (an
-        // import's LAT/LON, a sync'd fix): the operator is stating where the
-        // station is, and a leftover coordinate outranks a grid everywhere it
-        // is read, so keeping it would silently discard the correction.
-        if (_gridTouched) 'lat': null,
-        if (_gridTouched) 'lon': null,
         if (_stateTouched) 'state': _stateController.text.trim().toUpperCase(),
-        // After the grid's coordinate-clear above, so a coordinate the
-        // operator typed into the pane outranks it: the clear exists to stop
-        // a STALE pair from surviving a typed grid, not to overrule a pair
-        // that was just stated. The two can only both appear deliberately —
-        // every way of stating a grid drops the override first
-        // ([_markGridTouched], and the pane's own onChange).
         ..._theirExtra,
+        // A typed locator replaces whatever coordinate the record arrived with
+        // by its own square's center — a leftover pair outranks the grid
+        // everywhere it is read. After `_theirExtra`, so a pair typed into the
+        // More pane still wins, and tested AS a pair: the pane records its two
+        // fields apart, and a typed latitude beside a center's longitude is a
+        // point nobody stated. `locSource` goes too — app-polo sends it tagging
+        // a pair a west-positive centroid, and it would tag this center.
+        if (_gridTouched && locationFromLatLon(_theirExtra['lat'], _theirExtra['lon']) == null) ...{
+          'lat': locationForStatedGrid(_gridController.text)?.latitude,
+          'lon': locationForStatedGrid(_gridController.text)?.longitude,
+          'locSource': null,
+        },
         'call': call,
         'sent': _rstOrDefault(_rcvdController.text.trim()),
         // Matches the `AnnotatedCallInfo` TS type (`CallInfo & {guess?:
@@ -5893,10 +5892,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _unmatchedRefs.isNotEmpty ||
       _currentQsoExtra.isNotEmpty ||
       _ourExtra.isNotEmpty ||
-      // A VALUE, not merely a key: a draft restored after a grid was typed
-      // carries `lat`/`lon` nulls (the clear [_getCurrentQsoData] wrote into
-      // the snapshot), and counting those would leave a visibly empty row
-      // guarding itself against a wipe and asking before a spot overwrites it.
+      // A VALUE, not merely a key: a draft restored after a field was cleared
+      // in the More pane carries that field's null in the snapshot, and
+      // counting those would leave a visibly empty row guarding itself
+      // against a wipe and asking before a spot overwrites it.
       _theirExtra.values.any((value) => value != null) ||
       _gridController.text.trim().isNotEmpty ||
       _stateController.text.trim().isNotEmpty;

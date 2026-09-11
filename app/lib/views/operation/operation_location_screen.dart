@@ -204,11 +204,18 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     // [_onGridTextChanged], which clears it. Nothing re-checks that here —
     // a second guard on the same rule would be one this dialog can never
     // reach, and a defence that cannot fire is not a defence.
+    //
+    // A hand-typed locator falls back to its own square's center, so the
+    // operation always carries a coordinate for everything that MEASURES
+    // from one (docs/design/locations.md). It never lengthens what was
+    // typed: `gridForDisplay` recognises a pair that is the stored grid's
+    // own center and shows the grid as written.
+    final location = _adoptedLocation ?? locationForStatedGrid(grid);
     Navigator.of(context).pop(<String, dynamic>{
       'grid': grid.isEmpty ? null : grid,
       'gridSource': grid.isEmpty ? null : _gridSource,
-      'lat': _adoptedLocation?.latitude,
-      'lon': _adoptedLocation?.longitude,
+      'lat': location?.latitude,
+      'lon': location?.longitude,
       'state': state,
       'county': county,
     });
@@ -220,8 +227,9 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
     final theme = Theme.of(context);
     final location = widget.services.location;
     // A ref is offerable when it can name a location at all — its own
-    // published coordinate (an 8-character locator, and the coordinate itself
-    // is what gets adopted) or, for a program whose table has none, its grid.
+    // published coordinate (a locator at the operator's own precision, and the
+    // coordinate itself is what gets adopted) or, for a program whose table
+    // has none, its grid.
     final refsWithGrid = [
       for (final ref in widget.operation.refs)
         if (gridForDisplay(lat: ref['lat'], lon: ref['lon'], grid: ref['grid'] as String?) case final grid?)

@@ -10438,7 +10438,14 @@ void main() {
         saved = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!.single;
       }
       expect(saved.theirGrid, 'FN20aa');
-      expect((saved.data['their'] as Map)['lat'], isNull);
+      // The stale pair is gone — what stands in its place is the typed
+      // square's own center, which says nothing FN20aa did not. BOTH halves:
+      // the writer decides them together, and a latitude paired with the
+      // other square's longitude is a point nobody stated.
+      final theirSaved = saved.data['their'] as Map;
+      expect(theirSaved['lat'], closeTo(gridToLocation('FN20aa')!.latitude, 1e-9));
+      expect(theirSaved['lon'], closeTo(gridToLocation('FN20aa')!.longitude, 1e-9));
+      expect(theirSaved['lat'], isNot(closeTo(41.71, 0.01)));
     });
 
     testWidgets('a grid saved without leaving the field still clears the coordinate', (tester) async {
@@ -10475,8 +10482,9 @@ void main() {
       await tester.tap(find.byType(FilledButton));
       final their = (await waitForQsos(tester, 1)).single.data['their'] as Map;
       expect(their['grid'], 'FN20aa');
-      expect(their['lat'], isNull);
-      expect(their['lon'], isNull);
+      expect(their['lat'], closeTo(gridToLocation('FN20aa')!.latitude, 1e-9));
+      expect(their['lon'], closeTo(gridToLocation('FN20aa')!.longitude, 1e-9));
+      expect(their['lat'], isNot(closeTo(41.71, 0.01)), reason: 'the pane pair must not survive the typed grid');
     });
 
     testWidgets('County and ARRL Section are offered to Alaska and Hawaii', (tester) async {
@@ -10493,6 +10501,64 @@ void main() {
         await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
         await tester.pumpAndSettle();
       }
+    });
+
+    testWidgets("a typed grid drops the country-file tag that would make readers refuse its coordinate", (tester) async {
+      // app-polo spreads lib-country-files' annotation onto `their` itself,
+      // so a synced QSO arrives with a DXCC centroid AND `locSource: 'prefix'`
+      // marking it as one. Typing a grid replaces the pair with the square's
+      // own center — and a tag left behind would then describe THAT, so every
+      // reader would refuse it (halo_core's `locationFromGuess`) and the grid
+      // would carry no coordinate after all.
+      final existing = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW', 'lat': 41.71, 'lon': 72.72, 'locSource': 'prefix'},
+        'band': '20m',
+        'mode': 'SSB',
+      });
+      await tester.pumpWidget(host(editingQso: existing));
+      await tester.pump();
+      await openPane(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'fn20aa');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(FilledButton));
+
+      var saved = existing;
+      for (var i = 0; i < 20 && saved.theirGrid != 'FN20aa'; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+        saved = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!.single;
+      }
+      expect(saved.theirGrid, 'FN20aa');
+      expect((saved.data['their'] as Map)['locSource'], isNull);
+      // The point of clearing it: the pair is readable as a coordinate again.
+      expect(saved.theirExactLocation, gridToLocation('FN20aa'));
+    });
+
+    testWidgets('half a coordinate in the pane does not fuse with the grid into a whole one', (tester) async {
+      // The trap: a typed grid writes its square's center, and the pane
+      // records Latitude and Longitude as two independent overrides. Decided
+      // per-field, a stated latitude beside the center's longitude would be
+      // stored as a coordinate — a point nobody named, outranking the grid
+      // everywhere it is read (docs/design/locations.md). Half a pair is no
+      // coordinate, so the grid must answer for both halves or neither.
+      await tester.pumpWidget(host());
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+
+      await openPane(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'fn20aa');
+      // Latitude alone, Longitude left empty.
+      await tester.enterText(find.widgetWithText(TextField, 'Latitude'), '41.71');
+      await tester.tap(find.widgetWithText(FilledButton, 'Save'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byType(FilledButton));
+      final their = (await waitForQsos(tester, 1)).single.data['their'] as Map;
+      expect(their['grid'], 'FN20aa');
+      expect(their['lat'], closeTo(gridToLocation('FN20aa')!.latitude, 1e-9));
+      expect(their['lon'], closeTo(gridToLocation('FN20aa')!.longitude, 1e-9));
+      expect(their['lat'], isNot(closeTo(41.71, 0.01)), reason: 'half a stated pair is not a coordinate');
     });
 
     testWidgets('a coordinate typed into the pane outranks the grid it was stored beside', (tester) async {

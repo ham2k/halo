@@ -2270,6 +2270,9 @@ class ExtensionService implements PanelExtensionSource {
           // reads, so a hook and the field beside it cannot disagree.
           'decimalSeparator': NumberFormatting.instance.decimalSeparator,
           'groupingSeparator': NumberFormatting.instance.groupingSeparator,
+          // Resolved the same way, and for the same reason: a hook writing a
+          // locator needs a number of characters, and "six" is not one.
+          'gridPrecision': GridPrecision.current.digits,
           'syncEnabled': settings?.syncEnabled ?? false,
           'operatorCall': settings?.activeProfile.operatorCall ?? '',
           // The rest of the active profile — personal details a log generator

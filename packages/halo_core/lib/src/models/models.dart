@@ -93,9 +93,11 @@ class Operation {
   /// was adopted. Null when [grid] came from the operator typing one, which
   /// is all the precision there is in that case.
   ///
-  /// Where this is set it is authoritative and [grid] is display only: the
-  /// writers that set a grid without a coordinate clear this pair in the same
-  /// write, so the two never disagree about where the station is.
+  /// Where this is set it is authoritative and [grid] is display only: a
+  /// writer that states a grid replaces this pair in the same write — with
+  /// the square's own center where that is all it has (see
+  /// [locationForStatedGrid]) — so the two never disagree about where the
+  /// station is.
   GridLocation? get exactLocation => locationFromLatLon(data['lat'], data['lon']);
 
   /// Where the station is, as well as this operation knows — its
@@ -103,8 +105,9 @@ class Operation {
   /// What distance, bearing and the map measure from.
   GridLocation? get location => exactLocation ?? gridToLocation(grid);
 
-  /// The locator to show for this operation: eight characters when it holds a
-  /// real coordinate, its stored [grid] otherwise (see [gridForDisplay]).
+  /// The locator to show for this operation, at the operator's
+  /// [GridPrecision] when it holds a real coordinate, its stored [grid]
+  /// otherwise (see [gridForDisplay]).
   String? get displayGrid => gridForDisplay(lat: data['lat'], lon: data['lon'], grid: grid);
 
   List<Map<String, dynamic>> get refs =>
@@ -225,8 +228,9 @@ class Qso {
   /// location answers for it then.
   GridLocation? get ourLocation => ourExactLocation ?? gridToLocation(ourGrid);
 
-  /// The locator to show for our end of this QSO — eight characters when it
-  /// carries a real coordinate (see [gridForDisplay]).
+  /// The locator to show for our end of this QSO — at the operator's
+  /// [GridPrecision] when it carries a real coordinate (see
+  /// [gridForDisplay]).
   String? get ourDisplayGrid => gridForDisplay(lat: _our['lat'], lon: _our['lon'], grid: ourGrid);
 
   /// Station Configuration's "Track Station Info for each QSO" — the

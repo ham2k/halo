@@ -31,17 +31,29 @@ only.** Every reader resolves through `locationForQsoInfoWithSource`
 (`exact:` outranks `grid:`), or through `Operation.location` / `Qso.ourLocation`
 which do the same thing.
 
-The other half is what keeps that honest: **a writer that sets a grid without a
-coordinate must clear `lat`/`lon` in the same write.** A stale coordinate
-outranks the grid everywhere it is read, so leaving one behind silently
-discards what the operator just entered. The writers that carry this today are
+The other half is what keeps that honest: **a writer that states a grid must
+replace `lat`/`lon` in the same write.** A stale coordinate outranks the grid
+everywhere it is read, so leaving one behind silently discards what the
+operator just entered. The writers that carry this today are
 `OperationLocationScreen._save`, `ActivitiesView._maybeAdoptLocationFromNewRef`,
 and the QSO editor's grid field (`logging_controls.dart`) — which the More
 pane's own Grid field reaches through, blanking its Latitude and Longitude
-fields on the same edit so what is on screen is what will be stored.
+fields on the same edit. Those fields hold a coordinate the operator STATED,
+and after a typed grid there is none: what gets stored is the square's own
+center, which is the grid restated rather than a second claim.
 
-A hand-typed grid therefore stores no coordinate at all. That is the correct
-answer, not a gap: a square is all the operator stated.
+What replaces it, where the writer has nothing better, is the square's own
+center — `locationForStatedGrid`. It is a true statement (the station is
+inside the square) and it says nothing the grid did not, so every reader that
+MEASURES has a coordinate to measure from without re-deriving one, and no
+reader has to special-case a record that carries a grid and no pair.
+
+Two things that pair must never do. It must not survive a locator that names
+no place: `locationForStatedGrid` returns null for a placeholder
+(`isPlaceholderGrid` — `AA00`, `AA00AA`), which decodes like any other square
+and would otherwise plant a station off Antarctica, outranking every coarser
+source that could have answered honestly. And it must not lengthen the
+locator on screen — see Display.
 
 ### One pair is not a coordinate
 
@@ -70,14 +82,42 @@ real fix.
 ## Display
 
 `gridForDisplay(lat:, lon:, grid:)` — and the `displayGrid` getters over it —
-give an **8-character** locator for a record holding a real coordinate, and the
-stored grid as written for one that isn't. The length of a locator on screen is
-a claim about how well the location is known, so:
+give a locator for a record holding a real coordinate at the operator's **Grid
+Precision** (`GridPrecision.current`, 6 or 8 characters, six by default), and
+the stored grid as written for one that isn't. The length of a locator on
+screen is a claim about how well the location is known, so:
 
 - Never call `locationToGrid8` on a coordinate that came from decoding a grid.
-  That invents four hundred metres of precision nobody had.
+  That invents four hundred metres of precision nobody had. `gridForDisplay`
+  refuses it for you: a pair that is the stored grid's own center gets the
+  stored grid back, whatever the setting says. That is what lets a
+  hand-stated locator carry a coordinate without the round trip growing it —
+  and the growth would stick, because the setup sheet seeds its Grid field
+  from this string and saves it back on the next blur.
+
+  `isGridCenter` is the test, and it is a **tolerance**, a hundredth of the
+  cell's own size — not equality, and never a fixed number of degrees. The
+  centers it has to recognise were not all computed here: `mergeLookup.ts`
+  fills a lookup's coordinate from its grid with @ham2k/lib-geo-tools, which
+  sums the same arithmetic in a different order, and a coordinate that has
+  been through an ADIF file is rounded to a thousandth of a minute. The cells
+  run from 111 km of latitude to 19 m, so the question only makes sense asked
+  in units of the square. `extensions/core/adif/src/grid.ts` is the port of it
+  the exporter uses, decoding leniently and never throwing, which
+  lib-geo-tools' own `gridToLocation` does on any length but 4, 6 or 8.
 - A field the operator TYPES into keeps its hint at whatever would be stored if
   they left it alone — the hint and the stored value must not disagree.
+
+The setting governs how finely the app SPEAKS about a location, never how
+finely it holds one. Coordinates are stored and measured from at full
+precision either way, and the resolution order above is untouched by it: a
+coordinate outranks a grid at 6 characters exactly as it does at 8.
+
+`GridPrecision` is a process-wide singleton for the same reason
+`NumberFormatting` is one — every surface must agree, or one screen shows the
+same station standing in two squares of different sizes. `HaLoServices` pushes
+the setting into it at startup and on every settings change, and the extension
+host passes the resolved LENGTH to hooks as `HookContext.gridPrecision`.
 
 ## Privacy
 
@@ -86,9 +126,15 @@ metres. ADIF export writes `LAT`/`LON`/`MY_LAT`/`MY_LON` only under the
 `includePrivateData` export setting, in the same block as `GRIDSQUARE` (the
 other operator's location, which they did not necessarily publish).
 
+A pair that is only the stated grid's own center is not written at all, at
+either end. It says nothing the gridsquare beside it did not, and an ADIF
+reader takes a coordinate over a gridsquare — so writing it would publish the
+station standing at a point inside a square it was only placed in.
+
 `MY_GRIDSQUARE` is the exception that always ships — it is our own station's
-location and the field award programs read — but **truncated to six characters
-unless private data is released**. The operation stores an 8-character locator
+location and the field award programs read — written at the operator's Grid
+Precision but **truncated to six characters unless private data is
+released**. The operation stores an 8-character locator
 whenever its location came from a fix, so writing it verbatim would state the
 position to a few hundred metres through the very switch withholding the
 coordinate it was derived from.

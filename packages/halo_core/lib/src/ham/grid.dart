@@ -23,12 +23,29 @@ class GridLocation {
   int get hashCode => Object.hash(latitude, longitude);
 }
 
+/// A decoded Maidenhead cell: where its center is, and how big it is.
+///
+/// The size is what tells a caller how much a locator actually CLAIMS — four
+/// characters is 111 km of latitude, ten is 19 m — so anything comparing a
+/// coordinate against a square has to measure in units of the square rather
+/// than in degrees (see [isGridCenter]).
+class GridCell {
+  final GridLocation center;
+  final double latSize;
+  final double lonSize;
+
+  const GridCell(this.center, this.latSize, this.lonSize);
+}
+
 /// Decodes a 4-, 6-, 8- or 10-character Maidenhead grid locator to the lat/lon
 /// of the center of the finest cell it can read — stopping at the last level
 /// that parses, so a locator with a malformed tail still yields the coarser
 /// cell it agrees on. Returns null for anything that doesn't parse at all —
 /// wrong length, out-of-range field letters, non-digit squares.
-GridLocation? gridToLocation(String? grid) {
+GridLocation? gridToLocation(String? grid) => gridCell(grid)?.center;
+
+/// [gridToLocation] with the cell's dimensions as well.
+GridCell? gridCell(String? grid) {
   if (grid == null || grid.length < 4) return null;
   final g = grid.toUpperCase();
 
@@ -47,7 +64,7 @@ GridLocation? gridToLocation(String? grid) {
   var latSize = 1.0;
   var lon = lonField * 20 - 180 + lonSquare * lonSize;
   var lat = latField * 10 - 90 + latSquare * latSize;
-  GridLocation center() => GridLocation(lat + latSize / 2, lon + lonSize / 2);
+  GridCell center() => GridCell(GridLocation(lat + latSize / 2, lon + lonSize / 2), latSize, lonSize);
 
   if (g.length >= 6) {
     final lonSub = g.codeUnitAt(4) - 65;
@@ -116,6 +133,15 @@ String normalizeGrid(String grid) {
   // (lowercase).
   return g.substring(0, 4).toUpperCase() + (g.length > 4 ? g.substring(4).toLowerCase() : '');
 }
+
+/// Grids some sources emit when they have no real location at all. They
+/// decode like any other locator — `AA00` is a real square off Antarctica —
+/// so nothing downstream can tell one from a location by looking at it; every
+/// reader that would place a station has to ask here first.
+const _placeholderGrids = {'AA00', 'AA00AA'};
+
+/// Whether [grid] is one of those placeholders, and so names no location.
+bool isPlaceholderGrid(String grid) => _placeholderGrids.contains(grid.trim().toUpperCase());
 
 /// Encodes a latitude/longitude as a 6-character Maidenhead grid locator
 /// (e.g. `EM89hu`) — the inverse of [gridToLocation], used to show the
@@ -200,18 +226,119 @@ GridLocation? locationFromGuess(Map<String, dynamic>? info) {
   return locationFromLatLon(info['lat'], info['lon']);
 }
 
-/// The locator to SHOW for a record — eight characters derived from its
-/// coordinate when it has one, otherwise its stored [grid] as written.
+/// How many characters a locator is SHOWN with — the operator's Grid
+/// Precision setting, resolved once and readable from every package.
 ///
-/// The pair is the record's own `lat`/`lon` (see [locationFromLatLon]), so
-/// the length of what comes back tracks how well the location is actually
-/// known, rather than how long a string some upstream source happened to
-/// send. Null when the record has neither.
+/// A process-wide singleton for the same reason [NumberFormatting] is one:
+/// every surface must agree. A locator's length is a claim about how well a
+/// location is known, so two call sites answering differently would have the
+/// same station standing in two squares of different sizes on two panels of
+/// one screen.
+///
+/// Six by default. Eight characters is a ~700 x 460 m cell — finer than what
+/// an operator puts on the air, and finer than most operators want to publish
+/// — so the app states the coarser claim unless asked for the other.
+enum GridPrecision {
+  six(6),
+  eight(8);
+
+  const GridPrecision(this.digits);
+
+  /// The locator length this choice renders, 6 or 8.
+  final int digits;
+
+  /// The precision in force, app-wide. The app pushes this here at startup
+  /// and on every settings change; nothing else should write it.
+  static GridPrecision get current => _current;
+  static GridPrecision _current = GridPrecision.six;
+
+  static void configure(GridPrecision precision) => _current = precision;
+
+  /// Back to the default. For tests: this is process-wide state, so a test
+  /// that configures it leaks into whatever runs next in the same isolate.
+  /// Call it in a tearDown, the way an AppClock test resets travel.
+  static void reset() => _current = GridPrecision.six;
+}
+
+/// A coordinate as a locator at the operator's [GridPrecision] — what a fix
+/// is SHOWN as, and what is stored as the grid beside it. The coordinate
+/// itself is stored whole either way; only how finely the app SPEAKS about it
+/// is a setting.
+String gridForLocation(double lat, double lon) =>
+    GridPrecision.current == GridPrecision.eight ? locationToGrid8(lat, lon) : locationToGrid6(lat, lon);
+
+/// The locator to SHOW for a record — derived from its coordinate when it has
+/// one, at the operator's [GridPrecision]; otherwise its stored [grid] as
+/// written. Null when the record has neither.
+///
+/// The pair is the record's own `lat`/`lon` (see [locationFromLatLon]), which
+/// outranks the grid because it is what the grid was derived FROM.
+///
+/// The exception is a pair that is the stored grid's own center
+/// ([isGridCenter]), which every writer of a hand-stated locator records (see
+/// [locationForStatedGrid]). Such a pair says nothing the grid did not, so
+/// the stored grid is shown as written — rendering it at the setting's length
+/// would state a precision the operator never claimed, and this string seeds
+/// the very field they typed it into, so the invented characters would be
+/// saved back on the next blur.
 String? gridForDisplay({Object? lat, Object? lon, String? grid}) {
-  if (locationFromLatLon(lat, lon) case final location?) {
-    return locationToGrid8(location.latitude, location.longitude);
-  }
   final stored = grid?.trim();
-  if (stored == null || stored.isEmpty) return null;
-  return normalizeGrid(stored);
+  final normalized = stored == null || stored.isEmpty ? null : normalizeGrid(stored);
+  if (locationFromLatLon(lat, lon) case final location?) {
+    if (normalized != null && isGridCenter(location, normalized)) return normalized;
+    return gridForLocation(location.latitude, location.longitude);
+  }
+  return normalized;
+}
+
+/// How close to a cell's center a coordinate must sit to count as being that
+/// center rather than a position inside the cell — a hundredth of the cell's
+/// own size, so the question scales with what the locator claims.
+///
+/// A fraction, never a fixed number of degrees: the cells range from 111 km
+/// of latitude (four characters) to 19 m (ten), and one tolerance in degrees
+/// would be meaningless at one end and wrong at the other.
+///
+/// It has to be a tolerance at all because the centers being recognised were
+/// not all computed here. `mergeLookup.ts` fills a lookup's coordinate from
+/// its grid with @ham2k/lib-geo-tools, which accumulates the same arithmetic
+/// in a different order, and an ADIF round trip stores coordinates to a
+/// thousandth of a minute (~1.8 m). Exact equality would answer "no" to
+/// centers that plainly are ones. A hundredth of a cell clears all of that by
+/// orders of magnitude while staying far under any distance that would change
+/// what an operator reads.
+const _gridCenterTolerance = 0.01;
+
+/// Whether [location] is a cell's own center rather than a position inside
+/// it — that is, whether the pair says anything [grid] did not.
+///
+/// This is a question about PROVENANCE (was this pair written FROM that
+/// grid?) asked through geometry, because nothing in a QSON record records
+/// the answer. Every writer of a hand-stated locator stores the center beside
+/// it ([locationForStatedGrid]), and both the display and the ADIF exporter
+/// have to recognise those for what they are.
+bool isGridCenter(GridLocation location, String? grid) {
+  final cell = gridCell(grid);
+  if (cell == null) return false;
+  return (location.latitude - cell.center.latitude).abs() <= cell.latSize * _gridCenterTolerance &&
+      (location.longitude - cell.center.longitude).abs() <= cell.lonSize * _gridCenterTolerance;
+}
+
+/// The coordinate to store beside a locator the operator has just STATED —
+/// the center of the square, or null when there is nothing to place.
+///
+/// Every writer of a hand-entered grid records this pair, so that a record
+/// carrying a grid carries a coordinate too and nothing downstream has to
+/// re-derive one. It is a true statement — the station is inside the square —
+/// and [gridForDisplay] recognises it for what it is, so it never lengthens
+/// the locator the operator typed.
+///
+/// Null for a placeholder ([isPlaceholderGrid]): those name no location at
+/// all, and turning one into a coordinate would plant a station on the map at
+/// the corner of the world the placeholder happens to decode to, outranking
+/// every coarser source that could have answered honestly.
+GridLocation? locationForStatedGrid(String? grid) {
+  final stated = grid?.trim();
+  if (stated == null || stated.isEmpty || isPlaceholderGrid(stated)) return null;
+  return gridToLocation(stated);
 }

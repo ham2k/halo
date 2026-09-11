@@ -143,6 +143,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   static const _showQsoNumbersKey = 'showQsoNumbers';
   static const _distanceUnitsKey = 'distanceUnits';
   static const _numberFormatKey = 'numberFormat';
+  static const _gridPrecisionKey = 'gridPrecision';
   static const _spottingFiltersKey = 'spottingFilters';
   static const _stationEquipmentKey = 'stationEquipment';
   static const _experimentsKey = 'experiments';
@@ -230,8 +231,32 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   @override
   SharedPreferences get prefs => _prefs;
 
+  /// How long a locator is shown is one process-wide answer that every
+  /// package reads out of [GridPrecision], for the same reason
+  /// [NumberFormatting] is a singleton: two surfaces disagreeing would put
+  /// one station in two squares of different sizes on one screen.
+  ///
+  /// Pushed from HERE, on every notify, rather than from a listener
+  /// somewhere: a settings restore, a sync pull and the Settings picker all
+  /// reach the store by different routes and only this one is common to
+  /// them. Ahead of `super`, so a listener rebuilding on this very
+  /// notification already reads the new answer.
+  ///
+  /// halo_core can resolve this itself — unlike Number Formatting it needs
+  /// neither the device locale nor ICU — but it must not READ settings, so
+  /// the value is pushed rather than pulled.
+  @override
+  void notifyListeners() {
+    GridPrecision.configure(gridPrecision);
+    super.notifyListeners();
+  }
+
   static Future<SettingsService> load() async {
-    return SettingsService(await SharedPreferences.getInstance());
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    // The very first frame formats locators correctly, rather than repainting
+    // once something happens to change a setting.
+    GridPrecision.configure(settings.gridPrecision);
+    return settings;
   }
 
   // ---------------------------------------------------------------------
@@ -1474,6 +1499,21 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
 
   Future<void> setNumberFormatStyle(NumberFormatStyle style) =>
       setSettingValue(generalGroup, _numberFormatKey, style.name);
+
+  /// How many characters a locator is shown with, app-wide — see
+  /// [GridPrecision], which is where the resolved answer lives.
+  /// [GridPrecision.six] by default: a 6-character square is what an operator
+  /// puts on the air, and eight states a position to a few hundred metres.
+  GridPrecision get gridPrecision {
+    final value = settingValue(generalGroup, _gridPrecisionKey);
+    for (final precision in GridPrecision.values) {
+      if (precision.name == value) return precision;
+    }
+    return GridPrecision.six;
+  }
+
+  Future<void> setGridPrecision(GridPrecision precision) =>
+      setSettingValue(generalGroup, _gridPrecisionKey, precision.name);
 
   /// The operator's Layout Density choice. [DensityPreference.auto] by
   /// default, which is what makes the height ladder the normal behaviour and

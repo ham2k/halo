@@ -590,6 +590,9 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get showMoreSettings => 'Mostrar más ajustes';
 	@override String get numberFormat => 'Formato de números';
 	@override late final _Translations$settings$numberFormatOpts$es numberFormatOpts = _Translations$settings$numberFormatOpts$es._(_root);
+	@override String get gridPrecision => 'Precisión del localizador';
+	@override late final _Translations$settings$gridPrecisionOpts$es gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$es._(_root);
+	@override late final _Translations$settings$gridPrecisionDescription$es gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$es._(_root);
 }
 
 // Path: commands
@@ -2184,6 +2187,28 @@ class _Translations$settings$numberFormatOpts$es extends Translations$settings$n
 	@override String get locale => 'Usar la configuración del dispositivo';
 	@override String get period => 'Usar siempre punto para decimales';
 	@override String get comma => 'Usar siempre coma para decimales';
+}
+
+// Path: settings.gridPrecisionOpts
+class _Translations$settings$gridPrecisionOpts$es extends Translations$settings$gridPrecisionOpts$en {
+	_Translations$settings$gridPrecisionOpts$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get six => '6 dígitos (FN31pr)';
+	@override String get eight => '8 dígitos (FN31pr55)';
+}
+
+// Path: settings.gridPrecisionDescription
+class _Translations$settings$gridPrecisionDescription$es extends Translations$settings$gridPrecisionDescription$en {
+	_Translations$settings$gridPrecisionDescription$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get six => 'Unos 9 × 5 km — lo que la mayoría de los operadores dice en el aire';
+	@override String get eight => 'Unos 700 × 460 m — solo donde la ubicación se conoce con esa precisión';
 }
 
 // Path: home.logs.panels
@@ -4355,6 +4380,11 @@ extension on TranslationsEs {
 			'settings.numberFormatOpts.locale' => 'Usar la configuración del dispositivo',
 			'settings.numberFormatOpts.period' => 'Usar siempre punto para decimales',
 			'settings.numberFormatOpts.comma' => 'Usar siempre coma para decimales',
+			'settings.gridPrecision' => 'Precisión del localizador',
+			'settings.gridPrecisionOpts.six' => '6 dígitos (FN31pr)',
+			'settings.gridPrecisionOpts.eight' => '8 dígitos (FN31pr55)',
+			'settings.gridPrecisionDescription.six' => 'Unos 9 × 5 km — lo que la mayoría de los operadores dice en el aire',
+			'settings.gridPrecisionDescription.eight' => 'Unos 700 × 460 m — solo donde la ubicación se conoce con esa precisión',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
 			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'Ningún archivo de datos coincide con «${target}».',
@@ -4483,13 +4513,13 @@ extension on TranslationsEs {
 			'versionLabel.version' => ({required Object version}) => 'Versión ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Parche ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
+			_ => null,
+		} ?? switch (path) {
 			'notices.emptyHistory' => 'Aún no hay avisos',
 			'notices.webStorageInMemory' => 'Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.',
 			'notices.webStorageUnreliable' => 'Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.',
 			'notices.preferencesRestoredTitle' => 'Ajustes restaurados desde una copia',
 			'notices.preferencesRestored' => 'No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.',
-			_ => null,
-		} ?? switch (path) {
 			'notices.preferencesResetTitle' => 'Ajustes reiniciados',
 			'notices.preferencesReset' => 'No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json.',
 			'notices.autoConnectHeldTitle' => ({required Object name}) => '${name} no se conectó automáticamente',

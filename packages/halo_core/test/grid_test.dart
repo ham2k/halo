@@ -174,10 +174,48 @@ void main() {
   });
 
   group('gridForDisplay', () {
-    test('shows eight characters for a record that holds a real coordinate', () {
+    tearDown(GridPrecision.reset);
+
+    test('shows six characters for a real coordinate by default', () {
+      // Six is the default because a locator's length is a claim, and eight
+      // characters states the operator's position to a few hundred metres.
+      final shown = gridForDisplay(lat: 41.7135, lon: -72.7278, grid: 'FN31')!;
+      expect(shown, hasLength(6));
+      expect(shown, locationToGrid6(41.7135, -72.7278));
+    });
+
+    test('shows eight characters for a real coordinate once asked to', () {
+      GridPrecision.configure(GridPrecision.eight);
       final shown = gridForDisplay(lat: 41.7135, lon: -72.7278, grid: 'FN31')!;
       expect(shown, hasLength(8));
       expect(shown, locationToGrid8(41.7135, -72.7278));
+    });
+
+    test('never lengthens a locator whose coordinate is its own center', () {
+      // The trap: every writer of a hand-stated grid now stores the square's
+      // center beside it, so the pair alone can no longer be read as "this
+      // location is known to eight characters". Rendering it would state a
+      // precision the operator never claimed — and it would STICK, because
+      // the setup sheet seeds its Grid field from this string and saves it
+      // back on the next blur.
+      GridPrecision.configure(GridPrecision.eight);
+      final center = gridToLocation('FN31pr')!;
+      expect(gridForDisplay(lat: center.latitude, lon: center.longitude, grid: 'FN31pr'), 'FN31pr');
+
+      // Shorter squares too, and at six characters as readily as at eight.
+      final coarse = gridToLocation('FN31')!;
+      expect(gridForDisplay(lat: coarse.latitude, lon: coarse.longitude, grid: 'FN31'), 'FN31');
+      GridPrecision.reset();
+      expect(gridForDisplay(lat: coarse.latitude, lon: coarse.longitude, grid: 'FN31'), 'FN31');
+    });
+
+    test('a fix inside the stored square still reports the fix', () {
+      // The cap above keys on the coordinate BEING the center, not on it
+      // falling inside the square: a real fix that happens to sit in FN31pr
+      // is a finer statement than FN31pr, and must not be cut back to it.
+      GridPrecision.configure(GridPrecision.eight);
+      expect(gridForDisplay(lat: 41.7135, lon: -72.7278, grid: 'FN31pr'), locationToGrid8(41.7135, -72.7278));
+      expect(gridForDisplay(lat: 41.7135, lon: -72.7278, grid: 'FN31pr'), isNot('FN31pr'));
     });
 
     test("the coordinate wins over a stored grid that disagrees with it", () {
@@ -195,6 +233,67 @@ void main() {
     test('is null when the record names no location at all', () {
       expect(gridForDisplay(), isNull);
       expect(gridForDisplay(grid: '   '), isNull);
+    });
+  });
+
+  group('isGridCenter', () {
+    test('a center is its own center, and a fix inside the square is not', () {
+      final center = gridToLocation('FN31pr')!;
+      expect(isGridCenter(center, 'FN31pr'), isTrue);
+      expect(isGridCenter(const GridLocation(41.7135, -72.7278), 'FN31pr'), isFalse);
+    });
+
+    test('a center that arrived by another route still reads as one', () {
+      // Not every center this recognises was computed here. `mergeLookup.ts`
+      // fills a lookup's coordinate from its grid with @ham2k/lib-geo-tools,
+      // which sums the same arithmetic in a different order, and an ADIF
+      // round trip stores coordinates to a thousandth of a minute (~1.8 m).
+      // Exact equality would answer "no" to centers that plainly are ones,
+      // and the locator would then be rendered longer than anyone claimed.
+      final center = gridToLocation('FN31pr')!;
+      expect(isGridCenter(GridLocation(center.latitude + 1e-12, center.longitude), 'FN31pr'), isTrue);
+      double toAdifAndBack(double v) => (v * 60000).round() / 60000;
+      expect(
+        isGridCenter(GridLocation(toAdifAndBack(center.latitude), toAdifAndBack(center.longitude)), 'FN31pr'),
+        isTrue,
+      );
+    });
+
+    test('the tolerance scales with the square, never a fixed number of degrees', () {
+      // A hundredth of FN31 is ~1.1 km of latitude; a hundredth of FN31pr55
+      // is ~4.6 m. One tolerance in degrees cannot be right for both, and the
+      // wrong one either swallows a real fix or rejects a real center.
+      final coarse = gridToLocation('FN31')!;
+      final fine = gridToLocation('FN31pr55')!;
+      expect(isGridCenter(GridLocation(coarse.latitude + 0.005, coarse.longitude), 'FN31'), isTrue);
+      expect(isGridCenter(GridLocation(fine.latitude + 0.005, fine.longitude), 'FN31pr55'), isFalse);
+    });
+
+    test('a locator that does not decode is nobody\'s center', () {
+      expect(isGridCenter(const GridLocation(41.7135, -72.7278), null), isFalse);
+      expect(isGridCenter(const GridLocation(41.7135, -72.7278), 'NOT_A_GRID'), isFalse);
+    });
+  });
+
+  group('locationForStatedGrid', () {
+    test("gives the square's own center, so a stated grid carries a coordinate", () {
+      expect(locationForStatedGrid('FN31pr'), gridToLocation('FN31pr'));
+      expect(locationForStatedGrid(' fn31 '), gridToLocation('FN31'));
+    });
+
+    test('refuses a placeholder, which names no location at all', () {
+      // AA00 decodes like any other square. Stored as a coordinate it would
+      // outrank the entity and region centroids that could have answered
+      // honestly, and plant the station off Antarctica.
+      expect(locationForStatedGrid('AA00'), isNull);
+      expect(locationForStatedGrid('AA00aa'), isNull);
+      expect(gridToLocation('AA00'), isNotNull);
+    });
+
+    test('is null for nothing to place', () {
+      expect(locationForStatedGrid(null), isNull);
+      expect(locationForStatedGrid('  '), isNull);
+      expect(locationForStatedGrid('NOTAGRID'), isNull);
     });
   });
 }

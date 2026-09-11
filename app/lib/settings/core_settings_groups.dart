@@ -189,6 +189,21 @@ class GeneralSettingsGroup extends SettingsGroup {
             (label: t['settings.numberFormatOpts.${style.name}'] as String, value: style.name),
         ],
       ),
+      _select(
+        key: 'gridPrecision',
+        aliases: const ['grid', 'gridDigits', 'locator'],
+        label: t.settings.gridPrecision,
+        icon: 'grid',
+        // What the choice MEANS on the ground, not just its own name: the
+        // two options already read as "6 digits"/"8 digits", and a square's
+        // size is the part an operator is actually choosing between.
+        description: t['settings.gridPrecisionDescription.${settings.gridPrecision.name}'] as String,
+        value: settings.gridPrecision.name,
+        options: [
+          for (final precision in GridPrecision.values)
+            (label: t['settings.gridPrecisionOpts.${precision.name}'] as String, value: precision.name),
+        ],
+      ),
       _toggle(
         key: 'layoutCustomization',
         // NOT 'panels': this setting decides whether a view can be
@@ -293,6 +308,9 @@ class GeneralSettingsGroup extends SettingsGroup {
       case 'numberFormat':
         final style = _enumByNameOrNull(NumberFormatStyle.values, value);
         if (style != null) await settings.setNumberFormatStyle(style);
+      case 'gridPrecision':
+        final precision = _enumByNameOrNull(GridPrecision.values, value);
+        if (precision != null) await settings.setGridPrecision(precision);
     }
     // Locale and theme feed extension HookContexts — invalidate so hooks
     // re-fetch fresh state (labels, theme-dependent assets).

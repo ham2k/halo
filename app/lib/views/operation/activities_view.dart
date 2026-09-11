@@ -164,15 +164,15 @@ const _accordionHeaderHeight = 48.0 + Space.sm * 2;
 ///  - otherwise (no GPS fix), adopt the first ref's own location, if it has
 ///    one — the most that can be inferred without a location source at all.
 ///
-/// Returns the coordinate as well as the locator wherever the source knew one
-/// (a fix always does; a ref does when its activity's table publishes
-/// coordinates), since that pair is what the operation stores. `grid` is
-/// always the locator for `location` when there is one, so the two can't
-/// describe different places.
+/// Returns a coordinate as well as the locator, since that pair is what the
+/// operation stores: the source's own where it knew one (a fix always does; a
+/// ref does when its table publishes coordinates), otherwise the square's own
+/// center, exactly as a hand-stated grid is written (docs/design/locations.md).
+/// `grid` is always the locator for `location`, so they can't disagree.
 ///
 /// A pure function (no Flutter/service dependencies) so this decision is
 /// unit-testable without exercising the whole ActivitiesView widget tree.
-({String grid, GridLocation? location, String source})? locationToAdoptAfterAddingRef({
+({String grid, GridLocation location, String source})? locationToAdoptAfterAddingRef({
   required String? operationGrid,
   required GridLocation? gpsPosition,
   required num? distanceKm,
@@ -183,7 +183,7 @@ const _accordionHeaderHeight = 48.0 + Space.sm * 2;
   if (gpsPosition != null) {
     if (distanceKm == null || distanceKm > _nearbyGridAdoptionKm) return null;
     return (
-      grid: locationToGrid8(gpsPosition.latitude, gpsPosition.longitude),
+      grid: gridForLocation(gpsPosition.latitude, gpsPosition.longitude),
       location: gpsPosition,
       source: 'gps',
     );
@@ -192,8 +192,9 @@ const _accordionHeaderHeight = 48.0 + Space.sm * 2;
   if (refsAfterAdd.isEmpty) return null;
   final first = refsAfterAdd.first;
   final grid = gridForDisplay(lat: first['lat'], lon: first['lon'], grid: first['grid'] as String?);
-  if (grid == null) return null;
-  return (grid: grid, location: locationFromLatLon(first['lat'], first['lon']), source: 'manual');
+  final location = locationFromLatLon(first['lat'], first['lon']) ?? locationForStatedGrid(grid);
+  if (grid == null || location == null) return null;
+  return (grid: grid, location: location, source: 'manual');
 }
 
 /// Whether an operation may carry more than one ref of [type] at a time, as
@@ -942,11 +943,10 @@ class OperationSheetState extends State<OperationSheet> {
       _saveOperationData({
         'grid': adopted.grid,
         'gridSource': adopted.source,
-        // Written even when null: a ref whose program publishes no coordinate
-        // must leave the operation with the grid alone rather than beside a
-        // stale pair from whatever set the location before.
-        'lat': adopted.location?.latitude,
-        'lon': adopted.location?.longitude,
+        // Written unconditionally: the pair belongs to the grid beside it, and
+        // a stale one from whatever set the location before would outrank both.
+        'lat': adopted.location.latitude,
+        'lon': adopted.location.longitude,
       });
     }
   }
@@ -2487,9 +2487,9 @@ class OperationSheetState extends State<OperationSheet> {
                 if (_hasOperationGrid) {
                   // Only for operations stored before `gridSource` existed, and
                   // compared at SIX characters on both sides: those carry a
-                  // 6-character grid, so matching them against a live fix's
-                  // 8-character locator can never be equal, and every legacy
-                  // GPS-set operation would quietly lose its green pin.
+                  // 6-character grid, so matching them against a fix's own
+                  // displayed locator could never be reliably equal, and every
+                  // legacy GPS-set operation would quietly lose its green pin.
                   final gridSource = asQsonString(_operation.data['gridSource']) ?? (
                     (_operation.location != null &&
                             widget.services.location.grid != null &&

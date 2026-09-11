@@ -631,8 +631,9 @@ class CommandEngine extends ChangeNotifier {
       guess['location'],
       guess['country'],
       // The locator the lookup's own coordinate justifies, where it reported
-      // one — the merge derives `guess.grid` from it at six characters, which
-      // is coarser than what was actually known.
+      // one, rather than `guess.grid` as the merge stored it: that is always
+      // six characters, so an operator who asked for eight would be shown a
+      // coarser square than the lookup actually placed the station in.
       gridForDisplay(
         lat: locationFromGuess(guess)?.latitude,
         lon: locationFromGuess(guess)?.longitude,

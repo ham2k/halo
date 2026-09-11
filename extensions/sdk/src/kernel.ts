@@ -304,6 +304,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
         locale?: string
         appName?: string
         distanceUnits?: string
+        gridPrecision?: number
         edition?: string
         enabledExperiments?: string[]
         experiments?: { key: string; name: string; aliases: string[] }[]
@@ -322,6 +323,7 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
     locale,
     appName: settings?.appName,
     distanceUnits: settings?.distanceUnits ?? 'kilometers',
+    gridPrecision: settings?.gridPrecision ?? 6,
     edition: settings?.edition,
     enabledExperiments: settings?.enabledExperiments ?? [],
     experiments: settings?.experiments ?? [],

@@ -35,6 +35,14 @@ export interface HookContext {
   /// before using it as a delimiter, since `split('')` splits everywhere.
   decimalSeparator?: string
   groupingSeparator?: string
+  /// How many characters the operator's Grid Precision setting shows a
+  /// Maidenhead locator with — 6 or 8. A locator's length is a claim about
+  /// how well a location is known, so a hook that WRITES one for a human or
+  /// for a program (an ADIF MY_GRIDSQUARE, a spot's comment) states the
+  /// operator's own claim rather than whatever length the stored string
+  /// happens to be. Never truncate a coordinate to it: this governs
+  /// locators, not `lat`/`lon`.
+  gridPrecision?: number
   /// The running build's edition ('dev' | 'next' | 'prod' — see
   /// packages/halo_build_tools/lib/src/edition.dart), for a hook whose
   /// static configuration must vary per-edition (e.g. SOTA's OAuth client:

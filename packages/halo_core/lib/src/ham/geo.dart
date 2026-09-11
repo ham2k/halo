@@ -46,10 +46,6 @@ double bearingOnEarthDeg(GridLocation from, GridLocation to) {
   return (deg + 360) % 360;
 }
 
-// Placeholder grids some sources emit when they have no real location —
-// never worth a marker (same skip-list as locationForQSONInfo).
-const _placeholderGrids = {'AA00', 'AA00AA'};
-
 /// Which source [locationForQsoInfoWithSource] used — `exact` is a real
 /// coordinate, `grid` the center of a square the station is somewhere inside;
 /// `region` (state/province centroid) and `entity` (DXCC centroid) are coarse
@@ -87,7 +83,7 @@ extension QsoLocationSourceProximity on QsoLocationSource {
   String? state,
 }) {
   if (exact != null) return (location: exact, source: QsoLocationSource.exact);
-  if (grid != null && !_placeholderGrids.contains(grid.toUpperCase())) {
+  if (grid != null && !isPlaceholderGrid(grid)) {
     if (gridToLocation(grid) case final location?) {
       return (location: location, source: QsoLocationSource.grid);
     }

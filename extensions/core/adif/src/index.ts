@@ -9,6 +9,7 @@
 // are the exception, and are templated: see [TEXT_FIELD_TEMPLATES].
 
 import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
+import { locationToGrid6, locationToGrid8 } from "@ham2k/lib-geo-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
 
 import {
@@ -26,6 +27,7 @@ import type { ExportOption, ExportOptionsRequest, ExportRequest, ExportResult, H
 
 import manifest from "../manifest.json" with { type: "json" }
 import { formatAdifCoordinate } from "./coordinates.ts"
+import { isGridCenter } from "./grid.ts"
 import { adifCounty } from "./county.ts"
 import { field, renderRow } from "./fields.ts"
 import type { AdifField } from "./fields.ts"
@@ -46,11 +48,22 @@ const DEFAULT_PROGRAM_ID = 'Ham2K Logger'
 /// the mirror image of a country's middle as the station's position. A synced
 /// QSO carries that pair on `their` as well as on the guess (see halo_core's
 /// `locationFromGuess`).
+///
+/// Neither is a pair that is only the entered grid's own center
+/// (`isGridCenter`). The operator typing a locator stated a square, and the
+/// square is already going out as `GRIDSQUARE` — writing its middle as
+/// `LAT`/`LON` too would publish a point they never claimed, and would take
+/// precedence over the square for every reader.
 function theirCoordinate(
   their: Record<string, unknown>,
   theirGuess: Record<string, unknown>,
 ): { lat: unknown; lon: unknown } | undefined {
-  if (their.locSource !== 'prefix' && their.lat != null && their.lon != null) {
+  if (
+    their.locSource !== 'prefix' &&
+    their.lat != null &&
+    their.lon != null &&
+    !isGridCenter(their.lat, their.lon, their.grid)
+  ) {
     return { lat: their.lat, lon: their.lon }
   }
   if (their.grid != null) return undefined
@@ -58,11 +71,30 @@ function theirCoordinate(
   return { lat: theirGuess.lat, lon: theirGuess.lon }
 }
 
-/// A locator cut back to its 6-character subsquare — the enclosing square, so
-/// the result is still a true statement about where the station was, just a
-/// coarser one. Shorter locators are already coarse and pass through unchanged.
-function coarseGrid(grid: string | undefined): string | undefined {
-  return typeof grid === 'string' ? grid.slice(0, 6) : undefined
+/// A locator cut back to [digits] characters — the enclosing square, so the
+/// result is still a true statement about where the station was, just a
+/// coarser one. Shorter locators are already coarse and pass through
+/// unchanged.
+function coarseGrid(grid: string | undefined, digits = 6): string | undefined {
+  return typeof grid === 'string' ? grid.slice(0, digits) : undefined
+}
+
+/// The locator a file states for one end of a contact: derived from the
+/// coordinate at [digits] characters where there is a real one, otherwise the
+/// stored grid cut back to the same length.
+///
+/// The same answer `gridForDisplay` gives on screen, and for the same reason
+/// — a file and a screen must not state the station's position differently.
+/// Truncating the stored string alone would not do it: an operation adopted
+/// from a fix stores its locator at whatever precision was in force THEN, so
+/// a later switch to eight characters would show `FN21rq56` and write
+/// `FN21rq`.
+function gridForExport(grid: unknown, lat: unknown, lon: unknown, digits: number): string | undefined {
+  const stored = typeof grid === 'string' ? grid : undefined
+  if (typeof lat === 'number' && typeof lon === 'number' && !isGridCenter(lat, lon, stored)) {
+    return digits >= 8 ? locationToGrid8(lat, lon) : locationToGrid6(lat, lon)
+  }
+  return coarseGrid(stored, digits)
 }
 
 /// One side's county as ADIF's `CNTY`, from the record that holds it.
@@ -191,6 +223,10 @@ function baseFieldsFor(
   stationCall: string,
   timeOffsetMillis: number,
   includePrivateData: boolean,
+  /// How many characters our own locator is written with — the operator's
+  /// Grid Precision setting, capped at six wherever private data is withheld
+  /// (see MY_GRIDSQUARE below).
+  gridDigits: number,
   /// The export's `op`/`log`/`app` values, built once for the whole file —
   /// only `qso` changes per contact, and rebuilding the rest ten thousand
   /// times would be the expensive half of a large export.
@@ -331,28 +367,34 @@ function baseFieldsFor(
   // other reads back correctly through our own importer and hands a contest
   // robot the wrong multiplier. Exporting it needs a WPX prefix worked out
   // where the contact is logged, not a near-miss substituted here.
-  // Our own location always goes out, at SIX characters — the field award
-  // programs read, and a ~9 x 5 km square, which is what an operator has always
-  // put on the air. The finer forms below ride `includePrivateData`, so the
-  // stored locator is truncated here rather than written as-is: an operation
-  // set from a GPS fix stores eight characters, and shipping those ungated
-  // would state the operator's position to a few hundred metres through the
-  // very switch that withholds the coordinate they came from.
+  // Our own location always goes out, at the operator's own Grid Precision —
+  // the claim they make everywhere else in the app, so a file and a screen
+  // never state the station's position differently. Derived from the stored
+  // COORDINATE where there is one rather than cut from the stored string,
+  // which was written at whatever precision was in force when the location
+  // was set ([gridForExport]).
+  //
+  // Six is the ceiling wherever private data is withheld, whatever the
+  // setting: eight characters is a ~700 x 460 m square, and shipping that
+  // ungated would state the operator's position to a few hundred metres
+  // through the very switch that withholds the coordinate it came from. Six
+  // is also what the field award programs read, and what an operator has
+  // always put on the air.
   //
   // A QSO's own `our.grid` wins over the operation's throughout: QSON allows
   // the station to move mid-operation, and the contact records where it was
   // actually made from.
   // ONE source for the whole group, never a field at a time. A grid and a
-  // coordinate are two statements about one place, and `lat`/`lon` are stored
-  // as explicit NULLS where an operator typed a locator instead of taking a
-  // fix (`OperationLocationScreen`) — so coalescing them apart pairs a
-  // contact's own grid, or a segment's, with whatever coordinate the base
-  // operation last held. A rover exports MY_GRIDSQUARE in California beside
-  // MY_LAT/MY_LON in Nevada, and locations.md's rule says the coordinate wins,
-  // so the record reads as a place the operator never claimed.
+  // coordinate are two statements about one place, and a contact that names a
+  // location at all replaces BOTH (`OperationLocationScreen`) — so coalescing
+  // them apart pairs a contact's own grid, or a segment's, with whatever
+  // coordinate the base operation last held. A rover exports MY_GRIDSQUARE in
+  // California beside MY_LAT/MY_LON in Nevada, and locations.md's rule says
+  // the coordinate wins, so the record reads as a place the operator never
+  // claimed.
   const ourLocation = our.grid != null || our.lat != null || our.lon != null ? our : operation
   const ourGrid = ourLocation.grid as string | undefined
-  add('MY_GRIDSQUARE', includePrivateData ? ourGrid : coarseGrid(ourGrid))
+  add('MY_GRIDSQUARE', gridForExport(ourGrid, ourLocation.lat, ourLocation.lon, includePrivateData ? gridDigits : 6))
 
   // Our own side of what the `their` fields say about theirs. [ourEntity] is
   // the FALLBACK: an operation stores no entity data, so these three are
@@ -401,8 +443,12 @@ function baseFieldsFor(
     const theirs = theirCoordinate(their, theirGuess)
     add('LAT', formatAdifCoordinate(theirs?.lat, 'lat'))
     add('LON', formatAdifCoordinate(theirs?.lon, 'lon'))
-    add('MY_LAT', formatAdifCoordinate(ourLocation.lat, 'lat'))
-    add('MY_LON', formatAdifCoordinate(ourLocation.lon, 'lon'))
+    // Our own side, under the same rule as [theirCoordinate]: a pair that is
+    // only the stated grid's center says nothing `MY_GRIDSQUARE` did not, and
+    // a reader would take it as the finer of the two.
+    const ourStatedSquare = isGridCenter(ourLocation.lat, ourLocation.lon, ourGrid)
+    add('MY_LAT', ourStatedSquare ? undefined : formatAdifCoordinate(ourLocation.lat, 'lat'))
+    add('MY_LON', ourStatedSquare ? undefined : formatAdifCoordinate(ourLocation.lon, 'lon'))
   }
 
   // Built once per record, on the first field that will actually render —
@@ -644,6 +690,7 @@ const ExportHandler = {
           stationCall,
           n * 1000,
           includePrivateData === true,
+          ctx.gridPrecision ?? 6,
           exportContext,
           ourEntity,
           textFields,

@@ -1250,6 +1250,12 @@ class Translations$settings$en {
 	String get numberFormat => 'Number Formatting';
 
 	late final Translations$settings$numberFormatOpts$en numberFormatOpts = Translations$settings$numberFormatOpts$en.internal(_root);
+
+	/// en: 'Grid Precision'
+	String get gridPrecision => 'Grid Precision';
+
+	late final Translations$settings$gridPrecisionOpts$en gridPrecisionOpts = Translations$settings$gridPrecisionOpts$en.internal(_root);
+	late final Translations$settings$gridPrecisionDescription$en gridPrecisionDescription = Translations$settings$gridPrecisionDescription$en.internal(_root);
 }
 
 // Path: commands
@@ -4799,6 +4805,36 @@ class Translations$settings$numberFormatOpts$en {
 	String get comma => 'Always use comma for decimals';
 }
 
+// Path: settings.gridPrecisionOpts
+class Translations$settings$gridPrecisionOpts$en {
+	Translations$settings$gridPrecisionOpts$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: '6 digits (FN31pr)'
+	String get six => '6 digits (FN31pr)';
+
+	/// en: '8 digits (FN31pr55)'
+	String get eight => '8 digits (FN31pr55)';
+}
+
+// Path: settings.gridPrecisionDescription
+class Translations$settings$gridPrecisionDescription$en {
+	Translations$settings$gridPrecisionDescription$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'About 9 × 5 km — what most operators put on the air'
+	String get six => 'About 9 × 5 km — what most operators put on the air';
+
+	/// en: 'About 700 × 460 m — only where the location is known that well'
+	String get eight => 'About 700 × 460 m — only where the location is known that well';
+}
+
 // Path: home.logs.columns
 class Translations$home$logs$columns$en {
 	Translations$home$logs$columns$en.internal(this._root);
@@ -7700,6 +7736,11 @@ extension on Translations {
 			'settings.numberFormatOpts.locale' => 'Use device settings',
 			'settings.numberFormatOpts.period' => 'Always use period for decimals',
 			'settings.numberFormatOpts.comma' => 'Always use comma for decimals',
+			'settings.gridPrecision' => 'Grid Precision',
+			'settings.gridPrecisionOpts.six' => '6 digits (FN31pr)',
+			'settings.gridPrecisionOpts.eight' => '8 digits (FN31pr55)',
+			'settings.gridPrecisionDescription.six' => 'About 9 × 5 km — what most operators put on the air',
+			'settings.gridPrecisionDescription.eight' => 'About 700 × 460 m — only where the location is known that well',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
@@ -7820,13 +7861,13 @@ extension on Translations {
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
 			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',
 			'operationLocationScreen.moreDetails' => 'More Details',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
 			'operationLocationScreen.county' => 'County (optional)',
-			_ => null,
-		} ?? switch (path) {
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',

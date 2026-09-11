@@ -1678,6 +1678,15 @@
       "locale": "Use device settings",
       "period": "Always use period for decimals",
       "comma": "Always use comma for decimals"
+    },
+    "gridPrecision": "Grid Precision",
+    "gridPrecisionOpts": {
+      "six": "6 digits (FN31pr)",
+      "eight": "8 digits (FN31pr55)"
+    },
+    "gridPrecisionDescription": {
+      "six": "About 9 × 5 km — what most operators put on the air",
+      "eight": "About 700 × 460 m — only where the location is known that well"
     }
   },
   "commands": {

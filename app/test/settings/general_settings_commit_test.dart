@@ -99,6 +99,28 @@ void main() {
     expect(settings.numberFormatStyle, NumberFormatStyle.locale);
   });
 
+  test('Grid Precision reaches the process-wide singleton every package reads', () async {
+    // Committing the setting is only half the wiring. Every locator on screen
+    // is rendered from `GridPrecision.current` in halo_core, which cannot read
+    // settings — so a commit that never pushes leaves the picker showing one
+    // answer and every grid in the app showing the other.
+    SharedPreferences.setMockInitialValues({});
+    addTearDown(GridPrecision.reset);
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final group = await generalGroup(settings);
+
+    expect(settings.gridPrecision, GridPrecision.six, reason: 'six is what an operator puts on the air');
+
+    await group.commit('gridPrecision', 'eight');
+    expect(settings.gridPrecision, GridPrecision.eight);
+    expect(GridPrecision.current, GridPrecision.eight);
+    expect(gridForDisplay(lat: 41.7135, lon: -72.7278), hasLength(8));
+
+    await group.commit('gridPrecision', 'six');
+    expect(GridPrecision.current, GridPrecision.six);
+    expect(gridForDisplay(lat: 41.7135, lon: -72.7278), hasLength(6));
+  });
+
   test('an unrecognised value leaves the setting alone rather than clearing it', () async {
     // `commit` is reachable from a settings COMMAND as well as the row, so a
     // typed value that names no option must not blank the setting.

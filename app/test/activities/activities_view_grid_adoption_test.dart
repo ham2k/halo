@@ -43,8 +43,15 @@ void main() {
       // operation goes on to compute inherits the error.
       expect(adopted.location, gps);
       expect(adopted.source, 'gps');
-      expect(adopted.grid, locationToGrid8(gps.latitude, gps.longitude));
-      expect(adopted.grid, hasLength(8));
+      // The locator's LENGTH follows the operator's Grid Precision, six by
+      // default; the coordinate above is stored whole regardless.
+      expect(adopted.grid, locationToGrid6(gps.latitude, gps.longitude));
+      GridPrecision.configure(GridPrecision.eight);
+      addTearDown(GridPrecision.reset);
+      expect(
+        locationToAdoptAfterAddingRef(operationGrid: null, gpsPosition: gps, distanceKm: 5, refsAfterAdd: const [])!.grid,
+        hasLength(8),
+      );
     });
 
     test('does nothing when the added ref is farther than 15km', () {
@@ -86,7 +93,7 @@ void main() {
       // Derived from the coordinate rather than copied from the ref's own
       // `grid`, which is the coarser statement of the same place: the pair
       // stored on the operation has to agree with itself.
-      expect(adopted.grid, locationToGrid8(41.7135, -74.5278));
+      expect(adopted.grid, locationToGrid6(41.7135, -74.5278));
     });
 
     test("falls back to the first ref's own grid for a program that publishes no coordinates", () {
@@ -99,7 +106,28 @@ void main() {
         ],
       )!;
       expect(adopted.grid, 'FN21ab');
-      expect(adopted.location, isNull, reason: 'a grid is all that was known — claiming a coordinate would invent one');
+      // The square's own center, the same pair a hand-stated grid is written
+      // with — so an operation reached through this route and one reached
+      // through the setup sheet's own suggestion list hold the same record.
+      // It claims nothing the grid did not: the station is inside the square.
+      expect(adopted.location, gridToLocation('FN21ab'));
+    });
+
+    test('a placeholder ref grid places nothing at all', () {
+      // AA00 decodes like any other square. Adopted as a coordinate it would
+      // outrank every coarser source that could have answered honestly, and
+      // stand the operation off Antarctica.
+      expect(
+        locationToAdoptAfterAddingRef(
+          operationGrid: null,
+          gpsPosition: null,
+          distanceKm: null,
+          refsAfterAdd: [
+            {'ref': 'US-1234', 'grid': 'AA00'},
+          ],
+        ),
+        isNull,
+      );
     });
 
     test('does nothing when the first ref has no location of its own', () {

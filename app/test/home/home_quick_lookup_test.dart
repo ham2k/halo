@@ -787,7 +787,16 @@ void main() {
       await lookUp(tester, 'W1AW');
 
       final summary = tester.widget<CallInfoSummary>(find.byType(CallInfoSummary));
-      expect(summary.locationLine, 'Newington, CT • United States • FN31pr21');
+      // Six characters is the operator's Grid Precision, and the guess's own
+      // `grid` happens to read the same at that length — so the coordinate's
+      // precedence over it is pinned at eight, where the two differ.
+      expect(summary.locationLine, 'Newington, CT • United States • FN31pr');
+      GridPrecision.configure(GridPrecision.eight);
+      addTearDown(GridPrecision.reset);
+      expect(
+        gridForDisplay(lat: guess['lat'], lon: guess['lon'], grid: guess['grid'] as String),
+        'FN31pr21',
+      );
       // Nothing to label a distance with, so no scoring either: pills are the
       // operation's verdict on a QSO, and there is no operation.
       expect(summary.data.alertKeys, isEmpty);
