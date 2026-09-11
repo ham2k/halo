@@ -83,18 +83,27 @@ function coarseGrid(grid: string | undefined, digits = 6): string | undefined {
 /// coordinate at [digits] characters where there is a real one, otherwise the
 /// stored grid cut back to the same length.
 ///
-/// The same answer `gridForDisplay` gives on screen, and for the same reason
-/// — a file and a screen must not state the station's position differently.
-/// Truncating the stored string alone would not do it: an operation adopted
-/// from a fix stores its locator at whatever precision was in force THEN, so
-/// a later switch to eight characters would show `FN21rq56` and write
-/// `FN21rq`.
+/// The same answer `gridForDisplay` gives on screen, and by the same two
+/// rules, because a file and a screen must not state the station's position
+/// differently. Truncating the stored string would not do it in EITHER
+/// direction: an operation adopted from a fix stores its locator at whatever
+/// precision was in force then, so a later switch to eight characters would
+/// show `FN21rq56` and write `FN21rq` — and a locator that was STATED, with
+/// no coordinate to derive from, is a datum in its own right and goes out as
+/// written however short [digits] is. On the air a received grid IS the
+/// exchange; coarsening what the other station sent is not a claim this app
+/// gets to make.
+///
+/// So [digits] governs only a DERIVED locator. Where a caller needs a
+/// ceiling on the answer as well — `MY_GRIDSQUARE` does, because withholding
+/// private data must withhold the precision that rides with it — it applies
+/// one to the result.
 function gridForExport(grid: unknown, lat: unknown, lon: unknown, digits: number): string | undefined {
   const stored = typeof grid === 'string' ? grid : undefined
   if (typeof lat === 'number' && typeof lon === 'number' && !isGridCenter(lat, lon, stored)) {
     return digits >= 8 ? locationToGrid8(lat, lon) : locationToGrid6(lat, lon)
   }
-  return coarseGrid(stored, digits)
+  return stored
 }
 
 /// One side's county as ADIF's `CNTY`, from the record that holds it.
@@ -226,6 +235,9 @@ function baseFieldsFor(
   /// How many characters our own locator is written with — the operator's
   /// Grid Precision setting, capped at six wherever private data is withheld
   /// (see MY_GRIDSQUARE below).
+  /// How many characters a DERIVED locator is written with — the operator's
+  /// Grid Precision. `MY_GRIDSQUARE` caps its own answer at this too, and at
+  /// six wherever private data is withheld (see there).
   gridDigits: number,
   /// The export's `op`/`log`/`app` values, built once for the whole file —
   /// only `qso` changes per contact, and rebuilding the rest ten thousand
@@ -394,7 +406,12 @@ function baseFieldsFor(
   // claimed.
   const ourLocation = our.grid != null || our.lat != null || our.lon != null ? our : operation
   const ourGrid = ourLocation.grid as string | undefined
-  add('MY_GRIDSQUARE', gridForExport(ourGrid, ourLocation.lat, ourLocation.lon, includePrivateData ? gridDigits : 6))
+  const ourDigits = includePrivateData ? gridDigits : 6
+  // Capped as well as derived, unlike the worked station's below: a stored
+  // locator finer than the ceiling (an operation set from a fix before the
+  // setting was turned down, or read back out of an ADIF file) would
+  // otherwise ship the position the switch is withholding the coordinate for.
+  add('MY_GRIDSQUARE', coarseGrid(gridForExport(ourGrid, ourLocation.lat, ourLocation.lon, ourDigits), ourDigits))
 
   // Our own side of what the `their` fields say about theirs. [ourEntity] is
   // the FALLBACK: an operation stores no entity data, so these three are
@@ -435,12 +452,21 @@ function baseFieldsFor(
     // positions made the contact is its internal layout, not something the
     // contact itself says, and no program asks for it.
     add('APP_HAM2K_POSITION', our.multiIdentifier)
-    add('GRIDSQUARE', their.grid ?? theirGuess.grid)
     // Coordinates ride with the gridsquare, and for the same reason: where the
     // other operator is, to a few hundred metres, is not something the contact
     // itself says. Ours goes out under the same switch — a log uploaded to a
     // program's servers would otherwise publish the operator's own address.
     const theirs = theirCoordinate(their, theirGuess)
+    // Their square, derived from that same coordinate where there is one, at
+    // the operator's own Grid Precision — the claim every screen in the app
+    // makes about this station, so a file cannot state a different one. The
+    // stored string alone would not do it: a lookup's coordinate is filed
+    // beside a six-character grid whatever precision is in force. No ceiling
+    // here as there is on MY_GRIDSQUARE, in either sense — this block already
+    // rides `includePrivateData`, which is the gate that ceiling stands in
+    // for, and a grid the other station SENT is their exchange, not ours to
+    // coarsen to our own display preference.
+    add('GRIDSQUARE', gridForExport(their.grid ?? theirGuess.grid, theirs?.lat, theirs?.lon, gridDigits))
     add('LAT', formatAdifCoordinate(theirs?.lat, 'lat'))
     add('LON', formatAdifCoordinate(theirs?.lon, 'lon'))
     // Our own side, under the same rule as [theirCoordinate]: a pair that is

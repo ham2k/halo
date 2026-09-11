@@ -82,10 +82,33 @@ test("issue example: QRZ qth (grid/city) then POTA portable ref clears qth data 
   assert.equal(guess.city, undefined) // cleared, POTA didn't supply a city
 })
 
-test("grid-only result computes lat/lon; lat/lon-only result computes a 6-digit grid; both given are taken verbatim", () => {
+test("a grid-only result stores a grid and no coordinate", () => {
+  // The square's centre would be a coordinate no source reported, and a
+  // coordinate outranks a grid everywhere it is read
+  // (docs/design/locations.md) — so every reader would measure from, and
+  // every export would state, a point invented in the merge. Nothing needs
+  // it: the resolvers fall through to the grid on their own.
   const withGridOnly = mergeLookupIntoGuess({ call: "X" }, { call: "X", source: "a", scope: "general", grid: "FN21rq" })
-  assert.ok(typeof withGridOnly.lat === "number" && typeof withGridOnly.lon === "number")
+  assert.equal(withGridOnly.grid, "FN21rq")
+  assert.equal(withGridOnly.lat, undefined)
+  assert.equal(withGridOnly.lon, undefined)
+})
 
+test("a grid a decoder cannot place is dropped on its own, not with the result around it", () => {
+  // HamDB sent the literal "NOT_FOUND" before it started filtering. The whole
+  // result must survive it: the name and city in the same record are good,
+  // and only the grid is junk.
+  const withJunkGrid = mergeLookupIntoGuess(
+    { call: "X" },
+    { call: "X", source: "a", scope: "general", grid: "NOT_FOUND", city: "Newington" },
+  )
+  assert.equal(withJunkGrid.grid, undefined)
+  assert.equal(withJunkGrid.city, "Newington")
+})
+
+test("a lat/lon-only result still derives a 6-digit grid, and a result giving both is taken verbatim", () => {
+  // The other direction stays: a grid derived from a real coordinate states
+  // the square that coordinate is actually in, which invents nothing.
   const withLatLonOnly = mergeLookupIntoGuess({ call: "X" }, { call: "X", source: "a", scope: "general", lat: 41.5, lon: -74.5 })
   assert.ok(typeof withLatLonOnly.grid === "string" && withLatLonOnly.grid!.length === 6)
 

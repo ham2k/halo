@@ -299,14 +299,14 @@ String? gridForDisplay({Object? lat, Object? lon, String? grid}) {
 /// of latitude (four characters) to 19 m (ten), and one tolerance in degrees
 /// would be meaningless at one end and wrong at the other.
 ///
-/// It has to be a tolerance at all because the centers being recognised were
-/// not all computed here. `mergeLookup.ts` fills a lookup's coordinate from
-/// its grid with @ham2k/lib-geo-tools, which accumulates the same arithmetic
-/// in a different order, and an ADIF round trip stores coordinates to a
-/// thousandth of a minute (~1.8 m). Exact equality would answer "no" to
-/// centers that plainly are ones. A hundredth of a cell clears all of that by
-/// orders of magnitude while staying far under any distance that would change
-/// what an operator reads.
+/// It has to be a tolerance at all because a center does not always reach a
+/// reader with the bits it was written with: an ADIF round trip stores
+/// coordinates to a thousandth of a minute (~1.8 m), and a file written
+/// elsewhere may have computed the same center by different arithmetic.
+/// Exact equality would answer "no" to centers that plainly are ones, and the
+/// locator would then be rendered longer than anyone claimed. A hundredth of
+/// a cell clears that by orders of magnitude while staying far under any
+/// distance that would change what an operator reads.
 const _gridCenterTolerance = 0.01;
 
 /// Whether [location] is a cell's own center rather than a position inside

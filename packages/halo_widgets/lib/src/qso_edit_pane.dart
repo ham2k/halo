@@ -144,6 +144,23 @@ String? theirEntityDisplay(Map<String, dynamic>? their, Map<String, dynamic>? gu
   return prefix == null || prefix.isEmpty ? name : '$name ($prefix)';
 }
 
+/// The locator a lookup's [guess] places the station in, as the operator's
+/// Grid Precision renders it — the hint every Grid field shows while it is
+/// empty, here and on the logging row.
+///
+/// Through [gridForDisplay], never the guess's stored `grid` alone. A lookup
+/// that reported a coordinate has its square derived from that coordinate,
+/// which is finer than the six characters the merge files beside it — and a
+/// hint must show what would be stored if the operator left the field alone,
+/// or the hint and the record disagree (docs/design/locations.md). One
+/// function for both fields, because two Grid hints on one screen showing
+/// different squares is the failure this is guarding against.
+String? guessGridDisplay(Map<String, dynamic>? guess) {
+  if (guess == null) return null;
+  final exact = locationFromGuess(guess);
+  return gridForDisplay(lat: exact?.latitude, lon: exact?.longitude, grid: asQsonString(guess['grid']));
+}
+
 /// A guessed number as a placeholder string — the zones, which arrive from a
 /// lookup as ints but hint as text like every other field here.
 String? _numericGuess(Map<String, dynamic>? guess, String key) {
@@ -235,7 +252,7 @@ Map<String, dynamic> buildQsoEditFormDefinition({
       {'type': 'field', 'key': 'theirItuZone', 'fieldType': 'number', 'label': tt.theirItuZone, 'placeholder': _numericGuess(guess, 'ituZone')},
       if (us)
         {'type': 'field', 'key': 'theirArrlSection', 'fieldType': 'text', 'label': tt.theirArrlSection, 'uppercase': true, 'placeholder': guess?['arrlSection'] as String?},
-      {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': tt.theirGrid, 'uppercase': true, 'placeholder': guess?['grid'] as String?},
+      {'type': 'field', 'key': 'theirGrid', 'fieldType': 'text', 'label': tt.theirGrid, 'uppercase': true, 'placeholder': guessGridDisplay(guess)},
       // Editable, and cleared by the grid above the moment it is edited (see
       // [showQsoEditPane]'s onChange): a coordinate outranks a grid wherever
       // one is read (docs/design/locations.md), so leaving a stale pair on

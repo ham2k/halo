@@ -48,6 +48,23 @@ inside the square) and it says nothing the grid did not, so every reader that
 MEASURES has a coordinate to measure from without re-deriving one, and no
 reader has to special-case a record that carries a grid and no pair.
 
+**That is a rule for a writer recording what the OPERATOR stated, and for
+nobody else.** A lookup stores what its source actually reported: a
+grid-only result files a grid and no coordinate at all (`mergeLookup.ts`).
+Inventing the square's center there would put a coordinate nobody reported
+into the slot that outranks everything else, and the readers need no help —
+`locationForQsoInfoWithSource` falls through to the grid on its own. The
+reverse still happens, because it invents nothing: a coordinate-only result
+has its six-character square derived from the pair, so the guess can name a
+grid without claiming one.
+
+Which is why nothing reads that derived grid as the station's square. It is
+six characters whatever Grid Precision says, so every surface resolves
+through `gridForDisplay` instead — both Grid fields' hints (one
+`guessGridDisplay`, so the logging row and the More pane cannot show
+different squares for one station), the ADIF `GRIDSQUARE`, the call-info
+line.
+
 Two things that pair must never do. It must not survive a locator that names
 no place: `locationForStatedGrid` returns null for a placeholder
 (`isPlaceholderGrid` — `AA00`, `AA00AA`), which decodes like any other square
@@ -96,15 +113,15 @@ screen is a claim about how well the location is known, so:
   from this string and saves it back on the next blur.
 
   `isGridCenter` is the test, and it is a **tolerance**, a hundredth of the
-  cell's own size — not equality, and never a fixed number of degrees. The
-  centers it has to recognise were not all computed here: `mergeLookup.ts`
-  fills a lookup's coordinate from its grid with @ham2k/lib-geo-tools, which
-  sums the same arithmetic in a different order, and a coordinate that has
-  been through an ADIF file is rounded to a thousandth of a minute. The cells
-  run from 111 km of latitude to 19 m, so the question only makes sense asked
-  in units of the square. `extensions/core/adif/src/grid.ts` is the port of it
-  the exporter uses, decoding leniently and never throwing, which
-  lib-geo-tools' own `gridToLocation` does on any length but 4, 6 or 8.
+  cell's own size — not equality, and never a fixed number of degrees. A
+  center does not always reach a reader with the bits it was written with: a
+  coordinate that has been through an ADIF file is rounded to a thousandth of
+  a minute, and a file written elsewhere may have computed the same center by
+  different arithmetic. The cells run from 111 km of latitude to 19 m, so the
+  question only makes sense asked in units of the square.
+  `extensions/core/adif/src/grid.ts` is the port of it the exporter uses,
+  decoding leniently and never throwing, which lib-geo-tools' own
+  `gridToLocation` does on any length but 4, 6 or 8.
 - A field the operator TYPES into keeps its hint at whatever would be stored if
   they left it alone — the hint and the stored value must not disagree.
 

@@ -1408,6 +1408,63 @@ void main() {
       expect(find.text('stats-line'), findsOneWidget);
     });
 
+    testWidgets("the Grid hint is the square the lookup's coordinate resolves to, not the one it filed", (tester) async {
+      // A lookup that reports a coordinate has a SIX-character grid derived
+      // beside it, whatever Grid Precision is in force. The hint must show
+      // what would be stored if the operator left the field alone — the
+      // locator that coordinate resolves to at their own precision
+      // (docs/design/locations.md) — or the hint and the record disagree.
+      GridPrecision.configure(GridPrecision.eight);
+      addTearDown(GridPrecision.reset);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: operation,
+            qsosRepository: qsos,
+            showGridField: true,
+            lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
+              'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278},
+            },
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+
+      final hint = tester.widget<TextField>(find.widgetWithText(TextField, 'Grid')).decoration!.hintText;
+      expect(hint, locationToGrid8(41.7135, -72.7278));
+      expect(hint, isNot('FN31pr'), reason: "the filed grid is coarser than the coordinate beside it");
+    });
+
+    testWidgets('a lookup that reports only a square hints that square, inventing no precision', (tester) async {
+      // The other half: with no coordinate there is nothing finer to show, and
+      // the stored square goes through as written however fine the setting is.
+      GridPrecision.configure(GridPrecision.eight);
+      addTearDown(GridPrecision.reset);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: operation,
+            qsosRepository: qsos,
+            showGridField: true,
+            lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
+              'guess': {'grid': 'FN31pr'},
+            },
+          ),
+        ),
+      ));
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump();
+
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Grid')).decoration!.hintText, 'FN31pr');
+    });
+
     testWidgets('a grid with nothing to say about it keeps the stats, rather than a blank info line', (tester) async {
       // The app answers null when the operation has no location of its own;
       // swapping the stats for an empty line would hide that the operator's
@@ -10489,6 +10546,24 @@ void main() {
       expect(their['lat'], closeTo(gridToLocation('FN20aa')!.latitude, 1e-9));
       expect(their['lon'], closeTo(gridToLocation('FN20aa')!.longitude, 1e-9));
       expect(their['lat'], isNot(closeTo(41.71, 0.01)), reason: 'the pane pair must not survive the typed grid');
+    });
+
+    testWidgets("the More pane's Grid hint is the same square the logging row hints", (tester) async {
+      // Two Grid fields for one station, and they must not disagree. The pane
+      // reads the guess's own stored square, which is six characters whatever
+      // Grid Precision says — so with a coordinate in the guess and the
+      // setting at eight, the row hinted the derived locator and the pane
+      // hinted the coarser filed one. Both go through `guessGridDisplay` now.
+      GridPrecision.configure(GridPrecision.eight);
+      addTearDown(GridPrecision.reset);
+      await tester.pumpWidget(hostWithGuess({'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278}));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump(const Duration(milliseconds: 400));
+      await openPane(tester);
+
+      final paneHint = tester.widget<TextField>(find.widgetWithText(TextField, 'Grid')).decoration!.hintText;
+      expect(paneHint, locationToGrid8(41.7135, -72.7278));
+      expect(paneHint, isNot('FN31pr'), reason: 'the filed square is coarser than the coordinate beside it');
     });
 
     testWidgets('County and ARRL Section are offered to Alaska and Hawaii', (tester) async {

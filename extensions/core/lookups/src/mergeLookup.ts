@@ -167,17 +167,18 @@ export function mergeLookupIntoGuess(guess: CallInfo, result: CallInfoLookup): C
   const setCityStateCountry = written.has('city') || written.has('state') || written.has('country') || written.has('location')
 
   if (setGrid && !setLatLon) {
-    // A malformed grid (e.g. HamDB's literal "NOT_FOUND" before it started
-    // filtering, or any future source's junk) makes gridToLocation throw —
-    // and a throw here discards the source's entire result, valid name and
-    // city included. Drop just the bogus grid instead.
-    try {
-      const [lat, lon] = gridToLocation(next.grid!)
-      next.lat = lat
-      next.lon = lon
-    } catch (e) {
-      delete next.grid
-    }
+    // A grid-only result stores a grid and NO coordinate. The square's centre
+    // would be a coordinate nobody reported, and a coordinate outranks a grid
+    // everywhere it is read (docs/design/locations.md) — so every reader would
+    // measure from, and every export would state, a point invented here.
+    // Nothing needs it: the resolvers fall through to the grid on their own,
+    // and `gridForDisplay` renders the stored square as written.
+    //
+    // The check stays, because it was always doing two jobs. A malformed grid
+    // (e.g. HamDB's literal "NOT_FOUND" before it started filtering, or any
+    // future source's junk) must be dropped on its own, without discarding the
+    // source's whole result — its name and city are still good.
+    if (!placeable(next.grid)) delete next.grid
   } else if (setLatLon && !setGrid && next.lat != null && next.lon != null) {
     next.grid = locationToGrid6(next.lat, next.lon)
   }

@@ -560,6 +560,105 @@ void main() {
     }
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  // The worked station's square follows the operator's Grid Precision the way
+  // their own does, and is derived from the coordinate the log holds rather
+  // than read off the stored string: a lookup files a six-character grid
+  // beside a coordinate whatever precision is in force, so reading the string
+  // would state a coarser square in the file than every screen shows.
+  test('the worked station\'s gridsquare is derived from the coordinate, at the operator\'s precision', () async {
+    final fineHost = await sharedHost(
+      ['adif', 'pota'],
+      cacheKey: 'their-grid-precision-eight',
+      onHostCall: (method, params) async => method == 'getSettings' ? {'gridPrecision': 8} : null,
+    );
+    final result = await fineHost.invokeHook(
+      'export',
+      key: 'adif',
+      method: 'generateExport',
+      args: {
+        'operation': operation(['US-0001']),
+        'qsos': [
+          {
+            ...qsos.first,
+            'their': {
+              'call': 'W0ABC',
+              'sent': '59',
+              // What a lookup leaves behind: an exact coordinate, and the
+              // six-character square the merge derives beside it.
+              'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278},
+            },
+          },
+        ],
+        'exportType': 'adif',
+        'includePrivateData': true,
+      },
+      timeout: const Duration(seconds: 20),
+    ) as Map;
+    final content = result['content'] as String;
+
+    expect(content, contains('<GRIDSQUARE:8>${locationToGrid8(41.7135, -72.7278)}'));
+    expect(content, isNot(contains('<GRIDSQUARE:6>FN31pr')), reason: 'the stored string is the coarser claim');
+    // The coordinate is real, so it still goes out beside the square.
+    expect(content, contains('<LAT:'));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // Grid Precision governs a locator this app DERIVES. A locator it was given
+  // is a datum in its own right: on the air a received grid IS the exchange,
+  // and cutting what the other station sent back to our own display
+  // preference would lose characters nothing in the file admits to losing.
+  test('a locator finer than the operator\'s own precision survives export as the other station sent it', () async {
+    final host = await startHost();
+    final result = await host.invokeHook(
+      'export',
+      key: 'adif',
+      method: 'generateExport',
+      args: {
+        'operation': operation(['US-0001']),
+        'qsos': [
+          {
+            ...qsos.first,
+            // Eight characters and no coordinate — what an ADIF import from
+            // another logger leaves behind, and what the app stores for a
+            // locator typed at eight characters.
+            'their': {'call': 'W0ABC', 'sent': '59', 'grid': 'FN31pr56'},
+          },
+        ],
+        'exportType': 'adif',
+        'includePrivateData': true,
+      },
+      timeout: const Duration(seconds: 20),
+    ) as Map;
+    final content = result['content'] as String;
+
+    // The default precision is six; the exchange is eight and stays eight.
+    expect(content, contains('<GRIDSQUARE:8>FN31pr56'));
+    expect(content, isNot(contains('<GRIDSQUARE:6>FN31pr')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  // Our own side is the exception, and the reason is privacy rather than
+  // precision: the switch that withholds the coordinate has to withhold the
+  // precision riding with it, or a stored eight-character locator states the
+  // position anyway.
+  test('our own locator is still capped when private data is withheld, however it was stored', () async {
+    final host = await startHost();
+    final result = await host.invokeHook(
+      'export',
+      key: 'adif',
+      method: 'generateExport',
+      args: {
+        'operation': {...operation(['US-0001']), 'grid': 'FN21sq55'},
+        'qsos': [qsos.first],
+        'exportType': 'adif',
+        'includePrivateData': false,
+      },
+      timeout: const Duration(seconds: 20),
+    ) as Map;
+    final content = result['content'] as String;
+
+    expect(content, contains('<MY_GRIDSQUARE:6>FN21sq'));
+    expect(content, isNot(contains('FN21sq55')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   // What app-polo puts on every guess it syncs to us: lib-country-files' DXCC
   // centroid, tagged `locSource: 'prefix'` and carrying cty.dat's
   // WEST-POSITIVE longitude. The pair is neither the station's position nor

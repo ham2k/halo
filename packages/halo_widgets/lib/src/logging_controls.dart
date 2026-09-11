@@ -4439,7 +4439,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               padding: padding,
               duration: duration,
               textCapitalization: TextCapitalization.characters,
-              hintText: _currentGuess?['grid'] as String?,
+              hintText: _guessGridHint,
               onChanged: (_) => _markGridTouched(),
             ),
           ),
@@ -4633,7 +4633,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             label: t.qsoEditForm.theirGrid,
             focus: _gridFocus,
             controller: _gridController,
-            hint: _currentGuess?['grid'] as String?,
+            hint: _guessGridHint,
           ),
       ];
 
@@ -4877,6 +4877,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       ..remove('lat')
       ..remove('lon');
   }
+
+  /// The Grid field's hint — see [guessGridDisplay], which the More pane's
+  /// own Grid field hints through too so the two can never show different
+  /// squares for one station.
+  String? get _guessGridHint => guessGridDisplay(_currentGuess);
 
   /// Inserts a numbers-row key at the focused field's cursor. `_insertAtCursor`
   /// writes the controller value directly, which fires the controller
