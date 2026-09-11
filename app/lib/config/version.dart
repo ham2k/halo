@@ -47,7 +47,8 @@ const kStageLabel = 'ALPHA';
 const kBuildNumber = 164;
 
 /// The short git SHA of the commit this build was cut from, baked in at build
-/// time via `--dart-define=HALO_GIT_SHA=…` (CI). Empty for local/dev builds.
+/// time via `--dart-define=HALO_GIT_SHA=…` — by CI, and by the `mise` run
+/// tasks. Empty when a build is launched without one, e.g. a raw `flutter run`.
 /// Shown in the About panel to identify exactly which build is running.
 const kGitSha = String.fromEnvironment('HALO_GIT_SHA');
 

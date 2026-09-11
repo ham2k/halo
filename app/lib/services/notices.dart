@@ -78,7 +78,9 @@ class NoticeContext {
   final String appCodePush;
 
   /// The short git SHA this build was cut from (e.g. `04e3d1`), or empty when
-  /// none was baked in — matched exactly against `shas`/`exceptShas`. It is
+  /// none was baked in. A `shas`/`exceptShas` entry names this build when one
+  /// of the two is a prefix of the other — see `_shaMatches`, which says why
+  /// neither end has a length the other can rely on. It is
   /// the ONLY build identity a Dev-edition build carries, which is what the
   /// hosted web app and every preview deploy are, so it is the only way to
   /// target a notice at one of those.
@@ -198,6 +200,43 @@ List<EvaluatedNotice> evaluateNotices(List<dynamic> rawNotices, NoticeContext co
   return passing.map((e) => EvaluatedNotice(e.value)).toList();
 }
 
+/// The shortest `shas`/`exceptShas` entry taken seriously. Six is the shortest
+/// SHA this app has ever shown (`04e3d1`), and git will not abbreviate below
+/// four, so anything shorter is a typo or a truncated paste rather than an
+/// intent. Honouring one would reach a SLICE OF THE FLEET rather than nothing:
+/// three hex characters name one build in 4096, where exact matching gave a
+/// typo no reach at all. Dropping it is the safe direction, and for
+/// `exceptShas` it is the only safe one — a notice wrongly WITHHELD leaves
+/// nothing on anybody's screen to report.
+const _minShaEntryLength = 6;
+
+/// Whether [appSha] is the build one of [shas] names, comparing on whichever
+/// of the two is shorter.
+///
+/// Neither side has a fixed length and they cannot be made to agree: a build
+/// bakes whatever `git rev-parse --short` gave the machine that built it — a
+/// length that follows how big the repository is, and that is frozen inside
+/// every shipped binary — while the version displays cut it to seven. A rule
+/// is written from one of those, or pasted whole out of git at forty. All
+/// three have to reach the build they name, which is why the comparison runs
+/// in both directions rather than demanding the rule be the shorter one.
+///
+/// Both ends are real SHAs of the same commit, so one being a prefix of the
+/// other identifies it as surely as equality did — git abbreviates only as far
+/// as stays unambiguous. What that does NOT survive is a short entry, hence
+/// [_minShaEntryLength].
+///
+/// A build with no SHA baked in matches nothing — an unidentified build is not
+/// the one being targeted, so a `shas` list excludes it and an `exceptShas`
+/// list leaves it alone. An empty entry likewise matches nothing, though
+/// `startsWith('')` is true of every string: a flags file templated from an
+/// unset variable serializes `[""]`, and honouring that would broadcast a
+/// commit-targeted notice to every build at once, or mute one for all of them.
+bool _shaMatches(List<String> shas, String appSha) =>
+    appSha.isNotEmpty &&
+    shas.any((sha) =>
+        sha.length >= _minShaEntryLength && (appSha.startsWith(sha) || sha.startsWith(appSha)));
+
 bool _passes(
   Map<String, dynamic> notice,
   NoticeContext ctx, {
@@ -238,16 +277,10 @@ bool _passes(
   if (exceptCodePushes.isNotEmpty && ctx.appCodePush.isNotEmpty && exceptCodePushes.contains(ctx.appCodePush)) {
     return false;
   }
-  // A build with no SHA baked in matches no `shas` list and is excluded by no
-  // `exceptShas` list — an unidentified build is not the one being targeted.
-  // The empty-SHA checks are explicit rather than left to `contains`, because
-  // a flags file templated from an unset variable serializes `[""]`: that
-  // would otherwise broadcast a commit-targeted notice to every local, OSS
-  // and non-CI build at once, or mute one for all of them.
   final shas = _stringList(notice['shas']);
-  if (shas.isNotEmpty && (ctx.appSha.isEmpty || !shas.contains(ctx.appSha))) return false;
+  if (shas.isNotEmpty && !_shaMatches(shas, ctx.appSha)) return false;
   final exceptShas = _stringList(notice['exceptShas']);
-  if (exceptShas.isNotEmpty && ctx.appSha.isNotEmpty && exceptShas.contains(ctx.appSha)) return false;
+  if (exceptShas.isNotEmpty && _shaMatches(exceptShas, ctx.appSha)) return false;
 
   final calls = _stringList(notice['calls']);
   if (calls.isNotEmpty && !calls.any((c) => c.toUpperCase() == ctx.baseCall)) return false;

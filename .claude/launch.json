@@ -6,7 +6,7 @@
       "runtimeExecutable": "bash",
       "runtimeArgs": [
         "-c",
-        "cd app && flutter run -d web-server --web-port \"$PORT\""
+        "cd app && sha=$(git rev-parse --short HEAD) && flutter run -d web-server --web-port \"$PORT\" --dart-define=HALO_GIT_SHA=\"$sha\""
       ],
       "autoPort": true
     }

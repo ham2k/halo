@@ -141,11 +141,6 @@ class BrandingPane extends StatelessWidget {
           // needs to say which build it came from.
           VersionLabel(
             nameAndBuild: true,
-            // Name the binary's build number even on Dev, where `buildDetails`
-            // would otherwise print only a SHA (and nothing at all on a local
-            // run). The number is the last release's, not this build's — the
-            // tester overlay accepts the same trade for the same reason.
-            bareBuildNumber: true,
             style: theme.textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w700,
               fontSize: (theme.textTheme.bodyMedium?.fontSize ?? 14) * 1.2,

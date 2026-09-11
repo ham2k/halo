@@ -76,21 +76,35 @@ Notes:
 
 ## Running the app
 
-Run from `app/` (or use the `mise` tasks below, which rebuild extensions first).
+Run from `app/`, or use the `mise` tasks below. `mac`, `web`, `windows` and
+`linux` rebuild the extension bundles first — they are gitignored, so a stale
+or missing bundle otherwise loads silently; `android` and `run-ios` do not.
 
 | Target | Command |
 |---|---|
-| macOS | `cd app && flutter run -d macos` — or `mise run mac` (rebuilds extensions) |
-| Web | `cd app && flutter run -d web-server --web-port 8765` (or `-d chrome`) |
+| macOS | `mise run mac` (rebuilds extensions first) — or `cd app && flutter run -d macos` |
+| Web | `mise run web` (`-d web-server` on :8765) — or `cd app && flutter run -d chrome` |
 | iOS | `mise run run-ios` (opens Simulator, then `flutter run -d iphone`) |
-| Android | `cd app && flutter run -d android` — or `mise run android` |
-| Windows | `cd app && flutter run -d windows` |
-| Linux | `cd app && flutter run -d linux` |
+| Android | `mise run android` — or `cd app && flutter run -d android` |
+| Windows | `mise run windows` — or `cd app && flutter run -d windows` |
+| Linux | `mise run linux` — or `cd app && flutter run -d linux` |
+
+The `mise` task is the one to prefer for each: they pass `HALO_GIT_SHA`, so the
+build says which commit it is (below).
 
 Tips:
 - Launch **debug** desktop builds through `flutter run` (or your IDE) rather than
   double-clicking the built binary — debug mode needs the Dart VM service that
   the tool attaches.
+- **A Dev build identifies itself by its commit SHA, not a build number** — its
+  `kBuildNumber` is the last release's (see *Builds & editions*), so the home
+  pane and About show `HALO_GIT_SHA` instead — the home pane's second line goes
+  away entirely when none was baked in, while About keeps `Version 26.9.0` and
+  just drops the parenthetical. Every `mise` run task and the web launch config
+  pass
+  `--dart-define=HALO_GIT_SHA=$(git rev-parse --short HEAD)`, the way CI does.
+  A raw `flutter run` bakes none, so that build cannot say which commit it is
+  unless you add the same flag.
 - The web dev server also backs the one config in
   [`.claude/launch.json`](.claude/launch.json) (`halo-web`, port 8765).
 

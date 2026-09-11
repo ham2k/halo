@@ -17,6 +17,9 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
 import 'package:ham2k_logger/views/ham2k_logo.dart';
 import 'package:ham2k_logger/views/home_view.dart';
+import 'package:ham2k_logger/config/version.dart';
+import 'package:ham2k_logger/views/home_branding_pane.dart';
+import 'package:ham2k_logger/views/version_label.dart';
 import 'package:ham2k_logger/views/release_overlay.dart';
 
 import '../support/halo_test_support.dart';
@@ -166,6 +169,36 @@ void main() {
     expect(tester.getRect(badge).top, greaterThanOrEqualTo(tester.getRect(name).bottom - 1));
     expect(tester.getRect(name).top, greaterThanOrEqualTo(appBar.top - 0.5));
     expect(tester.getRect(badge).bottom, lessThanOrEqualTo(appBar.bottom + 0.5));
+    await _endOfTest(tester);
+  });
+
+  testWidgets('the version pane never names the last release\'s build number on a Dev build', (tester) async {
+    // The version-line contract in docs/design/user-interface.md: on Dev
+    // `kBuildNumber` is the LAST RELEASE's, so a pane printing it names a
+    // binary nobody is running — and `bareBuildNumber` puts it there INSTEAD
+    // of the SHA, which is the one token that does identify the build.
+    // Setting that flag on this pane must fail here.
+    setReleaseNotesForTesting(const []);
+    await _pumpHome(tester);
+
+    expect(kEdition, Edition.dev, reason: 'the rule under test only applies to Dev builds');
+    expect(versionBuildLine(bareBuildNumber: true), isNotEmpty,
+        reason: 'an empty needle would make find.text below match nothing whatever the pane renders');
+    // Presence first, both times: an absence assertion against a pane that
+    // isn't there, or that has stopped naming the version at all, passes while
+    // checking nothing — and "silent about the version" is the other half of
+    // the same failure.
+    expect(find.byType(BrandingPane), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(BrandingPane), matching: find.text(kVersionMainName)),
+      findsOneWidget,
+      reason: 'the pane still names the version',
+    );
+    expect(
+      find.descendant(of: find.byType(BrandingPane), matching: find.text(versionBuildLine(bareBuildNumber: true))),
+      findsNothing,
+      reason: 'that string is the tester overlay\'s notes key, not an identity for this pane',
+    );
     await _endOfTest(tester);
   });
 

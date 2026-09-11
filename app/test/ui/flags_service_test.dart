@@ -56,10 +56,10 @@ void main() {
       final e = await FlagsService.defaultNoticeEnvironment(
         edition: Edition.next,
         build: 126,
-        sha: '04e3d1',
+        sha: '04e3d1a29',
       );
       expect(e.appBuild, '126');
-      expect(e.appSha, '04e3d1');
+      expect(e.appSha, '04e3d1a29');
       expect(e.appVersion, kPublicVersion);
     });
 
@@ -70,11 +70,11 @@ void main() {
       final e = await FlagsService.defaultNoticeEnvironment(
         edition: Edition.dev,
         build: 126,
-        sha: '04e3d1',
+        sha: '04e3d1a29',
       );
       expect(e.appBuild, isEmpty);
       // The SHA is what remains to target it by — it names the running commit.
-      expect(e.appSha, '04e3d1');
+      expect(e.appSha, '04e3d1a29');
     });
 
     test('the code push is reported on its own, leaving the build number bare', () async {
@@ -84,7 +84,7 @@ void main() {
       final e = await FlagsService.defaultNoticeEnvironment(
         edition: Edition.next,
         build: 126,
-        sha: '04e3d1',
+        sha: '04e3d1a29',
         codePush: 2,
       );
       expect(e.appBuild, '126');
@@ -99,7 +99,7 @@ void main() {
       final e = await FlagsService.defaultNoticeEnvironment(
         edition: Edition.dev,
         build: 126,
-        sha: '04e3d1',
+        sha: '04e3d1a29',
         codePush: 2,
       );
       expect(e.appBuild, isEmpty);

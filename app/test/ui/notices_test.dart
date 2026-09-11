@@ -117,7 +117,46 @@ void main() {
       expect(keys(evaluateNotices(notices, ctx(appCodePush: ''))), ['b']);
     });
 
-    test('shas match exactly, and exceptShas withholds one build from a wider notice', () {
+    test('a rule written from the SHA on screen reaches the build that shows it', () {
+      // The displays cut the SHA to seven (version_label.dart's shaLabel) while
+      // the environment reports whatever length the build baked, so a rule
+      // typed off a reporter's screen is SHORTER than appSha. Exact membership
+      // silently matches nothing there, and the author sees only an absent
+      // notice. A longer rule than the build's SHA must still not match.
+      final notices = [
+        {'key': 'screen', 'text': 'x', 'shas': ['ee78b41']},
+        {'key': 'exact', 'text': 'x', 'shas': ['ee78b41e2']},
+        {'key': 'whole', 'text': 'x', 'shas': ['ee78b41e2f0a1b2c3d4e5f60718293a4b5c6d7e8']},
+        {'key': 'other', 'text': 'x', 'shas': ['deadbeefc0ffee']},
+      ];
+      // All three lengths name the same commit, so all three reach the build:
+      // seven off a screen, nine as baked, and the forty a rule author pastes
+      // from git — the gesture most likely to be used, and the one a one-way
+      // prefix would drop on the floor with no sign that it had.
+      expect(keys(evaluateNotices(notices, ctx(appSha: 'ee78b41e2'))), ['screen', 'exact', 'whole']);
+    });
+
+    test('an entry too short to be a SHA anyone read is dropped, not honoured', () {
+      // Prefix matching would otherwise give a typo a reach exact matching
+      // never had: 'de' names one build in 256. For `shas` that misfires
+      // loudly, but an over-broad `exceptShas` WITHHOLDS a notice from a slice
+      // of the fleet and leaves nothing on anyone's screen to report.
+      final notices = [
+        {'key': 'stub', 'text': 'x', 'shas': ['ee7']},
+        {'key': 'muted', 'text': 'x', 'exceptShas': ['ee7']},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(appSha: 'ee78b41e2'))), ['muted']);
+    });
+
+    test('exceptShas mutes by prefix too, so a screen-read SHA can withhold a notice', () {
+      final notices = [
+        {'key': 'a', 'text': 'x', 'exceptShas': ['ee78b41']},
+      ];
+      expect(keys(evaluateNotices(notices, ctx(appSha: 'ee78b41e2'))), isEmpty);
+      expect(keys(evaluateNotices(notices, ctx(appSha: 'deadbeef1'))), ['a']);
+    });
+
+    test('a SHA names one build, and exceptShas withholds it from a wider notice', () {
       // The SHA is the only build identity a Dev-edition build has — which is
       // what the hosted web app and every preview deploy are — so this is the
       // only way to name one of them.

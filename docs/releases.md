@@ -271,7 +271,22 @@ inside the push and updates on-device when it lands.
   The notice environment (`services/flags_service.dart`) reads the same
   constants, so a `builds` rule targets the build a reporter reads off their
   screen — and, like the display, a Dev build reports no build number at all
-  and is targeted by its `shas` (git SHA) instead. `package_info_plus` still
+  and is targeted by its `shas` (git SHA) instead. A `shas`/`exceptShas` entry names a
+  build when one of the two is a prefix of the other, in either direction,
+  because the ends are cut to different lengths: `git rev-parse --short` sizes
+  its answer to the repository, the displays cut that to seven, and what a
+  shipped binary baked is frozen. So a rule may be written at whatever length
+  was to hand — the seven off a reporter's screen, the nine in an older
+  screenshot, or a whole forty pasted out of git. An entry shorter than six
+  characters is dropped rather than honoured: it would name a slice of the
+  fleet instead of a build, and an `exceptShas` that withholds a notice too
+  widely leaves nothing on anyone's screen to report it by. An empty entry
+  matches nothing, rather than everything.
+
+  Note that local development builds now bake a SHA too (the `mise` run tasks
+  pass `HALO_GIT_SHA`), so a rule targeting a commit reaches every developer
+  sitting on it as well as the deploy cut from it. They were immune to
+  `shas` targeting when they carried no identity at all. `package_info_plus` still
   supplies the build number to the User-Agent (`config/user_agent.dart`) alone;
   it reports the *native* identity and will disagree with the UI on a local
   build or once a code push is running.

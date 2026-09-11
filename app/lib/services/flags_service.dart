@@ -78,8 +78,8 @@ class NoticeEnvironment {
   /// `builds` rules silently.
   final String appCodePush;
 
-  /// Empty when no SHA was baked in (`--dart-define=HALO_GIT_SHA`, which only
-  /// CI sets), which is every local build.
+  /// Empty when no SHA was baked in (`--dart-define=HALO_GIT_SHA`, which CI
+  /// and the `mise` run tasks set, and a raw `flutter run` does not).
   final String appSha;
   final String platform;
 

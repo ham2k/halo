@@ -65,13 +65,16 @@ Two distinct things are both loosely called "the splash" — keep them separate:
   and none of them repeats the edition, which the brand mark's badge already
   carries.
 
-  Two of them name the binary's build number alone — no code push, no SHA, and
-  named even on a Dev build where the rest suppress it (`bareBuildNumber`), for
-  different reasons. The tester overlay's number is a notes KEY, and making it
-  match the others would break the link between that header and the notes under
-  it. The home pane needs a number at all: a Dev build otherwise shows a SHA,
-  and a local run — which bakes none — shows nothing. On Dev that number is the
-  last release's, not the running build; `version_label.dart` states the trade.
+  The tester overlay is the one deliberate divergence: its build number is a
+  notes KEY, so it names the binary's number alone — no code push, no SHA, and
+  named even on a Dev build where the others suppress it (`bareBuildNumber`).
+  Making it match the rest would break the link between that header and the
+  notes listed under it. No other surface may reach for that flag to fill an
+  empty line: on Dev the number is the last release's, so it would name a
+  binary that isn't running, in place of the SHA that is. A Dev build with no
+  SHA baked in is left with only its qualifiers on that line, and on a patch-0
+  version with no pre-release that is nothing at all — which is why the run
+  tooling passes `HALO_GIT_SHA`, the way CI does.
 
 ### Overlays that pin their own palette
 

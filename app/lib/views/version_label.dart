@@ -13,7 +13,8 @@ import '../services/update_service.dart' show currentCodePush;
 
 /// The build-identity parenthetical every version display shares —
 /// `(build 125 - 04e3d1)`, or `(build 125)` when no SHA was baked in
-/// (`--dart-define=HALO_GIT_SHA=…`, which only CI sets). Read from compiled
+/// (`--dart-define=HALO_GIT_SHA=…`, which CI and the `mise` run tasks set,
+/// and a raw `flutter run` does not). Read from compiled
 /// Dart, NOT from package_info_plus's native metadata: a Shorebird patch can
 /// rewrite the former but not the latter, and a local `flutter run` reports a
 /// native build number of `1` that matches no release.
@@ -25,8 +26,9 @@ import '../services/update_service.dart' show currentCodePush;
 ///
 /// Dev builds normally show the SHA alone — `kBuildNumber` there is the last
 /// release's number, not this build's, so printing it would name a build that
-/// isn't running — and show nothing at all without a SHA, which is every local
-/// run. A running code push is proof that this IS that release build (only
+/// isn't running — and show nothing at all without a SHA, which is a build
+/// launched without one baked in. A running code push is proof that this IS
+/// that release build (only
 /// `shorebird release` output can carry one), so the build number is truthful
 /// again and Dev names it too.
 ///
@@ -43,10 +45,22 @@ String buildDetails({
   final buildLabel = codePush == null ? '$build' : '$build.$codePush';
   final parts = <String>[
     if (edition != Edition.dev || codePush != null) t.versionLabel.build(build: buildLabel),
-    if (sha.isNotEmpty) sha,
+    if (sha.isNotEmpty) shaLabel(sha),
   ];
   return parts.isEmpty ? '' : '(${parts.join(' - ')})';
 }
+
+/// How many characters of a commit SHA a version display shows.
+const kShaLabelLength = 7;
+
+/// [sha] cut to [kShaLabelLength] for display. Pinned here rather than at each
+/// producer because `git rev-parse --short` picks its length from how big the
+/// repository is, so CI, the `mise` run tasks and a hand-typed define do not
+/// agree on one — and whatever they baked is already inside a shipped binary.
+/// Only the LABEL is cut: `kGitSha` itself stays whole for the machine-facing
+/// readers (the flags environment, the web build-freshness check), which
+/// compare it against values this app did not produce.
+String shaLabel(String sha) => sha.length <= kShaLabelLength ? sha : sha.substring(0, kShaLabelLength);
 
 /// `Version 26.8.1 (build 125 - 04e3d1)` — the detail line under the version
 /// name, dropping the parenthetical entirely when [buildDetails] is empty.
@@ -115,14 +129,12 @@ String localizedVersionName({
 /// empty (its caller then renders no second line at all).
 ///
 /// [bareBuildNumber] names the BINARY — the build number alone, no code push
-/// and no SHA, on a Dev build too. Two callers want it, for different reasons.
-/// The tester overlay's notes are KEYED by that number, and a header reading
-/// `build 130.2 - 04e3d1` over notes titled "What's new in build 130" names an
-/// identity the notes index doesn't contain. The home branding pane wants a
-/// number at all: without this a Dev build shows a SHA, and a local run — which
-/// bakes none — shows nothing, leaving the pane whose job is the version
-/// silent about it. The trade is real and is the operator's to know about: on
-/// Dev the number is the LAST RELEASE's, not the build in front of them.
+/// and no SHA, on a Dev build too. Only the tester overlay wants this: its
+/// notes are KEYED by that number, and a header reading `build 130.2 - 04e3d1`
+/// over notes titled "What's new in build 130" names an identity the notes
+/// index doesn't contain. Nowhere else may use it to fill an empty line: on Dev
+/// the number is the LAST RELEASE's, so anything claiming to identify the
+/// RUNNING binary with it is lying, and it replaces the SHA that isn't.
 ///
 /// [version]/[edition]/[build]/[sha]/[codePush]/[stageLabel] default to this
 /// process's values and exist only so tests can reach the other cells of that
@@ -184,8 +196,8 @@ class VersionLabel extends StatelessWidget {
   /// in the home pane), and no single ratio off [style] reads well at both.
   final TextStyle? detailStyle;
 
-  /// Name the BINARY's build number — see [versionBuildLine], which says what
-  /// each of its two callers is trading away for it.
+  /// Name the BINARY's build number — see [versionBuildLine]. Only the tester
+  /// overlay sets this.
   final bool bareBuildNumber;
 
   const VersionLabel({

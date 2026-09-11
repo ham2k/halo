@@ -36,8 +36,20 @@ void main() {
       expect(buildDetails(edition: Edition.dev, build: 125, sha: '04e3d1'), '(04e3d1)');
     });
 
+    test('the SHA is cut to seven characters, however long the one baked in was', () {
+      // `git rev-parse --short` sizes its answer to the repository, so what
+      // reaches kGitSha differs by producer and grows as the repo does. The
+      // label is what gets pinned; a shorter SHA is left alone rather than
+      // padded, and the machine-facing readers of kGitSha still see it whole.
+      expect(buildDetails(edition: Edition.dev, build: 125, sha: 'fb3b5cb0a'), '(fb3b5cb)');
+      expect(shaLabel('fb3b5cb0a'), 'fb3b5cb');
+      expect(shaLabel('04e3d1'), '04e3d1', reason: 'a shorter SHA is not padded');
+      expect(shaLabel(''), '');
+    });
+
     test('a Dev build with no SHA has nothing to say, so it says nothing', () {
-      // Every local `flutter run` — only CI sets --dart-define=HALO_GIT_SHA.
+      // A build launched without --dart-define=HALO_GIT_SHA — a raw
+      // `flutter run`, where neither CI nor a `mise` task baked one in.
       // The empty string is what lets callers drop the line entirely rather
       // than render a bare "()".
       expect(buildDetails(edition: Edition.dev, build: 125, sha: ''), isEmpty);
