@@ -276,8 +276,14 @@ inside the push and updates on-device when it lands.
   because the ends are cut to different lengths: `git rev-parse --short` sizes
   its answer to the repository, the displays cut that to seven, and what a
   shipped binary baked is frozen. So a rule may be written at whatever length
-  was to hand — the seven off a reporter's screen, the nine in an older
-  screenshot, or a whole forty pasted out of git. An entry shorter than six
+  was to hand — the seven a Dev reporter reads off their screen, the nine in an
+  older screenshot, or a whole forty pasted out of git.
+
+  On an official build the SHA is reported but never DISPLAYED (a build names
+  itself one way, below), so a `shas` rule aimed at one is authored from the
+  release tag and can never be confirmed against what its operator sees. That
+  cuts hardest for `exceptShas`: it can withhold a notice from official builds
+  by a field nobody on those builds can read back. An entry shorter than six
   characters is dropped rather than honoured: it would name a slice of the
   fleet instead of a build, and an `exceptShas` that withholds a notice too
   widely leaves nothing on anyone's screen to report it by. An empty entry
@@ -301,15 +307,19 @@ inside the push and updates on-device when it lands.
 - **Version displays** carry the version plus a build-identity parenthetical,
   rendered by one shared helper (`buildDetails()` in `views/version_label.dart`)
   so the home pane and the About row can never disagree: `Version 26.9.3
-  (build 131.1 - 04e3d1)` — the public version for humans, the build identity
-  pinning the native binary and the code push running on it, the git SHA pinning
-  the commit. The code push extends the build number rather than taking a field
-  of its own, because Shorebird's counter is only meaningful against one release:
-  a bare `.1` names nothing. With no code push applied the build stands alone
-  (`build 131`). The Dev edition normally shows the SHA alone — its
-  `kBuildNumber` is the last *release's*, not the running build's — but does name
-  the build once a code push is running, since only a `shorebird release` binary
-  can carry one. The splash screens carry none of it.
+  (build 131.1)` — the public version for humans, then ONE build identity, never
+  two. A build that has a truthful build number names itself by it and says
+  nothing about its commit; the code push extends that number rather than taking
+  a field of its own, because Shorebird's counter is only meaningful against one
+  release: a bare `.1` names nothing. With no code push applied the build stands
+  alone (`build 131`).
+
+  The Dev edition is the other case: its `kBuildNumber` is the last *release's*,
+  not the running build's, so the git SHA identifies the binary instead
+  (`Version 26.9.3 (04e3d1)`), cut to seven characters — and a Dev build with no
+  SHA baked in shows nothing at all rather than borrow a number that is not its
+  own. A code push moves it back to the first case, since only a
+  `shorebird release` binary can carry one. The splash screens carry none of it.
 - **Sync/log metadata** should record both the public version *and* the
   build + code-push fingerprint, since only the latter reproduces a device's
   exact code.

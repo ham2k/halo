@@ -55,12 +55,24 @@ void main() {
       expect(buildDetails(edition: Edition.dev, build: 125, sha: ''), isEmpty);
     });
 
-    test('an official build names the build number and the SHA', () {
-      expect(buildDetails(edition: Edition.next, build: 125, sha: '04e3d1'), '(build 125 - 04e3d1)');
-      expect(buildDetails(edition: Edition.prod, build: 125, sha: '04e3d1'), '(build 125 - 04e3d1)');
+    test('an official build names its build number and NOT its SHA, even when one is baked in', () {
+      // One identity per build, never two. An official build's number is its
+      // own, and it is what a release is referred to by everywhere else — the
+      // notes, the tags, a `builds` notice rule — so the SHA beside it would
+      // be a second name for the same thing rather than more information.
+      expect(buildDetails(edition: Edition.next, build: 125, sha: '04e3d1'), '(build 125)');
+      expect(buildDetails(edition: Edition.prod, build: 125, sha: '04e3d1'), '(build 125)');
     });
 
-    test('an official build with no SHA still names the build number', () {
+    test('an official build ignores its SHA entirely — baked in or not', () {
+      // Not "with no SHA it still names the build": that cannot fail on its own
+      // any more, because sha is dead input on this branch. What is worth
+      // pinning is that the two inputs give the SAME answer, which is what
+      // makes the identity one thing rather than a thing plus a qualifier.
+      expect(
+        buildDetails(edition: Edition.next, build: 125, sha: ''),
+        buildDetails(edition: Edition.next, build: 125, sha: '04e3d1'),
+      );
       expect(buildDetails(edition: Edition.next, build: 125, sha: ''), '(build 125)');
     });
 
@@ -68,7 +80,7 @@ void main() {
       // `125.2`, not `125 - patch 2`: Shorebird's counter restarts at 1 for
       // every release, so the push number names nothing without the build it
       // sits on, and separating them invites a bug report quoting only the ".2".
-      expect(buildDetails(edition: Edition.next, build: 125, sha: '04e3d1', codePush: 2), '(build 125.2 - 04e3d1)');
+      expect(buildDetails(edition: Edition.next, build: 125, sha: '04e3d1', codePush: 2), '(build 125.2)');
     });
 
     test('a Dev build DOES name the build number once a code push is running', () {
@@ -78,7 +90,7 @@ void main() {
       // release. Hiding it would leave a Dev tester with no way to say which
       // of several same-version pushes they are running, the whole point of
       // showing the number.
-      expect(buildDetails(edition: Edition.dev, build: 125, sha: '04e3d1', codePush: 2), '(build 125.2 - 04e3d1)');
+      expect(buildDetails(edition: Edition.dev, build: 125, sha: '04e3d1', codePush: 2), '(build 125.2)');
     });
 
     test('buildDetails reads the boot-cached code-push number when none is passed', () {
@@ -356,7 +368,7 @@ void main() {
       );
     });
 
-    test('a code push extends the build number, and the SHA rides along', () {
+    test('a code push extends the build number, and the SHA drops out with it', () {
       expect(
         versionBuildLine(
           version: const PublicVersion(main: august26, patch: 1),
@@ -365,13 +377,13 @@ void main() {
           sha: '04e3d1',
           codePush: 2,
         ),
-        'Patch 1 (build 130.2 - 04e3d1)',
+        'Patch 1 (build 130.2)',
       );
     });
 
     test('bareBuildNumber names the binary alone — no code push, no SHA, Dev or not', () {
       // The tester overlay's line is a notes KEY. Its notes are indexed by the
-      // binary's number, so `build 130.2 - 04e3d1` over notes headed "What's new
+      // binary's number, so `build 130.2` over notes headed "What's new
       // in build 130" would name a build the index doesn't contain — and on Dev,
       // where every other display suppresses the number, it must still appear.
       expect(

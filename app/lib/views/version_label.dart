@@ -11,26 +11,25 @@ import '../config/version.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/update_service.dart' show currentCodePush;
 
-/// The build-identity parenthetical every version display shares —
-/// `(build 125 - 04e3d1)`, or `(build 125)` when no SHA was baked in
-/// (`--dart-define=HALO_GIT_SHA=…`, which CI and the `mise` run tasks set,
-/// and a raw `flutter run` does not). Read from compiled
-/// Dart, NOT from package_info_plus's native metadata: a Shorebird patch can
-/// rewrite the former but not the latter, and a local `flutter run` reports a
-/// native build number of `1` that matches no release.
+/// The build-identity parenthetical every version display shares — `(build
+/// 125)`, or `(04e3d1)` on a Dev build. Read from compiled Dart, NOT from
+/// package_info_plus's native metadata: a Shorebird patch can rewrite the
+/// former but not the latter, and a local `flutter run` reports a native build
+/// number of `1` that matches no release.
 ///
-/// A code push applied on top of the binary extends the build number rather
-/// than taking a field of its own — `build 125.2` is build 125 at code push 2
-/// (docs/releases.md §2.1). The two are only meaningful together: Shorebird's
-/// counter restarts at 1 for each release, so a bare `.2` names nothing.
+/// ONE identity, never two. A build that has a truthful build number names
+/// itself by it and says nothing about its commit; a build whose number would
+/// be a lie names its commit instead. Which applies is the edition: on Dev
+/// `kBuildNumber` is the LAST RELEASE's, so it is the SHA that identifies the
+/// binary — and a Dev build with no SHA baked in says nothing at all rather
+/// than borrow a number that is not its own.
 ///
-/// Dev builds normally show the SHA alone — `kBuildNumber` there is the last
-/// release's number, not this build's, so printing it would name a build that
-/// isn't running — and show nothing at all without a SHA, which is a build
-/// launched without one baked in. A running code push is proof that this IS
-/// that release build (only
-/// `shorebird release` output can carry one), so the build number is truthful
-/// again and Dev names it too.
+/// A running code push moves a Dev build back into the first case: only
+/// `shorebird release` output can carry one, so it is proof that this IS that
+/// release build and the number is truthful again. The push extends the number
+/// rather than taking a field of its own — `build 125.2` is build 125 at code
+/// push 2 (docs/releases.md §2.1); Shorebird's counter restarts at 1 per
+/// release, so a bare `.2` names nothing.
 ///
 /// [edition]/[build]/[sha]/[codePush] default to this process's values and
 /// exist only so tests can reach the other cells of that matrix: compile-time
@@ -42,12 +41,11 @@ String buildDetails({
   int? codePush,
 }) {
   codePush ??= currentCodePush;
-  final buildLabel = codePush == null ? '$build' : '$build.$codePush';
-  final parts = <String>[
-    if (edition != Edition.dev || codePush != null) t.versionLabel.build(build: buildLabel),
-    if (sha.isNotEmpty) shaLabel(sha),
-  ];
-  return parts.isEmpty ? '' : '(${parts.join(' - ')})';
+  final namesItsBuildNumber = edition != Edition.dev || codePush != null;
+  final label = namesItsBuildNumber
+      ? t.versionLabel.build(build: codePush == null ? '$build' : '$build.$codePush')
+      : shaLabel(sha);
+  return label.isEmpty ? '' : '($label)';
 }
 
 /// How many characters of a commit SHA a version display shows.
@@ -62,7 +60,7 @@ const kShaLabelLength = 7;
 /// compare it against values this app did not produce.
 String shaLabel(String sha) => sha.length <= kShaLabelLength ? sha : sha.substring(0, kShaLabelLength);
 
-/// `Version 26.8.1 (build 125 - 04e3d1)` — the detail line under the version
+/// `Version 26.8.1 (build 125)` — the detail line under the version
 /// name, dropping the parenthetical entirely when [buildDetails] is empty.
 String versionDetailLine() {
   final version = t.versionLabel.version(version: kPublicVersion);
@@ -130,9 +128,9 @@ String localizedVersionName({
 ///
 /// [bareBuildNumber] names the BINARY — the build number alone, no code push
 /// and no SHA, on a Dev build too. Only the tester overlay wants this: its
-/// notes are KEYED by that number, and a header reading `build 130.2 - 04e3d1`
-/// over notes titled "What's new in build 130" names an identity the notes
-/// index doesn't contain. Nowhere else may use it to fill an empty line: on Dev
+/// notes are KEYED by that number, and a header reading `build 130.2` over
+/// notes titled "What's new in build 130" names an identity the notes index
+/// doesn't contain. Nowhere else may use it to fill an empty line: on Dev
 /// the number is the LAST RELEASE's, so anything claiming to identify the
 /// RUNNING binary with it is lying, and it replaces the SHA that isn't.
 ///
@@ -159,9 +157,10 @@ String versionBuildLine({
   return parts.where((part) => part.isNotEmpty).join(' ');
 }
 
-/// `August '26 ALPHA patch 1 (Dev Edition)` then `Version 26.8.1 (build 125 -
-/// 04e3d1)` as plain text, for callers that copy the version details elsewhere
-/// (e.g. the About screen's version row).
+/// `August '26 ALPHA patch 1 (Dev Edition)` then `Version 26.8.1 (04e3d1)` as
+/// plain text, for callers that copy the version details elsewhere (e.g. the
+/// About screen's version row). An official edition's second line names its
+/// build instead — `Version 26.8.1 (build 125)` — see [buildDetails].
 ///
 /// CANONICAL English, where `detailed` mode renders the same two lines in the
 /// operator's language: this text is pasted into bug reports and matched
@@ -173,7 +172,7 @@ String _preReleaseLabel(String label, {String stageLabel = kStageLabel}) =>
 
 /// `August '26 ALPHA patch 1 (Dev Edition) · 26.8.1 (04e3d1)`. With
 /// [detailed], instead renders two centered lines — the same edition version
-/// name, then in a smaller size `Version 26.8.1 (build 125 - 04e3d1)` — for
+/// name, then in a smaller size `Version 26.8.1 (build 125)` — for
 /// the About screen's version row.
 class VersionLabel extends StatelessWidget {
   final TextStyle? style;

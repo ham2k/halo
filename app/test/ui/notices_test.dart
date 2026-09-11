@@ -118,9 +118,9 @@ void main() {
     });
 
     test('a rule written from the SHA on screen reaches the build that shows it', () {
-      // The displays cut the SHA to seven (version_label.dart's shaLabel) while
-      // the environment reports whatever length the build baked, so a rule
-      // typed off a reporter's screen is SHORTER than appSha. Exact membership
+      // A Dev build's display cuts the SHA to seven (version_label.dart's
+      // shaLabel) while the environment reports whatever length the build
+      // baked, so a rule typed off that screen is SHORTER than appSha. Exact membership
       // silently matches nothing there, and the author sees only an absent
       // notice. A longer rule than the build's SHA must still not match.
       final notices = [
@@ -416,10 +416,12 @@ void main() {
       expect(n.title, '!'); // unknown path resolves to empty
     });
 
-    test('a notice can print the build identity the user reads off their own screen', () {
+    test('a notice can print both halves of the build identity, whatever the app shows', () {
       // The point of exposing these: "tell us which build you're on" is
-      // answerable from the notice itself rather than by walking the user
-      // into Settings → About.
+      // answerable from the notice itself rather than by walking the user into
+      // Settings → About. A rule reaches BOTH fields whichever one the version
+      // displays chose to render — an official build shows its number and a Dev
+      // build its SHA, but a notice may name either.
       final notices = [
         {'key': 'a', 'text': 'build {{app.build}} - {{app.sha}}'},
       ];
