@@ -304,6 +304,24 @@ inside the push and updates on-device when it lands.
   already been triggered, reading HEAD's version.dart against the release tag and
   the surviving code-push trigger tags. Best-effort by construction: pruned or
   unreadable tags are reported and skipped, never fatal.
+- **Every official build captures its commit**, whether or not it shows one.
+  Each release script and each code-push script bakes `HALO_GIT_SHA` from
+  `git_sha_or_die` (`app_dist/ci/git-sha-common.sh`; `build-windows.ps1` carries
+  the same rule in PowerShell, and the web workflows and `scripts/deploy-web.sh`
+  inline it, since a public checkout has no `app_dist/` to source), and a lookup
+  that cannot answer FAILS the build. `git rev-parse … || echo ""` would hand
+  `flutter build` an empty define, which it accepts without complaint — and what
+  ships is a release no Sentry event, no `shas` rule and no bug report can
+  identify, with nothing in the log to say so. A build machine always has a
+  checkout, so a failure there means something is wrong enough to stop for.
+  Capturing is separate from displaying: an official build reports its SHA and
+  never renders it (below). A web deploy to a STANDING url writes the same SHA to
+  `build_sha.txt` beside the bundle — both halves or neither, because a bundle
+  that bakes one while the stamp beside it says something else tells every open
+  tab it is stale, and the reload it offers cannot clear that. A preview deploy
+  writes no stamp: each tag gets its own url, so nothing there is ever
+  superseded in place, and a missing stamp reads as "unknown" rather than as a
+  mismatch.
 - **Version displays** carry the version plus a build-identity parenthetical,
   rendered by one shared helper (`buildDetails()` in `views/version_label.dart`)
   so the home pane and the About row can never disagree: `Version 26.9.3

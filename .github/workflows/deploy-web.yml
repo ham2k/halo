@@ -101,10 +101,11 @@ jobs:
       - name: Build Flutter web app
         run: |
           cd app
+          sha=$(git rev-parse --short HEAD) || { echo "::error::cannot read the commit being built"; exit 1; }
           flutter pub get
           flutter build web --release --no-tree-shake-icons \
             --dart-define=HALO_SENTRY_DSN="${HALO_SENTRY_DSN}" \
-            --dart-define=HALO_GIT_SHA="$(git rev-parse --short HEAD)" \
+            --dart-define=HALO_GIT_SHA="$sha" \
             --target=../app_dist/lib/main_dist.dart
         env:
           HALO_SENTRY_DSN: ${{ secrets.HALO_SENTRY_DSN }}

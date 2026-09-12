@@ -40,11 +40,31 @@ flutter pub get
 # tokens past dart run's build-hook noise.
 eval "$(dart run tool/print_build_versions.dart 2>/dev/null | grep -oE 'HALO_[A-Z_]+=[^[:space:]]+')"
 echo "Web version: $HALO_MARKETING (build $HALO_BUILD_ID)"
+
+# The commit being deployed (docs/releases.md §2.3). This lands on the same
+# Pages project the deploy workflow publishes to, so a build from here has to
+# be as identifiable as one from CI: without it the deployed app reports no
+# commit to Sentry and no `shas` notice rule can reach it. The rule is inlined
+# rather than sourced — this script is public and runs in checkouts that carry
+# no app_dist/ — and a lookup that cannot answer stops the deploy.
+GIT_SHA=$(git rev-parse --short HEAD) || { echo "FATAL: cannot read the commit being deployed" >&2; exit 1; }
+case "$GIT_SHA" in
+  *[!0-9a-f]* | "") echo "FATAL: git named no usable commit: '$GIT_SHA'" >&2; exit 1 ;;
+esac
+echo "Deploying commit: $GIT_SHA"
+
 flutter build web --release --no-tree-shake-icons --dart-define=HALO_EDITION="$EDITION" \
+  --dart-define=HALO_GIT_SHA="$GIT_SHA" \
   --build-name="$HALO_MARKETING" --build-number="$HALO_BUILD_ID"
 
 # 2b. Stamp the built bundle with this edition's identity (favicon, manifest, titles)
 "$ROOT_DIR/scripts/apply-web-edition.sh" "$EDITION" "$ROOT_DIR/app/build/web"
+
+# 2c. The deploy stamp BuildFreshnessService fetches, written from the same SHA
+# that was just baked in. Both halves or neither: a deploy that bakes a SHA but
+# leaves a stale stamp behind tells every open tab it is out of date, and the
+# reload it offers cannot clear it.
+printf '%s\n' "$GIT_SHA" > "$ROOT_DIR/app/build/web/build_sha.txt"
 
 # 3. Deploy to Cloudflare Pages
 echo "☁️ Deploying to Cloudflare Pages..."

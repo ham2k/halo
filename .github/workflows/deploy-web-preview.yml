@@ -100,9 +100,10 @@ jobs:
       - name: Build Flutter web app
         run: |
           cd app
+          sha=$(git rev-parse --short HEAD) || { echo "::error::cannot read the commit being built"; exit 1; }
           flutter pub get
           flutter build web --release --no-tree-shake-icons \
-            --dart-define=HALO_GIT_SHA="$(git rev-parse --short HEAD)"
+            --dart-define=HALO_GIT_SHA="$sha"
 
       # Any --branch other than "main" (the project's production branch)
       # creates a preview deployment aliased to that name.
