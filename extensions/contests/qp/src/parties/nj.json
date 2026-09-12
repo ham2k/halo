@@ -3,7 +3,7 @@
   "name": "New Jersey QSO Party",
   "start": "2026-9-12 14:00Z",
   "end": "2026-9-13 02:00Z",
-  "status": "Dates verified for 2026 against the sponsor’s rules; scoring rules not yet verified",
+  "status": "Dates and scoring verified for 2026 against the sponsor’s rules",
   "counties": {
     "ATLA": "Atlantic",
     "BERG": "Bergen",
@@ -28,7 +28,7 @@
     "UNIO": "Union"
   },
   "url": "https://sites.google.com/view/k2td-bcrc/nj-qp/rules",
-  "lastUpdated": "2026-09-06 12:00Z",
+  "lastUpdated": "2026-09-12 12:00Z",
   "cabrilloName": "NJQP",
   "entryClasses": {
     "operator": [
@@ -54,5 +54,19 @@
       "LOW": "",
       "HIGH": "150W or greater"
     }
+  },
+  "options": {
+    "dcCountsAsMaryland": true,
+    "dxIsMultiplier": true
+  },
+  "points": {
+    "PHONE": 1,
+    "CW": 2,
+    "DIGI": 2
+  },
+  "powerMultiplier": {
+    "QRP": 4,
+    "LOW": 2,
+    "HIGH": 1
   }
 }
