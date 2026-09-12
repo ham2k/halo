@@ -48,6 +48,7 @@ import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
 import 'logging_controls_command.dart';
 import 'logging_controls_controller.dart';
+import 'logging_controls_focus.dart';
 import 'logging_controls_lookup.dart';
 import 'logging_controls_radio.dart';
 import 'logging_controls_metrics.dart';
@@ -1573,6 +1574,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   bool get _fieldsLocked =>
       _pendingDelete || (widget.editingQso?.deleted ?? false) || _writeRefusal != null;
 
+  /// The default-focus rule's backstop (docs/design/logging-fields.md
+  /// § Which field has focus), which owns the panel's Tab-trapping scope.
+  late final _focusBackstop = DefaultFocusBackstop(
+    target: () => _editingEvent ? _eventTextFocus : _callFocus,
+    // `isCurrentOf`, not `of`: the latter would have every change to the
+    // route's status rebuild the panel, not just push and pop over it.
+    routeIsCurrent: () => ModalRoute.isCurrentOf(context) != false,
+  );
+
   /// Editing an event/annotation row (NOTE, TODO, BREAK, …) rather than a
   /// contact — the main fields swap for [_buildEventFields], built from the
   /// same field primitives so the row's shape doesn't change, and every
@@ -1701,6 +1711,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Publish the dispatcher while this panel is live, so a command run from
     // the ⌘K dialog lands on THIS logging panel's state.
     widget.onDispatcherChanged?.call(_dispatchActions);
+    _focusBackstop.attach();
     // Observe metrics so the numbers row appears/disappears with the on-screen
     // keyboard — MediaQuery can't tell us (Scaffold strips the inset, see
     // `virtualKeyboardIsUp`), so `didChangeMetrics` is the rebuild trigger.
@@ -2783,6 +2794,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _stateController.dispose();
     _powerController.dispose();
     _eventTextController.dispose();
+    _focusBackstop.dispose();
     _eventTextFocus.dispose();
     _callFocus.dispose();
     _sentFocus.dispose();
@@ -6810,7 +6822,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // primitive a dialog uses. Without it, Tab past the last field escapes
     // into the QSO list above. Programmatic focus moves and mouse clicks
     // still cross the boundary freely — only keyboard traversal is confined.
-    return FocusScope(child: panel);
+    return FocusScope(node: _focusBackstop.panelScope, child: panel);
   }
 
   /// Rebuilds when the on-screen keyboard opens or closes — the numbers row
@@ -6820,6 +6832,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The panel no longer sizes anything to the keyboard itself: `_StatusBarOverlay`
   /// reserves the keyboard's height below the status footer for the whole app,
   /// so the space this panel is given already ends above the keyboard.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) _focusBackstop.onResumed();
+  }
+
   @override
   void didChangeMetrics() {
     if (isMobilePlatform && mounted) setState(() {});

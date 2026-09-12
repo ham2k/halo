@@ -9,7 +9,8 @@ and the secondary logging controls.
 Implemented in `packages/halo_widgets/lib/src/logging_controls.dart`, which owns a model per concern
 beside it: the Radio control (`logging_controls_radio.dart`), the callsign lookup and scoring
 (`logging_controls_lookup.dart`), the command being typed (`logging_controls_command.dart`), the Time
-and Spotting controls (`logging_controls_time.dart`, `logging_controls_spotting.dart`); the call
+and Spotting controls (`logging_controls_time.dart`, `logging_controls_spotting.dart`), the default-focus
+backstop (`logging_controls_focus.dart`); the call
 field's reading rules are `call_field_text.dart`, the row's sizing arithmetic
 `logging_controls_metrics.dart`, and the information area `logging_info_area.dart`.
 
@@ -135,15 +136,78 @@ not land, which is the thing this prevents.
 The callsign field is the default: if no other field is focused, focus
 belongs there.
 
+That is an invariant, not a starting condition. The field's `autofocus`
+takes it at mount and a handful of paths assert it on purpose (a spot tap,
+the wipe after a log), but focus can fall to *nothing* in ways no caller is
+part of — a dialog or sheet closing over a panel that had nothing focused, a
+menu closing, a field in another pane being disposed, a stray `unfocus()` —
+and each one would leave the operator typing into nothing. So the panel
+listens to the `FocusManager` and, whenever primary focus lands on nothing,
+gives it back to the callsign field at the end of the frame. "Nothing" is a null primary focus, one of the
+callsign field's own ancestor scopes — the root, the route's, the panel's —
+holding it for want of a child, or a **button** holding it: web hands a
+clicked button the focus, and a dialog closing over it hands the focus
+straight back to the button, so a button is not a claim. What is: anything
+under the panel's own scope (its pills, its Band dropdown), a text field
+anywhere, a `DropdownButton` anywhere, and a node that handles keys — the
+mark of a surface the operator steers from, which is the QSO list. A scope
+that is not on the panel's ancestry is a dialog's, sheet's, menu's or
+overlay's own and is never robbed, whatever is in it, and neither is a route
+pushed over the panel (`ModalRoute.isCurrent`). A locked form (above)
+reclaims nothing, since its fields cannot take focus.
+
 **Except on mobile with no physical keyboard attached**, where having no
 field focused is fine — the view always starts that way, so the operator
-isn't met with a virtual keyboard covering half the screen. And while a
-virtual keyboard *is* displayed, tapping a field that is already focused and
-still empty blurs it, as a way to dismiss the keyboard: a field you focused
-but haven't typed into is the one case where there's nothing to lose by
-closing it. Implemented app-wide (not just for the logging fields) by
-`TapToDismissEmptyField` in `keyboard_dismiss.dart`, since a per-field opt-in
-would be silently missing from every field added later.
+isn't met with a virtual keyboard covering half the screen. On mobile the
+backstop reclaims only if the operator's last claim on focus was in this
+panel — they were typing here, and whatever took the focus was not them
+asking for it to go — and a claim taken elsewhere on the route (a text
+field in another pane) ends that. And **a panel field that loses focus to
+nothing while the route stays current is the operator closing the
+keyboard**: Done or Back in a secondary field (those keep Flutter's default,
+which blurs), or tapping a focused, still-empty field a second time, which
+blurs it as a way to dismiss the keyboard — a field you focused but haven't
+typed into is the one case where there's nothing to lose by closing it
+(implemented app-wide, not just for the logging fields, by
+`TapToDismissEmptyField` in `keyboard_dismiss.dart`, since a per-field
+opt-in would be silently missing from every field added later). That blur
+is exactly the "nothing focused" the operator asked for: it is left alone,
+and it ends the panel's claim, so a dialog opened and closed after it leaves
+the keyboard down. The one blur that is not that is a sheet's on its way in
+(`operation_view` unfocuses before it pushes), and it tells itself apart by
+the route it pushes in the same turn — not current at the end of the frame,
+so the claim is kept and the field is reclaimed when the sheet pops. Hence:
+a dialog opened from the callsign field returns to it when dismissed,
+keyboard and all; one opened after the operator closed the keyboard leaves
+it down; one opened over an idle phone never pops a keyboard nobody asked
+for. Keyboard state can draw none of these lines — it is down at every pop,
+and still up at the instant of either kind of blur — which is why the panel
+remembers instead. Nor does the hardware-keyboard flag override a
+dismissal, though it governs the autofocus and the spot tap: a device can
+report a hardware keyboard and still show the on-screen one (the simulator
+always does; an iPad in a keyboard case can), and then the dismissal the
+operator just made is the only thing worth believing.
+
+**Nor while the app is away.** On desktop and web the `FocusManager` parks
+focus on the root scope when the app goes inactive and restores it on
+resume — but only if nothing took focus meanwhile. A reclaim there would be
+that something, and an operator who switched apps from the QSO list would
+come back to the callsign field; so the backstop ignores focus changes
+while the app is not resumed, and looks again on resume for what it missed
+(a parked field disposed while the app was away, a dialog that closed on
+its own), since then the manager restores nothing and says nothing.
+
+**A request already in flight wins.** The reclaim runs at the end of the
+frame and first applies any focus request made earlier in that same phase —
+the web view-focus guard putting a parked field back, a menu item handing
+focus on — so that it reads as the claim it is rather than as "still
+nothing".
+
+**Editing an event row**, the panel has no callsign field; the event text
+field stands in for it as the default.
+
+Implemented by `DefaultFocusBackstop` in `logging_controls_focus.dart`,
+which also owns the panel's Tab-trapping scope.
 
 Whether a physical keyboard is attached comes from the native side over the
 `ham2k/hardware_keyboard` channel — GCKeyboard on iOS, InputDevice
@@ -294,9 +358,13 @@ operator cannot see. That last one leaves the refusal with no signal anywhere;
 surfacing it where the gesture happened is [HALO-335](https://cabo.ham2k.com/halo/c/335).
 
 The line this draws is the one [HALO-93](https://cabo.ham2k.com/halo/c/93)
-drew for cold start, and the general question is
-[HALO-182](https://cabo.ham2k.com/halo/c/182): focus returns to callsign when
-the operator is standing in front of the panel, and not otherwise.
+drew for cold start, and the one the default-focus backstop above follows:
+focus returns to callsign when the operator is standing in front of the
+panel, and not otherwise. With a keyboard, focus was never anywhere but a
+claim to begin with — the list the row was slid in is one — so the backstop
+has nothing to say. On a phone the dismissal that took them to the list is
+what clears the panel's memory of being their place, and `focusCall: false`
+keeps the log itself from re-asserting it.
 
 This has to be asserted, not assumed. A single-line `TextField` unfocuses
 itself *before* calling `onSubmitted` — Flutter's default end-of-editing
