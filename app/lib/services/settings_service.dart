@@ -131,6 +131,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   static const _localeKey = 'locale';
   static const _fontScaleKey = 'fontScale';
   static const _layoutCustomizationKey = 'layoutCustomization';
+  static const _keepDeviceAwakeKey = 'keepDeviceAwake';
   static const _homeNavExpandedKey = 'homeNavExpanded';
   static const _layoutDensityKey = 'layoutDensity';
   static const _mapStyleKey = 'mapStyle';
@@ -993,6 +994,15 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
 
   Future<void> setLayoutCustomization(bool value) =>
       setSettingValue(generalGroup, _layoutCustomizationKey, value);
+
+  /// Whether the device is held awake while the operator is on the logging
+  /// view or a sync is making progress — see `WakeLockService`, which is
+  /// what actually holds it and lets go after fifteen idle minutes. Off by
+  /// default, like PoLo: keeping a screen lit is a battery decision the
+  /// operator makes.
+  bool get keepDeviceAwake => (settingValue(generalGroup, _keepDeviceAwakeKey) as bool?) ?? false;
+
+  Future<void> setKeepDeviceAwake(bool value) => setSettingValue(generalGroup, _keepDeviceAwakeKey, value);
 
   /// Whether Home's navigation rail shows its labels. Not a visibility switch:
   /// the rail is always there, and this is only how wide (see

@@ -397,6 +397,45 @@ void main() {
       expect(transport.calls, hasLength(1), reason: 'a stalled push must not spin the loop');
     });
 
+    test('a stalled push does not report a backlog draining', () async {
+      // The app holds the device awake while a backlog drains. A record the
+      // server refuses forever is pending forever, and a signal built on
+      // "something is still dirty" would keep the screen lit for as long as
+      // the app runs.
+      final signals = <bool>[];
+      engine.dispose();
+      engine = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        settings: settings,
+        transport: transport.call,
+        onPushBacklog: signals.add,
+      );
+      final op = await operations.create(stationCall: 'KI2D');
+      final refused = await qsos.add(op.uuid, {'their': {'call': 'K2ABC'}, 'startAtMillis': 2000});
+
+      transport.responder = (method, args) => {
+            'account': {'uuid': 'acct-1'},
+            'errors': {
+              'qsos': {
+                refused.uuid: [
+                  {'operation': [{'error': 'forbidden'}]},
+                ],
+              },
+              'operations': {
+                op.uuid: [
+                  {'operation': [{'error': 'forbidden'}]},
+                ],
+              },
+            },
+          };
+
+      await engine.runOneRound();
+
+      expect(await qsos.hasUnsynced(), isTrue);
+      expect(signals, [false]);
+    });
+
     test('a refused record steps aside so the records behind it still go', () async {
       // `unsyncedBatch` is a LIMIT ordered newest-first, so a refused record
       // that sorts early would refill the batch every round and nothing behind
@@ -688,6 +727,29 @@ void main() {
     await engine.runOneRound();
     await engine.runOneRound();
     expect(round, 2);
+  });
+
+  test('a push that leaves more behind reports a backlog draining, until it is drained', () async {
+    final signals = <bool>[];
+    engine.dispose();
+    engine = SyncEngine(
+      operations: operations,
+      qsos: qsos,
+      settings: settings,
+      transport: transport.call,
+      onPushBacklog: signals.add,
+    );
+    final op = await operations.create(stationCall: 'KI2D');
+    for (var i = 0; i < SyncEngine.defaultLargeBatchSize + 20; i++) {
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW$i'}, 'startAtMillis': i});
+    }
+
+    await engine.runOneRound();
+    expect(signals, [true], reason: 'a full batch went out and twenty are still dirty');
+
+    await engine.runOneRound();
+    expect(await qsos.hasUnsynced(), isFalse);
+    expect(signals.last, isFalse, reason: 'caught up: the hold on the device must end');
   });
 
   test('a periodic round pulls even when there is nothing local to push', () async {

@@ -87,6 +87,8 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import '../config/navigation.dart';
 import 'dev_overlay_trigger.dart';
+import 'status_bar_hammer.dart';
+import 'wake_lock_service.dart';
 
 /// One open Operation View's contribution to the ⌘K dialog's context — see
 /// [HaLoServices.openOperationContext].
@@ -460,6 +462,10 @@ class HaLoServices {
       );
   late final StatusBarService statusBar = StatusBarService(settings.prefs);
 
+  /// Holds the device awake while the logging view is in use or a sync is
+  /// moving, when the operator has asked for it (see WakeLockService).
+  late final WakeLockService wakeLock = WakeLockService(settings);
+
   /// Where a focused field publishes the mobile numbers row, so
   /// `StatusBarOverlay` can draw it below the status footer and directly on
   /// the keyboard — an order no single route can produce for itself.
@@ -814,6 +820,7 @@ class HaLoServices {
     settings: settings,
     log: debugPrint,
     onProgress: _showSyncProgress,
+    onPushBacklog: wakeLock.onPushBacklog,
     onError: ErrorReportingService.report,
     onAuthError: _showSyncAuthNotice,
     // Sync doubles as the app's connectivity probe: it is the one request the
@@ -866,6 +873,7 @@ class HaLoServices {
   /// pushes the bar to 1.0, which StatusBarService auto-clears shortly
   /// after.
   void _showSyncProgress(SyncProgress progress) {
+    wakeLock.onBackfillProgress(progress);
     final total = (progress.qsosTotal ?? 0) + (progress.operationsTotal ?? 0);
     if (!progress.backfilling) {
       // Only announce completion if progress was actually shown: a fresh
@@ -898,72 +906,8 @@ class HaLoServices {
     );
   }
 
-  /// How long DEVHAMMER churns for when the command doesn't say.
-  static const _statusBarHammerDefaultSeconds = 15;
-
-  /// Set while a run is in flight, so a second DEVHAMMER doesn't interleave
-  /// with the first — two runs share the same four keys, and the first to
-  /// finish would clear the other's items out from under it.
-  bool _hammering = false;
-
-  /// Reproduces a data-file sync's churn on demand (DEVHAMMER): several items
-  /// appearing, ticking and clearing, the way `DataFileManager` does one
-  /// entry per file.
-  ///
-  /// This exists because that churn is what provokes the web engine into
-  /// blurring the focused text field (see `ViewFocusGuard`), and the real
-  /// thing only happens on a cold profile — once the files are cached a
-  /// RELOAD finishes without churning at all, so there is nothing left to
-  /// test a fix against. What matters is items COMING AND GOING: a single
-  /// progress bar ticking on a stable key changes a label and provokes
-  /// nothing.
-  ///
-  /// Returns false when a run is already in flight, so the caller can say so
-  /// rather than echo a confirmation over nothing happening.
-  Future<bool> _hammerStatusBar(int seconds) async {
-    if (_hammering) return false;
-    _hammering = true;
-    try {
-      // A beat before the first item, deliberately: the interesting case is
-      // typing INTO the churn, and without this the tester is still reaching
-      // for the keyboard while it runs.
-      await Future<void>.delayed(const Duration(seconds: 1));
-      const slots = 4;
-      const tick = Duration(milliseconds: 120);
-      // Real time: DEVHAMMER's point is to churn the UI for that many real
-      // seconds while a tester types into it.
-      final until = realNowUtc().add(Duration(seconds: seconds));
-      var step = 0;
-      while (realNowUtc().isBefore(until)) {
-        final slot = step % slots;
-        statusBar.setProgress(
-          key: _hammerKey(slot),
-          icon: 'progress-download',
-          title: 'Hammer $slot',
-          text: 'file $step',
-          value: (step % 10) / 10,
-        );
-        // Retire a DIFFERENT slot: the one written two ticks ago, so frames
-        // have gone by between its last write and its removal. Clearing the
-        // slot just set, in the same breath and with no frame between, only
-        // undoes the write — no item ever appears, so none ever leaves, and
-        // leaving is the half that provokes anything. Offsetting by two also
-        // takes every slot in turn; keying the clear off `step % 10` reached
-        // only the odd ones.
-        if (step >= slots) statusBar.clear(_hammerKey((slot + 2) % slots));
-        step++;
-        await Future<void>.delayed(tick);
-      }
-      for (var slot = 0; slot < slots; slot++) {
-        statusBar.clear(_hammerKey(slot));
-      }
-      return true;
-    } finally {
-      _hammering = false;
-    }
-  }
-
-  static String _hammerKey(int slot) => 'command:devHammer:$slot';
+  /// DEVHAMMER's status-bar churn (see StatusBarHammer).
+  late final StatusBarHammer statusBarHammer = StatusBarHammer(statusBar);
 
   HaLoServices(
     this.db,
@@ -1707,8 +1651,8 @@ class HaLoServices {
         // printed before this returns, so staying quiet would tell the tester
         // it is hammering while nothing happens — and a tester who sees no
         // churn concludes the churn stopped provoking the bug.
-        if (_hammering) return (text: 'DEVHAMMER is already running', failed: true);
-        unawaited(_hammerStatusBar((params?['seconds'] as num?)?.toInt() ?? _statusBarHammerDefaultSeconds));
+        if (statusBarHammer.running) return (text: 'DEVHAMMER is already running', failed: true);
+        unawaited(statusBarHammer.run((params?['seconds'] as num?)?.toInt() ?? StatusBarHammer.defaultSeconds));
         return null;
       case 'devSplash':
         devSplashTrigger.trigger();

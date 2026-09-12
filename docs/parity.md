@@ -210,9 +210,9 @@ fixes four rules it carries but never awards.
 - **i18n**: PoLo ships 15 Crowdin locales (Italian bundled and Korean added
   since the last sweep) + tone variants (cw/qrp/qro); HaLo has en + es, with
   es brought back to full parity with en (HALO-421). The gap widens.
-- Settings PoLo has: keep-awake, 8- vs 6-digit grid precision,
-  smart-keyboard toggles, comma **and period/slash** keys on numbers row
-  (HaLo shows one contextual extra key). (Haptics is NOT a gap — PoLo also
+- Settings PoLo has: smart-keyboard toggles, comma **and period/slash**
+  keys on numbers row (HaLo shows one contextual extra key). Keep Device
+  Awake and Grid Precision are no longer gaps. (Haptics is NOT a gap — PoLo also
   vibrates only the numbers row; the first sweep got this wrong.)
 - **Credits / community links** (Discord, forums, YouTube, manual, contact)
   — PoLo has a whole `CreditsSettingsScreen`; HaLo has none. ⛔

@@ -558,6 +558,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get fontScale => 'Tamaño de Letra';
 	@override late final _Translations$settings$fontScaleOpts$es fontScaleOpts = _Translations$settings$fontScaleOpts$es._(_root);
 	@override late final _Translations$settings$layoutCustomization$es layoutCustomization = _Translations$settings$layoutCustomization$es._(_root);
+	@override late final _Translations$settings$keepDeviceAwake$es keepDeviceAwake = _Translations$settings$keepDeviceAwake$es._(_root);
 	@override String get layoutDensity => 'Densidad del Diseño';
 	@override late final _Translations$settings$layoutDensityOpts$es layoutDensityOpts = _Translations$settings$layoutDensityOpts$es._(_root);
 	@override String layoutDensityClamped({required Object effective}) => 'la ventana es muy baja, usando ${effective}';
@@ -1480,6 +1481,18 @@ class _Translations$settings$layoutCustomization$es extends Translations$setting
 	@override String get title => 'Personalización de Disposición';
 	@override String get descriptionOn => 'La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles';
 	@override String get descriptionOff => 'La vista de registro usa su disposición estándar';
+}
+
+// Path: settings.keepDeviceAwake
+class _Translations$settings$keepDeviceAwake$es extends Translations$settings$keepDeviceAwake$en {
+	_Translations$settings$keepDeviceAwake$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Mantener el Dispositivo Despierto';
+	@override String get descriptionOn => 'El dispositivo no se duerme mientras estás en la vista de registro o una sincronización está en curso, y puede dormirse tras 15 minutos sin ninguna de las dos';
+	@override String get descriptionOff => 'El dispositivo se duerme como de costumbre';
 }
 
 // Path: settings.layoutDensityOpts
@@ -3700,6 +3713,9 @@ extension on TranslationsEs {
 			'settings.layoutCustomization.title' => 'Personalización de Disposición',
 			'settings.layoutCustomization.descriptionOn' => 'La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles',
 			'settings.layoutCustomization.descriptionOff' => 'La vista de registro usa su disposición estándar',
+			'settings.keepDeviceAwake.title' => 'Mantener el Dispositivo Despierto',
+			'settings.keepDeviceAwake.descriptionOn' => 'El dispositivo no se duerme mientras estás en la vista de registro o una sincronización está en curso, y puede dormirse tras 15 minutos sin ninguna de las dos',
+			'settings.keepDeviceAwake.descriptionOff' => 'El dispositivo se duerme como de costumbre',
 			'settings.layoutDensity' => 'Densidad del Diseño',
 			'settings.layoutDensityOpts.auto' => 'Automática',
 			'settings.layoutDensityOpts.densest' => 'Muy compacta',
@@ -3992,11 +4008,11 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esto continuará automáticamente en cuanto lo hagas.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginNoResponse' => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cancela e intenta conectar de nuevo.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.loginIncompleteResponse' => 'Ese intento de inicio de sesión no se completó correctamente. Vuelve a intentar conectarte.',
 			'settings.accounts.noKeyringTitle' => 'No se pueden guardar las cuentas',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger no puede acceder a un servicio de llavero en esta computadora, así que no puede guardar ni leer las cuentas — conectar una cuenta fallará hasta que lo resuelvas. Instala y arranca **gnome-keyring**, **KWallet** o **KeePassXC**, o desbloquea el llavero que ya tengas, y reinicia. El registro, las exportaciones y los archivos de datos no se ven afectados; la sincronización queda desactivada mientras tanto.',
@@ -4506,11 +4522,11 @@ extension on TranslationsEs {
 			'versionLabel.patch' => ({required Object patch}) => 'Parche ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
 			'notices.emptyHistory' => 'Aún no hay avisos',
+			_ => null,
+		} ?? switch (path) {
 			'notices.webStorageInMemory' => 'Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.',
 			'notices.webStorageUnreliable' => 'Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.',
 			'notices.preferencesRestoredTitle' => 'Ajustes restaurados desde una copia',
-			_ => null,
-		} ?? switch (path) {
 			'notices.preferencesRestored' => 'No se pudo leer el archivo de ajustes, así que HaLo restauró la última copia buena. Puede que tengas que volver a configurar lo que cambiaste en la sesión anterior. El archivo ilegible se conserva junto a ella, con el nombre shared_preferences.corrupt-….json.',
 			'notices.preferencesResetTitle' => 'Ajustes reiniciados',
 			'notices.preferencesReset' => 'No se pudo leer el archivo de ajustes y no había ninguna copia de respaldo, así que HaLo empezó con sus valores por omisión. El archivo ilegible se conserva en la carpeta de datos de la app, con el nombre shared_preferences.corrupt-….json.',

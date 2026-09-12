@@ -121,6 +121,23 @@ void main() {
     expect(gridForDisplay(lat: 41.7135, lon: -72.7278), hasLength(6));
   });
 
+  test('Keep Device Awake is a toggle the group both renders and commits', () async {
+    // The generic sweep covers selects only; a checkbox with no commit case
+    // fails the same silent way.
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final group = await generalGroup(settings);
+
+    expect(await renderedValue(settings, 'keepDeviceAwake'), isFalse, reason: 'off by default: a battery decision');
+
+    await group.commit('keepDeviceAwake', true);
+    expect(settings.keepDeviceAwake, isTrue);
+    expect(await renderedValue(settings, 'keepDeviceAwake'), isTrue);
+
+    await group.commit('keepDeviceAwake', false);
+    expect(settings.keepDeviceAwake, isFalse);
+  });
+
   test('an unrecognised value leaves the setting alone rather than clearing it', () async {
     // `commit` is reachable from a settings COMMAND as well as the row, so a
     // typed value that names no option must not blank the setting.

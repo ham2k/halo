@@ -79,6 +79,11 @@ class LoggingPanel extends StatefulWidget {
   /// [LoggingControls.onCallEdited]. The spots list closes any open slid row
   /// on it.
   final VoidCallback? onCallEdited;
+
+  /// A QSO (or event row) was just written from the controls — the
+  /// operation view's own signal that the operator is logging, whatever
+  /// keyboard they use.
+  final VoidCallback? onQsoLogged;
   final SerialNumberSource? serialNumbers;
 
   /// Forwards LoggingControls' command output up to the operation view,
@@ -151,6 +156,7 @@ class LoggingPanel extends StatefulWidget {
     this.suggestedQsoIsTentative = false,
     this.suggestionSettledSerial = 0,
     this.onCallEdited,
+    this.onQsoLogged,
     this.serialNumbers,
     this.onCommandMessageChanged,
     this.onCallInfoChanged,
@@ -858,6 +864,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                 );
               }
               setState(() => _selectedQso = null);
+              widget.onQsoLogged?.call();
             },
             onQsoDeleted: (qso) {
               if (!qso.isEvent) widget.services.track('qso_deleted', _qsoTrackProps(qso));

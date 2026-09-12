@@ -11,6 +11,7 @@ upcoming:
     - "A radio that knows which of its ports carries CAT now points at it, without hiding the others"
     - "Desktop and web builds now say Power Logger; phones keep Portable Logger"
     - "New Grid Precision setting: grids now show 6 digits by default, 8 if you prefer"
+    - "New Keep Device Awake setting: no sleep while you log or a sync runs, 15 idle minutes lets go"
 
 "164":
   changes:

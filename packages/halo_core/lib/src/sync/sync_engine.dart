@@ -223,6 +223,17 @@ class SyncEngine {
   /// [SyncProgress]. Null when the app layer doesn't surface progress.
   final void Function(SyncProgress progress)? onProgress;
 
+  /// Called after every periodic round that succeeded, with whether a push
+  /// backlog is still draining: the round moved records out and more are
+  /// dirty behind them, so the next round follows at once. `false` on any
+  /// other successful outcome — caught up, a stalled push, pull-only. A round
+  /// that failed or was overtaken by a reconciliation says nothing, so a
+  /// `true` can stand until the next success; the app layer bounds that with
+  /// its own idle timer. Backfill is NOT counted here; [onProgress] carries
+  /// that. Null when the app layer has no use for it (it holds the device
+  /// awake through a long first push).
+  final void Function(bool draining)? onPushBacklog;
+
   /// Reports what a round learned about whether the sync service ANSWERED,
   /// which is not the same as whether the round succeeded: a rejected
   /// registration, a server 500 and a merge that threw all prove we reached
@@ -404,6 +415,7 @@ class SyncEngine {
     this.refusalQuarantine = defaultRefusalQuarantine,
     this.log,
     this.onProgress,
+    this.onPushBacklog,
     this.onError,
     this.onAuthError,
     this.onReachability,
@@ -945,6 +957,7 @@ class SyncEngine {
       if (!smallBatch) {
         final morePending =
             pushProgressed && (await operations.hasUnsynced() || await qsos.hasUnsynced());
+        onPushBacklog?.call(morePending);
         final fullPage = inboundOperations.length >= pullLimit || inboundQsos.length >= pullLimit;
         // Three different waits. A push backlog goes straight back out:
         // pushes are not cooldown-gated. A full page waits the loop delay,

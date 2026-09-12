@@ -24,6 +24,7 @@ import '../services/cat/zero_beat.dart';
 import '../services/extension_service.dart' show TemplateError;
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
+import '../services/wake_lock_service.dart';
 import '../settings/settings_target_dialog.dart';
 import 'dock_host.dart';
 import 'operation_dialogs.dart';
@@ -616,7 +617,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// `SpotsPanel.closeSlidesSerial`.
   int _closeSlidesSerial = 0;
 
-  void _onCallEdited() => setState(() => _closeSlidesSerial++);
+  void _onCallEdited() {
+    // Typing on an on-screen keyboard reaches no HardwareKeyboard handler;
+    // the call field changing is what says the operator is logging.
+    _wakeHold.touch();
+    setState(() => _closeSlidesSerial++);
+  }
 
   /// The spots list's slid-right action, carrying the QSO it means to log —
   /// see `LoggingControls.logRequest`. The serial is what makes a repeat of
@@ -798,6 +804,12 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // widget, because the keys must work whichever field has focus, and the
     // main key handler (main.dart) only looks at modified chords.
     HardwareKeyboard.instance.addHandler(_onCwKeyEvent);
+    // Opening the view is the first activity on it; every key, pointer
+    // press, scroll, call edit and logged QSO after that refreshes the hold
+    // (see [_onWakeKeyEvent], the Listener around the Scaffold and
+    // [_onCallEdited]), and closing it lets go.
+    _wakeHold.touch();
+    HardwareKeyboard.instance.addHandler(_onWakeKeyEvent);
     // Keeps spots flowing for as long as an operation is open, not just
     // while the Spots Panel is on screen: the `spot-history` lookup reads
     // that cache to pull a hunted park/summit into the QSO as the callsign
@@ -993,6 +1005,21 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
       if (!mounted) return;
       setState(() => _draftQso = qso);
     });
+  }
+
+  /// This view's own claim on the device staying awake — its own, so a
+  /// second OperationView pushed over this one and popped again releases
+  /// only its hold, not the one this view is still working under.
+  late final WakeHold _wakeHold = widget.services.wakeLock.hold(WakeReason.logging);
+
+  /// Typing counts as activity on the logging view — but only while this
+  /// view is the front-most route. A dialog over it, or Settings pushed on
+  /// top, owns the keyboard, and keys typed there are not logging. Never
+  /// claims the key.
+  bool _onWakeKeyEvent(KeyEvent event) {
+    if (event is! KeyDownEvent) return false;
+    if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) _wakeHold.touch();
+    return false;
   }
 
   /// F1-F8 key the matching CW message through the key in use — or, while
@@ -1208,6 +1235,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_onCwKeyEvent);
+    HardwareKeyboard.instance.removeHandler(_onWakeKeyEvent);
+    _wakeHold.release();
     widget.services.settings.removeListener(_onSettingsChanged);
     widget.services.extensions.runtimeGeneration.removeListener(_onRuntimeGenerationChanged);
     // Only clear if it's still ours — a newer OperationView may have taken over.
@@ -2926,6 +2955,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             suggestedQsoIsTentative: _suggestedQsoIsTentative,
             suggestionSettledSerial: _suggestionSettledSerial,
             onCallEdited: _onCallEdited,
+            onQsoLogged: _wakeHold.touch,
             // Gated like the drafts: with sharing off the panel's own fallback
             // is the same answer, and touching the field would construct the
             // peer service on an install that never turned the experiment on.
@@ -3139,7 +3169,13 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           children: tabChildren,
         );
 
-        return Scaffold(
+        // Observes only: a pointer press or a scroll anywhere on the view is
+        // activity for the awake hold, and this neither competes for the
+        // gesture nor changes hit testing.
+        return Listener(
+          onPointerDown: (_) => _wakeHold.touch(),
+          onPointerSignal: (_) => _wakeHold.touch(),
+          child: Scaffold(
           // The body extends full height behind the on-screen keyboard, so
           // each pane paints its own background there (and a two-pane split
           // reflects for free). The logging panel keeps its fields above the
@@ -3472,6 +3508,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 : tabView,
           ),
           ),
+        ),
         );
       },
     );

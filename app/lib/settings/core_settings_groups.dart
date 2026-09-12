@@ -109,7 +109,7 @@ Map<String, dynamic> _toggle({
   'target': ?target,
 };
 
-/// Theme, language, font scale, and units — the "User Interface" section.
+/// Theme, language, font scale, units and the awake hold — the "User Interface" section.
 class GeneralSettingsGroup extends SettingsGroup {
   final SettingsService settings;
   final ExtensionService extensions;
@@ -218,6 +218,16 @@ class GeneralSettingsGroup extends SettingsGroup {
             : t.settings.layoutCustomization.descriptionOff,
         value: settings.layoutCustomization,
       ),
+      _toggle(
+        key: 'keepDeviceAwake',
+        aliases: const ['awake', 'sleep', 'screen'],
+        label: t.settings.keepDeviceAwake.title,
+        icon: settings.keepDeviceAwake ? 'lightbulb-on' : 'lightbulb-outline',
+        description: settings.keepDeviceAwake
+            ? t.settings.keepDeviceAwake.descriptionOn
+            : t.settings.keepDeviceAwake.descriptionOff,
+        value: settings.keepDeviceAwake,
+      ),
     ];
   }
 
@@ -286,6 +296,10 @@ class GeneralSettingsGroup extends SettingsGroup {
   Future<void> commit(String fieldKey, dynamic value) async {
     if (fieldKey == 'layoutCustomization') {
       if (value is bool) await settings.setLayoutCustomization(value);
+      return;
+    }
+    if (fieldKey == 'keepDeviceAwake') {
+      if (value is bool) await settings.setKeepDeviceAwake(value);
       return;
     }
     if (value is! String) return;

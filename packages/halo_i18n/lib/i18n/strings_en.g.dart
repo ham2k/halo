@@ -1186,6 +1186,7 @@ class Translations$settings$en {
 
 	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
 	late final Translations$settings$layoutCustomization$en layoutCustomization = Translations$settings$layoutCustomization$en.internal(_root);
+	late final Translations$settings$keepDeviceAwake$en keepDeviceAwake = Translations$settings$keepDeviceAwake$en.internal(_root);
 
 	/// en: 'Layout Density'
 	String get layoutDensity => 'Layout Density';
@@ -3097,6 +3098,24 @@ class Translations$settings$layoutCustomization$en {
 
 	/// en: 'The logging view uses its standard arrangement'
 	String get descriptionOff => 'The logging view uses its standard arrangement';
+}
+
+// Path: settings.keepDeviceAwake
+class Translations$settings$keepDeviceAwake$en {
+	Translations$settings$keepDeviceAwake$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Keep Device Awake'
+	String get title => 'Keep Device Awake';
+
+	/// en: 'The device stays awake while you are on the logging view or a sync is in progress, and may sleep after 15 minutes without either'
+	String get descriptionOn => 'The device stays awake while you are on the logging view or a sync is in progress, and may sleep after 15 minutes without either';
+
+	/// en: 'The device sleeps as usual'
+	String get descriptionOff => 'The device sleeps as usual';
 }
 
 // Path: settings.layoutDensityOpts
@@ -7040,6 +7059,9 @@ extension on Translations {
 			'settings.layoutCustomization.title' => 'Enable Layout Customization',
 			'settings.layoutCustomization.descriptionOn' => 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own',
 			'settings.layoutCustomization.descriptionOff' => 'The logging view uses its standard arrangement',
+			'settings.keepDeviceAwake.title' => 'Keep Device Awake',
+			'settings.keepDeviceAwake.descriptionOn' => 'The device stays awake while you are on the logging view or a sync is in progress, and may sleep after 15 minutes without either',
+			'settings.keepDeviceAwake.descriptionOff' => 'The device sleeps as usual',
 			'settings.layoutDensity' => 'Layout Density',
 			'settings.layoutDensityOpts.auto' => 'Automatic',
 			'settings.layoutDensityOpts.densest' => 'Densest',
@@ -7332,11 +7354,11 @@ extension on Translations {
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.loginIncompleteResponse' => 'That login attempt didn\'t complete correctly. Please try connecting again.',
 			'settings.accounts.noKeyringTitle' => 'Account logins can’t be saved',
 			'settings.accounts.noKeyringText' => 'Ham2K Logger can’t reach a keyring service on this computer, so account logins can’t be stored or read — connecting an account will fail until this is sorted. Install and start **gnome-keyring**, **KWallet** or **KeePassXC**, or unlock the keyring you already have, then restart. Logging, exports and data files are unaffected; log sync stays off while this lasts.',
@@ -7846,11 +7868,11 @@ extension on Translations {
 			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',
 			'operationLocationScreen.moreDetails' => 'More Details',
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
+			_ => null,
+		} ?? switch (path) {
 			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.county' => 'County (optional)',
 			'versionLabel.version' => ({required Object version}) => 'Version ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Patch ${patch}',
