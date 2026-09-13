@@ -161,7 +161,7 @@ const ActivityHook = {
     const qsoRef = refOfType(args.qso, TYPE)
     const exchange = str(qsoRef?.theirExchange)
     // A field the operator EMPTIED is present-but-blank rather than absent (see
-    // `_refsWithTextValues`). Returning null there would leave the previous
+    // `ExchangeFieldsModel.refsWithTextValues`). Returning null there would leave the previous
     // save's `their.exchange` showing in the QSO row and in a plain ADIF export,
     // so a cleared exchange has to project the blank.
     if (!exchange) return qsoRef && 'theirExchange' in qsoRef ? { their: { exchange: '' } } : null

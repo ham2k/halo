@@ -141,7 +141,8 @@ const ActivityHook = {
   /// Only ever a projection: the ref stays the source of truth.
   ///
   /// Theirs follows the deliberate-blank convention: a field the operator
-  /// EMPTIED is present-but-blank rather than absent (see `_refsWithTextValues`),
+  /// EMPTIED is present-but-blank rather than absent (see
+  /// `ExchangeFieldsModel.refsWithTextValues`),
   /// and leaving it out of the patch would keep the previous save's value
   /// showing in the QSO row, so a cleared serial projects a blank.
   ///

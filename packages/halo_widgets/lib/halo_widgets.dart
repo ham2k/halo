@@ -22,6 +22,7 @@ export 'src/keyboard_dismiss.dart';
 export 'src/layout.dart';
 export 'src/logging_controls.dart';
 export 'src/logging_controls_controller.dart';
+export 'src/logging_controls_exchange.dart' show exchangeSuggestionsKey;
 export 'src/logging_controls_types.dart';
 export 'src/mdi_icons.g.dart';
 export 'src/modal_pane.dart';

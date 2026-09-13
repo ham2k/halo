@@ -3356,7 +3356,7 @@ void main() {
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
-      // A PREFIX, not the whole code: an exact match would make `_acceptOptionSuggestion`
+      // A PREFIX, not the whole code: an exact match would make `acceptSuggestion`
       // bail on `typed == chosen.code` and this test would pass even if Enter
       // stopped checking whether anything was pending at all.
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'CU');
@@ -5033,11 +5033,45 @@ void main() {
     expect(field('Rcvd').focusNode!.hasFocus, isTrue);
   });
 
+  testWidgets('an exchange field refuses keyboard help like every other main field', (tester) async {
+    // A county code is not prose. With only autocorrect off, Android keeps
+    // its suggestion strip over the field and iOS turns a typed `-` into a
+    // dash the formatters never undo.
+    const controls = [
+      {
+        'key': 'qp/county',
+        'label': 'County',
+        'icon': 'flag-checkered',
+        'input': {'kind': 'text', 'refType': 'qp', 'field': 'county'},
+      },
+    ];
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          radioService: tunedRadio,
+          operation: running(['qp']),
+          qsosRepository: qsos,
+          activityControls: controls,
+        ),
+      ),
+    ));
+    await tester.pump();
+    final field = tester.widget<TextField>(find.widgetWithText(TextField, 'County'));
+    // Sent is a fixed main field; the exchange refuses exactly what it does.
+    final sent = tester.widget<TextField>(find.widgetWithText(TextField, 'Sent'));
+    expect(
+      (field.autocorrect, field.enableSuggestions, field.smartDashesType, field.smartQuotesType),
+      (sent.autocorrect, sent.enableSuggestions, sent.smartDashesType, sent.smartQuotesType),
+    );
+    expect(field.enableSuggestions, isFalse);
+    expect(field.smartDashesType, SmartDashesType.disabled);
+  });
+
   testWidgets('an on-screen-keyboard space advances out of a contest exchange too', (tester) async {
-    // The soft-keyboard half of the same rule. `_exchangeField` was the one
-    // primary field that never installed `_virtualSpace`, so on a phone —
-    // where there IS no hardware Space — the exchange fields were dead ends,
-    // even though the hardware path had been fixed and tested.
+    // The soft-keyboard half of the same rule. Without the panel's Space
+    // formatter installed FIRST on an `ExchangeField`, a phone — where there
+    // IS no hardware Space — has no way out of an exchange field, however
+    // well the hardware path is covered.
     const controls = [
       {
         'key': 'cqwpx/ourSerial',

@@ -29,7 +29,6 @@
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math' as math;
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -48,6 +47,7 @@ import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
 import 'logging_controls_command.dart';
 import 'logging_controls_controller.dart';
+import 'logging_controls_exchange.dart';
 import 'logging_controls_focus.dart';
 import 'logging_controls_lookup.dart';
 import 'logging_controls_radio.dart';
@@ -58,7 +58,6 @@ import 'logging_controls_types.dart';
 import 'logging_info_area.dart';
 import 'mdi_icons.g.dart';
 import 'modal_pane.dart' show showHaloDialog;
-import 'option_matching.dart';
 import 'platform_chrome.dart';
 import 'qso_edit_pane.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
@@ -101,11 +100,6 @@ class _ControlDescriptor {
   });
 }
 
-
-/// The floating pills a `kind: 'options'` exchange field offers. Named because a
-/// focused TextField carries a `CompositedTransformFollower` of its own for
-/// selection handles, so "the follower" is ambiguous without it.
-const exchangeSuggestionsKey = ValueKey('exchange.suggestions');
 
 class LoggingControls extends StatefulWidget {
   final Operation operation;
@@ -740,6 +734,23 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     isPopulating: () => _populating,
   );
 
+  /// The contest exchange fields — see [ExchangeFieldsModel]. What stays
+  /// here is WHICH controls are exchange fields ([_textControls]), and when
+  /// the draft they belong to is cleared, restored or logged.
+  late final _exchange = ExchangeFieldsModel(
+    config: () => (
+      textControls: () => _textControls,
+      editingQso: widget.editingQso,
+      operationUuid: widget.operation.uuid,
+      serialNumbers: widget.serialNumbers,
+      sequences: widget.qsosRepository.sequences,
+      call: _call,
+    ),
+    draftQsoData: _getCurrentQsoData,
+    onPrimaryFieldKeyEvent: _onPrimaryFieldKeyEvent,
+    onFocusChanged: _onExchangeFocusChanged,
+  );
+
   /// The Spotting control — see [SpottingControlModel].
   late final _spotting = SpottingControlModel(
     config: () => (
@@ -829,22 +840,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// keyed by control key.
   final Map<String, List<Map<String, dynamic>>> _controlRefs = {};
 
-  /// Values typed into `kind: 'text'` activity controls (contest exchanges),
-  /// keyed by control key. Kept apart from [_controlRefs] because several text
-  /// controls can share one `refType` while writing different `field`s of it —
-  /// they're merged back into one ref per type on save.
-  final Map<String, String> _controlTextValues = {};
-
-  /// One controller per text control, created on demand and disposed with the
-  /// widget.
-  final Map<String, TextEditingController> _controlTextControllers = {};
-
-  /// Text controls the operator has actually typed into. A `suggestedValue`
-  /// from a callsign lookup fills a field only while it is untouched, so a
-  /// lookup resolving late can never clobber what someone already keyed in
-  /// (docs/design/contests.md §5.3).
-  final Set<String> _touchedTextControls = {};
-
   /// Every typed-exchange activity control currently contributed — `text` and
   /// `serial` alike, since both render the same way and differ only in who
   /// supplies the value.
@@ -881,176 +876,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     });
   }
 
-  /// The exchange options a `kind: 'options'` control declares, parsed once per
-  /// build from the descriptor. Malformed entries are dropped rather than
-  /// crashing the entry row — options cross the bridge from third-party code.
-  List<ExchangeOption> _optionsFor(Map<dynamic, dynamic> control) => [
-        for (final raw in ((control['input'] as Map?)?['options'] as List?) ?? const [])
-          if (raw is Map)
-            ?ExchangeOption.fromMap(raw.cast<String, dynamic>()),
-      ];
-
-  /// The separator a `kind: 'options'` control accepts several values with —
-  /// a QSO party's county line, `ORDES/JEF` — or `''` for the single-value
-  /// fields every other contest declares.
-  String _optionSeparatorFor(Map<dynamic, dynamic> control) {
-    final separator = ((control['input'] as Map?)?['multiValue'] as Map?)?['separator'];
-    return separator is String ? separator : '';
-  }
-
-  /// What the operator is typing RIGHT NOW in [control] — the whole field for a
-  /// single-value one, and the value the cursor is in for a multi-value one.
-  ///
-  /// The cursor comes from the controller rather than being tracked in state, so
-  /// the SPACE handler and the accept read it at the moment they act and cannot
-  /// disagree about which county the operator is in.
-  ///
-  /// The suggestion LINE is repainted by the ordinary rebuilds — a keystroke, a
-  /// focus change — and nothing listens to the caret on its own, so moving it
-  /// back into an earlier value leaves the offers showing for the value just
-  /// left until the next keystroke. Accepting one is still correct, because the
-  /// accept recomputes; the alternative is a listener that rebuilds the whole
-  /// panel on every caret move, mid-QSO, for a line the operator is not reading.
-  String _typedOptionValue(Map<dynamic, dynamic> control) {
-    final key = control['key'] as String;
-    final text = _controlTextValues[key] ?? '';
-    final separator = _optionSeparatorFor(control);
-    if (separator.isEmpty) return text;
-    final controller = _textControllerFor(key);
-    final cursor = controller.selection.baseOffset;
-    return exchangeValueAt(text, cursor < 0 ? text.length : cursor, separator);
-  }
-
-  /// What the value being typed might be SHORT for, where a control lets a later
-  /// value borrow the first one's prefix — `JEF` after `ORDES/` may mean
-  /// `ORJEF`. Null when there is no such reading.
-  ///
-  /// Offered ALONGSIDE the literal reading, never instead of it: the suggestion
-  /// line searches for what was typed first and falls back to this only when
-  /// that finds nothing, so typing a code out in full suggests as it always did.
-  String? _inheritedOptionValue(Map<dynamic, dynamic> control) {
-    final inherit = _optionInheritPrefixFor(control);
-    final separator = _optionSeparatorFor(control);
-    if (inherit <= 0 || separator.isEmpty) return null;
-    final key = control['key'] as String;
-    final text = _controlTextValues[key] ?? '';
-    final typed = _typedOptionValue(control);
-    final values = splitExchangeValues(text, separator);
-    if (values.length < 2 || typed.isEmpty || values.first == typed) return null;
-    return inheritedCandidate(values.first, typed, inherit);
-  }
-
-  /// How many of the first value's characters a later one may borrow — the
-  /// multi-state QSO parties' county-line shorthand, 0 everywhere else.
-  int _optionInheritPrefixFor(Map<dynamic, dynamic> control) {
-    final value = ((control['input'] as Map?)?['multiValue'] as Map?)?['inheritPrefix'];
-    return value is int ? value : 0;
-  }
-
-  /// The `kind: 'options'` control that currently has focus, if any.
-  ///
-  /// Read straight from the focus map rather than tracked in state: the
-  /// suggestion line and the SPACE handler then compute from the same inputs at
-  /// the same moment, so neither can act on a stale copy of the other's idea of
-  /// what the operator is looking at. `_controlTextFocus[key]` is read without
-  /// creating a node, so this never conjures one for a field that hasn't built.
-  Map<String, dynamic>? get _focusedOptionsControl {
-    for (final control in _textControls) {
-      if ((control['input'] as Map?)?['kind'] != 'options') continue;
-      if (_controlTextFocus[control['key']]?.hasFocus == true) return control;
-    }
-    return null;
-  }
-
-  /// Suggestions for the focused options field, best first — empty when no
-  /// options field has focus, the set is empty, or it declares a
-  /// `minCharsForSuggestions` the operator hasn't reached.
-  ///
-  /// Cheap by construction: the set is inline in the descriptor (§5.3's
-  /// `optionSet` was deferred for want of a consumer big enough to need it), so
-  /// this is a list scan and not a query.
-  /// Set by Escape and cleared by the next keystroke, a focus change or an
-  /// accept: "I've seen the offer, get it out of the way".
-  ///
-  /// Not a per-value memory on purpose. The operator dismissed THIS offer, and
-  /// typing another character is a new question — anything longer-lived would
-  /// have them wondering why the menu stopped coming back.
-  bool _optionsMenuDismissed = false;
-
-  List<ExchangeOption> get _optionSuggestions {
-    if (_optionsMenuDismissed) return const [];
-    final control = _focusedOptionsControl;
-    if (control == null) return const [];
-    final input = control['input'] as Map;
-    final options = _optionsFor(control);
-    if (options.isEmpty) return const [];
-
-    final typed = _typedOptionValue(control);
-    final minChars = input['minCharsForSuggestions'];
-    if (minChars is int && typed.trim().length < minChars) return const [];
-
-    final matchOn = {
-      for (final m in (input['matchOn'] as List?) ?? const ['code', 'name'])
-        if (m is String) m,
-    };
-    final preferred = [
-      for (final c in (input['preferredCodes'] as List?) ?? const [])
-        if (c is String) c,
-    ];
-    final on = matchOn.isEmpty ? const {'code', 'name'} : matchOn;
-    final matches = matchExchangeOptions(typed, options, matchOn: on, preferred: preferred);
-
-    // What the value may be SHORT for, where a later value borrows the first
-    // one's prefix. When that reading names a real code it goes FIRST — ahead
-    // of anything the literal text matched.
-    //
-    // Consulting it only when the literal matched nothing was the bug: in 7QP,
-    // `ORDES/JEF` matches `IDJEF`, `MTJEF`, `ORJEF` and `WAJEF` by NAME
-    // ("Jefferson …"), so the literal always matched and Space took the first —
-    // logging Idaho's Jefferson for a shorthand that unambiguously means
-    // Oregon's. The shorthand is not a guess: the first value says which state.
-    final inherited = _inheritedOptionValue(control);
-    if (inherited == null) return matches;
-    final exact = options.where((o) => o.code.toUpperCase() == inherited.toUpperCase()).toList();
-    if (exact.isEmpty) {
-      return matches.isNotEmpty
-          ? matches
-          : matchExchangeOptions(inherited, options, matchOn: on, preferred: preferred);
-    }
-    return [
-      ...exact,
-      ...matches.where((o) => o.code.toUpperCase() != inherited.toUpperCase()),
-    ];
-  }
-
-  /// Which suggestion the operator has walked to with the arrow keys, or null
-  /// while they haven't touched the selection.
-  ///
-  /// Null is not the same as 0. An untouched selection means Space is still just
-  /// "next field" and the accept is a GUESS on the app's part, so it is held to
-  /// the prefix rule below; once the operator has moved the highlight, or tapped
-  /// a row, they have chosen, and what they chose is taken as-is.
-  int? _optionSelection;
-
-  /// Index into [_optionSuggestions] of the highlighted row.
-  int _selectedOptionIndex(int length) => length == 0 ? 0 : (_optionSelection ?? 0).clamp(0, length - 1);
-
-  void _moveOptionSelection(int delta) {
-    final suggestions = _optionSuggestions;
-    if (suggestions.isEmpty) return;
-    final current = _selectedOptionIndex(suggestions.length);
-    final next = (current + delta).clamp(0, suggestions.length - 1);
-    // An arrow that CANNOT move the highlight is not a choice. The menu is drawn
-    // best-at-the-bottom, so ↓ from an untouched selection is already at the end
-    // of the list (as is either arrow on a one-row menu): nothing moves on
-    // screen. Arming "the operator chose this" on a keystroke with no visible
-    // effect let the next Space rewrite what they typed with a match the prefix
-    // rule exists to refuse — type `SH`, press ↓, press Space, and the field
-    // became `ASD`, a county nobody worked.
-    if (next == current && _optionSelection == null) return;
-    setState(() => _optionSelection = next);
-  }
-
   /// Enter, which means two different things depending on whether the operator
   /// has a suggestion picked out.
   ///
@@ -1064,111 +889,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The second Enter therefore logs, because accepting clears the highlight,
   /// which is the sequence the operator's hands were making anyway: pick, send.
   void _handleEnter() {
-    if (_optionSelection != null && _acceptOptionSuggestion(explicit: true)) {
-      setState(() {});
-      return;
-    }
+    if (_exchange.acceptPendingChoice()) return;
     _log();
   }
-
-  /// Writes a suggestion into the focused options field, as though it had been
-  /// typed. Returns false when there was nothing to accept.
-  ///
-  /// [index] names the row (a tap); otherwise the highlighted one. [explicit]
-  /// marks a choice the operator made — a tap, or Space after arrowing — which
-  /// skips the prefix guard that keeps a plain Space from swapping in a
-  /// substring match.
-  ///
-  /// Two traps this has to cover. A controller write does NOT fire `onChanged`,
-  /// so `_controlTextValues` and the touched set are updated by hand — the same
-  /// trap the numbers row documents. And on mobile the space arrives through
-  /// `VirtualSpaceFormatter`, which rejects the edit and schedules this in a
-  /// microtask, so it must be safe to run when the field already holds the
-  /// value: accepting the same code twice is a no-op rather than a second
-  /// write.
-  bool _acceptOptionSuggestion({int? index, bool explicit = false}) {
-    final control = _focusedOptionsControl;
-    if (control == null) return false;
-    final suggestions = _optionSuggestions;
-    if (suggestions.isEmpty) return false;
-
-    final key = control['key'] as String;
-    final typed = _typedOptionValue(control);
-    final chosen = suggestions[(index ?? _selectedOptionIndex(suggestions.length)).clamp(0, suggestions.length - 1)];
-
-    if (!explicit) {
-      // Nothing typed, nothing to accept. An empty field's suggestion list is the
-      // whole SET (`matchExchangeOptions` answers an empty query with everything
-      // in declaration order), so without this, Space in an empty exchange field
-      // — which is just how an operator skips past one they haven't been given
-      // yet — logged whichever park happened to be declared first.
-      if (typed.trim().isEmpty) return false;
-      // And only a suggestion the typed text is the START of: accepting a
-      // substring hit replaces what they typed with something it isn't a prefix
-      // of. See `isAcceptableExchangeMatch`.
-      final input = control['input'] as Map;
-      final matchOn = {
-        for (final m in (input['matchOn'] as List?) ?? const ['code', 'name'])
-          if (m is String) m,
-      };
-      // The typed text, or what it may be short for: the suggestion line offers
-      // `ORJEF` for a typed `JEF` (a borrowed county-line prefix), and testing
-      // only the literal text refused every one of those — the menu showed a
-      // row that Space could never take.
-      final on = matchOn.isEmpty ? const {'code', 'name'} : matchOn;
-      final inherited = _inheritedOptionValue(control);
-      final acceptable = isAcceptableExchangeMatch(typed, chosen, matchOn: on) ||
-          (inherited != null && isAcceptableExchangeMatch(inherited, chosen, matchOn: on));
-      if (!acceptable) return false;
-    }
-
-    if (typed == chosen.code) return false;
-
-    // A multi-value field keeps the values the operator has already entered:
-    // only the one the cursor is in is replaced, and the cursor lands at the
-    // end of it so typing the separator carries straight on to the next.
-    final separator = _optionSeparatorFor(control);
-    final controller = _textControllerFor(key);
-    if (separator.isEmpty) {
-      _controlTextValues[key] = chosen.code;
-      controller.text = chosen.code;
-    } else {
-      final text = _controlTextValues[key] ?? '';
-      final cursor = controller.selection.baseOffset;
-      final replaced = replaceExchangeValueAt(
-        text,
-        cursor < 0 ? text.length : cursor,
-        separator,
-        chosen.code,
-      );
-      _controlTextValues[key] = replaced.text;
-      controller.value = TextEditingValue(
-        text: replaced.text,
-        selection: TextSelection.collapsed(offset: replaced.cursor),
-      );
-    }
-    _touchedTextControls.add(key);
-    // The menu closes on the accepted value, so the highlight it belonged to
-    // goes with it.
-    _optionSelection = null;
-    return true;
-  }
-
-  /// The serial number each `kind: 'serial'` control will send, as last peeked
-  /// from the sequence — shown so the operator can read it off while typing the
-  /// callsign, but NOT written to the QSO: the number is allocated at commit
-  /// (docs/design/contests.md §5.8), so a peek that goes stale (another window
-  /// logged in between) costs nothing.
-  final Map<String, int> _serialPreviews = {};
-
-  /// The sequences this operation's contests declared, resolved from the
-  /// current controls. Passed to `add` so the repository can allocate against
-  /// the QSO as committed — and so a number the operator was shown raises the
-  /// counter past itself rather than being handed out twice.
-  List<SequenceDescriptor> get _serialSequences => [
-        for (final control in _textControls)
-          ?_serialDescriptorFor(control),
-      ];
 
   /// Runs `widget.decorateQsoBeforeSave` if wired, so an activity can project
   /// its ref data into generic QSON fields. Identity when no callback is
@@ -1183,370 +906,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return decorate(data, at == null ? _segmented.current : _segmented.effectiveAt(at));
   }
 
-  /// [refs] with every declared serial field removed, so the sequence issues a
-  /// fresh number at commit instead of the one already on the ref. Only for the
-  /// second and later calls of a call list — see `dataFor`.
-  List<Map<String, dynamic>> _refsWithoutSerials(Object? refs) {
-    final descriptors = _serialSequences;
-    final list = [
-      for (final ref in (refs as List?) ?? const [])
-        if (ref is Map) ref.cast<String, dynamic>(),
-    ];
-    if (descriptors.isEmpty) return list;
-    return [
-      for (final ref in list)
-        {
-          ...ref,
-        }..removeWhere((field, _) => descriptors.any((d) => d.refType == ref['type'] && d.field == field)),
-    ];
-  }
-
-  SequenceDescriptor? _serialDescriptorFor(Map<String, dynamic> control) {
-    final key = control['key'] as String? ?? '';
-    final slash = key.indexOf('/');
-    return SequenceDescriptor.fromInput(
-      (control['input'] as Map).cast<String, dynamic>(),
-      // Control keys are `<extensionKey>/<name>` by convention; the prefix is
-      // what keeps two contests' counters apart.
-      extensionKey: slash > 0 ? key.substring(0, slash) : key,
-    );
-  }
-
-  /// What the previews were last computed against — which sequences exist, and
-  /// the band/mode a scoped one keys off. The parent hands down a fresh
-  /// controls list on most rebuilds, so without this the peek would re-query
-  /// the log every frame.
-  String? _serialPreviewSignature;
-
-  /// The sequence labels the previews were last claimed under. A band or mode
-  /// change moves a scoped sequence to another label; the label it left is
-  /// released, the rest keep their numbers.
-  Set<String> _serialPreviewLabels = const {};
-
-  /// The claims still settling, by control key — what a commit waits on.
-  final Map<String, Future<int>> _pendingSerialClaims = {};
-
-  /// Refreshes the previewed next number for each serial control — one query
-  /// per sequence, and only when the declarations or their scope changed.
-  ///
-  /// Never while editing an existing QSO. That record's number was sent long
-  /// ago and is restored from the ref by `_applyFieldsFromData`; the sequence's
-  /// *next* number has nothing to do with it. Filling it here would overwrite a
-  /// logged serial on a record that merely had its RST corrected, or invent one
-  /// for a QSO that never carried a contest ref at all.
-  ///
-  /// Nor before the operator has put anything into the draft. A number is
-  /// held against the other positions from the moment it is shown
-  /// (docs/design/contests.md §5.8.1), so an idle panel holds nothing and
-  /// shows nothing — a blank, never a tentative number that might move. The
-  /// first edit — a typed call, a tapped spot, an exchange field touched —
-  /// is what takes the number; a band or mode change from the radio is not
-  /// an edit, and only moves a claim already held to its new label.
-  Future<void> _refreshSerialPreviews() async {
-    final sequences = widget.qsosRepository.sequences;
-    if (sequences == null || widget.editingQso != null) return;
-
-    final descriptors = <String, SequenceDescriptor>{};
-    for (final control in _textControls) {
-      final descriptor = _serialDescriptorFor(control);
-      if (descriptor != null) descriptors[control['key'] as String] = descriptor;
-    }
-    if (descriptors.isEmpty) return;
-
-    final hasContent = _call.trim().isNotEmpty || _touchedTextControls.isNotEmpty;
-    if (!hasContent) {
-      // Nothing composed — never started, or backspaced to nothing. An idle
-      // panel holds nothing, so a number taken earlier goes back, and off the
-      // screen with it.
-      if (_serialPreviews.isEmpty && _serialPreviewLabels.isEmpty) return;
-      _serialPreviews.clear();
-      _serialPreviewLabels = const {};
-      _serialPreviewSignature = null;
-      _pendingSerialClaims.clear();
-      widget.serialNumbers?.release(widget.operation.uuid);
-      for (final key in descriptors.keys) {
-        if (_touchedTextControls.contains(key)) continue;
-        _controlTextValues.remove(key);
-        _textControllerFor(key).clear();
-      }
-      if (mounted) setState(() {});
-      return;
-    }
-
-    final qso = Qso(uuid: '', operationUuid: widget.operation.uuid, data: _getCurrentQsoData());
-    final requests = {for (final entry in descriptors.entries) entry.key: entry.value.requestFor(qso)};
-    final labels = {for (final request in requests.values) request.label};
-    final signature = '${descriptors.keys.join(',')}|${labels.join(',')}';
-    if (signature == _serialPreviewSignature && _serialPreviews.isNotEmpty) return;
-    _serialPreviewSignature = signature;
-
-    final source = widget.serialNumbers ?? LocalSerialNumberSource(sequences);
-    // A scoped sequence keys off the band or mode: a label the draft has moved
-    // off is let go — and only that one. An unscoped sequence beside it keeps
-    // the number the operator may already have read.
-    final moved = _serialPreviewLabels.difference(labels);
-    if (moved.isNotEmpty) source.release(widget.operation.uuid, labels: moved);
-    _serialPreviewLabels = labels;
-
-    var changed = false;
-    for (final entry in requests.entries) {
-      final pending = source.claim(widget.operation.uuid, entry.value);
-      _pendingSerialClaims[entry.key] = pending;
-      final next = await pending;
-      // A wipe or a scope change while the claim was settling: that answer is
-      // for a draft that no longer exists, and the refresh it triggered fills
-      // the field for the current one.
-      if (!mounted || _serialPreviewSignature != signature) return;
-      if (_serialPreviews[entry.key] == next) continue;
-      _serialPreviews[entry.key] = next;
-      changed = true;
-      // The preview fills the field itself so the number is readable at a
-      // glance, but the control stays untouched — only a number the operator
-      // actually edits overrides the commit-time allocation.
-      if (!_touchedTextControls.contains(entry.key)) {
-        _controlTextValues[entry.key] = '$next';
-        _textControllerFor(entry.key).text = '$next';
-      }
-    }
-    if (changed && mounted) setState(() {});
-  }
-
-  /// Waits for every serial claim still settling, so a commit never runs
-  /// ahead of the number it is about to write. Needing the number is what
-  /// settles it (docs/design/contests.md §5.8.1); the wait is bounded by the
-  /// source's own cap. False when a claim failed and the commit must not go
-  /// ahead.
-  Future<bool> _settleSerialClaims() async {
-    final pending = _pendingSerialClaims.values.toList();
-    if (pending.isEmpty) return true;
-    try {
-      await Future.wait(pending);
-      return true;
-    } on Exception {
-      // Already reported by the refresh that owns the claim (it awaits the
-      // same future unguarded). Here it means the number never settled, and
-      // a commit without it would be allocated blind to the peers — refused,
-      // like a locked form: the fields keep everything typed.
-      return false;
-    }
-  }
-
-  TextEditingController _textControllerFor(String key) =>
-      _controlTextControllers[key] ??= TextEditingController(text: _controlTextValues[key] ?? '');
-
-  /// One focus node per text control, so Space and Tab cycle through the
-  /// exchange fields the same way they cycle Call → Sent → Rcvd.
-  final Map<String, FocusNode> _controlTextFocus = {};
-
-  /// One per exchange field, so the `options` suggestion pills can be anchored
-  /// to the field they belong to rather than to the panel. Keyed the same way as
-  /// the controllers and focus nodes, and just as long-lived.
-  final Map<String, LayerLink> _controlTextLinks = {};
-
-  LayerLink _textLinkFor(String key) => _controlTextLinks[key] ??= LayerLink();
-
-  /// A node per exchange field, created on first build, listened to, and given a
-  /// key handler for Tab.
-  ///
-  /// The listener is what makes the `options` suggestion menu appear: the menu is
-  /// derived from which field has focus, and focus alone rebuilds nothing. On a
-  /// new QSO the panel is repainting anyway (the callsign is being typed), which
-  /// masks its absence — but on an existing QSO opened for editing, tabbing
-  /// into a searchable exchange would show no offer at all while Space still
-  /// rewrote the field.
-  FocusNode _textFocusFor(String key) => _controlTextFocus[key] ??= (FocusNode(
-        debugLabel: 'exchange:$key',
-        onKeyEvent: _onExchangeKeyEvent,
-      )..addListener(() {
-        _notePrimaryFocus(_controlTextFocus[key]!);
-        // Same cursor-at-end-on-focus rule the fixed primary fields get in
-        // initState — an exchange field is a main logging field too, and
-        // `selectAllOnFocus: false` alone only stops the select-all; it leaves
-        // the caret wherever it happened to be last.
-        if (_controlTextFocus[key]!.hasFocus) {
-          final controller = _textControllerFor(key);
-          controller.selection = TextSelection.collapsed(
-            offset: _takePendingCaretOffset(_controlTextFocus[key]!, controller) ?? controller.text.length,
-          );
-        }
-        // A dismissal and a highlight both belong to the field that had focus
-        // when they were made, so leaving or entering a field clears them.
-        if (mounted) {
-          setState(() {
-            _optionsMenuDismissed = false;
-            _optionSelection = null;
-          });
-        }
-      }));
-
-  /// Tab out of an exchange field takes the offer on the way, exactly as Space
-  /// does — leaving the field forward is the same statement either way, and an
-  /// operator who tabs rather than spaces shouldn't lose the suggestion for it.
-  ///
-  /// Shift+Tab is going BACK, so it takes nothing: it isn't leaving the field
-  /// behind, it is stepping away from a field the operator may be about to
-  /// return to.
-  ///
-  /// On the node itself rather than as a panel-wide shortcut: binding Tab in
-  /// `CallbackShortcuts` would take it away from Flutter's traversal for the
-  /// whole panel, which would then have to be reimplemented here. This only
-  /// ADDS the accept, then hands the event to [_onPrimaryFieldKeyEvent] — an
-  /// exchange is a main logging field, so it gets the same edge-wrap and arrow
-  /// traversal as the rest, and everything those two decline stays with the
-  /// ordinary traversal.
-  KeyEventResult _onExchangeKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.tab &&
-        !HardwareKeyboard.instance.isShiftPressed) {
-      // Same reading of the highlight as Space: an untouched one is still the
-      // app guessing, and stays held to the prefix rule.
-      if (_acceptOptionSuggestion(explicit: _optionSelection != null)) setState(() {});
-    }
-    return _onPrimaryFieldKeyEvent(node, event);
-  }
-
-  void _clearTextControls() {
-    _controlTextValues.clear();
-    _touchedTextControls.clear();
-    // Dropped, not kept: a wipe must let the next refresh re-fill the serial
-    // fields, and the change-detection in `_refreshSerialPreviews` would
-    // otherwise see the same declarations and leave them blank.
-    _serialPreviews.clear();
-    _serialPreviewSignature = null;
-    _serialPreviewLabels = const {};
-    _pendingSerialClaims.clear();
-    // Deliberately NOT releasing the held number here: an undo-wipe and an
-    // edit opening over the draft pass through this too, and both put the
-    // draft back. Only `_wipe` and a commit let a number go.
-    for (final controller in _controlTextControllers.values) {
-      controller.clear();
-    }
-    unawaited(_refreshSerialPreviews());
-  }
-
-  /// [data] with the duplicate-serial mark set wherever the number on a ref
-  /// is one another position is known to have shown too
-  /// (docs/design/contests.md §5.8.1). The number is written regardless —
-  /// it went on the air — and the record says so.
-  Map<String, dynamic> _withSerialConflicts(Map<String, dynamic> data) {
-    final source = widget.serialNumbers;
-    if (source == null) return data;
-    final qso = Qso(uuid: '', operationUuid: widget.operation.uuid, data: data);
-    for (final descriptor in _serialSequences) {
-      final request = descriptor.requestFor(qso);
-      final number = request.serialOn(qso);
-      if (number != null && source.isConflicted(widget.operation.uuid, request, number)) {
-        return {...data, Qso.serialConflictKey: true};
-      }
-    }
-    return data;
-  }
-
-  /// Tells the number source the committed QSO's numbers are now in the log,
-  /// so its hold on them ends without handing them out again meanwhile.
-  void _releaseCommittedSerials(Qso qso) {
-    final source = widget.serialNumbers;
-    if (source == null) return;
-    final committed = <SequenceRequest, int>{};
-    for (final descriptor in _serialSequences) {
-      final request = descriptor.requestFor(qso);
-      final number = request.serialOn(qso);
-      if (number != null) committed[request] = number;
-    }
-    source.release(widget.operation.uuid, committed: committed);
-  }
-
-
-  /// Applies each text control's `suggestedValue` — a callsign-lookup-derived
-  /// prefill — to fields the operator hasn't touched. Called when the controls
-  /// are re-fetched after a lookup resolves.
-  void _applySuggestedTextValues() {
-    for (final control in _textControls) {
-      final key = control['key'] as String;
-      if (_touchedTextControls.contains(key)) continue;
-      final suggested = (control['input'] as Map)['suggestedValue'] as String?;
-      if (suggested == null || suggested.isEmpty) continue;
-      if (_controlTextValues[key] == suggested) continue;
-      _controlTextValues[key] = suggested;
-      _textControllerFor(key).text = suggested;
-    }
-  }
-
-  /// Merges the text controls' values into one ref per `refType`, folded in
-  /// with any ref of that type already held by a refList control — so a
-  /// contest's exchange and its refList-entered references coexist.
-  List<Map<String, dynamic>> _refsWithTextValues(List<Map<String, dynamic>> refs) {
-    if (_textControls.isEmpty) return refs;
-
-    // Values to write, and — separately — fields to REMOVE. An emptied field
-    // has to be an active removal, not just an absent value: skipping it would
-    // leave the old exchange on the ref, so clearing one while editing a QSO
-    // wouldn't stick. Same reasoning as the unconditional `refs`/`freq` writes
-    // in `_getCurrentQsoData`.
-    final byType = <String, Map<String, dynamic>>{};
-    final clearedByType = <String, Set<String>>{};
-    for (final control in _textControls) {
-      final input = control['input'] as Map;
-      final refType = input['refType'] as String?;
-      final field = input['field'] as String?;
-      if (refType == null || field == null) continue;
-      final key = control['key'] as String;
-      // A serial's displayed number is NOT a suggestion — it is what the
-      // operator read off the screen and sent on the air, so it is written to
-      // the ref exactly like something typed. Nobody re-keys it, and the log
-      // must agree with what went out. (The sequence is what guarantees the
-      // number was theirs to send; see `SequencesRepository`.)
-      final value = (_controlTextValues[key] ?? '').trim();
-      if (value.isEmpty) {
-        // An empty field means one of two different things, and a contest has
-        // to be able to tell them apart: it either was never filled in, or the
-        // operator deliberately emptied it. Only the operator touching it
-        // distinguishes the two.
-        //
-        // A DELIBERATE blank is recorded as `field: ''` rather than dropped, so
-        // it survives as a decision — `processQsoBeforeSave` stamps a guessed
-        // exchange onto an ABSENT field, and would otherwise put back the value
-        // the operator just removed (docs/design/contests.md §8).
-        //
-        // Serials are exempt: the sequence owns the number, "no serial" isn't a
-        // thing an operator records, and an empty string on the field would
-        // confuse the allocator that reads it at commit.
-        if (_touchedTextControls.contains(key) && input['kind'] != 'serial') {
-          (byType[refType] ??= {'type': refType})[field] = '';
-        } else {
-          (clearedByType[refType] ??= {}).add(field);
-        }
-      } else {
-        // A serial is stored as an int, matching what `_withAllocatedSerial`
-        // writes — normalized HERE so the edit path agrees, since
-        // `QsosRepository.update` deliberately never allocates and so never
-        // passes through that method.
-        (byType[refType] ??= {'type': refType})[field] =
-            input['kind'] == 'serial' ? (int.tryParse(value) ?? value) : value;
-      }
-    }
-    if (byType.isEmpty && clearedByType.isEmpty) return refs;
-
-    final merged = <Map<String, dynamic>>[];
-    for (final ref in refs) {
-      final type = ref['type'];
-      final extra = byType.remove(type);
-      final cleared = clearedByType[type];
-      if (extra == null && cleared == null) {
-        merged.add(ref);
-        continue;
-      }
-      final next = {...ref, ...?extra};
-      for (final field in cleared ?? const <String>{}) {
-        next.remove(field);
-      }
-      // A ref left with nothing but its type carried no information to begin
-      // with — drop it rather than persisting an empty shell.
-      if (next.length > 1 || next['ref'] != null) merged.add(next);
-    }
-    merged.addAll(byType.values);
-    return merged;
-  }
 
   /// Refs from `editingQso.refs` whose `type` matched no currently
   /// registered activity control — round-tripped back into `refs` on save
@@ -1737,6 +1096,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _command.addListener(_onModelChanged);
     _time.addListener(_onModelChanged);
     _spotting.addListener(_onModelChanged);
+    _exchange.addListener(_onModelChanged);
     // Population normally happens in didUpdateWidget, as editingQso
     // transitions from null to a selected QSO — but if this widget is ever
     // constructed with editingQso already set (rather than transitioning
@@ -1846,8 +1206,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // (`resolveMainFieldLayout`), which can only happen if a focus change
         // rebuilds. Off a squeezed row it would be a rebuild that changes
         // nothing, so it's gated on that — focus alone rebuilds nothing here
-        // otherwise (see [_textFocusFor], where the exchange fields' own
-        // listener has always had to setState for the same reason).
+        // otherwise (see [ExchangeFieldsModel.focusFor], where the exchange
+        // fields' own listener notifies for the same reason).
         if (_mainFieldsSqueezed) _rebuildBetweenFrames();
         // Keep the mobile numbers row in sync with which field has focus.
         _rebuildForNumbersRow();
@@ -1855,10 +1215,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     // Tab's edge-wrap, the arrow keys' end-of-value traversal, and Arrow Up out
     // to the pills, on the fixed primary fields. The exchange fields get the
-    // same handler through [_onExchangeKeyEvent], which their nodes are built
-    // with; Freq and Time are secondary-control fields and deliberately keep
-    // the default (they're a rung up already — their way out is Down/Enter,
-    // see [_onExpandedKeyEvent]).
+    // same handler through the exchange model's own Tab handler, which their
+    // nodes are built with; Freq and Time are secondary-control fields and
+    // deliberately keep the default (they're a rung up already — their way
+    // out is Down/Enter, see [_onExpandedKeyEvent]).
     for (final node in [_callFocus, _sentFocus, _rcvdFocus, _stateFocus, _gridFocus]) {
       node.onKeyEvent = _onPrimaryFieldKeyEvent;
     }
@@ -1891,7 +1251,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Settles the serial previews' baseline: an idle panel shows no number
     // (docs/design/contests.md §5.8.1), but a panel constructed mid-contact —
     // a rebuild with the call already typed — takes its number now.
-    unawaited(_refreshSerialPreviews());
+    unawaited(_exchange.refreshSerialPreviews());
     // A station that has never been set up has nothing in its VFO. Open the
     // Radio control so the operator is looking at the fields that need
     // answering, instead of finding out at log time that the contact can't be
@@ -2014,7 +1374,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // for the rest of the composing session, with nothing left to bring
       // it back except retyping the callsign.
       if (_lookup.lookupFor != null) unawaited(_refreshActivityControlsFor(_lookup.lookupFor!));
-      unawaited(_refreshSerialPreviews());
+      unawaited(_exchange.refreshSerialPreviews());
     }
     // The source is the panel's only handle on its held number: a source
     // swapped out (sharing switched off) or an operation swapped under the
@@ -2023,11 +1383,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (widget.editingQso == null &&
         (oldWidget.serialNumbers != widget.serialNumbers || oldWidget.operation.uuid != widget.operation.uuid)) {
       oldWidget.serialNumbers?.release(oldWidget.operation.uuid);
-      _serialPreviews.clear();
-      _serialPreviewSignature = null;
-      _serialPreviewLabels = const {};
-      _pendingSerialClaims.clear();
-      unawaited(_refreshSerialPreviews());
+      _exchange.forgetSerialState();
+      unawaited(_exchange.refreshSerialPreviews());
     }
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?.detach();
@@ -2413,7 +1770,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _populating = false;
     // A tapped spot starts a contact as surely as a typed call does, and it
     // bypasses `_onCallChanged` — so the serial number is taken here.
-    unawaited(_refreshSerialPreviews());
+    unawaited(_exchange.refreshSerialPreviews());
     // Populating a suggestion sets the call without the user typing, so
     // `_populating` suppressed _onCallChanged's own lookup and score
     // scheduling. Any source that sets the current QSO's callsign must
@@ -2528,7 +1885,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _guessedRefs = const [];
     _guessedRefsForCall = null;
     _unmatchedRefs = [];
-    _clearTextControls();
+    _exchange.clear();
     final refs = (asQsonList(data['refs']))?.whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()) ?? const [];
     for (final ref in refs) {
       String? key;
@@ -2550,19 +1907,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           final raw = field == null ? null : ref[field];
           final value = raw is num ? '$raw' : (raw is String ? raw : '');
           // PRESENT, not non-empty: an explicit `field: ''` is the operator
-          // having emptied it on purpose (see `_refsWithTextValues`), and
+          // having emptied it on purpose (see [ExchangeFieldsModel.refsWithTextValues]), and
           // restoring it as touched-but-blank is what keeps a lookup from
           // helpfully filling it back in the moment the record opens.
           if (field != null && ref.containsKey(field)) {
             final controlKey = control['key'] as String;
-            _controlTextValues[controlKey] = value;
-            _textControllerFor(controlKey).text = value;
-            // A value loaded off a saved QSO is what actually went over the
-            // air, so it counts as operator input: without this a lookup
-            // resolving after the record opens would overwrite it with a
-            // suggestion — or, for a serial, the sequence's NEXT number would
-            // overwrite the one that was really sent.
-            _touchedTextControls.add(controlKey);
+            _exchange.restore(controlKey, value);
           }
           continue;
         }
@@ -2743,7 +2093,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _guessedRefs = const [];
     _guessedRefsForCall = null;
     _unmatchedRefs = [];
-    _clearTextControls();
+    _exchange.clear();
     _currentQsoExtra.clear();
     _notesController.clear();
     _ourExtra.clear();
@@ -2781,19 +2131,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _command.dispose();
     _wipeUndoSlot.dispose();
     _spotting.dispose();
+    _exchange.dispose();
     _notesController.dispose();
     _notesFocus.dispose();
-    for (final controller in _controlTextControllers.values) {
-      controller.dispose();
-    }
     for (final node in _controlRefFocus.values) {
       node.dispose();
     }
     for (final controller in _controlRefController.values) {
       controller.dispose();
-    }
-    for (final node in _controlTextFocus.values) {
-      node.dispose();
     }
     for (final node in _pillFocus.values) {
       node.dispose();
@@ -3016,6 +2361,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// field (Frequency, Time, a ref) must never become the place we return to.
   void _notePrimaryFocus(FocusNode node) {
     if (_primaryFocusOrder.any((f) => identical(f, node))) _lastPrimaryFocus = node;
+  }
+
+  /// An exchange field's focus node fired: the ladder notes it, and a gain of
+  /// focus lands the caret — the same cursor-at-end-on-focus rule the fixed
+  /// primary fields get in initState. An exchange field is a main logging
+  /// field too, and `selectAllOnFocus: false` alone only stops the
+  /// select-all; it leaves the caret wherever it happened to be last.
+  void _onExchangeFocusChanged(FocusNode node, TextEditingController controller) {
+    _notePrimaryFocus(node);
+    if (node.hasFocus) {
+      controller.selection = TextSelection.collapsed(
+        offset: _takePendingCaretOffset(node, controller) ?? controller.text.length,
+      );
+    }
   }
 
   /// One focus node per activity ref control, owned here rather than inside
@@ -4245,126 +3604,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     );
   }
 
-  /// A `kind: 'text'` control rendered as a primary entry field — a contest
-  /// exchange, sitting inline with Call and the RSTs.
-  ///
-  /// A `pattern` mismatch tints the field but never blocks the keystroke:
-  /// contest rules don't always anticipate what the other station actually
-  /// sends, and refusing input mid-QSO is worse than accepting an oddity.
-  Widget _exchangeField(
-    BuildContext context,
-    Map<String, dynamic> control, {
-    required bool enabled,
-    required double width,
-    required double padding,
-    required Duration duration,
-  }) {
-    final key = control['key'] as String;
-    final input = control['input'] as Map;
-    final label = (control['label'] as String?) ?? key;
-    final value = (_controlTextValues[key] ?? '').trim();
-
-    // A serial is digits, never uppercased. The number shown is the one the
-    // sequence will issue; typing over it is an override, which the extension
-    // can disallow with `editable: false`.
-    final isSerial = input['kind'] == 'serial';
-    final numeric = input['numeric'] == true || isSerial;
-
-    final regex = compileRefPattern(input['pattern'] as String?);
-    var isInvalid = value.isNotEmpty && regex != null && !regex.hasMatch(value);
-
-    // An `options` field validates against its SET as well as any pattern: a
-    // county that isn't in the party's list is a lost multiplier, and the
-    // operator can still fix it while the QSO is in front of them. A contest
-    // whose exchange is genuinely open-ended says `allowFreeform: true`.
-    final isOptions = input['kind'] == 'options';
-    final options = isOptions ? _optionsFor(control) : const <ExchangeOption>[];
-    if (isOptions && value.isNotEmpty && input['allowFreeform'] != true && options.isNotEmpty) {
-      // Every value, not just the last one: a county line whose second county
-      // is a typo claims a multiplier that isn't there, and the field is the
-      // only place that can say so while the QSO is still in front of the
-      // operator.
-      isInvalid = isInvalid || !areKnownExchangeOptions(
-        value,
-        options,
-        separator: _optionSeparatorFor(control),
-        inheritPrefix: _optionInheritPrefixFor(control),
-      );
-    }
-    final uppercase = !isSerial && input['uppercase'] != false;
-    final transforms = [
-      for (final t in (input['transforms'] as List?) ?? const [])
-        RefTransform.fromMap((t as Map).cast<String, dynamic>()),
-    ];
-
-    return AnimatedContainer(
-      duration: duration,
-      curve: Curves.easeOut,
-      // Wider than an RST, narrower than the callsign: an exchange is usually
-      // a zone, a serial or a state abbreviation. Resolved by
-      // [resolveMainFieldLayout] — [exchangeFieldMinWidth] when the row has
-      // room, and less when it doesn't.
-      width: width,
-      // Linked so the `options` suggestion pills can hang off this field's own
-      // top-right corner — they are right-aligned to the field, wherever the
-      // row happens to put it (RSTs on or off, a state field, several
-      // exchanges).
-      child: CompositedTransformTarget(
-        link: _textLinkFor(key),
-        child: TextField(
-        controller: _textControllerFor(key),
-        focusNode: _textFocusFor(key),
-        selectAllOnFocus: false,
-        enabled: enabled,
-        readOnly: isSerial && input['editable'] == false,
-        style: mainFieldStyle(context, fontWeight: FontWeight.w500),
-        keyboardType: numeric ? _numbersAndPunctuationOnIOS : null,
-        textCapitalization: TextCapitalization.characters,
-        autocorrect: false,
-        inputFormatters: [
-          // FIRST, exactly as every other primary field installs it: on an
-          // on-screen keyboard there is no hardware Space to hit the panel
-          // shortcut, so without this the space is just swallowed by the
-          // formatters below and the field becomes a dead end. Mobile is where
-          // most contest logging happens.
-          _virtualSpace,
-          if (numeric) FilteringTextInputFormatter.digitsOnly,
-          if (uppercase) const UpperCaseTextFormatter(),
-          if (transforms.isNotEmpty) RefTransformFormatter(transforms),
-          if (input['maxLength'] is int) LengthLimitingTextInputFormatter(input['maxLength'] as int),
-        ],
-        // An unrecognized value tints the field's own underline rather than
-        // going through `errorText` — see [haloInvalidInputBorder] for why the
-        // error slot is not an option in this row.
-        decoration: mainFieldDecoration(context, label, horizontalPadding: padding).copyWith(
-          hintText: input['placeholder'] as String?,
-          enabledBorder: isInvalid ? haloInvalidInputBorder(context, width: 1) : null,
-          focusedBorder: isInvalid ? haloInvalidInputBorder(context, width: 2) : null,
-        ),
-        onChanged: (text) {
-          setState(() {
-            _controlTextValues[key] = text;
-            // Once typed, a later lookup-derived suggestion must not overwrite
-            // it (docs/design/contests.md §5.3).
-            _touchedTextControls.add(key);
-            // An exchange typed before the call starts the contact just as a
-            // call would, and takes the serial number with it (§5.8.1).
-            unawaited(_refreshSerialPreviews());
-            // A new character is a new question: the offer comes back even if
-            // the last one was dismissed, and the highlight starts over at the
-            // best match rather than pointing at a row that may no longer be
-            // in the list.
-            _optionsMenuDismissed = false;
-            _optionSelection = null;
-          });
-        },
-        onEditingComplete: () => _finishEditingWithoutBlur(_textControllerFor(key)),
-        onSubmitted: (_) => _handleEnter(),
-      ),
-      ),
-    );
-  }
-
   /// Sent and Rcvd, in the order the operator reads them — reversed by
   /// `switchSentRcvd`, which [_rstPair] resolves once for every surface.
   ///
@@ -4416,9 +3655,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           (
             gapBefore: mainFieldGap,
             minWidth: exchangeFieldMinWidth,
-            focusNode: _textFocusFor(control['key'] as String),
-            build: (width, padding, duration) => _exchangeField(context, control,
-                enabled: enabled, width: width, padding: padding, duration: duration),
+            focusNode: _exchange.focusFor(control['key'] as String),
+            build: (width, padding, duration) => ExchangeField(
+              model: _exchange,
+              control: control,
+              enabled: enabled,
+              width: width,
+              padding: padding,
+              duration: duration,
+              virtualSpace: _virtualSpace,
+              numericKeyboardType: _numbersAndPunctuationOnIOS,
+              onEditingComplete: _finishEditingWithoutBlur,
+              onSubmitted: _handleEnter,
+            ),
           ),
         if (widget.showStateField)
           (
@@ -4568,7 +3817,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // Having walked the highlight with the arrow keys IS a choice, so Space
       // then takes that row as-is; an untouched highlight is still the app
       // guessing, and stays held to the prefix rule.
-      if (_acceptOptionSuggestion(explicit: _optionSelection != null)) setState(() {});
+      _exchange.acceptOnLeave();
       // Every primary field advances on Space, contest exchanges included —
       // asked against the same list the advance walks, so a newly added kind of
       // primary field can never end up in one and not the other. (Call and Freq
@@ -4634,12 +3883,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // context, which Flutter's focus traversal null-checks while sorting —
         // taking down the whole frame rather than just misordering focus.
         for (final control in _textControls)
-          if (_controlTextFocus[control['key'] as String]?.context != null)
+          if (_exchange.attachedFocusFor(control['key'] as String) case final focus?)
             (
               key: control['key'] as String,
               label: (control['label'] as String?) ?? control['key'] as String,
-              focus: _controlTextFocus[control['key'] as String]!,
-              controller: _textControllerFor(control['key'] as String),
+              focus: focus,
+              controller: _exchange.controllerFor(control['key'] as String),
               hint: (control['input'] as Map?)?['placeholder'] as String?,
             ),
         if (widget.showStateField)
@@ -4756,7 +4005,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // QSO's secondary controls are pointer-blocked and dimmed, and the
     // keyboard shouldn't reach past that either.
     if (key == LogicalKeyboardKey.arrowUp) {
-      if (_optionSuggestions.isNotEmpty || _fieldsLocked) return KeyEventResult.ignored;
+      if (_exchange.menuOpen || _fieldsLocked) return KeyEventResult.ignored;
       _focusPillAndOpen();
       return KeyEventResult.handled;
     }
@@ -5146,7 +4395,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final base = composing ? const <String, dynamic>{} : (widget.editingQso?.data ?? const <String, dynamic>{});
     final call = callOverride ?? _call;
     final startAtMillis = composing ? _time.manualStartAtMillis : _time.effectiveStartAtMillis;
-    final refs = _refsWithTextValues([
+    final refs = _exchange.refsWithTextValues([
       for (final list in _controlRefs.values) ...list,
       ..._unmatchedRefs,
     ]);
@@ -5528,7 +4777,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     widget.onCallEdited?.call();
     setState(() {});
     // The first character of a call is what takes a serial number.
-    unawaited(_refreshSerialPreviews());
+    unawaited(_exchange.refreshSerialPreviews());
     _lookup.cancelLookup();
     // Whatever was shown for the previous text is gone, an execution
     // confirmation included.
@@ -5643,11 +4892,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _refreshedActivityControls = controls;
       // A lookup just resolved, so any suggestedValue it produced can now fill
       // fields the operator hasn't typed into.
-      _applySuggestedTextValues();
+      _exchange.applySuggestedValues();
     });
     // The refreshed controls may have introduced a serial field, or changed the
     // band a per-band sequence keys off.
-    unawaited(_refreshSerialPreviews());
+    unawaited(_exchange.refreshSerialPreviews());
   }
 
   // ---- Logging ----
@@ -5671,11 +4920,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // that" — and everything else Escape does here throws away work (a wipe, a
     // discarded edit, a deselected QSO). Losing a half-typed contact to a
     // keystroke aimed at a dropdown is not a recoverable mistake.
-    if (_optionSuggestions.isNotEmpty) {
-      setState(() {
-        _optionsMenuDismissed = true;
-        _optionSelection = null;
-      });
+    if (_exchange.menuOpen) {
+      _exchange.dismissMenu();
       return;
     }
     // An open secondary control takes the next one, and goes all the way back
@@ -5723,7 +4969,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _controlRefs.clear();
     _guessedRefs = const [];
     _guessedRefsForCall = null;
-    _clearTextControls();
+    _exchange.clear();
     _currentQsoExtra.clear();
     _notesController.clear();
     _ourExtra.clear();
@@ -5765,7 +5011,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _time.manualStartAtMillis != null ||
       _theirNameOverride != null ||
       _controlRefs.values.any((refs) => refs.isNotEmpty) ||
-      _controlTextValues.values.any((v) => v.trim().isNotEmpty) ||
+      _exchange.hasTypedValues ||
       _unmatchedRefs.isNotEmpty ||
       _currentQsoExtra.isNotEmpty ||
       _ourExtra.isNotEmpty ||
@@ -5984,7 +5230,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (widget.editingQso == null) {
       // Enter inside the claim window would otherwise commit a blank serial
       // field, and the allocator's fallback knows nothing of the peers' holds.
-      final settled = await _settleSerialClaims();
+      final settled = await _exchange.settleSerialClaims();
       if (!settled || !mounted || _call != call || _isLogging) return;
     }
     if (widget.editingQso == null && call.isNotEmpty && widget.interpretCommand != null) {
@@ -6205,7 +5451,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // list got the next numbers in the series, so strip the field and let
           // the sequence issue them at commit; without this the whole list logs
           // under one serial.
-          if (index > 0) 'refs': _refsWithoutSerials(baseData['refs']),
+          if (index > 0) 'refs': _exchange.refsWithoutSerials(baseData['refs']),
           'their': {
             if (keepOriginal) ...?(baseData['their'] as Map<String, dynamic>?),
             'call': call,
@@ -6245,8 +5491,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           final data = dataFor(calls[i], i)..remove('uuid');
           final Qso qso;
           try {
-            qso = await widget.qsosRepository.add(widget.operation.uuid, await _decorated(_withSerialConflicts(data)),
-                serialSequences: _serialSequences);
+            qso = await widget.qsosRepository.add(widget.operation.uuid, await _decorated(_exchange.withSerialConflicts(data)),
+                serialSequences: _exchange.serialSequences);
           } catch (e, stack) {
             // Calls before [i] are already committed: keep the edited
             // record's own call plus only the still-unlogged ones in the
@@ -6256,7 +5502,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             _reportWriteFailure(e, stack);
             return;
           }
-          _releaseCommittedSerials(qso);
+          _exchange.releaseCommittedSerials(qso);
           widget.onLogged?.call(qso);
           widget.enqueueLookup?.call(qso);
         }
@@ -6270,8 +5516,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           final Qso qso;
           try {
             qso = await widget.qsosRepository.add(
-                widget.operation.uuid, await _decorated(_withSerialConflicts(dataFor(calls[i], i))),
-                serialSequences: _serialSequences);
+                widget.operation.uuid, await _decorated(_exchange.withSerialConflicts(dataFor(calls[i], i))),
+                serialSequences: _exchange.serialSequences);
           } catch (e, stack) {
             // Nothing is wiped on failure — the fields keep every typed
             // value. With calls already committed (i > 0), the field is
@@ -6291,7 +5537,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             _reportWriteFailure(e, stack);
             return;
           }
-          _releaseCommittedSerials(qso);
+          _exchange.releaseCommittedSerials(qso);
           widget.onLogged?.call(qso);
           widget.enqueueLookup?.call(qso);
         }
@@ -6368,6 +5614,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _infoGeneration++;
     }
 
+    // Resolved once: the arrow-key bindings and the menu read the same offer.
+    final exchangeMenu = _exchange.openMenu;
     final panel = CallbackShortcuts(
       bindings: {
         const SingleActivator(LogicalKeyboardKey.escape): _handleEscape,
@@ -6381,11 +5629,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // Only while an exchange menu is actually open. Bound unconditionally,
         // these would swallow the arrow keys everywhere else in the panel —
         // including a text field's own caret movement.
-        if (_optionSuggestions.isNotEmpty) ...{
+        if (exchangeMenu != null) ...{
           // The menu is drawn best-at-the-bottom, so Up walks up the screen,
           // away from the field, which is +1 in rank order.
-          const SingleActivator(LogicalKeyboardKey.arrowUp): () => _moveOptionSelection(1),
-          const SingleActivator(LogicalKeyboardKey.arrowDown): () => _moveOptionSelection(-1),
+          const SingleActivator(LogicalKeyboardKey.arrowUp): () => _exchange.moveSelection(1),
+          const SingleActivator(LogicalKeyboardKey.arrowDown): () => _exchange.moveSelection(-1),
         },
       },
       child: FocusTraversalGroup(
@@ -6793,7 +6041,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         ),
                       );
                       }),
-                          ?_buildOptionSuggestionMenu(accentTheme),
+                          if (exchangeMenu != null)
+                            ExchangeSuggestionsMenu(model: _exchange, menu: exchangeMenu, theme: accentTheme),
                         ],
                       ),
                     ],
@@ -7048,157 +6297,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     ];
   }
 
-  /// The searchable-exchange suggestions, as a menu floating over the fields.
-  ///
-  /// Anchored so the CODE column lines up with the exchange field's left edge —
-  /// the codes are the column the operator is comparing against what they typed,
-  /// so they sit directly above the field the value lands in, and the names hang
-  /// off to the left where there is room for them. Hung off the field itself
-  /// through a [LayerLink], so that holds wherever the row puts the field: RSTs
-  /// on or off, a state field, two exchanges side by side.
-  ///
-  /// Ordered BOTTOM-UP: the best match is the row nearest the field, and it is
-  /// the row Space takes. Rows are tappable and the arrow keys walk the highlight
-  /// (see [_moveOptionSelection]); all three go through
-  /// [_acceptOptionSuggestion], so a tap, an arrow-then-Space and a plain Space
-  /// are one path.
-  ///
-  /// Both columns are sized from the widest value measured in BOLD, so the menu
-  /// keeps its shape as the highlight moves — a menu that resized under the
-  /// arrow keys would jump under the operator's hands.
-  ///
-  /// Colours are the dialog scheme, not the panel's: this is a surface floating
-  /// over the panel rather than part of it, so it reads like every other thing
-  /// the app puts on top — `surface` for the rows, the dialog band tone for the
-  /// value column, and a plain onSurface wash for the highlighted row.
-  ///
-  /// Floating, not laid out, so nothing moves as the operator types: it paints
-  /// over the info area above rather than pushing the fields down under the
-  /// cursor. It is inside the panel's own subtree — not an `Overlay` — so it
-  /// rebuilds with the panel and needs no entry to insert, update or dispose.
-  ///
-  /// COVERING the info area while it is open — the DUPE warning and the rest of
-  /// the scoring notices with it — is a SETTLED decision rather than an oversight
-  /// (Sebastian, 2026-07-26): it is the price of not pushing the fields down under
-  /// the operator's hands mid-exchange, and polo made the opposite trade. Two
-  /// separate reviews have raised it as a defect; it isn't one.
-  Widget? _buildOptionSuggestionMenu(ThemeData theme) {
-    final control = _focusedOptionsControl;
-    if (control == null) return null;
-    final suggestions = _optionSuggestions;
-    if (suggestions.isEmpty) return null;
-
-    final colors = theme.colorScheme;
-    final selected = _selectedOptionIndex(suggestions.length);
-
-    // Monospace for the codes: they are log data, read as a column and compared
-    // character by character against what is in the field — the same reason the
-    // QSO list and the spots panel set callsigns in it.
-    // Weights are explicit on both variants: the regular one has to SAY it is
-    // regular, or a row inherits whatever weight the ambient text theme brought
-    // and the highlight stops being the only difference between rows.
-    final codeStyle = haloMonoStyle(context, color: colors.onSurface, fontWeight: FontWeight.w400);
-    final boldCode = codeStyle.copyWith(fontWeight: FontWeight.w700);
-    final nameStyle = (theme.textTheme.bodyMedium ?? const TextStyle())
-        .copyWith(color: colors.onSurface, fontWeight: FontWeight.w400);
-    final boldName = nameStyle.copyWith(fontWeight: FontWeight.w700);
-
-    // Measured in BOLD even for the rows that aren't: the highlight moves with
-    // the arrow keys, and a column sized to the regular weight would have to
-    // grow the moment its row became the selected one.
-    var codeText = 0.0;
-    var nameText = 0.0;
-    for (final option in suggestions) {
-      codeText = math.max(codeText, textWidth(context, option.code, boldCode));
-      nameText = math.max(nameText, textWidth(context, option.name ?? option.code, boldName));
-    }
-    const namePadding = 10.0;
-    const codePadding = 8.0;
-    // A long name is ellipsized rather than allowed to push the menu off the
-    // side of a narrow window; the code column, which is the point, is never cut.
-    final nameWidth = math.min(nameText, 220.0) + namePadding * 2;
-    final codeWidth = codeText + codePadding * 2;
-
-    Widget row(int index, ExchangeOption option) {
-      final isSelected = index == selected;
-      return InkWell(
-        // The field keeps focus: this is a value picker, not somewhere to land.
-        // Without this, tapping a row moves focus out of the exchange field and
-        // the menu it belongs to closes under the operator's finger.
-        canRequestFocus: false,
-        onTap: () => setState(() => _acceptOptionSuggestion(index: index, explicit: true)),
-        child: DecoratedBox(
-          // In FRONT, so the wash covers the value column too and the whole row
-          // reads as one selected thing.
-          position: DecorationPosition.foreground,
-          decoration: BoxDecoration(
-            color: isSelected ? colors.onSurface.withValues(alpha: 0.10) : Colors.transparent,
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: nameWidth,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: namePadding, vertical: Space.xs),
-                  child: Text(
-                    option.name ?? option.code,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: isSelected ? boldName : nameStyle,
-                  ),
-                ),
-              ),
-              Container(
-                width: codeWidth,
-                color: haloDialogBandColor(context),
-                padding: const EdgeInsets.symmetric(vertical: Space.xs),
-                alignment: Alignment.center,
-                child: Text(
-                  option.code,
-                  maxLines: 1,
-                  style: isSelected ? boldCode : codeStyle,
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Positioned(
-      left: 0,
-      top: 0,
-      child: CompositedTransformFollower(
-        // A focused TextField has a follower of its own (selection handles), so
-        // this one is named — for tests, and for the same agent/browser tooling
-        // `semanticId` serves elsewhere in this panel.
-        key: exchangeSuggestionsKey,
-        link: _textLinkFor(control['key'] as String),
-        // The menu's bottom-LEFT corner against the field's top-left, then shifted
-        // left by exactly the name column: that puts the code column's left edge
-        // on the field's own left edge.
-        targetAnchor: Alignment.topLeft,
-        followerAnchor: Alignment.bottomLeft,
-        offset: Offset(-nameWidth, -6),
-        child: Material(
-          // A menu, so it casts a shadow over what it covers rather than looking
-          // like part of the panel underneath.
-          elevation: 8,
-          color: colors.surface,
-          borderRadius: BorderRadius.circular(8),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Reversed: worst at the top, best at the bottom against the field.
-              for (final entry in suggestions.indexed.toList().reversed) row(entry.$1, entry.$2),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
   /// AnimatedSwitcher key for the info area — changes when the DISPLAYED
   /// content changes (mode, lookup result, notices), but is stable across the
   /// stats line's 1 Hz clock tick, so only real content changes cross-fade.
@@ -7243,12 +6341,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   Map<String, dynamic>? get _gridOnlyGuess {
     if (_callInfoActive || _editingEvent) return null;
-    var grid = '';
-    for (final control in _textControls) {
-      if ((control['input'] as Map?)?['field'] != 'grid') continue;
-      grid = (_controlTextValues[control['key'] as String] ?? '').trim();
-      if (grid.isNotEmpty) break;
-    }
+    var grid = _exchange.valueForField('grid');
     if (grid.isEmpty && widget.showGridField) grid = _gridController.text.trim();
     if (!_completeGrid.hasMatch(grid)) return null;
     // The fields uppercase as typed; the line reads better as FN20aa.

@@ -1545,11 +1545,12 @@ in the first cut of write-through:
 - **An existing QSO opened for editing.** That record's number was sent long
   ago. `_applyFieldsFromData` restores it from the ref (it must treat `serial`
   exactly as `text`, or the field is left empty *and* any sibling field on the
-  same ref goes unrestored and is cleared on save), and `_refreshSerialPreviews`
-  refuses to run at all while `editingQso != null`. Without both, correcting a
-  callsign on QSO #1 of a 400-QSO log rewrites its serial to the sequence's next
-  number — destroying the number that went on the air, and inventing one for an
-  ordinary QSO that never carried a contest ref.
+  same ref goes unrestored and is cleared on save), and the exchange model's
+  `refreshSerialPreviews` refuses to run at all while `editingQso != null`.
+  Without both, correcting a callsign on QSO #1 of a 400-QSO log rewrites its
+  serial to the sequence's next number — destroying the number that went on
+  the air, and inventing one for an ordinary QSO that never carried a contest
+  ref.
 
 The value is normalized to `int` in the panel rather than only in
 `_withAllocatedSerial`, because `QsosRepository.update` deliberately never
