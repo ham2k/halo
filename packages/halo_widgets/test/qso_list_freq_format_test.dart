@@ -95,6 +95,38 @@ void main() {
     });
   });
 
+  group('in the column', () {
+    testWidgets('a shorter reading ends where a longer one does', (tester) async {
+      // The column is reserved at the widest frequency's width; a narrower
+      // reading left-aligned inside it puts its kHz digits under the wider
+      // row's MHz digits, and a band-only row's label off on its own.
+      final operation = await operations.create(stationCall: 'KI2D');
+      final list = <Qso>[];
+      for (final (i, fields) in [
+        {'freq': 7200.0},
+        {'freq': 14285.0},
+        {'band': '20m'},
+      ].indexed) {
+        list.add(await qsos.add(operation.uuid, {
+          'their': {'call': 'W1AW'},
+          'mode': 'SSB',
+          'startAtMillis': 1000 * (i + 1),
+          ...fields,
+        }));
+      }
+      await tester.pumpWidget(MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: Scaffold(body: QsoList(qsos: list, onSelect: (_) {})),
+      ));
+      await tester.pumpAndSettle();
+
+      double rightEdgeOf(String text) => tester.getBottomRight(find.text(text)).dx;
+      // The frequency's last Text is its kHz part; the band label is one Text.
+      expect(rightEdgeOf('200'), rightEdgeOf('285'));
+      expect(tester.getBottomRight(find.text('20m')).dx, rightEdgeOf('285'));
+    });
+  });
+
   group('under comma conventions', () {
     testWidgets('both marks swap, and stay different from each other', (tester) async {
       NumberFormatting.instance.configure(decimal: ',', grouping: '.', locale: 'es_ES');

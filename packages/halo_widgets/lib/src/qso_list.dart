@@ -875,12 +875,14 @@ class _QsoListState extends State<QsoList> {
           ? rowMono
           : rowMono.copyWith(color: theme.colorScheme.error.withValues(alpha: rowMono.color?.a ?? 1.0));
       final Widget freqField;
+      // Right-aligned within the column's fixed width, so the kHz digits of
+      // a 7 MHz row sit under those of a 14 MHz row, band-only rows included.
       if (freqKHz == null) {
-        freqField = Text(qso.band ?? _noBandLabel, style: freqStyle);
+        freqField = Text(qso.band ?? _noBandLabel, style: freqStyle, textAlign: TextAlign.right);
       } else {
         final parts = freqDisplayParts(freqKHz, hzDigits: hzDigits);
         freqField = Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.end,
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
