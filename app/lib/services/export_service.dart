@@ -252,7 +252,8 @@ class ExportService {
   ///
   /// A SEGMENTED log is rewritten either way, whatever its calls, so that each
   /// contact carries its own segment's answer for everything a hook would
-  /// otherwise read off the base operation ([_stampSegment]).
+  /// otherwise read off the base operation ([_stampSegment]) — and carries the
+  /// segments themselves, for what a contact's `our` block cannot say.
   Map<String, dynamic> _payloadAs(
     String stationCall,
     Operation operation,
@@ -268,6 +269,12 @@ class ExportService {
     if (!perCall && !segmented.isSegmented) return payload;
     if (perCall) (payload['operation'] as Map<String, dynamic>)['stationCall'] = stationCall;
     payload['qsos'] = _qsosAs(perCall ? stationCall : null, qsoList, segmented);
+    // The segments themselves, as the scoring pass sends them
+    // (`ExportRequest.segments`): [_stampSegment] covers what a contact's
+    // `our` block can carry, but a contest's setup — a rover's county, a sent
+    // exchange — lives on a REF the segments restate, and only the resolved
+    // timeline lets a hook read that per contact.
+    if (segmented.isSegmented) payload['segments'] = segmented.payload;
     return payload;
   }
 

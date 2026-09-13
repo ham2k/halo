@@ -22,7 +22,7 @@
 //     `kind: 'options'` field — 76 codes, searched, Space to accept.
 
 import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
-import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf, utcDateCompact } from "@ham2k/extension-sdk"
+import { adifForExport, contestScorer, defineExtension, exportFilename, segmentsWith, startMillisOf, utcDateCompact } from "@ham2k/extension-sdk"
 import type {
   ActivitySuggestion,
   ExportOption,
@@ -532,14 +532,19 @@ async function sponsorAdif(args: ExportRequest, wanted: string): Promise<ExportR
   }
 
   // The file names ONE park, so that is the only one the record fields may
-  // name: the operation POTA's hook sees carries just this activation.
-  const refs = ((args.operation.refs as Record<string, JSONValue>[] | undefined) ?? []).filter(
-    (r) => r?.type !== POTA_ACTIVATION || r?.ref === wanted,
-  )
+  // name: the operation POTA's hook sees carries just this activation — on
+  // every segment too, since the generator hands the hook each contact's own.
+  const claimOnly = (operation: Record<string, JSONValue>): Record<string, JSONValue> => ({
+    ...operation,
+    refs: ((operation.refs as Record<string, JSONValue>[] | undefined) ?? []).filter(
+      (r) => r?.type !== POTA_ACTIVATION || r?.ref === wanted,
+    ) as unknown as JSONValue,
+  })
 
   const content = await adifForExport({
-    operation: { ...args.operation, refs: refs as unknown as JSONValue },
+    operation: claimOnly(args.operation),
     qsos: args.qsos,
+    segments: segmentsWith(args.segments, claimOnly),
     includePrivateData: args.includePrivateData,
     mainHandler: TYPE,
     includeFieldsFrom: ['pota'],

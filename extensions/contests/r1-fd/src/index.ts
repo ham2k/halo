@@ -410,6 +410,7 @@ const ExportHook = {
     const content = await adifForExport({
       operation: args.operation,
       qsos: args.qsos,
+      segments: args.segments,
       includePrivateData: args.includePrivateData,
       // This file is the CONTEST's log, so the core exporter asks this
       // extension's `adifFields` hook and no other's.

@@ -538,6 +538,9 @@ class Translations$operation$en {
 	/// en: 'at ${value}'
 	String titleAt({required Object value}) => 'at ${value}';
 
+	/// en: 'Now ${description}'
+	String segmentNow({required Object description}) => 'Now ${description}';
+
 	/// en: 'Testing'
 	String get testOperationSuffix => 'Testing';
 
@@ -6519,6 +6522,7 @@ extension on Translations {
 			'operation.generalOperation' => 'General Operation',
 			'operation.titleFor' => ({required Object value}) => 'for ${value}',
 			'operation.titleAt' => ({required Object value}) => 'at ${value}',
+			'operation.segmentNow' => ({required Object description}) => 'Now ${description}',
 			'operation.testOperationSuffix' => 'Testing',
 			'operation.menu.showRstFields' => 'Show RST fields',
 			'operation.menu.showStateField' => 'Show State field',
@@ -6839,9 +6843,9 @@ extension on Translations {
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'Activity Types: ${first}, ${second} and ${more} more',
 			'activitiesView.reference' => 'Reference',
 			'activitiesView.invalidReference' => 'Not valid',
-			'activitiesView.duplicateReference' => 'Already added',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.duplicateReference' => 'Already added',
 			'activitiesView.searchHint' => 'Search by name, reference or anything else…',
 			'activitiesView.noSuggestions' => 'No matches',
 			'activitiesView.noSuggestionsHint' => 'Search by reference name or number above',
@@ -7353,9 +7357,9 @@ extension on Translations {
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
-			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
 			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
 			'settings.accounts.relayLoginUnavailable' => 'Couldn\'t reach the sync server needed to complete this login. Check your connection and try again.',
@@ -7867,9 +7871,9 @@ extension on Translations {
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
 			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',
 			'operationLocationScreen.moreDetails' => 'More Details',
-			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			_ => null,
 		} ?? switch (path) {
+			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',
 			'operationLocationScreen.controlsUnavailableRetry' => 'Retry',

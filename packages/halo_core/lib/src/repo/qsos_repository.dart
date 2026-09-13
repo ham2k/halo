@@ -749,49 +749,78 @@ class QsosRepository {
     return qsosFromRows(await _forOperationQuery(operationUuid, includeDeleted: includeDeleted).get());
   }
 
-  /// Rewrites the override on the operation's latest `start`/`break` row to
-  /// [override], so the current stretch follows an edit to the operation
-  /// (see `OperationsRepository.onLocalSave`). No segment, or one already
-  /// stating this: no write — a restamp is a revision every other device
-  /// receives, and a no-op one is churn on the sync. Returns whether a row
-  /// was written.
+  /// Brings the operation's segment rows up to date with a local edit (see
+  /// `OperationsRepository.onLocalSave`): the LATEST `start`/`break` row takes
+  /// [override], so the current stretch follows the edit, and EVERY row that
+  /// carries an override — the earlier segments and any `stop` — gets its
+  /// description recomposed, so a change to how a stretch is worded (a
+  /// reference renamed, a party naming its county) reaches rows already
+  /// written. Only a row whose override or description actually changes is
+  /// written: a restamp is a revision every other device receives, and a
+  /// no-op one is churn on the sync. Returns whether any row was written.
   ///
-  /// [describe] is called ONLY once a row is going to be written: composing
-  /// a description is an extension fan-out, too expensive to pay on an
-  /// unsegmented log's every save.
+  /// No segment rows at all — the common, unsegmented log — costs one query
+  /// and no [describe] call; composing a description is an extension fan-out
+  /// per row, which only a segmented log pays.
   ///
-  /// A null result CLEARS the stored description rather than keeping it.
-  /// Reaching here means the override is changing, so the old line describes
-  /// a location or a reference set the row no longer states — keeping it
-  /// would leave the row reading "at FN20rm" beside an override that says
-  /// FN31, and sync that contradiction to every device. Cleared, the row
-  /// falls back to what its own override can say (`EventRow`).
-  Future<bool> restampLatestSegment(
+  /// [describe] is handed each row's kind and the override it will state.
+  /// A null result means the description could not be composed in full. On
+  /// the row whose override is CHANGING it CLEARS the stored one rather than
+  /// keeping it: the old line describes a location or a reference set the
+  /// row no longer states, and keeping it would leave the row reading "at
+  /// FN20rm" beside an override that says FN31, and sync that contradiction
+  /// to every device. On a row whose override stands, null keeps what the
+  /// row has — a runtime that is down is no reason to blank a good line.
+  Future<bool> restampSegments(
     String operationUuid,
     Map<String, dynamic> override, {
-    Future<String?> Function()? describe,
+    Future<String?> Function(String kind, Map<String, dynamic> override)? describe,
   }) async {
+    final events = await eventsForOperation(operationUuid);
     Qso? latest;
-    for (final row in await eventsForOperation(operationUuid)) {
+    for (final row in events) {
       if (eventKindOpensSegment(row.eventKind)) latest = row;
     }
     if (latest == null) return false;
-    final event = latest.event ?? const <String, dynamic>{};
-    if (jsonEncode(event['operation']) == jsonEncode(override)) return false;
-    final description = await describe?.call();
-    await update(Qso(
-      uuid: latest.uuid,
-      operationUuid: latest.operationUuid,
-      data: {
-        ...latest.data,
-        'event': {
-          ...event,
-          'operation': override,
-          'description': description,
-        }..removeWhere((key, value) => key == 'description' && value == null),
-      },
-    ));
-    return true;
+
+    final rows = [
+      for (final row in events)
+        if ((row.event ?? const <String, dynamic>{})['operation'] is Map || row.uuid == latest.uuid) row,
+    ];
+    // Described in PARALLEL: each description is an extension fan-out with
+    // its own timeout, and a save awaits this whole pass — a rover's dozen
+    // segments must cost one hook latency, not twelve in a row.
+    final descriptions = await Future.wait(rows.map((row) {
+      final stored = (row.event?['operation'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+      final rowOverride = row.uuid == latest!.uuid ? override : stored;
+      return describe?.call(row.eventKind ?? 'break', rowOverride) ?? Future<String?>.value();
+    }));
+
+    var written = false;
+    for (final (i, row) in rows.indexed) {
+      final event = row.event ?? const <String, dynamic>{};
+      final stored = (event['operation'] as Map?)?.cast<String, dynamic>() ?? const <String, dynamic>{};
+      final rowOverride = row.uuid == latest.uuid ? override : stored;
+      final overrideChanged = jsonEncode(stored) != jsonEncode(rowOverride);
+      final description = descriptions[i];
+      final keepDescription = description == null && !overrideChanged;
+      final descriptionChanged = !keepDescription && description != event['description'];
+      if (!overrideChanged && !descriptionChanged) continue;
+      await update(Qso(
+        uuid: row.uuid,
+        operationUuid: row.operationUuid,
+        data: {
+          ...row.data,
+          'event': {
+            ...event,
+            'operation': rowOverride,
+            if (!keepDescription) 'description': description,
+          }..removeWhere((key, value) => key == 'description' && value == null),
+        },
+      ));
+      written = true;
+    }
+    return written;
   }
 
   /// Rewrites `our.call` on every real contact of the LATEST segment that
@@ -844,7 +873,7 @@ class QsosRepository {
   }
 
   /// Just the operation's event rows (`band = 'event'` — see [Qso.isEvent]),
-  /// oldest first. What the segment writers and [restampLatestSegment] read:
+  /// oldest first. What the segment writers and [restampSegments] read:
   /// decoding a whole 5000-QSO log to find a handful of markers is a cost
   /// paid on every local operation save.
   Future<List<Qso>> eventsForOperation(String operationUuid) async {

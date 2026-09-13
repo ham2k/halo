@@ -80,7 +80,7 @@ void main() {
   Widget host({
     List<Qso> existing = const [],
     CommandInterpreter? interpretCommand,
-    Future<Map<String, dynamic>> Function(Map<String, dynamic>)? decorateQsoBeforeSave,
+    Future<Map<String, dynamic>> Function(Map<String, dynamic>, Map<String, dynamic>)? decorateQsoBeforeSave,
     Stream<Map<String, dynamic>>? interpretationUpdates,
     void Function(String? message)? onCommandMessageChanged,
     CommandActionHandler? onCommandAction,
@@ -2747,14 +2747,16 @@ void main() {
     // fields. It has to run on EVERY save path — a QSO decorated only when
     // logged one way would export differently depending on how it was typed.
     Widget hostWith(
-      Future<Map<String, dynamic>> Function(Map<String, dynamic>) decorate, {
+      Future<Map<String, dynamic>> Function(Map<String, dynamic>, Map<String, dynamic>) decorate, {
       Qso? editing,
+      List<Qso> log = const [],
     }) =>
         MaterialApp(
           home: Scaffold(
             body: LoggingControls(
               radioService: tunedRadio,
               operation: operation,
+              qsos: log,
               qsosRepository: qsos,
               decorateQsoBeforeSave: decorate,
               editingQso: editing,
@@ -2762,7 +2764,7 @@ void main() {
           ),
         );
 
-    Future<Map<String, dynamic>> addExchange(Map<String, dynamic> qso) async => {
+    Future<Map<String, dynamic>> addExchange(Map<String, dynamic> qso, Map<String, dynamic> _) async => {
           ...qso,
           'their': {...(qso['their'] as Map?)?.cast<String, dynamic>() ?? {}, 'exchange': 'ZN5'},
         };
@@ -2804,6 +2806,67 @@ void main() {
 
       final logged = await waitForQsos(tester, 1);
       expect(logged.single.theirExchange, 'ZN5');
+    });
+
+    testWidgets('the hook is handed the operation that was true when the contact was made', (tester) async {
+      // A rover changes county at a `break`; a hook that projects "our county"
+      // onto a contact has to see the segment the contact falls in, or an
+      // EDIT of an old contact would carry it to wherever the operator is now
+      // — which is exactly what stamping the county at save time used to
+      // guard against, and what handing over the right operation makes
+      // unnecessary.
+      final breakRow = Qso(
+        uuid: 'break',
+        operationUuid: operation.uuid,
+        data: {
+          'band': 'event',
+          'startAtMillis': 2000,
+          'event': {
+            'event': 'break',
+            'operation': {
+              'refs': [
+                {'type': 'qp', 'location': 'WRRN'},
+              ],
+            },
+          },
+        },
+      );
+      final earlier = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'band': '20m',
+        'mode': 'CW',
+        'startAtMillis': 1000,
+      });
+      final seen = <String?>[];
+      Future<Map<String, dynamic>> record(Map<String, dynamic> qso, Map<String, dynamic> op) async {
+        final refs = (op['refs'] as List?) ?? const [];
+        seen.add(refs.isEmpty ? null : (refs.first as Map)['location'] as String?);
+        return qso;
+      }
+      Future<void> untilSeen(int count) async {
+        for (var i = 0; i < 50 && seen.length < count; i++) {
+          await tester.pump(const Duration(milliseconds: 10));
+        }
+      }
+
+      // Editing the contact made BEFORE the break: the base operation (which
+      // carries no `qp` ref) is what was true then, not the break's county.
+      await tester.pumpWidget(hostWith(record, editing: earlier, log: [earlier, breakRow]));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Sent'), '579');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await untilSeen(1);
+      expect(seen, [null]);
+
+      // A NEW contact belongs to the current segment — the county the break set.
+      await tester.pumpWidget(hostWith(record, log: [earlier, breakRow]));
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC');
+      await tester.pump();
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await untilSeen(2);
+      expect(seen, [null, 'WRRN']);
     });
 
     testWidgets('a QSO still saves when no decorator is wired', (tester) async {
@@ -6058,7 +6121,7 @@ void main() {
       // by accident and the test passes against the bug.
       await tester.pumpWidget(host(
         interpretCommand: slowNullInterpret,
-        decorateQsoBeforeSave: (data) async {
+        decorateQsoBeforeSave: (data, _) async {
           await Future<void>.delayed(const Duration(milliseconds: 60));
           return data;
         },

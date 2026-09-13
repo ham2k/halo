@@ -192,7 +192,14 @@ class LoggingControls extends StatefulWidget {
   /// Applied on EVERY save path (single, call list, call stack, edit), because
   /// a QSO decorated only when logged one way would export differently
   /// depending on how it was entered. When null the data is saved as-is.
-  final Future<Map<String, dynamic>> Function(Map<String, dynamic> qso)? decorateQsoBeforeSave;
+  ///
+  /// [operation] is the SEGMENT-EFFECTIVE one for the contact's own time, not
+  /// the operation as it stands now: an edit of a contact made before a
+  /// `break` projects the county, call and setup that were true when it was
+  /// made, so a hook need not stamp anything onto a contact to keep a later
+  /// edit from moving it.
+  final Future<Map<String, dynamic>> Function(Map<String, dynamic> qso, Map<String, dynamic> operation)?
+      decorateQsoBeforeSave;
 
   /// Async ref decoration via the extension runtime.
   final RefDecorator? decorateRef;
@@ -1169,7 +1176,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Future<Map<String, dynamic>> _decorated(Map<String, dynamic> data) async {
     final decorate = widget.decorateQsoBeforeSave;
     if (decorate == null) return data;
-    return decorate(data);
+    // A new contact has no `startAtMillis` yet (its time is automatic) and
+    // belongs to the CURRENT segment — not the base, which is what
+    // `effectiveAt(null)` answers.
+    final at = data['startAtMillis'] as int?;
+    return decorate(data, at == null ? _segmented.current : _segmented.effectiveAt(at));
   }
 
   /// [refs] with every declared serial field removed, so the sequence issues a

@@ -27,26 +27,34 @@ String buildGeneratedTitle(Translations t, OperationTitleFragments fragments) {
   ].join(' ');
 }
 
-/// What a segment row says about its stretch of the log — polo's
-/// `describeOperation`: one phrase per ref, the most specific fragment it
-/// offered ("at US-1000", "for ARRL 10G Sep", a plain title), then "at
-/// `<grid>`", joined with " • ". Per ref rather than merged by kind, so a
-/// two-ref segment keeps each ref's own phrase.
-String segmentDescriptionFor(Translations t, Iterable<OperationTitleSuggestion> suggestions, String? grid) {
-  final op = t.operation;
-  String? phraseOf(OperationTitleSuggestion s) {
-    if (s.atText case final at? when at.isNotEmpty) return op.titleAt(value: at);
-    if (s.forText case final f? when f.isNotEmpty) return op.titleFor(value: f);
-    if (s.title case final title? when title.isNotEmpty) return title;
-    if (s.subtitle case final subtitle? when subtitle.isNotEmpty) return subtitle;
-    return null;
-  }
-
-  return [
-    for (final s in suggestions)
-      ?phraseOf(s),
-    if (grid != null && grid.isNotEmpty) op.titleAt(value: grid),
-  ].join(' • ');
+/// What a segment row says about its stretch of the log: the operation's own
+/// generated title — "for NJQP: MORR at US-1234" — with the square appended
+/// to the places, and never the user's title or the callsign, which name the
+/// operation rather than the stretch. A `start` row states it outright
+/// ("For …"); a `break` says what changed ("Now for …"), which is what the
+/// row is there to mark.
+///
+/// Composed like the title so the two read alike: an operator who reads
+/// "for NJQP: MORR at US-1234" in the header finds the same words on the row
+/// that opened the stretch.
+String segmentDescriptionFor(
+  Translations t,
+  Iterable<OperationTitleSuggestion> suggestions,
+  String? grid, {
+  required String kind,
+}) {
+  final merged = mergeOperationTitleSuggestions(suggestions);
+  final places = [
+    if (merged.atText.isNotEmpty) merged.atText,
+    if (grid != null && grid.isNotEmpty) grid,
+  ].join(', ');
+  final sentence = buildGeneratedTitle(
+    t,
+    OperationTitleFragments(title: merged.title, forText: merged.forText, atText: places),
+  );
+  if (sentence.isEmpty) return '';
+  if (kind == 'break') return t.operation.segmentNow(description: sentence);
+  return sentence[0].toUpperCase() + sentence.substring(1);
 }
 
 /// The ref-derived part of [operation]'s title: the live preview from this

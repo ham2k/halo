@@ -9,7 +9,8 @@
 // `defineExtension` at import time, so nothing in it is reachable from
 // `node --test` (naqp's `exchange.ts` is separate for the same reason).
 
-import type { JSONValue } from "@ham2k/extension-sdk"
+import { operationForQso } from "@ham2k/extension-sdk"
+import type { JSONValue, OperationSegmentPayload } from "@ham2k/extension-sdk"
 
 import {
   ourLocationText,
@@ -85,15 +86,6 @@ export function claimableBand(band: string): boolean {
   return band !== '' && !WARC_BANDS.includes(band)
 }
 
-/// The key our own exports set on the operation's ref to tell `adifFields`
-/// what the log looked like — `false` for a log with no segments, where the
-/// operation's current location is true of every contact in it.
-///
-/// A marker on a COPY of the operation, never on the stored one: the ADIF hook
-/// is called per QSO by the core generator and has no other way to be told, and
-/// `stateparks` hands `adifForExport` a filtered operation for the same reason.
-export const SEGMENTED_MARKER = 'segmentedLog'
-
 /// The key our own ADIF export sets on the operation's ref: each contact's
 /// resolved exchange, by QSO uuid.
 ///
@@ -103,8 +95,9 @@ export const SEGMENTED_MARKER = 'segmentedLog'
 /// time. Without this the same export run wrote `ERI` in the Cabrillo and
 /// nothing at all in the ADIF, for a contact the scoreboard had counted.
 ///
-/// Carried on a copy of the operation, in-runtime, so this costs a reference
-/// rather than a payload. HALO-531 removes the need for it.
+/// Carried on a copy of the operation — of EVERY segment's operation, since the
+/// core generator hands the hook the segment-effective one — in-runtime, so
+/// this costs a reference rather than a payload.
 export const RESOLVED_MARKER = 'resolvedExchange'
 
 /// Every contact's exchange as the file should write it, by uuid — folded in
@@ -114,14 +107,14 @@ export function resolvedExchanges(
   party: QsoParty,
   operation: Record<string, JSONValue>,
   qsos: Record<string, JSONValue>[],
-  { segmented }: { segmented: boolean },
+  segments?: OperationSegmentPayload[],
 ): Record<string, string> {
   const lastLocation: Record<string, string> = {}
   const resolved: Record<string, string> = {}
   for (const qso of qsos) {
     if (qso.band === 'event' || qso.deleted === true) continue
     const uuid = str(qso.uuid)
-    const ours = parseLocations(party, ourLocationForQso(qso, operation, { segmented }))
+    const ours = parseLocations(party, ourLocationForQso(qso, operation, segments))
     const text = theirLocationForFile(party, qso, {
       weAreInParty: allInParty(ours),
       // A contact the scorer refuses teaches it nothing, so it may not teach
@@ -133,54 +126,22 @@ export function resolvedExchanges(
   return resolved
 }
 
-/// Whether this log has segments — a `break` or `start` row that restates the
-/// operation.
+/// The county WE were in for this contact: the operation's own location, read
+/// off the operation that was true when the contact was made.
 ///
-/// The export is handed the base operation and the whole log, and
-/// `ExportRequest` carries no resolved segments (docs/design/contests.md §5.1
-/// records this as an open shape, first noticed for a VHF rover's grid) — but
-/// the event ROWS are in the log it is given, so it can at least tell whether
-/// the operation ever changed under it.
-export function hasSegments(qsos: Record<string, JSONValue>[]): boolean {
-  return qsos.some((qso) => {
-    // Deleted rows are skipped, because `SegmentedOperation.from` skips them:
-    // a log whose only break has been deleted is NOT segmented, and treating it
-    // as though it were would keep preferring a stamp that nothing revises.
-    if (qso.band !== 'event' || qso.deleted === true) return false
-    const event = (qso.event as Record<string, JSONValue>) ?? {}
-    return (event.event === 'break' || event.event === 'start') && event.operation !== undefined
-  })
-}
-
-/// The county WE were in for this contact.
-///
-/// A rover's county changes mid-log through segments, which the export cannot
-/// resolve, so the county is stamped onto each contact as it is saved and read
-/// back from here.
-///
-/// **The stamp is only preferred on a log that HAS segments.** It is written
-/// once and never revised, so on an unsegmented log an operator who fixes a
-/// mistyped county in setup — the ordinary correction, and the one that
-/// rescores the whole log — would have the scoreboard say one county and the
-/// submitted file another, for every contact made before the fix. Without
-/// segments the operation's own location is true of the whole log by
-/// definition, so it wins; with them, only the stamp knows which stretch a
-/// contact belongs to.
-///
-/// That leaves one case this cannot reach: correcting a typo mid-log on a
-/// SEGMENTED log still leaves earlier contacts stamped with the old county.
-/// Fixing that needs the export to be given the segments themselves.
+/// A rover's county changes mid-log through segments, and the host hands the
+/// export the same resolved segments the scorer folds — so the file and the
+/// scoreboard read one answer. Nothing is stamped onto the contact and nothing
+/// on it is preferred: a county corrected in setup, or in a segment, reaches
+/// every contact of that stretch the moment it is corrected, in the score and
+/// in the file alike. Without segments the operation's location is true of the
+/// whole log by definition.
 export function ourLocationForQso(
   qso: Record<string, JSONValue>,
   operation: Record<string, JSONValue>,
-  { segmented }: { segmented: boolean },
+  segments?: OperationSegmentPayload[],
 ): string {
-  const current = ourLocationText(operation as Record<string, unknown>)
-  if (!segmented) return current
-  const stamped = str(refOfType(qso as Record<string, unknown>)?.ourLocation).trim()
-  // A contact logged before this extension existed, or synced from polo, has no
-  // stamp — the operation's own location is the only answer there is.
-  return stamped || current
+  return ourLocationText(operationForQso(operation, qso, segments) as Record<string, unknown>)
 }
 
 /// One contact's Cabrillo rows — one per pairing of our counties with theirs,
@@ -192,7 +153,7 @@ export function cabrilloRowsFor(
   qso: Record<string, JSONValue>,
   operation: Record<string, JSONValue>,
   ourCall: string,
-  { segmented = false, lastLocation }: { segmented?: boolean; lastLocation?: Record<string, string> } = {},
+  { segments, lastLocation }: { segments?: OperationSegmentPayload[]; lastLocation?: Record<string, string> } = {},
 ): string[][] {
   const qsoRef = refOfType(qso as Record<string, unknown>)
   const their = (qso.their as Record<string, JSONValue>) ?? {}
@@ -214,7 +175,7 @@ export function cabrilloRowsFor(
   const remembered = call ? lastLocation?.[call] : undefined
   const theirText = typed || remembered || fallbackTheirLocation(party, qso)
 
-  const ourLocations = parseLocations(party, ourLocationForQso(qso, operation, { segmented }))
+  const ourLocations = parseLocations(party, ourLocationForQso(qso, operation, segments))
   const weAreIn = allInParty(ourLocations)
 
   const standing: Standing = { weAreInParty: weAreIn, theyAreInParty: false }

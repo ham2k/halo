@@ -104,6 +104,31 @@ void main() {
     }
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  test('each file still claims only its own park on a segmented log', () async {
+    // The generator hands `adifFields` each contact's SEGMENT operation
+    // (`ExportRequest.segments`), so filtering the base operation's refs down
+    // to the one park is not enough: a two-fer with one break anywhere in the
+    // log — a grid change, a contest ending — would otherwise put the other
+    // park onto every record of this file.
+    final host = await startHost();
+    final base = operation(['US-0001', 'US-0002']);
+    final segments = [
+      {'fromMillis': -1, 'operation': base},
+      {'fromMillis': qsos[1]['startAtMillis'], 'operation': {...base, 'grid': 'FN20aa'}},
+    ];
+    final result = await host.invokeHook(
+      'export',
+      key: 'pota',
+      method: 'generateExport',
+      args: {'operation': base, 'qsos': qsos, 'segments': segments, 'exportType': 'pota-adif:US-0002'},
+      timeout: const Duration(seconds: 20),
+    ) as Map;
+    final content = result['content'] as String;
+
+    expect('<MY_POTA_REF:7>US-0002'.allMatches(content).length, 3, reason: 'every record, in both segments');
+    expect(content, isNot(contains('US-0001')));
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
   // A file uploaded to POTA is POTA's log. Activate a park that is also a
   // lighthouse and an export that asks every `adifFields` hook writes both
   // programs' MY_SIG pairs into every record — two SIG claims in one file,

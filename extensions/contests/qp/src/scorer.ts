@@ -132,11 +132,14 @@ export type QpScoresheet = {
   lastLocation: Record<string, string>
   bands: Record<string, number>
   modes: Record<string, number>
+  /// Band → super-mode (`CW`, `PHONE`, `DATA`) → contacts, for the summary's
+  /// band table. The super-mode, not the party's scoring mode: a party that
+  /// folds digital into CW for its rules still reports them apart. Optional
+  /// because a scoresheet cached by an earlier build has none.
+  bandModes?: Record<string, Record<string, number>>
   qsos: number
   points: number
   dupes: number
-  dayQsos: number
-  dayPoints: number
 }
 
 /// The prefix that makes a multiplier key per-band, per-mode, both or neither.
@@ -270,18 +273,15 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     return {
       mults: {}, counties: {}, states: {}, provinces: {}, entities: {}, creditedEntities: {},
       rareCounties: {}, bonuses: {}, bonusStations: {}, activatedCounties: {},
-      worked: {}, lastLocation: {}, bands: {}, modes: {},
-      qsos: 0, points: 0, dupes: 0, dayQsos: 0, dayPoints: 0,
+      worked: {}, lastLocation: {}, bands: {}, modes: {}, bandModes: {},
+      qsos: 0, points: 0, dupes: 0,
     }
   },
 
   // Mutates and returns the given scoresheet — see ContestScorer.scoreQso.
-  scoreQso({ scoresheet: sheet, qso, operation, ref, isNewDay }) {
-    if (isNewDay) {
-      sheet.dayQsos = 0
-      sheet.dayPoints = 0
-    }
-
+  // `isNewDay` is deliberately not read: a party is one period, and nothing
+  // in its score resets at midnight (see `summarizeScore`).
+  scoreQso({ scoresheet: sheet, qso, operation, ref }) {
     // A ref naming a party this build doesn't have, or one whose file is a
     // placeholder with no counties: 0 points and a visible alert, rather than
     // scoring against a county list that isn't theirs.
@@ -471,10 +471,12 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     }
     sheet.bands[band] = (sheet.bands[band] ?? 0) + 1
     if (mode) sheet.modes[mode] = (sheet.modes[mode] ?? 0) + 1
+    if (superMode) {
+      const byMode = (sheet.bandModes ??= {})[band] ??= {}
+      byMode[superMode] = (byMode[superMode] ?? 0) + 1
+    }
     sheet.qsos += 1
     sheet.points += value
-    sheet.dayQsos += 1
-    sheet.dayPoints += value
 
     const score: QsoScoreVerdict = { value, band }
     if (notices.length > 0) score.notices = notices
@@ -484,23 +486,28 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
 
   summarizeScore({ scoresheet: sheet, ref, scope }): Record<string, ScoreTally> {
     const party = partyFor(sheet.partyKey) ?? partyFor(ref?.ref)
-    const isDay = scope === 'day'
 
     const mult = Object.keys(sheet.mults).length || 1
-    const points = isDay ? sheet.dayPoints : sheet.points
+    const points = sheet.points
     const bonusPoints = party ? oneTimeBonuses(party, sheet) : 0
     const power = sheet.powerMult ?? 1
 
-    // Multipliers and bonuses are won across the whole party, so a day's figure
-    // is its own points against the running multiplier — the reading NAQP and
-    // the state-park events take of the same question. A party that adds its
-    // bonus after the multiplier says so; the rest fold it in before.
-    const total = isDay
-      ? Math.round(points * mult * power)
-      : Math.round(party?.options.bonusPostMultiplier
-        ? points * mult * power + bonusPoints
-        : (points + bonusPoints) * mult * power)
+    // A party that adds its bonus after the multiplier says so; the rest fold
+    // it in before.
+    const total = Math.round(party?.options.bonusPostMultiplier
+      ? points * mult * power + bonusPoints
+      : (points + bonusPoints) * mult * power)
 
+    // A QSO party is ONE period, however many UTC days it straddles — the
+    // sponsors publish one total, and the multipliers and bonuses are won
+    // across the whole log. So a day is never scored on its own: its tally
+    // is the party's running total as of that day's close (the harness
+    // hands over the sheet as it stood then), which on the last day IS the
+    // final score. The detail stays with the operation tally; a day shows
+    // the number alone.
+    const isDay = scope === 'day'
+
+    const arithmetic = arithmeticFor({ points, mult, bonusPoints, power })
     return {
       [TYPE]: {
         key: TYPE,
@@ -509,10 +516,18 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
         total,
         points,
         mults: mult,
-        qsos: isDay ? sheet.dayQsos : sheet.qsos,
-        label: labelFor({ points, mult, bonusPoints: isDay ? 0 : bonusPoints, power }),
+        qsos: sheet.qsos,
+        // The label is the section's TITLE in the information panel, and the
+        // short `summary` is not shown beside a tally that has a
+        // `longSummary` — so the event's name and its total go here, and the
+        // arithmetic behind the total opens the detail.
+        // A day carries the number alone in the score column, so its title is
+        // the event's name alone — the total would otherwise read twice.
+        label: isDay ? party?.short ?? 'QSO Party' : `${party?.short ?? 'QSO Party'}: ${fmtInteger(total)}`,
         summary: `${fmtInteger(total)}`,
-        longSummary: party && !isDay ? longSummaryFor(party, sheet, bonusPoints) : '',
+        longSummary: isDay
+          ? ''
+          : party ? [arithmetic, longSummaryFor(party, sheet, bonusPoints)].join('\n\n') : arithmetic,
         grid: true,
       },
     }
@@ -525,6 +540,27 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
 function defaultLocationFor(party: QsoParty, entityPrefix: string): string {
   if (!entityPrefix || entityPrefix === 'K' || entityPrefix === 'VE') return ''
   return party.options.dxLocationIsPrefix ? entityPrefix : 'DX'
+}
+
+/// One band's line of the summary table: every mode the party can be worked
+/// in, zeros included — an unworked mode is what an operator scanning the
+/// table is looking for — then the band's contacts.
+function modeBreakdown(byMode: Record<string, number>, total: number): string {
+  const cells = [['CW', 'CW'], ['PHONE', 'SSB'], ['DATA', 'Digital']]
+    .map(([superMode, name]) => `${fmtInteger(byMode[superMode] ?? 0)} ${name}`)
+  return `${cells.join(', ')}, **${fmtInteger(total)} total**`
+}
+
+/// Longest wavelength first — the order a band table reads in — rather than
+/// the alphabetical one `sort()` gives, which puts 160m between 15m and 20m.
+function byWavelength(a: string, b: string): number {
+  const meters = (band: string) => {
+    const match = /^([\d.]+)(m|cm|mm)$/.exec(band)
+    if (!match) return -1
+    const n = Number(match[1])
+    return match[2] === 'm' ? n : match[2] === 'cm' ? n / 100 : n / 1000
+  }
+  return meters(b) - meters(a) || a.localeCompare(b)
 }
 
 /// The bonuses that are won once for the whole log rather than per QSO: the
@@ -569,7 +605,8 @@ function activatedCounties(party: QsoParty, sheet: QpScoresheet): string[] {
     .map(([county]) => county)
 }
 
-function labelFor({ points, mult, bonusPoints, power }: { points: number; mult: number; bonusPoints: number; power: number }): string {
+/// How the total came about — `points × mults`, the bonus, the power factor.
+function arithmeticFor({ points, mult, bonusPoints, power }: { points: number; mult: number; bonusPoints: number; power: number }): string {
   const parts = [`${fmtInteger(points)} × ${fmtInteger(mult)}`]
   if (bonusPoints > 0) parts.push(`+ ${fmtInteger(bonusPoints)}`)
   // Only shown when it is doing something: every party but six has no power
@@ -636,9 +673,18 @@ function longSummaryFor(party: QsoParty, sheet: QpScoresheet, bonusPoints: numbe
     parts.push(bonusCalls.map((code) => worked(sheet.bonusStations, code)).join(' '))
   }
 
-  const bands = Object.keys(sheet.bands).sort()
+  const bands = Object.keys(sheet.bands).sort(byWavelength)
   if (bands.length > 0) {
-    parts.push(bands.map((band) => `**${band}**: ${fmtInteger(sheet.bands[band])} QSOs`).join('\n'))
+    parts.push(`### ${fmtInteger(sheet.qsos)} QSOs`)
+    const byMode = sheet.bandModes ?? {}
+    const all: Record<string, number> = {}
+    for (const band of bands) {
+      for (const [superMode, count] of Object.entries(byMode[band] ?? {})) all[superMode] = (all[superMode] ?? 0) + count
+    }
+    parts.push([
+      ...bands.map((band) => `**${band}**: ${modeBreakdown(byMode[band] ?? {}, sheet.bands[band])}`),
+      ...(bands.length > 1 ? [`**All bands**: ${modeBreakdown(all, sheet.qsos)}`] : []),
+    ].join('\n'))
   }
   if (sheet.dupes > 0) parts.push(`${fmtInteger(sheet.dupes)} duplicate${sheet.dupes === 1 ? '' : 's'}`)
 

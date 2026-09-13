@@ -16,7 +16,6 @@ import {
   cabrilloCall,
   claimableBand,
   cabrilloRowsFor,
-  hasSegments,
   exchangeInheritPrefix,
   exchangeOptionsFor,
   exchangeTransforms,
@@ -39,21 +38,34 @@ function operation(location: string): Record<string, JSONValue> {
 }
 
 function qso(
-  { call = 'K1ABC', location, ourLocation, entityPrefix = 'K', state, mode = 'CW' }: {
+  { call = 'K1ABC', location, ourLocation, entityPrefix = 'K', state, mode = 'CW', startAtMillis }: {
     call?: string
     location?: string
+    /// A stamp an earlier build left on the ref. Present in the fixtures only
+    /// to prove it is IGNORED.
     ourLocation?: string
     entityPrefix?: string
     state?: string
     mode?: string
+    startAtMillis?: number
   } = {},
 ): Record<string, JSONValue> {
   return {
     their: { call, ...(entityPrefix ? { entityPrefix } : {}), ...(state ? { state } : {}) },
     band: '20m',
     mode,
+    ...(startAtMillis !== undefined ? { startAtMillis } : {}),
     refs: [{ type: 'qp', ...(location !== undefined ? { location } : {}), ...(ourLocation ? { ourLocation } : {}) }],
   }
+}
+
+/// A log that changed county at 1000: the base operation's county before, [later]
+/// from then on — the payload the host sends as `ExportRequest.segments`.
+function segmentsTo(later: string, base = 'ALB') {
+  return [
+    { fromMillis: -1, operation: operation(base) },
+    { fromMillis: 1000, operation: operation(later) },
+  ]
 }
 
 test('a county line submits one row per pairing', () => {
@@ -65,42 +77,37 @@ test('a county line submits one row per pairing', () => {
   assert.deepEqual(pairs, [['ALB', 'ERI'], ['ALB', 'CHA'], ['REN', 'ERI'], ['REN', 'CHA']])
 })
 
-test('on a segmented log, the county WE were in comes from the contact', () => {
-  // A rover's county changes mid-log and the export sees only the base
-  // operation, so the stamp on the contact is the only record of where it was
-  // actually made.
-  const roving = qso({ location: 'ERI', ourLocation: 'REN' })
-  assert.equal(ourLocationForQso(roving, operation('ALB'), { segmented: true }), 'REN')
-  const rows = cabrilloRowsFor(party('NY'), roving, operation('ALB'), 'N0DEV', { segmented: true })
+test('on a segmented log, the county WE were in is the segment\'s, not anything on the contact', () => {
+  // A rover's county changes mid-log; the host hands the export the same
+  // resolved segments the scorer folds, so a contact made after the break is
+  // filed under the county the break established — whatever an earlier build
+  // stamped onto it when it was saved.
+  const before = qso({ location: 'ERI', startAtMillis: 500, ourLocation: 'REN' })
+  const after = qso({ location: 'ERI', startAtMillis: 1500, ourLocation: 'ALB' })
+  assert.equal(ourLocationForQso(before, operation('ALB'), segmentsTo('REN')), 'ALB')
+  assert.equal(ourLocationForQso(after, operation('ALB'), segmentsTo('REN')), 'REN')
+  const rows = cabrilloRowsFor(party('NY'), after, operation('ALB'), 'N0DEV', { segments: segmentsTo('REN') })
   assert.equal(rows[0][2].trim(), 'REN')
-  // A contact with no stamp — logged in polo, or before this shipped — falls
-  // back to the operation's own county rather than exporting a blank column.
-  assert.equal(ourLocationForQso(qso({ location: 'ERI' }), operation('ALB'), { segmented: true }), 'ALB')
 })
 
-test('without segments, a corrected county reaches the file', () => {
-  // The stamp is written once and never revised. An operator who logs 30
-  // contacts, notices the county is a typo and fixes it in setup rescores the
-  // whole log — and on an unsegmented log the operation's location is true of
-  // every contact in it, so the file has to follow rather than submit the
-  // county that was typed by mistake.
+test('a county corrected in a segment reaches every contact of that stretch', () => {
+  // The whole point of reading the segment rather than a stamp: six contacts
+  // logged under a mistyped county and then corrected at the break are filed
+  // under the correction, in the file as on the scoreboard. A stamp would have
+  // kept the typo on all six.
+  const stamped = qso({ location: 'ERI', startAtMillis: 1500, ourLocation: 'MORR' })
+  assert.equal(ourLocationForQso(stamped, operation('MORR'), segmentsTo('WRRN', 'MORR')), 'WRRN')
+})
+
+test('without segments, the operation\'s county is true of the whole log', () => {
+  // An operator who logs 30 contacts, notices the county is a typo and fixes it
+  // in setup rescores the whole log — and the file has to follow rather than
+  // submit the county that was typed by mistake.
   const stamped = qso({ location: 'ERI', ourLocation: 'ALB' })
-  assert.equal(ourLocationForQso(stamped, operation('ALL'), { segmented: false }), 'ALL')
+  assert.equal(ourLocationForQso(stamped, operation('ALL')), 'ALL')
+  assert.equal(ourLocationForQso(stamped, operation('ALL'), []), 'ALL')
   const rows = cabrilloRowsFor(party('NY'), stamped, operation('ALL'), 'N0DEV')
   assert.equal(rows[0][2].trim(), 'ALL')
-})
-
-test('a log knows whether it has segments, from the rows it carries', () => {
-  const contact = qso({ location: 'ERI' })
-  assert.equal(hasSegments([contact]), false)
-  // An event row that restates the operation is a segment; a note or a plain
-  // break carrying no override is not.
-  assert.equal(hasSegments([contact, { band: 'event', event: { event: 'note' } }]), false)
-  assert.equal(hasSegments([contact, { band: 'event', event: { event: 'break' } }]), false)
-  assert.equal(
-    hasSegments([contact, { band: 'event', event: { event: 'break', operation: { refs: [] } } }]),
-    true,
-  )
 })
 
 test('a serial and a name are columns only for the parties that exchange them', () => {
@@ -319,26 +326,6 @@ test('both files write what the station SENT, which is not always what it scores
   assert.equal(theirLocationForFile(party('NY'), dx, { weAreInParty: true }), 'DX')
 })
 
-test('a log whose only break was deleted is not a segmented log', () => {
-  // `SegmentedOperation.from` skips deleted rows, so this has to as well —
-  // otherwise the export keeps preferring a stamp that nothing will revise, on
-  // a log that is not segmented at all.
-  const contact = qso({ location: 'ERI' })
-  const segment = { band: 'event', event: { event: 'break', operation: { refs: [] } } }
-  assert.equal(hasSegments([contact, segment]), true)
-  assert.equal(hasSegments([contact, { ...segment, deleted: true }]), false)
-})
-
-test('the stamp is written once, so an edit cannot move an old contact', () => {
-  // `processQsoBeforeSave` runs on every EDIT as well as the first save. A
-  // rover who fixes a callsign typo an hour later would otherwise have that
-  // contact re-stamped with wherever they are now — the Cabrillo claiming a
-  // county they were not in when they made it, against a scoreboard still
-  // counting the one they were.
-  const stamped = qso({ location: 'ERI', ourLocation: 'ALB' })
-  assert.equal(ourLocationForQso(stamped, operation('REN'), { segmented: true }), 'ALB')
-})
-
 test('the ADIF and the Cabrillo agree about a remembered exchange', () => {
   // The scorer and the Cabrillo both score a blank exchange under the county
   // that station gave the first time. `adifFields` sees one contact at a time
@@ -346,12 +333,12 @@ test('the ADIF and the Cabrillo agree about a remembered exchange', () => {
   // and hands the answers over.
   const first = { ...qso({ location: 'ERI' }), uuid: 'q1' }
   const second = { ...qso({}), uuid: 'q2', band: '40m' }
-  const resolved = resolvedExchanges(party('NY'), operation('ALB'), [first, second], { segmented: false })
+  const resolved = resolvedExchanges(party('NY'), operation('ALB'), [first, second])
   assert.equal(resolved.q1, 'ERI')
   assert.equal(resolved.q2, 'ERI', 'the second contact carries the county from the first')
   // Event rows and deleted contacts are not contacts.
   const withNoise = resolvedExchanges(party('NY'), operation('ALB'),
-    [first, { band: 'event', uuid: 'e1' }, { ...second, deleted: true }], { segmented: false })
+    [first, { band: 'event', uuid: 'e1' }, { ...second, deleted: true }])
   assert.deepEqual(Object.keys(withNoise), ['q1'])
 })
 

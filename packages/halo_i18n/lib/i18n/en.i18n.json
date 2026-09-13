@@ -232,6 +232,7 @@
     "generalOperation": "General Operation",
     "titleFor": "for ${value}",
     "titleAt": "at ${value}",
+    "segmentNow": "Now ${description}",
     "testOperationSuffix": "Testing",
     "menu": {
       "showRstFields": "Show RST fields",

@@ -481,6 +481,21 @@ app-polo lets the call change for the whole operation at once — it had no
 segments when that was asked for — and so cannot say which stretch ran under
 which call.
 
+**Exports and the per-QSO hooks read the same segments the scorer does.**
+`ExportRequest.segments` carries the resolved timeline exactly as
+`ScoreQsosRequest.segments` does (sent only when the log is segmented), and the
+SDK's `operationForQso` answers "which operation was true for THIS contact" from
+it. The core ADIF generator resolves it before asking each `adifFields` hook,
+and the logging panel hands `processQsoBeforeSave` the segment-effective
+operation for the contact's own time (the current segment for a new contact).
+So a per-segment *value* — a rover's county, the grid at the key — is read off
+the segment wherever it is needed, and nothing needs to be stamped onto a
+contact at save time to survive a later edit: a stamp is a copy a correction
+cannot reach, and a county fixed in setup or in a segment has to reach every
+contact of that stretch, in the file as on the scoreboard. `qp` did stamp
+`ourLocation` on the ref before the segments were sent; the field is ignored
+where old logs still carry it.
+
 **The exports fan out over the segments' calls** (`SegmentedOperation.
 allStationCalls`), not the base operation's, or a log that changed call at a
 `break` would be offered the last call's files alone. The two multi-call cases
@@ -527,7 +542,10 @@ rather than track, an edit to the operation's refs or location after a break
 would leave the current stretch on the break's old values. So every local
 `saveData` that changes what a segment restates rewrites the latest
 `start`/`break` override to match (`OperationsRepository.onLocalSave` →
-`QsosRepository.restampLatestSegment`). That is the mechanism ROVERQTH rides
+`QsosRepository.restampSegments`), and every local save recomposes each
+segment row's description from the operation's title, writing only the rows
+whose text changed — so a change to how a stretch is worded reaches rows
+already written the next time the log is in hand. That is the mechanism ROVERQTH rides
 on: it writes the break, opens the Location screen, and saves what comes back
 onto the operation; the restamp carries it onto the break. Sync-received
 revisions never restamp — they arrive with their own event rows. There is no
@@ -675,8 +693,9 @@ sixteen extensions are ported; the ones still to come are the ones likely to
 stress the shape:
 
 - **VHF contests (M7)** — a rover's grid changes per segment, and the export
-  needs each QSO stamped with the grid true when it was made. That is a
-  per-segment *value*, not an inclusion decision, and neither flag expresses it.
+  needs each QSO written with the grid true when it was made. That is a
+  per-segment *value*, not an inclusion decision, and neither flag expresses it
+  — it is what `ExportRequest.segments` answers instead (below).
 - **QSO parties (M10)** — county-line operation lets one QSO count for two
   locations, so "which slice does this QSO belong to" stops having one answer.
 - **`georgia-pota` (M9)** — synthesises POTA refs from another extension's, so

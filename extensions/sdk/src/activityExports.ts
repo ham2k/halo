@@ -31,8 +31,10 @@ import type {
   ExportResult,
   HookContext,
   JSONValue,
+  OperationSegmentPayload,
 } from "./types.ts"
 import { exportFilename, startMillisOf } from "./exportNames.ts"
+import { segmentsWith } from "./segments.ts"
 import { createCachedTranslator } from "./i18n.ts"
 
 import en from "./i18n/activityExports.en.json" with { type: "json" }
@@ -164,14 +166,21 @@ export function activityExportHook(rules: ActivityExportRules) {
       // in this file — `mainHandler` below makes this program's own hook the
       // only one asked, so a park that is also a lighthouse owes two files and
       // neither claims the other's reference.
-      const refs = ((args.operation.refs as Record<string, JSONValue>[] | undefined) ?? []).filter(
-        (r) => r?.type !== rules.activationType || r?.ref === wanted,
-      )
-      const operation = { ...args.operation, refs: refs as unknown as JSONValue }
+      //
+      // The SEGMENTS too: the generator hands the hook each contact's own
+      // segment operation, so a two-fer with one break anywhere in the log
+      // would otherwise put the other park on every record of this file.
+      const claimOnly = (operation: Record<string, JSONValue>): Record<string, JSONValue> => ({
+        ...operation,
+        refs: ((operation.refs as Record<string, JSONValue>[] | undefined) ?? []).filter(
+          (r) => r?.type !== rules.activationType || r?.ref === wanted,
+        ) as unknown as JSONValue,
+      })
 
       const content = await adifForExport({
-        operation,
+        operation: claimOnly(args.operation),
         qsos: args.qsos,
+        segments: segmentsWith(args.segments, claimOnly),
         includePrivateData: args.includePrivateData,
         mainHandler: rules.key,
         includeFieldsFrom: rules.includeFieldsFrom,
@@ -295,6 +304,7 @@ export function huntingExportHook(rules: HuntingExportRules) {
       const content = await adifForExport({
         operation: args.operation,
         qsos: huntedQsos(args.qsos ?? []),
+        segments: args.segments,
         includePrivateData: args.includePrivateData,
         // The hunter file is submitted to ONE program too — see
         // `activityExportHook.generateExport`. `rules.key` is the ACTIVITY's
@@ -331,9 +341,13 @@ export function huntingExportHook(rules: HuntingExportRules) {
 /// branch and delegate again, forever. Being await-based there is no stack
 /// overflow to stop it — the export simply never returns.
 export async function adifForExport(
-  { operation, qsos, includePrivateData, mainHandler, includeFieldsFrom }: {
+  { operation, qsos, segments, includePrivateData, mainHandler, includeFieldsFrom }: {
     operation: Record<string, JSONValue>
     qsos: Record<string, JSONValue>[]
+    /// Forwarded as `ExportRequest.segments`, so the core generator hands
+    /// `adifFields` the segment-effective operation per contact. A delegating
+    /// export that drops it exports a rover's whole log under one county.
+    segments?: OperationSegmentPayload[]
     includePrivateData?: boolean
     mainHandler: string
     includeFieldsFrom?: string[]
@@ -347,6 +361,7 @@ export async function adifForExport(
   const entries = await hooks.invokeOne('export', 'adif', 'generateExport', {
     operation,
     qsos,
+    segments,
     exportType: 'adif',
     // Forwarded, or the delegate defaults to withholding and the user's
     // "include private info" setting silently does nothing here.

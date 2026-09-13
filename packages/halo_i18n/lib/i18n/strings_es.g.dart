@@ -282,6 +282,7 @@ class _Translations$operation$es extends Translations$operation$en {
 	@override String get generalOperation => 'Operación general';
 	@override String titleFor({required Object value}) => 'para ${value}';
 	@override String titleAt({required Object value}) => 'en ${value}';
+	@override String segmentNow({required Object description}) => 'Ahora ${description}';
 	@override late final _Translations$operation$menu$es menu = _Translations$operation$menu$es._(_root);
 	@override late final _Translations$operation$layout$es layout = _Translations$operation$layout$es._(_root);
 	@override late final _Translations$operation$export$es export = _Translations$operation$export$es._(_root);
@@ -3173,6 +3174,7 @@ extension on TranslationsEs {
 			'operation.generalOperation' => 'Operación general',
 			'operation.titleFor' => ({required Object value}) => 'para ${value}',
 			'operation.titleAt' => ({required Object value}) => 'en ${value}',
+			'operation.segmentNow' => ({required Object description}) => 'Ahora ${description}',
 			'operation.menu.showRstFields' => 'Mostrar campos RST',
 			'operation.menu.showStateField' => 'Mostrar campo Estado/Provincia',
 			'operation.menu.showGridField' => 'Mostrar campo Locador',
@@ -3493,9 +3495,9 @@ extension on TranslationsEs {
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'Tipos de actividad: ${first}, ${second} y ${more} más',
 			'activitiesView.reference' => 'Referencia',
 			'activitiesView.invalidReference' => 'No válida',
-			'activitiesView.duplicateReference' => 'Ya añadida',
 			_ => null,
 		} ?? switch (path) {
+			'activitiesView.duplicateReference' => 'Ya añadida',
 			'activitiesView.searchHint' => 'Busca por nombre, referencia o cualquier otra cosa…',
 			'activitiesView.noSuggestions' => 'Sin coincidencias',
 			'activitiesView.noSuggestionsHint' => 'Busca por nombre o número de referencia arriba',
@@ -4007,9 +4009,9 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
-			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esto continuará automáticamente en cuanto lo hagas.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esto continuará automáticamente en cuanto lo hagas.',
 			'settings.accounts.loginNoResponse' => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cancela e intenta conectar de nuevo.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
 			'settings.accounts.relayLoginUnavailable' => 'No se pudo conectar con el servidor de sincronización necesario para completar este inicio de sesión. Revisa tu conexión e inténtalo de nuevo.',
@@ -4521,9 +4523,9 @@ extension on TranslationsEs {
 			'versionLabel.version' => ({required Object version}) => 'Versión ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Parche ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
-			'notices.emptyHistory' => 'Aún no hay avisos',
 			_ => null,
 		} ?? switch (path) {
+			'notices.emptyHistory' => 'Aún no hay avisos',
 			'notices.webStorageInMemory' => 'Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.',
 			'notices.webStorageUnreliable' => 'Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.',
 			'notices.preferencesRestoredTitle' => 'Ajustes restaurados desde una copia',

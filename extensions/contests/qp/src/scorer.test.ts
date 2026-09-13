@@ -358,11 +358,32 @@ test('DE: a declared power class multiplies the score, and no claim multiplies b
   assert.equal(qrp.summary().total, undeclared.summary().total * 3)
 })
 
-test('a day\'s total is that day\'s points against the running multiplier', () => {
+test('a party is one period: a day shows the running total, never a score of its own', () => {
   const { summary, sheet } = run([qso({ location: 'ERI' }), qso({ call: 'K2DEF', location: 'CHA' })])
-  const mult = Object.keys(sheet.mults).length
-  assert.equal(summary('day').total, sheet.dayPoints * mult)
-  assert.equal(summary('operation').total, sheet.points * mult)
+  const day = summary('day')
+  const whole = summary('operation')
+  // The same figure under both scopes — a "day's points against the running
+  // multiplier" is a number no sponsor publishes. Summarized from the same
+  // sheet, so this is what the last day header carries.
+  assert.equal(day.total, whole.total)
+  assert.equal(day.summary, whole.summary)
+  assert.equal(whole.total, sheet.points * Object.keys(sheet.mults).length)
+  // The checklist is the operation's; a day carries the number alone, so the
+  // panel shows its short summary instead of repeating the grid per day —
+  // and its title is the event's name alone, or the total would read twice.
+  assert.equal(day.longSummary, '')
+  assert.equal(day.label, whole.label!.split(':')[0])
+  assert.ok(!day.label!.includes(day.summary!))
+})
+
+test('the summary is titled with the event and its total, and opens on the arithmetic', () => {
+  const { summary } = run([qso({ mode: 'CW', location: 'ERI' }), qso({ call: 'K2DEF', mode: 'CW', location: 'CHA' })])
+  const tally = summary()
+  // The label is what the information panel shows as the section title — and
+  // the only place the total is visible, since a tally with a `longSummary`
+  // does not show its short `summary`.
+  assert.equal(tally.label, `NYQP: ${tally.total}`)
+  assert.equal((tally.longSummary as string).split('\n\n')[0], `${tally.points} × ${tally.mults}`)
 })
 
 test('a party this build does not know scores nothing, and says which way it failed', () => {
@@ -479,4 +500,30 @@ test('a power class the party does not publish is not submitted under it', () =>
   const wi = { type: 'qp', ref: 'WI', power: 'QRP' } as Record<string, JSONValue>
   assert.equal(ourPowerClass(undefined, wi, partyFor('WI')!), 'QRP')
   assert.equal(ourPowerClass(undefined, { ...wi, ref: 'NV' }, partyFor('NV')!), undefined)
+})
+
+test('the band table counts CW, phone and digital apart, per band and in total', () => {
+  const { summary } = run([
+    qso({ band: '40m', mode: 'CW', location: 'ERI' }),
+    qso({ call: 'K2DEF', band: '40m', mode: 'SSB', location: 'CHA' }),
+    qso({ call: 'K3GHI', band: '20m', mode: 'FT8', location: 'ALB' }),
+    qso({ call: 'K4JKL', band: '160m', mode: 'CW', location: 'ALB' }),
+  ])
+  const lines = (summary().longSummary as string).split('\n')
+  // Longest wavelength first, not alphabetical — which would file 160m
+  // between 15m and 20m — and every mode named on every line, zeros included,
+  // so an unworked mode reads as "0", not as an absence.
+  assert.deepEqual(lines.filter((line) => /^\*\*(\d+m|All bands)\*\*/.test(line)), [
+    '**160m**: 1 CW, 0 SSB, 0 Digital, **1 total**',
+    '**40m**: 1 CW, 1 SSB, 0 Digital, **2 total**',
+    '**20m**: 0 CW, 0 SSB, 1 Digital, **1 total**',
+    '**All bands**: 2 CW, 1 SSB, 1 Digital, **4 total**',
+  ])
+})
+
+test('the band table separates digital from CW even where the party scores them as one mode', () => {
+  // DE folds data into CW for multipliers and dupes; the table still tells the
+  // operator which of the two they worked.
+  const { summary } = run([qso({ mode: 'FT8', location: 'NJ' })], { party: 'DE', ourLocation: 'NDE' })
+  assert.match(summary().longSummary as string, /\*\*20m\*\*: 0 CW, 0 SSB, 1 Digital, \*\*1 total\*\*/)
 })

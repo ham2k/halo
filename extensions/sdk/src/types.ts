@@ -700,6 +700,12 @@ export interface ActivityHook {
   /// displayed; but for the second and later calls of a call list it is issued
   /// after this hook has run, so don't derive anything that must hold for
   /// every QSO from it.
+  ///
+  /// `operation` is the SEGMENT-EFFECTIVE one for this contact — on a
+  /// segmented log, the operation as it stood when the contact was made, not
+  /// as it stands now — so an edit of an old contact projects what was true
+  /// then, and nothing here needs to stamp a value to protect it from a
+  /// later re-run.
   processQsoBeforeSave?(
     args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
     ctx: HookContext,
@@ -712,6 +718,10 @@ export interface ActivityHook {
 /// one, the first to carry a value wins and the rest are dropped, the contact's
 /// own fields ahead of any hook's. Same rule app-polo applies.
 export interface AdifFieldsHook {
+  /// `operation` is the SEGMENT-EFFECTIVE one for this contact — the core
+  /// ADIF generator resolves it from `ExportRequest.segments` before asking —
+  /// so a rover's county or a contest's setup is what was true when the
+  /// contact was made.
   fieldsForOneQSO(
     args: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
     ctx: HookContext,
@@ -754,6 +764,11 @@ export interface AdifImportHook {
 export interface ExportRequest {
   operation: Record<string, JSONValue>
   qsos: Record<string, JSONValue>[]
+  /// Present only when the operation has segments — the same payload
+  /// `ScoreQsosRequest` carries, so a file can say what was true for EACH
+  /// contact (a rover's county, the call at the key) the way the scorer does.
+  /// `operationForQso` resolves one contact's operation from it.
+  segments?: OperationSegmentPayload[]
   /// Which of this hook's suggested options to generate — required once a
   /// hook offers more than one via `suggestExportOptions`.
   exportType?: string

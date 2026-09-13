@@ -146,20 +146,22 @@ class HaLoServices {
     // who sets a new square through the Location screen after a BREAK would
     // otherwise keep scoring from the break's old one (contests.md §5.1.3).
     onLocalSave: (before, after) async {
-      if (before != null && !segmentOverrideDiffers(before.data, after.data)) return;
       final override = segmentOverrideOf(after.data);
-      // The segment's contacts follow its station call, unasked: the segment
-      // states which station was on the air for that stretch, so a contact
-      // inside it cannot say otherwise. The FIRST call — several live in the
-      // field as one string, and a contact holds one (HALO-507).
-      await qsos.restampSegmentStationCall(after.uuid, after.stationCalls.first);
-      // The description is composed only once a row is actually going to be
-      // written: it fans out to an extension hook per ref, and an
-      // unsegmented log (the common case) must not pay that on every save.
-      await qsos.restampLatestSegment(
+      if (before == null || segmentOverrideDiffers(before.data, after.data)) {
+        // The segment's contacts follow its station call, unasked: the
+        // segment states which station was on the air for that stretch, so a
+        // contact inside it cannot say otherwise. The FIRST call — several
+        // live in the field as one string, and a contact holds one (HALO-507).
+        await qsos.restampSegmentStationCall(after.uuid, after.stationCalls.first);
+      }
+      // On EVERY local save, not only one that moves a segment key: a row's
+      // description is composed from the operation's title, which an edit to
+      // anything the title reads can change. An unsegmented log costs one
+      // query here; only a segmented one pays the extension fan-out per row.
+      await qsos.restampSegments(
         after.uuid,
         override,
-        describe: () => segmentDescription(after, override),
+        describe: (kind, rowOverride) => segmentDescription(after, rowOverride, kind: kind),
       );
     },
   );
@@ -1835,11 +1837,11 @@ class HaLoServices {
   /// were the whole truth: it would replace a good description on a restamp,
   /// and no later pass recomposes it. The row falls back to what it can
   /// render from its own override instead (`EventRow`).
-  Future<String?> segmentDescription(Operation operation, Map<String, dynamic> override) async {
+  Future<String?> segmentDescription(Operation operation, Map<String, dynamic> override, {required String kind}) async {
     final resolved = Operation(uuid: operation.uuid, data: {...operation.data, ...override});
     final result = await operationTitles.suggestForRefs(resolved);
     if (result == null || !result.complete) return null;
-    return segmentDescriptionFor(t, result.suggestions, resolved.displayGrid);
+    return segmentDescriptionFor(t, result.suggestions, resolved.displayGrid, kind: kind);
   }
 
   /// START / BREAK / STOP / ROVERQTH: writes the segment boundary the scoring
@@ -1860,11 +1862,11 @@ class HaLoServices {
   /// Returns null on success — the hook's own `confirm` already told the
   /// operator what is happening, as `updateOperation` does.
   Future<CommandActionOutcome?> _markSegment(Map<String, dynamic> params) async {
-    final kind = asQsonString(params['kind']);
+    final kind = asQsonString(params['kind']) ?? '';
     if (kind != 'start' && kind != 'break' && kind != 'stop') {
       // Only a malformed extension action reaches this, so it must name the
       // real fault rather than borrow the no-operation message.
-      return (text: t.commands.unknownSegmentKind(kind: kind ?? ''), failed: true);
+      return (text: t.commands.unknownSegmentKind(kind: kind), failed: true);
     }
     final uuid = asQsonString(params['uuid']) ?? '';
     final operation = uuid.isEmpty ? null : await operations.get(uuid);
@@ -1874,7 +1876,12 @@ class HaLoServices {
     // them, and the one thing needed from the contacts is the earliest time.
     final events = await qsos.eventsForOperation(operation.uuid);
     final override = segmentOverrideOf(operation.data);
-    final description = await segmentDescription(operation, override);
+    // `kind` decides the wording: a break says what is NOW true, a start (or
+    // the start a first break has to open) states it plainly.
+    final description = await segmentDescription(operation, override, kind: kind);
+    final startDescription = kind == 'start'
+        ? description
+        : await segmentDescription(operation, override, kind: 'start');
     final hasStart = events.any((q) => q.eventKind == 'start');
     final hasSegment = events.any((q) => eventKindOpensSegment(q.eventKind));
 
@@ -1885,7 +1892,7 @@ class HaLoServices {
         kind: 'start',
         atMillis: firstAt == null ? nowMillis() : firstAt - 1000,
         operation: override,
-        description: description,
+        description: startDescription,
       );
     }
 

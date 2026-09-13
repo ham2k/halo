@@ -825,8 +825,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
             refreshActivityControls: (qso) => widget.services.extensions
                 .loggingControls(widget.operation.data, qso: qso)
                 .then((result) => result.loadFailed ? null : result.controls),
-            decorateQsoBeforeSave: (qso) => widget.services.extensions
-                .decorateQsoBeforeSave(qsoWithOperator(_withStationInfo(qso), widget.operation), widget.operation.data),
+            decorateQsoBeforeSave: (qso, operation) => widget.services.extensions
+                .decorateQsoBeforeSave(qsoWithOperator(_withStationInfo(qso), widget.operation), operation),
             decorateRef: widget.services.extensions.decorateRef,
             interpretCommand: widget.services.extensions.interpretCommand,
             interpretationUpdates: widget.services.extensions.commandInterpretationUpdates,

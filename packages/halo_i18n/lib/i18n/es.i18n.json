@@ -232,6 +232,7 @@
     "generalOperation": "Operación general",
     "titleFor": "para ${value}",
     "titleAt": "en ${value}",
+    "segmentNow": "Ahora ${description}",
     "menu": {
       "showRstFields": "Mostrar campos RST",
       "showStateField": "Mostrar campo Estado/Provincia",

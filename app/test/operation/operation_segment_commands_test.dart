@@ -58,7 +58,7 @@ void main() {
     expect(override.containsKey('refs'), isTrue);
     expect(override.containsKey('lat'), isTrue);
     // What the list shows — no refs here, so the square alone.
-    expect(segments.single.event!['description'], 'at FN31pr');
+    expect(segments.single.event!['description'], 'At FN31pr');
   });
 
   test('START on a started log adds nothing, and says so rather than confirming a move', () async {
@@ -86,15 +86,15 @@ void main() {
       'refs': [{'type': 'satellite', 'ref': 'AO-91'}],
     }));
     await mark('break');
-    expect(segmentRows(await rows()).last.event!['description'], 'at FN31pr');
+    expect(segmentRows(await rows()).last.event!['description'], 'Now at FN31pr');
   });
 
   test('a restamp that cannot compose a description clears the old one rather than leaving it beside a new override', () async {
-    // The dangerous shape: the row would say "at FN31pr" while its override
+    // The dangerous shape: the row would say "Now at FN31pr" while its override
     // says FN20aa, and sync that contradiction everywhere. Cleared, the row
     // falls back to the square its own override states.
     await mark('break');
-    expect(segmentRows(await rows()).last.event!['description'], 'at FN31pr');
+    expect(segmentRows(await rows()).last.event!['description'], 'Now at FN31pr');
 
     final throwing = HaLoServices(
       services.db,
@@ -168,7 +168,7 @@ void main() {
     final segments = segmentRows(all);
     expect(overrideGrid(segments[0]), 'FN31pr');
     expect(overrideGrid(segments[1]), 'FN20aa');
-    expect(segments[1].event!['description'], 'at FN20aa', reason: 'the row says where the stretch is now');
+    expect(segments[1].event!['description'], 'Now at FN20aa', reason: 'the row says where the stretch is now');
     final segmented = SegmentedOperation.from(operation: {...operation.data, 'grid': 'FN20aa'}, qsos: all);
     expect(segmented.effectiveAt(10000)['grid'], 'FN31pr');
     expect(segmented.current['grid'], 'FN20aa');
@@ -187,6 +187,28 @@ void main() {
     }));
     final restamped = segmentRows(await rows()).last;
     expect(((restamped.event!['operation'] as Map)['refs'] as List).single['ref'], 'US-0001');
+  });
+
+  test('every segment row is re-worded on save, not just the one whose override moved', () async {
+    // A row's description is composed from the operation's title, so a change
+    // to how a stretch is worded — a party naming its county, a reference
+    // renamed — has to reach rows already written, and a plain save is when
+    // the log is next in hand. Rows written by an earlier build carry its
+    // wording until then.
+    await mark('break');
+    for (final row in segmentRows(await rows())) {
+      await services.qsos.update(Qso(
+        uuid: row.uuid,
+        operationUuid: row.operationUuid,
+        data: {...row.data, 'event': {...row.event!, 'description': 'at FN31pr'}},
+      ));
+    }
+    await services.operations.saveData(Operation(uuid: operation.uuid, data: {...operation.data, 'userTitle': 'Renamed'}));
+
+    final segments = segmentRows(await rows());
+    expect(segments[0].event!['description'], 'At FN31pr', reason: 'the start keeps its own override, re-worded');
+    expect(segments[1].event!['description'], 'Now at FN31pr');
+    expect(overrideGrid(segments[0]), 'FN31pr', reason: 're-wording never moves an earlier segment');
   });
 
   test('with no operation it reports that rather than writing nowhere', () async {

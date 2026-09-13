@@ -22,17 +22,17 @@
 // every QSO. So "stateful rolling-location scoring" is a property of where the
 // county is READ from, not a mechanism this extension owns.
 //
-// The one place that cannot see segments is the EXPORT, which is handed the
-// base operation and the whole log (`ExportRequest` carries no segments —
-// §5.1 records this as an open shape, first noticed for a VHF rover's grid).
-// So the county we were in is stamped onto each QSO as it is saved, and the
-// Cabrillo and ADIF read that stamp in preference to the operation's own
-// location. A QSO logged before this extension existed, or synced from polo,
-// falls back to the operation's — which is what polo does for every QSO.
+// The EXPORT reads the same segments (`ExportRequest.segments`), and the core
+// ADIF generator hands `adifFields` the segment-effective operation per
+// contact, so the Cabrillo, the ADIF and the scoreboard all read our county
+// off ONE answer. Nothing about where we were is stamped onto a contact — a
+// stamp is a copy that a later correction cannot reach, and a county fixed in
+// setup or in a segment has to reach every contact of that stretch.
 
 import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import {
   adifForExport,
+  segmentsWith,
   contestScorer,
   defineExtension,
   exportFilename,
@@ -59,14 +59,11 @@ import {
   cabrilloRowsFor,
   RESOLVED_MARKER,
   resolvedExchanges,
-  SEGMENTED_MARKER,
   theirLocationForFile,
   exchangeInheritPrefix,
   exchangeOptionsFor,
   exchangeTransforms,
   fallbackTheirLocation,
-  hasSegments,
-  ourLocationForQso,
   preferredCodesFor,
 } from "./exchange.ts"
 import {
@@ -371,9 +368,11 @@ const ActivityHook = {
   },
 
   /// Mirrors the exchange into `their.exchange` (the column the QSO list shows,
-  /// and the only generic field anything outside this extension reads), and
-  /// stamps the county WE were in onto the contact — see the note about
-  /// exports and segments at the top of this file.
+  /// and the only generic field anything outside this extension reads) and
+  /// what WE sent into `our.exchange`. `operation` is the segment-effective
+  /// one for this contact, so an edit of an old contact re-projects what was
+  /// true then — see the note about exports and segments at the top of this
+  /// file.
   async processQsoBeforeSave(
     { qso, operation }: { qso: Record<string, JSONValue>; operation: Record<string, JSONValue> },
     _ctx: HookContext,
@@ -402,26 +401,18 @@ const ActivityHook = {
     const decided = qsoRef !== undefined
       && ['location', 'theirSerial', 'theirName'].some((field) => field in qsoRef)
 
-    // Written ONCE, and never revised — this hook runs on every edit as well as
-    // on the first save, so stamping unconditionally moved an old contact's
-    // county to wherever the operator happens to be now. A rover who fixes a
-    // callsign typo an hour later would have had that contact's Cabrillo line
-    // claim the county they had driven to, against a scoreboard still counting
-    // the one they made it from.
-    const alreadyStamped = str(qsoRef?.ourLocation).trim()
-
+    // Re-projected on every save, edits included: the host hands this hook
+    // the operation that was true when the contact was made, so a rover who
+    // fixes a callsign typo an hour later gets that contact's own county back,
+    // not the one they have driven to. (An `ourLocation` stamp an earlier
+    // build left on the ref is not read — the segment is the record.)
     const ourExchange = [
       str(qsoRef?.ourSerial),
       ourName(operation as Record<string, unknown>),
-      alreadyStamped || ours,
+      ours,
     ].filter((part) => part).join(' ')
 
     const patch: Record<string, JSONValue> = {}
-    // Only where there is something to record: an operation whose location has
-    // not been set yet would otherwise put an empty ref on every contact, and
-    // the export's fallback to the operation's own county already covers a
-    // contact that carries no stamp.
-    if (ours && !alreadyStamped) patch.refs = [{ type: TYPE, ourLocation: ours }]
     // A deliberate blank still projects, so clearing an exchange on an edit
     // clears the QSO row's column too — but only where this extension owns the
     // field's contents.
@@ -534,8 +525,12 @@ const RefHandler = {
     if (!party) return { for: manifest.shortName }
 
     const location = ourLocationText(operation as Record<string, unknown>, ref as Record<string, unknown>)
+    // The county rides in the title — `NJQP: MORR` — because that is what a
+    // rover's segment rows have to tell apart, and the title is what they are
+    // composed from. The subtitle spells the names out.
+    const codes = location ? splitLocations(location).join(COUNTY_LINE_SEPARATOR) : ''
     return {
-      for: party.short,
+      for: codes ? `${party.short}: ${codes}` : party.short,
       subtitle: location
         ? splitLocations(location).map((code) => nameForLocation(party, code)).join(' / ')
         : undefined,
@@ -559,15 +554,9 @@ const AdifFieldsHook = {
     if (!party) return []
 
     const qsoRef = refOfType(qso as Record<string, unknown>)
-    // `adifFields` is asked one QSO at a time and never sees the log, so it
-    // cannot tell a segmented operation from an unsegmented one — the Cabrillo
-    // can, and does. Our OWN export tells it (`generateExport` marks the
-    // operation it hands over), so the two files agree; the core's whole-log
-    // ADIF has no such marker and takes the stamp, which is right for a rover
-    // and stale for a county corrected mid-log on an unsegmented one. That is
-    // the gap HALO-531 closes by giving exports their segments.
-    const segmented = refOfType(operation as Record<string, unknown>)?.[SEGMENTED_MARKER] !== false
-    const ours = ourLocationForQso(qso, operation, { segmented })
+    // `operation` is already the segment-effective one for this contact (the
+    // core generator resolves it), so our county is simply the operation's.
+    const ours = ourLocationText(operation as Record<string, unknown>)
     const weAreInParty = allInParty(parseLocations(party, ours))
     const theirs = str(qsoRef?.location).toUpperCase()
     const ourSerial = str(qsoRef?.ourSerial)
@@ -665,7 +654,7 @@ const ExportHook = {
 
     const operation = args.operation
     const ourCall = str(operation.stationCall)
-    const segmented = hasSegments(args.qsos)
+    const segments = args.segments
     const lastLocation: Record<string, string> = {}
 
     if (args.exportType === 'cabrillo') {
@@ -682,7 +671,7 @@ const ExportHook = {
         // The same memory the scorer folds: a station worked again on another
         // band without retyping the exchange is scored under the county they
         // gave the first time, so the file has to say the same.
-        qsoParts: (qso) => cabrilloRowsFor(party, qso, operation, ourCall, { segmented, lastLocation }),
+        qsoParts: (qso) => cabrilloRowsFor(party, qso, operation, ourCall, { segments, lastLocation }),
       })
       return {
         filename: filenameFor(operation, args.qsos, 'log', args.compactFilenames),
@@ -691,20 +680,19 @@ const ExportHook = {
       }
     }
 
+    // Every contact's exchange, resolved once for the whole log and carried to
+    // `adifFields` on a COPY of the operation — of every segment's operation
+    // too, since the core generator hands the hook the segment-effective one
+    // and would otherwise hand it an unmarked copy. Never the stored operation.
+    const resolved = resolvedExchanges(party, operation, args.qsos, segments)
+    const marked = (op: Record<string, JSONValue>): Record<string, JSONValue> => ({
+      ...op,
+      refs: ((op.refs as Record<string, JSONValue>[] | undefined) ?? []).map((r) =>
+        r?.type === TYPE ? { ...r, [RESOLVED_MARKER]: resolved } : r),
+    })
     const content = await adifForExport({
-      // Marked so `adifFields` reads the county the same way the Cabrillo does
-      // — see SEGMENTED_MARKER. A copy, never the stored operation.
-      operation: {
-        ...args.operation,
-        refs: ((args.operation.refs as Record<string, JSONValue>[] | undefined) ?? []).map((r) =>
-          r?.type === TYPE
-            ? {
-              ...r,
-              [SEGMENTED_MARKER]: segmented,
-              [RESOLVED_MARKER]: resolvedExchanges(party, args.operation, args.qsos, { segmented }),
-            }
-            : r),
-      },
+      operation: marked(operation),
+      segments: segmentsWith(segments, marked),
       qsos: args.qsos,
       includePrivateData: args.includePrivateData,
       // This file is the CONTEST's log, so the core exporter asks this

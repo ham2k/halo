@@ -18,6 +18,7 @@ import {
   expectedSideband,
   hooks,
   oneLine,
+  operationForQso,
   qsoValues,
   renderTemplate,
   startMillisOf,
@@ -643,7 +644,7 @@ const ExportHandler = {
   },
 
   async generateExport(
-    { operation, qsos, compactFilenames, includePrivateData, mainHandler, includeFieldsFrom }: ExportRequest,
+    { operation, qsos, segments, compactFilenames, includePrivateData, mainHandler, includeFieldsFrom }: ExportRequest,
     ctx: HookContext,
   ): Promise<ExportResult> {
     const stationCall = String(operation.stationCall ?? 'UNKNOWN')
@@ -700,7 +701,12 @@ const ExportHandler = {
       // in-runtime hook composition — no bridge crossing. Which hooks, see
       // [fieldSetsPerHook]: this export's own alone, or every one of them when
       // the file claims no program.
-      const perHook = await fieldSetsPerHook(qso, operation, mainHandler, includeFieldsFrom)
+      //
+      // Against the operation as it stood when THIS contact was made: a
+      // rover's county or a contest's setup lives on a ref the segments
+      // restate, and a hook handed the base operation would write the last
+      // county onto every record of the log.
+      const perHook = await fieldSetsPerHook(qso, operationForQso(operation, qso, segments), mainHandler, includeFieldsFrom)
       // One record per QSO unless a hook expands it. In practice at most one
       // does — you are not activating an n-fer in two programs at once — so the
       // record count is simply the largest any hook asked for.

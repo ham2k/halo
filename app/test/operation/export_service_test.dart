@@ -492,6 +492,28 @@ void main() {
       expect(ourOf('AFTER')['state'], 'NV', reason: 'the base operation still says CA');
       expect(ourOf('AFTER')['county'], 'Washoe');
       expect(ourOf('AFTER')['grid'], 'DM09');
+
+      // And the segments themselves travel (`ExportRequest.segments`), the
+      // same wire shape the scoring pass sends: what a contest keeps on a REF
+      // — a QSO party's county — is not in `our`, so a hook can only read it
+      // per contact from the resolved timeline.
+      final segments = ((host.calls.last['args'] as Map)['segments'] as List).cast<Map>();
+      expect(segments.map((s) => (s['operation'] as Map)['county']), ['Marin', 'Washoe']);
+      expect(segments.last['fromMillis'], start + 1000);
+    });
+
+    test('an unsegmented log sends no segments', () async {
+      // The harness treats a single segment as no timeline, so a one-entry
+      // list would be pure payload on every ordinary export.
+      final operations = OperationsRepository(db);
+      final qsos = QsosRepository(db);
+      final created = await operations.create(stationCall: 'N0CALL');
+      await qsos.add(created.uuid, {'their': {'call': 'ONLY'}});
+
+      await sliced.generateExports((await operations.get(created.uuid))!, [
+        {'hookKey': 'adif', 'exportType': 'adif'},
+      ]);
+      expect((host.calls.last['args'] as Map).containsKey('segments'), isFalse);
     });
 
     // The segment is the default for a stretch; a contact that recorded where
