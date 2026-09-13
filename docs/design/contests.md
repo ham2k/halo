@@ -620,8 +620,7 @@ in a file the operator submits.
 | Piece | Why not yet |
 |---|---|
 | One export **per reference** | **Built elsewhere, and not by the core.** When this was written POTA and SOTA registered no `export` hook at all, so the two-pass collection would have been an interface with no caller. The activities work (ham2k/halo-dist#398) then gave them one: `sdk/src/activityExports.ts` offers one ADIF per activated reference by encoding the reference into the `exportType` (`pota-adif:US-1234`) and declaring `refType` for the QSO slicing. No core change was needed — `exportType` round-trips verbatim and the panel keys selections by `hookKey:exportType`. Whether the core should ALSO grow a per-reference axis is now a genuinely open question rather than a deferral; nothing needs it. |
-| `includeAllSegments` | Only means anything once an export is per-reference. |
-| `includeOtherRefHandlers` | Same, and honouring it changes ADIF output users have already submitted (see the implementation note below). |
+| `includeAllSegments`, `includeOtherRefHandlers` | **Superseded** — see *The two flags, settled* below. |
 
 Until then, several refs of one type **union**: one export covers the type,
 because quietly dropping half a log would be worse than covering both. And the
@@ -635,77 +634,50 @@ so it would answer every one and offer N+1 identical "ADIF Export" options. An
 export that wants slicing probably has to opt in, as `refType` already does,
 rather than the core inferring it from who answers.
 
-Two flags widen that default view, each answering a different question:
+#### The two flags, settled
 
-| Flag | Question it answers |
+This section once sketched two booleans widening the default view —
+`includeAllSegments` ("give me the whole log, not just the segments carrying my
+reference") and `includeOtherRefHandlers` ("let OTHER extensions contribute
+their fields to each QSO too"), the second being polo's `includeOtherRefs`
+under a name stating what it does. Neither was ever built. What was built
+answers each question more narrowly, and the flags are **superseded, not
+deferred**:
+
+| Question | What answers it |
 |---|---|
-| `includeAllSegments` | "Give me the whole log, not just the segments carrying my reference." The contest export, which covers the operation regardless of where the parks were. **Defaults off** — an export claims only its own reference's QSOs until it says otherwise. |
-| `includeOtherRefHandlers` | "Let OTHER extensions contribute their fields to each QSO too." A full-log ADIF, which should carry everyone's fields; a park submission, which should not. |
+| Whole log, or only the segments carrying my reference? | `ExportOption.refType`. Set it and the core slices the QSOs to the segments carrying that type (§5.1.4); omit it — core ADIF — and the file covers the whole log. Every contest and activity export sets it. Nothing has asked for "my type, but every segment anyway", which is all the flag would have added. |
+| May other extensions add fields to my records? | `ExportRequest.mainHandler` and `includeFieldsFrom`. An export names itself and LISTS the contributors it accepts — POTA takes `satellites`, because a park worked through a bird is still a park activation. Omitted, every `adifFields` hook contributes, which is polo's `includeOtherRefs` and is what the full ADIF does. A named list beats the boolean: POTA wants the satellite fields and not the lighthouse ones, and a yes/no cannot say so. |
+| What was true for THIS contact — a rover's county, the grid at the key? | `ExportRequest.segments` and the SDK's `operationForQso` (above). A per-segment *value*, which neither flag expressed. |
 
-**On the names.** `includeAllSegments` is what polo calls `combineSegmentRefs`
-— but polo's flag doesn't select segments at all. It chooses whether the
-effective operation's refs *follow* the segments or stay pinned to the base
-(`qsonToADIF.js:89-99`); neither branch filters QSOs.
+Of the four cases this section expected to stress the flags, the VHF rover
+and the QSO party are per-segment values and take `segments`; two programs
+at one site is `mainHandler`; `georgia-pota` (refs synthesised from another
+extension's) is untested, and is a question about `refType` slicing, not
+about either flag. The "is this slice mine?" hook floated as the general
+answer has no remaining caller.
 
-> **Corrected while implementing.** This section previously said polo has "no
-> segment-based QSO filtering anywhere" and that per-reference slicing is "new
-> in HaLo, not a port". Both are wrong. `filterQSOsWithSectionRefs` runs on
-> EVERY polo export (`generateExports.js:37`, implemented in
-> `@ham2k/lib-qson-tools`): it walks the log tracking `sectionRefs`, updating
-> them at each `break`/`start`, and keeps a QSO only if its section carries the
-> requested ref. That is `qsosFor`, shipped. So this is largely a PORT, which
-> lowers the risk rather than raising it.
->
-> **But polo only filters for a ref carrying an IDENTIFIER** —
-> `withSectionRefs.filter(ref => ref?.type && ref?.ref)`. A contest ref is
-> `{type: 'cqww', mode: 'CW'}` with no `ref`, so the list comes back empty and
-> polo exports the WHOLE log for it. Polo therefore does not slice contest
-> exports at all.
->
-> **HaLo deliberately does** (fix-on-port, §8). A Cabrillo containing contacts
-> made after the contest ended is a false claim in a submitted file, and
-> §5.1.3 already gates contest SCORING exactly this way — leaving the export
-> unsliced would have the score and the submission disagree, which is the thing
-> §5.1.3 and §8 both exist to prevent.
->
-> One more: this section says "contests answer the ref-less call, activities
-> answer the per-reference one". In polo the categories are the other way
-> round — contests register under `ref:<type>` (`CQWWExtension.js:27`), and
-> only three hooks are in `export` at all.
-
-`includeOtherRefHandlers` keeps polo's real semantics under a name that states
-them. Polo's `includeOtherRefs` gathers `[...qso.refs, ...operation.refs]`,
+**On polo's names, for anyone reading its source.** Polo's `combineSegmentRefs`
+does not select segments at all: it chooses whether the effective operation's
+refs *follow* the segments or stay pinned to the base (`qsonToADIF.js:89-99`),
+and neither branch filters QSOs. Its `filterQSOsWithSectionRefs`
+(`generateExports.js:37`, in `@ham2k/lib-qson-tools`) is the ancestor of
+`qsosFor` — but it filters only for a ref carrying an IDENTIFIER
+(`ref?.type && ref?.ref`), and a contest ref is `{type: 'cqww', mode: 'CW'}`,
+so polo exports a contest's WHOLE log. HaLo deliberately slices contests too
+(fix-on-port, §8): a Cabrillo holding contacts made after the contest ended is
+a false claim in a submitted file, and §5.1.3 gates contest SCORING the same
+way — leaving the export unsliced would have the score and the submission
+disagree. Polo's `includeOtherRefs` gathers `[...qso.refs, ...operation.refs]`,
 finds each one's `ref:<type>` handler, skips the export's own, and merges that
-handler's `adifFieldsForOneQSO` output — first definition wins, except a `false`
-value which removes a field. It is about which extensions get to CONTRIBUTE,
-not which refs are visible. Exactly one polo export sets it: core ADIF's "Full
-ADIF Export".
+handler's `adifFieldsForOneQSO` output, first definition winning; exactly one
+polo export sets it, the full ADIF.
 
-> **Note for implementation:** HaLo behaves as though that were always on —
-> `core/adif` calls `hooks.invokeAll('adifFields', …)` unconditionally, so every
-> contributor's fields land in every ADIF, including the contest ADIFs that
-> delegate to it. Honouring the flag means the default has to SUBTRACT, which
-> changes existing ADIF output for scoped exports.
-
-**Expect to revisit both flags.** They come from ONE motivating case,
-generalised into two booleans, with no prior art to validate them. Four of
-sixteen extensions are ported; the ones still to come are the ones likely to
-stress the shape:
-
-- **VHF contests (M7)** — a rover's grid changes per segment, and the export
-  needs each QSO written with the grid true when it was made. That is a
-  per-segment *value*, not an inclusion decision, and neither flag expresses it
-  — it is what `ExportRequest.segments` answers instead (below).
-- **QSO parties (M10)** — county-line operation lets one QSO count for two
-  locations, so "which slice does this QSO belong to" stops having one answer.
-- **`georgia-pota` (M9)** — synthesises POTA refs from another extension's, so
-  "segments carrying my own reference" is the wrong test by construction.
-- **Multi-program activations** (WWFF and POTA at one site) — two exports over
-  the same QSOs, each wanting its own subset.
-
-A hook answering "is this slice mine?" would cover all four, at the cost of a
-bridge crossing per segment. Not worth building on one case — but worth
-recording that this IS one case generalised, and that polo validates none of it.
+What stays open from the per-reference sketch is only **which segment heads a
+per-reference export** — the first carrying the reference, on the guess that
+is where the activation began — and whether the core should grow a
+per-reference axis at all now that `activityExports.ts` provides one without
+it.
 
 ### 5.2 The scorer contract and the caching design
 
