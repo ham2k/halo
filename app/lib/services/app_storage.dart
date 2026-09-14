@@ -396,7 +396,23 @@ Future<_Storage> _resolveStorage() async {
     return (directory: directory, relocated: true, sandboxed: true);
   }
 
-  final documents = await getApplicationDocumentsDirectory();
+  // On the platforms that stay put, Documents IS the app's home and a failure
+  // to resolve it is fatal. On the two that relocate it is only where an OLD
+  // install left its files, and Windows in particular can fail to answer —
+  // Documents redirected by OneDrive's Known Folder Move or by group policy
+  // to a location that is not there — for an operator who never had a file
+  // in it. That must not stop the app from booting into %LOCALAPPDATA%.
+  if (!Platform.isWindows && !Platform.isLinux) {
+    return (directory: await getApplicationDocumentsDirectory(), relocated: false, sandboxed: false);
+  }
+
+  Directory? documents;
+  try {
+    documents = await getApplicationDocumentsDirectory();
+  } catch (e, st) {
+    ErrorReportingService.report(e, st, context: 'app-storage:resolve-documents');
+  }
+
   try {
     final Directory target;
     if (Platform.isWindows) {
@@ -409,17 +425,15 @@ Future<_Storage> _resolveStorage() async {
       } else {
         target = Directory(p.join(localAppData, windowsDataFolderName));
       }
-    } else if (Platform.isLinux) {
+    } else {
       // `$XDG_DATA_HOME/<application id>`, which is where the preferences file
       // already sits — so on Linux moving the database there IS the
       // consolidation, with no preferences migration to run.
       target = await getApplicationSupportDirectory();
-    } else {
-      return (directory: documents, relocated: false, sandboxed: false);
     }
 
     await target.create(recursive: true);
-    final resolved = await migrateLegacyAppData(legacy: documents, target: target);
+    final resolved = documents == null ? target : await migrateLegacyAppData(legacy: documents, target: target);
     return (
       directory: resolved,
       relocated: p.equals(resolved.path, target.path),
@@ -430,7 +444,14 @@ Future<_Storage> _resolveStorage() async {
     // product holding it, an unwritable %LOCALAPPDATA%. Boot must survive
     // that: this whole exercise moves a working install to a tidier place,
     // and failing it must never be worse than not having tried. Everything
-    // keeps working from documents, and the next launch retries.
+    // keeps working from documents, and the next launch retries — unless
+    // Documents itself was the directory we could not get, in which case
+    // there is nowhere left to run from and boot fails on THIS error, the
+    // one that actually stopped it. Note the retry only covers THIS branch:
+    // a launch that booted without Documents has started a log in the
+    // target, and a later one that can see Documents again will not move an
+    // old log over it (see `_migrateDatabase`).
+    if (documents == null) rethrow;
     ErrorReportingService.report(e, st, context: 'app-storage:resolve');
     return (directory: documents, relocated: false, sandboxed: false);
   }
@@ -462,7 +483,20 @@ Future<Directory> migrateLegacyAppData({required Directory legacy, required Dire
 Future<Directory> _migrateDatabase({required Directory legacy, required Directory target}) async {
   final legacyDb = File(p.join(legacy.path, '$kDatabaseName.sqlite'));
   final targetDb = File(p.join(target.path, '$kDatabaseName.sqlite'));
-  if (!await legacyDb.exists() || await targetDb.exists()) return target;
+  if (!await legacyDb.exists()) return target;
+  if (await targetDb.exists()) {
+    // Both exist: a launch that could not see Documents started a fresh log
+    // in the target, and now the old one is back within reach. The target is
+    // the log the operator has been writing to since, so it stays — but the
+    // legacy file holds QSOs nothing will ever move, and without this report
+    // the state is indistinguishable from an ordinary completed migration.
+    ErrorReportingService.report(
+      StateError('legacy database left behind at ${legacyDb.path}'),
+      StackTrace.current,
+      context: 'app-storage:legacy-database-stranded',
+    );
+    return target;
+  }
 
   const suffixes = ['', '-wal', '-shm'];
   // Destinations are recorded BEFORE their copy, not after: a copy that

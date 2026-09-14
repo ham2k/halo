@@ -19,6 +19,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
 import 'package:path/path.dart' as p;
 
+import '../support/error_reporting_fakes.dart';
+
 void main() {
   late Directory root;
   late Directory legacy;
@@ -65,17 +67,24 @@ void main() {
     expect(await targetFile('$kDatabaseName.sqlite').readAsString(), 'db');
   });
 
-  test('never overwrites a database already in the new location', () async {
+  test('never overwrites a database already in the new location, and says so', () async {
     await writeLegacyDatabase(contents: 'stale');
     await targetFile('$kDatabaseName.sqlite').writeAsString('live');
 
-    final resolved = await migrateLegacyAppData(legacy: legacy, target: target);
+    final backend = FakeErrorReportingBackend();
+    await withErrorHooks(backend: backend, () async {
+      final resolved = await migrateLegacyAppData(legacy: legacy, target: target);
+      expect(resolved.path, target.path);
+    });
 
-    expect(resolved.path, target.path);
     expect(await targetFile('$kDatabaseName.sqlite').readAsString(), 'live');
     // Left where it is rather than deleted: it is the operator's data, and
     // this branch means we can't tell which of the two they'd want.
     expect(await legacyFile('$kDatabaseName.sqlite').readAsString(), 'stale');
+    // Two databases is how a launch that could not see Documents strands the
+    // old log: silently, this state reads as a finished migration, and the
+    // QSOs left behind are found only when someone knows to look.
+    expect(backend.exceptions.map((e) => e.context), ['app-storage:legacy-database-stranded']);
   });
 
   test('keeps running from the old location when the move fails', () async {
