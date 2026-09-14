@@ -10,9 +10,10 @@ Implemented in `packages/halo_widgets/lib/src/logging_controls.dart`, which owns
 beside it: the Radio control (`logging_controls_radio.dart`), the callsign lookup and scoring
 (`logging_controls_lookup.dart`), the command being typed (`logging_controls_command.dart`), the Time
 and Spotting controls (`logging_controls_time.dart`, `logging_controls_spotting.dart`), the contest
-exchange fields with their options menu and serial previews (`logging_controls_exchange.dart`), and the
-default-focus backstop (`logging_controls_focus.dart`); the call field's reading rules are
-`call_field_text.dart`, the row's sizing arithmetic
+exchange fields with their options menu and serial previews (`logging_controls_exchange.dart`), the
+activity refs and the controls they belong to (`logging_controls_refs.dart`), and the default-focus
+backstop (`logging_controls_focus.dart`); the call field's reading rules are `call_field_text.dart`,
+the row's sizing arithmetic
 `logging_controls_metrics.dart`, and the information area `logging_info_area.dart`.
 
 ## The three parts

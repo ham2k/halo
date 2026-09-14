@@ -51,6 +51,7 @@ import 'logging_controls_exchange.dart';
 import 'logging_controls_focus.dart';
 import 'logging_controls_lookup.dart';
 import 'logging_controls_radio.dart';
+import 'logging_controls_refs.dart';
 import 'logging_controls_metrics.dart';
 import 'logging_controls_spotting.dart';
 import 'logging_controls_time.dart';
@@ -709,8 +710,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     segmented: () => _segmented,
     onResolved: _onLookupResolved,
     // A stale QSO-scoped placeholder/transform must not linger onto the next
-    // entry — see [_refreshedActivityControls].
-    onCleared: () => _refreshedActivityControls = null,
+    // entry — see [ActivityRefsModel.controlsChanged].
+    onCleared: () => _refs.controlsChanged(),
   );
 
   /// The command being typed into the call field — see
@@ -751,6 +752,23 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     onFocusChanged: _onExchangeFocusChanged,
   );
 
+  /// The activity refs and the controls they belong to — see
+  /// [ActivityRefsModel]. What stays here is which of those controls are
+  /// PRIMARY fields ([_textControls]), and when the draft is cleared,
+  /// restored or logged.
+  late final _refs = ActivityRefsModel(
+    config: () => (
+      activityControls: widget.activityControls,
+      refreshActivityControls: widget.refreshActivityControls,
+      editingQso: widget.editingQso,
+      fieldsLocked: () => _fieldsLocked,
+      callAtCursor: () => _callAtCursor,
+    ),
+    isPopulating: () => _populating,
+    draftQsoData: (call) => _getCurrentQsoData(callOverride: call),
+    onControlsRefreshed: _onActivityControlsRefreshed,
+  );
+
   /// The Spotting control — see [SpottingControlModel].
   late final _spotting = SpottingControlModel(
     config: () => (
@@ -767,23 +785,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// never-repeating key (see build).
   String? _lastInfoSignature;
   int _infoGeneration = 0;
-
-  /// `widget.activityControls`, re-fetched for the current QSO once its
-  /// callsign lookup resolves — see `widget.refreshActivityControls`. Reset
-  /// to null (falling back to `widget.activityControls`) whenever the call
-  /// field is cleared, so a stale QSO-scoped placeholder/transform doesn't
-  /// linger onto the next entry.
-  List<Map<String, dynamic>>? _refreshedActivityControls;
-
-  /// Bumped whenever `widget.activityControls`/`operation.refs` change (see
-  /// `didUpdateWidget`) — a per-QSO refresh in flight from BEFORE that change
-  /// captures the generation it started against, and drops its own result on
-  /// return if the generation has since moved on. A callsign lookup that
-  /// started before a ref was added and resolves after must not overwrite
-  /// the fresh operation-level controls with its own stale snapshot.
-  int _activityControlsGeneration = 0;
-
-  List<Map<String, dynamic>> get _effectiveActivityControls => _refreshedActivityControls ?? widget.activityControls;
 
   /// The operation resolved into its segments. `widget.qsos` is the whole log,
   /// which is what carries the `break`/`start` event rows; an unsegmented
@@ -836,10 +837,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// fields in the row, and their own touched-tracking above.
   final Map<String, dynamic> _theirExtra = {};
 
-  /// Refs entered via activity controls for the QSO being composed,
-  /// keyed by control key.
-  final Map<String, List<Map<String, dynamic>>> _controlRefs = {};
-
   /// Every typed-exchange activity control currently contributed — `text` and
   /// `serial` alike, since both render the same way and differ only in who
   /// supplies the value.
@@ -864,7 +861,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// nothing to attach itself to.
   Iterable<Map<String, dynamic>> get _textControls {
     final active = _activeRefTypes;
-    return _effectiveActivityControls.where((c) {
+    return _refs.controls.where((c) {
       final input = c['input'] as Map?;
       final kind = input?['kind'];
       // `options` rides the same pipeline as `text`: it is a typed exchange
@@ -906,11 +903,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return decorate(data, at == null ? _segmented.current : _segmented.effectiveAt(at));
   }
 
-
-  /// Refs from `editingQso.refs` whose `type` matched no currently
-  /// registered activity control — round-tripped back into `refs` on save
-  /// rather than silently dropped, even though no UI can show them.
-  List<Map<String, dynamic>> _unmatchedRefs = const [];
 
   /// Set while editing an existing QSO and Delete has been tapped but not
   /// yet saved — mirrors app-polo's `_willBeDeleted` staged-delete flag.
@@ -1097,6 +1089,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _time.addListener(_onModelChanged);
     _spotting.addListener(_onModelChanged);
     _exchange.addListener(_onModelChanged);
+    _refs.addListener(_onModelChanged);
     // Population normally happens in didUpdateWidget, as editingQso
     // transitions from null to a selected QSO — but if this widget is ever
     // constructed with editingQso already set (rather than transitioning
@@ -1356,24 +1349,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // is being composed.
     if (!identical(oldWidget.activityControls, widget.activityControls) ||
         !identical(oldWidget.operation.data['refs'], widget.operation.data['refs'])) {
-      // A per-QSO callsign-lookup refresh (`_refreshActivityControlsFor`) can
-      // have cached a snapshot of `activityControls` from BEFORE this ref was
-      // added — `_effectiveActivityControls` prefers that cache over
-      // `widget.activityControls`, so without this a contest's exchange field
-      // stays invisible for the rest of the composing session even after the
-      // operation-level refresh above lands, until something else (a wipe, an
-      // edit ending) happens to clear it. The generation bump additionally
-      // catches a refresh that was ALREADY IN FLIGHT when this change
-      // happened — see `_activityControlsGeneration`'s own doc comment.
-      _refreshedActivityControls = null;
-      _activityControlsGeneration++;
+      // A per-QSO refresh cached before this change must not shadow it —
+      // see [ActivityRefsModel.controlsChanged].
+      _refs.controlsChanged();
       // `_scheduleLookup` only re-fetches per-QSO controls when the active
       // call CHANGES (`_lookup.lookupFor == activeCall` short-circuits it) — so
       // clearing the cache here would otherwise silently drop an
       // already-resolved lookup's guessed field (a suggested grid, say)
       // for the rest of the composing session, with nothing left to bring
       // it back except retyping the callsign.
-      if (_lookup.lookupFor != null) unawaited(_refreshActivityControlsFor(_lookup.lookupFor!));
+      if (_lookup.lookupFor != null) unawaited(_refs.refreshControlsFor(_lookup.lookupFor!));
       unawaited(_exchange.refreshSerialPreviews());
     }
     // The source is the panel's only handle on its held number: a source
@@ -1881,21 +1866,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // back out of the map rather than from `data`, so the two can only ever
     // show the same string.
     _notesController.text = (_currentQsoExtra['notes'] as String?) ?? '';
-    _controlRefs.clear();
-    _guessedRefs = const [];
-    _guessedRefsForCall = null;
-    _unmatchedRefs = [];
+    _refs.clear();
     _exchange.clear();
     final refs = (asQsonList(data['refs']))?.whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()) ?? const [];
     for (final ref in refs) {
       String? key;
-      for (final control in _effectiveActivityControls) {
+      for (final control in _refs.controls) {
         final input = control['input'] as Map?;
         if (input?['refType'] != ref['type']) continue;
         // A primary field reads ONE field out of the ref rather than owning the
         // whole ref, and several may share a type — so it never claims the ref,
-        // which must still round-trip through a refList control or
-        // `_unmatchedRefs`. `serial` counts here exactly as `text` does: it is
+        // which must still round-trip through a refList control or the
+        // unmatched refs. `serial` counts here exactly as `text` does: it is
         // one field of the ref, and skipping it would both leave the number
         // unrestored and `break` before any sibling field of the same ref
         // (cqwpx declares `ourSerial` before `theirSerial`), silently clearing
@@ -1919,11 +1901,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         key = control['key'] as String?;
         break;
       }
-      if (key != null) {
-        (_controlRefs[key] ??= []).add(ref);
-      } else {
-        _unmatchedRefs.add(ref);
-      }
+      _refs.restore(ref, controlKey: key);
     }
     _lookup.reset();
     _selectedControlKey = null;
@@ -2089,10 +2067,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // stays switched off for the rest of the session.
     _radio.settlePendingFreqEdit(flush: false);
     _lookup.reset();
-    _controlRefs.clear();
-    _guessedRefs = const [];
-    _guessedRefsForCall = null;
-    _unmatchedRefs = [];
+    _refs.clear();
     _exchange.clear();
     _currentQsoExtra.clear();
     _notesController.clear();
@@ -2132,14 +2107,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _wipeUndoSlot.dispose();
     _spotting.dispose();
     _exchange.dispose();
+    _refs.dispose();
     _notesController.dispose();
     _notesFocus.dispose();
-    for (final node in _controlRefFocus.values) {
-      node.dispose();
-    }
-    for (final controller in _controlRefController.values) {
-      controller.dispose();
-    }
     for (final node in _pillFocus.values) {
       node.dispose();
     }
@@ -2377,20 +2347,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
-  /// One focus node per activity ref control, owned here rather than inside
-  /// [RefTextInput] so expanding the control can move the cursor into it —
-  /// the field itself is rebuilt on every expand, the node outlives it.
-  final Map<String, FocusNode> _controlRefFocus = {};
-
-  FocusNode _refFocusFor(String key) =>
-      _controlRefFocus[key] ??= FocusNode(debugLabel: 'ref:$key');
-
-  /// One text controller per activity ref control, same reasoning as
-  /// [_controlRefFocus] — owned here so cursor-key field-hopping can read the
-  /// caret position without reaching into [RefTextInput]'s own State.
-  final Map<String, TextEditingController> _controlRefController = {};
-
-  TextEditingController _refControllerFor(String key) => _controlRefController[key] ??= TextEditingController();
+  /// A per-QSO refresh just installed its controls: any `suggestedValue` a
+  /// lookup produced can now fill fields the operator hasn't typed into, and
+  /// the refreshed controls may have introduced a serial field, or changed
+  /// the band a per-band sequence keys off.
+  void _onActivityControlsRefreshed() {
+    _exchange.applySuggestedValues();
+    unawaited(_exchange.refreshSerialPreviews());
+  }
 
   /// The field a control expands *into* — what the operator opened it to type
   /// in. Null for a control with nothing to type (Spotting with its comment
@@ -2414,10 +2378,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       default:
         // Every remaining control is an extension's. Only `refList` builds a
         // field to focus — the same condition that gave it a chip.
-        final control = _effectiveActivityControls
-            .where((c) => c['key'] == key && (c['input'] as Map?)?['kind'] == 'refList')
-            .firstOrNull;
-        return control == null ? null : _refFocusFor(key);
+        return _refs.isRefListControl(key) ? _refs.focusFor(key) : null;
     }
   }
 
@@ -2448,10 +2409,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       case 'notes':
         return [(_notesFocus, _notesController)];
       default:
-        final control = _effectiveActivityControls
-            .where((c) => c['key'] == key && (c['input'] as Map?)?['kind'] == 'refList')
-            .firstOrNull;
-        return control == null ? const [] : [(_refFocusFor(key), _refControllerFor(key))];
+        return _refs.isRefListControl(key) ? [(_refs.focusFor(key), _refs.controllerFor(key))] : const [];
     }
   }
 
@@ -3036,7 +2994,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             icon: MdiIcons.handWave,
             label: t.loggingControls.spottingControl,
           ),
-        for (final control in _effectiveActivityControls)
+        for (final control in _refs.controls)
           // `text` controls are primary fields (see `_textControls`), so only
           // refList contributes a secondary chip.
           if ((control['input'] as Map?)?['kind'] == 'refList')
@@ -3188,9 +3146,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         case 'more':
           specs.add(_moreControlSpec());
         default:
-          for (final control in _effectiveActivityControls) {
+          for (final control in _refs.controls) {
             if (control['key'] == key) {
-              specs.add(_activityControlSpec(control));
+              specs.add(activityControlSpec(_refs, control,
+                  onRefsChanged: _relookupForRefsChanged, decorate: widget.decorateRef));
               break;
             }
           }
@@ -3431,178 +3390,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           ],
         ),
       );
-
-  /// Applies references a `lookup` hook proposed for this call — the park or
-  /// summit `spot-history` mined out of a recent spot — onto the QSO being
-  /// composed. Returns whether anything actually landed.
-  ///
-  /// A proposed ref is only ever ADDED, never allowed to replace a ref whose
-  /// type the QSO already carries: the operator's own entry outranks a
-  /// guess, and re-proposing an existing type on every pass is exactly what
-  /// would make the ref-change re-lookup (see `_relookupForRefsChanged`)
-  /// cycle forever.
-  ///
-  /// Skipped entirely while editing a saved QSO — refs describe where the
-  /// station is *now*, which says nothing about where it was when a contact
-  /// already in the log was made.
-  bool _applyGuessRefs(Map<String, dynamic>? result, String forCall) {
-    if (widget.editingQso != null || _fieldsLocked || _populating) return false;
-    final guess = result?['guess'];
-    if (guess is! Map) return false;
-    final proposed = asQsonList(guess['refs'])?.whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()) ?? const [];
-    if (proposed.isEmpty) return false;
-
-    final claimedTypes = <Object?>{
-      for (final list in _controlRefs.values)
-        for (final ref in list) ref['type'],
-      for (final ref in _unmatchedRefs) ref['type'],
-    };
-    final added = <String, List<Map<String, dynamic>>>{};
-    final addedUnmatched = <Map<String, dynamic>>[];
-    for (final ref in proposed) {
-      final type = ref['type'];
-      if (type is! String || type.isEmpty || ref['ref'] == null) continue;
-      if (!claimedTypes.add(type)) continue;
-      final key = _refListControlKeyForType(type);
-      if (key != null) {
-        (added[key] ??= []).add(ref);
-      } else {
-        addedUnmatched.add(ref);
-      }
-    }
-    if (added.isEmpty && addedUnmatched.isEmpty) return false;
-
-    setState(() {
-      added.forEach((key, refs) => (_controlRefs[key] ??= []).addAll(refs));
-      // Rebuilt rather than mutated: `_unmatchedRefs` starts life as a const
-      // literal, which cannot be added to.
-      if (addedUnmatched.isNotEmpty) _unmatchedRefs = [..._unmatchedRefs, ...addedUnmatched];
-      // Remembered so they can be taken back when the call changes — see
-      // [_guessedRefs]. Appended, not replaced: the offline pass and the
-      // online pass both contribute for the same call.
-      _guessedRefsForCall = forCall;
-      _guessedRefs = [
-        ..._guessedRefs,
-        for (final refs in added.values) ...refs,
-        ...addedUnmatched,
-      ];
-    });
-    return true;
-  }
-
-  /// References put on the QSO by a lookup guess rather than by the operator,
-  /// and the callsign they were resolved for.
-  ///
-  /// A guessed ref answers "where is THIS station right now", so it must not
-  /// outlive the call that was asked about: correcting KI2D to KI2E would
-  /// otherwise log the second station at the first one's park. Only refs this
-  /// widget actually inserted are tracked, and [_clearGuessedRefs] removes
-  /// them BY IDENTITY — an operator-typed ref that happens to equal one of
-  /// these is not ours to take back.
-  String? _guessedRefsForCall;
-  List<Map<String, dynamic>> _guessedRefs = const [];
-
-  /// Removes every ref a previous call's guess contributed, leaving the
-  /// operator's own untouched. Returns whether anything was removed; the
-  /// caller owns the `setState`.
-  bool _clearGuessedRefs() {
-    _guessedRefsForCall = null;
-    if (_guessedRefs.isEmpty) return false;
-    final stale = _guessedRefs;
-    _guessedRefs = const [];
-    bool isStale(Map<String, dynamic> ref) => stale.any((s) => identical(s, ref));
-
-    var removed = false;
-    for (final list in _controlRefs.values) {
-      final before = list.length;
-      list.removeWhere(isStale);
-      removed |= list.length != before;
-    }
-    if (_unmatchedRefs.any(isStale)) {
-      _unmatchedRefs = [
-        for (final ref in _unmatchedRefs)
-          if (!isStale(ref)) ref,
-      ];
-      removed = true;
-    }
-    return removed;
-  }
-
-  /// The activity control that would own a ref of [type] — the refList
-  /// control whose `refType` matches. Primary fields (`text`/`serial`/
-  /// `options`) read one field out of a ref rather than owning it and several
-  /// may share a type, so they never claim one; a ref they match still has to
-  /// reach a refList control or fall through to `_unmatchedRefs` (same rule
-  /// `_applyFieldsFromData` follows when loading a saved QSO).
-  String? _refListControlKeyForType(String type) {
-    for (final control in _effectiveActivityControls) {
-      final input = control['input'] as Map?;
-      if (input?['refType'] != type) continue;
-      final kind = input?['kind'];
-      if (kind == 'text' || kind == 'serial' || kind == 'options') continue;
-      return control['key'] as String?;
-    }
-    return null;
-  }
-
-  SecondaryControlSpec _activityControlSpec(Map<String, dynamic> control) {
-    final refCount = _controlRefs[control['key']]?.length ?? 0;
-    final label = (control['label'] as String?) ?? control['key'] as String;
-    return SecondaryControlSpec(
-      key: control['key'] as String,
-      icon: resolveIconName(control['icon'] as String?),
-      // A check per reference marks a park-and-summit-style "twofer"; beyond
-      // two, a single check plus the count keeps the label from running long
-      // (e.g. a 5-park POTA rove would otherwise be "✓✓✓✓✓ POTA"). The plain
-      // check mark (U+2713) has no emoji presentation, so it always renders
-      // in the label's own text color instead of a fixed emoji color.
-      summary: switch (refCount) {
-        0 => label,
-        1 => '✓ $label',
-        2 => '✓✓ $label',
-        _ => '✓×$refCount $label',
-      },
-      // Accent the icon (issue #187) only once the field actually holds a
-      // reference — an active-but-empty control stays the default color.
-      iconColor: refCount > 0 ? resolveExtensionColor(control['color'] as String?) : null,
-      // A reference the pattern rejects is KEPT, so the chip counts it and reads
-      // "✓ POTA" like any other — and the field's own tint is gone the moment
-      // the control is shut, which is how it spends most of a QSO and all of
-      // the instant the contact is logged. So the chip carries the mark too, in
-      // the error pair the Radio chip wears with no band to log on and for the
-      // same reason: what is wrong is only cheap to fix while the station is
-      // still there. It outranks the extension's accent, which has no
-      // guaranteed contrast against the error fill.
-      alert: anyRefFailsPattern(
-        _controlRefs[control['key']] ?? const [],
-        (control['input'] as Map?)?['pattern'] as String?,
-      ),
-      expandedBuilder: (context) => SizedBox(
-        width: 160,
-        child: RefTextInput(
-          focusNode: _refFocusFor(control['key'] as String),
-          controller: _refControllerFor(control['key'] as String),
-          refType: (control['input'] as Map)['refType'] as String,
-          label: (control['label'] as String?) ?? '',
-          placeholder: (control['input'] as Map)['placeholder'] as String?,
-          pattern: (control['input'] as Map)['pattern'] as String?,
-          transforms: [
-            for (final t in ((control['input'] as Map)['transforms'] as List?) ?? const [])
-              RefTransform.fromMap((t as Map).cast<String, dynamic>()),
-          ],
-          refs: _controlRefs[control['key']] ?? const [],
-          // Re-run the lookup so a park/summit ref added after the call reaches
-          // the guess (POTA/SOTA lookup hooks key off the QSO's refs).
-          onChanged: (refs) {
-            setState(() => _controlRefs[control['key'] as String] = refs);
-            _relookupForRefsChanged();
-          },
-          decorate: widget.decorateRef,
-          labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-        ),
-      ),
-    );
-  }
 
   /// Sent and Rcvd, in the order the operator reads them — reversed by
   /// `switchSentRcvd`, which [_rstPair] resolves once for every surface.
@@ -4395,10 +4182,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final base = composing ? const <String, dynamic>{} : (widget.editingQso?.data ?? const <String, dynamic>{});
     final call = callOverride ?? _call;
     final startAtMillis = composing ? _time.manualStartAtMillis : _time.effectiveStartAtMillis;
-    final refs = _exchange.refsWithTextValues([
-      for (final list in _controlRefs.values) ...list,
-      ..._unmatchedRefs,
-    ]);
+    final refs = _exchange.refsWithTextValues(_refs.allRefs);
     return {
       ...base,
       // Unconditional (not `if (refs.isNotEmpty)`/`if (_radio.freq != null)`):
@@ -4821,9 +4605,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// at one park is exactly the case that produces a stack in the first
   /// place).
   void _scheduleLookup() {
-    if (_guessedRefsForCall != null && !_callsInField.contains(_guessedRefsForCall) && _clearGuessedRefs()) {
-      setState(() {});
-    }
+    _refs.takeBackGuessUnlessIn(_callsInField);
     _lookup.scheduleLookup();
   }
 
@@ -4856,10 +4638,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     switch (phase) {
       case LookupPhase.cached:
       case LookupPhase.offline:
-        _applyGuessRefs(result, call);
-        unawaited(_refreshActivityControlsFor(call));
+        _refs.applyGuessRefs(result, call);
+        unawaited(_refs.refreshControlsFor(call));
       case LookupPhase.online:
-        if (_applyGuessRefs(result, call)) _relookupForRefsChanged();
+        if (_refs.applyGuessRefs(result, call)) _relookupForRefsChanged();
     }
   }
 
@@ -4868,35 +4650,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _relookupForRefsChanged() {
     if (_populating) return;
     _lookup.relookupForRefsChanged();
-  }
-
-  /// Re-fetches `activityControls` for [activeCall]'s QSO via
-  /// `widget.refreshActivityControls`, discarding the result if the active
-  /// call moved on (or the widget was disposed) while awaiting — the same
-  /// staleness guard the lookup itself uses.
-  Future<void> _refreshActivityControlsFor(String activeCall) async {
-    final refresh = widget.refreshActivityControls;
-    if (refresh == null) return;
-    final requestGeneration = _activityControlsGeneration;
-    final controls = await refresh(_getCurrentQsoData(callOverride: activeCall));
-    if (!mounted || _callAtCursor != activeCall) return;
-    // The operation's own activity/ref set changed while this was in
-    // flight — that fetch was issued against the OLD set, and applying it
-    // now would silently reshadow the fresh `widget.activityControls`
-    // `didUpdateWidget` already installed (see `_activityControlsGeneration`).
-    if (requestGeneration != _activityControlsGeneration) return;
-    // Null is "the fetch failed", so the panel keeps the controls it is
-    // already showing rather than blanking the QSO in progress.
-    if (controls == null) return;
-    setState(() {
-      _refreshedActivityControls = controls;
-      // A lookup just resolved, so any suggestedValue it produced can now fill
-      // fields the operator hasn't typed into.
-      _exchange.applySuggestedValues();
-    });
-    // The refreshed controls may have introduced a serial field, or changed the
-    // band a per-band sequence keys off.
-    unawaited(_exchange.refreshSerialPreviews());
   }
 
   // ---- Logging ----
@@ -4961,14 +4714,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _gridController.clear();
     _stateController.clear();
     _theirNameOverride = null;
-    _unmatchedRefs = [];
     _gridTouched = false;
     _stateTouched = false;
     _lookup.cancelLookup();
     _lookup.reset();
-    _controlRefs.clear();
-    _guessedRefs = const [];
-    _guessedRefsForCall = null;
+    _refs.clear();
     _exchange.clear();
     _currentQsoExtra.clear();
     _notesController.clear();
@@ -5010,9 +4760,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       (widget.radioService == null && (_radio.freqController.text.trim().isNotEmpty || _radio.manualBand != null)) ||
       _time.manualStartAtMillis != null ||
       _theirNameOverride != null ||
-      _controlRefs.values.any((refs) => refs.isNotEmpty) ||
+      _refs.hasRefs ||
       _exchange.hasTypedValues ||
-      _unmatchedRefs.isNotEmpty ||
       _currentQsoExtra.isNotEmpty ||
       _ourExtra.isNotEmpty ||
       // A VALUE, not merely a key: a draft restored after a field was cleared
@@ -5076,7 +4825,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// the fields being edited still match the stored record. Lists compare
   /// as multisets (via sorted JSON) rather than element-by-element, since
   /// `refs` is the only list-valued field here and its order is an
-  /// artifact of how `_controlRefs` iterates, not a meaningful edit. A key
+  /// artifact of how the refs model iterates, not a meaningful edit. A key
   /// missing entirely, an empty Map/List/String, and an explicit null all
   /// count as equivalent — `_getCurrentQsoData()` always emits fields like
   /// `their.sent`/`mode`/`freq`/`band`/`refs`, even when blank/null/empty,

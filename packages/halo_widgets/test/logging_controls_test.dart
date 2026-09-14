@@ -3650,7 +3650,7 @@ void main() {
 
     testWidgets('a later failure keeps what an earlier refresh fetched', (tester) async {
       // The panel-level set is EMPTY here on purpose. Assigning null on
-      // failure would look harmless — `_effectiveActivityControls` falls back
+      // failure would look harmless — `ActivityRefsModel.controls` falls back
       // to `widget.activityControls` — which is exactly why the fallback must
       // not be the thing under test: with nothing to fall back to, dropping
       // the guard takes the field away and only this shape notices.
@@ -3683,7 +3683,7 @@ void main() {
     });
 
     testWidgets('a ref added to the operation is not shadowed by an earlier empty refresh', (tester) async {
-      // The scenario `_refreshedActivityControls` traps: a callsign lookup
+      // The scenario the refs model's refreshed set traps: a callsign lookup
       // resolved BEFORE the contest was added to the operation, caching an
       // empty per-QSO refresh. Adding the contest gives the operation a fresh
       // `activityControls` list — that has to win, not the stale cache, or
@@ -3720,7 +3720,7 @@ void main() {
 
     testWidgets('a per-QSO refresh already in flight when a ref is added cannot reshadow it on return',
         (tester) async {
-      // The race `_activityControlsGeneration` guards, distinct from the test
+      // The race `ActivityRefsModel.controlsChanged` guards, distinct from the test
       // above: there the stale refresh had already LANDED before the ref was
       // added. Here it's still IN FLIGHT — issued before, resolving after —
       // so the generation it started against has to be checked on return, not
