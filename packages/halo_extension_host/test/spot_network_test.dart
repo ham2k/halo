@@ -438,7 +438,8 @@ void main() {
       final host = await ExtensionHost.start(
         kernelSource: bundleSource('kernel'),
         extensions: [ExtensionBundle(key: 'tota', source: bundleSource('tota'))],
-        secrets: const {'tota': {'TOTA_API_KEY': 'tota-secret'}},
+        // Nothing injected: TOTA's key is a constant in its own bundle.
+        secrets: const {},
         fetchAllowlists: const {'tota': ['rozhledny.eu', 'www.rozhledny.eu']},
         httpClient: rec.client,
         onHostCall: (m, p) async => null,
@@ -461,8 +462,10 @@ void main() {
       // The endpoint takes a single tower_ref, so an n-fer is several posts.
       expect(rec.sent.length, 2);
       expect(rec.sent.first.method, 'POST');
-      // Only the KEY rides in the query string.
-      expect(rec.sent.first.url.queryParameters['key'], 'tota-secret');
+      // Only the KEY rides in the query string — asserted as present, never
+      // against the literal, which lives in the extension and nowhere else.
+      expect(rec.sent.first.url.queryParameters['key'], isNotEmpty);
+      expect(rec.sent.first.url.queryParameters.keys, ['key']);
       final body = jsonDecode(rec.sent.first.body) as Map<String, dynamic>;
       expect(body['callsign'], 'OK1ABC');
       expect(body['tower_ref'], 'OKR-0001');

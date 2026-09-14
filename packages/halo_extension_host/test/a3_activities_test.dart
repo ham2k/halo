@@ -29,12 +29,15 @@ void main() {
     );
   }
 
+  /// No `secrets` go in: the three key-gated awards carry their own keys as
+  /// constants now, so an injected value would be ignored and a test asserting
+  /// on one would be asserting about the harness.
   Future<ExtensionHost> hostFor(String key,
-      {String? apiKey, http.Client? client, List<String> domains = const []}) async {
+      {http.Client? client, List<String> domains = const []}) async {
     final host = await ExtensionHost.start(
       kernelSource: bundleSource('kernel'),
       extensions: [ExtensionBundle(key: key, source: bundleSource(key))],
-      secrets: apiKey == null ? const {} : {key: {'${key.toUpperCase()}_API_KEY': apiKey}},
+      secrets: const {},
       fetchAllowlists: {key: domains},
       httpClient: client,
       onHostCall: nullHostCall,
@@ -44,65 +47,55 @@ void main() {
   }
 
   group('keys and degradation', () {
-    test('WWFF keeps its references but offers no spots without a key', () async {
-      // The directory is public; only the feed is gated. A keyless build — a
-      // fresh checkout, a fork — must still resolve park references.
+    test('WWFF carries its own key, and sends it as a header', () async {
+      // The key is a constant in the bundle, not a build secret, so there is
+      // no keyless build to degrade for — what still matters is WHERE it
+      // travels. A header keeps it out of the URL, and so out of any log,
+      // error report or proxy trace of one.
       final rec = recorder('[]');
       final host = await hostFor('wwff', client: rec.client, domains: ['wwff.co', 'spots.wwff.co']);
 
-      final spots = await host.invokeHook('spots', key: 'wwff', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20)) as List;
-      expect(spots, isEmpty);
-      // Asked for nothing rather than asking and failing.
-      expect(rec.sent, isEmpty);
+      await host.invokeHook('spots', key: 'wwff', method: 'fetchSpots',
+          args: {'online': true}, timeout: const Duration(seconds: 20));
+
+      // Asserted as "present and non-empty", never against the literal: the
+      // value lives in one place and a copy here would be a second one to
+      // rotate.
+      final sentKey = rec.sent.single.headers['X-API-Key'];
+      expect(sentKey, isNotNull);
+      expect(sentKey, isNotEmpty);
+      expect(rec.sent.single.url.toString(), isNot(contains(sentKey!)));
+    }, timeout: const Timeout(Duration(seconds: 60)));
+
+    test('WWFF resolves park references with no network at all', () async {
+      // The directory is public and compiled in; only the feed is remote. A
+      // fork with the key rotated out, or an operator with no signal, must
+      // still resolve park references.
+      final rec = recorder('[]');
+      final host = await hostFor('wwff', client: rec.client, domains: ['wwff.co', 'spots.wwff.co']);
 
       final ref = await host.invokeHook('ref:wwffActivation', method: 'validateRef',
           args: {'ref': {'type': 'wwffActivation', 'ref': 'kff-0001'}}) as Map;
       expect(ref['valid'], true);
       expect(ref['normalized'], 'KFF-0001');
+      expect(rec.sent, isEmpty);
     }, timeout: const Timeout(Duration(seconds: 60)));
 
-    test('WWFF sends the key as a header once it has one', () async {
-      final rec = recorder('[]');
-      final host = await hostFor('wwff',
-          apiKey: 'wwff-secret', client: rec.client, domains: ['wwff.co', 'spots.wwff.co']);
-
-      await host.invokeHook('spots', key: 'wwff', method: 'fetchSpots',
-          args: {'online': true}, timeout: const Duration(seconds: 20));
-
-      expect(rec.sent.single.headers['X-API-Key'], 'wwff-secret');
-      // A header, so it stays out of the URL and out of any log of it.
-      expect(rec.sent.single.url.toString(), isNot(contains('wwff-secret')));
-    }, timeout: const Timeout(Duration(seconds: 60)));
-
-    test('TOTA puts its key in the list URL, and says so plainly when it has none', () async {
-      // TOTA's LIST is gated, not just its spots — the one award in the port
-      // that a keyless build cannot use at all.
-      final withKey = await hostFor('tota', apiKey: 'tota-secret');
+    test('TOTA puts its key in the list URL, which is the one that needs it', () async {
+      // TOTA gates its LIST, not just its spots — the one award here whose
+      // data file is unreachable without the key, which is why the key ships
+      // in the bundle rather than being something a build may lack.
+      final host = await hostFor('tota');
       // `getDefinition` is a fan-out, not a single-hook call — DataFileManager
       // reaches it the same way.
-      final entries = await withKey.invokeHookAll('dataFile', method: 'getDefinition');
+      final entries = await host.invokeHookAll('dataFile', method: 'getDefinition');
       final tota = entries
           .map((e) => (e['value'] as Map))
           .firstWhere((d) => d['key'] == 'tota-all-towers');
-      // `url` is a function resolved per refresh, not a static string.
-      expect(tota['url'], contains('key=tota-secret'));
-
-      final posted = await withKey.invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
-        'operation': {'stationCall': 'OK1ABC', 'refs': [{'type': 'totaActivation', 'ref': 'OKR-0001'}]},
-        'freq': 14285,
-      }, timeout: const Duration(seconds: 20)) as Map;
-      // No client supplied, so the real fetch is attempted and fails — what
-      // matters is that it got past the key check rather than short-circuiting.
-      expect(posted['ok'], false);
-
-      final without = await hostFor('tota');
-      final result = await without.invokeHook('spots', key: 'tota', method: 'postSelfSpot', args: {
-        'operation': {'stationCall': 'OK1ABC', 'refs': [{'type': 'totaActivation', 'ref': 'OKR-0001'}]},
-        'freq': 14285,
-      }, timeout: const Duration(seconds: 20)) as Map;
-      expect(result['ok'], false);
-      expect(result['message'], contains('no TOTA API key'));
+      // `url` is a function resolved per refresh, not a static string. Asserted
+      // on the PARAMETER rather than the value, which lives in one place.
+      expect(tota['url'], contains('key='));
+      expect(Uri.parse(tota['url'] as String).queryParameters['key'], isNotEmpty);
     }, timeout: const Timeout(Duration(seconds: 120)));
   });
 
@@ -176,8 +169,7 @@ void main() {
       // every spot would land in January 1970.
       final rec = recorder('[{"activator":"w1aw","reference":"KFF-0001","frequency_khz":14285,'
           '"mode":"ssb","spot_time":1782000000,"remarks":"up 5","spotter":"g1abc"}]');
-      final host = await hostFor('wwff',
-          apiKey: 'k', client: rec.client, domains: ['wwff.co', 'spots.wwff.co']);
+      final host = await hostFor('wwff', client: rec.client, domains: ['wwff.co', 'spots.wwff.co']);
 
       final spots = (await host.invokeHook('spots', key: 'wwff', method: 'fetchSpots',
           args: {'online': true}, timeout: const Duration(seconds: 20)) as List).cast<Map>();
@@ -195,7 +187,7 @@ void main() {
           '{"id":2,"callsign":"K2ABC","reference":"LLUS-0002","reference_name":"George",'
           '"frequency":7120,"mode":"SSB","updated_at":"2026-07-01T12:05:00Z"}'
           ']');
-      final host = await hostFor('llota', apiKey: 'k', client: rec.client, domains: ['llota.app']);
+      final host = await hostFor('llota', client: rec.client, domains: ['llota.app']);
 
       final spots = (await host.invokeHook('spots', key: 'llota', method: 'fetchSpots',
           args: {'online': true}, timeout: const Duration(seconds: 20)) as List).cast<Map>();

@@ -379,17 +379,19 @@ a name the catalog can serve — carries the operator's settings, panel values
 and account credentials across on its first install. Copied, not moved: the
 built-in's own state stays where it is.
 
-Two rules bend for these, and only for them:
+One rule bends for these, and only for them:
 
-- **Build secrets.** An installed extension normally sees none, whatever key
-  it claims. One holding a `ham2k-` key sees the ones its name grants, because
-  that prefix is refused to anything Ham2K did not put there. `ham2k-sota`
-  needs its OAuth client id and `ham2k-wwff` its API key; without this they
-  install, load, and fail at the first login.
 - **Built-in collisions.** An installed bundle may not claim a key the app
   ships — judged against what the app is currently OFFERING, which under the
   catalog experiment is the core extensions and nothing else. `ham2k-lookup`
   is both a built-in and a pre-load, and could otherwise never install.
+
+**Build secrets are not among them, and used to be.** A pre-load holding a
+`ham2k-` key could once read the values its name granted. Nothing needs that
+now: every value it carried — SOTA's OAuth client id, WWFF's API key — ships
+as a constant inside the extension that uses it, because these bundles are
+served to anyone who asks and a `.h2kext` is a zip. An installed extension
+sees no build secret, whatever key it claims and wherever it came from.
 
 ### Installing from the catalog
 

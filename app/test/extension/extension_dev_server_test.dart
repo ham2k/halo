@@ -299,13 +299,13 @@ void main() {
       expect(visibleSecretsFor(shipped, const {'POTA_API_KEY': ''}), isEmpty);
     });
 
-    test('the catalog\'s copy of a built-in reads the same secrets the built-in did', () {
-      // The whole point of the reserved-prefix opening. The policy builds its
-      // allowed prefix from the KEY, so asked as `ham2k-sota` it looks for
-      // `HAM2K_SOTA_*` and the value SOTA actually needs —
-      // `SOTA_OAUTH_CLIENT_ID_PROD` — matches nothing. The opening would then
-      // grant precisely the empty set it exists to avoid, and the extension
-      // installs, loads, and fails at the first login with nothing to say why.
+    test('the catalog\'s copy of a built-in reads nothing either', () {
+      // The reserved prefix is what lets a bundle CLAIM a `ham2k-` key at the
+      // store's door; it grants nothing here. An opening used to sit on it so
+      // a twin could read what its built-in namesake did — and every value it
+      // carried has since moved into the extension as a constant, because the
+      // catalog serves these bundles to anyone and a `.h2kext` is a zip.
+      // Reinstating it silently is the regression this catches.
       const preloaded = ExtensionInfo(
         key: 'ham2k-sota',
         file: 'index.js',
@@ -313,13 +313,7 @@ void main() {
         name: 'SOTA',
         source: ExtensionSource.installed,
       );
-      expect(
-        visibleSecretsFor(preloaded, const {'SOTA_OAUTH_CLIENT_ID_PROD': 'real-client-id'}),
-        {'SOTA_OAUTH_CLIENT_ID_PROD': 'real-client-id'},
-      );
-      // And it reaches no further than the built-in could: stripping the
-      // prefix must not hand it somebody else's namespace.
-      expect(visibleSecretsFor(preloaded, const {'WWFF_API_KEY': 'nope'}), isEmpty);
+      expect(visibleSecretsFor(preloaded, const {'SOTA_OAUTH_CLIENT_ID_PROD': 'real-client-id'}), isEmpty);
     });
   });
 

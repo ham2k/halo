@@ -5,9 +5,8 @@
 // accrued across several visits — hence `activates: 'once'`, unlike POTA's
 // per-day activation.
 //
-// The list is public; the spot feed and spot posting go through an API key
-// (`host.secret('WWFF_API_KEY')`), so a build without one keeps the
-// references and simply offers no spots.
+// The list is public; the spot feed and spot posting go through the award's
+// own API key, which ships in this bundle as a constant (see WWFF_API_KEY).
 
 import {
   activityExportHook,
@@ -91,13 +90,19 @@ interface WWFFApiSpot {
   spotter?: string
 }
 
-/// The API key rides as a header on every call to the award's own endpoints.
-/// Null when the build has none, in which case there is nothing to send and the
-/// caller says so rather than trying.
-async function apiHeaders(): Promise<Record<string, string> | null> {
-  const key = await host.secret('WWFF_API_KEY')
-  if (!key) return null
-  return { 'X-API-Key': key, Accept: 'application/json' }
+/// The key WWFF issued Ham2K, on every call to its own endpoints.
+///
+/// A CONSTANT, not a build secret, and deliberately: this extension ships as a
+/// bundle the catalog serves to anyone, and a `.h2kext` is a zip — so a value
+/// inside it is readable by whoever downloads it, whatever the app does with
+/// it. It was never confidential once shipped, and a policy implying otherwise
+/// only misled whoever read it. Rotating it means a release, so treat it as
+/// published.
+const WWFF_API_KEY = 'WWFFSPOTThT0LmVYGuG0YzIL'
+
+/// The key rides as a header on every call to the award's own endpoints.
+function apiHeaders(): Record<string, string> {
+  return { 'X-API-Key': WWFF_API_KEY, Accept: 'application/json' }
 }
 
 const SpotsHook = {
@@ -105,10 +110,7 @@ const SpotsHook = {
 
   async fetchSpots(_args: Record<string, never>, ctx: HookContext): Promise<Spot[]> {
     if (!ctx.online) return []
-    const headers = await apiHeaders()
-    // No key, no spots — the references still work offline, which is most of
-    // what the extension is for.
-    if (!headers) return []
+    const headers = apiHeaders()
 
     const response = await host.fetch(SPOTS_URL, { headers })
     if (response.status !== 200) throw new Error(`WWFF API returned HTTP ${response.status}`)
@@ -203,8 +205,7 @@ async function postSpotToWWFF(
     spotterCall?: string
   },
 ): Promise<PostResult> {
-  const headers = await apiHeaders()
-  if (!headers) return { ok: false, message: 'This build has no WWFF API key' }
+  const headers = apiHeaders()
 
   try {
     const response = await host.fetch(SPOT_POST_URL, {

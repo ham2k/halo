@@ -16,13 +16,16 @@ import 'package:test/test.dart';
 
 void main() {
   group('an extension reads its own prefix', () {
-    test('the names actually shipping today', () {
-      // Not hypotheticals: every secret the app has, against its owner.
+    test('the shape the rule grants, which nothing in the build now uses', () {
+      // Every value an extension once read here has moved into the extension
+      // itself as a constant — the award keys because a catalog bundle is a
+      // zip anyone can open, SOTA's client id because a native app is a public
+      // client with no secret to keep. So the store holds only what Dart
+      // reads, and these are the shape of a future grant rather than a live
+      // one. The rule stays because withdrawing it would be a second change
+      // to reason about on the day a real one arrives.
       expect(extensionMaySeeSecret('tota', 'TOTA_API_KEY'), isTrue);
-      expect(extensionMaySeeSecret('wwff', 'WWFF_API_KEY'), isTrue);
-      expect(extensionMaySeeSecret('llota', 'LLOTA_API_KEY'), isTrue);
       expect(extensionMaySeeSecret('sota', 'SOTA_OAUTH_CLIENT_ID_PROD'), isTrue);
-      expect(extensionMaySeeSecret('sota', 'SOTA_OAUTH_REDIRECT_DEV'), isTrue);
     });
 
     test('a hyphenated key matches the underscored name', () {
@@ -44,6 +47,16 @@ void main() {
       expect(extensionMaySeeSecret('pota', 'PUSHER_KEY'), isFalse);
     });
 
+    test('including an extension whose key spells that value\'s own prefix', () {
+      // The hole `appOnlySecrets` exists to close, and the prefix rule alone
+      // cannot: the catalog serves Ham2K's own extensions under a reserved
+      // prefix which the app STRIPS before asking, so a bundle published as
+      // `ham2k-pusher` arrives here as `pusher` — and by name alone it owns
+      // `PUSHER_*`. An extension key is not entirely ours to choose.
+      expect(extensionMaySeeSecret('pusher', 'PUSHER_KEY'), isFalse);
+      expect(extensionMaySeeSecret('pusher', 'PUSHER_CLUSTER'), isFalse);
+    });
+
     test('a longer key that merely starts the same way', () {
       // `sota` must not open `SOTAWATCH_*`, and the boundary is the separator.
       expect(extensionMaySeeSecret('sota', 'SOTAWATCH_API_KEY'), isFalse);
@@ -61,6 +74,12 @@ void main() {
       // If this fails, the addition was deliberate — say why in review.
       expect(sharedSecrets, isEmpty);
       expect(grants, isEmpty);
+    });
+
+    test('the refusal list is not, and names what Dart alone consumes', () {
+      // The opposite direction from the two above: this one only ever takes
+      // access away, so an entry LEAVING it is the change worth noticing.
+      expect(appOnlySecrets, {'PUSHER_KEY', 'PUSHER_CLUSTER'});
     });
   });
 }

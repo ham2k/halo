@@ -65,11 +65,11 @@ void main() {
       }
     });
 
-    test('every key carries the reserved prefix, which is what lets it install and read secrets', () {
-      // Two rules meet on this: the store refuses a `ham2k-` key to anything
-      // but a bundle Ham2K put there, and `visibleSecretsFor` opens the build
-      // secrets to an installed extension on the strength of that same
-      // prefix. A pre-load named anything else would be refused at the door.
+    test('every key carries the reserved prefix, which is what lets it install', () {
+      // The store refuses a `ham2k-` key to anything but a bundle Ham2K put
+      // there, so a pre-load named anything else would be refused at its own
+      // door. The prefix buys nothing beyond that: it opens no build secret,
+      // and the values a twin once needed ship inside it as constants.
       for (final entry in index) {
         expect(entry.key, startsWith('ham2k-'), reason: entry.file);
       }

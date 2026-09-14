@@ -81,20 +81,39 @@ part in the geographic match. The packer's rules for all six are in
 ### Secrets
 
 `host.secret(name)` reads a build-time value: "secrets" in the sense every cloud
-platform uses it — real credentials and plain per-build configuration alike. An
-award's API key is one; so is an OAuth client id that differs per build edition.
+platform uses it — real credentials and plain per-build configuration alike.
+
+**No extension reads one today**, and that is the useful thing to know before
+reaching for it. An award's API key and an OAuth client id both used to come
+through here, and both moved into the extension that uses them as ordinary
+constants: a catalog bundle is a zip anyone may download, so a value inside one
+is published whatever the store around it claims, and a native app is a public
+client (RFC 8252) with no client secret to protect in the first place. Reach
+for `host.secret()` only for a value that is genuinely confidential AND
+genuinely reaches the client — and if both are true, consider whether the call
+belongs on a Ham2K endpoint that holds the key instead.
 
 **An extension sees a secret when its NAME starts with the extension's key.**
 `sota` reads `SOTA_OAUTH_CLIENT_ID_PROD`, `tota` reads `TOTA_API_KEY`. That
 convention covers every secret in the app today, so nothing needs declaring
 anywhere; name a new one after the extension that uses it and it just works.
 
-Two escape hatches exist in `app/lib/config/secret_policy.dart` for values that
-belong to no single extension — `sharedSecrets` (any extension may read) and
-`grants` (a named list of extension keys). Both are empty. The policy is
-committed code rather than a manifest field on purpose: an extension asking for
-access is not the same as being granted it, and one reviewable list beats a
-claim spread across thirty manifests.
+Two escape hatches exist in `packages/halo_build_tools/lib/src/secret_policy.dart`
+for values that belong to no single extension — `sharedSecrets` (any extension may read) and `grants` (a
+named list of extension keys). Both are empty. The policy is committed code
+rather than a manifest field on purpose: an extension asking for access is not
+the same as being granted it, and one reviewable list beats a claim spread
+across thirty manifests.
+
+A third list refuses rather than grants. `appOnlySecrets` names values no
+extension may read whatever key it claims, because the prefix rule grants by
+NAME and an extension key is not entirely ours to choose — the catalog serves
+Ham2K's own extensions under a reserved prefix, which the app strips before
+asking the policy, so a bundle published as `ham2k-pusher` would be asked
+about as `pusher`. Being listed there says nothing about being confidential:
+`PUSHER_KEY` and `PUSHER_CLUSTER` are Pusher's public client-side identifiers.
+It says only that Dart is the sole consumer, so nothing needs to cross the
+boundary.
 
 The host resolves each extension's readable subset once, at load, and holds only
 that. The kernel stamps the caller's identity onto the call, so an extension can

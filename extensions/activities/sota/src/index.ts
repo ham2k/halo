@@ -547,27 +547,32 @@ const SOTA_OAUTH2_BY_EDITION: Record<string, { clientId: string; redirectUrl: st
 // if LoFi's webhook endpoint URL ever moves.
 const SOTA_OAUTH_WEBHOOK_REDIRECT_URL = 'https://lofi.ham2k.net/v1/webhooks/client/oauth'
 
-/// The registered client for an edition, from the build's secrets when it has
-/// them and from the table above otherwise.
+/// The registered client for an edition, from the table above.
 ///
 /// These are PUBLIC identifiers — a Keycloak public client id and the redirect
-/// it is registered against — not credentials. They live in the secrets store
-/// because that is where per-build configuration lives, so a re-registration
-/// no longer needs a code change. The table stays as the fallback so a fresh
-/// checkout can still log in to SOTAWatch, which is the whole feature.
-async function sotaOAuth2Config(
-  edition: string | undefined,
-): Promise<{ issuer: string; clientId: string; redirectUrl: string; webhookRedirectUrl: string; scopes: string[] }> {
-  const name = (edition ?? 'dev').toUpperCase()
-  const fallback = SOTA_OAUTH2_BY_EDITION[edition ?? 'dev'] ?? SOTA_OAUTH2_BY_EDITION.dev
-  const [clientId, redirectUrl] = await Promise.all([
-    host.secret(`SOTA_OAUTH_CLIENT_ID_${name}`),
-    host.secret(`SOTA_OAUTH_REDIRECT_${name}`),
-  ])
+/// it is registered against — and a native app is a public client (RFC 8252):
+/// there is no client secret, and PKCE is what actually protects the exchange.
+/// So they are ordinary constants, kept beside the realm they are registered
+/// in rather than in the build's secret store.
+///
+/// A build override used to sit in front of this, so a re-registration needed
+/// no code change. It bought nothing and could only misfire: SOTA registers
+/// ONE client for every edition, so the only correct value is the one here,
+/// and a build whose environment still carried a per-edition id authenticated
+/// as a client that does not exist in the realm — every sign-in in that build
+/// stopping at Keycloak's "Client not found", with the code looking right.
+function sotaOAuth2Config(edition: string | undefined): {
+  issuer: string
+  clientId: string
+  redirectUrl: string
+  webhookRedirectUrl: string
+  scopes: string[]
+} {
+  const registered = SOTA_OAUTH2_BY_EDITION[edition ?? 'dev'] ?? SOTA_OAUTH2_BY_EDITION.dev
   return {
     issuer: SOTA_SSO_REALM,
-    clientId: clientId || fallback.clientId,
-    redirectUrl: redirectUrl || fallback.redirectUrl,
+    clientId: registered.clientId,
+    redirectUrl: registered.redirectUrl,
     webhookRedirectUrl: SOTA_OAUTH_WEBHOOK_REDIRECT_URL,
     scopes: ['openid'],
   }
@@ -606,7 +611,7 @@ async function refreshTokens(ctx: HookContext, { persistSession = true } = {}): 
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
         body: [
           'grant_type=refresh_token',
-          `client_id=${encodeURIComponent((await sotaOAuth2Config(ctx.edition)).clientId)}`,
+          `client_id=${encodeURIComponent(sotaOAuth2Config(ctx.edition).clientId)}`,
           `refresh_token=${encodeURIComponent(refreshToken)}`,
         ].join('&'),
       })

@@ -83,16 +83,25 @@ function refsOfType(container: Record<string, unknown>, type: string): Ref[] {
   return (((container.refs as Ref[] | undefined) ?? [])).filter((r) => r.type === type && r.ref)
 }
 
+/// The key TOTA issued Ham2K, on every call to its own endpoints.
+///
+/// A CONSTANT, not a build secret, and deliberately: this extension ships as a
+/// bundle the catalog serves to anyone, and a `.h2kext` is a zip — so a value
+/// inside it is readable by whoever downloads it, whatever the app does with
+/// it. It was never confidential once shipped, and a policy implying otherwise
+/// only misled whoever read it. Rotating it means a release, so treat it as
+/// published.
+///
+/// TOTA gates the tower list itself behind this, not just the spot feed, so
+/// without it the extension has no data at all rather than merely no spots.
+const TOTA_API_KEY = '0b14cf6451a537a9acbf4de4f01d460545a4de8f773caf6a29ac675d069f3280'
+
 const SpotsHook = {
   sourceName: 'TOTA',
 
   async fetchSpots(_args: Record<string, never>, ctx: HookContext): Promise<Spot[]> {
     if (!ctx.online) return []
-    const key = await host.secret('TOTA_API_KEY')
-    // No key, no spots. Nor any towers — see the data file below.
-    if (!key) return []
-
-    const response = await host.fetch(`${API_BASE}/cluster.php?key=${encodeURIComponent(key)}`, {
+    const response = await host.fetch(`${API_BASE}/cluster.php?key=${encodeURIComponent(TOTA_API_KEY)}`, {
       headers: { Accept: 'application/json' },
     })
     // Deliberately NOT reporting the URL: it carries the key.
@@ -175,11 +184,8 @@ async function postSpotsToTOTA(
   mode?: string,
   comment?: string,
 ): Promise<PostResult> {
-  const key = await host.secret('TOTA_API_KEY')
-  if (!key) return { ok: false, message: 'This build has no TOTA API key' }
-
   // `formEncode`, not URLSearchParams: QuickJS has no such global.
-  const query = formEncode({ key })
+  const query = formEncode({ key: TOTA_API_KEY })
 
   // EVERY tower is attempted, even after one fails — app-polo tracks an `allOk`
   // across the loop rather than returning early. Stopping at the first failure
@@ -231,10 +237,7 @@ const totaDataFile: DataFileDefinition = {
   key: 'tota-all-towers',
   name: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileName'),
   description: (_args: Record<string, never>, ctx: HookContext) => tFor(ctx)('dataFileDescription'),
-  url: async () => {
-    const key = await host.secret('TOTA_API_KEY')
-    return key ? `${API_BASE}/tower.php?key=${encodeURIComponent(key)}` : `${API_BASE}/tower.php`
-  },
+  url: () => `${API_BASE}/tower.php?key=${encodeURIComponent(TOTA_API_KEY)}`,
   maxAgeInDays: 30,
   fetchType: 'json',
   category: 'tota',

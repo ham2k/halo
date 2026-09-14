@@ -5,9 +5,8 @@
 // day, several lakes activated at once, and one contact crediting several
 // hunted lakes — so it SPLITS a multi-lake contact into one record per lake.
 //
-// The list is public; the spot feed and spot posting go through an API key
-// (`host.secret('LLOTA_API_KEY')`), so a build without one keeps the
-// references and simply offers no spots.
+// The list is public; the spot feed and spot posting go through the award's
+// own API key, which ships in this bundle as a constant (see LLOTA_API_KEY).
 
 import {
   activityExportHook,
@@ -95,10 +94,19 @@ interface LLOTAApiSpot {
   history?: { comment?: string }[]
 }
 
-async function apiHeaders(): Promise<Record<string, string> | null> {
-  const key = await host.secret('LLOTA_API_KEY')
-  if (!key) return null
-  return { 'X-API-Key': key, Accept: 'application/json' }
+/// The key LLOTA issued Ham2K, on every call to its own endpoints.
+///
+/// A CONSTANT, not a build secret, and deliberately: this extension ships as a
+/// bundle the catalog serves to anyone, and a `.h2kext` is a zip — so a value
+/// inside it is readable by whoever downloads it, whatever the app does with
+/// it. It was never confidential once shipped, and a policy implying otherwise
+/// only misled whoever read it. Rotating it means a release, so treat it as
+/// published.
+const LLOTA_API_KEY = 'Eyei0EiGh5yoquechahxaijaengu0e'
+
+/// The key rides as a header on every call to the award's own endpoints.
+function apiHeaders(): Record<string, string> {
+  return { 'X-API-Key': LLOTA_API_KEY, Accept: 'application/json' }
 }
 
 const SpotsHook = {
@@ -106,10 +114,7 @@ const SpotsHook = {
 
   async fetchSpots(_args: Record<string, never>, ctx: HookContext): Promise<Spot[]> {
     if (!ctx.online) return []
-    const headers = await apiHeaders()
-    // No key, no spots — the references still work, which is most of what the
-    // extension is for.
-    if (!headers) return []
+    const headers = apiHeaders()
 
     const response = await host.fetch(`${API_BASE}/spots`, { headers })
     if (response.status !== 200) throw new Error(`LLOTA API returned HTTP ${response.status}`)
@@ -202,8 +207,7 @@ async function postSpotToLLOTA(
     appName?: string
   },
 ): Promise<PostResult> {
-  const headers = await apiHeaders()
-  if (!headers) return { ok: false, message: 'This build has no LLOTA API key' }
+  const headers = apiHeaders()
 
   const nfer = refs.length > 1 ? `${refs.length}-fer: ${refs.map((r) => r.ref).join(' ')}` : ''
 
