@@ -99,6 +99,26 @@ Widget noticePill(ThemeData theme, String label, {required NoticeLevel level}) {
   );
 }
 
+/// The leading emoji cluster of a call note — call notes always prefix their
+/// emoji (see the call-notes extension's `combineNotes`), so isolating this
+/// run lets the glow ride only the emoji, not the note's prose. The same
+/// ranges as the extension's `LEADING_EMOJI`, exactly: a marker the
+/// extension reports for the QSO row must be found here too, or the row
+/// shows one and the note line shows none.
+final _leadingEmoji = RegExp(
+  r'^[\u{1F000}-\u{1FFFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{200D}\u{FE0F}]+',
+  unicode: true,
+);
+
+/// A call note split into its marker run and the prose after it — the
+/// marker null when the note has none. Every place that paints a note's
+/// marker as its own glowed glyph splits it here, so all of them agree on
+/// what counts as one.
+({String? marker, String rest}) splitNoteMarker(String text) {
+  final match = _leadingEmoji.firstMatch(text);
+  return (marker: match?.group(0), rest: match == null ? text : text.substring(match.end).trimLeft());
+}
+
 /// A soft halo behind small glyphs (the call-info flag/note emoji, the
 /// spotting control's source-status icons) so they stay legible against a
 /// tinted fill — dark on light themes, light on dark themes. Contrasting
@@ -204,17 +224,6 @@ class CallInfoSummary extends StatelessWidget {
     this.onOpenLink,
     this.linkColor,
   });
-
-  /// The leading emoji cluster of a call note — call notes always prefix their
-  /// emoji (see the call-notes extension's `combineNotes`), so isolating this
-  /// run lets the glow ride only the emoji, not the note's prose. The same
-  /// ranges as the extension's `LEADING_EMOJI` (plus keycap): a marker the
-  /// extension reports for the QSO row must be found here too, or the row
-  /// shows one and this line shows none.
-  static final _leadingEmoji = RegExp(
-    r'^[\u{1F000}-\u{1FFFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{200D}\u{FE0F}\u{20E3}]+',
-    unicode: true,
-  );
 
   List<_Notice> get _notices {
     final labelOf = noticeLabel ?? (String key) => key;
@@ -381,13 +390,12 @@ class CallInfoSummary extends StatelessWidget {
   /// The note split the way it paints: the leading emoji cluster, which gets its
   /// own glowed glyph, and the markdown for everything after it.
   ({String? lead, String markdown}) _noteParts(String text) {
-    final leadMatch = _leadingEmoji.firstMatch(text);
-    final rest = leadMatch == null ? text : text.substring(leadMatch.end).trimLeft();
+    final parts = splitNoteMarker(text);
     // The marker run paints last-emoji-first, so the FIRST note's marker —
     // the one the QSO row shows — sits nearest the prose it belongs to.
     // Reversed by grapheme, so a ZWJ sequence or a flag pair stays whole.
-    final lead = leadMatch?.group(0)?.characters.toList().reversed.join();
-    return (lead: lead, markdown: rest);
+    final lead = parts.marker?.characters.toList().reversed.join();
+    return (lead: lead, markdown: parts.rest);
   }
 
   /// `code` in a note, matching MarkdownStyleSheet.fromTheme's own code style

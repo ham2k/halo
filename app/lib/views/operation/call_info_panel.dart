@@ -9,7 +9,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:intl/intl.dart';
@@ -188,7 +187,8 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
     final notes = <String>[];
     for (final lookup in widget.lookups) {
       final ns = lookup['notes'];
-      if (ns is List) notes.addAll(ns.whereType<String>());
+      // A blank entry would render as an unexplained gap between notes.
+      if (ns is List) notes.addAll(ns.whereType<String>().where((n) => n.trim().isNotEmpty));
     }
     if (notes.isEmpty) {
       final note = _s('note');
@@ -352,15 +352,7 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
 
         if (notes.isNotEmpty) ...[
           _sectionTitle(theme, t.notes),
-          MarkdownBody(
-            data: notes.join('\n\n'),
-            styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(theme)),
-            // Stays a MarkdownBody — notes are joined with blank lines, so this
-            // is genuinely a block.
-            onTapLink: (_, href, _) {
-              if (href != null) openExternalUrl(href);
-            },
-          ),
+          for (final (i, note) in notes.indexed) _noteRow(theme, note, first: i == 0),
         ],
 
         if (thisOp.isNotEmpty) ...[
@@ -517,6 +509,46 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
       for (final key in widget.alertKeys) pill(key, alert: true),
       for (final key in widget.noticeKeys) pill(key, alert: false),
     ];
+  }
+
+  /// One note: its marker glowed as its own glyph, like the logging panel's
+  /// call info line, with the prose beside it. A note without a marker is
+  /// the prose alone, indented by nothing — the marker is part of the note,
+  /// not a bullet.
+  ///
+  /// Inline markdown, not a block: with the marker split off, the prose is
+  /// the START of what the parser sees, and a block renderer would turn
+  /// `⚠️ - never before 10z` into a bullet and `🎉 # 50 years` into a
+  /// heading. A note is one line from the notes file; the logging panel's
+  /// line renders it the same way.
+  Widget _noteRow(ThemeData theme, String note, {required bool first}) {
+    final parts = splitNoteMarker(note);
+    final style = theme.textTheme.bodyMedium?.copyWith(fontFamilyFallback: const [emojiFontFamily]);
+    final body = InlineMarkdownText(
+      parts.rest,
+      style: style,
+      codeStyle: haloMonoStyle(context, fontSize: (style?.fontSize ?? flagGlyphDefaultFontSize) * 0.85),
+      onOpenLink: openExternalUrl,
+      overflow: TextOverflow.clip,
+    );
+    return Padding(
+      // A blank line's worth between notes, so two notes never read as one.
+      padding: EdgeInsets.only(top: first ? 0 : Space.sm),
+      child: parts.marker == null
+          ? body
+          : Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                flagGlyph(
+                  parts.marker!,
+                  fontSize: theme.textTheme.bodyMedium?.fontSize ?? flagGlyphDefaultFontSize,
+                  shadows: glyphGlow(theme),
+                ),
+                const SizedBox(width: Space.xs),
+                Expanded(child: body),
+              ],
+            ),
+    );
   }
 
   Widget _sectionTitle(ThemeData theme, String text) => Padding(
