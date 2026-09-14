@@ -257,14 +257,23 @@ async function registerClient(): Promise<string> {
 }
 
 async function doRegisterClient(): Promise<string> {
-  const [key, secret, call] = await Promise.all([host.kvGet('key'), host.kvGet('secret'), host.kvGet('call')])
+  const [key, secret, call, clientName] = await Promise.all([
+    host.kvGet('key'),
+    host.kvGet('secret'),
+    host.kvGet('call'),
+    host.kvGet('clientName'),
+  ])
   const server = await serverUrl()
 
   const response = await host.fetch(`${server}/v1/client`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      client: { key, name: 'HaLo Next', secret: secret || DEFAULT_SECRET },
+      // The name another Ham2K app shows when asked to approve this device
+      // ("link <name> with this account?"): the app's own product name and
+      // edition, seeded by the app alongside the key — the sandbox knows
+      // neither platform nor edition itself.
+      client: { key, name: (typeof clientName === 'string' && clientName) || 'Ham2K Logger', secret: secret || DEFAULT_SECRET },
       account: { call: call || undefined },
     }),
   })

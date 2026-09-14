@@ -1582,6 +1582,10 @@ class ExtensionService implements PanelExtensionSource {
     await start();
     _host?.setKV('ham2k-lofi', 'key', deviceKey);
     _host?.setKV('ham2k-lofi', 'call', operatorCall);
+    // What a device already on the account is asked to approve — PoLo's
+    // confirmation dialog names it — so it says which app this is, not a
+    // code name.
+    _host?.setKV('ham2k-lofi', 'clientName', withEdition(ham2kAppName));
     if (_lofiSecret.isNotEmpty) _host?.setKV('ham2k-lofi', 'secret', _lofiSecret);
     if (_backupToken.isNotEmpty) _host?.setKV('ham2k-lofi', 'backupToken', _backupToken);
   }

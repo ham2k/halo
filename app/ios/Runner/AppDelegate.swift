@@ -18,6 +18,14 @@ import UIKit
   // public signal (iOS 14+, within the deployment floor).
   private var hardwareKeyboardChannel: FlutterMethodChannel?
 
+  // The other Ham2K loggers on this device, for the link-across offer
+  // (the Dart side is SiblingAppsService). iOS can only ask
+  // `canOpenURL` about a SCHEME, and only about the ones the plist's
+  // LSApplicationQueriesSchemes lists — anything else answers false whether
+  // installed or not. Which schemes are meaningful probes is decided in Dart
+  // (the `halo` alias family, never `logger`; see deep_link_service.dart).
+  private var siblingAppsChannel: FlutterMethodChannel?
+
   // Documents opened from Files, a share sheet, or a browser download
   // (HALO-422). `app_links` handles custom URL schemes; an opened document
   // arrives through this delegate method instead, so a registered type
@@ -110,6 +118,31 @@ import UIKit
         return
       }
       result(GCKeyboard.coalesced != nil)
+    }
+    siblingAppsChannel = FlutterMethodChannel(
+      name: "ham2k/sibling_apps",
+      binaryMessenger: engineBridge.applicationRegistrar.messenger()
+    )
+    siblingAppsChannel?.setMethodCallHandler { call, result in
+      let args = call.arguments as? [String: Any]
+      switch call.method {
+      case "list":
+        let ids = args?["ids"] as? [String] ?? []
+        result(ids.filter { id in
+          guard let url = URL(string: "\(id)://") else { return false }
+          return UIApplication.shared.canOpenURL(url)
+        })
+      case "open":
+        // Dart has already put the target's scheme on the URL: on iOS that
+        // IS the targeting, so the `id` Android needs goes unread here.
+        guard let raw = args?["url"] as? String, let url = URL(string: raw) else {
+          result(FlutterError(code: "bad-args", message: "open needs a url", details: nil))
+          return
+        }
+        UIApplication.shared.open(url, options: [:]) { ok in result(ok) }
+      default:
+        result(FlutterMethodNotImplemented)
+      }
     }
     // Re-query on disconnect rather than pushing `false`: `coalesced`
     // merges every attached keyboard, so one leaving doesn't mean none

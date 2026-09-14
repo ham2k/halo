@@ -116,6 +116,13 @@ class _Translations$onboarding$es extends Translations$onboarding$en {
 	@override String get callsignBody => 'Necesitas una licencia de radioaficionado para que esta app te resulte útil';
 	@override String get callsignLabel => 'Indicativo del operador';
 	@override String get alreadyHaveAccount => '¿Ya tienes una cuenta?';
+	@override String get foundSiblingTitle => '¿Vincular una cuenta existente?';
+	@override String foundSiblingBody({required Object app}) => 'Encontramos ${app} en este dispositivo. Vincula esta app a la misma cuenta y tu indicativo y tus registros vienen con ella.';
+	@override String get foundPoloBody => 'Encontramos una versión anterior de Ham2K Portable Logger en este dispositivo. Vincula esta app a la misma cuenta y tu indicativo y tus registros vienen con ella.';
+	@override String get foundSiblingsBody => 'Encontramos otras apps de Ham2K en este dispositivo. Vincula esta app a una de sus cuentas y tu indicativo y tus registros vienen con ella.';
+	@override String linkWithApp({required Object app}) => 'Vincular con ${app}';
+	@override String get linkWithPolo => 'Vincular con la cuenta de la versión anterior';
+	@override String get setUpFresh => 'Empezar de cero';
 	@override String get activitiesTitle => 'Actividades favoritas';
 	@override String get activitiesBody => '¿Te interesa alguno de estos populares programas de activación?';
 	@override String get activitiesFooter => '(Encontrarás más opciones en la Configuración)';
@@ -936,6 +943,15 @@ class _Translations$switchAccounts$es extends Translations$switchAccounts$en {
 	@override String get currentAccount => 'Cuenta actual';
 	@override String get otherAccounts => 'Otras cuentas';
 	@override String get linkToAnother => 'Vincular a otra cuenta';
+	@override String get linkWithSibling => 'Vincular con otra app de Ham2K';
+	@override String get linkWithPolo => 'Vincular con la cuenta de la versión anterior';
+	@override String get linkWithSiblingDescription => 'Tienes otra app de Ham2K instalada. Vincula con la cuenta en uso allí.';
+	@override String siblingPrompt({required Object app}) => 'Aprueba la solicitud en ${app} y luego vuelve aquí.';
+	@override String openSiblingAgain({required Object app}) => 'Abrir ${app} de nuevo';
+	@override String get siblingNoGrant => '¿No funcionó? Ábrela de nuevo, o vuelve atrás y vincula de otra manera.';
+	@override String siblingOpenFailed({required Object app}) => 'No se pudo abrir ${app}.';
+	@override String siblingLinkRenewed({required Object app}) => 'El enlace caducó y hay uno nuevo — abre ${app} de nuevo.';
+	@override String get tryAgain => 'Intentar de nuevo';
 	@override String get linkWithQr => 'Vincular con un código QR';
 	@override String get linkWithQrDescription => 'Escanéalo desde un dispositivo que ya use la cuenta';
 	@override String get linkWithEmail => 'Vincular con una dirección de email';
@@ -3042,6 +3058,13 @@ extension on TranslationsEs {
 			'onboarding.callsignBody' => 'Necesitas una licencia de radioaficionado para que esta app te resulte útil',
 			'onboarding.callsignLabel' => 'Indicativo del operador',
 			'onboarding.alreadyHaveAccount' => '¿Ya tienes una cuenta?',
+			'onboarding.foundSiblingTitle' => '¿Vincular una cuenta existente?',
+			'onboarding.foundSiblingBody' => ({required Object app}) => 'Encontramos ${app} en este dispositivo. Vincula esta app a la misma cuenta y tu indicativo y tus registros vienen con ella.',
+			'onboarding.foundPoloBody' => 'Encontramos una versión anterior de Ham2K Portable Logger en este dispositivo. Vincula esta app a la misma cuenta y tu indicativo y tus registros vienen con ella.',
+			'onboarding.foundSiblingsBody' => 'Encontramos otras apps de Ham2K en este dispositivo. Vincula esta app a una de sus cuentas y tu indicativo y tus registros vienen con ella.',
+			'onboarding.linkWithApp' => ({required Object app}) => 'Vincular con ${app}',
+			'onboarding.linkWithPolo' => 'Vincular con la cuenta de la versión anterior',
+			'onboarding.setUpFresh' => 'Empezar de cero',
 			'onboarding.activitiesTitle' => 'Actividades favoritas',
 			'onboarding.activitiesBody' => '¿Te interesa alguno de estos populares programas de activación?',
 			'onboarding.activitiesFooter' => '(Encontrarás más opciones en la Configuración)',
@@ -3522,6 +3545,8 @@ extension on TranslationsEs {
 			'operation.import.addToOperationTitle' => 'Agregar a esta operación',
 			'operation.import.addToOperationDescriptionOn' => 'Los QSOs capturados se agregan a esta operación según llegan',
 			'operation.import.addToOperationDescriptionOff' => 'Los QSOs capturados se retienen hasta que actives esto',
+			_ => null,
+		} ?? switch (path) {
 			'operation.import.pendingSectionTitle' => 'QSOs capturados',
 			'operation.import.pendingEmpty' => 'Nada capturado todavía',
 			'operation.import.stationMismatch' => ({required Object call}) => 'Registrado como ${call}, no la estación de esta operación',
@@ -3529,8 +3554,6 @@ extension on TranslationsEs {
 			'operation.import.gapDialogTitle' => '¿Incluir capturas anteriores?',
 			'operation.import.gapDialogBody' => ({required Object count}) => 'Se capturaron ${count} QSOs más antes, previos a un hueco en los datos. ¿Incluirlos también?',
 			'operation.import.gapDialogRecentOnly' => 'Solo los recientes',
-			_ => null,
-		} ?? switch (path) {
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Incluir los ${count}',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
 			'map.unavailable' => 'El mapa no está disponible en este momento.',
@@ -4036,6 +4059,8 @@ extension on TranslationsEs {
 			'settings.syncPanel.countsServerUnavailable' => 'Servidor: no disponible',
 			'settings.syncPanel.replaceDialogBody' => ({required Object operations, required Object qsos}) => 'Esto respalda y borra ${operations} y ${qsos} de este dispositivo, y luego descarga los datos de la cuenta en su lugar. El respaldo se conserva en la base de datos de este dispositivo.',
 			'settings.syncPanel.replace' => 'Reemplazar',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.pendingBannerTitle' => 'Nueva cuenta de Ham2K Log Filer detectada',
 			'settings.syncPanel.pendingBannerBody' => 'Conserva las operaciones y QSOs existentes en este dispositivo y combínalos con la cuenta, o reemplázalos con los datos de la cuenta (en ambos casos queda un respaldo en este dispositivo).',
 			'settings.syncPanel.combine' => 'Combinar',
@@ -4043,8 +4068,6 @@ extension on TranslationsEs {
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer sigue rechazando este dispositivo. Revisa tu indicativo en la configuración de Sync.',
 			'settings.syncPanel.openSettings' => 'Abrir configuración de Sync',
 			'settings.accounts.title' => 'Cuentas y servicios',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.none' => 'No hay extensiones activas con cuentas',
 			'settings.accounts.notConfigured' => 'Sin configurar',
 			'settings.accounts.connected' => 'Conectado',
@@ -4550,6 +4573,8 @@ extension on TranslationsEs {
 			'updates.reloadNow' => 'Recargar ahora',
 			'updates.checkForUpdates' => 'Buscar actualizaciones',
 			'updates.checkingForUpdates' => 'Buscando actualizaciones…',
+			_ => null,
+		} ?? switch (path) {
 			'updates.upToDate' => 'Actualizado',
 			'updates.automaticChecks' => 'Buscar automáticamente',
 			'updates.automaticChecksDescription' => 'Buscar nuevas versiones en segundo plano, a partir del próximo inicio',
@@ -4557,8 +4582,6 @@ extension on TranslationsEs {
 			'extensionService.testFailed' => ({required Object error}) => 'Prueba fallida: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Conectado como ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'Configuración de campo no válida',
-			_ => null,
-		} ?? switch (path) {
 			'extensionService.invalidValue' => 'Valor no válido',
 			'extensionService.validationError' => ({required Object error}) => 'Error de validación: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'Acción fallida: ${error}',
@@ -4617,6 +4640,15 @@ extension on TranslationsEs {
 			'switchAccounts.currentAccount' => 'Cuenta actual',
 			'switchAccounts.otherAccounts' => 'Otras cuentas',
 			'switchAccounts.linkToAnother' => 'Vincular a otra cuenta',
+			'switchAccounts.linkWithSibling' => 'Vincular con otra app de Ham2K',
+			'switchAccounts.linkWithPolo' => 'Vincular con la cuenta de la versión anterior',
+			'switchAccounts.linkWithSiblingDescription' => 'Tienes otra app de Ham2K instalada. Vincula con la cuenta en uso allí.',
+			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Aprueba la solicitud en ${app} y luego vuelve aquí.',
+			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Abrir ${app} de nuevo',
+			'switchAccounts.siblingNoGrant' => '¿No funcionó? Ábrela de nuevo, o vuelve atrás y vincula de otra manera.',
+			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'No se pudo abrir ${app}.',
+			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'El enlace caducó y hay uno nuevo — abre ${app} de nuevo.',
+			'switchAccounts.tryAgain' => 'Intentar de nuevo',
 			'switchAccounts.linkWithQr' => 'Vincular con un código QR',
 			'switchAccounts.linkWithQrDescription' => 'Escanéalo desde un dispositivo que ya use la cuenta',
 			'switchAccounts.linkWithEmail' => 'Vincular con una dirección de email',

@@ -89,6 +89,7 @@ import '../config/navigation.dart';
 import 'dev_overlay_trigger.dart';
 import 'status_bar_hammer.dart';
 import 'wake_lock_service.dart';
+import 'sibling_apps_service.dart';
 
 /// One open Operation View's contribution to the ⌘K dialog's context — see
 /// [HaLoServices.openOperationContext].
@@ -411,6 +412,11 @@ class HaLoServices {
   /// flow whose happy path exists nowhere else.
   final DeepLinkService? _deepLinksOverride;
   late final DeepLinkService deepLinks = _deepLinksOverride ?? DeepLinkService();
+
+  /// The other Ham2K loggers on this device, for the link-across
+  /// offer in onboarding and Settings › Switch Accounts.
+  final SiblingAppsService? _siblingAppsOverride;
+  late final SiblingAppsService siblingApps = _siblingAppsOverride ?? SiblingAppsService();
 
   /// Pusher app key + cluster for the realtime client — public,
   /// non-secret values (every Pusher client SDK ships them this way), but
@@ -928,12 +934,14 @@ class HaLoServices {
     InboundQsoListenerService? inboundQsos,
     PeerService? peerService,
     DeepLinkService? deepLinks,
+    SiblingAppsService? siblingApps,
     CatalogService? catalog,
     FlagsService? flags,
   })  : _catOverride = cat,
         _catalogOverride = catalog,
         _flagsOverride = flags,
         _deepLinksOverride = deepLinks,
+        _siblingAppsOverride = siblingApps,
         _peerServiceOverride = peerService,
         _inboundQsosOverride = inboundQsos,
         _locationOverride = location,

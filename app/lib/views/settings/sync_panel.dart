@@ -235,11 +235,19 @@ class _SyncPanelState extends State<SyncPanel> {
   }
 
   Future<void> _switchAccounts() async {
+    // Asked before the pane opens rather than by it: the answer is a native
+    // round trip, and a menu whose rows appear a beat after it is on screen
+    // reads as a glitch. Cheap enough that a stale answer is not worth
+    // caching across taps.
+    final siblings = await widget.services.siblingApps.list();
+    if (!mounted) return;
     final linked = await showSwitchAccountsDialog(
       context,
       fetchAccountData: widget.services.extensions.syncAccountData,
       linkClient: widget.services.extensions.syncLinkClient,
       linkClientWithEmail: widget.services.extensions.syncLinkClientWithEmail,
+      siblings: siblings,
+      openSibling: widget.services.siblingApps.open,
     );
     if (linked == true) {
       // The server-side account just changed: run a round now so the

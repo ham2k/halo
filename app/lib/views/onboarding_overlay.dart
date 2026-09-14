@@ -4,7 +4,10 @@
 // First-run onboarding: the release overlay's look — full-bleed
 // release photo, brand mark, credits — but the bottom band walks the
 // app-polo onboarding steps (Welcome → Callsign → Activities → Data &
-// Privacy) instead of showing release notes. Shown by `_OnboardingGate` in
+// Privacy) instead of showing release notes. One step of HaLo's own sits
+// between Welcome and Callsign, and only when another Ham2K logger is
+// installed on the device: an offer to link straight across to
+// its account. Shown by `_OnboardingGate` in
 // main.dart whenever the default profile has NEVER had a callsign set
 // (undefined — an explicit '' from a previous Skip counts as set, see
 // SettingsService.defaultProfileCallsignDefined). Both Skip and Done write
@@ -23,7 +26,7 @@ import '../config/navigation.dart';
 import '../services/halo_services.dart';
 import '../services/error_reporting_service.dart';
 import '../services/settings_service.dart';
-import 'package:halo_core/halo_core.dart';
+import '../services/sibling_apps_service.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
 import 'settings_view.dart';
 import 'switch_accounts_dialog.dart';
@@ -52,6 +55,7 @@ const _compactHeightThreshold = 540.0;
 
 enum _OnboardingStep {
   welcome,
+  foundSibling,
   callsign,
   linkAccount,
   activities,
@@ -126,6 +130,20 @@ class _OnboardingContentState extends State<_OnboardingContent> {
   /// no nearby suggestions) rather than still setting up.
   bool _finishingSetup = false;
 
+  /// The other Ham2K loggers on this device, asked for once on mount; empty
+  /// until the answer lands and everywhere it will never come (web,
+  /// desktop). Non-empty is what gates the [_OnboardingStep.foundSibling]
+  /// step — Welcome goes straight to Callsign otherwise, the flow unchanged.
+  List<SiblingApp> _siblings = const [];
+
+  /// The sibling the link-account step should start on, when it was entered
+  /// from the found-sibling step rather than the callsign question; and the
+  /// step Back from the pane's menu returns to, which is whichever asked.
+  SiblingApp? _linkSibling;
+  _OnboardingStep _linkReturnStep = _OnboardingStep.callsign;
+
+  void _afterWelcome() => _goTo(_siblings.isEmpty ? _OnboardingStep.callsign : _OnboardingStep.foundSibling);
+
   void _goTo(_OnboardingStep step) {
     if (_navLocked || step == _step) return;
     _navLocked = true;
@@ -160,6 +178,8 @@ class _OnboardingContentState extends State<_OnboardingContent> {
   void _primaryAction() {
     switch (_step) {
       case _OnboardingStep.welcome:
+        _afterWelcome();
+      case _OnboardingStep.foundSibling:
         _goTo(_OnboardingStep.callsign);
       case _OnboardingStep.callsign:
         _nextFromCallsign();
@@ -206,6 +226,13 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     // nothing is focused yet.
     FocusManager.instance.primaryFocus?.unfocus();
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
+    unawaited(_findSiblings());
+  }
+
+  Future<void> _findSiblings() async {
+    final found = await widget.services.siblingApps.list();
+    if (!mounted || found.isEmpty) return;
+    setState(() => _siblings = found);
   }
 
   @override
@@ -315,7 +342,21 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     widget.onDone();
   }
 
-  Future<void> _startLinkingFlow() async {
+  /// Whether this device held QSOs of its own when the link flow began.
+  ///
+  /// Read HERE and not at success: the sync engine runs its own rounds
+  /// throughout, and the one that first sees the new account adopts it
+  /// silently when the local log is empty and pulls that account's QSOs
+  /// straight in — routinely before the pane's poll has even noticed the
+  /// grant. Counted afterwards, the server's log reads as local data and a
+  /// fresh install is sent to the combine/replace screen for QSOs it never
+  /// had. Before a permission exists, nothing can arrive.
+  bool _hadLocalQsos = false;
+
+  void _startLinkingFlow({SiblingApp? sibling}) {
+    _linkSibling = sibling;
+    _linkReturnStep = sibling == null ? _OnboardingStep.callsign : _OnboardingStep.foundSibling;
+    unawaited(widget.services.qsos.syncCounts().then((counts) => _hadLocalQsos = counts.total > 0));
     _goTo(_OnboardingStep.linkAccount);
   }
 
@@ -349,19 +390,18 @@ class _OnboardingContentState extends State<_OnboardingContent> {
     }
     unawaited(widget.services.syncEngine.runOneRound());
 
-    // 3. Check local QSO count.
-    final qsoCount = (await widget.services.qsos.syncCounts()).total;
-
-    if (qsoCount > 0) {
-      // Navigate directly to the sync settings screen.
+    // 3. Local data means the engine will park on the combine/replace
+    // question rather than adopt the account on its own, and the banner
+    // that asks it lives in Settings › Sync — so go there. With nothing
+    // local (see [_hadLocalQsos]) the engine adopts silently, whether it
+    // already has or the round just kicked will; there is nothing to
+    // resolve from here.
+    if (_hadLocalQsos) {
       unawaited(navigatorKey.currentState?.push(
         MaterialPageRoute<void>(
           builder: (_) => SettingsView(services: widget.services, initialPanel: 'sync'),
         ),
       ));
-    } else {
-      // Assume the user wants to replace all with server data.
-      await widget.services.syncEngine.resolveAccountChange(SyncAccountChoice.replace);
     }
 
     // 4. Dismiss onboarding overlay.
@@ -412,7 +452,7 @@ class _OnboardingContentState extends State<_OnboardingContent> {
 
           return GestureDetector(
             behavior: HitTestBehavior.opaque,
-            onTap: _step == _OnboardingStep.welcome ? () => _goTo(_OnboardingStep.callsign) : null,
+            onTap: _step == _OnboardingStep.welcome ? _afterWelcome : null,
             child: Stack(
             fit: StackFit.expand,
             children: [
@@ -543,6 +583,44 @@ class _OnboardingContentState extends State<_OnboardingContent> {
             backgroundColor: theme.colorScheme.surfaceContainerHighest.withValues(alpha: 0.65),
           ),
           primaryLabel: s.kContinue,
+          onPrimary: _afterWelcome,
+        );
+      case _OnboardingStep.foundSibling:
+        return _stepScaffold(
+          title: Text(s.foundSiblingTitle, style: titleStyle),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // PoLo is named as "an older version" — it is the app most
+              // operators are coming from; another HaLo edition is named
+              // as itself.
+              Text(
+                switch (_siblings) {
+                  [SiblingApp(edition: null)] => s.foundPoloBody,
+                  [final only] => s.foundSiblingBody(app: only.name),
+                  _ => s.foundSiblingsBody,
+                },
+                style: bodyStyle,
+              ),
+              const SizedBox(height: Space.lg),
+              for (final sibling in _siblings)
+                ListTile(
+                  dense: true,
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(MdiIcons.cellphoneLink, color: Colors.black),
+                  title: Text(
+                    sibling.edition == null && onlyPolo(_siblings) ? s.linkWithPolo : s.linkWithApp(app: sibling.name),
+                    style: bodyStyle?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  trailing: Icon(MdiIcons.chevronRight, color: Colors.black),
+                  onTap: () => _startLinkingFlow(sibling: sibling),
+                  mouseCursor: SystemMouseCursors.click,
+                ),
+            ],
+          ),
+          secondaryLabel: s.back,
+          onSecondary: () => _goTo(_OnboardingStep.welcome),
+          primaryLabel: s.setUpFresh,
           onPrimary: () => _goTo(_OnboardingStep.callsign),
         );
       case _OnboardingStep.callsign:
@@ -578,14 +656,14 @@ class _OnboardingContentState extends State<_OnboardingContent> {
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton(
-                  onPressed: _startLinkingFlow,
+                  onPressed: () => _startLinkingFlow(),
                   child: Text(s.alreadyHaveAccount),
                 ),
               ),
             ],
           ),
           secondaryLabel: s.back,
-          onSecondary: () => _goTo(_OnboardingStep.welcome),
+          onSecondary: () => _goTo(_siblings.isEmpty ? _OnboardingStep.welcome : _OnboardingStep.foundSibling),
           primaryLabel: s.kContinue,
           onPrimary: _nextFromCallsign,
         );
@@ -593,13 +671,22 @@ class _OnboardingContentState extends State<_OnboardingContent> {
         return _stepScaffold(
           title: Text(s.alreadyHaveAccount, style: titleStyle),
           body: SwitchAccountsPane(
+            // Keyed on the sibling: a pane entered for one app and, after
+            // Back, for another must start over rather than keep the first
+            // request's state.
+            key: ValueKey(_linkSibling?.id),
             fetchAccountData: widget.services.extensions.syncAccountData,
             linkClient: widget.services.extensions.syncLinkClient,
             linkClientWithEmail: widget.services.extensions.syncLinkClientWithEmail,
+            siblings: _siblings,
+            openSibling: widget.services.siblingApps.open,
+            initialSibling: _linkSibling,
+            fallbackLabel: s.setUpFresh,
+            onFallback: () => _goTo(_OnboardingStep.callsign),
             hideAccountsList: true,
             cancelLabel: s.back,
             onLinked: _handleLinkingSuccess,
-            onCancel: () => _goTo(_OnboardingStep.callsign),
+            onCancel: () => _goTo(_linkReturnStep),
           ),
           secondaryLabel: '',
           onSecondary: () {},

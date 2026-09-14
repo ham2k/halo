@@ -169,6 +169,27 @@ class Translations$onboarding$en {
 	/// en: 'Already have an account?'
 	String get alreadyHaveAccount => 'Already have an account?';
 
+	/// en: 'Link an existing account?'
+	String get foundSiblingTitle => 'Link an existing account?';
+
+	/// en: 'We found ${app} on this device. Link this app to the same account and your callsign and logs come across.'
+	String foundSiblingBody({required Object app}) => 'We found ${app} on this device. Link this app to the same account and your callsign and logs come across.';
+
+	/// en: 'We found an older version of Ham2K Portable Logger on this device. Link this app to the same account and your callsign and logs come across.'
+	String get foundPoloBody => 'We found an older version of Ham2K Portable Logger on this device. Link this app to the same account and your callsign and logs come across.';
+
+	/// en: 'We found other Ham2K apps on this device. Link this app to one of their accounts and your callsign and logs come across.'
+	String get foundSiblingsBody => 'We found other Ham2K apps on this device. Link this app to one of their accounts and your callsign and logs come across.';
+
+	/// en: 'Link with ${app}'
+	String linkWithApp({required Object app}) => 'Link with ${app}';
+
+	/// en: 'Link with account in older version'
+	String get linkWithPolo => 'Link with account in older version';
+
+	/// en: 'Set up fresh'
+	String get setUpFresh => 'Set up fresh';
+
 	/// en: 'Favorite Activities'
 	String get activitiesTitle => 'Favorite Activities';
 
@@ -1974,6 +1995,33 @@ class Translations$switchAccounts$en {
 
 	/// en: 'Link to another account'
 	String get linkToAnother => 'Link to another account';
+
+	/// en: 'Link with other Ham2K App'
+	String get linkWithSibling => 'Link with other Ham2K App';
+
+	/// en: 'Link with account in older version'
+	String get linkWithPolo => 'Link with account in older version';
+
+	/// en: 'You have another Ham2K app installed. Link with the account in use there.'
+	String get linkWithSiblingDescription => 'You have another Ham2K app installed. Link with the account in use there.';
+
+	/// en: 'Approve the request in ${app}, then come back here.'
+	String siblingPrompt({required Object app}) => 'Approve the request in ${app}, then come back here.';
+
+	/// en: 'Open ${app} again'
+	String openSiblingAgain({required Object app}) => 'Open ${app} again';
+
+	/// en: 'Didn't work? Open it again, or go back and link another way.'
+	String get siblingNoGrant => 'Didn\'t work? Open it again, or go back and link another way.';
+
+	/// en: 'Could not open ${app}.'
+	String siblingOpenFailed({required Object app}) => 'Could not open ${app}.';
+
+	/// en: 'The link expired and a new one is ready — open ${app} again.'
+	String siblingLinkRenewed({required Object app}) => 'The link expired and a new one is ready — open ${app} again.';
+
+	/// en: 'Try again'
+	String get tryAgain => 'Try again';
 
 	/// en: 'Link with a QR code'
 	String get linkWithQr => 'Link with a QR code';
@@ -6440,6 +6488,13 @@ extension on Translations {
 			'onboarding.callsignBody' => 'You need an Amateur Radio Operator License in order to find this app useful',
 			'onboarding.callsignLabel' => 'Operator\'s Callsign',
 			'onboarding.alreadyHaveAccount' => 'Already have an account?',
+			'onboarding.foundSiblingTitle' => 'Link an existing account?',
+			'onboarding.foundSiblingBody' => ({required Object app}) => 'We found ${app} on this device. Link this app to the same account and your callsign and logs come across.',
+			'onboarding.foundPoloBody' => 'We found an older version of Ham2K Portable Logger on this device. Link this app to the same account and your callsign and logs come across.',
+			'onboarding.foundSiblingsBody' => 'We found other Ham2K apps on this device. Link this app to one of their accounts and your callsign and logs come across.',
+			'onboarding.linkWithApp' => ({required Object app}) => 'Link with ${app}',
+			'onboarding.linkWithPolo' => 'Link with account in older version',
+			'onboarding.setUpFresh' => 'Set up fresh',
 			'onboarding.activitiesTitle' => 'Favorite Activities',
 			'onboarding.activitiesBody' => 'Are you interested in any of these popular activation programs?',
 			'onboarding.activitiesFooter' => '(You can find more options in the Settings)',
@@ -6920,6 +6975,8 @@ extension on Translations {
 			'operation.import.addToOperationTitle' => 'Add to this operation',
 			'operation.import.addToOperationDescriptionOn' => 'Captured QSOs are added to this operation as they arrive',
 			'operation.import.addToOperationDescriptionOff' => 'Captured QSOs are held until you turn this on',
+			_ => null,
+		} ?? switch (path) {
 			'operation.import.pendingSectionTitle' => 'Captured QSOs',
 			'operation.import.pendingEmpty' => 'Nothing captured yet',
 			'operation.import.stationMismatch' => ({required Object call}) => 'Logged as ${call}, not this operation\'s station',
@@ -6927,8 +6984,6 @@ extension on Translations {
 			'operation.import.gapDialogTitle' => 'Include earlier captures?',
 			'operation.import.gapDialogBody' => ({required Object count}) => '${count} more QSOs were captured earlier, before a gap in the data. Include them too?',
 			'operation.import.gapDialogRecentOnly' => 'Just the recent ones',
-			_ => null,
-		} ?? switch (path) {
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Include all ${count}',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
 			'map.unavailable' => 'The map isn\'t available right now.',
@@ -7434,6 +7489,8 @@ extension on Translations {
 			'settings.syncPanel.countsServerUnavailable' => 'Server: not available',
 			'settings.syncPanel.replaceDialogBody' => ({required Object operations, required Object qsos}) => 'This backs up and clears ${operations} and ${qsos} from this device, then downloads the account\'s data instead. The backup stays in this device\'s database.',
 			'settings.syncPanel.replace' => 'Replace',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.pendingBannerTitle' => 'New Ham2K Log Filer account detected',
 			'settings.syncPanel.pendingBannerBody' => 'Keep this device\'s existing operations and QSOs and merge them into the account, or replace them with the account\'s data (a backup stays on this device either way).',
 			'settings.syncPanel.combine' => 'Combine',
@@ -7441,8 +7498,6 @@ extension on Translations {
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer keeps rejecting this device. Check your callsign in Sync settings.',
 			'settings.syncPanel.openSettings' => 'Open Sync settings',
 			'settings.accounts.title' => 'Accounts & Services',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.none' => 'No active extensions with accounts',
 			'settings.accounts.notConfigured' => 'Not configured',
 			'settings.accounts.connected' => 'Connected',
@@ -7948,6 +8003,8 @@ extension on Translations {
 			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
 			'updates.getIt' => 'Get it',
 			'updates.ok' => 'OK',
+			_ => null,
+		} ?? switch (path) {
 			'updates.updateReady' => 'Update ready',
 			'updates.restartToApply' => 'An update has been downloaded. Restart to apply it.',
 			'updates.appliesNextLaunch' => 'An update has been downloaded. It will apply the next time you open the app.',
@@ -7955,8 +8012,6 @@ extension on Translations {
 			'updates.reloadToUpdate' => 'A newer version of this page is available. Reload to get it.',
 			'updates.reloadNow' => 'Reload now',
 			'updates.checkForUpdates' => 'Check for Updates',
-			_ => null,
-		} ?? switch (path) {
 			'updates.checkingForUpdates' => 'Checking for updates…',
 			'updates.upToDate' => 'Up to date',
 			'updates.automaticChecks' => 'Check automatically',
@@ -8026,6 +8081,15 @@ extension on Translations {
 			'switchAccounts.currentAccount' => 'Current account',
 			'switchAccounts.otherAccounts' => 'Other accounts',
 			'switchAccounts.linkToAnother' => 'Link to another account',
+			'switchAccounts.linkWithSibling' => 'Link with other Ham2K App',
+			'switchAccounts.linkWithPolo' => 'Link with account in older version',
+			'switchAccounts.linkWithSiblingDescription' => 'You have another Ham2K app installed. Link with the account in use there.',
+			'switchAccounts.siblingPrompt' => ({required Object app}) => 'Approve the request in ${app}, then come back here.',
+			'switchAccounts.openSiblingAgain' => ({required Object app}) => 'Open ${app} again',
+			'switchAccounts.siblingNoGrant' => 'Didn\'t work? Open it again, or go back and link another way.',
+			'switchAccounts.siblingOpenFailed' => ({required Object app}) => 'Could not open ${app}.',
+			'switchAccounts.siblingLinkRenewed' => ({required Object app}) => 'The link expired and a new one is ready — open ${app} again.',
+			'switchAccounts.tryAgain' => 'Try again',
 			'switchAccounts.linkWithQr' => 'Link with a QR code',
 			'switchAccounts.linkWithQrDescription' => 'Scan it from a device already using the account',
 			'switchAccounts.linkWithEmail' => 'Link with an email address',

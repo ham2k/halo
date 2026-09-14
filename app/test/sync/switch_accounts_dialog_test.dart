@@ -17,6 +17,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
+import 'package:ham2k_logger/services/sibling_apps_service.dart';
 import 'package:ham2k_logger/views/switch_accounts_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
@@ -39,6 +40,8 @@ Future<void> pumpDialog(
   Future<Map<String, dynamic>?> Function(String email)? linkClientWithEmail,
   DateTime Function()? now,
   List<bool?>? results,
+  List<SiblingApp> siblings = const [],
+  Future<bool> Function(SiblingApp app, String url)? openSibling,
 }) async {
   await tester.pumpWidget(
     TranslationProvider(
@@ -63,6 +66,8 @@ Future<void> pumpDialog(
                 // configuration is the onboarding step's, covered over in
                 // onboarding_test.dart.
                 hostHasCloseIcon: true,
+                siblings: siblings,
+                openSibling: openSibling,
                 pollInterval: const Duration(seconds: 5),
                 now: now ?? DateTime.now,
               ),
@@ -455,6 +460,176 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
     expect(results, [true]);
+  });
+
+  testWidgets('sibling flow: the menu offers each app on the device, and hands it the QR link', (tester) async {
+    // Same permission, same link as the QR flow — the reader differs, not
+    // the payload. A sibling list with no opener is not offered at all: a
+    // row that leads nowhere is worse than none.
+    const polo = SiblingApp(id: 'com.ham2k.polo.prod', name: 'Ham2K Portable Logger');
+    var currentUuid = 'acct-1';
+    final results = <bool?>[];
+    final opened = <(SiblingApp, String)>[];
+    await pumpDialog(
+      tester,
+      results: results,
+      siblings: const [polo],
+      openSibling: (app, url) async {
+        opened.add((app, url));
+        return true;
+      },
+      fetchAccountData: () async => accountData(uuid: currentUuid),
+      linkClient: (email) async {
+        expect(email, isNull);
+        return {
+          'permission': {
+            'status': 'pending',
+            'client': 'client-uuid-1',
+            'challenge_token': 'FFEE99',
+            'challenge_expires_at': DateTime.now().add(const Duration(minutes: 10)).toUtc().toIso8601String(),
+          },
+        };
+      },
+    );
+
+    await tester.tap(find.text('Link with account in older version'));
+    await tester.pumpAndSettle();
+    expect(opened, [(polo, 'com.ham2k:///link_client?id=client-uuid-1&token=FFEE99')]);
+    expect(find.textContaining('Approve the request in Ham2K Portable Logger'), findsOneWidget);
+    // No onFallback here: the Settings pane's way out is Back, not a
+    // "set up fresh" that means nothing outside onboarding.
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.textContaining("Didn't work?"), findsOneWidget);
+    expect(find.text('Set up fresh'), findsNothing);
+
+    currentUuid = 'acct-9';
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(results, [true]);
+  });
+
+  Map<String, dynamic> pendingPermission() => {
+        'permission': {
+          'status': 'pending',
+          'client': 'client-uuid-1',
+          'challenge_token': 'FFEE99',
+          'challenge_expires_at': DateTime.now().add(const Duration(minutes: 10)).toUtc().toIso8601String(),
+        },
+      };
+  const polo = SiblingApp(id: 'com.ham2k.polo.prod', name: 'Ham2K Portable Logger');
+
+  testWidgets('sibling flow: two PoLo flavors are named, one is "the older version"', (tester) async {
+    // Each row opens a different app; two reading identically leave the
+    // operator guessing.
+    await pumpDialog(
+      tester,
+      siblings: const [polo, SiblingApp(id: 'com.ham2k.polo.beta', name: 'Ham2K Portable Logger (Beta)')],
+      openSibling: (_, _) async => true,
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async => {},
+    );
+    expect(find.text('Link with account in older version'), findsNothing);
+    expect(find.text('Link with Ham2K Portable Logger'), findsOneWidget);
+    expect(find.text('Link with Ham2K Portable Logger (Beta)'), findsOneWidget);
+  });
+
+  testWidgets('sibling flow: a resume whose poll got no answer says unreachable, not "didn\'t work"', (tester) async {
+    // The fallback that line offers (in onboarding, "set up fresh") is a
+    // choice against an account that may well be linked by now; a tick the
+    // server never answered must not be read as "not yet".
+    var reachable = true;
+    await pumpDialog(
+      tester,
+      siblings: const [polo],
+      openSibling: (_, _) async => true,
+      fetchAccountData: () async => reachable ? accountData() : throw StateError('offline'),
+      linkClient: (email) async => pendingPermission(),
+    );
+    await tester.tap(find.text('Link with account in older version'));
+    await tester.pumpAndSettle();
+    reachable = false;
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.textContaining("Didn't work?"), findsNothing);
+    expect(find.text('Could not reach the sync server. Try again later.'), findsOneWidget);
+  });
+
+  testWidgets('sibling flow: an expired challenge is renewed AND the operator is told to hand it across again', (tester) async {
+    // A QR repaints itself with the new token; the sibling still holds the
+    // dead one, and only the operator can carry the new one over.
+    var now = DateTime.utc(2026, 1, 1, 12);
+    var requests = 0;
+    await pumpDialog(
+      tester,
+      now: () => now,
+      siblings: const [polo],
+      openSibling: (_, _) async => true,
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async {
+        requests++;
+        return {
+          'permission': {
+            'status': 'pending',
+            'client': 'client-uuid-1',
+            'challenge_token': 'T$requests',
+            'challenge_expires_at': now.add(const Duration(minutes: 10)).toIso8601String(),
+          },
+        };
+      },
+    );
+    await tester.tap(find.text('Link with account in older version'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('The link expired'), findsNothing);
+    now = now.add(const Duration(minutes: 11));
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(requests, 2);
+    expect(find.textContaining('The link expired'), findsOneWidget);
+  });
+
+  testWidgets('sibling flow: an opener that throws is reported and painted, and a later success ends the streak', (tester) async {
+    // The service lets a PlatformException through precisely so that a
+    // native defect reaches here and is reported rather than painted as
+    // "could not open" and forgotten.
+    final backend = FakeErrorReportingBackend();
+    ErrorReportingService.resetFailureStreaks();
+    addTearDown(ErrorReportingService.resetFailureStreaks);
+    var throws = true;
+    await withErrorHooks(() async {
+      await pumpDialog(
+        tester,
+        siblings: const [polo],
+        openSibling: (_, _) async => throws ? throw PlatformException(code: 'error', message: 'native blew up') : true,
+        fetchAccountData: () async => accountData(),
+        linkClient: (email) async => pendingPermission(),
+      );
+      await tester.tap(find.text('Link with account in older version'));
+      await tester.pumpAndSettle();
+      expect(find.text('Could not open Ham2K Portable Logger.'), findsOneWidget);
+      await tester.tap(find.text('Open Ham2K Portable Logger again'));
+      await tester.pumpAndSettle();
+      expect(backend.exceptions, isEmpty, reason: 'two in a row is a flaky day, not yet a defect');
+      throws = false;
+      await tester.tap(find.text('Open Ham2K Portable Logger again'));
+      await tester.pumpAndSettle();
+      expect(find.text('Could not open Ham2K Portable Logger.'), findsNothing);
+      throws = true;
+      await tester.tap(find.text('Open Ham2K Portable Logger again'));
+      await tester.pumpAndSettle();
+      expect(backend.exceptions, isEmpty, reason: 'the success in between reset the streak');
+    }, backend: backend);
+  });
+
+  testWidgets('sibling flow: no opener, no rows', (tester) async {
+    await pumpDialog(
+      tester,
+      siblings: const [SiblingApp(id: 'com.ham2k.polo.prod', name: 'Ham2K Portable Logger')],
+      fetchAccountData: () async => accountData(),
+      linkClient: (email) async => {},
+    );
+    expect(find.text('Link with account in older version'), findsNothing);
+    expect(find.text('Link with a QR code'), findsOneWidget);
   });
 
   // Through the PRODUCTION helper, not pumpDialog: the barrier flag is

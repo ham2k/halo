@@ -3,12 +3,13 @@
 //
 // The Settings "Switch Accounts" dialog: moves this device to a
 // different Ham2K Log Filer account. Ported from app-polo's
-// SyncAccountDialog/SyncLinkingDialog pair, but HaLo is only ever the
-// *requesting* side here — approval happens on a device already linked to
-// the target account (e.g. PoLo on a phone), so there's no scanner and no
+// SyncAccountDialog/SyncLinkingDialog pair. This pane is the *requesting*
+// side only — approval happens in an app already linked to the target
+// account, which is HaLo's confirm_device_dialog.dart when the request
+// arrives here as a `link_client` deep link, so there's no scanner and no
 // code-entry view in this dialog.
 //
-// Three ways in, all backed by `POST v1/client/permissions`:
+// Four ways in, all backed by `POST v1/client/permissions`:
 //  - Quick switch: accounts this client already holds an active permission
 //    on (from `getAccountData`'s `accounts`) switch immediately.
 //  - Email: a pending permission on that account; its `challenge_token` is
@@ -17,6 +18,9 @@
 //  - QR code: a blank ("orphaned") permission encoded as the same
 //    `com.ham2k:///link_client?id=…&token=…` deep link app-polo generates,
 //    for an already-linked phone to scan and approve.
+//  - A sibling app: the same orphaned permission, but the link is
+//    handed to another Ham2K logger on THIS device (SiblingAppsService)
+//    instead of painted; the operator approves there and comes back.
 //
 // While a request is pending, the dialog polls `getAccountData` (app-polo
 // uses the same 5s cadence) and treats a changed `current_account.uuid` as
@@ -33,6 +37,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../services/error_reporting_service.dart';
+import '../services/sibling_apps_service.dart';
 import '../tools/sync_account_identity.dart';
 
 /// How the other device's deep link is assembled — same scheme and params
@@ -49,6 +54,8 @@ Future<bool?> showSwitchAccountsDialog(
   required Future<Map<String, dynamic>?> Function() fetchAccountData,
   required Future<Map<String, dynamic>?> Function(String? email) linkClient,
   required Future<Map<String, dynamic>?> Function(String email) linkClientWithEmail,
+  List<SiblingApp> siblings = const [],
+  Future<bool> Function(SiblingApp app, String url)? openSibling,
 }) {
   return showModalPane<bool>(
     context,
@@ -59,12 +66,14 @@ Future<bool?> showSwitchAccountsDialog(
       fetchAccountData: fetchAccountData,
       linkClient: linkClient,
       linkClientWithEmail: linkClientWithEmail,
+      siblings: siblings,
+      openSibling: openSibling,
       hostHasCloseIcon: true,
     ),
   );
 }
 
-enum _Mode { menu, email, code, emailSent, qr }
+enum _Mode { menu, email, code, emailSent, qr, sibling }
 
 class SwitchAccountsPane extends StatefulWidget {
   final Future<Map<String, dynamic>?> Function() fetchAccountData;
@@ -75,6 +84,23 @@ class SwitchAccountsPane extends StatefulWidget {
   final VoidCallback? onCancel;
   final bool hideAccountsList;
   final String? cancelLabel;
+
+  /// The other Ham2K loggers installed on this device, each offered as a
+  /// menu row that hands the link across. Empty everywhere but
+  /// mobile. [openSibling] is what does the handing; without it the rows are
+  /// not offered at all.
+  final List<SiblingApp> siblings;
+  final Future<bool> Function(SiblingApp app, String url)? openSibling;
+
+  /// Start straight in the sibling flow with this app rather than on the
+  /// menu — onboarding's "we found X" step has already asked.
+  final SiblingApp? initialSibling;
+
+  /// An extra way out shown once the operator came back from the sibling
+  /// with nothing granted: onboarding offers "set up fresh" here. Null
+  /// leaves only the Back button, which is all a Settings pane needs.
+  final String? fallbackLabel;
+  final VoidCallback? onFallback;
 
   /// Whether the host surface carries a way out of its own — a Modal Pane's
   /// header close icon. Decides where the footer needs one too; see
@@ -96,6 +122,11 @@ class SwitchAccountsPane extends StatefulWidget {
     this.onCancel,
     this.hideAccountsList = false,
     this.cancelLabel,
+    this.siblings = const [],
+    this.openSibling,
+    this.initialSibling,
+    this.fallbackLabel,
+    this.onFallback,
     this.hostHasCloseIcon = false,
     this.pollInterval = const Duration(seconds: 5),
     // REAL time: the only thing this is compared against is the server's
@@ -111,7 +142,7 @@ class SwitchAccountsPane extends StatefulWidget {
   State<SwitchAccountsPane> createState() => _SwitchAccountsPaneState();
 }
 
-class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
+class _SwitchAccountsPaneState extends State<SwitchAccountsPane> with WidgetsBindingObserver {
   _Mode _mode = _Mode.menu;
   Map<String, dynamic>? _accountData;
   bool _loadingAccountData = true;
@@ -159,8 +190,22 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   String? _challengeCode;
   String? _pendingEmail;
 
-  // QR-flow state.
+  // QR-flow state; the sibling flow carries the same URL, on the same
+  // permission, to a different reader.
   String? _qrUrl;
+
+  // Sibling-flow state.
+  SiblingApp? _sibling;
+
+  /// The app came back to the foreground while the sibling request was
+  /// live and the very next poll found no grant. That is the moment the
+  /// operator most needs another way out — the only other signal is a
+  /// spinner that says "waiting" forever.
+  bool _resumedWithoutGrant = false;
+
+  /// The challenge the sibling was handed expired and a fresh one exists
+  /// here — the sibling must be opened again to receive it.
+  bool _linkRenewed = false;
 
   /// When the server-side challenge (QR or on-screen code) dies — 10
   /// minutes; both flows renew it from a poll tick past this instant.
@@ -184,14 +229,68 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
   @override
   void initState() {
     super.initState();
-    _loadAccountData();
+    WidgetsBinding.instance.addObserver(this);
+    final sibling = widget.initialSibling;
+    if (sibling == null) {
+      _loadAccountData();
+    } else {
+      unawaited(_startWithSibling(sibling));
+    }
+  }
+
+  /// The baseline must be known BEFORE the permission goes out: a poll tick
+  /// that first learns the account after the sibling already approved it
+  /// would adopt the new account as the baseline and never see the change.
+  /// The operator leaves for the other app the instant the request is out,
+  /// so "first successful contact" is routinely after the grant — which is
+  /// why an unknown baseline stops here, with a retry, rather than going on.
+  Future<void> _startWithSibling(SiblingApp sibling) async {
+    await _loadAccountData();
+    if (!mounted) return;
+    if (_baselineAccountUuid == null) {
+      setState(() {
+        _mode = _Mode.sibling;
+        _sibling = sibling;
+        _error = t.switchAccounts.serverUnreachable;
+      });
+      return;
+    }
+    await _showSibling(sibling);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _stopPolling();
     _emailController.dispose();
     super.dispose();
+  }
+
+  /// Coming back from the sibling app is the moment the grant is most
+  /// likely to have landed, so poll now rather than waiting out the tick —
+  /// and if it has NOT landed, say so, instead of leaving "waiting" on
+  /// screen with nothing else to press.
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) return;
+    if (_mode != _Mode.sibling || _pollTimer == null) return;
+    unawaited(_pollAfterResume());
+  }
+
+  Future<void> _pollAfterResume() async {
+    final answered = await _pollTick();
+    if (!mounted || _closing || _mode != _Mode.sibling) return;
+    // "Didn't work?" is a claim about the server's answer. A tick that got
+    // none says nothing about the grant — and the fallback it would offer,
+    // in onboarding, is "set up fresh" against an account that may well be
+    // linked by now.
+    setState(() {
+      if (answered) {
+        _resumedWithoutGrant = true;
+      } else {
+        _error = t.switchAccounts.serverUnreachable;
+      }
+    });
   }
 
   Future<void> _loadAccountData() async {
@@ -202,7 +301,12 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       _accountData = data;
       _loadingAccountData = false;
       final uuid = (data?['current_account'] as Map?)?['uuid'] as String?;
-      if (_mode == _Mode.menu || _mode == _Mode.email) _baselineAccountUuid = uuid ?? _baselineAccountUuid;
+      // A sibling retry (_startWithSibling) reloads from sibling mode with
+      // no request out yet, which is the one other moment a baseline may be
+      // taken: nothing has been granted that could be absorbed.
+      if (_mode == _Mode.menu || _mode == _Mode.email || _baselineAccountUuid == null) {
+        _baselineAccountUuid = uuid ?? _baselineAccountUuid;
+      }
     });
   }
 
@@ -251,7 +355,10 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     _pollTimer = Timer.periodic(widget.pollInterval, (_) => unawaited(_pollTick()));
   }
 
-  Future<void> _pollTick() async {
+  /// Returns whether the server answered at all — false says nothing about
+  /// the challenge, and callers that turn a tick into a message must not
+  /// read it as "not yet".
+  Future<bool> _pollTick() async {
     // Deliberately NOT through _attempt: a tick's own fetch failing says
     // nothing about the challenge on screen, which is still perfectly valid,
     // so painting an error over it would be a lie. The renewals this tick may
@@ -260,12 +367,22 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     // is not the "somebody pressed this three times" the streak measures.
     // That a poll which never succeeds still says nothing is a separate gap,
     // and not one this catch closes.
-    final data = await widget.fetchAccountData().catchError((_) => null);
-    if (!mounted || data == null) return;
+    //
+    // A try/catch, not `.catchError((_) => null)`: that handler's inferred
+    // return type is Null, which the typed future rejects with an
+    // ArgumentError of its own — the tick then dies on exactly the fetch
+    // failure it meant to shrug off.
+    Map<String, dynamic>? data;
+    try {
+      data = await widget.fetchAccountData();
+    } catch (_) {
+      data = null;
+    }
+    if (!mounted || data == null) return false;
     final newUuid = (data['current_account'] as Map?)?['uuid'] as String?;
     if (newUuid != null && _baselineAccountUuid != null && newUuid != _baselineAccountUuid) {
       _onSuccess();
-      return;
+      return true;
     }
     // The menu's initial fetch failed (e.g. transient network): first
     // successful contact establishes the baseline instead of a false match.
@@ -277,10 +394,17 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     if (expired) {
       if (_mode == _Mode.qr) {
         await _requestQrPermission(operatorAction: false);
+      } else if (_mode == _Mode.sibling) {
+        // A QR repaints itself; the sibling still holds the dead link and
+        // nothing here can reach into it. Say so — but never auto-reopen,
+        // which would steal the screen from whatever the operator is doing.
+        await _requestQrPermission(operatorAction: false);
+        if (mounted && _qrUrl != null) setState(() => _linkRenewed = true);
       } else if (_mode == _Mode.code) {
         await _renewEmailChallenge(operatorAction: false);
       }
     }
+    return true;
   }
 
   /// The on-screen code expired before the other device confirmed it:
@@ -521,6 +645,58 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
     _startPolling();
   }
 
+  /// Same permission as the QR flow — [linkClientQrUrl] builds the link for
+  /// both, so the two cannot drift — handed to [sibling] instead of painted.
+  Future<void> _showSibling(SiblingApp sibling) async {
+    setState(() {
+      _busy = true;
+      _error = null;
+      _mode = _Mode.sibling;
+      _sibling = sibling;
+      _qrUrl = null;
+      _resumedWithoutGrant = false;
+      _linkRenewed = false;
+    });
+    await _requestQrPermission();
+    if (!mounted) return;
+    if (_qrUrl != null) await _openSibling();
+    // See _showQr: a dismissal during the request has already disposed this
+    // State, and a poll started now could never be cancelled.
+    if (!mounted) return;
+    _startPolling();
+  }
+
+  /// Hands the current link to the sibling; a refusal paints, since the
+  /// operator is otherwise left waiting for an app that never opened.
+  Future<void> _openSibling() async {
+    final sibling = _sibling;
+    final url = _qrUrl;
+    final open = widget.openSibling;
+    if (sibling == null || url == null || open == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+      _resumedWithoutGrant = false;
+      _linkRenewed = false;
+    });
+    var ok = false;
+    try {
+      ok = await open(sibling, url);
+      // Same streak discipline as _attempt: a launch that works ends it, so
+      // three failures spread over months are not reported as "in a row".
+      ErrorReportingService.recordSuccess('switch-accounts:open-sibling');
+    } catch (e, st) {
+      debugPrint('[switch-accounts] open-sibling failed: $e\n$st');
+      ErrorReportingService.reportIfRepeated('switch-accounts:open-sibling', e, st,
+          context: 'switch-accounts:open-sibling');
+    }
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (!ok) _error = t.switchAccounts.siblingOpenFailed(app: sibling.name);
+    });
+  }
+
   void _backToMenu() {
     _stopPolling();
     setState(() {
@@ -530,6 +706,9 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
       _challengeCode = null;
       _pendingEmail = null;
       _qrUrl = null;
+      _sibling = null;
+      _resumedWithoutGrant = false;
+      _linkRenewed = false;
       _challengeExpiresAt = null;
     });
     unawaited(_loadAccountData());
@@ -650,6 +829,8 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         return _buildEmailSent(context);
       case _Mode.qr:
         return _buildQr(context);
+      case _Mode.sibling:
+        return _buildSibling(context);
     }
   }
 
@@ -703,6 +884,26 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
           const SizedBox(height: Space.lg),
           Text(context.t.switchAccounts.linkToAnother, style: theme.textTheme.titleSmall),
         ],
+        if (widget.openSibling != null)
+          for (final sibling in widget.siblings)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(MdiIcons.cellphoneLink),
+              // PoLo is "the older version" — it is the app most operators
+              // are coming from; another HaLo edition is just "other". Two
+              // PoLo flavors side by side would read identically, so then
+              // each is named.
+              title: Text(switch (sibling) {
+                SiblingApp(edition: null) when onlyPolo(widget.siblings) =>
+                  context.t.switchAccounts.linkWithPolo,
+                SiblingApp(edition: null) => context.t.onboarding.linkWithApp(app: sibling.name),
+                _ => context.t.switchAccounts.linkWithSibling,
+              }),
+              subtitle: Text(context.t.switchAccounts.linkWithSiblingDescription),
+              enabled: !_busy,
+              onTap: () => _showSibling(sibling),
+              mouseCursor: SystemMouseCursors.click,
+            ),
         ListTile(
           contentPadding: EdgeInsets.zero,
           leading: Icon(MdiIcons.qrcode),
@@ -848,6 +1049,58 @@ class _SwitchAccountsPaneState extends State<SwitchAccountsPane> {
         ..._errorAndBusy(context),
       ],
     );
+  }
+
+  Widget _buildSibling(BuildContext context) {
+    final sibling = _sibling;
+    final name = sibling?.name ?? '';
+    // No link means the request (or the baseline fetch before it) failed:
+    // the button then starts the whole request over, since re-opening the
+    // sibling with nothing to hand it would only say "waiting" again.
+    final hasLink = _qrUrl != null;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(context.t.switchAccounts.siblingPrompt(app: name)),
+        if (hasLink) ...[const SizedBox(height: Space.xl), Center(child: Text(context.t.switchAccounts.waitingForConfirmation))],
+        if (_linkRenewed) ...[
+          const SizedBox(height: Space.lg),
+          Text(context.t.switchAccounts.siblingLinkRenewed(app: name), textAlign: TextAlign.center),
+        ],
+        const SizedBox(height: Space.lg),
+        Center(
+          child: OutlinedButton(
+            onPressed: _busy || sibling == null
+                ? null
+                : hasLink
+                    ? _openSibling
+                    : () => _startWithSibling(sibling),
+            child: Text(hasLink ? context.t.switchAccounts.openSiblingAgain(app: name) : context.t.switchAccounts.tryAgain),
+          ),
+        ),
+        if (_resumedWithoutGrant) ...[
+          const SizedBox(height: Space.xl),
+          Text(context.t.switchAccounts.siblingNoGrant, textAlign: TextAlign.center),
+          if (widget.onFallback != null && widget.fallbackLabel != null) ...[
+            const SizedBox(height: Space.md),
+            Center(
+              child: OutlinedButton(onPressed: _fallback, child: Text(widget.fallbackLabel!)),
+            ),
+          ],
+        ],
+        ..._errorAndBusy(context),
+      ],
+    );
+  }
+
+  /// The host's own way out — same exit discipline as [_doCancel], since it
+  /// leaves a live poll behind otherwise.
+  void _fallback() {
+    if (_closing) return;
+    _closing = true;
+    _stopPolling();
+    widget.onFallback?.call();
   }
 
   List<Widget> _errorAndBusy(BuildContext context) {

@@ -24,11 +24,13 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/sibling_apps_service.dart';
 import 'package:ham2k_logger/views/ham2k_logo.dart';
 import 'package:ham2k_logger/views/onboarding_overlay.dart';
 import 'package:ham2k_logger/views/tester_overlay.dart' show testerOverlayCovering;
 import 'package:ham2k_logger/views/settings_view.dart';
 import 'package:ham2k_logger/views/splash_view.dart';
+import 'package:ham2k_logger/views/switch_accounts_dialog.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../support/halo_test_support.dart';
@@ -46,6 +48,7 @@ double _contrast(Color a, Color b) {
 Future<HaLoServices> makeServices({
   Map<String, Object> prefs = const {},
   ExtensionService? extensions,
+  SiblingAppsService? siblingApps,
 }) async {
   SharedPreferences.setMockInitialValues(prefs);
   final settings = SettingsService(await SharedPreferences.getInstance(), secureStorage: FakeSecureStorage());
@@ -54,7 +57,7 @@ Future<HaLoServices> makeServices({
   if (extensions != null) {
     extensions.settings = settings;
   }
-  return HaLoServices(db, settings, extensions: effectiveExtensions);
+  return HaLoServices(db, settings, extensions: effectiveExtensions, siblingApps: siblingApps);
 }
 
 Future<void> pumpApp(WidgetTester tester, HaLoServices services) async {
@@ -597,6 +600,268 @@ void main() {
     await drainTimers(tester);
   });
 
+  testWidgets('a fresh install that links is not sent to Settings for the QSOs the first round pulled', (tester) async {
+    // The sync engine's own rounds keep running under onboarding, and the
+    // one that first sees the new account adopts it silently (nothing
+    // local) and pulls its log — routinely before the pane's poll notices
+    // the grant. Whether this device HAD data is decided when the link flow
+    // starts; the mutation to catch is counting at success, which reads the
+    // server's log as local and sends an empty install to combine/replace.
+    final mockExtensions = MockExtensionService();
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-1'},
+      'accounts': [],
+    };
+    mockExtensions.onLinkClient = (_) => {
+          'permission': {'status': 'pending', 'challenge_token': '123456', 'challenge_expires_at': '2026-12-31T23:59:59Z'}
+        };
+    final services = await makeServices(extensions: mockExtensions);
+    await pumpApp(tester, services);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Already have an account?'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Link with an email address'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Email address'), 'test@example.com');
+    await tester.tap(find.text('Link account'));
+    await tester.pumpAndSettle();
+
+    // The engine got there first: the account's QSOs are already local by
+    // the time the poll sees the changed account.
+    final op = await services.operations.create(stationCall: 'K2DEF');
+    await services.qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-2', 'call': 'K2DEF'},
+      'accounts': [],
+    };
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    expect(find.byType(SettingsView), findsNothing, reason: 'nothing of its own to combine — straight to the home screen');
+    await drainTimers(tester);
+  });
+
+  // A sibling Ham2K app on the device turns Welcome's Continue into
+  // an offer. The mutations these catch: a gate that shows the step for an
+  // EMPTY list; a link built by hand instead of by linkClientQrUrl; a return
+  // trip that leaves "waiting" on screen with nothing else to press.
+  testWidgets('with no sibling app, Welcome goes straight to the callsign step', (tester) async {
+    final services = await makeServices(siblingApps: FakeSiblingApps(const []));
+    await pumpApp(tester, services);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text("What's your callsign?"), findsOneWidget);
+    expect(find.text('Link an existing account?'), findsNothing);
+    await drainTimers(tester);
+  });
+
+  testWidgets('a sibling app is offered after Welcome; Set up fresh falls through to the callsign step', (tester) async {
+    final services = await makeServices(siblingApps: FakeSiblingApps(const [_polo]));
+    await pumpApp(tester, services);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Link an existing account?'), findsOneWidget);
+    expect(find.textContaining('We found an older version of Ham2K Portable Logger'), findsOneWidget);
+    expect(find.text('Link with account in older version'), findsOneWidget);
+
+    await tester.tap(find.text('Set up fresh'));
+    await tester.pumpAndSettle();
+    expect(find.text("What's your callsign?"), findsOneWidget);
+    // Back from the callsign step retraces through the offer, not past it.
+    await tester.tap(find.text('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('Link an existing account?'), findsOneWidget);
+    await drainTimers(tester);
+  });
+
+  testWidgets('linking with a sibling hands it the QR link, and a resume with the grant finishes onboarding', (tester) async {
+    final siblings = FakeSiblingApps(const [_polo]);
+    final mockExtensions = MockExtensionService();
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-1'},
+      'accounts': [],
+      'qsos': {'total': 0},
+      'operations': {'total': 0},
+    };
+    String? requestedEmail = 'unset';
+    mockExtensions.onLinkClient = (email) {
+      requestedEmail = email;
+      return {
+        'permission': {
+          'status': 'pending',
+          'client': 'client-123',
+          'challenge_token': 'token-456',
+          'challenge_expires_at': '2026-12-31T23:59:59Z',
+        }
+      };
+    };
+    final services = await makeServices(extensions: mockExtensions, siblingApps: siblings);
+    await pumpApp(tester, services);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Link with account in older version'));
+    await tester.pumpAndSettle();
+
+    // The same orphaned permission the QR flow requests (no email), and the
+    // very same link — one builder, so the two readers can't drift.
+    expect(requestedEmail, isNull);
+    expect(siblings.opened, [(_polo, linkClientQrUrl(clientUuid: 'client-123', challengeToken: 'token-456'))]);
+    expect(find.textContaining('Approve the request in Ham2K Portable Logger'), findsOneWidget);
+    expect(find.text('Waiting for confirmation…'), findsOneWidget);
+    expect(find.textContaining("Didn't work?"), findsNothing);
+
+    // The operator approves over there and switches back: the resume polls
+    // at once rather than waiting out the 5s tick.
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-2', 'call': 'W1AW'},
+      'accounts': [],
+    };
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pump();
+    await tester.pumpAndSettle();
+    expect(find.byType(OnboardingOverlayView), findsNothing);
+    expect(services.settings.activeProfile.operatorCall, 'W1AW');
+    await drainTimers(tester);
+  });
+
+  testWidgets('a resume with nothing granted offers Set up fresh, which lands on the callsign step', (tester) async {
+    final siblings = FakeSiblingApps(const [_polo]);
+    final mockExtensions = MockExtensionService();
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-1'},
+      'accounts': [],
+    };
+    mockExtensions.onLinkClient = (_) => {
+          'permission': {
+            'status': 'pending',
+            'client': 'client-123',
+            'challenge_token': 'token-456',
+            'challenge_expires_at': '2026-12-31T23:59:59Z',
+          }
+        };
+    final services = await makeServices(extensions: mockExtensions, siblingApps: siblings);
+    await pumpApp(tester, services);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Link with account in older version'));
+    await tester.pumpAndSettle();
+
+    tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+    expect(find.textContaining("Didn't work?"), findsOneWidget);
+    // Still polling: a late grant must still be noticed.
+    expect(find.text('Waiting for confirmation…'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Set up fresh'));
+    await tester.tap(find.text('Set up fresh'));
+    await tester.pumpAndSettle();
+    expect(find.text("What's your callsign?"), findsOneWidget);
+    // The poll is gone with the step: five more seconds fetch nothing that
+    // could dismiss the overlay from under the callsign question.
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-2', 'call': 'W1AW'},
+      'accounts': [],
+    };
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+    expect(find.byType(OnboardingOverlayView), findsOneWidget);
+    await drainTimers(tester);
+  });
+
+  testWidgets('a sibling that will not open says so, and can be tried again', (tester) async {
+    final siblings = FakeSiblingApps(const [_polo])..openSucceeds = false;
+    final mockExtensions = MockExtensionService();
+    mockExtensions.mockAccountData = {
+      'current_account': {'uuid': 'acct-1'},
+      'accounts': [],
+    };
+    mockExtensions.onLinkClient = (_) => {
+          'permission': {
+            'status': 'pending',
+            'client': 'client-123',
+            'challenge_token': 'token-456',
+            'challenge_expires_at': '2026-12-31T23:59:59Z',
+          }
+        };
+    final services = await makeServices(extensions: mockExtensions, siblingApps: siblings);
+    await pumpApp(tester, services);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Link with account in older version'));
+    await tester.pumpAndSettle();
+    expect(find.text('Could not open Ham2K Portable Logger.'), findsOneWidget);
+
+    siblings.openSucceeds = true;
+    await tester.ensureVisible(find.text('Open Ham2K Portable Logger again'));
+    await tester.tap(find.text('Open Ham2K Portable Logger again'));
+    await tester.pumpAndSettle();
+    expect(siblings.opened, hasLength(2));
+    expect(find.text('Could not open Ham2K Portable Logger.'), findsNothing);
+    await drainTimers(tester);
+  });
+
+  testWidgets('a sibling started before the account was known offers Try again, not a link that cannot succeed', (tester) async {
+    // The poll declares success on a CHANGE from the baseline; a baseline
+    // first learned after the sibling approved is the new account, and the
+    // change is never seen. So with no baseline the request must not go out.
+    final siblings = FakeSiblingApps(const [_polo]);
+    final mockExtensions = MockExtensionService();
+    var reachable = false;
+    var requests = 0;
+    mockExtensions.onAccountData = () => reachable ? {'current_account': {'uuid': 'acct-1'}, 'accounts': []} : null;
+    mockExtensions.onLinkClient = (_) {
+      requests++;
+      return {
+        'permission': {'status': 'pending', 'client': 'c', 'challenge_token': 't', 'challenge_expires_at': '2026-12-31T23:59:59Z'}
+      };
+    };
+    final services = await makeServices(extensions: mockExtensions, siblingApps: siblings);
+    await pumpApp(tester, services);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Link with account in older version'));
+    await tester.pumpAndSettle();
+    expect(requests, 0);
+    expect(siblings.opened, isEmpty);
+    expect(find.text('Could not reach the sync server. Try again later.'), findsOneWidget);
+
+    reachable = true;
+    await tester.tap(find.text('Try again'));
+    await tester.pumpAndSettle();
+    expect(requests, 1);
+    expect(siblings.opened, hasLength(1));
+    expect(find.text('Waiting for confirmation…'), findsOneWidget);
+    await drainTimers(tester);
+  });
+
+  testWidgets('two PoLo flavors are offered by name; a lone PoLo as the older version', (tester) async {
+    const beta = SiblingApp(id: 'com.ham2k.polo.beta', name: 'Ham2K Portable Logger (Beta)');
+    final services = await makeServices(siblingApps: FakeSiblingApps(const [_polo, beta]));
+    await pumpApp(tester, services);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    expect(find.text('Link with account in older version'), findsNothing);
+    expect(find.text('Link with Ham2K Portable Logger'), findsOneWidget);
+    expect(find.text('Link with Ham2K Portable Logger (Beta)'), findsOneWidget);
+    await drainTimers(tester);
+  });
+
+  testWidgets('the sibling rows also sit on the link-account menu reached from the callsign step', (tester) async {
+    final services = await makeServices(siblingApps: FakeSiblingApps(const [_polo]));
+    await pumpApp(tester, services);
+    await tester.tap(find.text('Continue'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Set up fresh'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Already have an account?'));
+    await tester.pumpAndSettle();
+    expect(find.text('Link with account in older version'), findsOneWidget);
+    expect(find.text('Link with a QR code'), findsOneWidget);
+    await drainTimers(tester);
+  });
+
   // The two tests below both catch the same mutation: any step of the band
   // whose widget TYPE changes with the keyboard — a `Container` whose height
   // goes null, an `Expanded` that becomes a bare child — re-inflates the step
@@ -666,15 +931,37 @@ void main() {
   });
 }
 
+/// A device with other Ham2K loggers on it. [opened] records every link
+/// handed across, in order.
+class FakeSiblingApps extends SiblingAppsService {
+  final List<SiblingApp> installed;
+  final opened = <(SiblingApp, String)>[];
+  bool openSucceeds = true;
+
+  FakeSiblingApps(this.installed);
+
+  @override
+  Future<List<SiblingApp>> list() async => installed;
+
+  @override
+  Future<bool> open(SiblingApp app, String url) async {
+    opened.add((app, url));
+    return openSucceeds;
+  }
+}
+
+const _polo = SiblingApp(id: 'com.ham2k.polo.prod', name: 'Ham2K Portable Logger');
+
 class MockExtensionService extends ExtensionServiceWithFakeHost {
   Map<String, dynamic>? mockAccountData;
+  Map<String, dynamic>? Function()? onAccountData;
   Map<String, dynamic>? Function(String?)? onLinkClient;
   Map<String, dynamic>? Function(String)? onLinkClientWithEmail;
 
   MockExtensionService() : super(FakeExtensionHost({}));
 
   @override
-  Future<Map<String, dynamic>?> syncAccountData() async => mockAccountData;
+  Future<Map<String, dynamic>?> syncAccountData() async => onAccountData != null ? onAccountData!() : mockAccountData;
 
   @override
   Future<Map<String, dynamic>?> syncLinkClient(String? email) async {

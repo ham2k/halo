@@ -25,10 +25,11 @@ import 'package:app_links/app_links.dart';
 ///
 /// Each build claims only ITS OWN edition in both families, which is what
 /// lets `com.ham2k.halo.<edition>` answer "is that edition installed?"
-/// (HALO-526). Detection probes the ALIAS family, not the official one: a
-/// build older than HALO-526 claims every edition's `logger` scheme, so a hit
-/// on one of those names no particular edition. Nothing outside this app
-/// emits a `halo` URL, which is exactly what makes it a clean probe.
+/// (HALO-526, sibling_apps_service.dart). Detection probes the ALIAS family,
+/// not the official one: a build older than HALO-526 claims every edition's
+/// `logger` scheme, so a hit on one of those names no particular edition.
+/// Nothing outside this app emits a `halo` URL, which is exactly what makes
+/// it a clean probe.
 ///
 /// That probe answers only about builds carrying HALO-526 or later, and the
 /// error runs ONE WAY: an older sibling claims no `halo` scheme at all, so it

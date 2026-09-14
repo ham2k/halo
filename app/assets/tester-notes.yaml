@@ -8,6 +8,7 @@ upcoming:
   changes:
     - "Extension rows now carry an (i) for details, and Remove has moved in there"
     - "The QSO list leads a noted station's name with its Callsign Notes emoji"
+    - "On a phone with PoLo installed, onboarding and Settings › Switch Accounts offer to link its account directly"
 
 "165":
   changes:
