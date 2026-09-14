@@ -7,9 +7,36 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/views/operation/operation_location_screen.dart';
 
 import '../support/halo_test_support.dart';
+
+/// One control, publishing its own type and reaching back for the legacy
+/// family by code — the shape `alsoHandles` exists for.
+class _NyqpControls extends ExtensionServiceWithFakeHost {
+  _NyqpControls() : super(FakeExtensionHost({}));
+
+  @override
+  Future<ControlsResult> operationControls(
+    Map<String, dynamic> operationData, {
+    Map<String, dynamic>? qso,
+  }) async =>
+      (
+        controls: const [
+          {
+            'key': 'ham2k-new-york-qso-party/setup',
+            'icon': 'pine-tree',
+            'input': {
+              'kind': 'refList',
+              'refType': 'ny-qso-party',
+              'alsoHandles': ['qp/ny'],
+            },
+          },
+        ],
+        loadFailed: false,
+      );
+}
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -46,6 +73,40 @@ void main() {
     final leadingFinder = find.descendant(of: tileFinder, matching: find.byType(CircleAvatar));
     expect(leadingFinder, findsOneWidget);
     expect(find.descendant(of: leadingFinder, matching: find.byIcon(MdiIcons.help)), findsOneWidget);
+  });
+
+  // The other half of #261: a reference an installed extension DOES handle,
+  // under a type it does not publish. The New York QSO Party claims `qp/ny`
+  // rather than rewriting operations logged when every party shared one
+  // extension, so a lookup here that passes only the type paints the row red
+  // for a reference the party beside it is answering for.
+  testWidgets('a suggested-location ref claimed by prefix is not treated as unsupported', (tester) async {
+    final HaLoHarness(:services) = await makeHaLoServices(extensions: _NyqpControls());
+
+    final operation = Operation(
+      uuid: 'op-124',
+      data: {
+        'refs': [
+          {'type': 'qp', 'ref': 'NY', 'name': 'New York QSO Party', 'grid': 'FN31pr'},
+        ],
+      },
+    );
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationLocationScreen(services: services, operation: operation),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final tileFinder = find.ancestor(of: find.text('NY'), matching: find.byType(ListTile));
+    expect(tileFinder, findsOneWidget);
+
+    final tile = tester.widget<ListTile>(tileFinder);
+    final theme = Theme.of(tester.element(tileFinder));
+    expect(tile.tileColor, isNot(theme.colorScheme.errorContainer.withValues(alpha: 0.4)));
+    expect(find.descendant(of: tileFinder, matching: find.byIcon(MdiIcons.help)), findsNothing);
+    expect(find.descendant(of: tileFinder, matching: find.byIcon(MdiIcons.pineTree)), findsOneWidget);
   });
 
   testWidgets('does not flash the unknown-type treatment on the very first frame, before controls finish loading',

@@ -14,7 +14,7 @@
     "belgium",
     "activation"
   ],
-  "geo": {
+  "relevance": {
     "entities": [
       "ON"
     ]

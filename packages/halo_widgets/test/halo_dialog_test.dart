@@ -180,6 +180,101 @@ void main() {
     expect(tester.getSize(header).height, theme.appBarTheme.toolbarHeight);
   });
 
+  group('a title that does not fit shrinks before it wraps', () {
+    // A dialog title is 18pt RobotoSlab at its heaviest weight in a band of
+    // about 350 logical pixels — titles that do not fit are the normal case,
+    // not the exception. Wrapping every one of them would make a two-line
+    // band the usual sight, so the shrink comes first and the band grows only
+    // where the words genuinely need the room.
+    Future<double> pumpTitle(WidgetTester tester, String title) async {
+      await tester.pumpWidget(MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: Scaffold(body: HaloDialog(title: Text(title), content: const Text('Body'))),
+      ));
+      await tester.pumpAndSettle();
+      return tester.getSize(find.byType(HaloDialogHeader)).height;
+    }
+
+    double fontOf(WidgetTester tester, String title) =>
+        tester.widget<Text>(find.text(title)).style!.fontSize!;
+
+    testWidgets('a short one is untouched, and the band is exactly a view header tall', (tester) async {
+      final height = await pumpTitle(tester, 'Title');
+      final theme = Theme.of(tester.element(find.text('Title')));
+      expect(height, theme.appBarTheme.toolbarHeight);
+      // Not shrunk: the ratio only applies when the natural width overruns.
+      expect(fontOf(tester, 'Title'), theme.appBarTheme.titleTextStyle!.fontSize);
+    });
+
+    testWidgets('one a little too wide is shrunk onto one line rather than wrapped', (tester) async {
+      // The case the shrink exists for, and the reason it comes first: this
+      // title costs a few percent of size and stays one line, where wrapping
+      // would have spent a whole second one on it.
+      const title = 'Summits on the Air x';
+      final height = await pumpTitle(tester, title);
+      final theme = Theme.of(tester.element(find.text(title)));
+      final base = theme.appBarTheme.titleTextStyle!.fontSize!;
+      expect(fontOf(tester, title), lessThan(base));
+      expect(fontOf(tester, title), greaterThan(base * 0.9), reason: 'a tenth is the floor, not the target');
+      expect(tester.getSize(find.text(title)).height, lessThan(base * 1.5), reason: 'that is one line');
+      expect(height, theme.appBarTheme.toolbarHeight);
+    });
+
+    testWidgets('one too wide even at the floor wraps to a second line', (tester) async {
+      // Past the floor there is nothing left worth shrinking, and the choice
+      // is between losing the end of the words and a second line. The band's
+      // own minimum happens to hold two shrunken lines, which is why the
+      // floor is a tenth and not a quarter — at a quarter both lines fit with
+      // room to spare and the result reads as a mistake.
+      const title = 'Parks on the Air (POTA)';
+      final height = await pumpTitle(tester, title);
+      final theme = Theme.of(tester.element(find.text(title)));
+      final base = theme.appBarTheme.titleTextStyle!.fontSize!;
+      expect(tester.getSize(find.text(title)).height, greaterThan(base * 1.5), reason: 'that is two lines');
+      expect(height, theme.appBarTheme.toolbarHeight);
+      // Bounded: the header takes its height before the body gets any, so a
+      // title left to wrap freely would squeeze the content to nothing.
+      expect(tester.widget<Text>(find.text(title)).maxLines, 2);
+    });
+
+    testWidgets('and where two lines cannot fit the band, the band grows', (tester) async {
+      // The OS accessibility text scale composes on top of everything the app
+      // does, so a title the app cannot shrink out of is normal at a large
+      // one. The band is a floor, not a cage.
+      await tester.pumpWidget(MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: const MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(1.6)),
+          child: Scaffold(body: HaloDialog(title: Text('Parks on the Air (POTA)'), content: Text('Body'))),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      final theme = Theme.of(tester.element(find.text('Parks on the Air (POTA)')));
+      expect(
+        tester.getSize(find.byType(HaloDialogHeader)).height,
+        greaterThan(theme.appBarTheme.toolbarHeight!),
+      );
+    });
+
+    testWidgets('a title that is not a Text is laid out as it stands', (tester) async {
+      // Three call sites pass a Row, a builder and a Padding. What to shrink
+      // inside an arbitrary subtree is not the header's to guess.
+      await tester.pumpWidget(MaterialApp(
+        theme: buildHaLoTheme(Brightness.light),
+        home: const Scaffold(
+          body: HaloDialog(
+            title: Row(children: [Icon(Icons.warning), SizedBox(width: 8), Flexible(child: Text('Kept'))]),
+            content: Text('Body'),
+          ),
+        ),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.byIcon(Icons.warning), findsOneWidget);
+      final theme = Theme.of(tester.element(find.text('Kept')));
+      expect(tester.getSize(find.byType(HaloDialogHeader)).height, theme.appBarTheme.toolbarHeight);
+    });
+  });
+
   testWidgets('a Modal Pane uses the very same header as a dialog', (tester) async {
     // Regression: the pane hand-rolled its own header, so it kept headlineSmall
     // and a content-driven height while dialogs moved to the view-header type.

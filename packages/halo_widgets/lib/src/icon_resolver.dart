@@ -70,3 +70,94 @@ Color? resolveExtensionColor(String? hex) {
   if (match == null) return null;
   return Color(0xFF000000 | int.parse(match.group(1)!, radix: 16));
 }
+
+/// The tile colour for an extension whose manifest names no accent — the same
+/// neutral the catalog site falls back to (`web/components/ui.tsx`).
+const kExtensionAccentFallback = Color(0xFF52525B);
+
+/// How wide an extension's icon tile is where nothing says otherwise: a
+/// ListTile leading box, which is what almost every one of them sits in.
+const kExtensionIconTileSize = 40.0;
+
+/// How solid an extension's icon is where the operator does not have it — 30%
+/// transparent, on the unfilled treatment [ExtensionIconTile.filled] describes.
+///
+/// Lighter than the filled tile needs to be: a glyph on the row's own ground
+/// is already the quieter of the two, and fading it as far as a solid tile
+/// would need takes it out of the row altogether.
+const kUninstalledIconOpacity = 0.7;
+
+/// An extension's icon on its own accent colour — the tile the catalog site
+/// draws for the same extension, so a programme is the same square of colour
+/// wherever an operator meets it.
+///
+/// The glyph is white against every accent, with no contrast branch: the
+/// manifest key is a brand colour, and the ones in use run from 0.12 to 0.56
+/// relative luminance, so a second foreground would only ever be reached by a
+/// colour nobody has picked.
+class ExtensionIconTile extends StatelessWidget {
+  /// The manifest's `icon`, resolved by [resolveIconName].
+  final String? icon;
+
+  /// The manifest's `accentColor` as `'#RRGGBB'`; anything else, including
+  /// nothing, draws [kExtensionAccentFallback] rather than no tile — an
+  /// extension without an accent is still an extension, and a bare glyph in a
+  /// column of tiles reads as a row that failed to load.
+  final String? accentColor;
+
+  /// What to draw when [icon] names nothing either table knows — the caller's
+  /// category glyph, where it has one.
+  final IconData fallbackIcon;
+
+  final double size;
+
+  /// How solid the icon is. Below 1 for an extension the operator does not
+  /// have: the row offers it rather than reporting it, and a full-strength
+  /// icon beside the installed ones claims a place in the log that nothing
+  /// has taken yet.
+  final double opacity;
+
+  /// Whether the accent is the TILE or the GLYPH.
+  ///
+  /// Filled is what the operator owns: a solid square of the programme's own
+  /// colour with a white glyph on it, the same tile the catalog site draws.
+  /// Unfilled is what is merely on offer — the glyph itself in the accent, on
+  /// the row's own ground.
+  ///
+  /// One accent, two weights, and the difference is legible down a column
+  /// without reading a word of it: a shape that is filled in is one you have.
+  final bool filled;
+
+  const ExtensionIconTile({
+    super.key,
+    this.icon,
+    this.accentColor,
+    this.fallbackIcon = MdiIcons.puzzle,
+    this.size = kExtensionIconTileSize,
+    this.opacity = 1,
+    this.filled = true,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = resolveExtensionColor(accentColor) ?? kExtensionAccentFallback;
+    final tile = Container(
+      width: size,
+      height: size,
+      alignment: Alignment.center,
+      // Same box either way, filled or not, so a column of rows keeps one
+      // left edge whichever of the two any given row is.
+      decoration: filled ? BoxDecoration(color: accent, borderRadius: BorderRadius.circular(size / 5)) : null,
+      child: Icon(
+        resolveIconName(icon, fallback: fallbackIcon),
+        size: size * 0.6,
+        // White reads on every accent the vocabulary allows; the glyph on its
+        // own has nothing behind it, so it wears the accent itself.
+        color: filled ? const Color(0xFFFFFFFF) : accent,
+      ),
+    );
+    // The whole tile, not the glyph: fading a white glyph against a solid
+    // accent leaves the tile as loud as an installed one.
+    return opacity >= 1 ? tile : Opacity(opacity: opacity, child: tile);
+  }
+}

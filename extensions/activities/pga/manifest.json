@@ -13,7 +13,7 @@
     "poland",
     "activation"
   ],
-  "geo": {
+  "relevance": {
     "entities": [
       "SP"
     ]

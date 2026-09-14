@@ -125,8 +125,15 @@ List<MapMarkerData> activitySelectedRefMarkers(
   for (final ref in refs) {
     final location = locationForSuggestion(ref);
     if (location == null) continue;
-    final control = controlForRefType(controls, ref['type'] as String?);
-    final color = colorForRefType(controls, ref['type'] as String?) ?? defaultColor;
+    final control = controlForRef(
+      controls,
+      type: ref['type'] as String?,
+      code: ref['ref'] is String ? ref['ref'] as String : null,
+    );
+    // With the code, like the control lookup above it: a reference answered
+    // under a legacy type would otherwise take the default colour while the
+    // row beside it wears its extension's.
+    final color = colorForRefType(controls, ref['type'] as String?, code: refCodeOf(ref)) ?? defaultColor;
     markers.add(MapMarkerData(
       id: selectedRefMarkerId(ref),
       latitude: location.latitude,

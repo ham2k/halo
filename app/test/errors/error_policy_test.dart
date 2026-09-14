@@ -720,6 +720,18 @@ void main() {
       expect(dispositionFor(error), ErrorDisposition.report);
     });
 
+    // A refusal to LIST is a different thing from a refusal to read: macOS
+    // answers errSecParam for a readAll against the file keychain, always,
+    // so it is a property of the platform and not a fault. Both callers fall
+    // back to the names they can construct and carry on, and uploading one
+    // event per extension per migration would say the same known thing
+    // several times a launch.
+    test('a keychain that will not enumerate is logged, not uploaded', () {
+      final error = keychainFailure(-50, 'One or more parameters passed to a function were not valid.');
+      expect(ErrorPolicy.decide(error).rule?.id, 'keychain-cannot-enumerate');
+      expect(dispositionFor(error), ErrorDisposition.logOnly);
+    });
+
     // The rule has to stay a hole exactly one status wide. -34018 is a
     // missing entitlement — our signing, our bug, and the one keychain
     // failure a broadened match would swallow while looking correct.

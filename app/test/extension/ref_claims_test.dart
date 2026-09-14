@@ -2,23 +2,29 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The two forms a manifest's `hooks` list uses to claim a reference, and the
-// rewrite the qualified one exists for (HALO-559). A per-event QSO party
-// publishes `nyqp` and answers for the legacy `{type: 'qp', ref: 'NY'}` every
-// operation logged before the split still carries — so `ref:qp/ny` has to
-// mean something the plain form cannot, and has to CHANGE the reference,
-// because an offer that leaves the red row red is the failure the whole
-// mechanism is here to avoid.
+// ranking between them (HALO-559). A per-event QSO party publishes its own
+// type and answers for the legacy `{type: 'qp', ref: 'NY'}` every operation
+// logged before the split still carries. Nothing is rewritten — the operation
+// stays as the operator logged it — so `ref:qp/ny` has to be a claim the
+// matcher can act on, and has to beat a claim on the bare family.
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/extension_info.dart';
 
-/// The shape a per-event party ships: its own type, plus the legacy pair.
-const _nyqpHooks = ['activity', 'scoring', 'ref:nyqp', 'ref:qp/ny'];
+/// The shape a per-event party ships: its own type, plus the legacy family
+/// qualified by the code that party used to be filed under.
+const _nyqpHooks = ['activity', 'scoring', 'ref:ny-qso-party', 'ref:qp/ny'];
+
+/// The bundled extension the split replaced: every party under one type.
+const _bundledQpHooks = ['activity', 'scoring', 'ref:qp'];
+
+ExtensionInfo _info(String key, List<String> hooks) =>
+    ExtensionInfo(key: key, file: 'index.js', core: false, name: key, hooks: hooks);
 
 void main() {
   group('refClaimOf', () {
-    test('tells the two forms apart, and folds the code', () {
-      expect(refClaimOf('ref:nyqp'), (type: 'nyqp', code: null));
+    test('tells the two forms apart, and folds the prefix', () {
+      expect(refClaimOf('ref:ny-qso-party'), (type: 'ny-qso-party', code: null));
       expect(refClaimOf('ref:qp/NY'), (type: 'qp', code: 'ny'));
     });
 
@@ -26,116 +32,92 @@ void main() {
       expect(refClaimOf('activity'), isNull);
       expect(refClaimOf('ref:'), isNull);
       // Half an entry is not a claim: `ref:/ny` names no type and `ref:qp/`
-      // no code, and reading either as the plain form would silently widen
+      // no prefix, and reading either as the plain form would silently widen
       // the claim to every reference of that type.
       expect(refClaimOf('ref:/ny'), isNull);
       expect(refClaimOf('ref:qp/'), isNull);
     });
   });
 
-  group('hooksClaimRef', () {
-    test('a plain claim answers for every code of its type', () {
-      expect(hooksClaimRef(_nyqpHooks, type: 'nyqp'), isTrue);
-      expect(hooksClaimRef(_nyqpHooks, type: 'nyqp', code: 'anything'), isTrue);
+  group('refClaimStrength', () {
+    test('a plain claim answers for every code of its type, at strength zero', () {
+      expect(refClaimStrength(_nyqpHooks, type: 'ny-qso-party'), 0);
+      expect(refClaimStrength(_nyqpHooks, type: 'ny-qso-party', code: 'anything'), 0);
+      expect(refClaimStrength(_bundledQpHooks, type: 'qp', code: 'TX'), 0);
     });
 
-    test('a qualified claim answers only for the code it names', () {
-      expect(hooksClaimRef(_nyqpHooks, type: 'qp', code: 'NY'), isTrue);
-      expect(hooksClaimRef(_nyqpHooks, type: 'qp', code: 'ny'), isTrue);
+    test('a qualified claim answers for the codes under its prefix, at its length', () {
+      expect(refClaimStrength(_nyqpHooks, type: 'qp', code: 'NY'), 2);
+      expect(refClaimStrength(_nyqpHooks, type: 'qp', code: 'ny'), 2);
+      // A prefix, not an equality: the codes under one type are a family, and
+      // a claim on a type nobody owns any more has to cover what an operator
+      // qualified further under it.
+      expect(refClaimStrength(_nyqpHooks, type: 'qp', code: 'NY-ALB'), 2);
+    });
+
+    test('a qualified claim answers for nothing else', () {
       // The trap: fifty parties all declare `ref:qp/<their own>`, so a
       // qualified claim read as a plain one would make every one of them
       // answer for every other one's references.
+      expect(refClaimStrength(_nyqpHooks, type: 'qp', code: 'TX'), isNull);
+      // And a reference with no code at all matches no prefix — there is
+      // nothing for one to begin with.
+      expect(refClaimStrength(_nyqpHooks, type: 'qp'), isNull);
+      expect(refClaimStrength(_nyqpHooks, type: 'txqp', code: 'TX'), isNull);
+    });
+
+    test('the strongest of several claims on one type is the one reported', () {
+      // An extension may narrow its own family. What it claims for `NY` is
+      // the precise entry, not the broad one it also declares.
+      const both = ['ref:qp', 'ref:qp/ny'];
+      expect(refClaimStrength(both, type: 'qp', code: 'NY'), 2);
+      expect(refClaimStrength(both, type: 'qp', code: 'TX'), 0);
+    });
+
+    test('hooksClaimRef is the same question without the ranking', () {
+      expect(hooksClaimRef(_nyqpHooks, type: 'qp', code: 'NY'), isTrue);
       expect(hooksClaimRef(_nyqpHooks, type: 'qp', code: 'TX'), isFalse);
-      expect(hooksClaimRef(_nyqpHooks, type: 'qp'), isFalse);
     });
   });
 
-  group('refMigrationTargetOf', () {
-    test('the one type the extension publishes is what a legacy ref becomes', () {
-      expect(refMigrationTargetOf(_nyqpHooks), 'nyqp');
-    });
-
-    test('no target where a rewrite would have to guess', () {
-      // Two plain entries leave the rewrite choosing between them, and none
-      // leaves it nowhere to go. The build refuses both alongside a qualified
-      // claim; here they simply do not migrate, since a bundle from a catalog
-      // that never ran that check can still reach the app.
-      expect(refMigrationTargetOf(const ['ref:pota', 'ref:potaActivation', 'ref:qp/ny']), isNull);
-      expect(refMigrationTargetOf(const ['activity', 'ref:qp/ny']), isNull);
-    });
-  });
-
-  group('refsMigratedBy', () {
-    test('the legacy pair becomes the published type, and the setup survives', () {
-      final migrated = refsMigratedBy(
-        [
-          {'type': 'qp', 'ref': 'NY', 'name': 'New York QSO Party', 'exchange': '59 NY', 'class': 'QRP'},
-        ],
-        _nyqpHooks,
+  group('extensionsDeclaringRefs', () {
+    test('the longest prefix leads, so the party beats the family', () {
+      // The whole point of the ranking. Both answer for `{type: 'qp',
+      // ref: 'NY'}` — the bundled extension because it owns every party, the
+      // New York one because it named this reference. Offered in that order,
+      // the operator installs fifty parties to get one.
+      final ranked = extensionsDeclaringRefs(
+        [_info('qp', _bundledQpHooks), _info('ham2k-nyqp', _nyqpHooks)],
+        [(type: 'qp', code: 'NY')],
       );
-      // The code is gone because the type carries its meaning now; the
-      // operator's own contest setup is not the migration's to throw away.
-      expect(migrated, [
-        {'type': 'nyqp', 'name': 'New York QSO Party', 'exchange': '59 NY', 'class': 'QRP'},
-      ]);
+      expect(ranked.map((i) => i.key), ['ham2k-nyqp', 'qp']);
     });
 
-    test('another party\'s reference is left alone', () {
-      expect(
-        refsMigratedBy([
-          {'type': 'qp', 'ref': 'TX'},
-        ], _nyqpHooks),
-        isNull,
+    test('a party that did not name this reference is not offered for it', () {
+      const txqpHooks = ['activity', 'ref:txqp', 'ref:qp/tx'];
+      final ranked = extensionsDeclaringRefs(
+        [_info('ham2k-txqp', txqpHooks), _info('ham2k-nyqp', _nyqpHooks)],
+        [(type: 'qp', code: 'NY')],
       );
+      expect(ranked.map((i) => i.key), ['ham2k-nyqp']);
     });
 
-    test('nothing to do answers null, so nothing is saved', () {
-      // A save is a write to the operation and a rebuild of the sheet; one
-      // per controls reload, changing nothing, is worse than none.
-      expect(
-        refsMigratedBy([
-          {'type': 'nyqp'},
-          {'type': 'pota', 'ref': 'US-0001'},
-        ], _nyqpHooks),
-        isNull,
+    test('an extension is offered once, ranked by its best claim', () {
+      // Two unhandled references, one extension answering both — precisely
+      // for one, broadly for the other. Ranked by the broad claim it would
+      // sit under a party that answers nothing as well.
+      final ranked = extensionsDeclaringRefs(
+        [_info('ham2k-nyqp', _nyqpHooks)],
+        [(type: 'ny-qso-party', code: null), (type: 'qp', code: 'NY')],
       );
-      expect(refsMigratedBy(const [], _nyqpHooks), isNull);
+      expect(ranked.map((i) => i.key), ['ham2k-nyqp']);
     });
 
-    test('a reference of the target type is never duplicated — the legacy row goes', () {
-      // The umbrella extension may still be installed, so an operation can
-      // carry both the legacy pair and a reference already configured under
-      // the new extension. They are the same activity; two of them would
-      // score and export twice, and only the first is reachable from the
-      // setup form.
+    test('nothing claimed, nothing offered', () {
+      expect(extensionsDeclaringRefs([_info('ham2k-nyqp', _nyqpHooks)], const []), isEmpty);
       expect(
-        refsMigratedBy([
-          {'type': 'nyqp', 'exchange': '59 ONO'},
-          {'type': 'qp', 'ref': 'NY', 'exchange': 'stale'},
-        ], _nyqpHooks),
-        [
-          {'type': 'nyqp', 'exchange': '59 ONO'},
-        ],
-      );
-    });
-
-    test('a code that is not a string neither matches nor throws', () {
-      // Refs are JSON written by extensions and by app-polo; a bare cast here
-      // would take down the sheet that called it rather than skip one row.
-      expect(
-        refsMigratedBy([
-          {'type': 'qp', 'ref': 42},
-        ], _nyqpHooks),
-        isNull,
-      );
-    });
-
-    test('an extension claiming nothing qualified never rewrites', () {
-      expect(
-        refsMigratedBy([
-          {'type': 'qp', 'ref': 'NY'},
-        ], const ['activity', 'ref:nyqp']),
-        isNull,
+        extensionsDeclaringRefs([_info('ham2k-nyqp', _nyqpHooks)], [(type: 'pota', code: 'US-0001')]),
+        isEmpty,
       );
     });
   });

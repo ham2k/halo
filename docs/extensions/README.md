@@ -39,7 +39,10 @@ that imports it and calls `defineExtension`:
                                // spots; omit for core (always-on). A value the
                                // panel doesn't know falls under "Other"
                                // (app/lib/views/extensions_panel.dart).
-  "enabledByDefault": true,
+  "enabledByDefault": true,      // built-ins only: whether the app ships it
+                               // switched on. The packer refuses it in a
+                               // distributed bundle, where the operator's
+                               // having installed it IS the answer.
   "experiments": ["gato"],     // rare. Any experiments.yaml KEY; availability
                                // gate: hidden from the panel and
                                // never loaded unless EVERY listed experiment
@@ -50,21 +53,30 @@ that imports it and calls `defineExtension`:
   "keywords": ["parks", "activation", "hunting"],
   "hooks": ["activity", "dataFile", "lookup", "ref:pota", "spots"],
   "domains": ["api.pota.app", "pota.app"],  // host.fetch allowlist
-  "geo": { "entities": ["K", "VE"] },       // where it is relevant; omit for
-                               // worldwide (see below)
+  "relevance": { "entities": ["K", "VE"] }, // where, when and for whom it is
+                               // relevant; omit for worldwide (see below)
   "translations": { "es": { "description": "Referencias de parques…" } }
 }
 ```
 
-`geo` says where the extension is relevant. The catalog ranks its listing by
-it for the operator's own callsign — and the Extensions panel's Catalog
-section shows the catalog's rows in that order — while nothing hides an
-extension over it. The build index carries it for the catalog's use; the
-panel does not rank the app's own extensions by it. Its four lists
-(`entities`, `countries`, `continents`, `ituRegions`) are allowlists: a
-missing or empty list does not gate, values within a list are ORed, and the
-lists are ANDed; case is the matcher's job, not the author's. They are the geo keys of HaLo's notices, rule for rule, and
-the packer's rules for them are in [distribution.md](distribution.md).
+Under the **Extension Catalog** experiment the app offers none of its own
+extensions but the core ones, and pre-loads eight of the catalog's instead —
+see [distribution.md](distribution.md).
+
+`relevance` says where, when and for whom the extension matters. The catalog
+ranks its listing by it for the operator's own callsign — and the Extensions
+panel's Catalog section shows the catalog's rows in that order — while
+nothing hides an extension over it. The build index carries it for the
+catalog's use; the panel does not rank the app's own extensions by it.
+
+Its four geographic lists (`entities`, `countries`, `continents`,
+`ituRegions`) are allowlists: a missing or empty list does not gate, values
+within a list are ORed, and the lists are ANDed; case is the matcher's job,
+not the author's. They are the geo keys of HaLo's notices, rule for rule.
+`dates` lists the UTC days the extension's events start (`YYYY-MM-DD`), and
+`interests` what an operator has to be into for it to matter; neither takes
+part in the geographic match. The packer's rules for all six are in
+[distribution.md](distribution.md).
 
 ### Secrets
 
@@ -181,35 +193,45 @@ never offered that way. List only the types the extension publishes a control
 for — a `ref:` entry for a legacy type it merely decorates or scores would
 offer a switch that cannot clear the row.
 
-A **qualified** entry, `ref:<type>/<code>`, claims one legacy reference under
-a type the extension does not publish. It exists for a type that used to hold
+A **qualified** entry, `ref:<type>/<code-prefix>`, claims the references of a
+type this extension does not publish. It exists for a type that used to hold
 many events in one extension and became one extension per event: the New York
-QSO Party publishes `ref:nyqp`, and every operation logged before the split
-carries `{type: 'qp', ref: 'NY'}`, which nothing answers any more. Declaring
-`ref:qp/ny` beside `ref:nyqp` says that reference is this extension's, and the
-host **rewrites** it — `{type: 'nyqp'}`, keeping everything else the reference
-carries, since a contest reference holds the operator's own exchange and entry
-class — as the extension comes on. The rewrite is what makes the offer honest:
-without it the row is answered under a new name and stays as red as it was.
+QSO Party publishes `ref:ny-qso-party`, and every operation logged before the
+split carries `{type: 'qp', ref: 'NY'}`, which nothing else answers any more.
+Declaring `ref:qp/ny` beside its own type says those references are this
+extension's.
 
-Rules follow, and the build enforces all of them. The manifest must declare
-**exactly one** plain `ref:<type>` — that is what a legacy reference is
-rewritten into, and a rewrite cannot choose between two or proceed with none.
-That single type must be published by a **`form`** control, because the
-rewrite drops the reference code and only a codeless reference can afford to
-lose it: against a `refList` target the migration would delete
-`{type: 'pota', ref: 'US-0001'}`'s identity out of the operator's log. The
-manifest must not declare the legacy type plainly as well — an extension
-publishing a control for `qp` already handles every reference of it, so the
-qualified entry would say nothing. And the entry must be shaped
-`<type>/<code>` with one slash and both halves present; anything else matches
-no reference at all and would ship as a claim that does nothing. The code is
-matched case-insensitively, because a reference code is hand-typed.
+Nothing is rewritten. The operation stays exactly as the operator logged it —
+a log is not an extension's to edit years after the fact — and the extension
+reaches back for it instead. That has to hold at every layer that asks "whose
+reference is this", so the same claim is stated three times, once where each
+layer can read it:
 
-If the operation already carries a reference of the target type, the legacy
-one is **dropped** rather than rewritten: they are the same activity, and two
-would score and export twice while only the first is reachable from the setup
-form.
+| Layer | Where | Decides |
+| --- | --- | --- |
+| Manifest | `hooks: ["ref:qp/ny"]` | which extension is OFFERED for an unhandled reference |
+| Control | `input.alsoHandles: ["qp/ny"]` | which control ANSWERS for it once the extension is on |
+| Runtime | `registerHook("ref:qp/ny")` | which handler a `ref:qp` call is ROUTED to |
+
+The code is matched as a lower-cased **prefix**, and the **longest match
+wins**. A plain `ref:qp` claims the whole family at length zero, so the party
+that named the reference beats the bundled extension that merely contained it,
+and neither has to know the other exists. Nebraska claims `ref:qp/ne` and New
+England `ref:qp/neqp`, so a `NEQP` reference matches both and the longer one
+decides — the case that makes prefix-and-longest the rule rather than exact
+equality.
+
+A control's form reads from, and writes back onto, whichever reference it
+matched, keeping that reference's own `type` and `ref`. Taking the control's
+own type on save would retype the operation the first time its setup form was
+opened, which is the same edit by a slower route.
+
+Rules, all enforced by the build: the entry must be shaped `<type>/<prefix>`
+with one slash and both halves present, since anything else matches no
+reference at all; a claim must be backed by a control declaring it in
+`alsoHandles`, or the host offers this extension for a red row and the row
+stays red; and a control that answers for a claim the manifest does not
+declare is never offered for it, so nothing ever reaches that control.
 
 The build checks all of this rather than trusting it (`extensions/hook-check.mjs`):
 it activates each built bundle against a stand-in kernel and compares what
@@ -217,9 +239,9 @@ it activates each built bundle against a stand-in kernel and compares what
 a declared `ref:<type>` must publish a control, while registering one you do
 NOT declare is how a decorate-only handler is written (WWBOTA answers for the
 legacy `ukbota` types without offering itself for them); and a qualified
-`ref:<type>/<code>` must be well-formed, must have exactly one plain entry to
-be rewritten into, that entry must be a form control, and it must not
-duplicate a plain claim.
+`ref:<type>/<prefix>` must be well-formed and must agree with the controls
+both ways — a claim no control declares in `alsoHandles`, or a control
+declaring one the manifest does not claim, is caught.
 
 Rules of the road:
 

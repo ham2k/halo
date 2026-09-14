@@ -5,7 +5,6 @@
   "version": "1.0.0",
   "description": "Looks up callsign details with a free HamQTH.com account",
   "category": "lookup",
-  "enabledByDefault": true,
   "icon": "card-account-details-outline",
   "accentColor": "#1E6F5C",
   "api": 1,

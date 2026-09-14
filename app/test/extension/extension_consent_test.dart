@@ -42,7 +42,7 @@ void main() {
   }
 
   Future<InspectedBundle> inspect(List<int> bytes) => InstalledExtensions(
-        builtInKeys: const {},
+        builtInKeys: () => const {},
         hostSharedModules: const {'i18next': '23.11.5'},
         rootOverride: Directory.systemTemp,
       ).inspect(bytes);

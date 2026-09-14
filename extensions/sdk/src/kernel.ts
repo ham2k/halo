@@ -180,6 +180,43 @@ function hooksFor(category: string, key: string | null): HookRecord[] {
     .sort((a, b) => b.priority - a.priority)
 }
 
+/// The records that answer a call for [category], most precise first.
+///
+/// Identical to `hooksFor` for every category but `ref:<type>`. A call for one
+/// of those also reaches the records registered as `ref:<type>/<prefix>` whose
+/// prefix begins the REFERENCE's own code, which is how the New York QSO Party
+/// answers `{type: 'qp', ref: 'NY'}` — an operation logged when fifty parties
+/// were one extension, which nothing rewrites.
+///
+/// The longest prefix wins: a record registered under the bare type claims the
+/// whole family at zero, so the party that named the reference beats the
+/// bundled extension that merely contained it, and neither has to know the
+/// other exists. Priority breaks a tie, as it always did.
+///
+/// The code comes off `args.ref`, which every `ref:` method is called with. A
+/// call carrying no readable code matches the bare type alone — a prefix has
+/// nothing to begin.
+function hooksForRef(category: string, key: string | null, args: unknown): HookRecord[] {
+  if (!category.startsWith('ref:') || category.includes('/')) return hooksFor(category, key)
+  const raw = (args as { ref?: { ref?: unknown } } | null)?.ref?.ref
+  const code = typeof raw === 'string' ? raw.toLowerCase() : null
+  const qualified = `${category}/`
+  const ranked: { record: HookRecord; strength: number }[] = []
+  for (const h of hooks) {
+    if (key != null && h.key !== key) continue
+    if (h.category === category) {
+      ranked.push({ record: h, strength: 0 })
+      continue
+    }
+    if (!h.category.startsWith(qualified)) continue
+    const claimed = h.category.slice(qualified.length).toLowerCase()
+    if (!claimed || code === null || !code.startsWith(claimed)) continue
+    ranked.push({ record: h, strength: claimed.length })
+  }
+  ranked.sort((a, b) => b.strength - a.strength || b.record.priority - a.record.priority)
+  return ranked.map((entry) => entry.record)
+}
+
 // Host calls that carry (or act on) a caller identity: their `ns`/`kvKey`/
 // `extensionKey` params must be derived by the kernel from which extension
 // is calling — never supplied by extension code, or any bundle could read
@@ -560,9 +597,11 @@ const kernel = {
     const startedAt = realNow()
     void (async () => {
       try {
-        const record = hooksFor(category, key)[0]
-        if (!record) throw new Error(`no hook registered for ${category}/${key ?? '*'}`)
         const args = JSON.parse(argsJson)
+        // Parsed BEFORE the hook is chosen: for a `ref:` category the choice
+        // depends on the reference in the args, not on the category alone.
+        const record = hooksForRef(category, key, args)[0]
+        if (!record) throw new Error(`no hook registered for ${category}/${key ?? '*'}`)
         // Tier 1 settings panels (kind: 'simple') are static data, not a
         // getDefinition() function — build the FormDefinition from the
         // registered object directly. Everything else (Tier 2's real

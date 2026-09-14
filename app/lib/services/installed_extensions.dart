@@ -23,7 +23,7 @@ import 'package:pub_semver/pub_semver.dart';
 
 import 'app_storage.dart';
 import 'error_reporting_service.dart';
-import 'extension_geo.dart';
+import 'extension_relevance.dart';
 import 'extension_service.dart';
 
 /// The extension API this build speaks. A bundle declares the one it was built
@@ -37,16 +37,30 @@ const kInstalledExtensionsDirName = 'extensions';
 
 /// The prefix reserved for Ham2K's own extensions. Refused to an installed
 /// bundle: there is no signing, so anyone could claim it, and the key is what
-/// the app shows when it says where a hook came from. The one exception is a
-/// bundle whose bytes were hash-verified against the extension catalog's
-/// listing ([BundleProvenance.isCatalog]) — the catalog only serves a
-/// `ham2k-` key to Ham2K's own publishers.
+/// the app shows when it says where a hook came from. The exceptions are the
+/// bundles Ham2K itself put there ([BundleProvenance.isReservedPrefixAllowed]):
+/// one hash-verified against the extension catalog's listing, which only
+/// serves a `ham2k-` key to Ham2K's own publishers, and one the app shipped
+/// and pre-loaded.
 const kReservedKeyPrefix = 'ham2k-';
 
-/// The extension catalog's host — the one source whose bundles may claim a
-/// `ham2k-` key. Baked into every install, exactly like the updates host:
-/// nothing typed or discovered at runtime can name it.
+/// The extension catalog's host — one of the two sources whose bundles may
+/// claim a `ham2k-` key. Baked into every install, exactly like the updates
+/// host: nothing typed or discovered at runtime can name it.
 const kCatalogHost = 'catalog.ham2k.net';
+
+/// The other one: the app itself, for a bundle it shipped and pre-loaded
+/// (HALO-581). Not a host at all, and deliberately not a resolvable name —
+/// what it records is that these bytes were never fetched from anywhere.
+const kPreloadHost = 'preloaded';
+
+/// The catalog channel this build asks for.
+///
+/// A channel says how finished a release is — `bleeding`, `unstable`,
+/// `stable` — and deliberately not which edition is asking. Constant until
+/// there is a setting for it; the catalog cascades, so opting into a rougher
+/// channel later adds releases rather than replacing them.
+const kCatalogChannel = 'stable';
 
 /// The catalog every install talks to, derived from [kCatalogHost] so the two
 /// cannot drift: the only other address the app will read is the developer
@@ -66,8 +80,21 @@ class BundleProvenance {
 
   const BundleProvenance({required this.host, required this.sha256, required this.version});
 
-  /// Whether this record waives the `ham2k-` refusal: only the catalog's.
+  /// Whether this record waives the `ham2k-` refusal.
+  ///
+  /// Two hosts may: the catalog, and the app itself for a bundle it shipped
+  /// and pre-loaded (HALO-581). Both are Ham2K putting the bytes there, which
+  /// is the whole content of the reserved prefix — and neither is reachable
+  /// from a file, since a file install writes no record and an uninstall
+  /// clears the one that was there.
+  bool get isReservedPrefixAllowed => host == kCatalogHost || host == kPreloadHost;
+
+  /// Whether the bytes came from the catalog specifically — what an update
+  /// check compares against, and what a deep link's verified path records.
   bool get isCatalog => host == kCatalogHost;
+
+  /// Whether the app shipped these bytes itself.
+  bool get isPreloaded => host == kPreloadHost;
 
   Map<String, String> toJson() => {'host': host, 'sha256': sha256, 'version': version};
 
@@ -195,23 +222,30 @@ class InstalledExtensions {
     required this.builtInKeys,
     required this.hostSharedModules,
     this.rootOverride,
-    bool Function(String key)? catalogInstalled,
-  }) : _catalogInstalled = catalogInstalled ?? _never;
+    bool Function(String key)? reservedPrefixAllowed,
+  }) : _reservedPrefixAllowed = reservedPrefixAllowed ?? _never;
 
   static bool _never(String key) => false;
 
-  /// Whether [key]'s installed bytes are on record as hash-verified from the
-  /// catalog (`SettingsService.extensionInstalledFrom`). Consulted on EVERY
+  /// Whether [key]'s installed bytes are on record as ones Ham2K put there —
+  /// hash-verified from the catalog, or shipped and pre-loaded by the app
+  /// itself ([BundleProvenance.isReservedPrefixAllowed]). Consulted on EVERY
   /// read, not only at install: the waiver it grants to a `ham2k-` key has to
   /// die with the record, or a file install of the same key afterwards would
   /// inherit it.
-  final bool Function(String key) _catalogInstalled;
+  final bool Function(String key) _reservedPrefixAllowed;
 
-  /// Keys the app itself ships. An installed bundle may not claim one: hook
-  /// identity has to stay unambiguous, and secret visibility is by key prefix,
-  /// so an installed extension calling itself `sota` would be asking for
-  /// `SOTA_*`.
-  final Set<String> builtInKeys;
+  /// The keys the app currently offers of its own, read live rather than
+  /// captured. An installed bundle may not claim one: hook identity has to
+  /// stay unambiguous, and secret visibility is by key prefix, so an
+  /// installed extension calling itself `sota` would be asking for `SOTA_*`.
+  ///
+  /// Live because the set MOVES. Under the catalog experiment the app offers
+  /// none of its own extensions but the core ones (HALO-581), and the bundle
+  /// it pre-loads for `ham2k-lookup` is one it also ships built in — so a set
+  /// captured when the store was built would refuse the pre-load forever, or
+  /// admit it after the experiment went off and the built-in came back.
+  final Set<String> Function() builtInKeys;
 
   /// What this build's kernel carries, from `assets/extensions/index.json`, for
   /// checking a bundle's declared `sharedDependencies`.
@@ -288,7 +322,7 @@ class InstalledExtensions {
     }
 
     _checkEntries(archive);
-    _checkKey(manifest['key'], fromCatalog: provenance?.isCatalog ?? false);
+    _checkKey(manifest['key'], reservedAllowed: provenance?.isReservedPrefixAllowed ?? false);
     _checkApi(manifest['api']);
     _checkDisplayFields(manifest);
     _checkSharedDependencies(manifest['sharedDependencies']);
@@ -305,7 +339,7 @@ class InstalledExtensions {
   /// bytes — a catalog install refuses a built-in key before downloading
   /// anything. The same refusals [inspect] makes, with the same messages.
   void checkKeyInstallable(String key, {BundleProvenance? provenance}) =>
-      _checkKey(key, fromCatalog: provenance?.isCatalog ?? false);
+      _checkKey(key, reservedAllowed: provenance?.isReservedPrefixAllowed ?? false);
 
   /// Every entry must be one the format allows, sit inside the extension's own
   /// directory, and the whole thing must be a plausible size.
@@ -364,33 +398,51 @@ class InstalledExtensions {
     if (domains != null && (domains is! List || domains.any((d) => d is! String))) {
       throw BundleException(BundleRejection.malformed, "That bundle's manifest has an unreadable 'domains' list.");
     }
-    // `geo` reads as "does not gate" wherever the matcher cannot parse it, so
-    // a malformed one would install as worldwide rather than as a mistake —
-    // and a value outside the vocabulary would install as relevant to
-    // nobody. The packer's rules, applied again at the door.
-    final geo = manifest['geo'];
-    if (geo != null) {
-      final problems = ExtensionGeo.validate(geo);
+    // `enabledByDefault` and the retired `geo` are NOT refused here, though
+    // the packer and the catalog both refuse them. The difference is who is
+    // being told. Those two answer to the author, who can fix the manifest
+    // and publish again; refusing at this door tells the OPERATOR, who can do
+    // nothing but go without an extension that would have worked. A stale
+    // field costs them nothing either: `list` overrides `enabledByDefault`
+    // because an installed extension is on, and `geo` is simply not read, so
+    // the extension is worldwide instead of regional.
+    //
+    // The rule this differs from is `experiments`, refused just above,
+    // because a bundle carrying one genuinely could never load. Refuse here
+    // only what the app cannot run.
+    //
+    // `relevance` reads as "does not gate" wherever the matcher cannot parse
+    // it, so a malformed one would install as worldwide rather than as a
+    // mistake — and a value outside the vocabulary would install as relevant
+    // to nobody. The packer's rules, applied again at the door.
+    //
+    // `containsKey`, not a null test: `"relevance": null` is a value, and the
+    // packer refuses it.
+    if (manifest.containsKey('relevance')) {
+      final problems = ExtensionRelevance.validate(manifest['relevance']);
       if (problems.isNotEmpty) {
-        throw BundleException(BundleRejection.malformed, "That bundle's manifest has an unreadable 'geo': ${problems.first}");
+        throw BundleException(
+            BundleRejection.malformed, "That bundle's manifest has an unreadable 'relevance': ${problems.first}");
       }
     }
   }
 
-  /// [fromCatalog] waives the reserved prefix and nothing else: the built-in
-  /// collision below stands whatever the source, because hook identity and
-  /// secret visibility are keyed by name and the catalog cannot un-ship an
-  /// extension this app carries.
-  void _checkKey(Object? raw, {required bool fromCatalog}) {
+  /// [reservedAllowed] waives the reserved prefix and nothing else. The
+  /// built-in collision below stands whatever the source, because hook
+  /// identity and secret visibility are keyed by name and neither the catalog
+  /// nor a file may shadow an extension this app is offering — but it is
+  /// judged against what the app offers NOW, which under the catalog
+  /// experiment is the core extensions and nothing else.
+  void _checkKey(Object? raw, {required bool reservedAllowed}) {
     final key = raw is String ? raw : '';
     if (key.isEmpty || !kSafeKeyPattern.hasMatch(key)) {
       throw BundleException(BundleRejection.invalidKey, 'That bundle has no usable extension key.');
     }
-    if (key.startsWith(kReservedKeyPrefix) && !fromCatalog) {
+    if (key.startsWith(kReservedKeyPrefix) && !reservedAllowed) {
       throw BundleException(BundleRejection.reservedKey,
           'That bundle claims the name "$key". Names beginning "ham2k-" are reserved for Ham2K\'s own extensions.');
     }
-    if (builtInKeys.contains(key)) {
+    if (builtInKeys().contains(key)) {
       throw BundleException(BundleRejection.collidesWithBuiltIn,
           'That bundle calls itself "$key", which is already an extension built into this app.');
     }
@@ -554,7 +606,7 @@ class InstalledExtensions {
         // and the point of checking at all is to refuse at the door rather
         // than fail inside a hook.
         try {
-          _checkKey(key, fromCatalog: _catalogInstalled(key));
+          _checkKey(key, reservedAllowed: _reservedPrefixAllowed(key));
           _checkApi(manifest['api']);
           _checkSharedDependencies(manifest['sharedDependencies']);
         } on BundleException catch (e) {
@@ -566,6 +618,11 @@ class InstalledExtensions {
           'file': kBundleEntry,
           'core': false,
           'source': 'installed',
+          // Overridden rather than trusted, for the installs that predate the
+          // door's refusal of it. An extension is on because the operator
+          // installed it; honouring a manifest's `false` here would leave one
+          // listed and never loaded, and no override anywhere would say why.
+          'enabledByDefault': true,
         }));
       } catch (e, stack) {
         // Skipped rather than fatal — one damaged install must not cost the

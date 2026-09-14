@@ -52,10 +52,11 @@ void main() {
     SharedPreferences.setMockInitialValues({for (final e in prefs.entries) e.key: jsonEncode(e.value)});
     final settings = SettingsService(await SharedPreferences.getInstance());
     final store = InstalledExtensions(
-      builtInKeys: const {},
+      builtInKeys: () => const {},
       hostSharedModules: const {'i18next': '23.11.5'},
       rootOverride: root,
-      catalogInstalled: (key) => BundleProvenance.fromJson(settings.extensionInstalledFrom[key])?.isCatalog ?? false,
+      reservedPrefixAllowed: (key) =>
+          BundleProvenance.fromJson(settings.extensionInstalledFrom[key])?.isReservedPrefixAllowed ?? false,
     );
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))
       ..settings = settings

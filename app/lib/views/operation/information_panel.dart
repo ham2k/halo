@@ -191,7 +191,8 @@ class InformationPanel extends StatelessWidget {
     // only when there is no ref: a control declares the HUNTING type
     // ('pota'), while an activating operation's ref carries the activation one
     // ('potaActivation'), so the commoner case would otherwise be the grey one.
-    final iconColor = colorForRefType(activityControls, ref?['type'] as String?) ??
+    final iconColor = colorForRefType(activityControls, ref?['type'] as String?,
+            code: ref == null ? null : refCodeOf(ref)) ??
         colorForRefType(activityControls, scorerKey) ??
         theme.colorScheme.onSurfaceVariant;
 

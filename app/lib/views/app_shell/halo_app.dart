@@ -25,6 +25,7 @@ import '../../config/navigation.dart';
 import '../../services/halo_services.dart';
 import 'home_rail_state.dart';
 import 'onboarding_gate.dart';
+import 'extension_upgrade_gate.dart';
 import 'release_overlay_gate.dart';
 import 'status_bar_overlay.dart';
 import 'tester_overlay_gate.dart';
@@ -408,7 +409,13 @@ class _HaLoAppState extends State<HaLoApp> {
                           services: widget.services,
                           child: ReleaseOverlayGate(
                             services: widget.services,
-                            child: StatusBarOverlay(services: widget.services, child: content),
+                            // Innermost of the startup gates: a one-time
+                            // upgrade asked for over the release notes is two
+                            // dialogs deep on the same launch.
+                            child: ExtensionUpgradeGate(
+                              services: widget.services,
+                              child: StatusBarOverlay(services: widget.services, child: content),
+                            ),
                           ),
                         ),
                       ),

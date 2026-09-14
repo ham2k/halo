@@ -280,17 +280,11 @@ class Translations$extensionsPanel$en {
 	/// en: 'Install from file…'
 	String get installFromFile => 'Install from file…';
 
-	/// en: 'Install ${name}?'
-	String installTitle({required Object name}) => 'Install ${name}?';
-
-	/// en: 'Update ${name}?'
-	String updateTitle({required Object name}) => 'Update ${name}?';
-
 	/// en: 'Version ${version}'
 	String installVersion({required Object version}) => 'Version ${version}';
 
-	/// en: 'This extension will be able to reach'
-	String get canReach => 'This extension will be able to reach';
+	/// en: 'This extension can contact'
+	String get canReach => 'This extension can contact';
 
 	/// en: 'Your location'
 	String get canUseLocation => 'Your location';
@@ -322,8 +316,8 @@ class Translations$extensionsPanel$en {
 	/// en: 'Remove ${name}?'
 	String uninstallTitle({required Object name}) => 'Remove ${name}?';
 
-	/// en: 'The extension and anything it stored are removed. Your log is untouched.'
-	String get uninstallBody => 'The extension and anything it stored are removed. Your log is untouched.';
+	/// en: 'This extension and its settings will be removed. Your logs will remain untouched.'
+	String get uninstallBody => 'This extension and its settings will be removed. Your logs will remain untouched.';
 
 	/// en: 'Installed ${name}'
 	String installedMessage({required Object name}) => 'Installed ${name}';
@@ -373,8 +367,47 @@ class Translations$extensionsPanel$en {
 	/// en: 'An update is available for ${name}.'
 	String updateAvailableFor({required Object name}) => 'An update is available for ${name}.';
 
-	/// en: '${count} extension updates are available.'
-	String updatesAvailable({required Object count}) => '${count} extension updates are available.';
+	/// en: '${names} and ${count} more need updating.'
+	String updatesAvailable({required Object names, required Object count}) => '${names} and ${count} more need updating.';
+
+	/// en: '${names} need updating.'
+	String updatesAvailableFor({required Object names}) => '${names} need updating.';
+
+	/// en: 'Pending Updates'
+	String get pendingUpdatesSection => 'Pending Updates';
+
+	/// en: 'Update all'
+	String get updateAllAction => 'Update all';
+
+	/// en: 'More details'
+	String get updatesNoticeAction => 'More details';
+
+	/// en: '(one) {Update ${count} extension?} (other) {Update ${count} extensions?}'
+	String updateAllTitle({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: 'Update ${count} extension?',
+		other: 'Update ${count} extensions?',
+	);
+
+	/// en: 'Each is replaced by the version the catalog now offers. Your settings for them are kept.'
+	String get updateAllBody => 'Each is replaced by the version the catalog now offers. Your settings for them are kept.';
+
+	/// en: 'We need to upgrade your extensions'
+	String get upgradeTitle => 'We need to upgrade your extensions';
+
+	/// en: 'This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.'
+	String get upgradeBody => 'This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.';
+
+	/// en: 'Upgrade now'
+	String get upgradeAction => 'Upgrade now';
+
+	/// en: 'Later'
+	String get upgradeLater => 'Later';
+
+	/// en: 'Your extensions were not upgraded'
+	String get upgradeFailedTitle => 'Your extensions were not upgraded';
+
+	/// en: 'We couldn't reach our servers. We will try again later.'
+	String get upgradeFailedBody => 'We couldn\'t reach our servers. We will try again later.';
 
 	/// en: '${name} was withdrawn'
 	String revokedTitle({required Object name}) => '${name} was withdrawn';
@@ -399,6 +432,57 @@ class Translations$extensionsPanel$en {
 
 	/// en: '${source} could not be reached for that extension.'
 	String downloadUnreachable({required Object source}) => '${source} could not be reached for that extension.';
+
+	/// en: 'Details'
+	String get detailsAction => 'Details';
+
+	/// en: 'Installed from a file'
+	String get installedFromFile => 'Installed from a file';
+
+	/// en: 'Provides support for'
+	String get detailsWhatItDoes => 'Provides support for';
+
+	/// en: 'Pre-installed'
+	String get installedPreloaded => 'Pre-installed';
+
+	/// en: 'Account sign-in'
+	String get hookAccount => 'Account sign-in';
+
+	/// en: 'Call notes'
+	String get hookCallNotes => 'Call notes';
+
+	/// en: 'Offline data'
+	String get hookDataFile => 'Offline data';
+
+	/// en: 'Export'
+	String get hookExport => 'Export';
+
+	/// en: 'Callsign lookups'
+	String get hookLookup => 'Callsign lookups';
+
+	/// en: 'Scoring'
+	String get hookScoring => 'Scoring';
+
+	/// en: 'Spots'
+	String get hookSpots => 'Spots';
+
+	/// en: 'Hunting ${program}'
+	String hookHunting({required Object program}) => 'Hunting ${program}';
+
+	/// en: 'Activating ${program}'
+	String hookActivating({required Object program}) => 'Activating ${program}';
+
+	/// en: '(one) {… and ${count} other extension} (other) {… and ${count} other extensions}'
+	String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '… and ${count} other extension',
+		other: '… and ${count} other extensions',
+	);
+
+	/// en: '(one) {${count} extension available} (other) {${count} extensions available}'
+	String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count,
+		one: '${count} extension available',
+		other: '${count} extensions available',
+	);
 }
 
 // Path: home
@@ -6384,10 +6468,8 @@ extension on Translations {
 			'extensionsPanel.applying' => 'Activating extension changes, this may take a moment…',
 			'extensionsPanel.noMatches' => 'No extensions match your search',
 			'extensionsPanel.installFromFile' => 'Install from file…',
-			'extensionsPanel.installTitle' => ({required Object name}) => 'Install ${name}?',
-			'extensionsPanel.updateTitle' => ({required Object name}) => 'Update ${name}?',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Version ${version}',
-			'extensionsPanel.canReach' => 'This extension will be able to reach',
+			'extensionsPanel.canReach' => 'This extension can contact',
 			'extensionsPanel.canUseLocation' => 'Your location',
 			'extensionsPanel.canSetUserAgent' => 'Identify itself to servers under its own name',
 			'extensionsPanel.noCapabilities' => 'It asks for nothing outside the app.',
@@ -6398,7 +6480,7 @@ extension on Translations {
 			'extensionsPanel.installedBadge' => 'Installed',
 			'extensionsPanel.uninstallAction' => 'Remove',
 			'extensionsPanel.uninstallTitle' => ({required Object name}) => 'Remove ${name}?',
-			'extensionsPanel.uninstallBody' => 'The extension and anything it stored are removed. Your log is untouched.',
+			'extensionsPanel.uninstallBody' => 'This extension and its settings will be removed. Your logs will remain untouched.',
 			'extensionsPanel.installedMessage' => ({required Object name}) => 'Installed ${name}',
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'Installing ${name} did not finish. It may need installing again.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'Could not remove ${name}',
@@ -6415,7 +6497,19 @@ extension on Translations {
 			'extensionsPanel.updateAvailableBadge' => 'Update available',
 			'extensionsPanel.updatesAvailableTitle' => 'Extension updates',
 			'extensionsPanel.updateAvailableFor' => ({required Object name}) => 'An update is available for ${name}.',
-			'extensionsPanel.updatesAvailable' => ({required Object count}) => '${count} extension updates are available.',
+			'extensionsPanel.updatesAvailable' => ({required Object names, required Object count}) => '${names} and ${count} more need updating.',
+			'extensionsPanel.updatesAvailableFor' => ({required Object names}) => '${names} need updating.',
+			'extensionsPanel.pendingUpdatesSection' => 'Pending Updates',
+			'extensionsPanel.updateAllAction' => 'Update all',
+			'extensionsPanel.updatesNoticeAction' => 'More details',
+			'extensionsPanel.updateAllTitle' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Update ${count} extension?', other: 'Update ${count} extensions?', ), 
+			'extensionsPanel.updateAllBody' => 'Each is replaced by the version the catalog now offers. Your settings for them are kept.',
+			'extensionsPanel.upgradeTitle' => 'We need to upgrade your extensions',
+			'extensionsPanel.upgradeBody' => 'This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.',
+			'extensionsPanel.upgradeAction' => 'Upgrade now',
+			'extensionsPanel.upgradeLater' => 'Later',
+			'extensionsPanel.upgradeFailedTitle' => 'Your extensions were not upgraded',
+			'extensionsPanel.upgradeFailedBody' => 'We couldn\'t reach our servers. We will try again later.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} was withdrawn',
 			'extensionsPanel.revokedBody' => 'The catalog withdrew this version, so it has been disabled.',
 			'extensionsPanel.downloadHashMismatch' => 'That download is not the extension the catalog described.',
@@ -6424,6 +6518,21 @@ extension on Translations {
 			'extensionsPanel.revokedBadge' => 'Revoked',
 			'extensionsPanel.downloadNotHttps' => 'That download is not over a secure connection.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => '${source} could not be reached for that extension.',
+			'extensionsPanel.detailsAction' => 'Details',
+			'extensionsPanel.installedFromFile' => 'Installed from a file',
+			'extensionsPanel.detailsWhatItDoes' => 'Provides support for',
+			'extensionsPanel.installedPreloaded' => 'Pre-installed',
+			'extensionsPanel.hookAccount' => 'Account sign-in',
+			'extensionsPanel.hookCallNotes' => 'Call notes',
+			'extensionsPanel.hookDataFile' => 'Offline data',
+			'extensionsPanel.hookExport' => 'Export',
+			'extensionsPanel.hookLookup' => 'Callsign lookups',
+			'extensionsPanel.hookScoring' => 'Scoring',
+			'extensionsPanel.hookSpots' => 'Spots',
+			'extensionsPanel.hookHunting' => ({required Object program}) => 'Hunting ${program}',
+			'extensionsPanel.hookActivating' => ({required Object program}) => 'Activating ${program}',
+			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '… and ${count} other extension', other: '… and ${count} other extensions', ), 
+			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} extension available', other: '${count} extensions available', ), 
 			'home.title' => 'Portable Logger',
 			'home.newOperation' => 'New operation',
 			'home.stationCallsign' => 'Station callsign',
@@ -6818,6 +6927,8 @@ extension on Translations {
 			'operation.import.gapDialogTitle' => 'Include earlier captures?',
 			'operation.import.gapDialogBody' => ({required Object count}) => '${count} more QSOs were captured earlier, before a gap in the data. Include them too?',
 			'operation.import.gapDialogRecentOnly' => 'Just the recent ones',
+			_ => null,
+		} ?? switch (path) {
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Include all ${count}',
 			'map.emptyState' => 'No QSO locations yet.\nQSOs with a grid square, state, or country will show up here.',
 			'map.unavailable' => 'The map isn\'t available right now.',
@@ -6843,8 +6954,6 @@ extension on Translations {
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'Activity Types: ${first}, ${second} and ${more} more',
 			'activitiesView.reference' => 'Reference',
 			'activitiesView.invalidReference' => 'Not valid',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.duplicateReference' => 'Already added',
 			'activitiesView.searchHint' => 'Search by name, reference or anything else…',
 			'activitiesView.noSuggestions' => 'No matches',
@@ -7332,6 +7441,8 @@ extension on Translations {
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer keeps rejecting this device. Check your callsign in Sync settings.',
 			'settings.syncPanel.openSettings' => 'Open Sync settings',
 			'settings.accounts.title' => 'Accounts & Services',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.none' => 'No active extensions with accounts',
 			'settings.accounts.notConfigured' => 'Not configured',
 			'settings.accounts.connected' => 'Connected',
@@ -7357,8 +7468,6 @@ extension on Translations {
 			'settings.accounts.pastedLinkWrongLogin' => 'That link belongs to a different login attempt. Close this page and connect again.',
 			'settings.accounts.pastedLinkNoCode' => 'That link carries no login code. Finish signing in first, then copy the link it sends you to.',
 			'settings.accounts.pastedLinkMalformed' => 'That link looks cut off. Copy the whole thing and paste it again.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.relayLoginWaiting' => 'Waiting for you to finish signing in — this will continue automatically once you do.',
 			'settings.accounts.loginNoResponse' => 'This device hasn\'t heard back from the sign-in yet. If you already finished in your browser, cancel and try connecting again.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger could not open your browser automatically. Use the button below to open the login page yourself.',
@@ -7846,6 +7955,8 @@ extension on Translations {
 			'updates.reloadToUpdate' => 'A newer version of this page is available. Reload to get it.',
 			'updates.reloadNow' => 'Reload now',
 			'updates.checkForUpdates' => 'Check for Updates',
+			_ => null,
+		} ?? switch (path) {
 			'updates.checkingForUpdates' => 'Checking for updates…',
 			'updates.upToDate' => 'Up to date',
 			'updates.automaticChecks' => 'Check automatically',
@@ -7871,8 +7982,6 @@ extension on Translations {
 			'operationLocationScreen.permissionDenied' => 'Location permission denied',
 			'operationLocationScreen.permissionBlocked' => 'Location permission blocked',
 			'operationLocationScreen.moreDetails' => 'More Details',
-			_ => null,
-		} ?? switch (path) {
 			'operationLocationScreen.stateOrProvince' => 'State or Province (optional)',
 			'operationLocationScreen.controlsUnavailableTitle' => 'Activity controls unavailable',
 			'operationLocationScreen.controlsUnavailableReason' => 'These references are still usable; their activities just could not be reached.',

@@ -6,7 +6,9 @@
 // Extensions panel searches it by. Pure data — the runtime that loads it is
 // ExtensionService, which re-exports this file so callers import one thing.
 
-import 'extension_geo.dart';
+import 'package:collection/collection.dart' show mergeSort;
+
+import 'extension_relevance.dart';
 
 /// Where an extension's code came from. Not cosmetic: [maySeeBuildSecrets]
 /// hangs off it, and so does whether the loader reads the source from the
@@ -80,13 +82,16 @@ mixin ExtensionSearchable {
 /// The reference a manifest `hooks` entry claims, in either of the two forms
 /// the list allows.
 ///
-/// `ref:<type>` is the plain claim: this extension publishes a control for
-/// every reference of that type. `ref:<type>/<code>` is the qualified one:
-/// this extension answers for ONE legacy reference under a type it does not
-/// publish — `ref:qp/ny` on the New York QSO Party, whose own control is
-/// `nyqp`. The second exists because a type that used to hold fifty events in
-/// one extension becomes fifty types, and every operation logged before the
-/// split still carries the old pair.
+/// `ref:<type>` is the plain claim: this extension answers for every reference
+/// of that type. `ref:<type>/<prefix>` is the qualified one: it answers for
+/// the references of that type whose CODE begins with the prefix — `ref:qp/ny`
+/// on the New York QSO Party, which answers `{type: 'qp', ref: 'NY'}` without
+/// the operation being rewritten.
+///
+/// The qualified form exists because a type that used to hold fifty events in
+/// one extension became fifty extensions, and the operations logged before
+/// that still carry the old pair. They are not migrated: the extension reaches
+/// back for them.
 ///
 /// Null for anything that is not a `ref:` entry.
 ({String type, String? code})? refClaimOf(String hook) {
@@ -101,115 +106,80 @@ mixin ExtensionSearchable {
   return (type: type, code: code.toLowerCase());
 }
 
-/// Whether [hooks] claims the reference [type]/[code].
+/// How strongly [hooks] claims the reference [type]/[code], or null for no
+/// claim at all.
 ///
-/// A plain claim answers for every reference of its type; a qualified one
-/// only for the code it names, case-folded because a reference code is
-/// hand-typed and `NY` and `ny` are the same county list either way.
+/// The strength is the length of the prefix that matched, which is what makes
+/// "the longest claim wins" a comparison rather than a special case: a plain
+/// `ref:qp` claims every `qp` reference at 0, `ref:qp/n` at 1, `ref:qp/ny` at
+/// 2. So an extension that named the reference beats one that named the
+/// family, and the bundled extension holding all fifty parties yields to the
+/// one party's own — without either knowing the other exists.
 ///
-/// Both count wherever an extension is offered for a reference nothing
-/// handles: a plain claim clears that row with a control, and a qualified one
-/// clears it by rewriting the reference ([refsMigratedBy]) as the extension
-/// comes on. An offer that could do neither is the one this must not make.
-bool hooksClaimRef(List<String> hooks, {required String type, String? code}) {
+/// Case-folded: a reference code is hand-typed, and `NY` and `ny` are the same
+/// county list either way.
+///
+/// A prefix, not an equality, because the codes under one type are a family —
+/// `ref:qp/ny` answers for `NY` and for anything an operator qualified further
+/// under it, which is the behaviour a claim on a type nobody owns any more has
+/// to have to be worth declaring.
+int? refClaimStrength(List<String> hooks, {required String type, String? code}) {
+  final folded = code?.toLowerCase();
+  int? best;
   for (final hook in hooks) {
     final claim = refClaimOf(hook);
     if (claim == null || claim.type != type) continue;
-    if (claim.code == null) return true;
-    if (code != null && claim.code == code.toLowerCase()) return true;
+    final prefix = claim.code;
+    final int strength;
+    if (prefix == null) {
+      strength = 0;
+    } else {
+      if (folded == null || !folded.startsWith(prefix)) continue;
+      strength = prefix.length;
+    }
+    if (best == null || strength > best) best = strength;
   }
-  return false;
+  return best;
 }
 
-/// What a legacy reference this extension claims is rewritten INTO — the one
-/// type it publishes a control for.
-///
-/// Exactly one, or null: the build refuses a manifest that qualifies a claim
-/// without a single plain `ref:` entry to name the target (extensions/
-/// hook-check.mjs), so null here means an extension built before that rule or
-/// one the app is reading from a catalog that never applied it. A rewrite
-/// with nowhere to go is not performed.
-String? refMigrationTargetOf(List<String> hooks) {
-  String? target;
-  for (final hook in hooks) {
-    final claim = refClaimOf(hook);
-    if (claim == null || claim.code != null) continue;
-    if (target != null) return null;
-    target = claim.type;
-  }
-  return target;
-}
+/// Whether [hooks] claims the reference [type]/[code] at all — [
+/// refClaimStrength] without the ranking, for a caller with one candidate.
+bool hooksClaimRef(List<String> hooks, {required String type, String? code}) =>
+    refClaimStrength(hooks, type: type, code: code) != null;
 
-/// The extensions among [available] whose manifest claims any of [refs] —
-/// the manifest's own statement of which references it handles, which is what
-/// a ref no loaded control recognizes can be matched against. Exact, unlike
-/// the search's loose match: a ref type is an identifier, and `sotaActivation`
-/// names SOTA, not everything mentioning summits.
+/// The extensions among [available] whose manifest claims any of [refs],
+/// strongest claim first — the manifest's own statement of which references it
+/// handles, which is what a ref no loaded control recognizes can be matched
+/// against. Exact on the type, unlike the search's loose match: a ref type is
+/// an identifier, and `sotaActivation` names SOTA, not everything mentioning
+/// summits.
 ///
-/// Both claim forms count (see [hooksClaimRef]): the plain `ref:<type>`, and
-/// the qualified `ref:qp/ny` by which a per-event QSO party answers for the
-/// pair every operation logged before the split still carries.
+/// Both claim forms count (see [refClaimStrength]): the plain `ref:<type>`,
+/// and the qualified `ref:qp/ny` by which a per-event QSO party answers for
+/// the pair every operation logged before the split still carries. Where both
+/// answer, the longer prefix leads — the party that named the reference is a
+/// better offer than the family that merely contains it.
+///
+/// An extension is ranked by its BEST claim over all of [refs]: it is offered
+/// once, for whichever reference it answers most precisely.
 List<ExtensionInfo> extensionsDeclaringRefs(
   Iterable<ExtensionInfo> available,
   Iterable<({String type, String? code})> refs,
-) =>
-    [
-      for (final info in available)
-        if (refs.any((ref) => hooksClaimRef(info.hooks, type: ref.type, code: ref.code))) info,
-    ];
-
-/// [refs] with every legacy reference an extension declaring [hooks] claims
-/// rewritten into the type that extension publishes, or null when it claims
-/// none of them.
-///
-/// This is what makes a qualified claim worth declaring. Installing the New
-/// York QSO Party for an operation carrying `{type: 'qp', ref: 'NY'}` would
-/// otherwise leave that row exactly as red as it was, since the extension
-/// publishes a control for `nyqp` and nothing answers `qp` any more.
-///
-/// The code goes and the type takes its meaning — `{type: 'nyqp'}` — while
-/// everything else on the reference is kept: a contest reference carries the
-/// operator's own setup (exchange, entry class, power), and a migration that
-/// dropped it would cost them what the row was for.
-List<Map<String, dynamic>>? refsMigratedBy(List<Map<String, dynamic>> refs, List<String> hooks) {
-  final target = refMigrationTargetOf(hooks);
-  if (target == null) return null;
-  // A reference of the target type is the SAME activity the legacy one names,
-  // already in the operation and already configured under the extension that
-  // is arriving. Rewriting into it would leave the operation carrying two,
-  // and every form path here reads the first (`_addFormActivity`), so the
-  // second would be uneditable while still scoring and exporting. So the
-  // legacy row is dropped instead of duplicated.
-  var haveTarget = refs.any((ref) => ref['type'] == target);
-  var changed = false;
-  final migrated = <Map<String, dynamic>>[];
-  for (final ref in refs) {
-    final type = ref['type'];
-    // Its own type is not a legacy one, whatever a plain claim says about it.
-    final code = ref['ref'] is String ? ref['ref'] as String : null;
-    if (type is String && type != target && hooksClaimRef(hooks, type: type, code: code)) {
-      changed = true;
-      if (haveTarget) continue;
-      migrated.add({...ref, 'type': target}..remove('ref'));
-      haveTarget = true;
-    } else {
-      migrated.add(ref);
-    }
-  }
-  return changed ? migrated : null;
-}
-
-/// [refsMigratedBy] for the extension [key] names among [available], or null
-/// when nothing there claims one of [refs] — which is also the answer for a
-/// key no longer present, since a runtime restart is what makes a
-/// freshly-installed one appear.
-List<Map<String, dynamic>>? refsMigratedByExtension(
-  Iterable<ExtensionInfo> available,
-  String key,
-  List<Map<String, dynamic>> refs,
 ) {
-  final info = available.where((i) => i.key == key).firstOrNull;
-  return info == null ? null : refsMigratedBy(refs, info.hooks);
+  final ranked = <({ExtensionInfo info, int strength})>[];
+  for (final info in available) {
+    int? best;
+    for (final ref in refs) {
+      final strength = refClaimStrength(info.hooks, type: ref.type, code: ref.code);
+      if (strength != null && (best == null || strength > best)) best = strength;
+    }
+    if (best != null) ranked.add((info: info, strength: best));
+  }
+  // Stable within a strength: `available` is the order the app resolved its
+  // extensions in, and two equally precise claims have nothing else to be
+  // ordered by — reordering them per build would move rows under the pointer.
+  mergeSort(ranked, compare: (a, b) => b.strength.compareTo(a.strength));
+  return [for (final entry in ranked) entry.info];
 }
 
 /// One entry of the build index (assets/extensions/index.json) — the static,
@@ -229,10 +199,10 @@ class ExtensionInfo with ExtensionSearchable {
   /// index or a manifest that predates the field.
   final String? version;
 
-  /// Where this extension is relevant (the manifest's `geo`); null is
-  /// worldwide. Ranks catalog and panel entries for the operator's own
-  /// callsign — see [ExtensionGeo].
-  final ExtensionGeo? geo;
+  /// Where, when and for whom this extension is relevant (the manifest's
+  /// `relevance`); null is worldwide and undated. Ranks catalog and panel
+  /// entries for the operator's own callsign — see [ExtensionRelevance].
+  final ExtensionRelevance? relevance;
 
   /// Whether this extension may set its own `User-Agent` on host.fetch
   /// (the manifest's `allowUserAgentOverride`). Off by default: the host stamps
@@ -302,7 +272,7 @@ class ExtensionInfo with ExtensionSearchable {
     required this.file,
     this.source = ExtensionSource.asset,
     this.version,
-    this.geo,
+    this.relevance,
     this.domains = const [],
     this.allowUserAgentOverride = false,
     this.requiresLocation = false,
@@ -327,10 +297,12 @@ class ExtensionInfo with ExtensionSearchable {
         file: json['file'] as String? ?? '${json['key']}.js',
         source: ExtensionSource.fromJson(json),
         version: json['version'] as String?,
-        // A geo the reader cannot parse is worldwide, never a crash: it is a
-        // relevance hint, and its shape is refused upstream (the build, the
+        // A relevance the reader cannot parse is worldwide, never a crash:
+        // it is a hint, and its shape is refused upstream (the build, the
         // packer, InstalledExtensions) rather than here.
-        geo: json['geo'] is Map ? ExtensionGeo.fromJson((json['geo'] as Map).cast<String, dynamic>()) : null,
+        relevance: json['relevance'] is Map
+            ? ExtensionRelevance.fromJson((json['relevance'] as Map).cast<String, dynamic>())
+            : null,
         domains: ((json['domains'] as List?) ?? const []).cast<String>(),
         allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
         requiresLocation: json['requiresLocation'] as bool? ?? false,

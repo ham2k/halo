@@ -20,7 +20,7 @@
     "ospota",
     "cabrillo"
   ],
-  "geo": {
+  "relevance": {
     "countries": [
       "us"
     ]

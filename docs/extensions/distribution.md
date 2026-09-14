@@ -47,7 +47,7 @@ The same manifest a built-in extension carries, plus `api`:
 it does not speak, so an older app meeting a newer bundle says so instead of
 failing somewhere deep in a hook.
 
-Two fields are **refused** in a distributed bundle, and it is worth
+Three fields are **refused** in a distributed bundle, and it is worth
 understanding why:
 
 - **No `category`** makes an extension *core* to the host: always enabled, and
@@ -57,32 +57,76 @@ understanding why:
 - **`experiments`** gates availability against the *app's* experiment catalog.
   A key the host doesn't define hides the extension permanently, with nothing
   in the UI to explain it.
+- **`enabledByDefault`** is a shipping app's answer for the extensions it
+  carries whether the operator asked for them or not. An installed bundle is
+  one the operator went and got, so the answer is always yes, and a manifest
+  saying otherwise describes a state it cannot reach.
 
-### Geographic relevance
+**`geo` is now `relevance`**, and a manifest still carrying the old name is
+refused at packing and at publishing rather than ignored. Nothing reads
+`geo`, and no check anywhere looks at unknown top-level keys, so accepting it
+would publish a regional extension as a worldwide one and tell its author
+nothing. Rename the key; the four geographic lists inside it are unchanged.
 
-`geo` says where the extension is relevant. The catalog ranks its listing by
-it, for the operators the extension was written for, and the Extensions
-panel's Catalog section shows the catalog's rows in that order; nothing
-hides an extension over it, and a manifest without one is worldwide. The
-build index carries `geo` for the catalog and for later use; the panel does
-not rank the app's own extensions by it.
+The app itself does NOT refuse either of these at install. The packer and the
+catalog answer to the author, who can fix the manifest and publish again;
+refusing at the door tells the operator instead, who can do nothing about a
+published manifest but go without an extension that would have worked — and
+every bundle published before these rules existed carries one. Neither costs
+them anything: an installed extension is enabled because they installed it,
+and an unread `geo` makes it worldwide rather than regional. What the app
+refuses is what it cannot run.
+
+### Relevance
+
+`relevance` says where, when and for whom the extension matters. The catalog
+ranks its listing by it, for the operators the extension was written for, and
+the Extensions panel's Catalog section shows the catalog's rows in that
+order; nothing hides an extension over it, and a manifest without one is
+worldwide and undated. The build index carries `relevance` for the catalog
+and for later use; the panel does not rank the app's own extensions by it.
 
 ```json
-"geo": { "entities": ["CE"], "continents": ["SA"] }
+"relevance": {
+  "countries": ["us"],
+  "dates": ["2026-09-19", "2027-09-18"],
+  "interests": ["cw"]
+}
 ```
 
-Four lists, each an allowlist over the operator's own callsign: `entities`
-(DXCC prefixes as the country file names them: `K`, `VE`, `CE`), `countries`
-(ISO alpha-2: `us`, `cl`), `continents` (`AF AS EU NA OC SA AN`) and
-`ituRegions` (`1`, `2`, `3`). A missing or empty list does not gate; values
-within a list are ORed, the lists ANDed; case is the matcher's job. These are
-the geo keys of HaLo's notices, rule for rule. The packer refuses:
+**Where.** Four lists, each an allowlist over the operator's own callsign:
+`entities` (DXCC prefixes as the country file names them: `K`, `VE`, `CE`),
+`countries` (ISO alpha-2: `us`, `cl`), `continents` (`AF AS EU NA OC SA AN`)
+and `ituRegions` (`1`, `2`, `3`). A missing or empty list does not gate;
+values within a list are ORed, the lists ANDed; case is the matcher's job.
+These are the geo keys of HaLo's notices, rule for rule.
 
-- a `geo` that is not an object, or a key inside it other than those four;
+**When.** `dates` lists the UTC days the extension's events start, as
+`YYYY-MM-DD`. Start days, not spans: a reader asking "is this soon" needs no
+more, and the extension's own code stays the only place that knows when an
+event opens and closes to the minute. An event on a fixed calendar lists the
+occurrences it knows about; one that runs to a weekly rule lists none,
+because a list that must be right every week is a list that goes stale. An
+absent or empty `dates` says nothing about timing — never "never".
+
+**For whom.** `interests` draws on a closed vocabulary: the modes `cw`,
+`phone`, `digital`; the band groups `hf`, `vhf`, `uhf`, `microwave`; the
+styles `satellite`, `portable`, `qrp`. Only for an extension *dedicated* to
+one — a contest that permits CW is not a `cw` extension, while the CWops CWT
+is. Listing what an extension merely allows makes every interest match
+everything, which is the same as listing none. The list is closed because an
+interest nothing else spells the same way matches nobody while looking like
+it works.
+
+The packer refuses:
+
+- a `relevance` that is not an object, or a key inside it other than those six;
 - a list that is not a list, or an element that is not a non-empty string;
 - a continent outside `AF AS EU NA OC SA AN`, or an ITU region outside `1`–`3`;
 - a country that is not two letters, or an entity prefix that is not letters,
-  digits and `/` (with an optional leading `*`).
+  digits and `/` (with an optional leading `*`);
+- a date that is not `YYYY-MM-DD`, or that names a day which does not exist;
+- an interest outside the vocabulary above.
 
 The matcher reads a key it cannot parse as "does not gate", so each of the
 shape errors would otherwise ship the bundle as worldwide.
@@ -316,11 +360,42 @@ but a link should not need them. The URL must be `https`, redirects are followed
 moment one leaves `https`, and the consent screen names the host the bytes
 came from. Nothing is written until the operator agrees.
 
+### Pre-loaded extensions
+
+The app ships eight of the catalog's own extensions already packaged, under
+`app/assets/preloaded-extensions/`, and installs them into the ordinary store
+on first run: `ham2k-pota`, `ham2k-sota`, `ham2k-wwff`, and the five lookups.
+Afterwards they are ordinary installed extensions — the same rows, the same
+update check, the same Update and uninstall — so an operator starts with a
+working app and the catalog can move it forward from there.
+
+They are installed once, not every launch. A record of the highest version
+ever pre-loaded per key is what makes that true: an app update carrying a
+newer bundle installs it, a catalog release already ahead of it is left
+alone, and a key the operator uninstalled stays gone.
+
+Each one that renames a built-in — `ham2k-pota` is the built-in `pota` under
+a name the catalog can serve — carries the operator's settings, panel values
+and account credentials across on its first install. Copied, not moved: the
+built-in's own state stays where it is.
+
+Two rules bend for these, and only for them:
+
+- **Build secrets.** An installed extension normally sees none, whatever key
+  it claims. One holding a `ham2k-` key sees the ones its name grants, because
+  that prefix is refused to anything Ham2K did not put there. `ham2k-sota`
+  needs its OAuth client id and `ham2k-wwff` its API key; without this they
+  install, load, and fail at the first login.
+- **Built-in collisions.** An installed bundle may not claim a key the app
+  ships — judged against what the app is currently OFFERING, which under the
+  catalog experiment is the core extensions and nothing else. `ham2k-lookup`
+  is both a built-in and a pre-load, and could otherwise never install.
+
 ### Installing from the catalog
 
 **Settings → Extensions → Catalog** lists what [catalog.ham2k.net](https://catalog.ham2k.net)
-publishes for this edition's channel, in the catalog's own order for the
-operator's callsign (`geo`, above). Install and Update go through the same consent screen as a
+publishes on its `stable` channel, in the catalog's own order for the
+operator's callsign (`relevance`, above). Install and Update go through the same consent screen as a
 file, over bytes that must hash to the sha256 the listing gives — a mismatch
 is refused before the zip is opened. A bundle that arrived this way is
 recorded as such (`extensionInstalledFrom`: host, sha256, version), and that
@@ -348,8 +423,8 @@ Beyond what the packer already refused:
 - the key is not one the app ships, and does not begin `ham2k-`;
 - the `api` version is one this build speaks;
 - every `sharedDependencies` range is satisfied by what this build carries;
-- `geo`, if present, passes the packer's rules — the shape the matcher reads
-  and its vocabulary — applied again by `ExtensionGeo.validate`;
+- `relevance`, if present, passes the packer's rules — the shape the matcher
+  reads and its vocabulary — applied again by `ExtensionRelevance.validate`;
 - entry names are sanitised on extract, so `../` in one writes nothing.
 
 Each has its own message. A bundle that cannot be installed says why.
@@ -357,4 +432,12 @@ Each has its own message. A bundle that cannot be installed says why.
 ## Native only, for now
 
 Installed bundles are files on disk. On web the app runs from its own assets
-and, for authors, the dev server — [development.md](development.md).
+and, for authors, the dev server — [development.md](development.md). So on
+web there is nothing to install into: no install from a file, no install or
+update from the catalog, and none of the pre-loaded extensions above.
+
+"For now" is a deferral, not a fact about the platform. Almost everything
+here is already platform-neutral — the zip walk, the manifest rules, the
+consent screen, the hash check — and what is left is a persistence seam of
+about six operations. `HALO-583` is the card that picks it up, and says what
+has to be decided first.

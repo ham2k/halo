@@ -13,7 +13,7 @@
     "england",
     "activation"
   ],
-  "geo": {
+  "relevance": {
     "entities": [
       "G"
     ]

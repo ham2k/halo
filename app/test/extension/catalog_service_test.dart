@@ -18,11 +18,10 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ham2k_logger/config/version.dart' show Edition;
 import 'package:halo_i18n/halo_i18n.dart' show t;
 import 'package:ham2k_logger/services/catalog_service.dart';
 import 'package:ham2k_logger/services/error_reporting_service.dart';
-import 'package:ham2k_logger/services/extension_geo.dart';
+import 'package:ham2k_logger/services/extension_relevance.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/installed_extensions.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -38,7 +37,7 @@ Map<String, Object?> _entry({
   String version = '1.2.0',
   String sha256 = _sha,
   Object? bundleUrl = 'https://catalog.ham2k.net/api/v1/extensions/k2hrc-llota/versions/1.2.0/bundle',
-  Map<String, Object?>? geo,
+  Map<String, Object?>? relevance,
   Map<String, Object?> extra = const {},
 }) =>
     {
@@ -48,12 +47,12 @@ Map<String, Object?> _entry({
       'sha256': sha256,
       'bundleUrl': bundleUrl,
       'category': 'activity',
-      'geo': ?geo,
+      'relevance': ?relevance,
       ...extra,
     };
 
 String _catalog(List<Object?> entries) =>
-    jsonEncode({'generatedAt': '2026-09-07T05:00:00Z', 'channel': 'next', 'api': 1, 'extensions': entries});
+    jsonEncode({'generatedAt': '2026-09-07T05:00:00Z', 'channel': 'stable', 'api': 1, 'extensions': entries});
 
 ExtensionInfo _installed(String key, String version, {String? name}) => ExtensionInfo(
     key: key, file: 'index.js', core: false, name: name ?? key, source: ExtensionSource.installed, version: version);
@@ -75,7 +74,6 @@ void main() {
           {SettingsService? settings, Duration? requestTimeout, Duration? downloadTimeout}) =>
       CatalogService(
         client: MockClient(handler),
-        edition: Edition.next,
         settings: settings,
         userAgent: () async => 'Ham2K Logger/test',
         locale: () => 'es',
@@ -101,7 +99,7 @@ void main() {
       await catalog.fetchCatalog(geo: const OperatorGeo(entityPrefix: 'K', continent: 'NA'));
       expect(urls.single.path, '/api/v1/catalog');
       expect(urls.single.queryParameters,
-          {'channel': 'next', 'entity': 'K', 'continent': 'NA', 'api': '$kExtensionApiVersion', 'lang': 'es'});
+          {'channel': 'stable', 'entity': 'K', 'continent': 'NA', 'api': '$kExtensionApiVersion', 'lang': 'es'});
       expect(urls.single.host, 'catalog.ham2k.net');
 
       catalog.invalidate();
@@ -239,6 +237,23 @@ void main() {
       await catalog.fetchCatalog();
       expect(requests, 1);
     });
+
+    test('a caller that IS the operator asking goes past the cache', () async {
+      // Opening the Extensions panel. A listing from four minutes ago predates
+      // whatever they opened it to look for — which, for somebody who has just
+      // been told an update exists, is the update.
+      var requests = 0;
+      final catalog = service((_) async {
+        requests++;
+        return http.Response(_catalog([_entry()]), 200);
+      });
+      await catalog.fetchCatalog();
+      await catalog.fetchCatalog(force: true);
+      expect(requests, 2);
+      // And the answer is remembered, so the rest of that opening is free.
+      await catalog.fetchCatalog();
+      expect(requests, 2);
+    });
   });
 
   group('checkUpdates', () {
@@ -254,7 +269,7 @@ void main() {
       // would report a "withdrawn" release for every key the app ships.
       final result = await catalog.checkUpdates([builtIn, _installed('k2hrc-llota', '1.0.0')]);
       expect(result, isNotNull);
-      expect(bodies.single['channel'], 'next');
+      expect(bodies.single['channel'], 'stable');
       expect(bodies.single['installed'], [
         {'key': 'k2hrc-llota', 'version': '1.0.0'},
       ]);
@@ -477,6 +492,7 @@ void main() {
     late StatusBarService statusBar;
     late SettingsService settings;
     late int applied;
+    late int opened;
 
     /// The check is behind the `catalog` experiment; on by default here so
     /// every test below is about the check itself.
@@ -491,12 +507,14 @@ void main() {
       if (experiment) await settings.setExperimentEnabled('catalog', true);
       statusBar = StatusBarService(settings.prefs);
       applied = 0;
+      opened = 0;
       return CatalogUpdateCheck(
         catalog: service(handler),
         settings: settings,
         statusBar: statusBar,
         installed: () => installed ?? [_installed('k2hrc-llota', '1.0.0', name: 'LLOTA')],
         applyAvailability: () async => applied++,
+        openExtensions: () => opened++,
         realNow: realNow,
       );
     }
@@ -517,10 +535,80 @@ void main() {
 
       final two = await checker(
         (_) async => answer(updates: [_entry(version: '1.1.0'), _entry(key: 'other-one', version: '2.0.0')]),
-        installed: [_installed('k2hrc-llota', '1.0.0'), _installed('other-one', '1.0.0')],
+        installed: [
+          _installed('k2hrc-llota', '1.0.0', name: 'LLOTA'),
+          _installed('other-one', '1.0.0', name: 'Other One'),
+        ],
       );
       await two.check();
-      expect(notices(CatalogUpdateCheck.noticeKey).single.text, '2 extension updates are available.');
+      // Two names is still a sentence; the count is what a third would cost.
+      expect(notices(CatalogUpdateCheck.noticeKey).single.text, 'LLOTA, Other One need updating.');
+    });
+
+    test('past two, the notice names two and counts the rest', () async {
+      // A notice is read at a glance from the footer. Listing every name turns
+      // it into a list, and the button below it is what the list was for.
+      final many = await checker(
+        (_) async => answer(updates: [
+          _entry(version: '1.1.0'),
+          _entry(key: 'other-one', version: '2.0.0'),
+          _entry(key: 'third-one', version: '3.0.0'),
+        ]),
+        installed: [
+          _installed('k2hrc-llota', '1.0.0', name: 'LLOTA'),
+          _installed('other-one', '1.0.0', name: 'Other One'),
+          _installed('third-one', '1.0.0', name: 'Third One'),
+        ],
+      );
+      await many.check();
+      expect(notices(CatalogUpdateCheck.noticeKey).single.text, 'LLOTA, Other One and 1 more need updating.');
+    });
+
+    test('the notice carries a way to the panel that can act on it', () async {
+      // Without it the notice reports a job and leaves the operator to find
+      // where it is done — which is the Extensions panel, several taps into
+      // Settings.
+      final one = await checker((_) async => answer(updates: [_entry(version: '1.1.0')]));
+      await one.check();
+      final action = notices(CatalogUpdateCheck.noticeKey).single.actions.single;
+      expect(action.label, 'More details');
+      action.onTap();
+      expect(opened, 1);
+      // And it takes itself down on the way: the panel it opened IS the
+      // detail, and a notice still in the footer behind it asks twice for
+      // something already being answered.
+      expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
+    });
+
+    test('the check the panel runs on opening does not put the notice back', () async {
+      // The action above takes the notice down on its way to the panel, and
+      // the panel opens by forcing a check of its own. Announced, that answer
+      // raises the same notice again behind the list the operator came to
+      // read — the app asking twice about what it is already showing them.
+      final check = await checker((_) async => answer(updates: [_entry(version: '1.1.0')]));
+      await check.check();
+      notices(CatalogUpdateCheck.noticeKey).single.actions.single.onTap();
+      expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
+
+      expect(await check.check(force: true, announce: false), isTrue);
+      expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
+      // Asked and answered all the same: the panel's own list is where the
+      // update is shown, and it reads this.
+      expect(check.pendingUpdates.keys, ['k2hrc-llota']);
+    });
+
+    test('a silent check still takes down a notice with nothing left behind it', () async {
+      // Suppressing the announcement must not suppress the retraction: an
+      // update taken elsewhere leaves "an update is available" in the footer
+      // over nothing, which is the footer lying.
+      var updates = [_entry(version: '1.1.0')];
+      final check = await checker((_) async => answer(updates: updates));
+      await check.check();
+      expect(notices(CatalogUpdateCheck.noticeKey), hasLength(1));
+
+      updates = const [];
+      expect(await check.check(force: true, announce: false), isTrue);
+      expect(notices(CatalogUpdateCheck.noticeKey), isEmpty);
     });
 
     test('asks at most once per six hours, judged by the persisted stamp', () async {

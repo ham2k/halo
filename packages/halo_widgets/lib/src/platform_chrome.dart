@@ -529,7 +529,13 @@ Widget shrinkToFit(Widget child, {AlignmentGeometry alignment = Alignment.center
 /// a condensed render stays fully legible, unlike a smaller one, so it's the
 /// cheaper trade to make first. No-ops if condensing wouldn't
 /// actually narrow the text (e.g. a font with no 'wdth' axis).
-Widget shrinkToFitText(Text text, {double minScale = 0.75, bool condensed = false}) => LayoutBuilder(
+/// [maxLines] is what happens when shrinking is not enough. At 1 — every
+/// header, and the default — the line ellipsizes at the floor, because a view
+/// header is a fixed band and a second line has nowhere to go. Above 1 the
+/// text wraps there instead, for a band that can grow: shrinking is still
+/// tried first and a title that fits on one line still gets one, so the extra
+/// lines appear only where the alternative was losing the end of the words.
+Widget shrinkToFitText(Text text, {double minScale = 0.75, bool condensed = false, int maxLines = 1}) => LayoutBuilder(
   builder: (context, constraints) {
     final style = DefaultTextStyle.of(context).style.merge(text.style);
     final data = text.data ?? text.textSpan?.toPlainText() ?? '';
@@ -608,7 +614,12 @@ Widget shrinkToFitText(Text text, {double minScale = 0.75, bool condensed = fals
       // avoid.
       textDirection: text.textDirection,
       textScaler: text.textScaler,
-      maxLines: 1,
+      // The measurement above is single-line by construction, so with
+      // [maxLines] above 1 this is the fall-through: the scale landed on the
+      // floor and the words still did not fit, and wrapping is what is left
+      // before ellipsis. The ellipsis stays as the last resort for a title
+      // that overruns even the extra lines.
+      maxLines: maxLines,
       overflow: TextOverflow.ellipsis,
     );
   },

@@ -1910,6 +1910,120 @@ void main() {
     },
   );
 
+  // A reference an extension reaches back for by CODE, not just by type
+  // (`alsoHandles: ['qp/ny']`). The badge column answers the same question the
+  // activity row does, so a lookup here that passes only the type disagrees
+  // with the row beside it: the operator sees "New York QSO Party" above a log
+  // whose every line wears the red question mark.
+  group('a reference claimed by prefix', () {
+    // The accent is what tells the two branches apart in the tree: a badge the
+    // row recognises is a bare icon in the row's own foreground, while the
+    // unknown marker is a tinted CircleAvatar. Without it both branches draw
+    // the same widget once the code reaches them, and the assertions below
+    // hold whether or not the type-only lookup was fixed.
+    const nyqpRefList = {
+      'icon': 'pine-tree',
+      'color': '#3C8C3C',
+      'input': {
+        'kind': 'refList',
+        'refType': 'ny-qso-party',
+        'alsoHandles': ['qp/ny'],
+      },
+    };
+
+    testWidgets('wears its claimant\'s icon rather than the unknown marker', (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+        'refs': [
+          {'type': 'qp', 'ref': 'NY'},
+        ],
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}, activityControls: const [nyqpRefList]),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(MdiIcons.pineTree), findsOneWidget);
+      expect(find.byType(CircleAvatar), findsNothing);
+    });
+
+    // The badge is one per type, and the code it carries decides which
+    // extension it belongs to. Taking whichever code came first would hand the
+    // badge to the unclaimed reference and flag the pair as unknown, with the
+    // claimant installed and answering.
+    testWidgets('claims the badge for a type it shares with an unclaimed reference', (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+        'refs': [
+          {'type': 'qp', 'ref': 'ZZ'},
+          {'type': 'qp', 'ref': 'NY'},
+        ],
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}, activityControls: const [nyqpRefList]),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(MdiIcons.pineTree), findsOneWidget);
+      expect(find.text('\u00d72'), findsOneWidget);
+      expect(find.byType(CircleAvatar), findsNothing);
+    });
+
+    // A QSO party's control is a form, which makes its references contest
+    // metadata — the same as if it had published the type outright. Deciding
+    // that on the type alone finds no control, so every row of a legacy QSO
+    // party log grows a badge the party itself would never have drawn.
+    testWidgets('reads as the contest reference it is, and shows no badge', (tester) async {
+      final operation = await operations.create(stationCall: 'KI2D');
+      final qso = await qsos.add(operation.uuid, {
+        'their': {'call': 'W1AW'},
+        'mode': 'SSB',
+        'startAtMillis': 1000,
+        'refs': [
+          {'type': 'qp', 'ref': 'NY', 'exchange': '59 ONO'},
+        ],
+      });
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(
+              qsos: [qso],
+              onSelect: (_) {},
+              activityControls: const [
+                {
+                  'icon': 'pine-tree',
+                  'input': {
+                    'kind': 'form',
+                    'refType': 'ny-qso-party',
+                    'alsoHandles': ['qp/ny'],
+                  },
+                },
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.byIcon(MdiIcons.pineTree), findsNothing);
+      expect(find.byType(CircleAvatar), findsNothing);
+    });
+  });
+
   group('day headers', () {
     testWidgets('groups QSOs into one pinned header per UTC day', (
       tester,

@@ -1,0 +1,88 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// The clock DataFileManager's grace-period purge reads: when each non-core
+// extension became disabled, and nothing at all once it is enabled again.
+//
+// Kept apart from ExtensionService because it is bookkeeping over two prefs
+// maps rather than anything the runtime does, and because the purge it feeds
+// is destructive — a reader deciding whether a stamp is right should not have
+// to find it inside four thousand lines of extension host.
+
+import 'package:halo_core/halo_core.dart';
+
+import 'extension_info.dart';
+import 'settings_service.dart';
+
+/// Stamps the moment each non-core extension became disabled, and clears the
+/// stamp when it is enabled again.
+///
+/// Only meaningful for extensions that could own data, but harmless (and
+/// simpler) to track for all non-core keys.
+///
+/// Also prunes both this map and `extensionOverrides` of any key absent from
+/// [available] entirely — an extension deleted from the build, not merely
+/// disabled or gated behind an experiment (which still keeps its entry there;
+/// see `ExtensionService.isExtensionAvailable`). Without this, a key an
+/// install migrated (like a former `hamdb: false` override) outlives the
+/// extension it named forever: nothing else ever visits an unknown key to
+/// remove it.
+///
+/// Pruning is skipped while [available] is still empty — before
+/// `loadAvailableExtensions` first resolves, an empty list means "not loaded
+/// yet", not "nothing exists", and treating it as the latter would wipe out
+/// overrides set before boot finishes (e.g. ONBOARD_AS picks written while
+/// the extension index is still loading).
+Future<void> updateExtensionDisabledSince({
+  required SettingsService settings,
+  required List<ExtensionInfo> available,
+  required bool Function(ExtensionInfo info) isActive,
+}) async {
+  final disabledSince = {...settings.extensionDisabledSince};
+  final knownKeys = {for (final info in available) info.key};
+  final canPrune = available.isNotEmpty;
+  // REAL: this stamp persists, and the reader is a LATER LAUNCH's clock
+  // (DataFileManager.purgeStaleExtensionData, at boot), which is back on real
+  // time. Travelled, `DEVTT -30d` then disabling an extension writes a stamp
+  // 30 days old, and the next boot purges its lookup rows and downloaded data
+  // on the spot — deleting inside the 7-day grace window that exists so a
+  // re-enable keeps everything. Testing the purge is done by travelling the
+  // READER forward, which still works.
+  final now = realNowMillis();
+  var changed = false;
+  // By KEY, not entry by entry. A key can appear twice: `ham2k-lookup` is both
+  // a bundle the app ships and one the catalog serves, so the list holds an
+  // asset entry and an installed entry under the one name, and whichever is
+  // not the live one is inactive. Judged separately, the inactive copy stamps
+  // the key its active twin is running under, and seven days on the purge
+  // deletes the running extension's downloaded data.
+  final nonCoreKeys = <String>{};
+  final activeKeys = <String>{};
+  for (final info in available) {
+    if (info.core) continue;
+    nonCoreKeys.add(info.key);
+    if (isActive(info)) activeKeys.add(info.key);
+  }
+  for (final key in nonCoreKeys) {
+    final disabled = !activeKeys.contains(key);
+    if (disabled && !disabledSince.containsKey(key)) {
+      disabledSince[key] = now;
+      changed = true;
+    } else if (!disabled && disabledSince.remove(key) != null) {
+      changed = true;
+    }
+  }
+  if (canPrune) {
+    for (final staleKey in disabledSince.keys.where((key) => !knownKeys.contains(key)).toList()) {
+      disabledSince.remove(staleKey);
+      changed = true;
+    }
+  }
+  if (changed) await settings.setExtensionDisabledSince(disabledSince);
+
+  if (canPrune) {
+    final overrides = settings.extensionOverrides;
+    final prunedOverrides = {for (final entry in overrides.entries) if (knownKeys.contains(entry.key)) entry.key: entry.value};
+    if (prunedOverrides.length != overrides.length) await settings.setExtensionOverrides(prunedOverrides);
+  }
+}

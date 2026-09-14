@@ -7,7 +7,7 @@
 // are to it (§5.1 is the publish request, §15 this command).
 //
 //   H2K_CATALOG_TOKEN=h2kc_… h2kext-publish <bundle.h2kext | build dir>
-//                  --channel <dev|next|prod> [--notes "…"] [--catalog <url>]
+//                  [--channel <stable|unstable|bleeding>] [--notes "…"] [--catalog <url>]
 //                  [--force-name]
 //
 // One POST of the raw bytes, then one PUT for the notes; no retries: a refusal
@@ -29,7 +29,14 @@ export const DEFAULT_CATALOG = 'https://catalog.ham2k.net'
 export const PUBLISH_PATH = '/api/v1/publish'
 export const SUBMISSIONS_PATH = '/api/v1/submissions'
 export const TOKEN_ENV = 'H2K_CATALOG_TOKEN'
-export const CHANNELS = ['dev', 'next', 'prod']
+/// How finished a release is, steadiest first — NOT an app edition. The
+/// catalog cascades, so a release on `stable` is visible to everyone and one
+/// on `bleeding` only to somebody who asked for it.
+export const CHANNELS = ['stable', 'unstable', 'bleeding']
+
+/// What `--channel` means when it is not given. Publishing without saying is
+/// publishing something finished; anything rougher is a choice worth typing.
+export const DEFAULT_CHANNEL = 'stable'
 
 /// The catalog refuses a larger upload before reading it (§5.1 step 2),
 /// because the app never downloads more than this (`kMaxDownloadBytes`).
@@ -55,7 +62,7 @@ export class PublishError extends Error {
 
 const USAGE = `Publish an extension bundle to the Ham2K extension catalog.
 
-  ${TOKEN_ENV}=h2kc_… h2kext-publish <bundle.h2kext | build dir> --channel <dev|next|prod>
+  ${TOKEN_ENV}=h2kc_… h2kext-publish <bundle.h2kext | build dir> [--channel <stable|unstable|bleeding>]
                  [--notes "<release notes>"] [--catalog <url>] [--force-name]
 
 A directory is packaged first, exactly as h2kext-pack would. A bundle over
@@ -65,7 +72,9 @@ The token comes from the ${TOKEN_ENV} environment variable and only from
 there — a flag would land in shell history and \`ps\`. Get one at
 ${DEFAULT_CATALOG}/publish. Nothing here stores it.
 
-  --channel      dev, next or prod — which app edition sees the release
+  --channel      how finished this release is (default ${DEFAULT_CHANNEL});
+                 stable is visible to everyone, bleeding only to somebody
+                 who asked for it
   --notes        release notes for this version, markdown; sent in a second
                  request once the upload is accepted
   --catalog      defaults to ${DEFAULT_CATALOG}
@@ -265,6 +274,7 @@ export async function main(argv, { env = process.env, fetch = globalThis.fetch, 
     }
 
     if (!source) throw new PublishError('name the bundle or directory to publish', EXIT_USAGE)
+    channel ??= DEFAULT_CHANNEL
     if (!CHANNELS.includes(channel)) {
       throw new PublishError(`--channel must be one of ${CHANNELS.join(', ')}${channel ? `, not '${channel}'` : ''}`, EXIT_USAGE)
     }

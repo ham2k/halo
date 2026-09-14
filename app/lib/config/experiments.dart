@@ -13,6 +13,13 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:yaml/yaml.dart';
 
+/// The extension catalog experiment's key in experiments.yaml.
+///
+/// Named because four places read it and one of them decides which
+/// extensions the app offers at all (HALO-581): a typo in a bare string
+/// there withdraws nothing and says nothing.
+const kCatalogExperiment = 'catalog';
+
 class ExperimentDefinition {
   final String key;
   final String name;

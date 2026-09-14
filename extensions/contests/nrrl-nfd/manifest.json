@@ -19,7 +19,7 @@
     "contest",
     "cabrillo"
   ],
-  "geo": {
+  "relevance": {
     "entities": [
       "LA"
     ]

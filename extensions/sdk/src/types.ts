@@ -487,6 +487,20 @@ export interface SerialInputDescriptor {
 export interface FormInputDescriptor {
   kind: 'form'
   refType: string
+  /// References filed under a type this control does not publish, which it
+  /// answers for anyway: `['qp/ny']` on the New York QSO Party, matching the
+  /// manifest's own `ref:qp/ny` without the prefix.
+  ///
+  /// `<type>/<code-prefix>`, the code lower-cased and matched as a PREFIX, and
+  /// the longest match across every loaded control wins — so a control naming
+  /// one reference beats one that claimed the whole family. Nothing is
+  /// rewritten: the form reads from, and saves back onto, whichever reference
+  /// it matched, keeping that reference's own `type`.
+  ///
+  /// For a type that used to hold many events in one extension and became one
+  /// extension per event: without it the operations logged then show a row
+  /// nothing handles, beside an extension that handles it perfectly well.
+  alsoHandles?: string[]
   form: FormDefinition
 }
 
@@ -1682,18 +1696,24 @@ export interface ActivationApi {
   hostCall(method: string, params: Record<string, unknown>): Promise<unknown>
 }
 
-/// Where an extension is relevant (docs/extensions/distribution.md). Every
-/// key is an allowlist over the OPERATOR's own callsign: a missing or empty
-/// key does not gate; the values within one key are ORed, the keys themselves
-/// ANDed. Case is the matcher's job — `entities` and `continents` compare
-/// uppercased, `countries` lowercased, `ituRegions` as integers — so an
-/// author writes whatever reads well. There are no negation keys, and a
-/// manifest with no `geo` at all is worldwide.
+/// Where, when and for whom an extension is relevant
+/// (docs/extensions/distribution.md). Relevance ranks, it does not gate:
+/// nothing is hidden for failing to match.
 ///
-/// Mirrors the geo filters of HaLo's notices (app/lib/services/notices.dart)
-/// key for key and rule for rule: two engines with different rule sets would
-/// drift, and an author who learned one would misread the other.
-export interface ExtensionGeo {
+/// The four GEOGRAPHIC keys are allowlists over the OPERATOR's own callsign:
+/// a missing or empty key does not gate; the values within one key are ORed,
+/// the keys themselves ANDed. Case is the matcher's job — `entities` and
+/// `continents` compare uppercased, `countries` lowercased, `ituRegions` as
+/// integers — so an author writes whatever reads well. There are no negation
+/// keys, and a manifest with no `relevance` at all is worldwide.
+///
+/// That geographic half mirrors the geo filters of HaLo's notices
+/// (app/lib/services/notices.dart) key for key and rule for rule: two engines
+/// with different rule sets would drift, and an author who learned one would
+/// misread the other. `dates` and `interests` have no counterpart there and
+/// take no part in that match — they answer WHEN and TO WHOM, which orders a
+/// list rather than deciding membership of one.
+export interface ExtensionRelevance {
   /// DXCC entity prefixes as the country file names them: `K`, `VE`, `CE`.
   entities?: string[]
   /// ISO 3166-1 alpha-2 codes: `us`, `cl`.
@@ -1702,6 +1722,27 @@ export interface ExtensionGeo {
   continents?: string[]
   /// `1`, `2` or `3`.
   ituRegions?: number[]
+  /// The UTC days this extension's events START, as `YYYY-MM-DD`:
+  /// `["2026-09-19", "2027-09-18"]`. Start days, not spans — a reader asking
+  /// "is this soon" needs no more, and the extension's own code remains the
+  /// only place that knows when an event opens and closes to the minute.
+  ///
+  /// An event on a fixed calendar lists the occurrences it knows about; one
+  /// that runs to a weekly rule lists none, because a list that must be
+  /// right every week is a list that goes stale. An absent or empty `dates`
+  /// therefore says nothing about timing — never "never".
+  dates?: string[]
+  /// What an operator has to be into for this to matter, drawn from the
+  /// fixed vocabulary in `extensions/tools/h2kext.mjs`
+  /// (`RELEVANCE_INTERESTS`): a mode (`cw`, `phone`, `digital`), a band
+  /// group (`hf`, `vhf`, `uhf`, `microwave`), or a style (`satellite`,
+  /// `portable`, `qrp`).
+  ///
+  /// Only for an extension DEDICATED to one. A contest that permits CW is
+  /// not a `cw` extension; the CWops CWT, which is CW and nothing else, is.
+  /// Listing what an extension merely allows makes every interest match
+  /// everything, which is the same as listing none.
+  interests?: string[]
 }
 
 /// The static, public identity of an extension — everything about it that
@@ -1727,6 +1768,9 @@ export interface ExtensionManifest {
   /// Panel grouping ('activity', 'lookup', …). Absent means core: always
   /// enabled, never listed in the panel.
   category?: string
+  /// Whether a BUILT-IN extension starts out on, for the app that ships it.
+  /// Meaningless for a distributed bundle — an operator who installs one
+  /// wants it — and the packer refuses a manifest that carries it.
   enabledByDefault?: boolean
   /// The hook categories this extension registers (`ref:<type>` for ref
   /// handlers). Declarative/informational — the kernel still learns the
@@ -1745,10 +1789,10 @@ export interface ExtensionManifest {
   /// Extensions panel and its bundle never loads. The user's enable/disable
   /// choice is kept while hidden, so it comes back when the experiment does.
   experiments?: string[]
-  /// Where this extension is relevant — see [ExtensionGeo]. Relevance, not
-  /// access: the catalog and the Extensions panel rank by it for the
-  /// operator's own callsign, and nothing hides an extension over it.
-  geo?: ExtensionGeo
+  /// Where, when and for whom this extension is relevant — see
+  /// [ExtensionRelevance]. Relevance, not access: the catalog and the
+  /// Extensions panel rank by it, and nothing hides an extension over it.
+  relevance?: ExtensionRelevance
   /// Per-locale overrides for name/description plus extra localized search
   /// keywords, keyed by language code. Localized keywords ADD to the base
   /// `keywords` (both are searchable), they don't replace them.

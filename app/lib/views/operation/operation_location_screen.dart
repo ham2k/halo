@@ -306,12 +306,15 @@ class _OperationLocationScreenState extends State<OperationLocationScreen> {
           ),
           for (final suggestion in refsWithGrid)
             ListTile(
-              tileColor: !_controlsUnreliable && isUnknownRefType(_controls, suggestion.ref['type'] as String?)
+              tileColor: !_controlsUnreliable &&
+                      isUnknownRefType(_controls, suggestion.ref['type'] as String?,
+                          code: refCodeOf(suggestion.ref))
                   ? theme.colorScheme.errorContainer.withValues(alpha: 0.4)
                   : null,
               leading: _controlsUnreliable
                   ? Icon(MdiIcons.toyBrick)
-                  : activityRefIcon(_controls, suggestion.ref['type'] as String?),
+                  : activityRefIcon(_controls, suggestion.ref['type'] as String?,
+                      code: refCodeOf(suggestion.ref)),
               title: Text((suggestion.ref['shortLabel'] ?? suggestion.ref['ref'] ?? '?') as String),
               subtitle: Text(suggestion.grid, style: const TextStyle(fontFamily: 'RobotoMono')),
               onTap: () => _adoptGrid(suggestion.grid, 'manual', location: suggestion.location),

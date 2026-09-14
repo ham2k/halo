@@ -17,7 +17,7 @@
     "contest",
     "cabrillo"
   ],
-  "geo": {
+  "relevance": {
     "ituRegions": [
       1
     ]

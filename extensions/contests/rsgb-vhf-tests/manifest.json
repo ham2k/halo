@@ -19,7 +19,7 @@
     "rsgb",
     "ukac"
   ],
-  "geo": {
+  "relevance": {
     "entities": [
       "G",
       "GM",

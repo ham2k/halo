@@ -127,16 +127,21 @@ async function inspectBundle({ key, outDir, sharedModules }) {
 async function controlledRefTypes(activityHooks, refTypes) {
   const operation = { uuid: 'check', refs: refTypes.map((type) => ({ type, ref: 'TEST-0001' })) }
   const args = { operation, qso: { their: { call: 'W1AW' } } }
-  // type -> the control kinds publishing it. The kind matters to the
-  // qualified rule below: only a `form` reference is codeless, and only a
-  // codeless one can be what a rewrite that drops the code produces.
+  // type -> the control kinds publishing it, and the set of `<type>/<prefix>`
+  // claims every control declares in `alsoHandles`. Both are what a manifest
+  // entry has to be backed by: a claim nothing publishes is an offer that
+  // cannot clear the row it was offered for.
   const controlled = new Map()
+  const alsoHandled = new Set()
   for (const hook of activityHooks) {
     // An activation ref is named by an operation-level control, a hunting ref
     // by a per-QSO one. Either clears the row, so both count.
     for (const method of ['operationControls', 'loggingControls']) {
       if (typeof hook[method] !== 'function') continue
       for (const control of (await hook[method](args, hookContext)) ?? []) {
+        for (const claim of control?.input?.alsoHandles ?? []) {
+          if (typeof claim === 'string') alsoHandled.add(claim.toLowerCase())
+        }
         const type = control?.input?.refType
         if (typeof type !== 'string') continue
         if (!controlled.has(type)) controlled.set(type, new Set())
@@ -144,7 +149,7 @@ async function controlledRefTypes(activityHooks, refTypes) {
       }
     }
   }
-  return controlled
+  return { controlled, alsoHandled }
 }
 
 /// Checks every extension bundle's manifest against what its code registers,
@@ -200,41 +205,39 @@ export async function checkHooksAgainstManifests({ bundles, outDir }) {
           `"ref:<type>/<code>" with both halves present and one slash; nothing else is read as one.`,
       )
     }
-    const controlled = declaredRefTypes.length ? await controlledRefTypes(activityHooks, declaredRefTypes) : new Map()
+    const { controlled, alsoHandled } = await controlledRefTypes(activityHooks, declaredRefTypes)
     if (qualified.length) {
-      // The migration target: what a legacy reference is rewritten INTO is
-      // the one type this extension publishes. Two would leave the rewrite
-      // guessing, and none would leave it with nowhere to go — either way an
-      // operation's red row stays red, which is the outcome the plain rule
-      // above exists to prevent.
-      if (declaredRefTypes.length !== 1) {
+      // A qualified claim is a promise to ANSWER for a reference filed under
+      // someone else's type, and the control is what answers. Declaring the
+      // claim without publishing it is the same failure the plain rule below
+      // catches: the host offers this extension for a red row, the operator
+      // installs it, and the row stays exactly as red as it was.
+      //
+      // Nothing is rewritten by any of this, so there is no rule here about
+      // what the reference becomes, and none about the target being codeless:
+      // the reference keeps its own type and its own code, and the control
+      // reads and writes it where it lies.
+      const unbacked = qualified.filter((q) => !alsoHandled.has(q.toLowerCase())).sort()
+      if (unbacked.length) {
         problems.push(
-          `${manifestPath}: lists ${qualified.map((q) => `ref:${q}`).join(', ')} in "hooks", which says a legacy ` +
-            `reference is this extension's — but a rewrite needs exactly one "ref:<type>" entry to name what it becomes, ` +
-            `and this manifest declares ${declaredRefTypes.length}.`,
+          `${manifestPath}: lists ${unbacked.map((q) => `"ref:${q}"`).join(', ')} in "hooks", but no control declares ` +
+            `${unbacked.length > 1 ? 'them' : 'it'} in "alsoHandles" — the host would offer this extension for such a ` +
+            `reference and the row would stay red. Add the claim to the control's input, or drop the entry.`,
         )
       }
-      const shadowed = qualified.filter((q) => declaredRefTypes.includes(q.split('/')[0])).sort()
-      if (shadowed.length) {
-        problems.push(
-          `${manifestPath}: lists both "ref:${shadowed[0].split('/')[0]}" and ${shadowed.map((q) => `"ref:${q}"`).join(', ')} ` +
-            `in "hooks". An extension that publishes a control for a type handles every reference of it; the qualified ` +
-            `entr${shadowed.length > 1 ? 'ies say' : 'y says'} nothing the plain one does not.`,
-        )
-      }
-      // The rewrite DROPS the reference code, because the target type carries
-      // what the code used to say. That only holds for a `form` reference,
-      // which has no code; against a `refList` target the migration would
-      // delete the identity of a reference out of the operator's log —
-      // `{type:'pota', ref:'US-0001'}` becoming a bare `{type:'potaActivation'}`.
-      const target = declaredRefTypes.length === 1 ? declaredRefTypes[0] : undefined
-      if (target !== undefined && controlled.has(target) && !controlled.get(target).has('form')) {
-        problems.push(
-          `${manifestPath}: claims a legacy reference (${qualified.map((q) => `"ref:${q}"`).join(', ')}) but publishes ` +
-            `"ref:${target}" as a ${[...controlled.get(target)].join('/')} control, not a form. A rewrite drops the ` +
-            `reference code, which only a codeless (form) reference can afford to lose.`,
-        )
-      }
+    }
+    // And the other way round, checked whether or not the manifest claims
+    // anything: a control that answers for a reference the manifest does not
+    // claim is never OFFERED for it, so the operator with that row is never
+    // told this extension would fix it. Outside the branch above deliberately
+    // — a manifest that claims NOTHING is exactly where this goes wrong.
+    const undeclared = [...alsoHandled].filter((claim) => !qualified.some((q) => q.toLowerCase() === claim)).sort()
+    if (undeclared.length) {
+      problems.push(
+        `${manifestPath}: publishes a control handling ${undeclared.map((q) => `"${q}"`).join(', ')} but does not list ` +
+          `${undeclared.map((q) => `"ref:${q}"`).join(', ')} in "hooks" — nothing would offer this extension for such a ` +
+          `reference, so the control that answers it is never reached.`,
+      )
     }
     if (declaredRefTypes.length) {
       const uncontrolled = declaredRefTypes.filter((type) => !controlled.has(type)).sort()

@@ -20,7 +20,8 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/catalog_service.dart';
 import '../../services/error_reporting_service.dart';
-import '../../services/extension_geo.dart';
+import '../../config/experiments.dart' show kCatalogExperiment;
+import '../../services/extension_relevance.dart';
 import '../../services/extension_info.dart' show hooksClaimRef;
 import '../../services/halo_services.dart';
 import '../../services/installed_extensions.dart';
@@ -55,7 +56,7 @@ class CatalogTier {
   /// absent and nothing is fetched: a section that is not built must not be
   /// asking the catalog anything.
   static bool shownFor(HaLoServices services) =>
-      InstalledExtensions.isSupported && services.settings.experimentEnabled('catalog') /* experiments.yaml */;
+      InstalledExtensions.isSupported && services.settings.experimentEnabled(kCatalogExperiment);
 
   /// Catalog entries claiming any of [refs], minus [alreadyOffered]. What
   /// answers an operation opened long after the extension that wrote its
@@ -167,7 +168,15 @@ class InstallExtensionRow extends StatelessWidget {
     final locale = LocaleSettings.currentLocale.languageCode;
     return ListTile(
       tileColor: theme.colorScheme.secondaryContainer,
-      leading: Icon(entry.icon != null ? resolveIconName(entry.icon) : extensionCategoryIcon(entry.category)),
+      // Unfilled and faded, like the offers in the Extensions panel: nothing
+      // here is installed yet.
+      leading: ExtensionIconTile(
+        icon: entry.icon,
+        accentColor: entry.accentColor,
+        fallbackIcon: extensionCategoryIcon(entry.category),
+        filled: false,
+        opacity: kUninstalledIconOpacity,
+      ),
       title: Text(
         context.t.activitiesView.installExtension(name: entry.nameFor(locale)),
         style: const TextStyle(fontWeight: FontWeight.bold),

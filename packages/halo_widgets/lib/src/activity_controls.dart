@@ -20,30 +20,103 @@ import 'mdi_icons.g.dart';
 /// caller passes a nullable type read out of extension JSON, meaning a ref
 /// or an export that claims NO activity would be branded with that
 /// extension's icon and accent.
-Map<String, dynamic>? controlForRefType(List<Map<String, dynamic>> controls, String? refType) {
-  if (refType == null || refType.isEmpty) return null;
+Map<String, dynamic>? controlForRefType(List<Map<String, dynamic>> controls, String? refType) =>
+    controlForRef(controls, type: refType);
+
+/// The control that handles the reference [type]/[code], most precise first.
+///
+/// A control's `refType` is the type it publishes and answers for outright.
+/// `alsoHandles` is how it reaches back for references filed under a type it
+/// does not publish: `['qp/ny']` on the New York QSO Party answers
+/// `{type: 'qp', ref: 'NY'}` — an operation logged when fifty parties were one
+/// extension, which nothing rewrites and nobody should have to re-enter.
+///
+/// The longest matching prefix wins, so the party that named the reference
+/// beats the bundled extension that merely contains it, and neither has to
+/// know the other exists. The claims are the same strings the manifest's
+/// `hooks` declare, without the `ref:` — the two are read by different layers
+/// and must not drift into two vocabularies.
+///
+/// [code] is the reference's own code and may be null; a claim with a prefix
+/// then matches nothing, because there is nothing for the prefix to begin.
+Map<String, dynamic>? controlForRef(
+  List<Map<String, dynamic>> controls, {
+  required String? type,
+  String? code,
+}) {
+  if (type == null || type.isEmpty) return null;
+  final folded = code?.toLowerCase();
+  Map<String, dynamic>? best;
+  var bestStrength = -1;
   for (final control in controls) {
     final input = control['input'] as Map?;
-    if (input?['refType'] == refType) return control;
+    if (input == null) continue;
+    if (input['refType'] == type && bestStrength < 0) {
+      best = control;
+      bestStrength = 0;
+    }
+    // Read defensively: `alsoHandles` is extension JSON, and a malformed
+    // entry is one claim that does not match rather than a screen that fails.
+    for (final claim in (input['alsoHandles'] as List?) ?? const []) {
+      if (claim is! String) continue;
+      final slash = claim.indexOf('/');
+      if (slash <= 0 || slash == claim.length - 1) continue;
+      if (claim.substring(0, slash) != type) continue;
+      final prefix = claim.substring(slash + 1).toLowerCase();
+      if (folded == null || !folded.startsWith(prefix)) continue;
+      if (prefix.length > bestStrength) {
+        best = control;
+        bestStrength = prefix.length;
+      }
+    }
   }
-  return null;
+  return best;
 }
 
 /// Icon name for [refType], falling back to a generic marker (via
 /// `resolveIconName`) for a type with no active control.
-String? iconForRefType(List<Map<String, dynamic>> controls, String? refType) =>
-    controlForRefType(controls, refType)?['icon'] as String?;
+///
+/// [code] where the caller holds the whole reference: without it a control
+/// that answers for this reference under a legacy type is not found, and the
+/// row an extension is handling perfectly well draws the unknown-type marker.
+String? iconForRefType(List<Map<String, dynamic>> controls, String? refType, {String? code}) =>
+    controlForRef(controls, type: refType, code: code)?['icon'] as String?;
 
 /// The control's declared accent color for [refType], or null when it has
 /// none (see `resolveExtensionColor`).
-Color? colorForRefType(List<Map<String, dynamic>> controls, String? refType) =>
-    resolveExtensionColor(controlForRefType(controls, refType)?['color'] as String?);
+Color? colorForRefType(List<Map<String, dynamic>> controls, String? refType, {String? code}) =>
+    resolveExtensionColor(controlForRef(controls, type: refType, code: code)?['color'] as String?);
 
 /// Whether [refType] doesn't match any currently active control — its
 /// extension isn't installed/loaded/enabled right now. A null [refType]
 /// (no control ever declares one) counts as unknown too.
-bool isUnknownRefType(List<Map<String, dynamic>> controls, String? refType) =>
-    controlForRefType(controls, refType) == null;
+bool isUnknownRefType(List<Map<String, dynamic>> controls, String? refType, {String? code}) =>
+    controlForRef(controls, type: refType, code: code) == null;
+
+/// A reference's own code, where it has one that is readable.
+///
+/// Operation refs are JSON written by extensions and by app-polo, so a `ref`
+/// that is a number is not this reader's to throw over — it is a reference no
+/// prefix claim matches, which is the same answer as none.
+String? refCodeOf(Map<String, dynamic> ref) => ref['ref'] is String ? ref['ref'] as String : null;
+
+/// [existing] updated with what a setup form returned, under the type the ref
+/// should end up carrying.
+///
+/// An edited ref keeps its OWN type; only a new one takes [refType] from the
+/// control that produced the form. A control answering for a legacy reference
+/// (`alsoHandles`) would otherwise retype the operation the first time its
+/// setup form was opened — the log editing itself, which claiming a reference
+/// rather than rewriting it exists to avoid.
+///
+/// The type is applied last, so a form field that happens to be named `type`
+/// cannot decide what the reference IS.
+Map<String, dynamic> refWithFormResult(
+  Map<String, dynamic>? existing,
+  Map<String, dynamic> result, {
+  required String refType,
+}) =>
+    {...?existing, ...result, 'type': existing?['type'] ?? refType};
 
 /// The references among [refs] that no control in [controls] handles, as the
 /// type and code pair an extension's manifest claim is matched against.
@@ -58,8 +131,9 @@ List<({String type, String? code})> unhandledRefsIn(
 ) =>
     [
       for (final ref in refs)
-        if (ref['type'] is String && isUnknownRefType(controls, ref['type'] as String))
-          (type: ref['type'] as String, code: ref['ref'] is String ? ref['ref'] as String : null),
+        if (ref['type'] is String)
+          if (controlForRef(controls, type: ref['type'] as String, code: refCodeOf(ref)) == null)
+            (type: ref['type'] as String, code: refCodeOf(ref)),
     ];
 
 /// The icon for a ref/suggestion of [refType]: the matching control's own
@@ -76,10 +150,11 @@ List<({String type, String? code})> unhandledRefsIn(
 Widget activityRefIcon(
   List<Map<String, dynamic>> controls,
   String? refType, {
+  String? code,
   double? iconSize,
   double? avatarRadius,
 }) {
-  final control = controlForRefType(controls, refType);
+  final control = controlForRef(controls, type: refType, code: code);
   if (control == null) {
     return CircleAvatar(
       radius: avatarRadius,

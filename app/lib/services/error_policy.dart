@@ -276,6 +276,18 @@ class ErrorPolicy {
       matches: _isPeerMediaUnreachable,
     ),
     ErrorRule(
+      id: 'keychain-cannot-enumerate',
+      reason: 'the keychain refused to list its items (errSecParam, -50). macOS answers that for '
+          'a readAll against the FILE keychain this app has to use, so it is a property of the '
+          'platform rather than a fault: the two callers that ask — copying an extension\'s '
+          'secrets to its new key, and removing them on uninstall — fall back to the account '
+          'names they can construct without a listing, and carry on. Logged rather than uploaded '
+          'because it fires once per extension per migration and says the same thing every time, '
+          'and the thing it says is already known',
+      disposition: ErrorDisposition.logOnly,
+      matches: _isKeychainCannotEnumerate,
+    ),
+    ErrorRule(
       id: 'keychain-locked',
       reason: 'the keychain refused an operation (errSecInteractionNotAllowed) — it cannot serve '
           'one without an unlock it has no way to ask for. Usually a locked device with the app '
@@ -651,6 +663,10 @@ class ErrorPolicy {
   /// equipment secrets and an extension's stored session.
   static const _errSecInteractionNotAllowed = -25308;
 
+  /// errSecParam. macOS answers it for a keychain LISTING against the file
+  /// keychain, which is the only kind a Developer ID build may use.
+  static const _errSecParam = -50;
+
   /// The one `code` flutter_secure_storage_darwin gives EVERY keychain
   /// failure, both of its throw sites. It carries no information about which
   /// failure this is — the `OSStatus` in `details` does that — but it is the
@@ -669,6 +685,16 @@ class ErrorPolicy {
       // refuse anything.
       error.details is int &&
       error.details == _errSecInteractionNotAllowed;
+
+  /// errSecParam, which macOS answers for a keychain `readAll` against the
+  /// file keychain. Read off `details` like its sibling above, and for the
+  /// same reason: the message is the platform's own wording, not ours to
+  /// depend on.
+  static bool _isKeychainCannotEnumerate(Object error, FlutterErrorDetails? details) =>
+      error is PlatformException &&
+      error.code == _keychainFailureCode &&
+      error.details is int &&
+      error.details == _errSecParam;
 
   static bool _isCatEquipmentUnreachable(Object error, FlutterErrorDetails? details) {
     if (error is! CatConnectFailure) return false;

@@ -17,6 +17,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../config/experiments.dart';
+
 mixin ExtensionStoreSettings on ChangeNotifier {
   SharedPreferences get prefs;
 
@@ -35,6 +37,76 @@ mixin ExtensionStoreSettings on ChangeNotifier {
 
   Future<void> setExtensionOverrides(Map<String, bool> overrides) async {
     await prefs.setString(_extensionOverridesKey, jsonEncode(overrides));
+    notifyListeners();
+  }
+
+  /// The highest version of each pre-loaded extension this app has ever
+  /// offered ({key: version}, HALO-581).
+  ///
+  /// Not "what is installed" — the store answers that. This answers "what
+  /// have we already put in front of the operator", which is what makes a
+  /// pre-load happen once. Without it, every launch would reinstall over a
+  /// catalog update the operator took, and resurrect an extension they
+  /// uninstalled. An app upgrade carrying a newer bundle than the recorded
+  /// one is the only thing that pre-loads a key a second time.
+  ///
+  /// Survives an uninstall on purpose: uninstalling is the operator saying
+  /// they do not want it, and forgetting that we ever offered it would bring
+  /// it back on the next launch.
+  static const _extensionPreloadedKey = 'extensionPreloaded';
+
+  Map<String, String> get extensionPreloaded =>
+      {for (final e in jsonMapPref(_extensionPreloadedKey).entries) if (e.value is String) e.key: e.value as String};
+
+  Future<void> setExtensionPreloaded(Map<String, String> preloaded) async {
+    await prefs.setString(_extensionPreloadedKey, jsonEncode(preloaded));
+    notifyListeners();
+  }
+
+  /// Whether this install has moved its extensions to the catalog.
+  ///
+  /// Separate from the experiment, which only says the upgrade is OFFERED.
+  /// Nothing is withdrawn until this is true, so an operator who defers the
+  /// upgrade — or who is offline when it is offered — keeps every extension
+  /// they had. Set only once the twins are in hand.
+  static const _extensionsMigratedKey = 'extensionsMigrated';
+
+  bool get extensionsMigrated => prefs.getBool(_extensionsMigratedKey) ?? false;
+
+  Future<void> setExtensionsMigrated(bool migrated) async {
+    await prefs.setBool(_extensionsMigratedKey, migrated);
+    notifyListeners();
+  }
+
+  /// Whether the catalog is where this app's extensions come from NOW — the
+  /// one question every withdrawal, pre-load and adoption asks.
+  ///
+  /// Both halves: the experiment says the upgrade is on offer here, and
+  /// [extensionsMigrated] says it was taken. Turning the experiment off puts
+  /// the built-ins back without forgetting that the upgrade happened, so
+  /// turning it on again does not re-run it.
+  bool get catalogExtensionsInUse => experimentEnabled(kCatalogExperiment) && extensionsMigrated;
+
+  bool experimentEnabled(String key);
+
+  /// Which catalog twins this app has already fetched for a built-in the
+  /// operator had switched on ({key: version}), when the catalog experiment
+  /// withdrew the built-ins.
+  ///
+  /// The same job [extensionPreloaded] does for the bundles the app ships, for
+  /// the ones it has to go and get. An empty value records a key the catalog
+  /// does not serve: it is still an answer, and re-asking every launch is a
+  /// request per built-in per boot for something that will not appear.
+  ///
+  /// Survives an uninstall, for the reason the pre-load record does — taking
+  /// an extension away is the operator's decision, not one to undo at boot.
+  static const _extensionAdoptedKey = 'extensionAdopted';
+
+  Map<String, String> get extensionAdopted =>
+      {for (final e in jsonMapPref(_extensionAdoptedKey).entries) if (e.value is String) e.key: e.value as String};
+
+  Future<void> setExtensionAdopted(Map<String, String> adopted) async {
+    await prefs.setString(_extensionAdoptedKey, jsonEncode(adopted));
     notifyListeners();
   }
 

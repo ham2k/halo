@@ -20,17 +20,22 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 // reach the shared functions without recursing into themselves.
 import 'package:halo_extension_host/halo_extension_host.dart' as priority;
 import 'package:halo_core/halo_core.dart';
+import 'catalog_service.dart';
 import 'connectivity_service.dart';
 import 'error_reporting_service.dart';
 import 'extension_info.dart';
+import 'extension_keychain.dart';
+import 'extension_catalog_migration.dart';
+import 'extension_disabled_since.dart';
+import 'extension_secrets.dart';
 import 'installed_extensions.dart';
+import 'preloaded_extensions.dart';
 import 'location_service.dart';
 import 'panel_service.dart';
 import 'settings_service.dart';
 import 'spots_service.dart';
 import 'status_bar_service.dart';
 import 'package:halo_widgets/halo_widgets.dart';
-import 'package:halo_build_tools/halo_build_tools.dart' show extensionMaySeeSecret;
 
 import '../config/secrets.dart';
 import '../config/dev_flags.dart';
@@ -539,6 +544,10 @@ class ExtensionService implements PanelExtensionSource {
   /// service references — a host without it answers with an empty list, so
   /// the hook simply contributes nothing.
   SpotsService? spots;
+
+  /// Where a withdrawn built-in's twin is fetched from. Null before
+  /// HaLoServices wires it, which simply means nothing is adopted.
+  CatalogService? catalog;
 
   /// Extension keys allowed to call `getLocation` (manifest.json
   /// `requiresLocation`) — same allowlist shape as [_fetchAllowlists]
@@ -1585,7 +1594,8 @@ class ExtensionService implements PanelExtensionSource {
     try {
       final index = jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
       final kernelSource = await rootBundle.loadString('assets/extensions/${index['kernel']}');
-      final available = await loadAvailableExtensions(index: index);
+      await loadAvailableExtensions(index: index);
+      final available = availableExtensions;
       final bundles = <ExtensionBundle>[];
       final fetchAllowlists = <String, List<String>>{};
       final extensionSecrets = <String, Map<String, String>>{};
@@ -1619,7 +1629,10 @@ class ExtensionService implements PanelExtensionSource {
       // without this, a gated-at-startup extension's purge grace clock
       // never starts.
       final settingsForStamps = settings;
-      if (settingsForStamps != null) await _updateDisabledSince(settingsForStamps);
+      if (settingsForStamps != null) {
+        await updateExtensionDisabledSince(
+          settings: settingsForStamps, available: availableExtensions, isActive: isExtensionActive);
+      }
       _locationAllowlist = locationAllowlist;
       // Pessimistic from the moment a host exists until its activations have
       // genuinely settled below, so a consumer reading it the instant `host`
@@ -1658,6 +1671,15 @@ class ExtensionService implements PanelExtensionSource {
       // don't stay dark until app restart.
       _host!.fatalErrors.listen((error) => _scheduleRestart('runtime died: $error'));
       _restartAttempts = 0;
+      // AFTER the runtime is up, and deliberately not awaited. Unzipping and
+      // writing eight bundles — plus a keychain the platform may take its
+      // time refusing — is seconds of work, and boot is behind a three-second
+      // gate: done inline it spends the whole budget and the app arrives with
+      // no extensions at all, which is what happens without this.
+      //
+      // So the first launch runs on what it already had and picks the
+      // pre-loads up on the restart below, the same way an install does.
+      unawaited(catchUpOnCatalogExtensions(this));
       // Every extension's onActivation has now genuinely settled — not just
       // been kicked off (kernel.ts's activateAll fires it fire-and-forget).
       // Without this await, a caller querying dataFile/settingsPanel hooks
@@ -1720,6 +1742,38 @@ class ExtensionService implements PanelExtensionSource {
     return rootBundle.loadString('assets/extensions/${info.file}');
   }
 
+  /// Drops the memoized list and reads it again — after anything that changes
+  /// what is installed.
+  Future<void> reloadAvailableExtensions() async {
+    _availableExtensions = null;
+    await loadAvailableExtensions();
+  }
+
+  /// The catalog's copy of every withdrawn built-in the operator had ON.
+  Future<({bool landed, bool complete})> adoptTwins() => adoptCatalogTwins(
+      store: _installed, settings: settings, catalog: catalog, available: availableExtensions,
+      isEnabled: isExtensionEnabled, recordInstall: _recordInstall, copySecrets: copyExtensionSecrets);
+
+  /// Installs the `.h2kext` bundles the app ships (HALO-581), and answers
+  /// whether anything landed — the caller re-reads the store when it did.
+  ///
+  /// Only under the catalog experiment: off it, the app runs its own
+  /// extensions and pre-loading their catalog twins would put two of each in
+  /// the panel, one of them switched off and unexplained.
+  Future<bool> preloadShippedExtensions() async {
+    final currentSettings = settings;
+    final store = _installed;
+    if (currentSettings == null || store == null) return false;
+    if (!currentSettings.catalogExtensionsInUse) return false;
+    return installShippedExtensions(
+      store: store,
+      settings: currentSettings,
+      installedVersions: {for (final info in availableExtensions) if (info.isInstalled) info.key: info.version},
+      recordInstall: (bundle, {required bool fresh}) => _recordInstall(bundle, fresh: fresh),
+      copySecrets: copyExtensionSecrets,
+    );
+  }
+
   /// Installs an inspected `.h2kext` and reboots the runtime so it loads.
   ///
   /// The consent the operator gave belongs to the caller — this is the commit,
@@ -1728,8 +1782,19 @@ class ExtensionService implements PanelExtensionSource {
     final store = _requireInstalledStore();
     // Asked BEFORE the write: afterwards the key is always there.
     final fresh = !await store.isInstalled(bundle.key);
+    // Only on a FRESH install of catalog bytes: an update has its own state
+    // already, and a file install of a `ham2k-` key never reaches here.
+    final carried = fresh &&
+        bundle.provenance != null &&
+        await carryPredecessorRecords(
+            key: bundle.key,
+            settings: settings,
+            // What the app SHIPS, not what it offers — see predecessorBuiltInKey.
+          builtInKeys: {for (final i in availableExtensions) if (i.source == ExtensionSource.asset) i.key},
+            copySecrets: copyExtensionSecrets);
     await store.install(bundle);
-    await _recordInstall(bundle, fresh: fresh);
+    // `fresh` drops a stale on/off choice; one just carried is not stale.
+    await _recordInstall(bundle, fresh: fresh && !carried);
     _availableExtensions = null;
     await restartRuntime();
   }
@@ -1775,39 +1840,33 @@ class ExtensionService implements PanelExtensionSource {
   Future<void> uninstallExtension(String key) async {
     await _requireInstalledStore().uninstall(key);
     await settings?.forgetExtension(key);
-    await _forgetExtensionSecrets(key);
+    await forgetExtensionKeychainItems(_secureStorage, key,
+        deleteOne: (name) async => _deleteAccountItem(name, await _accountKeychainOptions(key)));
     _availableExtensions = null;
     statusBar?.clearNamespace(key);
     await restartRuntime();
   }
 
-  /// Removes every keychain item an extension owned — its settings-panel
-  /// secrets and its account credentials.
-  ///
-  /// Enumerated rather than asked for: by the time an extension is being
-  /// uninstalled its hooks are gone, so nothing can say which panels or
-  /// accounts it had. The key prefix is the handle, and it is the same one
-  /// `registerHook` enforces for every key an extension may claim.
-  ///
-  /// A reinstall inheriting these is the resurrection `forgetPanelConfig`
-  /// exists to prevent — and the uninstall dialog says they are removed.
-  Future<void> _forgetExtensionSecrets(String key) async {
-    try {
-      final stored = await _secureStorage.readAll();
-      for (final storedKey in stored.keys) {
-        final mine = storedKey.startsWith('settingsPanel_secret_${key}_') ||
-            storedKey == 'account_creds_$key' ||
-            storedKey.startsWith('account_creds_${key}_') ||
-            storedKey == 'account_session_$key' ||
-            storedKey.startsWith('account_session_${key}_');
-        if (mine) await _secureStorage.delete(key: storedKey);
-      }
-    } catch (e, stack) {
-      // Reported, not swallowed: credentials outliving the extension that
-      // owned them is the thing this method exists to prevent, so failing at
-      // it silently is the one outcome worth knowing about.
-      ErrorReportingService.report(e, stack, context: 'extension-uninstall:secrets');
-    }
+  /// Copies every keychain item [from] owned onto [to] — the keychain half
+  /// of what `SettingsService.copyExtensionRecords` does for prefs, and what
+  /// keeps an operator logged in when an extension changes its key.
+  Future<void> copyExtensionSecrets({required String from, required String to}) =>
+      copyExtensionKeychainItems(_secureStorage, from: from, to: to, copyOne: _copyAccountItem);
+
+  /// Reads one account item and writes it under another name, each with the
+  /// options its own key resolves to. The fallback the keychain copy uses
+  /// where the platform will not enumerate — and it has to go through
+  /// [_accountKeychainOptions], because an item written under one set of
+  /// options is not found by a read issued with another.
+  Future<void> _copyAccountItem(String from, String to) async {
+    final fromKey = from.replaceFirst(RegExp(r'^account_(creds|session)_'), '');
+    final toKey = to.replaceFirst(RegExp(r'^account_(creds|session)_'), '');
+    final fromOptions = await _accountKeychainOptions(fromKey);
+    final toOptions = await _accountKeychainOptions(toKey);
+    if (await _secureStorage.read(key: to, mOptions: toOptions.mOptions, iOptions: toOptions.iOptions) != null) return;
+    final value = await _secureStorage.read(key: from, mOptions: fromOptions.mOptions, iOptions: fromOptions.iOptions);
+    if (value == null) return;
+    await _secureStorage.write(key: to, value: value, mOptions: toOptions.mOptions, iOptions: toOptions.iOptions);
   }
 
   /// The installed store, or a failure that names what was missing. A bare `!`
@@ -1839,12 +1898,15 @@ class ExtensionService implements PanelExtensionSource {
     // method refuses is a thing every caller has to remember about.
     final store = InstalledExtensions.isSupported
         ? (_installed ??= InstalledExtensions(
-            builtInKeys: {for (final info in fromAssets) info.key},
+            // Read live, not captured, and only what the app is OFFERING: the
+            // catalog experiment withdraws every non-core built-in, and the
+            // bundle pre-loaded for `ham2k-lookup` is one the app also ships.
+            builtInKeys: () => {for (final info in fromAssets) if (isBuiltInOffered(info)) info.key},
             hostSharedModules: _hostSharedModules,
-            // Read live, not captured: the record is written by installBundle
-            // and cleared by uninstall, and the store outlives both.
-            catalogInstalled: (key) =>
-                BundleProvenance.fromJson(settings?.extensionInstalledFrom[key])?.isCatalog ?? false,
+            // Read live too: the record is written by installBundle and
+            // cleared by uninstall, and the store outlives both.
+            reservedPrefixAllowed: (String key) =>
+                BundleProvenance.fromJson(settings?.extensionInstalledFrom[key])?.isReservedPrefixAllowed ?? false,
           ))
         : null;
     // A damaged store must not cost the operator the app's own extensions.
@@ -1989,6 +2051,64 @@ class ExtensionService implements PanelExtensionSource {
     return version != null && settings?.extensionRevoked[info.key]?['version'] == version;
   }
 
+  /// Whether an extension the app SHIPS is one it currently offers.
+  ///
+  /// Core extensions always are — they are the app itself, and `ham2k-lofi`
+  /// among them, so sync does not stop. Every other built-in is withdrawn
+  /// while the catalog experiment is on (HALO-581): the point of that
+  /// experiment is to run on what the catalog serves, and a built-in left
+  /// loaded beside its catalog twin would register the same hooks and the
+  /// same `ref:` types twice.
+  ///
+  /// Withdrawn, not forgotten. The entry stays in [availableExtensions] so
+  /// that [updateExtensionDisabledSince] does not prune the operator's on/off
+  /// choice for it, and so it comes back untouched when the experiment goes
+  /// off.
+  ///
+  /// Nothing is withdrawn where there is no store to put anything in its
+  /// place. On web an installed extension is a file on disk the platform does
+  /// not have, so the pre-loads never land — and withdrawing the built-ins
+  /// there would leave the app with the core extensions and nothing else.
+  bool isBuiltInOffered(ExtensionInfo info) {
+    if (info.source != ExtensionSource.asset || info.core) return true;
+    if (!InstalledExtensions.isSupported) return true;
+    // MIGRATED, not merely offered: an operator who deferred the upgrade, or
+    // who was offline when it was offered, keeps every extension they had.
+    // Withdrawing on the experiment alone is what left "Later" meaning "with
+    // no extensions until you are next online".
+    return !(settings?.catalogExtensionsInUse ?? false);
+  }
+
+  /// Whether [info] is an installed extension the app is currently doing
+  /// itself — a pre-loaded `ham2k-pota` while the built-in `pota` is back.
+  ///
+  /// The mirror of [isBuiltInOffered], and the reason it has to exist: the
+  /// experiment withdraws the built-ins, but turning it off does not withdraw
+  /// what replaced them. Both would then load, both would register `ref:pota`,
+  /// one of them would win by position, and the panel would list the same
+  /// extension twice with no way to tell which is answering.
+  ///
+  /// Judged against the built-in actually being OFFERED, not merely shipped,
+  /// so this stops applying by itself on the day the app stops carrying its
+  /// own copy — which is where all of this is going.
+  ///
+  /// Withdrawn, not uninstalled. The bundle and everything it stored stay
+  /// where they are, so turning the experiment back on picks it up mid-stride.
+  bool isSupersededByBuiltIn(ExtensionInfo info) {
+    if (info.source != ExtensionSource.installed) return false;
+    // The same rule the carry uses, not the seven named renames alone: the
+    // adoption installs up to thirty-three more under `ham2k-<builtin>`, and
+    // `ham2k-lookup` is served under the name it already has. Judged by the
+    // map only, every one of those loads BESIDE its restored built-in the
+    // moment the experiment goes off — two bundles under one key for lookup,
+    // and two registrations of `ref:wca` for the rest.
+    final shipped = {for (final i in availableExtensions) if (i.source == ExtensionSource.asset) i.key};
+    final replaces = shipped.contains(info.key) ? info.key : predecessorBuiltInKey(info.key, shipped);
+    if (replaces == null) return false;
+    return availableExtensions
+        .any((other) => other.key == replaces && other.source == ExtensionSource.asset && isBuiltInOffered(other));
+  }
+
   /// Whether [info] is offered at all: every experiment its manifest
   /// declares (experiments.yaml keys) must be enabled. An unavailable
   /// extension is hidden from the Extensions panel and never loaded, but
@@ -1997,7 +2117,10 @@ class ExtensionService implements PanelExtensionSource {
   /// null [settings] (tests, benches) resolves to available.
   bool isExtensionAvailable(ExtensionInfo info) {
     final currentSettings = settings;
-    return currentSettings == null || info.experiments.every(currentSettings.experimentEnabled);
+    if (currentSettings == null) return true;
+    if (!isBuiltInOffered(info)) return false;
+    if (isSupersededByBuiltIn(info)) return false;
+    return info.experiments.every(currentSettings.experimentEnabled);
   }
 
   /// Whether [info] actually loads: offered ([isExtensionAvailable]) AND
@@ -2029,69 +2152,14 @@ class ExtensionService implements PanelExtensionSource {
     // set: without this, an EXP preview within the kernel cache's TTL of a
     // flip still offers the direction the flip just took.
     invalidateHookContext();
-    await _updateDisabledSince(currentSettings);
+    await updateExtensionDisabledSince(
+        settings: currentSettings, available: availableExtensions, isActive: isExtensionActive);
     final desired = {
       for (final info in availableExtensions)
         if (isExtensionActive(info)) info.key,
     };
     if (_host == null || setEquals(desired, _loadedExtensionKeys)) return;
     await restartRuntime();
-  }
-
-  /// Stamps the moment each non-core extension became disabled, and clears
-  /// the stamp when it's enabled again — the clock DataFileManager's
-  /// grace-period purge reads. Only meaningful for extensions that could
-  /// own data, but harmless (and simpler) to track for all non-core keys.
-  ///
-  /// Also prunes both this map and `extensionOverrides` of any key absent
-  /// from [availableExtensions] entirely — an extension deleted from the
-  /// build, not merely disabled or gated behind an experiment (which still
-  /// keeps its entry in [availableExtensions]; see [isExtensionAvailable]).
-  /// Without this, a key an install migrated (like a former `hamdb: false`
-  /// override) outlives the extension it named forever: nothing else ever
-  /// visits an unknown key to remove it.
-  ///
-  /// Pruning is skipped while [availableExtensions] is still empty — before
-  /// [loadAvailableExtensions] first resolves, an empty list means "not
-  /// loaded yet", not "nothing exists", and treating it as the latter would
-  /// wipe out overrides set before boot finishes (e.g. ONBOARD_AS picks
-  /// written while the extension index is still loading).
-  Future<void> _updateDisabledSince(SettingsService settings) async {
-    final disabledSince = {...settings.extensionDisabledSince};
-    final knownKeys = {for (final info in availableExtensions) info.key};
-    final canPrune = availableExtensions.isNotEmpty;
-    // REAL: this stamp persists, and the reader is a LATER LAUNCH's clock
-    // (DataFileManager.purgeStaleExtensionData, at boot), which is back on real
-    // time. Travelled, `DEVTT -30d` then disabling an extension writes a stamp
-    // 30 days old, and the next boot purges its lookup rows and downloaded data
-    // on the spot — deleting inside the 7-day grace window that exists so a
-    // re-enable keeps everything. Testing the purge is done by travelling the
-    // READER forward, which still works.
-    final now = realNowMillis();
-    var changed = false;
-    for (final info in availableExtensions) {
-      if (info.core) continue;
-      final disabled = !isExtensionActive(info);
-      if (disabled && !disabledSince.containsKey(info.key)) {
-        disabledSince[info.key] = now;
-        changed = true;
-      } else if (!disabled && disabledSince.remove(info.key) != null) {
-        changed = true;
-      }
-    }
-    if (canPrune) {
-      for (final staleKey in disabledSince.keys.where((key) => !knownKeys.contains(key)).toList()) {
-        disabledSince.remove(staleKey);
-        changed = true;
-      }
-    }
-    if (changed) await settings.setExtensionDisabledSince(disabledSince);
-
-    if (canPrune) {
-      final overrides = settings.extensionOverrides;
-      final prunedOverrides = {for (final entry in overrides.entries) if (knownKeys.contains(entry.key)) entry.key: entry.value};
-      if (prunedOverrides.length != overrides.length) await settings.setExtensionOverrides(prunedOverrides);
-    }
   }
 
   Future<void> setExtensionEnabled(String key, bool enabled) => setExtensionsEnabled({key: enabled});
@@ -4024,27 +4092,6 @@ bool canHotSwapDevBundle({
   required bool capabilitiesUnchanged,
 }) =>
     runtimeAlive && alreadyLoaded && alreadyDevServed && capabilitiesUnchanged;
-
-/// Which build secrets [info] may read, out of everything the build has.
-///
-/// Two rules, and the first one overrules the second. An extension the app did
-/// NOT ship — dev-served, or installed from a `.h2kext` — sees nothing,
-/// whatever key it claims: visibility follows where the code came from, not
-/// what it calls itself, so a bundle calling itself `sota` cannot inherit
-/// `SOTA_*`, and neither pointing the app at a dev server nor installing a file
-/// can hand a credential over (HALO-425, HALO-422). Otherwise the name-prefix
-/// policy in secret_policy.dart decides.
-///
-/// Empty values are dropped rather than passed through: a build without the
-/// value configured must look identical to a build that never had it, so an
-/// extension's "expect null and degrade" path is the one that runs.
-Map<String, String> visibleSecretsFor(ExtensionInfo info, Map<String, String> secrets) {
-  if (!info.source.maySeeBuildSecrets) return const {};
-  return {
-    for (final entry in secrets.entries)
-      if (entry.value.isNotEmpty && extensionMaySeeSecret(info.key, entry.key)) entry.key: entry.value,
-  };
-}
 
 /// The extensions the app offers with a dev server connected: each [dev] entry
 /// REPLACES the asset extension of the same key — which is what lets an author

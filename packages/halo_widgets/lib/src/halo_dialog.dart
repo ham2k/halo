@@ -14,15 +14,52 @@
 import 'package:flutter/material.dart';
 
 import 'settings_list.dart';
+import 'platform_chrome.dart' show shrinkToFitText;
 import 'spacing.dart';
 import 'theme.dart';
 
 /// The banded header shared by [HaloDialog] and Modal Panes, so the two can't
 /// drift apart: the view-header type (the AppBar's own title style, recoloured
 /// for the band — its `onPrimary` would be invisible here) at a view header's
-/// height, growing only if the title wraps or carries a subtitle.
+/// height, growing only if the title needs a second line.
+///
+/// A long title SHRINKS before it wraps. A dialog title is 18pt RobotoSlab
+/// at its heaviest weight in a band 352 logical pixels wide at best — and
+/// under 150 on a phone at a large font scale — so titles that do not fit are
+/// the normal case, not the exception: two of the extension names this app
+/// can show already overrun a full-width compact dialog, and fifty-three
+/// overrun the narrowest desktop window. Wrapping every one of those would
+/// make a two-line band the usual sight; shrinking first keeps the band at
+/// its own height wherever a few percent buys the fit, and lets it grow only
+/// where the words genuinely need the room.
+///
+/// The shrink applies to a plain [Text] title. A title that is any other
+/// widget is laid out as it stands: what to shrink inside an arbitrary
+/// subtree is not this widget's to guess, and the three call sites that pass
+/// one already size themselves.
 ///
 /// [trailing] is for a pane's close button; dialogs pass none.
+/// How far a title may wrap once shrinking has run out of room.
+///
+/// Two, not unbounded. The header is a non-flex child of the dialog's Column
+/// and takes its height before the [Flexible] body gets any, so a title left
+/// to wrap as far as it likes squeezes the content to nothing and then
+/// overflows the card. A third line is worth less than the content it costs.
+const _titleMaxLines = 2;
+
+/// How far a title may be shrunk before wrapping is the better trade.
+///
+/// A tenth, where a view header's own title gives back a quarter. The two are
+/// solving different problems: an app bar has one line and nowhere to put a
+/// second, so shrinking hard beats losing the end of the words. This band can
+/// grow, so shrinking past the point where it reads comfortably buys nothing
+/// — a title at three quarters size wraps to two cramped lines that both fit
+/// the old band, which looks like a mistake rather than a fit.
+///
+/// So: a few percent to save a line, and past that, a second line at a size
+/// somebody can read.
+const _titleMinScale = 0.9;
+
 class HaloDialogHeader extends StatelessWidget {
   final Widget? leading;
   final Widget? title;
@@ -59,7 +96,21 @@ class HaloDialogHeader extends StatelessWidget {
                             theme.textTheme.headlineSmall ??
                             const TextStyle())
                         .copyWith(color: theme.colorScheme.onSurface),
-                child: title ?? const SizedBox.shrink(),
+                // Vertical room for a wrapped title, and none of it spent on
+                // a single-line one: the band's minHeight is taller than one
+                // line plus this, so the usual header is exactly the height
+                // it always was. Without it a second line paints flush
+                // against both edges of the band, which has no padding of its
+                // own by design.
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: Space.sm),
+                  child: switch (title) {
+                    final Text text =>
+                      shrinkToFitText(text, maxLines: _titleMaxLines, minScale: _titleMinScale),
+                    final Widget widget? => widget,
+                    null => const SizedBox.shrink(),
+                  },
+                ),
               ),
             ),
             ?trailing,

@@ -82,13 +82,29 @@ const double _refIconGap = 6;
 ///
 /// Shared by the per-row builder and the list-wide width budget, which have
 /// to agree about what a row draws or the budget reserves the wrong space.
-Map<String, int> _refCountsByType(Qso qso, List<Map<String, dynamic>> controls) {
-  final counts = <String, int>{};
+///
+/// A code rides along with each badge, because an extension may claim a
+/// reference by its code as well as its type (`alsoHandles`): without one, a
+/// legacy `{type: 'qp', ref: 'NY'}` draws the unknown marker while the
+/// activity row beside it names the party that handles it. Where a type has
+/// several references and only some are claimed, the badge takes the first
+/// claimed one's code — the icon then belongs to an extension that is
+/// actually installed.
+Map<String, ({int count, String? code})> _refCountsByType(Qso qso, List<Map<String, dynamic>> controls) {
+  final counts = <String, ({int count, String? code})>{};
+  final claimedTypes = <String>{};
   for (final ref in qso.refs) {
     final type = ref['type'] as String?;
     if (type == null) continue;
     if (_isContestRef(ref, controls)) continue;
-    counts.update(type, (count) => count + 1, ifAbsent: () => 1);
+    final code = refCodeOf(ref);
+    final claimed = !claimedTypes.contains(type) && controlForRef(controls, type: type, code: code) != null;
+    if (claimed) claimedTypes.add(type);
+    final previous = counts[type];
+    counts[type] = (
+      count: (previous?.count ?? 0) + 1,
+      code: previous == null || claimed ? code : previous.code,
+    );
   }
   return counts;
 }
@@ -188,7 +204,7 @@ const int _dayInMillis = 1000 * 60 * 60 * 24;
 /// carries nothing else to say it is a contest contact.
 bool _isContestRef(Map<String, dynamic> ref, List<Map<String, dynamic>> controls) {
   if (ref['program'] == 'Contest') return true;
-  final control = controlForRefType(controls, ref['type'] as String?);
+  final control = controlForRef(controls, type: ref['type'] as String?, code: refCodeOf(ref));
   final kind = (control?['input'] as Map?)?['kind'];
   return kind == 'text' || kind == 'serial' || kind == 'options' || kind == 'form';
 }
@@ -1058,22 +1074,22 @@ class _QsoListState extends State<QsoList> {
                           // stays bespoke, using the row's neutral
                           // foreground rather than a per-control accent
                           // (#354).
-                          if (isUnknownRefType(activityControls, entry.key))
+                          if (isUnknownRefType(activityControls, entry.key, code: entry.value.code))
                             activityRefIcon(activityControls, entry.key,
-                                iconSize: 10, avatarRadius: _refIconWidth / 2)
+                                code: entry.value.code, iconSize: 10, avatarRadius: _refIconWidth / 2)
                           else
                             Icon(
                               resolveIconName(
-                                iconForRefType(activityControls, entry.key),
+                                iconForRefType(activityControls, entry.key, code: entry.value.code),
                               ),
                               size: 14,
                               // Neutral row foreground ("black" in the light
                               // theme), not the tertiary accent (#354).
                               color: theme.colorScheme.onSurface,
                             ),
-                          if (entry.value > 1)
+                          if (entry.value.count > 1)
                             Text(
-                              '×${entry.value}',
+                              '×${entry.value.count}',
                               style: rowMono.copyWith(fontSize: 11),
                             ),
                           const SizedBox(width: _refIconGap),
@@ -1363,8 +1379,8 @@ _QsoListMetrics _computeMetrics({
     final refCounts = _refCountsByType(q, activityControls);
     if (refCounts.length > mostRefIcons) mostRefIcons = refCounts.length;
     if (q.serialConflict) anySerialConflict = true;
-    for (final count in refCounts.values) {
-      if (count > largestRefCount) largestRefCount = count;
+    for (final entry in refCounts.values) {
+      if (entry.count > largestRefCount) largestRefCount = entry.count;
     }
     if (q.theirCall.length > longestCall.length) longestCall = q.theirCall;
     freqsInKHz.add(q.freq);

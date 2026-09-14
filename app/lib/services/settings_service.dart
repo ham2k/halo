@@ -304,6 +304,49 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
     };
   }
 
+  /// Copies every prefs-side record of [from] onto [to], leaving [from]
+  /// untouched — the halves of an extension's identity that live outside the
+  /// keychain (ExtensionService.copyExtensionSecrets does the rest).
+  ///
+  /// For an extension that changed its key rather than its code: the
+  /// catalog's `ham2k-pota` is the built-in `pota` under a name the catalog
+  /// can serve (HALO-581), and an operator who has set it up should not have
+  /// to do so again. Copied rather than moved, so turning the experiment
+  /// back off finds the built-in exactly as it was.
+  ///
+  /// A value already stored under [to] wins: this runs once per key, but
+  /// "once" is a record that could be lost, and overwriting a choice the
+  /// operator made under the NEW key with one they made under the old is the
+  /// worse mistake.
+  Future<void> copyExtensionRecords({required String from, required String to}) async {
+    final group = _prefs.getString('settings.extension_$from');
+    if (group != null && _prefs.getString('settings.extension_$to') == null) {
+      await _prefs.setString('settings.extension_$to', group);
+    }
+    // A panel's key is the extension's own or prefixed with it, which is what
+    // makes the leading segment safe to rewrite.
+    for (final prefsKey in _prefs.getKeys().toList()) {
+      String? moved;
+      if (prefsKey.startsWith('settingsPanel.$from.')) {
+        moved = 'settingsPanel.$to.${prefsKey.substring('settingsPanel.$from.'.length)}';
+      } else if (prefsKey.startsWith('settingsPanel.${from}_')) {
+        moved = 'settingsPanel.${to}_${prefsKey.substring('settingsPanel.${from}_'.length)}';
+      }
+      if (moved == null || _prefs.get(moved) != null) continue;
+      final value = _prefs.get(prefsKey);
+      if (value is String) await _prefs.setString(moved, value);
+      if (value is bool) await _prefs.setBool(moved, value);
+      if (value is int) await _prefs.setInt(moved, value);
+      if (value is double) await _prefs.setDouble(moved, value);
+      if (value is List<String>) await _prefs.setStringList(moved, value);
+    }
+    final overrides = extensionOverrides;
+    if (overrides.containsKey(from) && !overrides.containsKey(to)) {
+      await setExtensionOverrides({...overrides, to: overrides[from]!});
+    }
+    notifyListeners();
+  }
+
   /// Removes everything an extension stored: its settings group, and the
   /// enable/disable override the operator set for it.
   ///
@@ -803,6 +846,7 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   /// KEPT (never pruned) — a returning experiment picks its old state up.
   Map<String, dynamic> get experimentStates => jsonMapPref(_experimentsKey);
 
+  @override
   bool experimentEnabled(String key) {
     final state = experimentStates[key];
     return state is Map && state['enabled'] == true;

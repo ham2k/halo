@@ -14,6 +14,7 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ham2k_logger/services/extension_dev_client.dart';
+import 'package:ham2k_logger/services/extension_secrets.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -296,6 +297,29 @@ void main() {
       // build that never had it, so the extension takes its degrade path
       // rather than sending an empty key to somebody's API.
       expect(visibleSecretsFor(shipped, const {'POTA_API_KEY': ''}), isEmpty);
+    });
+
+    test('the catalog\'s copy of a built-in reads the same secrets the built-in did', () {
+      // The whole point of the reserved-prefix opening. The policy builds its
+      // allowed prefix from the KEY, so asked as `ham2k-sota` it looks for
+      // `HAM2K_SOTA_*` and the value SOTA actually needs —
+      // `SOTA_OAUTH_CLIENT_ID_PROD` — matches nothing. The opening would then
+      // grant precisely the empty set it exists to avoid, and the extension
+      // installs, loads, and fails at the first login with nothing to say why.
+      const preloaded = ExtensionInfo(
+        key: 'ham2k-sota',
+        file: 'index.js',
+        core: false,
+        name: 'SOTA',
+        source: ExtensionSource.installed,
+      );
+      expect(
+        visibleSecretsFor(preloaded, const {'SOTA_OAUTH_CLIENT_ID_PROD': 'real-client-id'}),
+        {'SOTA_OAUTH_CLIENT_ID_PROD': 'real-client-id'},
+      );
+      // And it reaches no further than the built-in could: stripping the
+      // prefix must not hand it somebody else's namespace.
+      expect(visibleSecretsFor(preloaded, const {'WWFF_API_KEY': 'nope'}), isEmpty);
     });
   });
 

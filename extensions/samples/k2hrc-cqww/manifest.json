@@ -5,7 +5,6 @@
   "version": "1.0.0",
   "description": "CQ WW DX points and multipliers, as a worked example",
   "category": "contest",
-  "enabledByDefault": false,
   "icon": "earth",
   "accentColor": "#B03A2E",
   "api": 1,

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The extension catalog client (catalog.ham2k.net): what is published for
-// this edition's channel, whether an installed extension has a newer release,
+// the catalog's stable channel, whether an installed extension has a newer release,
 // and the bundle bytes themselves — verified against the listing's sha256
 // before anything opens them.
 //
@@ -17,17 +17,17 @@ import 'dart:convert';
 import 'dart:io' show IOException;
 import 'dart:typed_data' show BytesBuilder;
 
-import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint;
+import 'package:flutter/foundation.dart' show ChangeNotifier, VoidCallback, debugPrint;
 import 'package:flutter/widgets.dart' show AppLifecycleState, WidgetsBinding, WidgetsBindingObserver;
 import 'package:halo_core/halo_core.dart' show realNowMillis;
 import 'package:http/http.dart' as http;
 import 'package:pub_semver/pub_semver.dart';
 
 import '../config/user_agent.dart';
-import '../config/version.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'error_reporting_service.dart';
-import 'extension_geo.dart';
+import '../config/experiments.dart' show kCatalogExperiment;
+import 'extension_relevance.dart';
 import 'extension_service.dart' show ExtensionInfo, ExtensionSearchable;
 import 'installed_extensions.dart';
 import 'settings_service.dart';
@@ -66,6 +66,11 @@ class CatalogEntry with ExtensionSearchable {
   final String? description;
   final String? category;
   final String? icon;
+
+  /// The manifest's `accentColor` as `'#RRGGBB'`, which the catalog serves
+  /// alongside the icon — the tile a suggested row draws is the tile the
+  /// catalog site draws for the same extension.
+  final String? accentColor;
   @override
   final List<String> keywords;
 
@@ -75,8 +80,9 @@ class CatalogEntry with ExtensionSearchable {
   /// extension that does, without any of its code having run.
   final List<String> hooks;
 
-  /// Where the extension is relevant; null is worldwide.
-  final ExtensionGeo? geo;
+  /// Where, when and for whom the extension is relevant; null is worldwide
+  /// and undated.
+  final ExtensionRelevance? relevance;
   @override
   final Map<String, Map<String, Object?>> translations;
   final String version;
@@ -94,9 +100,10 @@ class CatalogEntry with ExtensionSearchable {
     this.description,
     this.category,
     this.icon,
+    this.accentColor,
     this.keywords = const [],
     this.hooks = const [],
-    this.geo,
+    this.relevance,
     this.translations = const {},
   });
 
@@ -126,9 +133,12 @@ class CatalogEntry with ExtensionSearchable {
       description: json['description'] is String ? json['description'] as String : null,
       category: json['category'] is String ? json['category'] as String : null,
       icon: json['icon'] is String ? json['icon'] as String : null,
+      accentColor: json['accentColor'] is String ? json['accentColor'] as String : null,
       keywords: json['keywords'] is List ? (json['keywords'] as List).whereType<String>().toList() : const [],
       hooks: json['hooks'] is List ? (json['hooks'] as List).whereType<String>().toList() : const [],
-      geo: json['geo'] is Map ? ExtensionGeo.fromJson((json['geo'] as Map).cast<String, dynamic>()) : null,
+      relevance: json['relevance'] is Map
+          ? ExtensionRelevance.fromJson((json['relevance'] as Map).cast<String, dynamic>())
+          : null,
       translations: {
         if (json['translations'] is Map)
           for (final entry in (json['translations'] as Map).entries)
@@ -172,9 +182,9 @@ class CatalogEntry with ExtensionSearchable {
 /// in the other would be reading two different catalogs.
 List<CatalogEntry> orderedCatalogEntries(List<CatalogEntry> entries, OperatorGeo? operator, String locale) {
   int tier(CatalogEntry entry) {
-    final geo = entry.geo;
-    if (geo == null || geo.isWorldwide) return 1;
-    return operator != null && geo.matchesOperator(operator) ? 0 : 2;
+    final relevance = entry.relevance;
+    if (relevance == null || relevance.isWorldwide) return 1;
+    return operator != null && relevance.matchesOperator(operator) ? 0 : 2;
   }
 
   final tiers = {for (final entry in entries) entry.key: tier(entry)};
@@ -291,7 +301,6 @@ class CatalogUnreachable implements Exception {
 
 class CatalogService {
   final http.Client _client;
-  final Edition _edition;
   final SettingsService? _settings;
   final Future<String> Function() _userAgent;
   final String Function() _locale;
@@ -306,22 +315,29 @@ class CatalogService {
 
   CatalogService({
     http.Client? client,
-    Edition? edition,
     this._settings,
     Future<String> Function()? userAgent,
     String Function()? locale,
     this._requestTimeout = kCatalogRequestTimeout,
     this._downloadTimeout = kCatalogDownloadTimeout,
   })  : _client = client ?? http.Client(),
-        _edition = edition ?? kEdition,
         // The fallback resolver never throws, so a missing native build
         // number cannot block a background check.
         _userAgent = userAgent ?? ham2kUserAgentOrFallback,
         _locale = locale ?? (() => LocaleSettings.currentLocale.languageCode);
 
-  /// The channel asked for: the edition's name. The catalog cascades
-  /// (`dev` sees `next` and `prod` releases too), so every edition asks.
-  String get channel => _edition.name;
+  /// The channel asked for.
+  ///
+  /// `stable`, whichever edition is running. A channel says how finished a
+  /// release is; an edition says who is running the app. Tying them together
+  /// — which is what asking for the edition's name did — meant a Dev build
+  /// could not choose to run only finished extensions and a Prod build could
+  /// not try an unfinished one at all.
+  ///
+  /// Constant until there is a setting for it. The catalog cascades, so
+  /// asking for a rougher channel later ADDS releases rather than replacing
+  /// them, and nothing an operator already installed goes away.
+  String get channel => kCatalogChannel;
 
   /// Whether the developer override is in force — developer mode on AND an
   /// address typed. The two together, not the address alone: developer mode
@@ -390,14 +406,18 @@ class CatalogService {
   /// "unknown" to the catalog — and never the callsign. Null when the
   /// catalog could not be read; an entry that could not be parsed is
   /// dropped, not the list.
-  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo}) async {
+  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async {
     final url = Uri.parse('$baseUrl/api/v1/catalog').replace(queryParameters: {
       'channel': channel,
       ...?geo?.toQueryParameters(),
       'api': '$kExtensionApiVersion',
       'lang': _locale(),
     });
-    final cached = _cached<List<CatalogEntry>>(url);
+    // [force] for a caller that IS the operator asking — opening the panel is
+    // the one moment where an answer from a few minutes ago is not good
+    // enough: they have come to see what is there, and a version published
+    // since is exactly what they came for.
+    final cached = force ? null : _cached<List<CatalogEntry>>(url);
     if (cached != null) return cached;
     final json = await _getJson(url);
     if (json == null) return null;
@@ -407,6 +427,14 @@ class CatalogService {
       return null;
     }
     final entries = [for (final item in raw) ?CatalogEntry.fromJson(item)];
+    // A catalog older than this app still names the field `geo`, which
+    // nothing here reads. Every entry would then rank as worldwide and the
+    // listing would lose its order entirely, looking exactly like a catalog
+    // whose extensions happen to be worldwide — so it says so once rather
+    // than never. The rows are kept: an unranked listing beats none.
+    if (raw.any((item) => item is Map && item['relevance'] == null && item['geo'] is Map)) {
+      _malformed(url, 'entries carry the retired "geo" key, so nothing ranks');
+    }
     _remember(url, entries);
     return entries;
   }
@@ -639,6 +667,14 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   /// ExtensionService.applyExtensionAvailability, which reads that record.
   final Future<void> Function() applyAvailability;
 
+  /// Opens the Extensions panel, for the notice's own button.
+  ///
+  /// A callback rather than a route: this service is constructed in
+  /// HaLoServices and tested without a navigator, and a notice that could only
+  /// be posted where one exists would go untested precisely where it matters.
+  /// Null leaves the notice with nothing but its text, which is what it had.
+  final VoidCallback? openExtensions;
+
   /// The clock the stamp is written and judged on. Defaults to the real
   /// clock, and that DEFAULT is the contract (time.md §7) — pinned by
   /// `catalog_service_test.dart`.
@@ -650,6 +686,7 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
     required this.statusBar,
     required this.installed,
     required this.applyAvailability,
+    this.openExtensions,
     int Function()? realNow,
   }) : _realNow = realNow ?? realNowMillis;
 
@@ -685,12 +722,19 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
   /// installed, not yet due, a check already in flight) and for a catalog
   /// that did not answer — which leaves the stamp alone, so the next trigger
   /// asks again.
-  Future<bool> check({bool force = false}) async {
+  ///
+  /// [announce] false runs the check without raising the footer notice, for a
+  /// caller that IS the detail the notice points at. The notice's own action
+  /// dismisses it on the way to the panel, and the panel's opening check would
+  /// otherwise put it straight back — the app asking twice about something the
+  /// operator is looking at. A notice already up stays up, and an empty
+  /// pending set still takes one down.
+  Future<bool> check({bool force = false, bool announce = true}) async {
     if (!InstalledExtensions.isSupported) return false;
     // Behind the experiment while the catalog is not live — the same skip as
     // no store, BEFORE the stamp: nothing is asked and nothing is written, so
     // the first check after the flip is due at once rather than six hours on.
-    if (!settings.experimentEnabled('catalog') /* stored key, see experiments.yaml */) return false;
+    if (!settings.experimentEnabled(kCatalogExperiment)) return false;
     final candidates = installed().where((info) => info.isInstalled).toList();
     if (candidates.isEmpty) return false;
     final last = settings.catalogUpdateCheckedAt;
@@ -703,7 +747,7 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
       await settings.setCatalogUpdateCheckedAt(_realNow());
       _pending = {for (final update in result.updates) update.entry.key: update.entry};
       notifyListeners();
-      _noticeUpdates(candidates);
+      _noticeUpdates(candidates, announce: announce);
       await _handleRevoked(result.revoked, candidates);
       return true;
     } finally {
@@ -723,22 +767,44 @@ class CatalogUpdateCheck extends ChangeNotifier with WidgetsBindingObserver {
     if (_pending.isEmpty) statusBar.dismissNotice(noticeKey);
   }
 
-  void _noticeUpdates(List<ExtensionInfo> candidates) {
+  void _noticeUpdates(List<ExtensionInfo> candidates, {bool announce = true}) {
     if (_pending.isEmpty) {
       statusBar.dismissNotice(noticeKey);
       return;
     }
+    if (!announce) return;
     final locale = LocaleSettings.currentLocale.languageCode;
     final names = [
       for (final key in _pending.keys) candidates.where((info) => info.key == key).firstOrNull?.nameFor(locale) ?? key,
     ];
+    // Two names, then a count. A notice is read at a glance from the footer:
+    // one name is the whole story, two still are, and by the third the list is
+    // longer than the sentence around it — what is left is a number and the
+    // button that shows the rest.
+    final listed = names.take(2).join(', ');
     statusBar.showNotice(
       key: noticeKey,
       icon: 'update',
       title: t.extensionsPanel.updatesAvailableTitle,
-      text: names.length == 1
-          ? t.extensionsPanel.updateAvailableFor(name: names.single)
-          : t.extensionsPanel.updatesAvailable(count: names.length),
+      text: switch (names.length) {
+        1 => t.extensionsPanel.updateAvailableFor(name: names.single),
+        2 => t.extensionsPanel.updatesAvailableFor(names: listed),
+        _ => t.extensionsPanel.updatesAvailable(names: listed, count: names.length - 2),
+      },
+      actions: [
+        if (openExtensions != null)
+          StatusBarAction(
+            label: t.extensionsPanel.updatesNoticeAction,
+            // Dismissed as it navigates: the panel it opens IS the detail, and
+            // a notice still sitting in the footer behind it is the app asking
+            // twice for something already being answered. The next check says
+            // so again if it is still true.
+            onTap: () {
+              statusBar.dismissNotice(noticeKey);
+              openExtensions!();
+            },
+          ),
+      ],
       // Not persisted: the next launch checks again and says so again if it
       // is still true, and an update taken in between must not leave a stale
       // "update available" in the footer.

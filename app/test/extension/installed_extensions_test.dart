@@ -38,10 +38,10 @@ void main() {
     bool Function(String key)? catalogInstalled,
   }) =>
       InstalledExtensions(
-        builtInKeys: builtIn,
+        builtInKeys: () => builtIn,
         hostSharedModules: shared ?? const {'i18next': '23.11.5', '@ham2k/lib-callsigns': '1.0.2'},
         rootOverride: root,
-        catalogInstalled: catalogInstalled,
+        reservedPrefixAllowed: catalogInstalled,
       );
 
   /// The fixture with its manifest rewritten — for the cases the packer would
@@ -223,15 +223,15 @@ void main() {
       expect(Directory(p.join(root.path, 'ham2k-clock')).existsSync(), isTrue);
     });
 
-    test('version and geo travel from the manifest on disk to the listing', () async {
-      // An update check compares `version` and the panel ranks by `geo`, both
+    test('version and relevance travel from the manifest on disk to the listing', () async {
+      // An update check compares `version` and the panel ranks by `relevance`, both
       // for an extension that may be DISABLED — so both must come off the
       // manifest on disk, not out of a running bundle.
       final s = store();
       await s.install(await s.inspect(rebuilt((m) => {
             ...m,
             'version': '4.5.6',
-            'geo': {
+            'relevance': {
               'entities': ['CE'],
               'ituRegions': [2],
             },
@@ -239,10 +239,23 @@ void main() {
 
       final listed = (await s.list()).single;
       expect(listed.version, '4.5.6');
-      expect(listed.geo!.entities, ['CE']);
-      expect(listed.geo!.ituRegions, [2]);
-      expect(listed.geo!.matches(entityPrefix: 'CE', ituRegion: 2), isTrue);
-      expect(listed.geo!.matches(entityPrefix: 'K', ituRegion: 2), isFalse);
+      expect(listed.relevance!.entities, ['CE']);
+      expect(listed.relevance!.ituRegions, [2]);
+      expect(listed.relevance!.matches(entityPrefix: 'CE', ituRegion: 2), isTrue);
+      expect(listed.relevance!.matches(entityPrefix: 'K', ituRegion: 2), isFalse);
+    });
+
+    test('an installed extension is on, whatever its manifest says about that', () async {
+      // What makes it safe to let `enabledByDefault` through the door. It is
+      // a shipping app's answer for extensions it carries whether the
+      // operator asked for them or not; an installed one is there because
+      // they went and got it. Honoured, a bundle carrying `false` would land
+      // installed, listed, and never loaded, with no override anywhere to
+      // explain it — and every bundle published before the field was retired
+      // carries one.
+      final s = store();
+      await s.install(await s.inspect(rebuilt((m) => {...m, 'enabledByDefault': false})));
+      expect((await s.list()).single.enabledByDefault, isTrue);
     });
 
     test('a bundle carrying a path-traversing entry is REFUSED, not quietly installed', () async {
@@ -304,7 +317,7 @@ void main() {
       // free at install time and is shipped later would otherwise be handed
       // whatever the built-in was granted.
       final later = InstalledExtensions(
-        builtInKeys: const {'ki2d-my-clock'},
+        builtInKeys: () => const {'ki2d-my-clock'},
         hostSharedModules: const {'i18next': '23.11.5'},
         rootOverride: root,
       );
@@ -356,7 +369,7 @@ void main() {
     // by whoever wrote it — unchecked, they throw out of a widget build
     // instead of being turned away. `domains` matters most: it is the fetch
     // allowlist itself, not a description of one.
-    // `geo` reads as "does not gate" wherever it cannot be parsed, so each of
+    // `relevance` reads as "does not gate" wherever it cannot be parsed, so each of
     // its shapes below would otherwise install as WORLDWIDE, not as a
     // mistake — and a value outside the vocabulary (the last three) would
     // install as relevant to NOBODY, ranked last for every operator forever.
@@ -365,33 +378,60 @@ void main() {
       {'domains': [1, 2]},
       {'name': 7},
       {'version': 3},
-      {'geo': 'CE'},
+      {'relevance': 'CE'},
       {
-        'geo': {'entities': 'CE'}
+        'relevance': {'entities': 'CE'}
       },
       {
-        'geo': {
+        'relevance': {
           'entity': ['CE']
         }
       },
       {
-        'geo': {
+        'relevance': {
           'ituRegions': ['2']
         }
       },
       {
-        'geo': {
+        'relevance': {
           'continents': ['North America']
         }
       },
       {
-        'geo': {
+        'relevance': {
           'countries': ['USA']
         }
       },
       {
-        'geo': {
+        'relevance': {
           'ituRegions': [7]
+        }
+      },
+      // JSON null is a value the author wrote, not an absent key. Read as
+      // absent, each of these installs as worldwide while the packer refuses
+      // it — the only inputs on which the two validators would disagree.
+      {'relevance': null},
+      {
+        'relevance': {'entities': null}
+      },
+      {
+        'relevance': {'dates': null}
+      },
+      // A day that does not exist, and one the packer's `Date.UTC` would read
+      // as 1950 while Dart reads it as year 50.
+      {
+        'relevance': {
+          'dates': ['2026-02-31']
+        }
+      },
+      {
+        'relevance': {
+          'dates': ['0050-01-01']
+        }
+      },
+      {
+        'relevance': {
+          'interests': ['CW']
         }
       },
     ]) {
@@ -424,6 +464,27 @@ void main() {
     });
   });
 
+  test('a bundle carrying a field only its author can fix still installs', () async {
+    // `enabledByDefault` and the retired `geo` are refused by the packer and
+    // by the catalog, which is where an AUTHOR learns. Refusing them here
+    // tells the operator instead, who can do nothing about a published
+    // manifest but go without an extension that would have worked — and
+    // every bundle published before those rules existed carries one.
+    //
+    // Neither costs them anything: `list` overrides `enabledByDefault`, and
+    // `geo` is simply not read.
+    await expectLater(store().inspect(rebuilt((m) => {...m, 'enabledByDefault': false})), completes);
+    await expectLater(
+      store().inspect(rebuilt((m) => {
+            ...m,
+            'geo': {
+              'countries': ['us']
+            }
+          })),
+      completes,
+    );
+  });
+
   test('a bundle gating on an app experiment is refused at install', () async {
     // The packer refuses it too, but its own header calls that a guardrail
     // rather than a gate. Installed, it would report success and then never
@@ -442,7 +503,7 @@ void main() {
     // a library's major, and refusing at the door is the whole point of
     // declaring ranges — otherwise it loads and dies inside a hook.
     final later = InstalledExtensions(
-      builtInKeys: const {},
+      builtInKeys: () => const {},
       hostSharedModules: const {'i18next': '24.0.0'},
       rootOverride: root,
     );
@@ -500,7 +561,7 @@ void main() {
     test('a store that cannot be read costs only the installed extensions', () async {
       final service = ExtensionService()
         ..debugInstalledStore = InstalledExtensions(
-          builtInKeys: const {},
+          builtInKeys: () => const {},
           hostSharedModules: const {},
           // A path that is a FILE, so listing it throws rather than returning
           // nothing — the difference between "none installed" and "the store

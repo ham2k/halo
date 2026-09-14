@@ -982,7 +982,7 @@ class OperationSheetState extends State<OperationSheet> {
     );
     if (result == null || !mounted) return null;
 
-    return {...?existing, 'type': refType, ...result};
+    return refWithFormResult(existing, result, refType: refType);
   }
 
   /// Only reachable for a ref type that declares `editable` (see
@@ -992,7 +992,7 @@ class OperationSheetState extends State<OperationSheet> {
 
     // A form-configured activity (a contest) edits through its own setup form
     // rather than the single reference-code field below — it has no code.
-    final formControl = controlForRefType(_controls, ref['type'] as String?);
+    final formControl = controlForRef(_controls, type: ref['type'] as String?, code: refCodeOf(ref));
     if ((formControl?['input'] as Map?)?['kind'] == 'form') {
       final updated = await _runSetupForm(formControl!, existing: ref);
       if (updated == null || !mounted) return;
@@ -1215,7 +1215,7 @@ class OperationSheetState extends State<OperationSheet> {
     await _loadControls();
     if (!mounted) return;
 
-    final control = controlForRefType(_controls, ref['type'] as String?);
+    final control = controlForRef(_controls, type: ref['type'] as String?, code: refCodeOf(ref));
     // Which of the two absences this is, is now answerable, and they call for
     // opposite things. A type with no form is done here; a form that could
     // not be FETCHED leaves the operator with an unconfigured contest, a row
@@ -1358,12 +1358,10 @@ class OperationSheetState extends State<OperationSheet> {
   ///
   /// Called with the guard held, and awaited by the caller for that reason.
   Future<void> _continueAfterExtensionAvailable(String key, {required bool scopeSearch}) async {
-    // Legacy references this extension claims become the type it publishes —
-    // the step that makes an extension gained for an unhandled reference
-    // actually clear that row instead of answering it under another name.
-    // Before the controls reload, so the descriptors arrive for it as it now is.
-    final migrated = refsMigratedByExtension(widget.services.extensions.availableExtensions, key, _operation.refs);
-    if (migrated != null) _saveRefs(migrated);
+    // Nothing is rewritten. An extension that claims a legacy reference
+    // answers for it as it stands — `ref:qp/ny` on the New York QSO Party
+    // handles `{type: 'qp', ref: 'NY'}` — so the operation the operator logged
+    // years ago is the operation they keep.
     await _loadControls();
     if (!mounted) return;
     final scopeWord = scopeSearch ? _scopeWordServedBy(key) : null;
@@ -2283,7 +2281,7 @@ class OperationSheetState extends State<OperationSheet> {
       if (_controlsState == ControlsLoadState.failed && refs.isNotEmpty) _controlsFailedNotice(theme),
       for (final ref in refs)
         Builder(builder: (context) {
-          final control = controlForRefType(_controls, ref['type'] as String?);
+          final control = controlForRef(_controls, type: ref['type'] as String?, code: refCodeOf(ref));
           final detail = activityRowDetail(ref);
           final linkKey = _refLinkKey(ref);
           final link = linkKey == null ? null : _refLinks[linkKey];
@@ -2305,7 +2303,9 @@ class OperationSheetState extends State<OperationSheet> {
                 contentPadding: const EdgeInsets.only(left: Space.xl, right: Space.lg),
                 leading: _controlsUnreliable && control == null
                     ? const Icon(MdiIcons.toyBrick)
-                    : activityRefIcon(_controls, ref['type'] as String?),
+                    // With the code: a reference answered under a legacy type
+                    // draws its extension's icon, not the unknown marker.
+                    : activityRefIcon(_controls, ref['type'] as String?, code: refCodeOf(ref)),
                 title: Row(
                   children: [
                     Flexible(child: _activityRowTitleText(activityRowTitle(control, ref))),

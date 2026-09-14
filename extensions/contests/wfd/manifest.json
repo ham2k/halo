@@ -9,7 +9,7 @@
   "icon": "snowflake",
   "accentColor": "#0277BD",
   "keywords": ["winter field day", "wfd", "contest"],
-  "geo": { "continents": ["NA"] },
+  "relevance": { "continents": ["NA"] },
   "hooks": ["activity", "adifFields", "export", "ref:wfd", "scoring"],
   "translations": {
     "es": {

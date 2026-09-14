@@ -69,7 +69,7 @@ never met cannot ship the same key.
 
 ```sh
 export H2K_CATALOG_TOKEN=h2kc_…
-npx h2kext-publish build --channel prod --notes "What changed"
+npx h2kext-publish build --notes "What changed"
 ```
 
 Uploads a bundle to the [Ham2K extension catalog](https://catalog.ham2k.net),
@@ -97,8 +97,10 @@ stored, but nobody can install it until they approve it, and your dashboard on
 the site shows the outcome and any note. Every refusal prints the catalog's
 reason and exits 1; nothing is retried.
 
-Channels are the app editions — `dev`, `next` and `prod` — so a release can
-reach testers before it reaches everyone.
+A channel says how finished a release is — `stable`, `unstable`, `bleeding` —
+not which app edition is asking. They cascade upward, so `stable` reaches
+everyone and `bleeding` reaches only somebody who asked for it. `--channel` is
+optional and defaults to `stable`.
 
 ## License
 

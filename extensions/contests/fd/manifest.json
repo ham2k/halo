@@ -9,7 +9,7 @@
   "icon": "weather-sunny",
   "accentColor": "#E65100",
   "keywords": ["field day", "arrl", "fd", "contest"],
-  "geo": { "continents": ["NA"] },
+  "relevance": { "continents": ["NA"] },
   "hooks": ["activity", "adifFields", "export", "ref:fd", "scoring"],
   "translations": {
     "es": {

@@ -2,7 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // Installing an extension from a `.h2kext` file (HALO-422): pick it, see what
-// it wants, agree, install.
+// it wants, agree, install — and the dialogs an extension has after that, its
+// details and the way out.
 //
 // The asking is the point. An extension is code the app will run, arriving as
 // a file from anyone, and the only thing between it and the operator is a
@@ -18,6 +19,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
+import '../services/extension_info.dart';
 import '../services/catalog_service.dart' show CatalogRelease;
 import '../services/error_reporting_service.dart';
 import '../services/halo_services.dart';
@@ -77,6 +79,10 @@ Future<String?> installExtensionFromBytes(
   required Future<List<int>> Function() read,
   String? from,
   BundleProvenance? provenance,
+  /// False only for a bulk update the operator has already asked for as a
+  /// whole — see where the screen is shown below. Never for a file, a deep
+  /// link, or anything an extension can reach.
+  bool askConsent = true,
 }) async {
   final InspectedBundle bundle;
   try {
@@ -100,16 +106,24 @@ Future<String?> installExtensionFromBytes(
   }
 
   if (!context.mounted) return null;
-  // ALWAYS asked, including for an update that wants nothing the installed
-  // version was not already granted. Comparing capabilities would let a
-  // version through silently on the strength of the key alone — and the code
-  // behind that key can have changed completely, since nothing about the code
-  // is compared. Skipping the screen is worth revisiting once a bundle can be
-  // shown to come from who it claims; it is not worth it while a key is the
-  // only thing being trusted.
-  final replacing = await _isInstalled(store, bundle);
-  if (!context.mounted) return null;
-  if (!await showConsentDialog(context, bundle: bundle, replacing: replacing, from: from)) return null;
+  // Asked for every install, and for every update taken one at a time.
+  // Comparing capabilities would let a version through silently on the
+  // strength of the key alone — and the code behind that key can have changed
+  // completely, since nothing about the code is compared.
+  //
+  // [askConsent] false is the ONE exception, and it is not a capability
+  // comparison: Update all is a single press on a list the operator is looking
+  // at, naming every extension it will take and what each becomes. Asking five
+  // times for the one thing they asked for once is how an operator learns to
+  // press through the screen without reading it, which costs more than it
+  // buys. It does mean an update that widens what an extension reaches is
+  // applied without saying so — worth revisiting when a bundle can be shown to
+  // come from who it claims, which is the same thing this whole rule waits on.
+  if (askConsent) {
+    final replacing = await _isInstalled(store, bundle);
+    if (!context.mounted) return null;
+    if (!await showConsentDialog(context, bundle: bundle, replacing: replacing, from: from)) return null;
+  }
 
   try {
     await commit(bundle);
@@ -139,6 +153,7 @@ Future<String?> installFromCatalog(
   required HaLoServices services,
   required CatalogRelease release,
   required Future<void> Function(InspectedBundle) commit,
+  bool askConsent = true,
 }) async {
   final store = services.extensions.installed;
   // A press that did nothing at all, with no message and no log, is the one
@@ -163,6 +178,7 @@ Future<String?> installFromCatalog(
     from: catalog.host,
     provenance: provenance,
     commit: commit,
+    askConsent: askConsent,
   );
   if (name == null) return null;
   services.catalogUpdateCheck.noteInstalled(release.key, release.version);
@@ -226,7 +242,11 @@ class _ConsentDialog extends StatelessWidget {
     final theme = Theme.of(context);
 
     return HaloDialog(
-      title: Text(replacing ? t.updateTitle(name: bundle.name) : t.installTitle(name: bundle.name)),
+      // The extension's own name, and nothing wrapped around it. Whether
+      // this is an install or an update is what the primary button says, and
+      // saying it twice cost the name the room it needs — some are long, and
+      // the name is the thing the operator is actually deciding about.
+      title: Text(bundle.name),
       content: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
@@ -308,13 +328,48 @@ Future<bool> confirmUninstall(BuildContext context, {required String name}) asyn
           title: Text(context.t.extensionsPanel.uninstallTitle(name: name)),
           content: Text(context.t.extensionsPanel.uninstallBody),
           cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
-          // Removing an extension destroys what it stored, so the verb goes in
-          // `destructive:` — rendered at the leading edge, as far from the way
-          // out as the footer allows.
-          destructive: TextButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: Text(context.t.extensionsPanel.uninstallAction),
-          ),
+          // Removing is this dialog's whole purpose, so here — unlike the
+          // details dialog it was opened from — the destructive verb IS the
+          // primary action and takes the trailing edge, with the way out to
+          // its left. In the error colour, because it is the press that
+          // cannot be undone.
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: TextButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+              child: Text(context.t.extensionsPanel.uninstallAction),
+            ),
+          ],
+        ),
+      ) ??
+      false;
+}
+
+/// The one screen Update all shows, in place of the per-extension consent it
+/// skips ([installExtensionFromBytes]'s `askConsent`).
+///
+/// Bulk is what makes it defensible: the operator is looking at the list, the
+/// dialog names how many, and one answer covers all of them. It is a weaker
+/// screen than the one it replaces — it does not say what any of them will be
+/// able to reach — so it stays a confirmation of a job the operator started,
+/// never a way to start one.
+Future<bool> confirmUpdateAll(BuildContext context, {required int count}) async {
+  final t = context.t.extensionsPanel;
+  return await showDialog<bool>(
+        context: context,
+        builder: (context) => HaloDialog(
+          title: Text(t.updateAllTitle(count: count)),
+          content: Text(t.updateAllBody),
+          cancel: TextButton(onPressed: () => Navigator.of(context).pop(false), child: Text(context.t.common.cancel)),
+          // Confirming is this dialog's whole purpose, so the verb takes the
+          // trailing edge and the way out sits to its left — the same shape as
+          // the remove confirmation.
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: Text(t.updateAllAction),
+            ),
+          ],
         ),
       ) ??
       false;
@@ -389,3 +444,193 @@ class _ExtensionDropTargetState extends State<ExtensionDropTarget> {
     );
   }
 }
+
+/// What the operator chose in the details dialog, or null if they closed it.
+enum ExtensionDetailsAction { uninstall, update }
+
+/// Everything the app knows about one extension, and what can be done about
+/// it — the dialog behind an extension row's info button.
+///
+/// The row itself carries a name, a description and a switch, which is what
+/// an operator scanning the list needs. Everything else about an extension —
+/// where it came from, what it can reach, what it plugs into — is here rather
+/// than crowding fifty rows with it.
+///
+/// [update] is the release the catalog offers when that is newer than what is
+/// installed; null means there is nothing to move to. The dialog only ever
+/// ANSWERS: acting is the panel's, which owns the applying state and the
+/// status bar.
+Future<ExtensionDetailsAction?> showExtensionDetails(
+  BuildContext context, {
+  required ExtensionInfo info,
+  required String locale,
+  String? installedFrom,
+  IconData? installedFromIcon,
+  String? updateVersion,
+}) =>
+    showDialog<ExtensionDetailsAction>(
+      context: context,
+      builder: (context) => _DetailsDialog(
+        info: info,
+        locale: locale,
+        installedFrom: installedFrom,
+        installedFromIcon: installedFromIcon,
+        updateVersion: updateVersion,
+      ),
+    );
+
+class _DetailsDialog extends StatelessWidget {
+  final ExtensionInfo info;
+  final String locale;
+  final String? installedFrom;
+
+  /// The icon for [installedFrom] — a download is not what a pre-installed
+  /// bundle did, and the caller is the only thing that knows which it was.
+  final IconData? installedFromIcon;
+  final String? updateVersion;
+
+  const _DetailsDialog({
+    required this.info,
+    required this.locale,
+    required this.installedFrom,
+    required this.installedFromIcon,
+    required this.updateVersion,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final t = context.t.extensionsPanel;
+    final theme = Theme.of(context);
+    final description = info.descriptionFor(locale);
+    // The app's own extensions are at whatever version the app is, which is
+    // not a version anybody can act on — the row says so instead of a number,
+    // and so does this.
+    final version = info.isInstalled ? info.version : null;
+    // The same three things `InspectedBundle.claimsCapabilities` asks of a
+    // bundle at install, asked of the extension afterwards.
+    final claimsCapabilities = info.domains.isNotEmpty || info.requiresLocation || info.allowUserAgentOverride;
+    final hookLabels = extensionHookLabels(info.hooks, t);
+
+    return HaloDialog(
+      title: Text(info.nameFor(locale)),
+      content: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (version != null) Text(t.installVersion(version: version), style: theme.textTheme.bodySmall),
+          if (description != null) ...[
+            const SizedBox(height: Space.md),
+            Text(description),
+          ],
+          const SizedBox(height: Space.xl),
+          // Where it came from, in the same words the consent screen used
+          // when it arrived. For an extension the app ships there is nothing
+          // to say beyond that it does.
+          _Capability(
+            icon: installedFromIcon ?? MdiIcons.packageVariantClosed,
+            label: installedFrom ?? t.builtIn,
+          ),
+          const SizedBox(height: Space.xl),
+          // The same capability list the operator agreed to at install, so
+          // "what did I let this reach" is answerable afterwards and not only
+          // in the moment.
+          if (!claimsCapabilities)
+            Text(t.noCapabilities, style: theme.textTheme.bodyMedium)
+          else ...[
+            Text(t.canReach, style: theme.textTheme.titleSmall),
+            const SizedBox(height: Space.sm),
+            for (final domain in info.domains) _Capability(icon: MdiIcons.web, label: domain),
+            if (info.requiresLocation) _Capability(icon: MdiIcons.crosshairsGps, label: t.canUseLocation),
+            if (info.allowUserAgentOverride)
+              _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
+          ],
+          if (hookLabels.isNotEmpty) ...[
+            const SizedBox(height: Space.xl),
+            Text(t.detailsWhatItDoes, style: theme.textTheme.titleSmall),
+            const SizedBox(height: Space.sm),
+            Text(hookLabels.join(' · '), style: theme.textTheme.bodySmall),
+          ],
+        ],
+      ),
+      // Removing destroys what the extension stored, so it goes in
+      // `destructive:` — the leading edge, as far from the way out as the
+      // footer allows — and in the error colour, which is the one thing on
+      // this dialog that cannot be undone.
+      destructive: info.isInstalled
+          ? TextButton(
+              onPressed: () => Navigator.of(context).pop(ExtensionDetailsAction.uninstall),
+              style: TextButton.styleFrom(foregroundColor: theme.colorScheme.error),
+              child: Text(t.uninstallAction),
+            )
+          : null,
+      // Update is something else to DO with the extension rather than a way
+      // out of the dialog, which is exactly what `secondary:` is for.
+      secondary: updateVersion == null
+          ? null
+          : FilledButton(
+              onPressed: () => Navigator.of(context).pop(ExtensionDetailsAction.update),
+              child: Text(t.updateAction),
+            ),
+      // Done, not Close: the footer convention retires Close, and this dialog
+      // has nothing to commit (docs/design/user-interface.md §Dialogs). With
+      // no `actions:` it lands on the trailing edge itself — the last button
+      // on the right, which is where the way out of a dialog that only
+      // reports belongs.
+      cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
+    );
+  }
+}
+
+/// What an extension's declared [hooks] say it does, in the operator's words.
+///
+/// Most of the hook vocabulary is plumbing — how an extension attaches to the
+/// app, not anything anybody chose it for — and those are dropped rather than
+/// shown as their identifiers. A hook nobody has given words to is dropped for
+/// the same reason: the list is what this extension is FOR, and an identifier
+/// in it reads as a defect.
+///
+/// A reference hook names a program, and the pair is what says which side of
+/// it: `ref:wwffActivation` is activating one and `ref:wwff` is hunting one —
+/// but only when the activation twin is in the same list, since a contest
+/// declares the plain form alone and is neither hunted nor activated.
+///
+/// A QUALIFIED claim (`ref:qp/ny`) is dropped: it is how an extension reaches
+/// back for references logged under a type it does not publish, not something
+/// anybody would choose it for, and its plain claim is in the same list
+/// saying what it is. Shown, it reads as `QP/NY`.
+List<String> extensionHookLabels(List<String> hooks, Translations$extensionsPanel$en t) {
+  const refPrefix = 'ref:';
+  const activationSuffix = 'Activation';
+  final labels = <String>[];
+  for (final hook in hooks) {
+    if (!hook.startsWith(refPrefix)) {
+      final label = switch (hook) {
+        'account' => t.hookAccount,
+        'callNotes' => t.hookCallNotes,
+        'dataFile' => t.hookDataFile,
+        'export' => t.hookExport,
+        'lookup' => t.hookLookup,
+        'scoring' => t.hookScoring,
+        'spots' => t.hookSpots,
+        _ => null,
+      };
+      if (label != null) labels.add(label);
+      continue;
+    }
+    final code = hook.substring(refPrefix.length);
+    if (refClaimOf(hook)?.code != null) continue;
+    if (code.endsWith(activationSuffix)) {
+      labels.add(t.hookActivating(
+          program: _programName(code.substring(0, code.length - activationSuffix.length))));
+    } else if (hooks.contains('$hook$activationSuffix')) {
+      labels.add(t.hookHunting(program: _programName(code)));
+    } else {
+      labels.add(_programName(code));
+    }
+  }
+  return labels;
+}
+
+/// A reference type as a program is written: an abbreviation hams read in
+/// capitals, with the hyphens a hook name needs turned back into spaces.
+String _programName(String code) => code.replaceAll('-', ' ').toUpperCase();

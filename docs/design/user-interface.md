@@ -416,6 +416,23 @@ so a Cancel passed through `actions` lands flush against Save.
 `app/test/guards/dialog_footer_convention_test.dart` fails the build when one does,
 and when a dialog reaches for a raw `AlertDialog` instead of `HaloDialog`.
 
+### What it says
+
+Brief and to the point. A dialog states what is about to happen and what it
+costs; it does not argue for itself.
+
+- No selling. "so a new QSO party reaches you without waiting for a new
+  version of the app" is a release note, not a dialog.
+- No reassurance the operator did not ask for. Say what is kept in four words,
+  not in a sentence about how careful we have been.
+- One fact per sentence, and only the facts that change the answer. A count,
+  a duration, a requirement — not the reasoning behind them.
+- Never restate the title in the body.
+
+An operator reads a dialog to decide something. Everything that is not the
+decision is in their way, and prose that justifies the decision reads as a
+dialog that expects to be argued with.
+
 ### Which verb
 
 - **`Cancel`** when there are pending changes to abandon.

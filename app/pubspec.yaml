@@ -232,6 +232,10 @@ flutter:
   uses-material-design: true
   assets:
     - assets/extensions/
+    # The `.h2kext` bundles the app pre-loads under the catalog experiment,
+    # plus the index naming them (HALO-581). Tracked, unlike
+    # `assets/extensions/`, which the extension build writes.
+    - assets/preloaded-extensions/
     # Meter calibration tables, one file per radio — see
     # lib/services/cat/drivers/info/README.md. Beside the drivers that read
     # them rather than under assets/, because they are edited as part of

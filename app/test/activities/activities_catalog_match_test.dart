@@ -18,7 +18,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/catalog_service.dart';
-import 'package:ham2k_logger/services/extension_geo.dart';
+import 'package:ham2k_logger/services/extension_relevance.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/activities_view.dart';
@@ -31,7 +31,7 @@ CatalogEntry _entry(
   String? description,
   List<String> keywords = const [],
   List<String> hooks = const [],
-  ExtensionGeo? geo,
+  ExtensionRelevance? relevance,
 }) =>
     CatalogEntry(
       key: key,
@@ -42,7 +42,7 @@ CatalogEntry _entry(
       description: description,
       keywords: keywords,
       hooks: hooks,
-      geo: geo,
+      relevance: relevance,
     );
 
 /// Counts what the sheet asks of the catalog, and answers whatever the test
@@ -58,7 +58,7 @@ class _CountingCatalog extends CatalogService {
   int fetches = 0;
 
   @override
-  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo}) async {
+  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async {
     fetches++;
     if (gate != null) await gate!.future;
     return entries;
@@ -130,8 +130,8 @@ void main() {
 
   group('orderedCatalogEntries', () {
     test('the operator\'s own region leads, worldwide next, everyone else last', () {
-      final texas = _entry('tx', 'Texas', geo: ExtensionGeo.fromJson(const {'entities': ['K']}));
-      final vermont = _entry('vt', 'Vermont', geo: ExtensionGeo.fromJson(const {'entities': ['VE']}));
+      final texas = _entry('tx', 'Texas', relevance: ExtensionRelevance.fromJson(const {'entities': ['K']}));
+      final vermont = _entry('vt', 'Vermont', relevance: ExtensionRelevance.fromJson(const {'entities': ['VE']}));
       final worldwide = _entry('ww', 'Worldwide');
       final operator = const OperatorGeo(entityPrefix: 'K');
 
@@ -142,7 +142,7 @@ void main() {
     });
 
     test('with no operator geo there is no first tier — worldwide leads', () {
-      final texas = _entry('tx', 'Texas', geo: ExtensionGeo.fromJson(const {'entities': ['K']}));
+      final texas = _entry('tx', 'Texas', relevance: ExtensionRelevance.fromJson(const {'entities': ['K']}));
       final worldwide = _entry('ww', 'Worldwide');
       expect(orderedCatalogEntries([texas, worldwide], null, 'en').map((e) => e.key), ['ww', 'tx']);
     });
@@ -161,19 +161,24 @@ void main() {
   });
 
   testWidgets('an extension the app already has is never offered as an install', (tester) async {
-    // The trap: the catalog lists everything, including what shipped with the
-    // app and what the operator installed already. Offering a download for
-    // one of those asks them to fetch what they have — and for a built-in it
-    // is worse, since the install would be refused after the consent screen.
+    // The trap: the catalog lists everything, including what the operator
+    // installed already. Offering a download for one of those asks them to
+    // fetch what they have.
+    //
+    // Installed rather than built in, because this tier only appears under
+    // the catalog experiment and that experiment withdraws every built-in —
+    // so an installed extension is the only kind the catalog can now
+    // duplicate.
     final (services, operation, _) = await _harness(
       catalog: [_entry('qp', 'QSO Parties', keywords: const ['texas'])],
       available: const [
         ExtensionInfo(
           key: 'qp',
-          file: 'qp.js',
+          file: 'index.js',
           core: false,
           name: 'QSO Parties',
           keywords: ['texas'],
+          source: ExtensionSource.installed,
           enabledByDefault: false,
         ),
       ],

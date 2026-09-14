@@ -568,6 +568,7 @@ class HaLoServices {
     statusBar: statusBar,
     installed: () => extensions.availableExtensions,
     applyAvailability: extensions.applyExtensionAvailability,
+    openExtensions: () => openSettingsPanel('extensions'),
   );
 
   /// Decides whether this install is out of date and, if so, says it exactly
@@ -846,6 +847,12 @@ class HaLoServices {
   /// round that finally succeeds can clear it.
   static const syncAuthNoticeKey = 'sync:auth';
 
+  /// Opens Settings at [panel] — how a notice's button reaches the screen that
+  /// can act on what it reported.
+  void openSettingsPanel(String panel) => navigatorKey.currentState?.push(
+        MaterialPageRoute<void>(builder: (_) => SettingsView(services: this, initialPanel: panel)),
+      );
+
   /// The server has rejected this device's registration for several rounds
   /// running (SyncEngine's [SyncEngine.authErrorNotifyThreshold]) — not a
   /// transient blip, so it's worth surfacing. The likely fix is on the
@@ -858,14 +865,7 @@ class HaLoServices {
       icon: 'cloud-off',
       title: t.settings.syncPanel.authIssueTitle,
       text: t.settings.syncPanel.authIssueText,
-      actions: [
-        StatusBarAction(
-          label: t.settings.syncPanel.openSettings,
-          onTap: () => navigatorKey.currentState?.push(
-            MaterialPageRoute<void>(builder: (_) => SettingsView(services: this, initialPanel: 'sync')),
-          ),
-        ),
-      ],
+      actions: [StatusBarAction(label: t.settings.syncPanel.openSettings, onTap: () => openSettingsPanel('sync'))],
     );
   }
 
@@ -964,6 +964,7 @@ class HaLoServices {
     // OVERRIDE, null in every production build, and shadows the field here.
     this.extensions.location = this.location;
     this.extensions.spots = spots;
+    this.extensions.catalog = catalog;
     this.extensions.onOpenAccount =
         (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
     this.extensions.onSearchSettings = (args, kind) => searchSettingsForCommand(this, args: args, kind: kind);

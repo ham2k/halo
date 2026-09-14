@@ -122,6 +122,6 @@ List<MapShapeData> refShapes(
         ...?loader.shapeFor(
           ref,
           id: markerIdFor(ref),
-          color: colorForRefType(controls, ref['type'] as String?) ?? fallbackColor,
+          color: colorForRefType(controls, ref['type'] as String?, code: refCodeOf(ref)) ?? fallbackColor,
         ),
     ];

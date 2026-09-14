@@ -34,7 +34,26 @@ class SectionHeader extends StatelessWidget {
   /// caller marks a section as developer-only).
   final Color? color;
 
-  const SectionHeader(this.title, {super.key, this.subtitle, this.color});
+  /// One control on the band's trailing edge, level with the title — for a
+  /// verb that acts on the SECTION rather than on any row in it ("Update
+  /// all"). A row's own control belongs on the row.
+  ///
+  /// It shares the band's height, so keep it to a text or outlined button: the
+  /// band is a heading, and a control tall enough to change that makes it a
+  /// toolbar.
+  final Widget? trailing;
+
+  /// A ground for the band, painted EDGE TO EDGE — past the inset the title
+  /// and rule sit within, and past [overhang] with them.
+  ///
+  /// For a section that is a standing notice rather than one more group of
+  /// rows: the ground runs behind its rows too, and a band inset from the
+  /// pane's edges would leave two stripes of surface down the sides of one
+  /// block of colour. Null is the ordinary heading, which has no ground of
+  /// its own.
+  final Color? background;
+
+  const SectionHeader(this.title, {super.key, this.subtitle, this.color, this.trailing, this.background});
 
   /// The band title's face, public so a hand-built HEADING that cannot be a
   /// [SectionHeader] — one carrying its own controls and geometry — still
@@ -89,8 +108,16 @@ class SectionHeader extends StatelessWidget {
   /// needs, which a stated extent can only guess at. Nested groups stack
   /// rather than overlap: it pins under whatever pinned band the group above
   /// it holds (the Settings panel's category band over its sections).
-  static Widget pinned(BuildContext context, String title, {Color? color, Widget? subtitle}) =>
-      SectionHeader(title, color: color, subtitle: subtitle).asPinnedSliver(context);
+  static Widget pinned(
+    BuildContext context,
+    String title, {
+    Color? color,
+    Widget? subtitle,
+    Widget? trailing,
+    Color? background,
+  }) =>
+      SectionHeader(title, color: color, subtitle: subtitle, trailing: trailing, background: background)
+          .asPinnedSliver(context);
 
   /// This very band as its pinned sliver — for a caller holding a built
   /// [SectionHeader] rather than a title ([sectionSlivers], which reads the
@@ -99,8 +126,9 @@ class SectionHeader extends StatelessWidget {
         // Painted, unlike the inline heading: pinned, it has its own rows
         // scrolling UNDER it, and a heading with no ground of its own would
         // show them through. The pane's surface is what it stands on — a
-        // pinned band only belongs on a surface-grounded list.
-        child: ColoredBox(color: Theme.of(context).colorScheme.surface, child: this),
+        // pinned band only belongs on a surface-grounded list — unless the
+        // band brought its own, which is then what its rows scroll under.
+        child: ColoredBox(color: background ?? Theme.of(context).colorScheme.surface, child: this),
       );
 
   /// A whole section: this band pinned over [children], which scroll under
@@ -139,7 +167,7 @@ class SectionHeader extends StatelessWidget {
     // it: the rule measures the content it heads, standing [overhang] proud
     // of the rows either side, rather than running out to the pane's edges
     // the way a filled band (the Settings panel's categories) does.
-    return Padding(
+    final band = Padding(
       padding: EdgeInsets.only(left: padding.left, right: padding.right),
       child: Container(
         width: double.infinity,
@@ -152,11 +180,28 @@ class SectionHeader extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(title, style: titleStyle(context, color: color)),
+            if (trailing == null)
+              Text(title, style: titleStyle(context, color: color))
+            else
+              Row(
+                children: [
+                  // Expanded, not Flexible: the control belongs on the band's
+                  // trailing edge, and a Flexible title shrink-wraps and drags
+                  // it back against the last word. Expanded also gives the
+                  // title the room to WRAP at a large font scale rather than
+                  // pushing the control off the band.
+                  Expanded(child: Text(title, style: titleStyle(context, color: color))),
+                  const SizedBox(width: Space.md),
+                  trailing!,
+                ],
+              ),
             if (subtitle != null) ...[const SizedBox(height: Space.xs), subtitle!],
           ],
         ),
       ),
     );
+    // Outside the inset, so the ground reaches the pane's edges while the
+    // title and its rule keep the measure of the rows they head.
+    return background == null ? band : ColoredBox(color: background!, child: band);
   }
 }

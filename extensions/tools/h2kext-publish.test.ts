@@ -77,7 +77,7 @@ async function run(argv: string[], { fetch, env = authed }: { fetch: any; env?: 
 }
 
 const accepted = {
-  key: "w7abc-notes", version: "1.2.3", channel: "prod", status: "pending",
+  key: "w7abc-notes", version: "1.2.3", channel: "stable", status: "pending",
   submissionId: "sub_42", url: `${DEFAULT_CATALOG}/w7abc-notes`,
 }
 
@@ -90,12 +90,12 @@ test("the upload is one bearer-authorised POST of the raw bytes, the channel in 
   const file = await bundleFile()
   const catalog = catalogAnswering(201, accepted)
 
-  const { code } = await run([file, "--channel", "prod"], catalog)
+  const { code } = await run([file, "--channel", "stable"], catalog)
 
   assert.equal(code, 0)
   assert.equal(catalog.calls.length, 1)
   const { url, init } = catalog.calls[0]
-  assert.equal(url, `${DEFAULT_CATALOG}/api/v1/publish?channel=prod`)
+  assert.equal(url, `${DEFAULT_CATALOG}/api/v1/publish?channel=stable`)
   assert.equal(init.method, "POST")
   assert.equal(init.headers.authorization, `Bearer ${TOKEN}`)
   assert.equal(init.headers["content-type"], "application/zip")
@@ -125,9 +125,9 @@ test("on the wire, Content-Length is the bundle's size", async () => {
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve))
   try {
     const port = (server.address() as AddressInfo).port
-    const { code, stderr } = await run([file, "--channel", "prod", "--catalog", `http://127.0.0.1:${port}`], { fetch: globalThis.fetch })
+    const { code, stderr } = await run([file, "--channel", "stable", "--catalog", `http://127.0.0.1:${port}`], { fetch: globalThis.fetch })
     assert.equal(code, 0, stderr)
-    assert.equal(received.url, "/api/v1/publish?channel=prod")
+    assert.equal(received.url, "/api/v1/publish?channel=stable")
     assert.equal(received.headers!["content-length"], String(expected.length))
     assert.equal(received.headers!["content-type"], "application/zip")
     assert.equal(received.headers!.authorization, `Bearer ${TOKEN}`)
@@ -142,7 +142,7 @@ test("no --notes means one request and nothing more", async () => {
   // a PUT of '' would store a blank where the site shows nothing.
   const file = await bundleFile()
   const catalog = catalogAnswering(201, accepted)
-  const { code } = await run([file, "--channel", "dev"], catalog)
+  const { code } = await run([file, "--channel", "bleeding"], catalog)
   assert.equal(code, 0)
   assert.equal(catalog.calls.length, 1)
 })
@@ -154,7 +154,7 @@ test("--notes is a second request, PUT to the submission the 201 named", async (
   const file = await bundleFile()
   const catalog = catalogAnswering(201, accepted)
 
-  const { code } = await run([file, "--channel", "prod", "--notes", "First release"], catalog)
+  const { code } = await run([file, "--channel", "stable", "--notes", "First release"], catalog)
 
   assert.equal(code, 0)
   assert.equal(catalog.calls.length, 2)
@@ -176,10 +176,10 @@ test("a refused notes request warns, exits 1, and leaves the publish alone", asy
   const catalog = catalogAnswering(201, accepted, (url) =>
     url.includes("/notes") ? { status: 403, body: { error: "notes are not yours to set", code: "forbidden" } } : { status: 201, body: accepted })
 
-  const { code, stdout, stderr } = await run([file, "--channel", "prod", "--notes", "First release"], catalog)
+  const { code, stdout, stderr } = await run([file, "--channel", "stable", "--notes", "First release"], catalog)
 
   assert.equal(code, EXIT_REFUSED)
-  assert.match(stdout, /^published w7abc-notes 1\.2\.3 → prod \(pending review\)$/m)
+  assert.match(stdout, /^published w7abc-notes 1\.2\.3 → stable \(pending review\)$/m)
   assert.match(stderr, /warning: w7abc-notes 1\.2\.3 is published, but its release notes were not set/)
   assert.match(stderr, /HTTP 403.*notes are not yours to set \(forbidden\)/)
   assert.equal(catalog.calls.length, 2, "a retry or a rollback was sent")
@@ -188,7 +188,7 @@ test("a refused notes request warns, exits 1, and leaves the publish alone", asy
   // this, the PUT goes to /submissions/undefined/notes and the warning
   // quotes a 404 that points nowhere.
   const nameless = catalogAnswering(201, { ...accepted, submissionId: undefined })
-  const missing = await run([file, "--channel", "prod", "--notes", "First release"], nameless)
+  const missing = await run([file, "--channel", "stable", "--notes", "First release"], nameless)
   assert.equal(missing.code, EXIT_REFUSED)
   assert.equal(nameless.calls.length, 1)
   assert.match(missing.stderr, /warning: .*submissionId/)
@@ -200,13 +200,13 @@ test("a 201 prints the result line the spec promises, with the status in words",
   // back. `pending` reads as "pending review", which is what stops an author
   // waiting for the extension to appear in the app.
   const file = await bundleFile()
-  const pending = await run([file, "--channel", "prod"], catalogAnswering(201, accepted))
+  const pending = await run([file, "--channel", "stable"], catalogAnswering(201, accepted))
   assert.equal(pending.code, 0)
-  assert.match(pending.stdout, /^published w7abc-notes 1\.2\.3 → prod \(pending review\)$/m)
+  assert.match(pending.stdout, /^published w7abc-notes 1\.2\.3 → stable \(pending review\)$/m)
   assert.match(pending.stdout, new RegExp(`^${DEFAULT_CATALOG}/w7abc-notes$`, "m"))
 
-  const approved = await run([file, "--channel", "next"],
-    catalogAnswering(201, { ...accepted, channel: "next", status: "approved" }))
+  const approved = await run([file, "--channel", "unstable"],
+    catalogAnswering(201, { ...accepted, channel: "unstable", status: "approved" }))
   assert.match(approved.stdout, /\(approved\)$/m)
 })
 
@@ -215,7 +215,7 @@ test("a refusal prints the server's error and code, and exits 1", async () => {
   // an exit code alone would send the author to the site to find out which of
   // eight rules refused them.
   const file = await bundleFile()
-  const { code, stderr } = await run([file, "--channel", "prod"],
+  const { code, stderr } = await run([file, "--channel", "stable"],
     catalogAnswering(409, { error: "version 1.2.3 is frozen", code: "version-frozen" }))
   assert.equal(code, EXIT_REFUSED)
   assert.match(stderr, /HTTP 409/)
@@ -227,7 +227,7 @@ test("a non-JSON refusal shows the raw body", async () => {
   // A proxy or a Cloudflare error page answers in HTML. Hiding it behind
   // "unexpected response" would hide the only clue.
   const file = await bundleFile()
-  const { code, stderr } = await run([file, "--channel", "prod"],
+  const { code, stderr } = await run([file, "--channel", "stable"],
     catalogAnswering(502, "<html>bad gateway</html>"))
   assert.equal(code, EXIT_REFUSED)
   assert.match(stderr, /HTTP 502.*bad gateway/)
@@ -238,7 +238,7 @@ test("a missing token exits 2 before any request, naming the variable", async ()
   // it — after uploading the whole bundle. The env var is named in the message
   // because it is the only way to supply one.
   const file = await bundleFile()
-  const { code, stderr } = await run([file, "--channel", "prod"], { fetch: unreachable, env: {} })
+  const { code, stderr } = await run([file, "--channel", "stable"], { fetch: unreachable, env: {} })
   assert.equal(code, EXIT_USAGE)
   assert.match(stderr, new RegExp(TOKEN_ENV))
 })
@@ -249,7 +249,7 @@ test("--token is not an option: exit 2, the env var named, the value never shown
   // token and be told 401 — after the secret already sat in the history. And
   // the refusal must not quote the value it is refusing.
   const file = await bundleFile()
-  const { code, stderr } = await run([file, "--channel", "prod", "--token", TOKEN], { fetch: unreachable, env: {} })
+  const { code, stderr } = await run([file, "--channel", "stable", "--token", TOKEN], { fetch: unreachable, env: {} })
   assert.equal(code, EXIT_USAGE)
   assert.match(stderr, /--token/)
   assert.match(stderr, new RegExp(TOKEN_ENV))
@@ -257,7 +257,7 @@ test("--token is not an option: exit 2, the env var named, the value never shown
 
   // Any other unknown option is refused the same way, rather than silently
   // dropped and its value taken for the bundle path.
-  const typo = await run([file, "--chanel", "prod"], { fetch: unreachable })
+  const typo = await run([file, "--chanel", "stable"], { fetch: unreachable })
   assert.equal(typo.code, EXIT_USAGE)
   assert.match(typo.stderr, /unknown option '--chanel'/)
 })
@@ -267,18 +267,33 @@ test("the token comes from the environment", async () => {
   // line. The header is the one place it may appear.
   const file = await bundleFile()
   const catalog = catalogAnswering(201, accepted)
-  const { code } = await run([file, "--channel", "prod"], { fetch: catalog.fetch, env: { [TOKEN_ENV]: TOKEN } })
+  const { code } = await run([file, "--channel", "stable"], { fetch: catalog.fetch, env: { [TOKEN_ENV]: TOKEN } })
   assert.equal(code, 0)
   assert.equal(catalog.calls[0].init.headers.authorization, `Bearer ${TOKEN}`)
 })
 
 test("an unknown channel exits 2 before any request", async () => {
-  // Three channels, each an app edition. A typo would upload the bundle and
-  // then be refused; checking here costs nothing and names the choices.
+  // Three channels, each a degree of finished. A typo would upload the bundle
+  // and then be refused; checking here costs nothing and names the choices.
+  // `prod` is the interesting typo: it was a channel until channels stopped
+  // meaning app editions, so it is what a stale script or an old habit sends.
   const file = await bundleFile()
-  const { code, stderr } = await run([file, "--channel", "stable"], { fetch: unreachable })
-  assert.equal(code, EXIT_USAGE)
-  assert.match(stderr, /dev, next, prod/)
+  for (const bogus of ["prod", "nightly"]) {
+    const { code, stderr } = await run([file, "--channel", bogus], { fetch: unreachable })
+    assert.equal(code, EXIT_USAGE, bogus)
+    assert.match(stderr, /stable, unstable, bleeding/)
+  }
+})
+
+test("no --channel publishes something finished", async () => {
+  // Publishing without saying is publishing to stable; anything rougher is a
+  // choice worth typing. Before the default existed this was a usage error,
+  // which made the commonest publish the one with the most to remember.
+  const file = await bundleFile()
+  const catalog = catalogAnswering(201, accepted)
+  const { code } = await run([file], catalog)
+  assert.equal(code, 0)
+  assert.match(catalog.calls[0].url, /\?channel=stable$/)
 })
 
 test("a bundle over 16 MiB is refused before any request, naming the cap", async () => {
@@ -292,14 +307,14 @@ test("a bundle over 16 MiB is refused before any request, naming the cap", async
 
   const over = join(dir, "over.h2kext")
   await writeFile(over, Buffer.alloc(cap + 1))
-  const refused = await run([over, "--channel", "prod"], { fetch: unreachable })
+  const refused = await run([over, "--channel", "stable"], { fetch: unreachable })
   assert.equal(refused.code, EXIT_REFUSED)
   assert.match(refused.stderr, /16 MiB/)
   assert.doesNotMatch(refused.stderr, /not a zip/)
 
   const exact = join(dir, "exact.h2kext")
   await writeFile(exact, Buffer.alloc(cap))
-  const allowed = await run([exact, "--channel", "prod"], { fetch: unreachable })
+  const allowed = await run([exact, "--channel", "stable"], { fetch: unreachable })
   assert.equal(allowed.code, EXIT_REFUSED)
   assert.match(allowed.stderr, /not a zip/)
   assert.doesNotMatch(allowed.stderr, /16 MiB/)
@@ -312,10 +327,10 @@ test("a directory argument is packaged first, with the same packer", async () =>
   const dir = await bundleDir()
   const catalog = catalogAnswering(201, accepted)
 
-  const { code, stdout } = await run([dir, "--channel", "prod"], catalog)
+  const { code, stdout } = await run([dir, "--channel", "stable"], catalog)
 
   assert.equal(code, 0)
-  assert.match(stdout, /^publishing w7abc-notes 1\.2\.3 — W7ABC Notes → prod/m)
+  assert.match(stdout, /^publishing w7abc-notes 1\.2\.3 — W7ABC Notes → stable/m)
   const sent = Buffer.from(catalog.calls[0].init.body)
   assert.deepEqual([...sent.subarray(0, 4)], [0x50, 0x4b, 0x03, 0x04])
   assert.deepEqual(readManifestFromBundle(sent), validManifest)
@@ -328,10 +343,10 @@ test("--force-name reaches the packer", async () => {
   const dir = await bundleDir({ ...validManifest, key: "ham2k-notes" })
   const catalog = catalogAnswering(201, { ...accepted, key: "ham2k-notes" })
 
-  const refused = await run([dir, "--channel", "prod"], { fetch: unreachable })
+  const refused = await run([dir, "--channel", "stable"], { fetch: unreachable })
   assert.equal(refused.code, EXIT_REFUSED)
 
-  const { code } = await run([dir, "--channel", "prod", "--force-name"], catalog)
+  const { code } = await run([dir, "--channel", "stable", "--force-name"], catalog)
   assert.equal(code, 0)
   assert.equal(readManifestFromBundle(Buffer.from(catalog.calls[0].init.body)).key, "ham2k-notes")
 })
@@ -342,7 +357,7 @@ test("a directory the packer refuses is not uploaded, and says why", async () =>
   // matters most, so nothing reaches the catalog until they pass.
   const dir = await mkdtemp(join(tmpdir(), "h2kext-publish-test-"))
   await writeFile(join(dir, "manifest.json"), JSON.stringify(validManifest))
-  const { code, stderr } = await run([dir, "--channel", "prod"], { fetch: unreachable })
+  const { code, stderr } = await run([dir, "--channel", "stable"], { fetch: unreachable })
   assert.equal(code, EXIT_REFUSED)
   assert.match(stderr, /this packages, it does not compile/)
 })
@@ -352,7 +367,7 @@ test("a trailing --notes with no value is a usage error, not a publish without n
   // option never given — and the author's notes are silently dropped after
   // an otherwise successful publish. Refused before any request, exit 2.
   const file = await bundleFile()
-  const { code, stderr } = await run([file, "--channel", "prod", "--notes"], { fetch: unreachable })
+  const { code, stderr } = await run([file, "--channel", "stable", "--notes"], { fetch: unreachable })
   assert.equal(code, EXIT_USAGE)
   assert.match(stderr, /--notes needs a value/)
   const channel = await run([file, "--channel"], { fetch: unreachable })
@@ -383,7 +398,7 @@ test("a file that is not a zip is refused before any request", async () => {
   const dir = await mkdtemp(join(tmpdir(), "h2kext-publish-test-"))
   const file = join(dir, "notes.h2kext")
   await writeFile(file, "not a zip at all")
-  const { code, stderr } = await run([file, "--channel", "prod"], { fetch: unreachable })
+  const { code, stderr } = await run([file, "--channel", "stable"], { fetch: unreachable })
   assert.equal(code, EXIT_REFUSED)
   assert.match(stderr, /not a zip/)
 })
@@ -397,14 +412,14 @@ test("the token never reaches stdout or stderr, whatever quotes it", async () =>
   const echoing = async () => {
     throw new Error(`request failed; sent authorization: Bearer ${TOKEN}`)
   }
-  const network = await run([file, "--channel", "prod"], { fetch: echoing })
+  const network = await run([file, "--channel", "stable"], { fetch: echoing })
   assert.equal(network.code, EXIT_REFUSED)
   assert.match(network.stderr, /could not reach/)
   assert.ok(!network.stderr.includes(TOKEN), `token leaked: ${network.stderr}`)
   assert.ok(!network.stdout.includes(TOKEN), `token leaked: ${network.stdout}`)
   assert.match(network.stderr, /<token>/)
 
-  const reflecting = await run([file, "--channel", "prod"],
+  const reflecting = await run([file, "--channel", "stable"],
     catalogAnswering(401, { error: `token ${TOKEN} is not valid`, code: "bad_token" }))
   assert.equal(reflecting.code, EXIT_REFUSED)
   assert.ok(!reflecting.stderr.includes(TOKEN), `token leaked: ${reflecting.stderr}`)
@@ -412,7 +427,7 @@ test("the token never reaches stdout or stderr, whatever quotes it", async () =>
 
   // The notes warning is a second line out, after the publish succeeded; it
   // goes through the same redactor.
-  const reflectingNotes = await run([file, "--channel", "prod", "--notes", "x"],
+  const reflectingNotes = await run([file, "--channel", "stable", "--notes", "x"],
     catalogAnswering(201, accepted, (url) =>
       url.includes("/notes") ? { status: 401, body: { error: `token ${TOKEN} is not valid` } } : { status: 201, body: accepted }))
   assert.equal(reflectingNotes.code, EXIT_REFUSED)
@@ -422,7 +437,7 @@ test("the token never reaches stdout or stderr, whatever quotes it", async () =>
   // A fetch that returns garbage rather than a Response is a bug in this tool,
   // not a refusal — and a stack trace is the easiest place for a secret to
   // hide, so that path is redacted too.
-  const broken = await run([file, "--channel", "prod"], { fetch: async () => ({ status: 201 }) })
+  const broken = await run([file, "--channel", "stable"], { fetch: async () => ({ status: 201 }) })
   assert.equal(broken.code, EXIT_REFUSED)
   assert.ok(!broken.stderr.includes(TOKEN), `token leaked: ${broken.stderr}`)
 })

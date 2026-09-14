@@ -17,7 +17,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 import { buildOptionsFor as extensionBuildOptions } from './tools/h2kext-build.mjs'
-import { validateGeo } from './tools/h2kext.mjs'
+import { validateRelevance } from './tools/h2kext.mjs'
 
 export const root = dirname(fileURLToPath(import.meta.url))
 export const outDir = resolve(root, '../app/assets/extensions')
@@ -94,8 +94,8 @@ export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((
 // `version` is copied too, for the same reason: an extension that is
 // installed but disabled has no running bundle for the kernel's
 // listExtensions to report, and an update check needs its version anyway.
-// `geo` (where the extension is relevant) likewise, so the panel and the
-// catalog can rank a disabled entry. Manifests without a `category` are
+// `relevance` (where, when and for whom the extension matters) likewise, so
+// the panel and the catalog can rank a disabled entry. Manifests without a `category` are
 // core: always enabled, never listed in the panel.
 export const bundles = [
   { key: 'kernel', entry: 'sdk/src/kernel.ts', kind: 'kernel' },
@@ -215,13 +215,20 @@ export function validateManifest(manifest, bundleKey, knownExperiments, manifest
         `manifest for '${bundleKey}' gates on experiment '${experiment}', which is not a key in app/experiments.yaml (${manifestPath})`)
     }
   }
-  // `geo` is copied into index.json as-is and read there by the host's
+  // The name `relevance` replaced. `indexEntryFor` copies `relevance` and
+  // nothing else, so a manifest left on the old name builds green and ships
+  // worldwide, with the author's audience dropped on the floor.
+  if ('geo' in manifest) {
+    throw new Error(`manifest for '${bundleKey}' carries 'geo', which is now 'relevance' (${manifestPath})`)
+  }
+  // `relevance` is copied into index.json as-is and read there by the host's
   // matcher, which treats a key it cannot parse as "does not gate" — so a
   // malformed one would ship as worldwide. The rules are the format's
   // (tools/h2kext.mjs), imported rather than restated.
-  const geoProblems = validateGeo(manifest.geo)
-  if (geoProblems.length) {
-    throw new Error(`manifest for '${bundleKey}' has an invalid 'geo': ${geoProblems.join('; ')} (${manifestPath})`)
+  const relevanceProblems = validateRelevance(manifest.relevance)
+  if (relevanceProblems.length) {
+    throw new Error(
+      `manifest for '${bundleKey}' has an invalid 'relevance': ${relevanceProblems.join('; ')} (${manifestPath})`)
   }
 }
 
@@ -277,7 +284,7 @@ export function indexEntryFor({ key, manifest: m }) {
     ...(m.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),
     ...(m.requiresLocation ? { requiresLocation: true } : {}),
     ...(m.experiments?.length ? { experiments: m.experiments } : {}),
-    ...(m.geo ? { geo: m.geo } : {}),
+    ...(m.relevance ? { relevance: m.relevance } : {}),
     core: !m.category,
     ...(m.category
       ? {

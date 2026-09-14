@@ -23,7 +23,7 @@ import {
   pack,
   PackError,
   RESERVED_PREFIX,
-  validateGeo,
+  validateRelevance,
   validateManifest,
 } from "./h2kext.mjs"
 
@@ -260,8 +260,8 @@ test("a shared dependency needs a range, not just a name", () => {
   assert.match(validateManifest({ ...validManifest, sharedDependencies: ["i18next"] }).join(), /must be an object/)
 })
 
-test("geo: every valid shape passes, and none at all is worldwide", () => {
-  for (const geo of [
+test("relevance: every valid shape passes, and none at all is worldwide", () => {
+  for (const relevance of [
     undefined,
     {},
     { entities: ["K", "VE"], countries: ["us"], continents: ["NA"], ituRegions: [2] },
@@ -271,14 +271,16 @@ test("geo: every valid shape passes, and none at all is worldwide", () => {
     { countries: ["CL"] },
     { continents: ["sa", "AN"] },
     { ituRegions: [1, 2, 3] },
+    { dates: ["2026-09-19", "2027-09-18"] },
+    { interests: ["cw", "vhf", "satellite"] },
     // An empty list does not gate; it is not a mistake.
     { entities: [] },
   ]) {
-    assert.deepEqual(validateGeo(geo), [], `expected ${JSON.stringify(geo)} to be accepted`)
+    assert.deepEqual(validateRelevance(relevance), [], `expected ${JSON.stringify(relevance)} to be accepted`)
   }
 })
 
-test("geo: a shape the matcher would misread is refused", () => {
+test("relevance: a shape the matcher would misread is refused", () => {
   // The matcher reads a key it cannot parse as "does not gate": each of the
   // shape errors here would ship as WORLDWIDE rather than as the author's
   // mistake. The vocabulary errors are the opposite — a value that can never
@@ -287,10 +289,12 @@ test("geo: a shape the matcher would misread is refused", () => {
     [null, /must be an object/],
     ["K", /must be an object/],
     [["K"], /must be an object/],
-    [{ entities: "K" }, /'geo\.entities' must be a list/],
+    [{ entities: "K" }, /'relevance\.entities' must be a list/],
     [{ entities: null }, /must be a list/],
+    [{ dates: null }, /must be a list/],
     [{ entity: ["K"] }, /unknown key 'entity'/],
     [{ exceptEntities: ["K"] }, /unknown key/],
+    [{ geo: {} }, /unknown key 'geo'/],
     [{ entities: [""] }, /non-empty string/],
     [{ entities: [7] }, /non-empty string/],
     [{ entities: ["K 1"] }, /entity prefix/],
@@ -300,47 +304,108 @@ test("geo: a shape the matcher would misread is refused", () => {
     [{ ituRegions: [4] }, /not an ITU region/],
     [{ ituRegions: ["2"] }, /not an ITU region/],
     [{ ituRegions: [2.5] }, /not an ITU region/],
+    [{ dates: ["2026-9-19"] }, /not a YYYY-MM-DD date/],
+    [{ dates: ["19 Sep 2026"] }, /not a YYYY-MM-DD date/],
+    [{ dates: [20260919] }, /non-empty string/],
+    [{ interests: ["CW"] }, /not an interest/],
+    [{ interests: ["morse"] }, /not an interest \(cw phone digital/],
   ]
-  for (const [geo, message] of bad) {
-    const problems = validateGeo(geo)
-    assert.ok(problems.length > 0, `expected ${JSON.stringify(geo)} to be refused`)
-    assert.match(problems.join(" | "), message, `for ${JSON.stringify(geo)}`)
+  for (const [relevance, message] of bad) {
+    const problems = validateRelevance(relevance)
+    assert.ok(problems.length > 0, `expected ${JSON.stringify(relevance)} to be refused`)
+    assert.match(problems.join(" | "), message, `for ${JSON.stringify(relevance)}`)
   }
 })
 
-test("geo: the packer reports every problem in it, alongside the rest", () => {
-  const problems = validateManifest({ ...validManifest, geo: { entities: [""], continents: ["EUR"], bogus: [] } })
+test("relevance: a date the calendar rolls over is not a date the author meant", () => {
+  // `Date.UTC(2026, 1, 31)` is 3 March. A pattern check alone accepts the
+  // manifest and then silently means a different day — and every one of
+  // these is a plausible typo for a real event date.
+  for (const date of ["2026-02-31", "2026-13-01", "2026-00-10", "2026-04-31", "2026-09-00", "2027-02-29"]) {
+    assert.match(validateRelevance({ dates: [date] }).join(" | "), /not a day that exists/, date)
+  }
+  assert.deepEqual(validateRelevance({ dates: ["2028-02-29"] }), [], "a real leap day is a real date")
+})
+
+test("relevance: a year under four figures is refused, because Date.UTC cannot represent it", () => {
+  // `\d{4}` admits `0050-01-01`, and `Date.UTC(50, ...)` is 1950 — so the
+  // round trip would refuse it here while the Dart twin, whose `DateTime.utc`
+  // really does mean year 50, accepted it. Neither answer is worth having,
+  // and the rule that keeps the two equal is the one both can state.
+  for (const date of ["0050-01-01", "0099-12-31", "0000-01-01"]) {
+    assert.match(validateRelevance({ dates: [date] }).join(" | "), /not a year an event could fall in/, date)
+  }
+  assert.deepEqual(validateRelevance({ dates: ["1000-01-01"] }), [])
+})
+
+test("a manifest still naming the field 'geo' is refused", () => {
+  // Nothing reads `geo`, and nothing checks unknown top-level keys, so
+  // without this it packs, publishes and installs as WORLDWIDE — the
+  // author's audience discarded rather than refused. It is the one stale key
+  // certain to arrive, because it is what every older manifest says.
+  assert.match(
+    validateManifest({ ...validManifest, geo: { countries: ["us"] } }).join(" | "),
+    /'geo' is now 'relevance'/)
+  assert.deepEqual(validateManifest({ ...validManifest, relevance: { countries: ["us"] } }), [])
+})
+
+test("the built-in build refuses a leftover 'geo' too, where it would ship worldwide", () => {
+  // `indexEntryFor` copies `relevance` and nothing else, so a built-in left
+  // on the old name builds green and ships with its audience dropped.
+  const manifest = { key: "x", name: "X", version: "1.0.0", description: "d", geo: { countries: ["us"] } }
+  assert.throws(() => validateBuiltInManifest(manifest, "x", new Set(), "x/manifest.json"), /'geo', which is now 'relevance'/)
+})
+
+test("relevance: the packer reports every problem in it, alongside the rest", () => {
+  const problems = validateManifest({
+    ...validManifest,
+    relevance: { entities: [""], continents: ["EUR"], bogus: [] },
+  })
   assert.equal(problems.length, 3, problems.join(" | "))
-  assert.deepEqual(validateManifest({ ...validManifest, geo: { entities: ["CE"] } }), [])
+  assert.deepEqual(validateManifest({ ...validManifest, relevance: { entities: ["CE"] } }), [])
 })
 
-test("geo: the built-in build applies the same rules, by importing them", () => {
-  // build-config.mjs imports validateGeo rather than restating it, so there
-  // is no second copy to drift. What can still drift is the WIRING: a build
-  // that stopped calling it would ship a malformed geo into index.json, where
-  // the host reads it as worldwide.
-  const manifest = { key: "x", name: "X", version: "1.0.0", description: "d", geo: { continents: ["EUR"] } }
-  assert.throws(() => validateBuiltInManifest(manifest, "x", new Set(), "x/manifest.json"), /invalid 'geo'.*EUR/)
+test("a distributed bundle may not say whether it starts out enabled", () => {
+  // The app answers that for the extensions it ships whether the operator
+  // asked for them or not. An installed bundle is one the operator went and
+  // got, so a manifest carrying `enabledByDefault: false` describes a state
+  // it cannot reach — and copying a built-in's manifest is exactly how an
+  // author would arrive at one.
+  assert.match(
+    validateManifest({ ...validManifest, enabledByDefault: false }).join(" | "),
+    /'enabledByDefault' applies to an app's built-in extensions/)
+  assert.match(validateManifest({ ...validManifest, enabledByDefault: true }).join(" | "), /enabledByDefault/)
+  assert.deepEqual(validateManifest(validManifest), [])
+})
+
+test("relevance: the built-in build applies the same rules, by importing them", () => {
+  // build-config.mjs imports validateRelevance rather than restating it, so
+  // there is no second copy to drift. What can still drift is the WIRING: a
+  // build that stopped calling it would ship a malformed relevance into
+  // index.json, where the host reads it as worldwide.
+  const manifest = { key: "x", name: "X", version: "1.0.0", description: "d", relevance: { continents: ["EUR"] } }
+  assert.throws(
+    () => validateBuiltInManifest(manifest, "x", new Set(), "x/manifest.json"), /invalid 'relevance'.*EUR/)
   assert.doesNotThrow(() =>
-    validateBuiltInManifest({ ...manifest, geo: { continents: ["EU"] } }, "x", new Set(), "x/manifest.json"))
+    validateBuiltInManifest({ ...manifest, relevance: { continents: ["EU"] } }, "x", new Set(), "x/manifest.json"))
 })
 
-test("index.json carries version for every extension, and geo when declared", () => {
+test("index.json carries version for every extension, and relevance when declared", () => {
   // `version` is what an update check compares, and it has to be readable
   // for an extension that is installed but DISABLED — whose bundle never
   // runs, so the kernel's listExtensions cannot supply it. Core entries
-  // carry it too: one shape, not two. `geo` is what ranks an entry, and the
-  // panel ranks disabled entries as well.
+  // carry it too: one shape, not two. `relevance` is what ranks an entry,
+  // and the panel ranks disabled entries as well.
   const core = indexEntryFor({ key: "adif", manifest: { key: "adif", name: "ADIF", version: "0.3.1", description: "d" } })
   assert.equal(core.version, "0.3.1")
   assert.equal(core.core, true)
-  assert.ok(!("geo" in core), "an extension with no geo must not gain an empty one")
+  assert.ok(!("relevance" in core), "an extension with no relevance must not gain an empty one")
 
-  const geo = { entities: ["CE"], ituRegions: [2] }
+  const relevance = { entities: ["CE"], ituRegions: [2], dates: ["2026-09-19"], interests: ["cw"] }
   const listed = indexEntryFor({
     key: "x",
-    manifest: { key: "x", name: "X", version: "2.0.0", description: "d", category: "activity", geo },
+    manifest: { key: "x", name: "X", version: "2.0.0", description: "d", category: "activity", relevance },
   })
   assert.equal(listed.version, "2.0.0")
-  assert.deepEqual(listed.geo, geo)
+  assert.deepEqual(listed.relevance, relevance)
 })

@@ -19,7 +19,6 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:ham2k_logger/config/version.dart' show Edition;
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/catalog_service.dart';
@@ -49,14 +48,15 @@ const _testExtensions = [
 /// CatalogService would reach catalog.ham2k.net from the test.
 CatalogService _catalog(Future<http.Response> Function(http.Request) handler) => CatalogService(
       client: MockClient(handler),
-      edition: Edition.next,
       userAgent: () async => 'Ham2K Logger/test',
       locale: () => 'en',
     );
 
 CatalogService _emptyCatalog() => _catalog((_) async => http.Response(jsonEncode({'extensions': []}), 200));
 
-Map<String, Object?> _entry(String key, String name, {String version = '1.0.0', Map<String, Object?>? geo}) => {
+Map<String, Object?> _entry(String key, String name,
+        {String version = '1.0.0', Map<String, Object?>? relevance, String? accentColor}) =>
+    {
       'key': key,
       'name': name,
       'version': version,
@@ -64,13 +64,35 @@ Map<String, Object?> _entry(String key, String name, {String version = '1.0.0', 
       'bundleUrl': 'https://catalog.ham2k.net/api/v1/extensions/$key/versions/$version/bundle',
       'category': 'activity',
       'description': 'About $name',
-      'geo': ?geo,
+      'relevance': ?relevance,
+      'accentColor': ?accentColor,
     };
 
-/// The keys of the catalog rows actually built, top to bottom.
+/// A `relevance` whose date is a few days out, read off the same clock the
+/// panel ranks against.
+///
+/// Computed rather than written down: the panel suggests a catalog entry when
+/// it is near in date or matches the operator's callsign, so a fixed date
+/// would stop being a suggestion the week after it was typed and the test
+/// would fail for a reason that has nothing to do with the panel.
+Map<String, Object?> _soon({int inDays = 3}) {
+  final at = nowUtc().add(Duration(days: inDays));
+  final iso = '${at.year.toString().padLeft(4, '0')}-'
+      '${at.month.toString().padLeft(2, '0')}-'
+      '${at.day.toString().padLeft(2, '0')}';
+  return {
+    'dates': [iso],
+  };
+}
+
+/// The keys of the catalog OFFER rows actually built, top to bottom — not
+/// the "and N others" row, which is a category's own and named apart so a
+/// test about what is offered cannot pass on the row that hides the rest.
 List<String> _catalogRowKeys(WidgetTester tester) => [
       for (final tile in tester.widgetList<ListTile>(find.byType(ListTile)))
-        if (tile.key case ValueKey<String>(value: final key) when key.startsWith('catalog-')) key,
+        if (tile.key case ValueKey<String>(value: final key)
+            when key.startsWith('catalog-') && !key.startsWith('catalog-more-'))
+          key,
     ];
 
 void main() {
@@ -225,10 +247,11 @@ void main() {
     expect(find.text('Parks on the Air'), findsOneWidget);
 
     // QRZ defaults off, POTA on.
-    bool switchValue(String title) =>
-        tester.widget<SwitchListTile>(find.widgetWithText(SwitchListTile, title)).value;
-    expect(switchValue('QRZ.com Callsign Lookups'), isFalse);
-    expect(switchValue('Parks on the Air'), isTrue);
+    bool switchValue(String key) => tester
+        .widget<Switch>(find.descendant(of: find.byKey(ValueKey('extension-$key')), matching: find.byType(Switch)))
+        .value;
+    expect(switchValue('qrz'), isFalse);
+    expect(switchValue('pota'), isTrue);
 
     // The top search filters across groups; empty groups lose headers.
     await tester.enterText(find.byKey(const ValueKey('extensions-search')), 'summits');
@@ -240,12 +263,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Toggling persists an override in the dedicated store (not the
-    // settings groups).
-    await tester.tap(find.widgetWithText(SwitchListTile, 'Summits on the Air'));
+    // settings groups). Tapped on the row rather than on the switch: the row
+    // is what the operator hits, and the tile carries the toggle now that the
+    // switch shares its trailing with the line under it.
+    await tester.tap(find.byKey(const ValueKey('extension-sota')));
     await tester.pumpAndSettle();
     expect(settings.extensionOverrides, {'sota': false});
     expect(settings.extensionSettingsGroups(), isEmpty);
-    expect(switchValue('Summits on the Air'), isFalse);
+    expect(switchValue('sota'), isFalse);
   });
 
   testWidgets('panel hides experiment-gated extensions until the experiment is enabled', (tester) async {
@@ -275,7 +300,7 @@ void main() {
     expect(find.text('Gated Panel'), findsNothing);
   });
 
-  testWidgets('catalog rows render in three tiers, and each row says what can be done with it', (tester) async {
+  testWidgets('the catalog is suggestions under the same headings, nearest first', (tester) async {
     tester.view.physicalSize = const Size(1000, 1800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -287,7 +312,6 @@ void main() {
     await settings.setExperimentEnabled('catalog', true);
     final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
     extensions.debugSetAvailableExtensions(const [
-      ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'Parks on the Air', category: 'activity'),
       ExtensionInfo(
           key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
           source: ExtensionSource.installed, version: '1.0.0'),
@@ -309,14 +333,13 @@ void main() {
         jsonEncode({
           'extensions': [
             _entry('zz-world', 'Zulu World'),
-            _entry('ce-only', 'Chile Only', geo: {
+            _entry('ce-only', 'Chile Only', relevance: {
               'entities': ['CE']
             }),
-            _entry('pota', 'POTA (catalog)'),
             _entry('k2hrc-llota', 'LLOTA (catalog)', version: '1.1.0'),
             _entry('zz-current', 'ZZ Current (catalog)', version: '2.0.0'),
-            _entry('aa-world', 'Alpha World'),
-            _entry('k-only', 'Kilo Only', geo: {
+            _entry('aa-world', 'Alpha World', relevance: _soon()),
+            _entry('k-only', 'Kilo Only', relevance: {
               'entities': ['K']
             }),
           ],
@@ -329,30 +352,35 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    // Geo-matched, then worldwide, then unmatched; alphabetical within.
-    // Mutated to a flat alphabetical sort, Chile Only lands second.
-    expect(find.text('Catalog'), findsOneWidget);
-    expect(_catalogRowKeys(tester), [
-      'catalog-k-only',
-      'catalog-aa-world',
-      'catalog-k2hrc-llota',
-      'catalog-pota',
-      'catalog-zz-world',
-      'catalog-zz-current',
-      'catalog-ce-only',
-    ]);
+    // Near in date first, then matching this callsign; alphabetical within a
+    // band. Everything else is not a SUGGESTION and is not listed at all:
+    // `zz-world` is worldwide and undated, and `ce-only` is Chile's — the
+    // operator is K.
+    //
+    // Mutated to a flat alphabetical sort, Alpha World and Kilo Only swap.
+    expect(_catalogRowKeys(tester), ['catalog-aa-world', 'catalog-k-only']);
+    // An entry for something already installed is not offered beside it: the
+    // two would name the same extension twice under one heading, and the
+    // update belongs to the installed row.
+    expect(find.byKey(const ValueKey('catalog-k2hrc-llota')), findsNothing);
+    expect(find.byKey(const ValueKey('catalog-zz-current')), findsNothing);
+    // There is no section of its own any more.
+    expect(find.text('Catalog'), findsNothing);
 
     Finder inRow(String key, Finder what) => find.descendant(of: find.byKey(ValueKey('catalog-$key')), matching: what);
-    // A key the app ships: said so, and nothing to press — the install would
-    // be refused anyway, and a button that only ever refuses is a trap.
-    expect(inRow('pota', find.text('Built in')), findsOneWidget);
-    expect(inRow('pota', find.byType(FilledButton)), findsNothing);
-    // Installed at a lower version: Update. Installed and current: Installed.
-    expect(inRow('k2hrc-llota', find.widgetWithText(FilledButton, 'Update')), findsOneWidget);
-    expect(inRow('zz-current', find.text('Installed')), findsOneWidget);
-    expect(inRow('zz-current', find.byType(FilledButton)), findsNothing);
-    expect(inRow('aa-world', find.widgetWithText(FilledButton, 'Install')), findsOneWidget);
-    // The installed row itself carries the badge.
+    // Every suggestion is something to install; there is no longer a catalog
+    // row that cannot be acted on, because those were the ones for extensions
+    // the operator already had.
+    expect(inRow('aa-world', find.widgetWithText(OutlinedButton, 'Install')), findsOneWidget);
+    expect(inRow('k-only', find.widgetWithText(OutlinedButton, 'Install')), findsOneWidget);
+    // And it is offered as a job to finish, at the top, rather than only as a
+    // badge to notice halfway down.
+    expect(find.text('Pending Updates'), findsOneWidget);
+    expect(find.byKey(const ValueKey('pending-k2hrc-llota')), findsOneWidget);
+    expect(find.widgetWithText(OutlinedButton, 'Update all'), findsOneWidget);
+
+    // The installed row carries the update badge, which is where an update
+    // lives now.
     expect(
       find.descendant(of: find.byKey(const ValueKey('extension-k2hrc-llota')), matching: find.textContaining('Update available')),
       findsOneWidget,
@@ -369,18 +397,667 @@ void main() {
     expect(
       tester.widget<SectionedListView>(find.byType(SectionedListView)).key,
       listContentsKey([
-        'pota',
         'k2hrc-llota',
         'zz-current',
+        // `k2hrc-llota` is installed at 1.0.0 against the catalog's 1.1.0, so
+        // it heads the list in Pending Updates as well as carrying its badge.
+        'pending:k2hrc-llota',
         for (final key in _catalogRowKeys(tester)) 'catalog:${key.substring('catalog-'.length)}',
+        // The "and N others" row is a row too, and tapping it changes the set
+        // under it: left out of the key, the expansion would remount nothing
+        // and the clicks would land on the collapsed geometry.
+        'more:activity',
       ]),
     );
 
-    // The search field filters the catalog too, on the same terms.
+    // Searching reaches past the suggestions: Chile Only is not offered to a
+    // K operator unasked, and is there the moment they ask for it.
     await tester.enterText(find.byKey(const ValueKey('extensions-search')), 'chile');
     await tester.pumpAndSettle();
     expect(_catalogRowKeys(tester), ['catalog-ce-only']);
-    expect(find.text('Parks on the Air'), findsNothing);
+    expect(find.text('Alpha World'), findsNothing);
+    // Still under its own category heading, not gathered into one list.
+    expect(find.text('Activities'), findsOneWidget);
+  });
+
+  testWidgets('the worldwide programmes are suggested to an operator nothing is known about', (tester) async {
+    // The curated set, and the reason it cannot be a `relevance` an author
+    // writes: WWBOTA gates on nothing and has no dates, which is exactly the
+    // shape of every extension that is NOT a suggestion. Ranked by relevance
+    // alone the two are indistinguishable, so `zz-world` below is the
+    // mutation check — drop kAlwaysSuggested and WWBOTA joins it in absence
+    // rather than the list growing.
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const []);
+    final catalog = _catalog((_) async => http.Response(
+        jsonEncode({
+          'extensions': [
+            _entry('zz-world', 'Zulu World'),
+            _entry('ham2k-wwbota', 'WWBOTA', accentColor: '#5A6B72'),
+            _entry('ham2k-llota', 'LLOTA'),
+          ],
+        }),
+        200));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(_catalogRowKeys(tester), ['catalog-ham2k-llota', 'catalog-ham2k-wwbota']);
+
+    // The manifest's own accent, carried all the way from the listing row: a
+    // programme is the same square of colour here as on the catalog site.
+    // Without the parse the tile is the neutral fallback and nothing else
+    // about the row changes.
+    final glyph = tester.widget<Icon>(find.descendant(
+      of: find.byKey(const ValueKey('catalog-ham2k-wwbota')),
+      matching: find.descendant(of: find.byType(ExtensionIconTile), matching: find.byType(Icon)),
+    ));
+    expect(glyph.color, const Color(0xFF5A6B72));
+    // On the row's own ground, not on a square of the accent: an offer wears
+    // the colour in its glyph, and the filled tile is what the operator owns.
+    final box = tester.widget<Container>(find.descendant(
+      of: find.byKey(const ValueKey('catalog-ham2k-wwbota')),
+      matching: find.descendant(of: find.byType(ExtensionIconTile), matching: find.byType(Container)),
+    ));
+    expect(box.decoration, isNull);
+
+    // And it is faded, because nothing here is installed: an offer at full
+    // strength claims a place in the panel beside the operator's own.
+    expect(
+      tester
+          .widget<Opacity>(find.descendant(
+            of: find.byKey(const ValueKey('catalog-ham2k-wwbota')),
+            matching: find.byType(Opacity),
+          ))
+          .opacity,
+      kUninstalledIconOpacity,
+    );
+  });
+
+  testWidgets('a dated extension outside its window is not suggested, whoever the operator is', (tester) async {
+    // The trap this exists for: `tx-party` is a Texas party and the operator
+    // is in Texas, so its geography matches all year — and a suggestion list
+    // ranked on geography alone would carry it from one running to the next,
+    // 51 weeks of which it has nothing to say. A date is the thing that
+    // expires, so where an extension HAS dates they are the whole question.
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const []);
+    final flags = FlagsService(
+      statusBar: StatusBarService(settings.prefs),
+      fetcher: (_) async => null,
+      annotate: (_) async => {'entityPrefix': 'K', 'continent': 'NA', 'countryCode': 'us', 'ituRegion': 2},
+    );
+    await flags.refreshForCall('K1ABC');
+
+    final catalog = _catalog((_) async => http.Response(
+        jsonEncode({
+          'extensions': [
+            _entry('tx-party', 'Texas Party', relevance: {
+              'entities': ['K'],
+              ..._soon(inDays: 180),
+            }),
+            _entry('tx-soon', 'Texas Soon', relevance: {
+              'entities': ['K'],
+              ..._soon(inDays: 5),
+            }),
+            _entry('tx-just-ran', 'Texas Just Ran', relevance: {
+              'entities': ['K'],
+              ..._soon(inDays: -3),
+            }),
+            _entry('tx-last-week', 'Texas Last Week', relevance: {
+              'entities': ['K'],
+              ..._soon(inDays: -4),
+            }),
+          ],
+        }),
+        200));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog, flags: flags);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    // Five days out and three days past are inside the window; six months out
+    // and four days past are not, and their K geography does not save them.
+    expect(_catalogRowKeys(tester), ['catalog-tx-just-ran', 'catalog-tx-soon']);
+    // The two that are out of season are still THERE, behind the row that
+    // says so — held back from the suggestions, not hidden from the panel.
+    expect(find.byKey(const ValueKey('catalog-more-activity')), findsOneWidget);
+  });
+
+  testWidgets('a category shows five offers, or two once the operator has three of their own', (tester) async {
+    tester.view.physicalSize = const Size(1000, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    // Two installed, so the category is not yet a settled subject.
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'mine-a', file: 'index.js', core: false, name: 'Mine A', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(
+          key: 'mine-b', file: 'index.js', core: false, name: 'Mine B', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+    ]);
+    final catalog = _catalog((_) async => http.Response(
+        jsonEncode({
+          'extensions': [
+            for (var i = 0; i < 8; i++) _entry('offer-$i', 'Offer $i', relevance: _soon()),
+          ],
+        }),
+        200));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(_catalogRowKeys(tester).length, 5, reason: 'two installed, so the full five');
+    expect(find.text('… and 3 other extensions'), findsOneWidget);
+  });
+
+  testWidgets('three of the operator\'s own cuts the offers to two, and the row opens the rest', (tester) async {
+    // The same eight offers as above, under a heading the operator has
+    // already settled: five suggestions under it is a sales pitch rather than
+    // a panel.
+    tester.view.physicalSize = const Size(1000, 3000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'mine-a', file: 'index.js', core: false, name: 'Mine A', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(
+          key: 'mine-b', file: 'index.js', core: false, name: 'Mine B', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(
+          key: 'mine-c', file: 'index.js', core: false, name: 'Mine C', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+    ]);
+    final catalog = _catalog((_) async => http.Response(
+        jsonEncode({
+          'extensions': [
+            for (var i = 0; i < 8; i++) _entry('offer-$i', 'Offer $i', relevance: _soon()),
+          ],
+        }),
+        200));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(_catalogRowKeys(tester).length, 2);
+    expect(find.text('… and 6 other extensions'), findsOneWidget);
+
+    // And the row opens the category: everything the catalog has under it,
+    // suggested or not, and no row left saying there is more.
+    await tester.tap(find.byKey(const ValueKey('catalog-more-activity')));
+    await tester.pumpAndSettle();
+    expect(_catalogRowKeys(tester).length, 8);
+    expect(find.byKey(const ValueKey('catalog-more-activity')), findsNothing);
+  });
+
+  testWidgets('a category with nothing suggested counts what it has, rather than continuing a list', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const []);
+    final catalog = _catalog((_) async => http.Response(
+        jsonEncode({
+          'extensions': [_entry('zz-world', 'Zulu World')],
+        }),
+        200));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    // Nothing is suggested — worldwide and undated — and the whole category
+    // is the one row that says so, which is what makes the catalog reachable
+    // without guessing at a name in the search box.
+    expect(_catalogRowKeys(tester), isEmpty);
+    // "… and 1 other" would continue a list that is not there.
+    expect(find.text('1 extension available'), findsOneWidget);
+  });
+
+  testWidgets('opening a category leaves the list where the operator was reading', (tester) async {
+    // The row that opens a category moves every row beneath it, so the scroll
+    // view is rebuilt from scratch — without that, a click on the web lands on
+    // a neighbouring row (docs/quirks.md, listContentsKey). A fresh scroll
+    // view starts at the top, which throws an operator reading the fourth
+    // heading back to the first: the offset has to survive the remount.
+    tester.view.physicalSize = const Size(1000, 700);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions([
+      for (var i = 0; i < 12; i++)
+        ExtensionInfo(
+            key: 'mine-$i', file: 'index.js', core: false, name: 'Mine $i', category: 'activity',
+            source: ExtensionSource.installed, version: '1.0.0'),
+    ]);
+    final catalog = _catalog((_) async => http.Response(
+        jsonEncode({
+          'extensions': [
+            for (var i = 0; i < 8; i++) _entry('offer-$i', 'Offer $i', relevance: _soon()),
+          ],
+        }),
+        200));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    double offset() => tester.widget<SectionedListView>(find.byType(SectionedListView)).controller!.offset;
+
+    // Down to where the row is, which is past twelve of the operator's own
+    // extensions. The offset has to be well clear of zero or the assertion
+    // below would pass on whatever the remount did with it.
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey('catalog-more-activity')),
+      200,
+      scrollable: find.descendant(of: find.byType(SectionedListView), matching: find.byType(Scrollable)),
+    );
+    await tester.pumpAndSettle();
+    final wasAt = offset();
+    expect(wasAt, greaterThan(100), reason: 'the scroll has to actually move the list, or this proves nothing');
+
+    await tester.tap(find.byKey(const ValueKey('catalog-more-activity')));
+    await tester.pumpAndSettle();
+
+    // The rows really were rebuilt — the row that opens the category is gone,
+    // which only happens once it is open — and the list is still where it was.
+    // Mutated to drop the carried offset, this reads 0.
+    expect(find.byKey(const ValueKey('catalog-more-activity')), findsNothing);
+    expect(offset(), wasAt);
+  });
+
+  testWidgets('Update all asks once for the whole job, and nothing happens if the answer is no', (tester) async {
+    // The one screen that replaces the per-extension consent the bulk path
+    // skips. Declining has to leave every extension where it was — a "no" that
+    // still updated the first one would be the worst of both.
+    tester.view.physicalSize = const Size(1000, 1800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'one', file: 'index.js', core: false, name: 'One', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(
+          key: 'two', file: 'index.js', core: false, name: 'Two', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+    ]);
+    var downloads = 0;
+    final catalog = _catalog((request) async {
+      if (request.url.path.contains('/bundle')) {
+        downloads++;
+        return http.Response('', 500);
+      }
+      return http.Response(
+        jsonEncode({
+          'extensions': [_entry('one', 'One', version: '1.1.0'), _entry('two', 'Two', version: '1.1.0')],
+        }),
+        200,
+      );
+    });
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.widgetWithText(OutlinedButton, 'Update all'));
+    await tester.pumpAndSettle();
+    // Named the count, not the extensions: what it confirms is the job.
+    expect(find.text('Update 2 extensions?'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+    await tester.pumpAndSettle();
+    expect(downloads, 0, reason: 'declining the job must not start any part of it');
+    // And the row is still there to try again.
+    expect(find.byKey(const ValueKey('pending-one')), findsOneWidget);
+  });
+
+  testWidgets('installing an offer leaves the row where it was until the panel is reopened', (tester) async {
+    // The row the operator just pressed Install on becomes theirs, and a
+    // re-sort there and then takes it out from under the pointer — it would
+    // jump from the catalog's half of the heading up into their own. It keeps
+    // its place instead, and only a fresh panel sorts again.
+    tester.view.physicalSize = const Size(1000, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'zzz-mine', file: 'index.js', core: false, name: 'ZZZ Mine', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+    ]);
+    final catalog = _catalog((_) async => http.Response(
+        jsonEncode({
+          'extensions': [_entry('aaa-offer', 'AAA Offer', relevance: _soon())],
+        }),
+        200));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    List<String> rowOrder() => [
+          for (final tile in tester.widgetList<ListTile>(find.byType(ListTile)))
+            if (tile.key case ValueKey<String>(value: final key)) key,
+        ];
+    expect(rowOrder(), ['extension-zzz-mine', 'catalog-aaa-offer']);
+
+    // It arrives installed. Sorted afresh it would LEAD — `AAA Offer` sorts
+    // before `ZZZ Mine` and both are installed now — so a list that re-sorts
+    // here swaps the two rows under the operator's pointer. It stays put.
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'zzz-mine', file: 'index.js', core: false, name: 'ZZZ Mine', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+      ExtensionInfo(
+          key: 'aaa-offer', file: 'index.js', core: false, name: 'AAA Offer', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+    ]);
+    // A settings write is what an install ends with, and what the panel
+    // actually rebuilds on — `debugSetAvailableExtensions` notifies nobody.
+    await settings.setExtensionOverrides({'aaa-offer': true});
+    await tester.pumpAndSettle();
+    expect(rowOrder(), ['extension-zzz-mine', 'extension-aaa-offer']);
+  });
+
+  testWidgets('install from file sits beside the search field, and still fits the narrowest pane', (tester) async {
+    // It is an icon in the search row rather than a labelled button under the
+    // list. Two things can go wrong and neither shows up as a failed finder:
+    // it can end up left of the field, and at the tightest geometry the app
+    // has it can push the field out of the pane.
+    tester.view.physicalSize = const Size(2400, 1500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA', category: 'activity'),
+    ]);
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        theme: ThemeData(visualDensity: VisualDensity.compact),
+        home: Scaffold(
+          body: UiScale(
+            scale: 1.90,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(width: 300, height: 700, child: ExtensionsPanel(services: services)),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    final field = tester.getRect(find.byKey(const ValueKey('extensions-search')));
+    final button = tester.getRect(find.byKey(const ValueKey('extensions-install-from-file')));
+    expect(button.left, greaterThanOrEqualTo(field.right), reason: 'the button is left of the field it follows');
+    expect(button.center.dy, closeTo(field.center.dy, 1), reason: 'the two are not on one line');
+    // The pane is 300 logical pixels wide before UiScale; both have to be
+    // inside it, or the field is squeezed to nothing off the right edge.
+    expect(field.left, greaterThanOrEqualTo(0));
+    expect(button.right, lessThanOrEqualTo(tester.getRect(find.byType(ExtensionsPanel)).right + 0.5));
+    expect(field.width, greaterThan(0));
+  });
+
+  testWidgets('a built-in row says so where the others carry a version, and the line still fits', (tester) async {
+    // Off the catalog experiment, because the experiment that shows the
+    // Catalog section is the one that withdraws every built-in — the two
+    // row shapes cannot appear together, which is why this is its own test.
+    //
+    // Rendered at the tightest geometry the app has, for the same reason the
+    // sibling geometry test does it: this row's control is a bare switch,
+    // and a caption squeezed to a sliver under it is still found by
+    // find.text and still unreadable.
+    tester.view.physicalSize = const Size(2400, 1500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    // The build index carries a version for a built-in extension too, which
+    // is what makes this worth a test: rendering it names the app's own
+    // build, which no operator can install, update or otherwise act on.
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'pota', file: 'pota.js', core: false, name: 'Parks on the Air', category: 'activity',
+          version: '26.9.0'),
+    ]);
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        theme: ThemeData(visualDensity: VisualDensity.compact),
+        home: Scaffold(
+          body: UiScale(
+            scale: 1.90,
+            child: Align(
+              alignment: Alignment.topLeft,
+              child: SizedBox(width: 300, height: 700, child: ExtensionsPanel(services: services)),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(
+        find.descendant(of: find.byKey(const ValueKey('extension-pota')), matching: find.text('Built in')),
+        findsOneWidget);
+    expect(find.textContaining('26.9.0'), findsNothing);
+    final theme = Theme.of(tester.element(find.byType(ExtensionsPanel)));
+    expect(tester.getSize(find.text('Built in')).height,
+        greaterThanOrEqualTo(theme.textTheme.bodySmall!.fontSize!),
+        reason: '"Built in" is squeezed by the switch above it');
+  });
+
+  testWidgets('every row states its version over the control, and the details button opens them', (tester) async {
+    tester.view.physicalSize = const Size(1000, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+    ]);
+    final catalog = _catalog((_) async => http.Response(
+        jsonEncode({
+          'extensions': [
+            _entry('k2hrc-llota', 'LLOTA (catalog)', version: '1.1.0'),
+            _entry('aa-world', 'Alpha World', version: '2.3.4', relevance: _soon()),
+          ],
+        }),
+        200));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    Finder inRow(String key, Finder what) => find.descendant(of: find.byKey(ValueKey(key)), matching: what);
+
+    // Installed: what is installed, not what the catalog offers for it —
+    // the offer is the catalog row's to state.
+    expect(inRow('extension-k2hrc-llota', find.text('1.0.0')), findsOneWidget);
+    expect(inRow('extension-k2hrc-llota', find.text('1.1.0')), findsNothing);
+
+    // The version reads on the row's first line, above the switch, not under
+    // it. Swapped back, it sits level with the description instead of the
+    // name and every row's number moves down a line.
+    final versionAt = tester.getRect(inRow('extension-k2hrc-llota', find.text('1.0.0')));
+    final switchAt = tester.getRect(inRow('extension-k2hrc-llota', find.byType(Switch)));
+    expect(versionAt.center.dy, lessThan(switchAt.center.dy));
+
+    // The row no longer says "Installed": it sits under the same heading as
+    // the app's own, so the word said nothing the section did not.
+    expect(inRow('extension-k2hrc-llota', find.textContaining('Installed')), findsNothing);
+
+    // Catalog: the version offered, under the Install button. An entry for
+    // something already installed is not listed at all, so `k2hrc-llota` has
+    // one row and not two.
+    expect(inRow('catalog-aa-world', find.text('2.3.4')), findsOneWidget);
+    expect(find.byKey(const ValueKey('catalog-k2hrc-llota')), findsNothing);
+  });
+
+  testWidgets('the line under each control fits the trailing box a ListTile caps', (tester) async {
+    // The trap: a ListTile hands its trailing a box of 56 logical pixels
+    // less the theme's vertical density — 48 under the desktop default —
+    // and never grows the row to fit. A control at its tap-target size (a
+    // plain Switch or IconButton is 40 tall, a FilledButton likewise) plus a
+    // line of text is 56, so every row would overflow and paint the stripes.
+    // Rendered at the tightest geometry the app has: landscape, font scale
+    // 1.90, in a narrow pane (docs/design/ui-scaling.md).
+    tester.view.physicalSize = const Size(2400, 1500);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0', description: 'Lighthouses on the air'),
+    ]);
+    final catalog = _catalog((_) async => http.Response(
+        jsonEncode({
+          'extensions': [_entry('aa-world', 'Alpha World', version: '2.3.4', relevance: _soon())],
+        }),
+        200));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        // What every desktop build runs at (ThemeData's adaptive default),
+        // and the density the trailing cap is computed from.
+        theme: ThemeData(visualDensity: VisualDensity.compact),
+        home: Scaffold(
+          body: UiScale(
+            scale: 1.90,
+            child: Align(
+              alignment: Alignment.topLeft,
+              // A settings pane's width in the logical space 1.90 leaves.
+              child: SizedBox(width: 300, height: 700, child: ExtensionsPanel(services: services)),
+            ),
+          ),
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    // Measured on the line, not on the trailing box: the box is clamped to
+    // the cap either way, and the caption is what gives — a control at its
+    // tap-target size leaves it a sliver that find.text still finds and the
+    // operator cannot read.
+    final theme = Theme.of(tester.element(find.byType(ExtensionsPanel)));
+    final lineHeight = theme.textTheme.bodySmall!.fontSize!;
+    void expectAFullLine(String caption) => expect(
+          tester.getSize(find.text(caption)).height,
+          greaterThanOrEqualTo(lineHeight),
+          reason: '"$caption" is squeezed by the control above it',
+        );
+
+    // The built-in row's own shape — a bare switch under the same cap — is
+    // measured where it can still be rendered, in the built-in test above:
+    // the experiment that puts a Catalog section on screen is the one that
+    // takes every built-in row off it.
+    expectAFullLine('1.0.0'); // the switch and remove row
+    expectAFullLine('2.3.4'); // the install button row
   });
 
   testWidgets('the operator geo arriving after the panel opened is a new request, and re-ranks the rows',
@@ -410,10 +1087,10 @@ void main() {
           jsonEncode({
             'extensions': [
               _entry('zz-world', 'Zulu World'),
-              _entry('k-only', 'Kilo Only', geo: {
+              _entry('k-only', 'Kilo Only', relevance: {
                 'entities': ['K']
               }),
-              _entry('aa-world', 'Alpha World'),
+              _entry('aa-world', 'Alpha World', relevance: _soon()),
             ],
           }),
           200);
@@ -424,18 +1101,22 @@ void main() {
       child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
     ));
     await tester.pumpAndSettle();
-    // Nothing known: worldwide leads, the gated entry trails.
-    expect(_catalogRowKeys(tester), ['catalog-aa-world', 'catalog-zz-world', 'catalog-k-only']);
+    // Nothing known about the operator, so nothing can be suggested for
+    // WHERE they are: only the one that is soon. `zz-world` is worldwide and
+    // undated and is never a suggestion; `k-only` is Kilo's, and until the
+    // callsign is known that is not this operator.
+    expect(_catalogRowKeys(tester), ['catalog-aa-world']);
     expect(queries.single.containsKey('entity'), isFalse);
 
     // The ranking is the catalog's answer to the geo it was asked with, so
-    // the new geo is a new request — a panel that only re-sorted would
-    // still be showing the catalog's verdict for an unknown operator.
+    // the new geo is a new request — a panel that only re-sorted would still
+    // be showing the catalog's verdict for an unknown operator. And it is not
+    // only an order: Kilo Only was not offered at all a moment ago.
     await flags.refreshForCall('K1ABC');
     await tester.pumpAndSettle();
     expect(queries, hasLength(2));
     expect(queries.last['entity'], 'K');
-    expect(_catalogRowKeys(tester), ['catalog-k-only', 'catalog-aa-world', 'catalog-zz-world']);
+    expect(_catalogRowKeys(tester), ['catalog-aa-world', 'catalog-k-only']);
   });
 
   testWidgets('a revoked release has no switch, and says why', (tester) async {
@@ -526,7 +1207,7 @@ void main() {
     var requests = 0;
     final catalog = _catalog((_) async {
       requests++;
-      return http.Response(jsonEncode({'extensions': [_entry('aa-world', 'Alpha World')]}), 200);
+      return http.Response(jsonEncode({'extensions': [_entry('aa-world', 'Alpha World', relevance: _soon())]}), 200);
     });
     final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
 
@@ -538,25 +1219,158 @@ void main() {
     // Hidden entirely — no header, no status line — and NOT fetched: a
     // section that is not built but still asks the catalog is the trap the
     // request count catches, and the text finders cannot.
-    expect(find.text('Catalog'), findsNothing);
     expect(find.text('Loading the catalog…'), findsNothing);
     expect(find.text('Catalog unreachable'), findsNothing);
     expect(_catalogRowKeys(tester), isEmpty);
     expect(requests, 0);
-    // Install from file is not the catalog's, and stays.
-    expect(find.text('Install from file…'), findsOneWidget);
+    // Install from file is not the catalog's, and stays. It is an icon beside
+    // the search field now, so its label lives in the icon's semantics.
+    expect(find.byKey(const ValueKey('extensions-install-from-file')), findsOneWidget);
 
     // Flipped on from the Experiments panel over this one: the fetch the
     // opening skipped happens now, without reopening.
     await settings.setExperimentEnabled('catalog', true);
     await tester.pumpAndSettle();
     expect(requests, 1);
-    expect(find.text('Catalog'), findsOneWidget);
     expect(_catalogRowKeys(tester), ['catalog-aa-world']);
 
     await settings.setExperimentEnabled('catalog', false);
     await tester.pumpAndSettle();
-    expect(find.text('Catalog'), findsNothing);
     expect(_catalogRowKeys(tester), isEmpty);
+  });
+
+  testWidgets('the details button opens what an extension is, and the way out of it', (tester) async {
+    // The row carries a name, a description and a switch. Everything else —
+    // where it came from, what it can reach, and removing it — moved behind
+    // this button, so if it does not open there is no way to any of it.
+    tester.view.physicalSize = const Size(1200, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    await settings.setExperimentEnabled('catalog', true);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
+          description: 'Lighthouses on the air', source: ExtensionSource.installed, version: '1.0.0',
+          domains: ['llota.cl'], hooks: ['activity', 'ref:llota']),
+    ]);
+    final catalog = _catalog((_) async => http.Response(
+        jsonEncode({
+          'extensions': [_entry('k2hrc-llota', 'LLOTA (catalog)', version: '1.1.0')],
+        }),
+        200));
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: catalog);
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+
+    // The bin is gone from the row. It sat beside the switch, one mis-aimed
+    // click from a toggle, and the row could not say what would be removed.
+    expect(
+      find.descendant(of: find.byKey(const ValueKey('extension-k2hrc-llota')), matching: find.byIcon(MdiIcons.trashCanOutline)),
+      findsNothing,
+    );
+
+    await tester.tap(find.descendant(
+      of: find.byKey(const ValueKey('extension-k2hrc-llota')),
+      matching: find.byIcon(MdiIcons.informationOutline),
+    ));
+    await tester.pumpAndSettle();
+
+    // What it is, and the two things that can be done about it. Update is
+    // offered because the catalog has 1.1.0 over the installed 1.0.0 — the
+    // same comparison the row's badge makes, so the two cannot disagree.
+    Finder inDialog(Finder what) => find.descendant(of: find.byType(HaloDialog), matching: what);
+    expect(inDialog(find.text('Version 1.0.0')), findsOneWidget);
+    expect(inDialog(find.text('llota.cl')), findsOneWidget, reason: 'the network access it was granted');
+    expect(inDialog(find.widgetWithText(TextButton, 'Remove')), findsOneWidget);
+    expect(inDialog(find.widgetWithText(FilledButton, 'Update')), findsOneWidget);
+  });
+
+  testWidgets('a built-in has details too, and nothing to remove or update', (tester) async {
+    // Same button on every row: "what is this and what can it reach" is a
+    // fair question about an extension the app ships, and the answer is the
+    // one place it is written down.
+    tester.view.physicalSize = const Size(1200, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'pota', file: 'pota.js', core: false, name: 'POTA', category: 'activity',
+          description: 'Parks', version: '26.9.0'),
+    ]);
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(
+      of: find.byKey(const ValueKey('extension-pota')),
+      matching: find.byIcon(MdiIcons.informationOutline),
+    ));
+    await tester.pumpAndSettle();
+
+    // No version: the app's own build is not a number anybody can act on,
+    // and printing it here would invite a comparison with the catalog's.
+    Finder inDialog(Finder what) => find.descendant(of: find.byType(HaloDialog), matching: what);
+    expect(find.textContaining('26.9.0'), findsNothing);
+    expect(inDialog(find.text('Built in')), findsOneWidget);
+    expect(inDialog(find.widgetWithText(TextButton, 'Remove')), findsNothing);
+    expect(inDialog(find.widgetWithText(FilledButton, 'Update')), findsNothing);
+  });
+
+  testWidgets('with the catalog off, details offers no Update the panel could not perform', (tester) async {
+    // The row's badge hides when the Catalog section does — a check that ran
+    // before the experiment was flipped off leaves a pending update with
+    // nowhere to go. The dialog's button reads the same gate, or it would
+    // offer to install from a catalog the panel is no longer showing.
+    tester.view.physicalSize = const Size(1200, 1400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final db = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(db.close);
+    final extensions = ExtensionServiceWithFakeHost(FakeExtensionHost({}))..settings = settings;
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+          key: 'k2hrc-llota', file: 'index.js', core: false, name: 'LLOTA', category: 'activity',
+          source: ExtensionSource.installed, version: '1.0.0'),
+    ]);
+    final services = HaLoServices(db, settings, extensions: extensions, catalog: _emptyCatalog());
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(home: Scaffold(body: ExtensionsPanel(services: services))),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('Catalog'), findsNothing, reason: 'the experiment is off');
+
+    await tester.tap(find.descendant(
+      of: find.byKey(const ValueKey('extension-k2hrc-llota')),
+      matching: find.byIcon(MdiIcons.informationOutline),
+    ));
+    await tester.pumpAndSettle();
+    final inDialog = find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(FilledButton, 'Update'));
+    expect(inDialog, findsNothing);
+    // Removing still works: it needs no catalog at all.
+    expect(
+      find.descendant(of: find.byType(HaloDialog), matching: find.widgetWithText(TextButton, 'Remove')),
+      findsOneWidget,
+    );
   });
 }

@@ -5,7 +5,6 @@
   "version": "1.0.0",
   "description": "A big band, mode and frequency readout across the room",
   "category": "dashboard",
-  "enabledByDefault": true,
   "icon": "radio-tower",
   "accentColor": "#4C6EF5",
   "api": 1,

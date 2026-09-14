@@ -171,10 +171,8 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get applying => 'Activando cambios de extensiones, esto puede tardar un momento…';
 	@override String get noMatches => 'Ninguna extensión coincide con tu búsqueda';
 	@override String get installFromFile => 'Instalar desde archivo…';
-	@override String installTitle({required Object name}) => '¿Instalar ${name}?';
-	@override String updateTitle({required Object name}) => '¿Actualizar ${name}?';
 	@override String installVersion({required Object version}) => 'Versión ${version}';
-	@override String get canReach => 'Esta extensión podrá acceder a';
+	@override String get canReach => 'Esta extensión puede contactar';
 	@override String get canUseLocation => 'Tu ubicación';
 	@override String get canSetUserAgent => 'Identificarse ante servidores con su propio nombre';
 	@override String get noCapabilities => 'No pide nada fuera de la app.';
@@ -185,7 +183,7 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get installedBadge => 'Instalada';
 	@override String get uninstallAction => 'Quitar';
 	@override String uninstallTitle({required Object name}) => '¿Quitar ${name}?';
-	@override String get uninstallBody => 'Se eliminan la extensión y lo que haya guardado. Tu registro no se toca.';
+	@override String get uninstallBody => 'Esta extensión y su configuración se eliminarán. Tus registros permanecerán intactos.';
 	@override String installedMessage({required Object name}) => 'Se instaló ${name}';
 	@override String installIncomplete({required Object name}) => 'La instalación de ${name} no se completó. Puede que haya que instalarla de nuevo.';
 	@override String uninstallFailed({required Object name}) => 'No se pudo quitar ${name}';
@@ -202,7 +200,22 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get updateAvailableBadge => 'Actualización disponible';
 	@override String get updatesAvailableTitle => 'Actualizaciones de extensiones';
 	@override String updateAvailableFor({required Object name}) => 'Hay una actualización disponible para ${name}.';
-	@override String updatesAvailable({required Object count}) => 'Hay ${count} actualizaciones de extensiones disponibles.';
+	@override String updatesAvailable({required Object names, required Object count}) => '${names} y ${count} más necesitan actualizarse.';
+	@override String updatesAvailableFor({required Object names}) => '${names} necesitan actualizarse.';
+	@override String get pendingUpdatesSection => 'Actualizaciones pendientes';
+	@override String get updateAllAction => 'Actualizar todas';
+	@override String get updatesNoticeAction => 'Más detalles';
+	@override String updateAllTitle({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '¿Actualizar ${count} extensión?',
+		other: '¿Actualizar ${count} extensiones?',
+	);
+	@override String get updateAllBody => 'Cada una se reemplaza por la versión que ofrece ahora el catálogo. Tu configuración se conserva.';
+	@override String get upgradeTitle => 'Necesitamos actualizar tus extensiones';
+	@override String get upgradeBody => 'Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.';
+	@override String get upgradeAction => 'Actualizar ahora';
+	@override String get upgradeLater => 'Más tarde';
+	@override String get upgradeFailedTitle => 'Tus extensiones no se actualizaron';
+	@override String get upgradeFailedBody => 'No pudimos contactar con nuestros servidores. Lo intentaremos más tarde.';
 	@override String revokedTitle({required Object name}) => 'Se retiró ${name}';
 	@override String get revokedBody => 'El catálogo retiró esta versión, así que fue desactivada.';
 	@override String get downloadHashMismatch => 'Esa descarga no es la extensión que describe el catálogo.';
@@ -211,6 +224,27 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get revokedBadge => 'Retirada';
 	@override String get downloadNotHttps => 'Esa descarga no usa una conexión segura.';
 	@override String downloadUnreachable({required Object source}) => 'No se pudo contactar a ${source} para esa extensión.';
+	@override String get detailsAction => 'Detalles';
+	@override String get installedFromFile => 'Instalada desde un archivo';
+	@override String get detailsWhatItDoes => 'Ofrece soporte para';
+	@override String get installedPreloaded => 'Preinstalada';
+	@override String get hookAccount => 'Inicio de sesión';
+	@override String get hookCallNotes => 'Notas de indicativos';
+	@override String get hookDataFile => 'Datos sin conexión';
+	@override String get hookExport => 'Exportar';
+	@override String get hookLookup => 'Búsqueda de indicativos';
+	@override String get hookScoring => 'Puntuación';
+	@override String get hookSpots => 'Spots';
+	@override String hookHunting({required Object program}) => 'Cazando ${program}';
+	@override String hookActivating({required Object program}) => 'Activando ${program}';
+	@override String moreInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '… y ${count} extensión más',
+		other: '… y ${count} extensiones más',
+	);
+	@override String availableInCategory({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count,
+		one: '${count} extensión disponible',
+		other: '${count} extensiones disponibles',
+	);
 }
 
 // Path: home
@@ -3036,10 +3070,8 @@ extension on TranslationsEs {
 			'extensionsPanel.applying' => 'Activando cambios de extensiones, esto puede tardar un momento…',
 			'extensionsPanel.noMatches' => 'Ninguna extensión coincide con tu búsqueda',
 			'extensionsPanel.installFromFile' => 'Instalar desde archivo…',
-			'extensionsPanel.installTitle' => ({required Object name}) => '¿Instalar ${name}?',
-			'extensionsPanel.updateTitle' => ({required Object name}) => '¿Actualizar ${name}?',
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Versión ${version}',
-			'extensionsPanel.canReach' => 'Esta extensión podrá acceder a',
+			'extensionsPanel.canReach' => 'Esta extensión puede contactar',
 			'extensionsPanel.canUseLocation' => 'Tu ubicación',
 			'extensionsPanel.canSetUserAgent' => 'Identificarse ante servidores con su propio nombre',
 			'extensionsPanel.noCapabilities' => 'No pide nada fuera de la app.',
@@ -3050,7 +3082,7 @@ extension on TranslationsEs {
 			'extensionsPanel.installedBadge' => 'Instalada',
 			'extensionsPanel.uninstallAction' => 'Quitar',
 			'extensionsPanel.uninstallTitle' => ({required Object name}) => '¿Quitar ${name}?',
-			'extensionsPanel.uninstallBody' => 'Se eliminan la extensión y lo que haya guardado. Tu registro no se toca.',
+			'extensionsPanel.uninstallBody' => 'Esta extensión y su configuración se eliminarán. Tus registros permanecerán intactos.',
 			'extensionsPanel.installedMessage' => ({required Object name}) => 'Se instaló ${name}',
 			'extensionsPanel.installIncomplete' => ({required Object name}) => 'La instalación de ${name} no se completó. Puede que haya que instalarla de nuevo.',
 			'extensionsPanel.uninstallFailed' => ({required Object name}) => 'No se pudo quitar ${name}',
@@ -3067,7 +3099,19 @@ extension on TranslationsEs {
 			'extensionsPanel.updateAvailableBadge' => 'Actualización disponible',
 			'extensionsPanel.updatesAvailableTitle' => 'Actualizaciones de extensiones',
 			'extensionsPanel.updateAvailableFor' => ({required Object name}) => 'Hay una actualización disponible para ${name}.',
-			'extensionsPanel.updatesAvailable' => ({required Object count}) => 'Hay ${count} actualizaciones de extensiones disponibles.',
+			'extensionsPanel.updatesAvailable' => ({required Object names, required Object count}) => '${names} y ${count} más necesitan actualizarse.',
+			'extensionsPanel.updatesAvailableFor' => ({required Object names}) => '${names} necesitan actualizarse.',
+			'extensionsPanel.pendingUpdatesSection' => 'Actualizaciones pendientes',
+			'extensionsPanel.updateAllAction' => 'Actualizar todas',
+			'extensionsPanel.updatesNoticeAction' => 'Más detalles',
+			'extensionsPanel.updateAllTitle' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '¿Actualizar ${count} extensión?', other: '¿Actualizar ${count} extensiones?', ), 
+			'extensionsPanel.updateAllBody' => 'Cada una se reemplaza por la versión que ofrece ahora el catálogo. Tu configuración se conserva.',
+			'extensionsPanel.upgradeTitle' => 'Necesitamos actualizar tus extensiones',
+			'extensionsPanel.upgradeBody' => 'Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.',
+			'extensionsPanel.upgradeAction' => 'Actualizar ahora',
+			'extensionsPanel.upgradeLater' => 'Más tarde',
+			'extensionsPanel.upgradeFailedTitle' => 'Tus extensiones no se actualizaron',
+			'extensionsPanel.upgradeFailedBody' => 'No pudimos contactar con nuestros servidores. Lo intentaremos más tarde.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => 'Se retiró ${name}',
 			'extensionsPanel.revokedBody' => 'El catálogo retiró esta versión, así que fue desactivada.',
 			'extensionsPanel.downloadHashMismatch' => 'Esa descarga no es la extensión que describe el catálogo.',
@@ -3076,6 +3120,21 @@ extension on TranslationsEs {
 			'extensionsPanel.revokedBadge' => 'Retirada',
 			'extensionsPanel.downloadNotHttps' => 'Esa descarga no usa una conexión segura.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => 'No se pudo contactar a ${source} para esa extensión.',
+			'extensionsPanel.detailsAction' => 'Detalles',
+			'extensionsPanel.installedFromFile' => 'Instalada desde un archivo',
+			'extensionsPanel.detailsWhatItDoes' => 'Ofrece soporte para',
+			'extensionsPanel.installedPreloaded' => 'Preinstalada',
+			'extensionsPanel.hookAccount' => 'Inicio de sesión',
+			'extensionsPanel.hookCallNotes' => 'Notas de indicativos',
+			'extensionsPanel.hookDataFile' => 'Datos sin conexión',
+			'extensionsPanel.hookExport' => 'Exportar',
+			'extensionsPanel.hookLookup' => 'Búsqueda de indicativos',
+			'extensionsPanel.hookScoring' => 'Puntuación',
+			'extensionsPanel.hookSpots' => 'Spots',
+			'extensionsPanel.hookHunting' => ({required Object program}) => 'Cazando ${program}',
+			'extensionsPanel.hookActivating' => ({required Object program}) => 'Activando ${program}',
+			'extensionsPanel.moreInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '… y ${count} extensión más', other: '… y ${count} extensiones más', ), 
+			'extensionsPanel.availableInCategory' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} extensión disponible', other: '${count} extensiones disponibles', ), 
 			'home.title' => 'Registrador Portátil',
 			'home.newOperation' => 'Nueva operación',
 			'home.stationCallsign' => 'Indicativo de la estación',
@@ -3470,6 +3529,8 @@ extension on TranslationsEs {
 			'operation.import.gapDialogTitle' => '¿Incluir capturas anteriores?',
 			'operation.import.gapDialogBody' => ({required Object count}) => 'Se capturaron ${count} QSOs más antes, previos a un hueco en los datos. ¿Incluirlos también?',
 			'operation.import.gapDialogRecentOnly' => 'Solo los recientes',
+			_ => null,
+		} ?? switch (path) {
 			'operation.import.gapDialogIncludeAll' => ({required Object count}) => 'Incluir los ${count}',
 			'map.emptyState' => 'Aún no hay ubicaciones de QSO.\nLos QSOs con cuadrícula, estado o país aparecerán aquí.',
 			'map.unavailable' => 'El mapa no está disponible en este momento.',
@@ -3495,8 +3556,6 @@ extension on TranslationsEs {
 			'activitiesView.activitiesTitleMore' => ({required Object first, required Object second, required Object more}) => 'Tipos de actividad: ${first}, ${second} y ${more} más',
 			'activitiesView.reference' => 'Referencia',
 			'activitiesView.invalidReference' => 'No válida',
-			_ => null,
-		} ?? switch (path) {
 			'activitiesView.duplicateReference' => 'Ya añadida',
 			'activitiesView.searchHint' => 'Busca por nombre, referencia o cualquier otra cosa…',
 			'activitiesView.noSuggestions' => 'Sin coincidencias',
@@ -3984,6 +4043,8 @@ extension on TranslationsEs {
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer sigue rechazando este dispositivo. Revisa tu indicativo en la configuración de Sync.',
 			'settings.syncPanel.openSettings' => 'Abrir configuración de Sync',
 			'settings.accounts.title' => 'Cuentas y servicios',
+			_ => null,
+		} ?? switch (path) {
 			'settings.accounts.none' => 'No hay extensiones activas con cuentas',
 			'settings.accounts.notConfigured' => 'Sin configurar',
 			'settings.accounts.connected' => 'Conectado',
@@ -4009,8 +4070,6 @@ extension on TranslationsEs {
 			'settings.accounts.pastedLinkWrongLogin' => 'Ese enlace pertenece a otro intento de inicio de sesión. Cierra esta página y conéctate de nuevo.',
 			'settings.accounts.pastedLinkNoCode' => 'Ese enlace no lleva ningún código de inicio de sesión. Termina de iniciar sesión y luego copia el enlace al que te envíe.',
 			'settings.accounts.pastedLinkMalformed' => 'Ese enlace parece estar incompleto. Cópialo por completo y pégalo de nuevo.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.accounts.relayLoginWaiting' => 'Esperando a que termines de iniciar sesión — esto continuará automáticamente en cuanto lo hagas.',
 			'settings.accounts.loginNoResponse' => 'Este dispositivo aún no ha recibido respuesta del acceso. Si ya terminaste en tu navegador, cancela e intenta conectar de nuevo.',
 			'settings.accounts.relayLoginNotOpened' => 'Ham2K Logger no pudo abrir tu navegador automáticamente. Usa el botón de abajo para abrir la página de inicio de sesión tú mismo.',
@@ -4498,6 +4557,8 @@ extension on TranslationsEs {
 			'extensionService.testFailed' => ({required Object error}) => 'Prueba fallida: ${error}',
 			'extensionService.connectedAs' => ({required Object identity}) => 'Conectado como ${identity}',
 			'extensionService.invalidFieldConfiguration' => 'Configuración de campo no válida',
+			_ => null,
+		} ?? switch (path) {
 			'extensionService.invalidValue' => 'Valor no válido',
 			'extensionService.validationError' => ({required Object error}) => 'Error de validación: ${error}',
 			'extensionService.actionFailed' => ({required Object error}) => 'Acción fallida: ${error}',
@@ -4523,8 +4584,6 @@ extension on TranslationsEs {
 			'versionLabel.version' => ({required Object version}) => 'Versión ${version}',
 			'versionLabel.patch' => ({required Object patch}) => 'Parche ${patch}',
 			'versionLabel.build' => ({required Object build}) => 'build ${build}',
-			_ => null,
-		} ?? switch (path) {
 			'notices.emptyHistory' => 'Aún no hay avisos',
 			'notices.webStorageInMemory' => 'Este navegador no pudo ofrecer almacenamiento persistente — el log vive solo en memoria y se PERDERÁ al cerrar esta pestaña. Usa un Chrome, Firefox, Safari o Edge actual.',
 			'notices.webStorageUnreliable' => 'Este navegador está usando un almacenamiento de respaldo que no es seguro con varias pestañas — mantén una sola pestaña abierta, y el sync activado.',

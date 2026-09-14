@@ -153,16 +153,30 @@ export function sharedModulesFor(api) {
 
 export class PackError extends Error {}
 
-/// The vocabulary of the manifest's `geo` — what the matcher compares the
-/// operator's own values against, so a value outside it can never match
+/// The vocabulary of the manifest's `relevance` — what the matcher compares
+/// the operator's own values against, so a value outside it can never match
 /// anyone. Continents are cty.dat's column-4 codes; the regions are the three
 /// the ITU Radio Regulations define.
 export const GEO_CONTINENTS = ['AF', 'AS', 'EU', 'NA', 'OC', 'SA', 'AN']
 export const GEO_ITU_REGIONS = [1, 2, 3]
-const GEO_KEYS = ['entities', 'countries', 'continents', 'ituRegions']
 
-/// Everything wrong with a manifest's `geo`, as a list — empty for a valid
-/// one, and for an absent one, which means worldwide.
+/// What `relevance.interests` may name: a mode, a band group, or a style of
+/// operating. Closed, and checked, because an interest nothing else spells
+/// the same way matches nobody while looking like it works — `CW`, `cw` and
+/// `morse` would be three interests, and only one of them the one the app
+/// asks for.
+///
+/// Growing the list is how a new interest arrives. Guessing is not.
+export const RELEVANCE_INTERESTS = [
+  'cw', 'phone', 'digital',
+  'hf', 'vhf', 'uhf', 'microwave',
+  'satellite', 'portable', 'qrp',
+]
+
+const RELEVANCE_KEYS = ['entities', 'countries', 'continents', 'ituRegions', 'dates', 'interests']
+
+/// Everything wrong with a manifest's `relevance`, as a list — empty for a
+/// valid one, and for an absent one, which means worldwide and undated.
 ///
 /// The shape rules are the ones that matter: the matcher reads a key it
 /// cannot parse as "does not gate", so a misspelt key or a string where a
@@ -172,33 +186,33 @@ const GEO_KEYS = ['entities', 'countries', 'continents', 'ituRegions']
 ///
 /// Shared with build-config.mjs's manifest checks, which import it: the
 /// rules are the format's, not the repo's, and this module is the format.
-export function validateGeo(geo) {
-  if (geo === undefined) return []
-  if (typeof geo !== 'object' || geo === null || Array.isArray(geo)) {
-    return [`'geo' must be an object of ${GEO_KEYS.join(' / ')}`]
+export function validateRelevance(relevance) {
+  if (relevance === undefined) return []
+  if (typeof relevance !== 'object' || relevance === null || Array.isArray(relevance)) {
+    return [`'relevance' must be an object of ${RELEVANCE_KEYS.join(' / ')}`]
   }
   const problems = []
-  for (const key of Object.keys(geo)) {
-    if (!GEO_KEYS.includes(key)) {
-      problems.push(`'geo' has an unknown key '${key}' — only ${GEO_KEYS.join(', ')} are read`)
+  for (const key of Object.keys(relevance)) {
+    if (!RELEVANCE_KEYS.includes(key)) {
+      problems.push(`'relevance' has an unknown key '${key}' — only ${RELEVANCE_KEYS.join(', ')} are read`)
     }
   }
-  for (const key of GEO_KEYS) {
-    const values = geo[key]
+  for (const key of RELEVANCE_KEYS) {
+    const values = relevance[key]
     if (values === undefined) continue
     if (!Array.isArray(values)) {
-      problems.push(`'geo.${key}' must be a list`)
+      problems.push(`'relevance.${key}' must be a list`)
       continue
     }
     for (const value of values) {
-      const problem = geoValueProblem(key, value)
-      if (problem) problems.push(`'geo.${key}' has ${JSON.stringify(value)}, which ${problem}`)
+      const problem = relevanceValueProblem(key, value)
+      if (problem) problems.push(`'relevance.${key}' has ${JSON.stringify(value)}, which ${problem}`)
     }
   }
   return problems
 }
 
-function geoValueProblem(key, value) {
+function relevanceValueProblem(key, value) {
   if (key === 'ituRegions') {
     return GEO_ITU_REGIONS.includes(value) ? null : `is not an ITU region (${GEO_ITU_REGIONS.join(', ')})`
   }
@@ -211,7 +225,33 @@ function geoValueProblem(key, value) {
   if (key === 'countries') {
     return /^[a-z]{2}$/.test(value.toLowerCase()) ? null : 'is not a two-letter ISO country code'
   }
+  if (key === 'dates') return calendarDateProblem(value)
+  if (key === 'interests') {
+    return RELEVANCE_INTERESTS.includes(value)
+      ? null
+      : `is not an interest (${RELEVANCE_INTERESTS.join(' ')})`
+  }
   return GEO_CONTINENTS.includes(value.toUpperCase()) ? null : `is not a continent (${GEO_CONTINENTS.join(' ')})`
+}
+
+/// Why [value] is not a UTC calendar day, or null.
+///
+/// The round trip is the whole check: `Date.UTC` rolls 31 February over into
+/// 3 March rather than refusing it, so a pattern match alone accepts a day
+/// that does not exist and then silently means a different one.
+///
+/// A year under 1000 is refused before that round trip, and the Dart twin
+/// refuses it too. `Date.UTC` reads a year under 100 as 19xx, so `0050-01-01`
+/// would fail the round trip here and pass in Dart — a disagreement between
+/// the two on an input neither should be accepting anyway.
+function calendarDateProblem(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'is not a YYYY-MM-DD date'
+  const [year, month, day] = value.split('-').map(Number)
+  if (year < 1000) return 'is not a year an event could fall in'
+  const at = new Date(Date.UTC(year, month - 1, day))
+  return at.getUTCFullYear() === year && at.getUTCMonth() === month - 1 && at.getUTCDate() === day
+    ? null
+    : 'is not a day that exists'
 }
 
 /// Everything wrong with a candidate bundle, as a list — an author fixing one
@@ -274,10 +314,27 @@ export function validateManifest(manifest, { source = MANIFEST_ENTRY, forceName 
     say("'experiments' gates on the app's own experiment catalog and would hide this extension permanently — remove it")
   }
 
-  // `geo` ranks the bundle, in the catalog and the Extensions panel, for the
-  // operators it was written for. The matcher reads a key it cannot parse as
-  // "does not gate", so a malformed one would ship as worldwide.
-  for (const problem of validateGeo(manifest.geo)) say(problem)
+  // The name `relevance` replaced. Nothing reads `geo`, and nothing here
+  // rejects unknown top-level keys, so a manifest still carrying it would
+  // pack, publish and install as WORLDWIDE — the author's audience silently
+  // discarded rather than refused. It is the one stale key certain to
+  // arrive, because it is what every older manifest says.
+  if (manifest.geo !== undefined) {
+    say("'geo' is now 'relevance' — rename it (docs/extensions/distribution.md)")
+  }
+
+  // `enabledByDefault` is the shipping app's answer for its OWN extensions,
+  // which arrive whether the operator wanted them or not. An installed
+  // bundle is one the operator went and got, so the answer is always yes and
+  // a manifest that says otherwise is describing a state it cannot reach.
+  if (manifest.enabledByDefault !== undefined) {
+    say("'enabledByDefault' applies to an app's built-in extensions — an installed one is on because the operator installed it")
+  }
+
+  // `relevance` ranks the bundle, in the catalog and the Extensions panel,
+  // for the operators it was written for. The matcher reads a key it cannot
+  // parse as "does not gate", so a malformed one would ship as worldwide.
+  for (const problem of validateRelevance(manifest.relevance)) say(problem)
 
   return problems
 }
