@@ -65,6 +65,23 @@ void main() {
     expect(list.first.receivedRST, '57');
   });
 
+  test('an event marker carries placeholder our/their calls', () async {
+    // HALO-609. polo ingests every synced row through `qsoKey`, which
+    // destructures `our.call` and `their.call`; a marker without them
+    // throws, and that throw discards polo's whole sync round — every
+    // contact on the page, the watermark, the cursor — forever. So a
+    // marker is written in the shape polo's own `newEventQSO` uses, and
+    // it must still be a marker (`isEvent`), never a contact.
+    final op = await operations.create(stationCall: 'KI2D');
+    final marker = await qsos.addEvent(op.uuid, kind: 'break', atMillis: 1000);
+
+    expect(marker.data['our'], {'call': 'EVENT'});
+    expect(marker.data['their'], {'call': 'BREAK'});
+    expect(marker.isEvent, isTrue);
+    expect(marker.isRealContact, isFalse);
+    expect(await qsos.historyForCall('BREAK'), isEmpty, reason: 'a placeholder is not a worked callsign');
+  });
+
   test('watch stream emits on new QSOs', () async {
     final op = await operations.create(stationCall: 'KI2D');
     final emissions = <int>[];
@@ -988,7 +1005,7 @@ void main() {
       await contact(op.uuid, 'W1AW', 2000, ourCall: 'N0DEV');
 
       await qsos.restampSegmentStationCall(op.uuid, 'KI2D');
-      expect((await qsos.get(marker.uuid))!.ourCall, isEmpty);
+      expect((await qsos.get(marker.uuid))!.ourCall, 'EVENT', reason: 'the placeholder, not the restamped call');
     });
 
     test('an empty call writes nothing', () async {

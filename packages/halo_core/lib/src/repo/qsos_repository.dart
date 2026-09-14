@@ -237,6 +237,17 @@ class QsosRepository {
   }) {
     return add(operationUuid, {
       'band': 'event',
+      // Placeholder calls, the shape polo's own markers have always had
+      // (`newEventQSO`: `our.call = 'EVENT'`, `their.call = KIND`). Not
+      // decoration: polo's sync ingests every inbound row through
+      // `qsoKey`, which destructures `our.call` and `their.call` and
+      // throws on a row without them — and that throw escapes the whole
+      // sync round, so a single marker from here stalled a polo device
+      // forever, one page short of every contact behind it (HALO-609).
+      // Nothing here reads them: `isEvent` is `band == 'event'`, and every
+      // callsign query already excludes markers by that test.
+      'our': {'call': 'EVENT'},
+      'their': {'call': kind.toUpperCase()},
       'startAtMillis': atMillis,
       'event': {
         'event': kind,
