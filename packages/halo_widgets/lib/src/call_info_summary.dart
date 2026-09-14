@@ -101,10 +101,15 @@ Widget noticePill(ThemeData theme, String label, {required NoticeLevel level}) {
 
 /// A soft halo behind small glyphs (the call-info flag/note emoji, the
 /// spotting control's source-status icons) so they stay legible against a
-/// tinted fill — white on light themes, dark on dark themes.
+/// tinted fill — dark on light themes, light on dark themes. Contrasting
+/// with the fill, not matching it: a white halo on a light fill is invisible
+/// and the glyph reads as having none.
 List<Shadow> glyphGlow(ThemeData theme) {
-  final color = theme.brightness == Brightness.dark ? Colors.black : Colors.white;
-  return [Shadow(color: color.withValues(alpha: 0.6), blurRadius: 6)];
+  // Black carries further than white at the same alpha, so light mode
+  // takes a fainter halo to read as the same weight.
+  final dark = theme.brightness == Brightness.dark;
+  final color = (dark ? Colors.white : Colors.black).withValues(alpha: dark ? 0.4 : 0.25);
+  return [Shadow(color: color, blurRadius: 6)];
 }
 
 /// Shared layout for every state of an info area: a top-aligned leading icon
@@ -202,11 +207,12 @@ class CallInfoSummary extends StatelessWidget {
 
   /// The leading emoji cluster of a call note — call notes always prefix their
   /// emoji (see the call-notes extension's `combineNotes`), so isolating this
-  /// run lets the glow ride only the emoji, not the note's prose. Covers the
-  /// common pictographic ranges plus ZWJ / variation-selector / keycap /
-  /// regional-indicator (flag) code points; deliberately not exhaustive.
+  /// run lets the glow ride only the emoji, not the note's prose. The same
+  /// ranges as the extension's `LEADING_EMOJI` (plus keycap): a marker the
+  /// extension reports for the QSO row must be found here too, or the row
+  /// shows one and this line shows none.
   static final _leadingEmoji = RegExp(
-    r'^[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{1F1E6}-\u{1F1FF}\u{200D}\u{FE0F}\u{20E3}]+',
+    r'^[\u{1F000}-\u{1FFFF}\u{2300}-\u{23FF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{200D}\u{FE0F}\u{20E3}]+',
     unicode: true,
   );
 
@@ -377,7 +383,11 @@ class CallInfoSummary extends StatelessWidget {
   ({String? lead, String markdown}) _noteParts(String text) {
     final leadMatch = _leadingEmoji.firstMatch(text);
     final rest = leadMatch == null ? text : text.substring(leadMatch.end).trimLeft();
-    return (lead: leadMatch?.group(0), markdown: rest);
+    // The marker run paints last-emoji-first, so the FIRST note's marker —
+    // the one the QSO row shows — sits nearest the prose it belongs to.
+    // Reversed by grapheme, so a ZWJ sequence or a flag pair stays whole.
+    final lead = leadMatch?.group(0)?.characters.toList().reversed.join();
+    return (lead: lead, markdown: rest);
   }
 
   /// `code` in a note, matching MarkdownStyleSheet.fromTheme's own code style

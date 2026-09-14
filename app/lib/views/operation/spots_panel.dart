@@ -2429,8 +2429,8 @@ class _SpotTile extends StatelessWidget {
                 // actually carry a note pay for it, which is a small minority
                 // rather than every visible row of a scroll.
                 dim == 1.0
-                    ? Text(noteEmoji!, style: emojiStyle())
-                    : Opacity(opacity: dim, child: Text(noteEmoji!, style: emojiStyle())),
+                    ? flagGlyph(noteEmoji!, shadows: glyphGlow(theme))
+                    : Opacity(opacity: dim, child: flagGlyph(noteEmoji!, shadows: glyphGlow(theme))),
               ],
             ],
           ),

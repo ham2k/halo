@@ -19,6 +19,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:intl/intl.dart';
 
 import 'activity_controls.dart';
+import 'call_info_summary.dart' show glyphGlow;
 import 'density.dart';
 import 'flags.dart';
 import 'format_utils.dart';
@@ -724,12 +725,28 @@ class _QsoListState extends State<QsoList> {
       );
     }
 
+    // The callsign and frequency — the two columns a row is scanned by —
+    // paint past onSurface, halfway to pure black (white in dark mode), so
+    // they stand clear of the dim columns beside them without the dim ones
+    // dropping back to outline. Local to this list: the theme's onSurface
+    // is untouched.
+    final strong = Color.lerp(
+      theme.colorScheme.onSurface,
+      theme.brightness == Brightness.dark ? Colors.white : Colors.black,
+      0.5,
+    );
     final mono = haloMonoStyle(
       context,
       fontSize: _rowMonoFontSize,
-      color: theme.colorScheme.onSurface,
+      color: strong,
     );
-    final monoDim = mono.copyWith(color: theme.colorScheme.outline);
+    // Halfway from `onSurfaceVariant` to `onSurface`: the
+    // variant alone reads too faint for a column of data, while the full
+    // onSurface would put the columns level with the callsign they sit
+    // behind.
+    final monoDim = mono.copyWith(
+      color: Color.lerp(theme.colorScheme.onSurfaceVariant, theme.colorScheme.onSurface, 0.5),
+    );
     // Bold, but the same base size as every other field per the issue: "All
     // fields use the same base font size (except for frequency, see below)."
     final callStyle = mono.copyWith(fontWeight: FontWeight.w700);
@@ -856,6 +873,16 @@ class _QsoListState extends State<QsoList> {
           decoration: TextDecoration.lineThrough,
         );
       }
+      // The name is the one proportional column: Roboto rather than the
+      // mono the data columns line up in, since it never needs to align
+      // digit-for-digit with the row above, in the same dim gray as the
+      // time and RST. Its size is the row's base size (never smaller): the
+      // row height is measured against bodyMedium, so this stays inside it.
+      final rowNameDim = theme.textTheme.bodyMedium!.copyWith(
+        fontSize: _rowMonoFontSize,
+        color: rowMonoDim.color,
+        decoration: rowMonoDim.decoration,
+      );
 
       // DX/State column — see _dxStateContentFor's doc for the flag-vs-state
       // rule, shared with the list-wide width precompute above. Emoji use a
@@ -866,7 +893,9 @@ class _QsoListState extends State<QsoList> {
       final dxState = _dxStateContentFor(qso, ourEntityPrefix, dxFlags);
       Widget? dxStateField;
       if (dxState != null) {
-        dxStateField = dxState.isFlag ? flagGlyph(dxState.text) : Text(dxState.text, style: rowMonoDim);
+        dxStateField = dxState.isFlag
+            ? flagGlyph(dxState.text, shadows: glyphGlow(theme))
+            : Text(dxState.text, style: rowMonoDim);
         // Values coming from the callsign guess rather than an entered field
         // paint a touch fainter (80%) so guessed-but-unconfirmed reads as
         // such — the flag is an emoji, whose color the text style can't
@@ -1021,8 +1050,8 @@ class _QsoListState extends State<QsoList> {
                         // thing [displayMode] spells out, and it is spelled
                         // out to be noticed.
                         style: isUnexpectedSideband(qso.mode, freqKHz: freqKHz, band: qso.band)
-                            ? rowMono.copyWith(color: theme.colorScheme.error.withValues(alpha: rowMono.color?.a ?? 1.0))
-                            : rowMono,
+                            ? rowMonoDim.copyWith(color: theme.colorScheme.error.withValues(alpha: rowMonoDim.color?.a ?? 1.0))
+                            : rowMonoDim,
                       ),
                     ),
                     const SizedBox(width: _columnGap),
@@ -1045,9 +1074,18 @@ class _QsoListState extends State<QsoList> {
                     // A guessed name paints at 80% too (see the DX/state note).
                     child: Opacity(
                       opacity: qso.theirFieldIsGuessed('name') ? 0.8 : 1.0,
-                      child: Text(
-                        qso.theirName ?? '',
-                        style: rowMonoDim.copyWith(fontSize: 13),
+                      child: Text.rich(
+                        TextSpan(
+                          children: [
+                            // A noted station leads with its marker.
+                            if (qso.theirNoteEmoji case final emoji? when emoji.isNotEmpty) ...[
+                              flagSpan(emoji, style: rowNameDim, shadows: glyphGlow(theme)),
+                              const TextSpan(text: ' '),
+                            ],
+                            TextSpan(text: qso.theirName ?? ''),
+                          ],
+                        ),
+                        style: rowNameDim,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1083,14 +1121,15 @@ class _QsoListState extends State<QsoList> {
                                 iconForRefType(activityControls, entry.key, code: entry.value.code),
                               ),
                               size: 14,
-                              // Neutral row foreground ("black" in the light
-                              // theme), not the tertiary accent (#354).
-                              color: theme.colorScheme.onSurface,
+                              // The row's dim gray, not the tertiary accent:
+                              // a reference reads at the weight of the time
+                              // and RST beside it.
+                              color: rowMonoDim.color,
                             ),
                           if (entry.value.count > 1)
                             Text(
                               '×${entry.value.count}',
-                              style: rowMono.copyWith(fontSize: 11),
+                              style: rowMonoDim.copyWith(fontSize: 11),
                             ),
                           const SizedBox(width: _refIconGap),
                         ],

@@ -309,7 +309,11 @@ class _CallInfoPanelState extends State<CallInfoPanel> {
                           : Text.rich(
                               TextSpan(
                                 children: [
-                                  flagSpan(flag, style: theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16)),
+                                  flagSpan(
+                                    flag,
+                                    style: theme.textTheme.bodyLarge ?? const TextStyle(fontSize: 16),
+                                    shadows: glyphGlow(theme),
+                                  ),
                                   TextSpan(text: ' $country', style: theme.textTheme.bodyLarge),
                                 ],
                               ),

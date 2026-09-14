@@ -35,7 +35,7 @@ Widget flagGlyph(String flag, {double fontSize = flagGlyphDefaultFontSize, List<
 
 /// [flagGlyph] as an [InlineSpan], for embedding a flag inline with running
 /// text in a `Text.rich` (e.g. the call-info header's "🇺🇸 United States").
-InlineSpan flagSpan(String flag, {required TextStyle style}) => WidgetSpan(
+InlineSpan flagSpan(String flag, {required TextStyle style, List<Shadow>? shadows}) => WidgetSpan(
       alignment: PlaceholderAlignment.middle,
-      child: flagGlyph(flag, fontSize: style.fontSize ?? flagGlyphDefaultFontSize),
+      child: flagGlyph(flag, fontSize: style.fontSize ?? flagGlyphDefaultFontSize, shadows: shadows),
     );

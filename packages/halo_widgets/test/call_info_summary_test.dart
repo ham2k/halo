@@ -75,4 +75,27 @@ void main() {
     ));
     expect(find.text('1 QSOs'), findsOneWidget);
   });
+
+  group('the note\'s marker run', () {
+    testWidgets('paints last-emoji-first, split by grapheme, in the emoji font', (tester) async {
+      // A ZWJ sequence first: a reversal by code point would tear it apart.
+      await tester.pumpWidget(host(
+        data: const CallInfoData(call: 'W1AW', guess: {'note': '🧑‍💻🍻 Alan - Dev Team'}),
+      ));
+      expect(find.text('🍻🧑‍💻'), findsOneWidget);
+      expect(tester.widget<Text>(find.text('🍻🧑‍💻')).style?.fontFamily, emojiFontFamily);
+      expect(find.textContaining('Alan - Dev Team'), findsOneWidget);
+    });
+
+    testWidgets('finds every marker the extension reports, the U+23xx block included', (tester) async {
+      // ⏰ sits in U+2300–23FF, which the extension's LEADING_EMOJI covers: a
+      // narrower range here leaves the QSO row showing a marker this line
+      // folds into Roboto prose, where the web renderer paints nothing.
+      await tester.pumpWidget(host(
+        data: const CallInfoData(call: 'W1AW', guess: {'note': '⏰ slow op'}),
+      ));
+      expect(find.text('⏰'), findsOneWidget);
+      expect(find.textContaining('slow op'), findsOneWidget);
+    });
+  });
 }

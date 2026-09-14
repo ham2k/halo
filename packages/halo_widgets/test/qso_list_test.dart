@@ -1098,6 +1098,60 @@ void main() {
     });
   });
 
+  group('name column', () {
+    testWidgets('a noted station leads with its marker emoji, in the emoji font', (tester) async {
+      // A ZWJ sequence: rendered outside the bundled emoji font it paints as
+      // nothing on web, and the name would read as un-noted.
+      final qso = Qso(
+        uuid: 'q',
+        operationUuid: 'op-1',
+        data: {
+          'their': {
+            'call': 'K1ABC',
+            'guess': {'name': 'Alice', 'emoji': '🧑‍💻'},
+          },
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K'),
+          ),
+        ),
+      );
+
+      expect(find.text('🧑‍💻'), findsOneWidget);
+      expect(tester.widget<Text>(find.text('🧑‍💻')).style?.fontFamily, emojiFontFamily);
+      expect(find.textContaining('Alice'), findsOneWidget);
+    });
+
+    testWidgets('a station with no marker shows the name alone', (tester) async {
+      final qso = Qso(
+        uuid: 'q',
+        operationUuid: 'op-1',
+        data: {
+          'their': {'call': 'K1ABC', 'name': 'Alice'},
+          'mode': 'SSB',
+          'startAtMillis': 1000,
+        },
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K'),
+          ),
+        ),
+      );
+
+      expect(find.text('Alice'), findsOneWidget);
+      expect(find.byWidgetPredicate((w) => w is Text && w.style?.fontFamily == emojiFontFamily), findsNothing);
+    });
+  });
+
   group('DX/State column', () {
     testWidgets('shows a flag when both entities are known and differ', (
       tester,
@@ -1649,7 +1703,7 @@ void main() {
   );
 
   testWidgets(
-    'a ref-type icon is drawn in the neutral row foreground, not the tertiary accent (#354)',
+    'a ref-type icon is drawn in the row\'s dim gray, not the tertiary accent',
     (tester) async {
       final operation = await operations.create(stationCall: 'KI2D');
       final qso = await qsos.add(operation.uuid, {
@@ -1681,8 +1735,12 @@ void main() {
       final finder = find.byIcon(MdiIcons.pineTree);
       final icon = tester.widget<Icon>(finder);
       final scheme = Theme.of(tester.element(finder)).colorScheme;
-      expect(icon.color, scheme.onSurface);
+      // The same gray the time column paints in — a reference sits at the
+      // weight of the data beside it, not at the callsign's or an accent's.
+      final timeColor = tester.widget<Text>(find.text('00:00z')).style?.color;
+      expect(icon.color, timeColor);
       expect(icon.color, isNot(scheme.tertiary));
+      expect(icon.color, isNot(scheme.onSurface));
     },
   );
 
