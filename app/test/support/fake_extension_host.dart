@@ -26,6 +26,16 @@ class FakeExtensionHost implements ExtensionHost {
   @override
   bool get isDead => dead;
 
+  /// Runs inside [dispose], before the host is marked dead — a test asserting
+  /// what the world looks like at that moment (an exit's ordering) sets it.
+  Future<void> Function()? onDispose;
+
+  @override
+  Future<void> dispose() async {
+    await onDispose?.call();
+    dead = true;
+  }
+
   @override
   Future<dynamic> invokeHook(
     String category, {

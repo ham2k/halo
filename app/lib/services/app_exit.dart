@@ -88,6 +88,17 @@ Future<AppExitResponse> tearDownForExit(HaLoServices services) async {
     // Never block the user's quit on a radio that will not let go.
     ErrorReportingService.report(e, st, context: 'cat:shutdown-on-exit');
   }
+  // After CAT, whose disconnects are the last thing a hook may still react
+  // to, and BEFORE the database, which hooks write through. The runtime has
+  // to be gone before the VM's own teardown, or the process aborts on the way
+  // out (ExtensionService.shutdownForExit says why). Bounded like the rest:
+  // the dispose gives a wedged isolate a short grace and then kills it, and a
+  // quit must not hang on an extension that will not let go either.
+  try {
+    await services.extensions.shutdownForExit().timeout(_extensionsBudget);
+  } catch (e, st) {
+    ErrorReportingService.report(e, st, context: 'extensions:shutdown-on-exit');
+  }
   // After CAT, which writes through the same database on its way out.
   await closeDatabaseOnExit(services);
   _reportARefusedExit();
@@ -105,6 +116,12 @@ Future<AppExitResponse> tearDownForExit(HaLoServices services) async {
 const _drainBudget = Duration(milliseconds: 1500);
 const _closeBudget = Duration(seconds: 2);
 const _markBudget = Duration(milliseconds: 500);
+
+/// How long the extension runtime may take to go: its dispose is a 200ms
+/// grace for the isolate to free the JS engine, then a kill, so anything
+/// past a couple of seconds is a hang, not a slow machine. Counted in the
+/// watchdog's silence budget (services/hang_watchdog.dart) with the rest.
+const _extensionsBudget = Duration(seconds: 2);
 
 /// Shuts the database down on the way out, as carefully as an exit allows —
 /// the operator's log is the one thing in this app that cannot be recreated.

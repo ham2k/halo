@@ -372,6 +372,11 @@ class ExtensionService implements PanelExtensionSource {
   /// fresh runtime instead of silently no-oping.
   Future<void>? _restartFuture;
 
+  /// Set by [shutdownForExit], never cleared: from then on nothing brings a
+  /// runtime back, because a runtime alive while the VM tears down is the
+  /// crash that method exists to prevent.
+  bool _exiting = false;
+
   /// True when the last runtime start proceeded past the bounded activation
   /// wait without every extension's onActivation settling — hook
   /// registrations may be INCOMPLETE for this generation. Consumers that
@@ -567,6 +572,7 @@ class ExtensionService implements PanelExtensionSource {
   ExtensionHost? get host => _host;
 
   Future<void> start() {
+    if (_exiting) return Future.value();
     // Attached here rather than in a constructor: the service is built long
     // before any runtime exists, and this is the one path every start (and
     // every restart, through _start) goes through.
@@ -1646,7 +1652,7 @@ class ExtensionService implements PanelExtensionSource {
       // a panel missing from an early read costs a placeholder that repairs
       // itself, while an extension's data purged on a partial one is gone.
       _activationIncomplete = true;
-      _host = await ExtensionHost.start(
+      final host = await ExtensionHost.start(
         kernelSource: kernelSource,
         extensions: bundles,
         onHostCall: _handleHostCall,
@@ -1664,6 +1670,14 @@ class ExtensionService implements PanelExtensionSource {
         // — _replaceRuntime routes back through here.
         clock: _clockTravelState(),
       );
+      // The quit began while this boot was in flight: install it now and the
+      // VM's teardown gets a live isolate — and the exit's own wait for this
+      // boot may already have timed out, so nothing else would dispose it.
+      if (_exiting) {
+        await host.dispose();
+        return;
+      }
+      _host = host;
       _loadedExtensionKeys = loaded;
       _host!.logs.listen((line) => debugPrint('[extensions] $line'));
       _host!.interpretationUpdates.listen(_interpretationUpdates.add);
@@ -2191,7 +2205,7 @@ class ExtensionService implements PanelExtensionSource {
   /// crash reports through more than one channel, and a restart may itself
   /// fail and re-schedule.
   void _scheduleRestart(String reason) {
-    if (_restartTimer != null) return;
+    if (_restartTimer != null || _exiting) return;
     _restartAttempts++;
     final delay = exponentialBackoff(_restartAttempts, cap: const Duration(seconds: 32)); // 2s..32s, then flat
     debugPrint('[extensions] $reason — restarting runtime in ${delay.inSeconds}s (attempt $_restartAttempts)');
@@ -2206,6 +2220,33 @@ class ExtensionService implements PanelExtensionSource {
       // don't replace a healthy host.
       await _replaceRuntime(onlyIfDead: true);
     });
+  }
+
+  /// Takes the runtime down for good, on the way out of the app.
+  ///
+  /// The host is the one isolate that lets native code call back into Dart
+  /// (QuickJS's `send` is a `NativeCallable`), and the VM's teardown disables
+  /// isolate creation BEFORE it kills the isolates still running: a callback
+  /// in that window is a FATAL abort on the way out (HALO-394). Disposing the
+  /// host frees the JS runtime, so nothing is left to call back.
+  ///
+  /// Terminal: [start] and the crash-backoff restart stand down from here on.
+  /// A boot or replacement already in flight is waited for, then disposed; if
+  /// the caller's budget runs out first, [_start] disposes what it booted,
+  /// because it re-reads [_exiting] before installing the host.
+  Future<void> shutdownForExit() async {
+    _exiting = true;
+    _restartTimer?.cancel();
+    _restartTimer = null;
+    final inFlight = _restartFuture ?? _starting;
+    if (inFlight != null) {
+      await inFlight.catchError((_) {});
+    }
+    // Through the getter, not the field: a service whose host is supplied
+    // some other way still owns its shutdown.
+    final old = host;
+    _host = null;
+    await old?.dispose();
   }
 
   /// Restarts a LIVE runtime deliberately — extension enable/disable

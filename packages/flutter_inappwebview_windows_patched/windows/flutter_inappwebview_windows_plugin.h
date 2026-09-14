@@ -2,6 +2,7 @@
 #define FLUTTER_PLUGIN_FLUTTER_INAPPWEBVIEW_PLUGIN_PLUGIN_H_
 
 #include <flutter/plugin_registrar_windows.h>
+#include <flutter_messenger.h>
 
 namespace flutter_inappwebview_plugin
 {
@@ -22,16 +23,29 @@ namespace flutter_inappwebview_plugin
     std::unique_ptr<CookieManager> cookieManager;
     std::unique_ptr<PlatformUtil> platformUtil;
 
-    static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar);
+    static void RegisterWithRegistrar(flutter::PluginRegistrarWindows* registrar,
+      FlutterDesktopMessengerRef messenger);
 
-    FlutterInappwebviewWindowsPlugin(flutter::PluginRegistrarWindows* registrar);
+    FlutterInappwebviewWindowsPlugin(flutter::PluginRegistrarWindows* registrar,
+      FlutterDesktopMessengerRef messenger);
 
     virtual ~FlutterInappwebviewWindowsPlugin();
+
+    // Whether the messenger still reaches a running engine. False from the
+    // moment the engine's destructor starts: it clears the messenger's engine
+    // pointer BEFORE destroying the plugins, and FlutterDesktopMessengerSetCallback
+    // dereferences that pointer with no null check in Release. Every
+    // unregister that can run from a destructor checks this first.
+    bool isMessengerAvailable() const;
 
     // Disallow copy and assign.
     FlutterInappwebviewWindowsPlugin(const FlutterInappwebviewWindowsPlugin&) = delete;
     FlutterInappwebviewWindowsPlugin& operator=(const FlutterInappwebviewWindowsPlugin&) = delete;
   private:
+    // The engine-owned messenger, not ref-counted here: the engine holds its
+    // own reference until after Stop() has destroyed this plugin, so the ref
+    // outlives every use of it in this class.
+    FlutterDesktopMessengerRef messenger_ref_ = nullptr;
     // The ID of the WindowProc delegate registration.
     int window_proc_id = -1;
     std::optional<LRESULT> FlutterInappwebviewWindowsPlugin::HandleWindowProc(

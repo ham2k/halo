@@ -9,29 +9,63 @@
 // the process aborts inside sqlite3_close on the way out of every desktop
 // quit, which is a macOS crash report after each Sparkle update relaunch.
 //
+// The extension runtime is the other isolate that lets native code call back
+// into Dart (QuickJS's `send`), and the VM's teardown disables isolate
+// creation BEFORE it kills what is still running — so a runtime left alive
+// past the exit hook aborts the process on the way out of any quit that
+// catches a hook mid flight (HALO-394).
+//
 // The mutations these catch: deleting `services.db.close()` from
 // `closeDatabaseOnExit`, closing without draining first, leaving the
-// unclean-quit mark set after a close that worked, and leaving
+// unclean-quit mark set after a close that worked, leaving
 // `ErrorPolicy.appIsExiting` set on an app that is still running — which would
 // classify every write of a session that can no longer write at the quietest
-// tier there is.
+// tier there is — dropping the extension runtime's shutdown from the exit
+// path or moving it after the database close, letting a start sneak a
+// runtime back in once the exit has begun, installing a boot that was already
+// in flight, and letting a failed boot arm its retry timer on the way out.
 
 import 'dart:io';
 import 'dart:ui' show AppExitResponse;
 
 import 'package:drift/native.dart';
+import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/unclean_quit.dart';
 
 import '../support/halo_test_support.dart';
 
 Future<HaLoServices> _services() async {
   return (await makeHaLoServices()).services;
+}
+
+/// Answers every asset read with "no such asset" and counts them.
+///
+/// The extension runtime's boot starts with `assets/extensions/index.json`,
+/// so the count says whether a boot BEGAN, independent of whether it could
+/// have finished. The string cache is cleared first: an index another test
+/// in this process already loaded would otherwise be served from memory and
+/// never reach the channel.
+///
+/// Installed for the rest of the file, deliberately. The test binding's own
+/// asset loader is itself a mock on this channel, and clearing ours does not
+/// bring it back — a later real boot would then send to a platform that never
+/// answers and hang, where this one fails it in a line. So every test in this
+/// file that boots a real runtime runs BEFORE the first call to this.
+int Function() _countAssetReads(WidgetTester tester) {
+  rootBundle.clear();
+  var reads = 0;
+  tester.binding.defaultBinaryMessenger.setMockMessageHandler('flutter/assets', (message) async {
+    reads++;
+    return null;
+  });
+  return () => reads;
 }
 
 void main() {
@@ -96,6 +130,79 @@ void main() {
       ErrorPolicy.appIsExiting = false;
       expect(ErrorPolicy.decide(thrown).disposition, ErrorDisposition.notify,
           reason: 'the same failure mid-session is a defect');
+    });
+  });
+
+  group('the extension runtime', () {
+    testWidgets('is gone before the database closes, on the way out', (tester) async {
+      final host = FakeExtensionHost();
+      final harness = await makeHaLoServices(extensions: ExtensionServiceWithFakeHost(host));
+      final services = harness.services;
+      await services.db.customSelect('SELECT 1').get();
+      // The database is what hooks write through, so the runtime has to go
+      // FIRST: a dispose that finds it already closed is the wrong order.
+      var databaseWasOpen = false;
+      host.onDispose = () async {
+        await services.db.customSelect('SELECT 1').get();
+        databaseWasOpen = true;
+      };
+
+      expect(await tearDownForExit(services), AppExitResponse.exit);
+
+      expect(host.isDead, isTrue, reason: 'the exit path never disposed the runtime');
+      expect(databaseWasOpen, isTrue, reason: 'the runtime was disposed after the database closed');
+      await expectLater(services.db.customSelect('SELECT 1').get(), throwsA(isA<StateError>()));
+      // Drains the refused-exit timer the teardown arms.
+      await tester.pump(const Duration(seconds: 3));
+    });
+
+    testWidgets('a boot still in flight when the exit begins is disposed, not installed', (tester) async {
+      // The app starts the runtime unawaited at boot, and an update relaunch
+      // can quit within seconds of that. A shutdown that only looks at the
+      // host it can see finds none, returns, and the boot then installs one
+      // for the VM's teardown — the crash, with nothing left to report it.
+      // A REAL boot, so it stays ahead of the asset-counting tests below.
+      final service = ExtensionService();
+
+      await tester.runAsync(() async {
+        final boot = service.start();
+        await service.shutdownForExit();
+        await boot;
+      });
+
+      expect(service.ready, isFalse);
+    });
+
+    testWidgets('cannot be brought back once the exit has begun', (tester) async {
+      // A crash-backoff timer, or a credential push arriving mid-quit, both
+      // route through start(); a runtime booted from either would be alive
+      // for the VM's teardown, which is the whole crash. Observed at the
+      // asset channel rather than through `ready`: a boot that is allowed to
+      // begin reads the extension index first, whether or not it then
+      // succeeds — and a boot that fails after the exit began leaves no
+      // other trace, since its retry is (rightly) stood down too.
+      final assetReads = _countAssetReads(tester);
+      final service = ExtensionService();
+
+      await service.shutdownForExit();
+      await service.start();
+
+      expect(assetReads(), 0, reason: 'a start after the exit began must not even begin a boot');
+      expect(service.ready, isFalse);
+    });
+
+    testWidgets('a boot that fails during the quit schedules no retry', (tester) async {
+      // The retry timer would fire after the exit hook has answered, booting
+      // a runtime straight into the VM's teardown. Its absence is what the
+      // widget test checks on the way out: a timer left pending fails it.
+      _countAssetReads(tester); // every asset read fails, so this boot does
+      final service = ExtensionService();
+
+      final boot = service.start();
+      await service.shutdownForExit();
+      await boot;
+
+      expect(service.ready, isFalse);
     });
   });
 

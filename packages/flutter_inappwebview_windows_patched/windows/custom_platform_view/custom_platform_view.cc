@@ -1,4 +1,5 @@
 #include "../utils/log.h"
+#include "../flutter_inappwebview_windows_plugin.h"
 #include "custom_platform_view.h"
 
 #include <flutter/event_stream_handler_functions.h>
@@ -112,12 +113,13 @@ namespace flutter_inappwebview_plugin
     return kDefaultCursorName;
   }
 
-  CustomPlatformView::CustomPlatformView(flutter::BinaryMessenger* messenger,
+  CustomPlatformView::CustomPlatformView(const FlutterInappwebviewWindowsPlugin* plugin,
+    flutter::BinaryMessenger* messenger,
     flutter::TextureRegistrar* texture_registrar,
     GraphicsContext* graphics_context,
     HWND hwnd,
     std::shared_ptr<flutter_inappwebview_plugin::InAppWebView> webView)
-    : hwnd_(hwnd), view(std::move(webView)), texture_registrar_(texture_registrar)
+    : plugin_(plugin), hwnd_(hwnd), view(std::move(webView)), texture_registrar_(texture_registrar)
   {
 #ifdef HAVE_FLUTTER_D3D_TEXTURE
     texture_bridge_ =
@@ -205,8 +207,10 @@ namespace flutter_inappwebview_plugin
     // channel), so without this the messenger keeps a dangling callback
     // registered after this destructor returns -- a later messenger
     // callback-map mutation (e.g. another platform view registering) can
-    // then walk into freed memory.
-    if (event_channel_) {
+    // then walk into freed memory. Only while the engine is still there to
+    // unregister from: at engine teardown the messenger's engine is already
+    // null, and this call would then read through it (HALO-394).
+    if (event_channel_ && plugin_ && plugin_->isMessengerAvailable()) {
       event_channel_->SetStreamHandler(nullptr);
     }
     event_sink_ = nullptr;

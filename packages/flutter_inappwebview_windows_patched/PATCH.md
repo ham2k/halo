@@ -1,19 +1,23 @@
-# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, four files changed
+# Vendored `flutter_inappwebview_windows` 0.7.0-beta.3, eight files changed
 
 This is a copy of upstream's package. Every file it carries is byte-identical
 to the published one except
 `windows/custom_platform_view/custom_platform_view.cc`'s
-`CustomPlatformView` destructor, one hunk in
-`windows/in_app_webview/in_app_webview_manager.cpp`'s `createInAppWebView`,
+`CustomPlatformView` destructor and constructor (and the constructor's
+declaration in `custom_platform_view.h`), the two `CustomPlatformView`
+constructions in `windows/in_app_webview/in_app_webview_manager.cpp`'s
+`createInAppWebView` plus one hunk in its keep-alive branch,
 `windows/webview_environment/webview_environment.cpp`'s
-`WebViewEnvironment` destructor, and two build-settings lines added to
-`windows/CMakeLists.txt`.
+`WebViewEnvironment` destructor, one method and one constructor argument
+added to `windows/flutter_inappwebview_windows_plugin.h`/`.cpp` with the
+argument supplied from `windows/flutter_inappwebview_windows_plugin_c_api.cpp`,
+and two build-settings lines added to `windows/CMakeLists.txt`.
 
 ```diff
    CustomPlatformView::~CustomPlatformView()
    {
      debugLog("dealloc CustomPlatformView");
-+    if (event_channel_) {
++    if (event_channel_ && plugin_ && plugin_->isMessengerAvailable()) {
 +      event_channel_->SetStreamHandler(nullptr);
 +    }
      event_sink_ = nullptr;
@@ -42,11 +46,32 @@ to the published one except
    WebViewEnvironment::~WebViewEnvironment()
    {
      debugLog("dealloc WebViewEnvironment");
-+    if (channelDelegate) {
++    if (channelDelegate && plugin && plugin->isMessengerAvailable()) {
 +      channelDelegate->UnregisterMethodCallHandler();
 +    }
      if (environment_) {
 ```
+
+```diff
++  bool FlutterInappwebviewWindowsPlugin::isMessengerAvailable() const
++  {
++    return messenger_ref_ != nullptr && FlutterDesktopMessengerIsAvailable(messenger_ref_);
++  }
+```
+
+```diff
+   flutter_inappwebview_plugin::FlutterInappwebviewWindowsPlugin::RegisterWithRegistrar(
+     flutter::PluginRegistrarManager::GetInstance()
+-    ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar));
++    ->GetRegistrar<flutter::PluginRegistrarWindows>(registrar),
++    FlutterDesktopPluginRegistrarGetMessenger(registrar));
+```
+
+with the `FlutterDesktopMessengerRef` threaded through `RegisterWithRegistrar`
+and the constructor into a `messenger_ref_` member, and `CustomPlatformView`
+taking the plugin as a new first constructor argument (kept as `plugin_`) at
+both of `createInAppWebView`'s `std::make_unique<CustomPlatformView>(...)`
+sites, so its destructor has something to ask.
 
 ```diff
  flutter_inappwebview_windows_apply_standard_settings(${PLUGIN_NAME})
@@ -223,9 +248,49 @@ channel — `channelDelegate->UnregisterMethodCallHandler()`, not left to a
 caller — since (unlike `CustomPlatformView`'s `view`) nothing about
 `WebViewEnvironment`'s teardown needs its delegate's handler to survive.
 
+## The teardown guard (engine gone before plugins)
+
+The two unregister-in-destructor hunks above are exactly right while the
+engine is alive and a null dereference once it is not. On Windows the
+engine's destructor runs `messenger_->SetEngine(nullptr)` FIRST and only then
+`Stop()`, which is what destroys every plugin
+(`shell/platform/windows/flutter_windows_engine.cc`). So by the time
+`~FlutterInappwebviewWindowsPlugin` tears down its managers — and with them
+every `WebViewEnvironment` and `CustomPlatformView` — the messenger no longer
+reaches an engine, and `FlutterDesktopMessengerSetCallback` reads through
+that null pointer: it only `FML_DCHECK`s `FlutterDesktopMessengerIsAvailable`,
+which is compiled out of Release (`flutter_windows.cc`). The read lands at
+offset `0x1e8` — `message_dispatcher_`'s slot in `FlutterWindowsEngine` — on
+every quit of a session that ever hosted a webview.
+
+Sentry evidence (`HALO-394` / `HALO-NEXT-71`, `72`, `76`, earlier grouped as
+`HALO-NEXT-5S`/`5W`/`59` before engine symbols resolved):
+`FlutterDesktopMessengerSetCallback (flutter_windows.cc:407)` →
+`FlutterWindowsEngine::message_dispatcher` → `std::unique_ptr<T>::get`,
+`EXCEPTION_ACCESS_VIOLATION_READ / 0x1e8`, under
+`FlutterDesktopViewControllerDestroy` → `~FlutterWindowsEngine` → `Stop`,
+first seen on the build that shipped the `~WebViewEnvironment` hunk. No
+published plugin in this app unregisters a channel from a destructor; these
+two hunks were the only callers.
+
+The guard asks the engine rather than keeping a flag of its own:
+`FlutterDesktopMessengerIsAvailable` is the engine's own record of whether
+`SetEngine(nullptr)` has run. The raw `FlutterDesktopMessengerRef` it needs
+is in hand only at the C entry point — the C++ wrapper keeps
+`PluginRegistrar::registrar()` protected, so a plugin cannot reach it later —
+which is why `flutter_inappwebview_windows_plugin_c_api.cpp` takes
+`FlutterDesktopPluginRegistrarGetMessenger(registrar)` there and hands it
+in. The ref is not AddRef'd: the engine holds its own reference until after
+`Stop()` has destroyed the plugin, so it outlives every use here. A flag set
+at the top of the plugin destructor would be true at the same moments today
+and would be one more thing to keep in step with the engine's teardown
+order. Skipping the unregister is safe in that state: the callback map it
+would have been removed from dies with the engine an instant later, and
+nothing can dispatch into it in between.
+
 ## Verifying this copy
 
-Everything except the four hunks above must match the published package. Diff
+Everything except the hunks above must match the published package. Diff
 against a freshly extracted archive, **never against `~/.pub-cache`** — a
 build writes generated files into the cached copy too, so contamination on
 both sides cancels out. Run from the repo root:
@@ -238,7 +303,7 @@ diff -r -x example -x PATCH.md \
      "$upstream" packages/flutter_inappwebview_windows_patched
 ```
 
-A clean run prints only the four hunks above.
+A clean run prints only the hunks above.
 
 ## No local verification
 
@@ -255,15 +320,17 @@ been verified throughout.
 
 Copy the new package over this directory, drop its `example/`, re-apply the
 CMakeLists.txt PDB hunk unconditionally (it's instrumentation, not a bugfix —
-keep it regardless of what upstream has changed), and re-apply the other three
+keep it regardless of what upstream has changed), and re-apply the race-fix
 hunks if upstream hasn't fixed the underlying races itself (check
 `CustomPlatformView`'s destructor, the keep-alive branch of
 `createInAppWebView`, and `WebViewEnvironment`'s destructor first — a fix
 might land under a different shape, and check whether `ChannelDelegate`
 itself finally unregisters in its own destructor, which would obsolete all
-three at once), update the version above and in the archive URL, and re-run
-the diff. Do not hand-merge — this directory is a copy, not a maintained
-fork.
+three at once). Whatever shape they take, any unregister that can run from a
+destructor keeps the `isMessengerAvailable()` guard, or the quit crash comes
+back with the engine teardown order unchanged. Update the version above and
+in the archive URL, and re-run the diff. Do not hand-merge — this directory
+is a copy, not a maintained fork.
 
 **If the clock-discipline check flags a file in here, do not fix the
 file.** Same exemption rule as `flutter_inappwebview_macos_patched` — add
@@ -272,9 +339,10 @@ than editing a vendored copy.
 
 ## Deleting this
 
-Drop the directory once an upstream release fixes the same races (check the
-three race-fix hunks, not just the version number — a bump alone proves
-nothing) — along with **both** `flutter_inappwebview_windows` override
+Drop the directory once an upstream release fixes the same races and guards
+its own teardown against a messenger whose engine is gone (check the hunks,
+not just the version number — a bump alone proves nothing) — along with
+**both** `flutter_inappwebview_windows` override
 entries, the one in `app/pubspec.yaml` and the one in `app_dist/pubspec.yaml`.
 The PDB hunk isn't a reason to keep this directory on its own: if the other
 three are ever gone, drop the vendored copy and get the same debug info by

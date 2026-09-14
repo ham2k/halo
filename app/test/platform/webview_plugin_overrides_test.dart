@@ -5,7 +5,7 @@
 // exact pin on the umbrella, the five version pins in `dependency_overrides`
 // that hold the rest of the family still, the three overrides that
 // displace the published Linux, macOS and Windows implementations outright,
-// the one patched line inside the vendored macOS copy, and the four patched
+// the one patched line inside the vendored macOS copy, and the five patched
 // hunks inside the vendored Windows copy.
 //
 // All of it is invisible to every other signal. Delete an override and the
@@ -380,6 +380,47 @@ void main() {
           'registered in the messenger\'s callback map after the '
           'environment is destroyed (HALO-290/HALO-NEXT-59), not a test '
           'failure',
+    );
+  });
+
+  test('the vendored Windows copy skips both teardown unregisters once the engine is gone', () {
+    // The two unregister-in-destructor hunks above are correct while the
+    // engine is alive and a null dereference once it is not: the engine's
+    // destructor clears the messenger's engine pointer BEFORE destroying the
+    // plugins, and FlutterDesktopMessengerSetCallback reads through that
+    // pointer unchecked in Release. Without these guards every quit that has
+    // ever hosted a webview dies in engine teardown (HALO-394 /
+    // HALO-NEXT-71/72/76). Same re-vendor caveat as the other tests here.
+    const pluginPath = '../packages/flutter_inappwebview_windows_patched/'
+        'windows/flutter_inappwebview_windows_plugin.cpp';
+    const viewPath = '../packages/flutter_inappwebview_windows_patched/'
+        'windows/custom_platform_view/custom_platform_view.cc';
+    const environmentPath = '../packages/flutter_inappwebview_windows_patched/'
+        'windows/webview_environment/webview_environment.cpp';
+    for (final path in [pluginPath, viewPath, environmentPath]) {
+      if (!File(path).existsSync()) fail('No $path — this test cannot answer the question it exists to answer.');
+    }
+    expect(
+      File(pluginPath).readAsStringSync(),
+      contains('FlutterDesktopMessengerIsAvailable('),
+      reason: 'the plugin answers isMessengerAvailable() from the engine\'s own '
+          'availability check; a flag of our own would have to be set at '
+          'exactly the right moment, and this is the moment the engine '
+          'already tracks',
+    );
+    expect(
+      File(viewPath).readAsStringSync(),
+      contains('if (event_channel_ && plugin_ && plugin_->isMessengerAvailable()) {'),
+      reason: 'the event-channel unregister in ~CustomPlatformView must be '
+          'skipped once the engine is gone, or it reads through a null '
+          'engine at every quit',
+    );
+    expect(
+      File(environmentPath).readAsStringSync(),
+      contains('if (channelDelegate && plugin && plugin->isMessengerAvailable()) {'),
+      reason: 'the delegate unregister in ~WebViewEnvironment must be skipped '
+          'once the engine is gone, or it reads through a null engine at '
+          'every quit',
     );
   });
 
