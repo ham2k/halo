@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // Publishes a `.h2kext` to the extension catalog — catalog.ham2k.net, whose
 // SPEC.md lives in the ham2k/catalog.ham2k.net repo; the § references below

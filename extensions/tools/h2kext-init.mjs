@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // Scaffolds an extension project (HALO-452, docs/extensions/distribution.md).
 //

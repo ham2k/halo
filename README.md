@@ -84,4 +84,10 @@ cd app && flutter run -d windows
 ## License
 
 [MPL-2.0](LICENSE), following the rest of the Ham2K projects. Every source
-file carries the SPDX header.
+file it covers carries the SPDX header.
+
+What an extension author builds against is the exception, and is MIT: the SDK
+([extensions/sdk](extensions/sdk/LICENSE)) with the worked examples published
+beside it, and the build and packaging tools
+([extensions/tools](extensions/tools/LICENSE)). An extension written with them
+can be licensed however its author likes.

@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // Builds this sample IN THIS REPO, where the SDK and the tools are workspace
 // paths. The copy that ships inside `@ham2k/extension-sdk` carries the plain

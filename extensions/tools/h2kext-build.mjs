@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // Building an extension: the esbuild settings a Ham2K bundle needs, and the
 // plugin that takes the host up on the libraries it carries (HALO-442,

@@ -1,6 +1,6 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
-
+// SPDX-License-Identifier: MIT
+//
 // Set before anything reads a Date: several of these assertions are about
 // NOT rendering in the host's zone, and a test process running in UTC could
 // not tell the difference. Node re-reads TZ per call, so this is enough.

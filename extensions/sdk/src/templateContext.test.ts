@@ -1,6 +1,6 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
-
+// SPDX-License-Identifier: MIT
+//
 // A log's dates are UTC, and a test process in UTC can't tell a correct
 // conversion from a missing one.
 process.env.TZ = "America/New_York"

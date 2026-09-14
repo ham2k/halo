@@ -1,3 +1,6 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MIT
+
 import i18next from "i18next";
 
 /**

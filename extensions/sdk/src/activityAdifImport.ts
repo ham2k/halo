@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // The inverse of the `adifFields` contributions the reference programs write:
 // `SIG`/`SIG_INFO` for the reference the OTHER station was at, `MY_SIG`/

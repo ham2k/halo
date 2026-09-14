@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // Activity scoring: the rules an "on the air" reference program is scored by —
 // how many contacts a reference still needs before it counts as activated,

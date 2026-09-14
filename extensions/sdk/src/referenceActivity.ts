@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // The plain reference-award activity: a program that is a list of places with
 // codes, activated by working people from one, with no API of its own beyond a

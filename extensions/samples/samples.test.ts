@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // The samples (HALO-452). They ship inside `@ham2k/extension-sdk` as the
 // worked examples an author — or the agent writing for one — copies, so the

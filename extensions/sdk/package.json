@@ -10,7 +10,7 @@
     "sdk",
     "logging"
   ],
-  "license": "MPL-2.0",
+  "license": "MIT",
   "author": "Sebastian Delmont <sd@ham2k.com>",
   "homepage": "https://ham2k.com",
   "repository": {

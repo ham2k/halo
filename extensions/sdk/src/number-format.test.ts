@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // These cases are pinned against what JavaScriptCore produced, because that is
 // what macOS and iOS users saw before the engine swap — the polyfill exists to

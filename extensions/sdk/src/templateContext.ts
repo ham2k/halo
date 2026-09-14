@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // The values a template can name, and the ONE place each of them is spelled.
 // docs/extensions/templates.md is this file's reference documentation — an

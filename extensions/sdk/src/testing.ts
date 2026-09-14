@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // Running a hook without the app. An extension's hooks are the part the app
 // actually calls, and until now the only way to exercise one was to build the

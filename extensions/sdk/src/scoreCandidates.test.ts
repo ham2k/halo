@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // `scoreCandidates` is what the Spots Panel asks to find out which spots are
 // already worked. What these tests pin down is that batching the question does

@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // @ham2k/extension-sdk — the surface extensions import. Each extension bundle carries
 // its own copy of this module (esbuild bundles it in), while all shared

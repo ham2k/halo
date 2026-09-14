@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // `applyLatLonFromApiFields` is the one place POTA's and SOTA's live-API
 // fallback bridges a coordinate onto a `Ref` — the trap it exists to catch

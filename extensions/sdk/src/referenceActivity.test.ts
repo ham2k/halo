@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // `allowsMultiple` is read by the UI (activities_view.dart's
 // `allowsMultipleRefsOfType`) straight off the control descriptor this hook

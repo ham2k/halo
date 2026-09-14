@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // Per-source location accuracy ranks (lower = more precise), ported from
 // app-polo's LOCATION_ACCURACY. A 6-char grid is precise enough for our

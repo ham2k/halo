@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // Pure, host-independent helpers for the `settingsPanel`/`account` hook
 // dispatch in kernel.ts — pulled out (same pattern as

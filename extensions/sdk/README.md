@@ -67,7 +67,3 @@ in, so your editor works with only this package installed.
 
 Install one only to `inline` it — to ship your own copy because you need a
 version the host does not carry.
-
-## License
-
-MPL-2.0

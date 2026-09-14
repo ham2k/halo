@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // The scaffold (HALO-452). What it writes has to be a project that BUILDS —
 // an author, or the agent working for one, starts from this and reads the

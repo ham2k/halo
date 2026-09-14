@@ -101,7 +101,3 @@ A channel says how finished a release is â€” `stable`, `unstable`, `bleeding` â€
 not which app edition is asking. They cascade upward, so `stable` reaches
 everyone and `bleeding` reaches only somebody who asked for it. `--channel` is
 optional and defaults to `stable`.
-
-## License
-
-MPL-2.0

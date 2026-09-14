@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // The catalog publisher (catalog.ham2k.net SPEC §5.1 and §15). What it sends
 // is the server's contract, most of what it does is refuse before sending, and

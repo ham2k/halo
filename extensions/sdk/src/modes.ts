@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // When two mode strings name the same emission for the purpose of duplicate
 // detection. Scorers compare a candidate's `band|mode` against the ones a

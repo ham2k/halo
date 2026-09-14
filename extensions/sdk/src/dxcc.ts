@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // Shared DXCC entity resolution — parses a callsign against the bundled
 // country file (no network) and, separately, looks up that entity's flag

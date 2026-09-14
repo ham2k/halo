@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // The one templating engine, for every place HaLo turns log data into text:
 // panel documents, export filenames, ADIF field values (see

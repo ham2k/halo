@@ -1,5 +1,5 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
-// SPDX-License-Identifier: MPL-2.0
+// SPDX-License-Identifier: MIT
 //
 // Replacing the sandbox's `Date` is the highest-leverage line in the extension
 // runtime: get it wrong and EVERY date in EVERY extension is wrong at once, or
