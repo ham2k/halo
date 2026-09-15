@@ -8,15 +8,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/src/logging_controls_draft.dart';
 import 'package:halo_widgets/src/logging_controls_time.dart';
 
 class _Harness {
   Qso? editingQso;
-  bool populating = false;
+  /// Only its populating bracket is read by the model under test; the
+  /// draft's own data paths are never asked, so it has nothing to read.
+  late final draft = QsoDraft(config: () => throw UnsupportedError('the draft is not read here'));
   int notifications = 0;
   late final model = TimeControlModel(
     config: () => (editingQso: editingQso),
-    isPopulating: () => populating,
+    draft: draft,
   )..addListener(() => notifications++);
 }
 
@@ -56,9 +59,10 @@ void main() {
   test('a write while the panel populates is not the operator\'s either', () {
     final h = _Harness();
     h.model.bind();
-    h.populating = true;
-    h.model.timeController.text = '12:34';
-    h.model.dateController.text = '2026-09-10';
+    h.draft.populate(() {
+      h.model.timeController.text = '12:34';
+      h.model.dateController.text = '2026-09-10';
+    });
     expect(h.model.manualStartAtMillis, isNull);
     h.model.dispose();
   });

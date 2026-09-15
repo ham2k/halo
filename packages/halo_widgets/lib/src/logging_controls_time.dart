@@ -13,6 +13,7 @@ import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
+import 'logging_controls_draft.dart';
 import 'panel_model.dart';
 import 'spacing.dart';
 import 'theme.dart';
@@ -22,15 +23,15 @@ typedef TimeControlConfig = ({Qso? editingQso});
 
 /// The Time control's state. See the file comment.
 class TimeControlModel extends ChangeNotifier with PanelModel {
-  TimeControlModel({required this.config, required this.isPopulating});
+  TimeControlModel({required this.config, required this.draft});
 
   /// The panel's configuration as it stands right now.
   final TimeControlConfig Function() config;
 
-  /// Whether the panel is writing the fields itself rather than the
-  /// operator typing into them — a programmatic write is never a manual
-  /// override.
-  final bool Function() isPopulating;
+  /// The draft the panel composes — read for [QsoDraft.isPopulating]: a
+  /// programmatic write to the fields is never a manual override. The
+  /// model's own seed runs under the same bracket ([seedFields]).
+  final QsoDraft draft;
 
   final timeController = TextEditingController();
   final dateController = TextEditingController();
@@ -47,11 +48,6 @@ class TimeControlModel extends ChangeNotifier with PanelModel {
   /// an edit the next time the cursor moved.
   String _lastText = '';
 
-  /// True while [seedFields] writes the controllers: without it those
-  /// programmatic sets would read back as a manual override — freezing
-  /// auto-timestamping just for opening the Time chip, and making "Now"
-  /// re-freeze the clock it just released.
-  bool _seeding = false;
 
   bool _bound = false;
 
@@ -112,15 +108,21 @@ class TimeControlModel extends ChangeNotifier with PanelModel {
   /// (Re-)populates the time/date fields from [effectiveStartAtMillis], or
   /// from the current time if that's null — called whenever the Time
   /// control is opened, so it never shows a stale snapshot from an earlier
-  /// open. Display-only: never read back as an override (see [_seeding]).
+  /// open. Display-only: never read back as an override.
   void seedFields() {
     final millis = effectiveStartAtMillis;
     final dt = millis != null ? DateTime.fromMillisecondsSinceEpoch(millis, isUtc: true) : nowUtc();
-    _seeding = true;
-    timeController.text = fmtTime(dt);
-    dateController.text = fmtDate(dt);
-    recordText();
-    _seeding = false;
+    // Under the bracket: without it these programmatic sets would read back
+    // as a manual override — freezing auto-timestamping just for opening the
+    // Time chip, and making "Now" re-freeze the clock it just released. The
+    // bracket is the panel-wide one, so every listener that stands down for a
+    // programmatic write stands down here too; these two controllers have no
+    // listener but this model's own.
+    draft.populate(() {
+      timeController.text = fmtTime(dt);
+      dateController.text = fmtDate(dt);
+      recordText();
+    });
   }
 
   /// Back to automatic timestamping.
@@ -140,7 +142,7 @@ class TimeControlModel extends ChangeNotifier with PanelModel {
     final text = '${timeController.text} ${dateController.text}';
     final changed = text != _lastText;
     _lastText = text;
-    if (_seeding || isPopulating() || !changed) return;
+    if (draft.isPopulating || !changed) return;
     final time = timeController.text.split(':');
     final date = dateController.text.split('-');
     if (time.length != 2 || date.length != 3) return;

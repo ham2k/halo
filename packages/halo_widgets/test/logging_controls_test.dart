@@ -6540,7 +6540,7 @@ void main() {
 
   testWidgets('populating from a suggested QSO clears a lingering command state', (tester) async {
     // Regression test: type a complete NOTE command, then tap a spot — the
-    // populate path runs under _populating, which suppresses
+    // populate path runs under the populate bracket, which suppresses
     // _onCallChanged's own per-keystroke reset, so without an explicit
     // reset the call field would show W1AW while still in the note's
     // free-prose mode, and the stale interpretation would make Space
@@ -8183,7 +8183,7 @@ void main() {
   testWidgets(
       'HALO-32: a radio-driven frequency-only update (no mode of its own) never runs the band-plan mode guess',
       (tester) async {
-    // The test above can't actually tell a broken `_populating` guard from a
+    // The test above can't actually tell a broken populate guard from a
     // working one: `RadioControlModel.seedFromVfo`'s own `if (vfo.mode != null)
     // mode = vfo.mode!` unconditionally overwrites any stray guess right after,
     // as long as the radio reports SOME mode. Here `fakeRadio` never has a
@@ -8288,7 +8288,7 @@ void main() {
     expect(scoredBands, ['20m']);
 
     // The rig moves to another band on its own. The pills are scored
-    // against band and mode, and the seed runs under `_populating` — which
+    // against band and mode, and the seed runs under the populate bracket — which
     // suppressed the rescore, leaving them describing a band the operator
     // has left.
     fakeRadio.setVfo('vfoA', freq: 7040, mode: 'CW');
@@ -9348,7 +9348,7 @@ void main() {
     // Unlike the cold-start case above, a suggestedQso arriving via
     // didUpdateWidget (a second spot tapped on an already-mounted widget,
     // line ~1807) runs AFTER `_onFreqChanged`'s listener is attached — the
-    // one path where a broken `_populating` guard would actually let a
+    // one path where a broken populate guard would actually let a
     // stray band-plan guess through. Build with no suggestion first so the
     // widget is fully mounted (Mode defaults to SSB, per tunedRadio), then
     // apply a suggestion with a frequency but no mode.
@@ -10011,7 +10011,7 @@ void main() {
     await tester.pump();
     await openControl(tester, MdiIcons.radio);
 
-    // The suggestion wrote the field under `_populating`. If that write
+    // The suggestion wrote the field under the populate bracket. If that write
     // didn't move the edit baseline, this bare cursor placement reads as an
     // edit and live follow silently stops.
     await tester.tap(find.widgetWithText(TextField, 'Frequency'));
@@ -10135,7 +10135,7 @@ void main() {
   testWidgets('selecting a suggestedQso (spot/deeplink) triggers a lookup, not just population (#315)', (tester) async {
     // #315: tapping a spot populates the call field but must also run a
     // callsign lookup — the same as if the operator had typed the call.
-    // Regressed because _applySuggestedQso populated under `_populating`,
+    // Regressed because _applySuggestedQso populated under the bracket,
     // which suppresses _onCallChanged's own lookup, and never scheduled one.
     var lookups = 0;
     Future<Map<String, dynamic>?> lookup(
@@ -11029,7 +11029,7 @@ void main() {
     });
 
     testWidgets('opening the pane over a guess and saving does not make the guess an entered value', (tester) async {
-      // The trap the whole `_theirExtra` before/after comparison exists for:
+      // The trap the whole `theirExtra` before/after comparison exists for:
       // a guess promoted to an entered value stops tracking the lookup, and
       // an operator who merely looked at the pane has stated nothing.
       await tester.pumpWidget(hostWithGuess({'city': 'Newington', 'state': 'CT', 'cqZone': 5}));
@@ -12199,7 +12199,7 @@ void main() {
 
       // Nothing was touched, so the second button reads Delete, exactly as
       // it would for an unmodified QSO — not Revert, which comparing against
-      // `_getCurrentQsoData()` (a QSO's own fields, all blank here) would
+      // `QsoDraft.toData()` (a QSO's own fields, all blank here) would
       // wrongly read as "always changed".
       expect(secondButton(tester, deleteIcon).onPressed, isNotNull);
 

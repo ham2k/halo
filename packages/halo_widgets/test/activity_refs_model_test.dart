@@ -12,6 +12,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/src/logging_controls_draft.dart';
 import 'package:halo_widgets/src/logging_controls_refs.dart';
 import 'package:halo_widgets/src/ref_text_input.dart';
 
@@ -46,7 +47,9 @@ class _Harness {
   List<Map<String, dynamic>> controls;
   Qso? editingQso;
   bool locked = false;
-  bool populating = false;
+  /// Only its populating bracket is read by the model under test; the
+  /// draft's own data paths are never asked, so it has nothing to read.
+  late final draft = QsoDraft(config: () => throw UnsupportedError('the draft is not read here'));
   String callAtCursor = 'W1AW';
   Future<List<Map<String, dynamic>>?> Function(Map<String, dynamic> qso)? refresh;
   final refreshedFor = <String>[];
@@ -64,7 +67,7 @@ class _Harness {
       fieldsLocked: () => locked,
       callAtCursor: () => callAtCursor,
     ),
-    isPopulating: () => populating,
+    draft: draft,
     draftQsoData: (call) {
       refreshedFor.add(call);
       return {'their': {'call': call}};
@@ -126,9 +129,7 @@ void main() {
       h.locked = true;
       expect(h.model.applyGuessRefs(proposed, 'W1AW'), isFalse);
       h.locked = false;
-      h.populating = true;
-      expect(h.model.applyGuessRefs(proposed, 'W1AW'), isFalse);
-      h.populating = false;
+      h.draft.populate(() => expect(h.model.applyGuessRefs(proposed, 'W1AW'), isFalse));
       expect(h.model.applyGuessRefs(proposed, 'W1AW'), isTrue);
     });
 

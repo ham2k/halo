@@ -23,6 +23,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'density.dart';
+import 'logging_controls_draft.dart';
 import 'logging_controls_metrics.dart';
 import 'mdi_icons.g.dart';
 import 'panel_model.dart';
@@ -52,7 +53,7 @@ typedef RadioControlConfig = ({
 class RadioControlModel extends ChangeNotifier with PanelModel {
   RadioControlModel({
     required this.config,
-    required this.isPopulating,
+    required this.draft,
     required this.onRescore,
   }) {
     bandFocus = _dropdownCommitFocusNode(
@@ -72,11 +73,10 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// The panel's configuration as it stands right now.
   final RadioControlConfig Function() config;
 
-  /// Whether the panel is writing the fields itself — a QSO opened for
-  /// editing, a suggestion, a command — rather than the operator typing into
-  /// them. A programmatic write must neither arm a push back to the radio
-  /// nor count as the operator's own edit.
-  final bool Function() isPopulating;
+  /// The draft the panel composes — read for [QsoDraft.isPopulating]: a
+  /// programmatic write to the frequency field is never the operator's own
+  /// edit, and never a push back to the radio.
+  final QsoDraft draft;
 
   /// Asks the panel to rescore the candidate contact: the dupe, New Band and
   /// New Mode notices are scored against band and mode.
@@ -482,7 +482,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
       manualBand ??= _lastBandFromFreq;
     }
     notify();
-    final populating = isPopulating();
+    final populating = draft.isPopulating;
     // Band (derived from frequency) drives the New Band notice — rescore.
     if (!populating) onRescore();
     // Editing an existing QSO applies changes to the QSO, never the VFO —

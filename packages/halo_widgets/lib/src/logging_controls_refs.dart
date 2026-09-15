@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'icon_resolver.dart';
+import 'logging_controls_draft.dart';
 import 'panel_model.dart';
 import 'ref_text_input.dart';
 import 'secondary_control_row.dart';
@@ -45,7 +46,7 @@ typedef ActivityRefsConfig = ({
 class ActivityRefsModel extends ChangeNotifier with PanelModel {
   ActivityRefsModel({
     required this.config,
-    required this.isPopulating,
+    required this.draft,
     required this.draftQsoData,
     required this.onControlsRefreshed,
   });
@@ -53,9 +54,9 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
   /// The panel's configuration as it stands right now.
   final ActivityRefsConfig Function() config;
 
-  /// Whether the panel is writing the fields itself rather than the operator
-  /// typing into them — a guess must not land on a draft mid-population.
-  final bool Function() isPopulating;
+  /// The draft the panel composes — read for [QsoDraft.isPopulating]: a
+  /// guess must not land on a draft mid-population.
+  final QsoDraft draft;
 
   /// The draft as the panel would log it for [call] — what the per-QSO
   /// refresh is asked against.
@@ -232,7 +233,7 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
   /// already in the log was made.
   bool applyGuessRefs(Map<String, dynamic>? result, String forCall) {
     final config = this.config();
-    if (config.editingQso != null || config.fieldsLocked() || isPopulating()) return false;
+    if (config.editingQso != null || config.fieldsLocked() || draft.isPopulating) return false;
     final guess = result?['guess'];
     if (guess is! Map) return false;
     final proposed = asQsonList(guess['refs'])?.whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()) ?? const [];

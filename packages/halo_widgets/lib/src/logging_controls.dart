@@ -28,7 +28,6 @@
 // async involvement (lookups, ref decoration) off the keystroke path.
 
 import 'dart:async';
-import 'dart:convert';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
@@ -47,6 +46,7 @@ import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
 import 'logging_controls_command.dart';
 import 'logging_controls_controller.dart';
+import 'logging_controls_draft.dart';
 import 'logging_controls_exchange.dart';
 import 'logging_controls_focus.dart';
 import 'logging_controls_lookup.dart';
@@ -68,7 +68,6 @@ import 'secondary_control_row.dart';
 import 'spacing.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
-import 'timed_undo_slot.dart';
 import 'wall_clock.dart';
 
 
@@ -654,7 +653,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The Radio control's state — frequency, band and mode, the Band/Mode
   /// dropdowns, and the VFO mirror. See [RadioControlModel]; what stays here
   /// is when it moves and what moves with it.
-  late final _radio = RadioControlModel(
+  late final RadioControlModel _radio = RadioControlModel(
     config: () => (
       radioService: widget.radioService,
       editingQso: widget.editingQso,
@@ -663,7 +662,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       enabledBands: widget.enabledBands,
       enabledModes: widget.enabledModes,
     ),
-    isPopulating: () => _populating,
+    draft: _draft,
     onRescore: _lookup.scheduleScore,
   );
   final _sentController = TextEditingController();
@@ -706,7 +705,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     ),
     activeCall: () => _callAtCursor,
     isCallInfoActive: () => _callInfoActive,
-    qsoData: (call) => _getCurrentQsoData(callOverride: call),
+    qsoData: (call) => _draft.toData(callOverride: call),
     segmented: () => _segmented,
     onResolved: _onLookupResolved,
     // A stale QSO-scoped placeholder/transform must not linger onto the next
@@ -726,13 +725,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       onMessageChanged: widget.onCommandMessageChanged,
     ),
     callText: () => _callText,
-    qsoData: _getCurrentQsoData,
+    qsoData: _draft.toData,
   );
 
   /// The Time control — when the entry is stamped. See [TimeControlModel].
-  late final _time = TimeControlModel(
+  late final TimeControlModel _time = TimeControlModel(
     config: () => (editingQso: widget.editingQso),
-    isPopulating: () => _populating,
+    draft: _draft,
   );
 
   /// The contest exchange fields — see [ExchangeFieldsModel]. What stays
@@ -747,7 +746,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       sequences: widget.qsosRepository.sequences,
       call: _call,
     ),
-    draftQsoData: _getCurrentQsoData,
+    draftQsoData: _draft.toData,
     onPrimaryFieldKeyEvent: _onPrimaryFieldKeyEvent,
     onFocusChanged: _onExchangeFocusChanged,
   );
@@ -756,7 +755,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// [ActivityRefsModel]. What stays here is which of those controls are
   /// PRIMARY fields ([_textControls]), and when the draft is cleared,
   /// restored or logged.
-  late final _refs = ActivityRefsModel(
+  late final ActivityRefsModel _refs = ActivityRefsModel(
     config: () => (
       activityControls: widget.activityControls,
       refreshActivityControls: widget.refreshActivityControls,
@@ -764,9 +763,35 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       fieldsLocked: () => _fieldsLocked,
       callAtCursor: () => _callAtCursor,
     ),
-    isPopulating: () => _populating,
-    draftQsoData: (call) => _getCurrentQsoData(callOverride: call),
+    draft: _draft,
+    draftQsoData: (call) => _draft.toData(callOverride: call),
     onControlsRefreshed: _onActivityControlsRefreshed,
+  );
+
+  /// The QSO being composed or edited, beyond what the fields hold — see
+  /// [QsoDraft]. The fields' controllers are this panel's; the draft reads
+  /// and writes them through its configuration.
+  late final QsoDraft _draft = QsoDraft(
+    config: () => (
+      operation: widget.operation,
+      editingQso: widget.editingQso,
+      callController: _callController,
+      sentController: _sentController,
+      rcvdController: _rcvdController,
+      gridController: _gridController,
+      stateController: _stateController,
+      powerController: _powerController,
+      notesController: _notesController,
+      radio: _radio,
+      time: _time,
+      exchange: _exchange,
+      refs: _refs,
+      lookup: _lookup,
+      call: _call,
+      rstOrDefault: _rstOrDefault,
+      powerInPlay: () => _powerInPlay,
+      hasRadioService: widget.radioService != null,
+    ),
   );
 
   /// The Spotting control — see [SpottingControlModel].
@@ -811,31 +836,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     };
   }
 
-
-  final Map<String, dynamic> _currentQsoExtra = {};
-
-  /// Fields of the contact's `our` block the full-edit pane overrides — who
-  /// was at the key, and which position logged it. Kept apart from
-  /// [_currentQsoExtra], which carries only TOP-LEVEL keys: these two live
-  /// inside `our`, beside the station call the controls own.
-  ///
-  /// An override is written only when the pane's field was actually edited,
-  /// so a contact left alone still takes the stamp the save path applies
-  /// (`qsoWithOperator`), and an emptied field stays empty rather than being
-  /// re-stamped — the stamp fills what is ABSENT, and this key is present.
-  final Map<String, dynamic> _ourExtra = {};
-
-  /// Fields of the contact's `their` block the full-edit pane overrides —
-  /// everything about the other station that no primary or secondary control
-  /// owns: city, county, the zones, the ARRL section, a coordinate, and the
-  /// power they were running. Same shape and same rule as [_ourExtra]: a key
-  /// lands here only where the pane actually CHANGED it, so opening a
-  /// contact and saving it never promotes a lookup guess into an entered
-  /// value the way `their.grid` would (see [_gridTouched]).
-  ///
-  /// Never `call`, `sent`, `name`, `grid` or `state` — those have their own
-  /// fields in the row, and their own touched-tracking above.
-  final Map<String, dynamic> _theirExtra = {};
 
   /// Every typed-exchange activity control currently contributed — `text` and
   /// `serial` alike, since both render the same way and differ only in who
@@ -953,50 +953,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// non-contact row.
   bool get _editingEvent => widget.editingQso?.isEvent ?? false;
 
-  /// Their name override, settable only via the "More" edit pane —
-  /// deliberately not a full inline field, to avoid growing the primary
-  /// controls' footprint for rarely-edited data. Grid/State have their own
-  /// controllers (`_gridController`/`_stateController`) instead, since they
-  /// can also appear as optional primary fields (`showGridField`/
-  /// `showStateField`).
-  String? _theirNameOverride;
-
-  /// Whether the user has actually edited Grid/State (inline field or the
-  /// "More" pane) for the QSO currently being composed/edited — as
-  /// opposed to `_gridController`/`_stateController` merely displaying a
-  /// value populated from `editingQso.theirGrid`/`theirState` on load. Only
-  /// a deliberate edit is sticky across a comma-separated call list (see
-  /// `dataFor` below); an untouched, merely-displayed value must not
-  /// clobber a fresh per-call lookup's own grid/state.
-  bool _gridTouched = false;
-  bool _stateTouched = false;
-
   /// The Notes control's field. The value itself lives in
-  /// [_currentQsoExtra] under `notes`, which is where the More pane reads
+  /// [QsoDraft.extra] under `notes`, which is where the More pane reads
   /// and writes it and how it round-trips through [_applyFieldsFromData] — this
   /// controller is a second view onto that one value, not a second copy of
   /// it, so the two surfaces can never disagree about what the contact says.
   final _notesController = TextEditingController();
   final _notesFocus = FocusNode();
-
-  /// True while `didUpdateWidget` is populating controllers from a newly
-  /// selected `editingQso` — suppresses `_onCallChanged`'s lookup/command
-  /// side effects, which would otherwise re-query and overwrite stored
-  /// `their.*` fields for a call that's already known.
-  bool _populating = false;
-
-  /// A wiped-but-not-yet-lost new QSO, stashed by the wipe button so the
-  /// same button can flip to "undo" for a few seconds afterward. Only
-  /// meaningful while composing a new QSO (`editingQso == null`).
-  final _wipeUndoSlot = TimedUndoSlot<Map<String, dynamic>>();
-
-  /// The new QSO being composed, captured the instant the operator steps
-  /// away to browse/edit an earlier one (`editingQso` going null → non-null)
-  /// — restored in `didUpdateWidget` when they come back (non-null → null),
-  /// whether that's Escape, Down off the list, or saving the edit. Unlike
-  /// [_wipeUndoSlot] this never expires: it's not a "did you mean to lose
-  /// this" offer, it's the draft's own state while attention is elsewhere.
-  Map<String, dynamic>? _composingSnapshot;
 
   /// Guards against double-logging: Enter is bound both as a keyboard
   /// shortcut and as every field's onSubmitted, and can also auto-repeat.
@@ -1399,37 +1362,36 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
       // Captured before _resetEditingSessionState() below, which clears
-      // _theirNameOverride — a snapshot taken after that would silently drop
+      // _draft.theirNameOverride — a snapshot taken after that would silently drop
       // a name entered via the More pane.
       if (oldWidget.editingQso == null && widget.editingQso != null) {
-        _composingSnapshot = _getCurrentQsoData(composing: true);
+        _draft.snapshotComposing();
       }
       _resetEditingSessionState();
       if (widget.editingQso != null) {
         _populateFromEditingQso(widget.editingQso!);
       } else {
-        final composingSnapshot = _composingSnapshot;
-        _composingSnapshot = null;
+        final composingSnapshot = _draft.takeComposingSnapshot();
         _resetLocalFields();
         if (composingSnapshot != null) {
           // Same restore idiom as _restoreFromUndoSlot: overlay the draft
           // back on top of the blank fields _resetLocalFields just seeded.
-          _populating = true;
-          _applyFieldsFromData(composingSnapshot);
-          _time.manualStartAtMillis = composingSnapshot['startAtMillis'] as int?;
-          // _applyFieldsFromData only sets the controllers' text — it never
-          // touches these, and _resetLocalFields just cleared them. A
-          // grid/state the operator had typed (present in the snapshot only
-          // because it was touched — see _getCurrentQsoData's `composing`
-          // branch) would otherwise show on screen but silently drop out of
-          // the saved record, since _getCurrentQsoData gates their.grid/
-          // their.state on the flag, not on the controller text.
-          final theirSnapshot = composingSnapshot['their'] as Map<String, dynamic>?;
-          _gridTouched = theirSnapshot?.containsKey('grid') ?? false;
-          _stateTouched = theirSnapshot?.containsKey('state') ?? false;
-          setState(() {});
-          _populating = false;
-          // Same reasoning as _restoreFromUndoSlot: _populating suppressed
+          _draft.populate(() {
+            _applyFieldsFromData(composingSnapshot);
+            _time.manualStartAtMillis = composingSnapshot['startAtMillis'] as int?;
+            // _applyFieldsFromData only sets the controllers' text — it never
+            // touches these, and _resetLocalFields just cleared them. A
+            // grid/state the operator had typed (present in the snapshot only
+            // because it was touched — see [QsoDraft.toData]'s `composing`
+            // branch) would otherwise show on screen but silently drop out of
+            // the saved record, since [QsoDraft.toData] gates their.grid/
+            // their.state on the flag, not on the controller text.
+            final theirSnapshot = composingSnapshot['their'] as Map<String, dynamic>?;
+            _draft.gridTouched = theirSnapshot?.containsKey('grid') ?? false;
+            _draft.stateTouched = theirSnapshot?.containsKey('state') ?? false;
+            setState(() {});
+          });
+          // Same reasoning as _restoreFromUndoSlot: the populate bracket suppressed
           // _onCallChanged's own _scheduleLookup()/_lookup.scheduleScore(), and
           // _resetLocalFields already cleared the lookup cache and score
           // notices — without this the restored callsign sits unenriched,
@@ -1553,14 +1515,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (!_suggestionWasTentative || !_callIsUntouchedSuggestion) return;
     _suggestionWasTentative = false;
     // Focus stays where it is: pulling it here would raise the mobile keyboard
-    // over the list the operator is still working. And behind `_populating`,
+    // over the list the operator is still working. And behind [QsoDraft.populate],
     // which is what stops the clear from reaching `onCallEdited`: this runs
     // from didUpdateWidget, so the listener would report the operator editing
     // the field — from inside a build, to a view that has already built. Any
     // OTHER callback this wipe fires is under the same constraint.
-    _populating = true;
-    _wipe(focusCall: false);
-    _populating = false;
+    _draft.populate(() {
+      _wipe(focusCall: false);
+    });
   }
 
   /// Puts a held suggestion to the operator, and applies it if they clear the
@@ -1687,10 +1649,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// paths in `didUpdateWidget`, which both start a fresh context.
   void _resetEditingSessionState() {
     _pendingDelete = false;
-    _theirNameOverride = null;
-    _gridTouched = false;
-    _stateTouched = false;
-    _wipeUndoSlot.clear();
+    _draft.resetSession();
   }
 
   /// Populates controllers/state from an existing QSO selected for editing.
@@ -1700,20 +1659,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _populateFromEditingQso(Qso qso) {
     _suggestedCall = null;
     _suggestionWasTentative = false;
-    _populating = true;
-    _applyFieldsFromData(qso.data);
-    if (qso.isEvent) {
-      _applyEventFieldsFromData(qso.data);
-      // An event's own freq/band/mode are sentinels (freq 0, mode the event
-      // kind) — showing them on the Radio control would be meaningless.
-      // Feed it the radio's actual current conditions instead, same as
-      // composing a new QSO; never saved either way (`_eventDataForSave`
-      // never reads these controllers).
-      _seedFromRadioService();
-    }
-    _time.manualStartAtMillis = null; // _time.effectiveStartAtMillis falls back to editingQso.startAtMillis
-    setState(() {});
-    _populating = false;
+    _draft.populate(() {
+      _applyFieldsFromData(qso.data);
+      if (qso.isEvent) {
+        _applyEventFieldsFromData(qso.data);
+        // An event's own freq/band/mode are sentinels (freq 0, mode the event
+        // kind) — showing them on the Radio control would be meaningless.
+        // Feed it the radio's actual current conditions instead, same as
+        // composing a new QSO; never saved either way (`_eventDataForSave`
+        // never reads these controllers).
+        _seedFromRadioService();
+      }
+      _time.manualStartAtMillis = null; // _time.effectiveStartAtMillis falls back to editingQso.startAtMillis
+      setState(() {});
+    });
     // Score the edited QSO (excluding itself) so its dupe/New-* pills show, the
     // same way they do while composing — populate suppressed _onCallChanged's
     // own trigger. The worked-before pill likewise: an edit runs no live
@@ -1745,19 +1704,19 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// one still clears the manual time — a spot says nothing about when, and
   /// must not inherit the last link's timestamp.
   void _applySuggestedQso(Map<String, dynamic> data) {
-    _populating = true;
-    _applyFieldsFromData(data);
-    // Read from `data`, since `_applyFieldsFromData` strips the key rather
-    // than carrying it into `_currentQsoExtra`.
-    final suggestedStart = data['startAtMillis'];
-    _time.manualStartAtMillis = suggestedStart is int ? suggestedStart : null;
-    setState(() {});
-    _populating = false;
+    _draft.populate(() {
+      _applyFieldsFromData(data);
+      // Read from `data`, since `_applyFieldsFromData` strips the key rather
+      // than carrying it into `_draft.extra`.
+      final suggestedStart = data['startAtMillis'];
+      _time.manualStartAtMillis = suggestedStart is int ? suggestedStart : null;
+      setState(() {});
+    });
     // A tapped spot starts a contact as surely as a typed call does, and it
     // bypasses `_onCallChanged` — so the serial number is taken here.
     unawaited(_exchange.refreshSerialPreviews());
     // Populating a suggestion sets the call without the user typing, so
-    // `_populating` suppressed _onCallChanged's own lookup and score
+    // [QsoDraft.populate] suppressed _onCallChanged's own lookup and score
     // scheduling. Any source that sets the current QSO's callsign must
     // still trigger a lookup — spots (#315) and a future deeplink both arrive
     // here — so run them explicitly, like `_restoreFromUndoSlot` does.
@@ -1798,115 +1757,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// Shared by `_populateFromEditingQso` (loading an existing record for
   /// editing) and `_restoreFromUndoSlot` (undoing a wipe) — both need to
-  /// push a `data` map from a `Qso`/`_getCurrentQsoData()` shape back into
-  /// the live controllers/state.
+  /// push a `data` map from a `Qso`/[QsoDraft.toData] shape back into the
+  /// live controllers/state. The draft does the fields and the models; what
+  /// stays here is the panel's own context — the lookup, the open control,
+  /// the command line.
   void _applyFieldsFromData(Map<String, dynamic> data) {
-    final our = asQsonMap(data['our']) ?? const {};
-    final their = asQsonMap(data['their']) ?? const {};
-    _callController.text = asQsonString(their['call']) ?? '';
-    _sentController.text = asQsonString(our['sent']) ?? '';
-    _rcvdController.text = asQsonString(their['sent']) ?? '';
-    // Only the entered value fills the field; a guess (their.guess) stays a
-    // faint placeholder (see the Grid/State decorations) instead of being
-    // pre-filled as if it were a confirmed value.
-    _gridController.text = asQsonString(their['grid']) ?? '';
-    _stateController.text = asQsonString(their['state']) ?? '';
-    // Restore the name override too, or wipe-then-undo would silently drop a
-    // name set via the "More" pane (it round-trips as `their.name`).
-    final theirName = asQsonString(their['name'])?.trim();
-    _theirNameOverride = (theirName == null || theirName.isEmpty) ? null : theirName;
-    final freq = asQsonNum(data['freq'])?.toDouble();
-    if (freq != null) {
-      _radio.setFrequency(freq);
-    } else {
-      _radio.setBand(asQsonString(data['band']));
-    }
-    _radio.mode = asQsonString(data['mode']) ?? _radio.mode;
-    final power = asQsonNum(data['power']);
-    _powerOnRecord = power != null;
-    _powerController.text = power == null ? '' : '$power';
-    // A wholesale repopulate — a spot tapped, a QSO opened for editing —
-    // replaces every field, so nothing in a dropdown survives it either.
-    _radio.resyncDropdownFields();
-    // Restore the More pane's operator/position overrides for the same reason
-    // the name above is restored: wipe-then-undo, and stepping into an edit
-    // and back out, both round-trip the draft through here, and a dropped
-    // override would silently hand the contact back to the operation's stamp.
-    //
-    // Only for a DRAFT (no `uuid`). A record already in the log carries its
-    // own `our` block, which `_getCurrentQsoData` reads straight from
-    // `editingQso` — recording it as an override too would mark an untouched
-    // record as composed.
-    _ourExtra.clear();
-    _theirExtra.clear();
-    if ((asQsonString(data['uuid']) ?? '').isEmpty) {
-      for (final key in const ['operatorCall', 'multiIdentifier']) {
-        if (our.containsKey(key)) _ourExtra[key] = asQsonString(our[key]) ?? '';
-      }
-      // Raw, not coerced: these are a mix of strings and numbers, and
-      // `normalizeQsoQson` has already given each one the type its table
-      // names. A null is kept as a null — that is a coordinate the pane
-      // deliberately cleared, and dropping it would let the old one return.
-      for (final key in theirPaneKeys) {
-        if (their.containsKey(key)) _theirExtra[key] = their[key];
-      }
-    }
-    _currentQsoExtra
-      ..clear()
-      ..addAll(data)
-      ..remove('refs')
-      ..remove('our')
-      ..remove('their')
-      ..remove('freq')
-      ..remove('band')
-      ..remove('mode')
-      ..remove('power')
-      ..remove('startAtMillis');
-    // The Notes control's second view onto `notes`, re-seeded with it. Read
-    // back out of the map rather than from `data`, so the two can only ever
-    // show the same string.
-    _notesController.text = (_currentQsoExtra['notes'] as String?) ?? '';
-    _refs.clear();
-    _exchange.clear();
-    final refs = (asQsonList(data['refs']))?.whereType<Map<dynamic, dynamic>>().map((r) => r.cast<String, dynamic>()) ?? const [];
-    for (final ref in refs) {
-      String? key;
-      for (final control in _refs.controls) {
-        final input = control['input'] as Map?;
-        if (input?['refType'] != ref['type']) continue;
-        // A primary field reads ONE field out of the ref rather than owning the
-        // whole ref, and several may share a type — so it never claims the ref,
-        // which must still round-trip through a refList control or the
-        // unmatched refs. `serial` counts here exactly as `text` does: it is
-        // one field of the ref, and skipping it would both leave the number
-        // unrestored and `break` before any sibling field of the same ref
-        // (cqwpx declares `ourSerial` before `theirSerial`), silently clearing
-        // that sibling on the next save.
-        if (input?['kind'] == 'text' || input?['kind'] == 'serial' || input?['kind'] == 'options') {
-          final field = input?['field'] as String?;
-          // Serials are stored as ints (see `_withAllocatedSerial`), exchanges
-          // as strings — read either.
-          final raw = field == null ? null : ref[field];
-          final value = raw is num ? '$raw' : (raw is String ? raw : '');
-          // PRESENT, not non-empty: an explicit `field: ''` is the operator
-          // having emptied it on purpose (see [ExchangeFieldsModel.refsWithTextValues]), and
-          // restoring it as touched-but-blank is what keeps a lookup from
-          // helpfully filling it back in the moment the record opens.
-          if (field != null && ref.containsKey(field)) {
-            final controlKey = control['key'] as String;
-            _exchange.restore(controlKey, value);
-          }
-          continue;
-        }
-        key = control['key'] as String?;
-        break;
-      }
-      _refs.restore(ref, controlKey: key);
-    }
+    _draft.applyData(data);
     _lookup.reset();
     _selectedControlKey = null;
     // Command state must never survive into a freshly populated QSO
-    // context: this runs under `_populating`, so _onCallChanged's own
+    // context: this runs under [QsoDraft.populate], so _onCallChanged's own
     // per-keystroke reset is suppressed. Without this, typing "NOTE hi",
     // then tapping a spot, would leave the call field showing a real
     // callsign while still in the note's mixed-case free-text mode — and a
@@ -1995,7 +1855,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// ([RadioControlModel.seedFromVfo]), and the Power field with it — that
   /// one is the panel's, with its own rule about whose typing it may
   /// overwrite. Never called while editing an existing *contact*, whose own
-  /// recorded values always take priority (`_applyFieldsFromData`); an
+  /// recorded values always take priority ([QsoDraft.applyData]); an
   /// event's freq/mode are sentinels instead of a record, so
   /// `_populateFromEditingQso` calls this for one anyway, same as composing.
   void _seedFromRadioService({bool skipFrequency = false}) {
@@ -2003,7 +1863,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (vfo == null) return;
     _radio.seedFromVfo(skipFrequency: skipFrequency);
     // Never over the operator's own typing, and never over a QSO already
-    // logged — an existing record's power is its own (`_applyFieldsFromData`
+    // logged — an existing record's power is its own ([QsoDraft.applyData]
     // seeds it), not whatever the rig happens to be set to now.
     if (_powerInPlay && widget.editingQso == null && !_powerFocus.hasFocus) {
       final text = vfo.power == null ? '' : '${vfo.power}';
@@ -2027,17 +1887,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // Suppresses the frequency listener's push-back. Without it, seeding a
       // value the radio just reported arms the 5s debounce and sends it
       // straight back at the radio, forever.
-      final wasPopulating = _populating;
-      _populating = true;
-      // Skip only the frequency, never the whole seed: suppressing it
-      // entirely would drop a mode the rig reported meanwhile, and the
-      // pending push would then send the panel's stale mode back — taking a
-      // rig the operator had just put into CW back out of it, and logging
-      // USB at 59.
-      _seedFromRadioService(skipFrequency: _radio.freqTouched);
-      _populating = wasPopulating;
+      _draft.populate(() {
+        // Skip only the frequency, never the whole seed: suppressing it
+        // entirely would drop a mode the rig reported meanwhile, and the
+        // pending push would then send the panel's stale mode back — taking a
+        // rig the operator had just put into CW back out of it, and logging
+        // USB at 59.
+        _seedFromRadioService(skipFrequency: _radio.freqTouched);
+      });
     });
-    // `_populating` above suppressed the frequency listener's own rescore, and the
+    // [QsoDraft.populate] above suppressed the frequency listener's own rescore, and the
     // mode never had one. The dupe / New Band / New Mode pills are scored
     // against band and mode, so without this a rig retuned at its own front
     // panel left them describing the band the operator has left. Debounced
@@ -2055,34 +1914,30 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Guards _onCallChanged (fired synchronously by _callController.clear()
     // below) from calling widget.onCommandMessageChanged — a parent-state
     // setState — while still inside didUpdateWidget.
-    _populating = true;
-    _callController.clear();
-    _clearRSTs();
-    _gridController.clear();
-    _stateController.clear();
-    _gridTouched = false;
-    _stateTouched = false;
-    _lookup.cancelLookup();
-    // `_radio.freqTouched` outlives this reset otherwise, and live radio follow
-    // stays switched off for the rest of the session.
-    _radio.settlePendingFreqEdit(flush: false);
-    _lookup.reset();
-    _refs.clear();
-    _exchange.clear();
-    _currentQsoExtra.clear();
-    _notesController.clear();
-    _ourExtra.clear();
-    _theirExtra.clear();
-    _time.manualStartAtMillis = null;
-    _radio.manualBand = null;
-    _selectedControlKey = null;
-    _clearPowerEntry();
-    // Back to composing a new QSO — the Radio control goes back to
-    // mirroring the operation's VFO, not whatever the just-edited QSO's
-    // own freq/band/mode happened to be.
-    _seedFromRadioService();
-    setState(_command.reset);
-    _populating = false;
+    _draft.populate(() {
+      _callController.clear();
+      _clearRSTs();
+      _gridController.clear();
+      _stateController.clear();
+      _draft.clear();
+      _lookup.cancelLookup();
+      // `_radio.freqTouched` outlives this reset otherwise, and live radio follow
+      // stays switched off for the rest of the session.
+      _radio.settlePendingFreqEdit(flush: false);
+      _lookup.reset();
+      _refs.clear();
+      _exchange.clear();
+      _notesController.clear();
+      _time.manualStartAtMillis = null;
+      _radio.manualBand = null;
+      _selectedControlKey = null;
+      _clearPowerEntry();
+      // Back to composing a new QSO — the Radio control goes back to
+      // mirroring the operation's VFO, not whatever the just-edited QSO's
+      // own freq/band/mode happened to be.
+      _seedFromRadioService();
+      setState(_command.reset);
+    });
   }
 
   @override
@@ -2104,8 +1959,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     WidgetsBinding.instance.removeObserver(this);
     _lookup.dispose();
     _command.dispose();
-    _wipeUndoSlot.dispose();
     _spotting.dispose();
+    _draft.dispose();
     _exchange.dispose();
     _refs.dispose();
     _notesController.dispose();
@@ -2253,7 +2108,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final length = controller.text.trim().length;
     final previous = _rstLengthSeen[focus] ?? 0;
     _rstLengthSeen[focus] = length;
-    if (!widget.jumpAfterRST || _populating || !focus.hasFocus) return;
+    if (!widget.jumpAfterRST || _draft.isPopulating || !focus.hasFocus) return;
     // Null on the FT modes, whose report has no fixed length — there is no
     // moment to call "done", so the setting simply doesn't apply.
     final full = rstLengthFor(_radio.mode);
@@ -3040,21 +2895,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// it the field stays empty and nothing is stamped.
   bool get _powerInPlay => _powerControlVisible || widget.trackingPower;
 
-  /// The record being edited arrived carrying a power. Read from the record,
-  /// never from the field: with the field as the test, emptying it would take
-  /// the power OUT of the entry — and the write below would then omit the key
-  /// and leave the old value standing, so a wrong power could never be
-  /// cleared. It also survives past the record, so it is cleared with the
-  /// rest of the entry ([_resetLocalFields], [_wipe]) — otherwise a value
-  /// left over from an edit goes on stamping every QSO logged afterwards.
-  bool _powerOnRecord = false;
-
-  /// Whether power is part of THIS entry — in play, or already on the record
-  /// being edited. A QSO that carries a power keeps showing it after the
-  /// control is switched back off: it went out on the air that way, and a
-  /// value nothing displays is a value nothing can correct.
-  bool get _powerShown => _powerInPlay || _powerOnRecord;
-
   /// `widget.controlOrder`, filtered to keys that still exist and
   /// de-duplicated, with any remaining known keys slotted in where the
   /// descriptor list puts them — so a fresh install (empty order) or a
@@ -3321,12 +3161,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         ),
       );
 
-  /// The watts in the Power field, or null when it is empty (or holds
-  /// nothing parseable — a lone "." mid-typing).
-  num? get _powerWatts => num.tryParse(_powerController.text.trim());
-
   String get _powerSummary {
-    final watts = _powerWatts;
+    final watts = _draft.powerWatts;
     return watts == null ? '—' : '$watts ${t.loggingControls.powerUnit}';
   }
 
@@ -3334,7 +3170,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// value. Whatever the field holds belonged to the QSO just closed, and
   /// [_seedFromRadioService] only refills it while power is in play.
   void _clearPowerEntry() {
-    _powerOnRecord = false;
+    _draft.powerOnRecord = false;
     _powerController.clear();
   }
 
@@ -3345,7 +3181,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Radio control follows.
   void _commitPower() {
     if (widget.editingQso != null) return;
-    final watts = _powerWatts;
+    final watts = _draft.powerWatts;
     widget.radioService?.setVfo('vfoA', power: watts, clearPower: watts == null);
   }
 
@@ -3476,7 +3312,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               // as a real value.
               hintText: _currentGuess?['state'] as String?,
               onChanged: (_) {
-                _stateTouched = true;
+                _draft.stateTouched = true;
                 // Scored on (New State / New Province), so a typed state has
                 // to reach the scorer like a band or mode change does.
                 _lookup.scheduleScore();
@@ -3499,7 +3335,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
               duration: duration,
               textCapitalization: TextCapitalization.characters,
               hintText: _guessGridHint,
-              onChanged: (_) => _markGridTouched(),
+              onChanged: (_) => _draft.markGridTouched(),
             ),
           ),
       ];
@@ -3507,25 +3343,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// The contact's own note. Wider than the other controls' fields — a note
   /// is a sentence, not a value — and explicitly mixed-case, like Name and
   /// the spot comment: free prose, not logging data.
-  /// Keeps the QSO's `notes` in step with the field, and the chip's check
-  /// mark in step with both. An empty note is REMOVED rather than stored as
-  /// an empty string: [_currentQsoExtra] being non-empty is one of the
-  /// signals that says a draft is worth keeping ([_hasComposedValues]), so a
-  /// note typed and then deleted would otherwise leave an empty entry looking
-  /// like a started one. What the SAVE writes for an empty note is a separate
-  /// question — see [_getCurrentQsoData]. The `setState` is also what pushes
-  /// the draft up to the host: the post-frame notify in [build] runs on every
-  /// rebuild.
-  void _onNotesChanged(String value) {
-    final notes = value.trim();
-    setState(() {
-      if (notes.isEmpty) {
-        _currentQsoExtra.remove('notes');
-      } else {
-        _currentQsoExtra['notes'] = notes;
-      }
-    });
-  }
+  /// Keeps the QSO's `notes` in step with the field ([QsoDraft.setNote]),
+  /// and the chip's check mark in step with both. The `setState` is also
+  /// what pushes the draft up to the host: the post-frame notify in [build]
+  /// runs on every rebuild.
+  void _onNotesChanged(String value) => setState(() => _draft.setNote(value));
 
   SecondaryControlSpec _moreControlSpec() => SecondaryControlSpec(
         key: 'more',
@@ -3921,22 +3743,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return NumberFormatting.instance.decimalSeparator;
   }
 
-  /// The operator has stated a locator — from the row's Grid field, the
-  /// numbers row above it, or the More pane. Every one of them goes through
-  /// here rather than setting the flag itself, because a typed grid also
-  /// takes the contact's coordinate out of the entry: a pair the pane
-  /// recorded earlier in this visit would otherwise survive and outrank the
-  /// grid everywhere it is read (docs/design/locations.md), silently
-  /// discarding the correction just made. A coordinate the operator types
-  /// AFTER this, in the same pane visit, is recorded after it and still wins
-  /// — that is the intended precedence.
-  void _markGridTouched() {
-    _gridTouched = true;
-    _theirExtra
-      ..remove('lat')
-      ..remove('lon');
-  }
-
   /// The Grid field's hint — see [guessGridDisplay], which the More pane's
   /// own Grid field hints through too so the two can never show different
   /// squares for one station.
@@ -3953,9 +3759,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final (focus, controller) = field;
     _insertAtCursor(controller, key);
     if (identical(focus, _gridFocus)) {
-      _markGridTouched();
+      _draft.markGridTouched();
     } else if (identical(focus, _stateFocus)) {
-      _stateTouched = true;
+      _draft.stateTouched = true;
     }
   }
 
@@ -3996,52 +3802,52 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         final params = map['setVfo'] as Map;
         // A command's setVfo is already validated by the extension — push
         // it to radioService immediately rather than debouncing like raw
-        // frequency typing. _populating suppresses the frequency listener's own
+        // frequency typing. [QsoDraft.populate] suppresses the frequency listener's own
         // (debounced) push, which would otherwise also fire from the
         // controller text assignment below.
-        _populating = true;
-        setState(() {
-          final freq = params['freq'];
-          final band = params['band'];
-          final mode = params['mode'];
-          if (freq is num) {
-            _radio.setFrequency(freq.toDouble());
-          } else if (band is String) {
-            _radio.setBand(band);
-          }
-          if (mode is String) {
-            // Resolved like every other mode REQUEST. The command is the last
-            // path that reached here raw, and while editing an existing QSO
-            // `_onRadioVfoChanged` returns early, so nothing downstream would
-            // have corrected a generic `SSB` before it was logged.
-            _radio.mode = _radio.resolveMode(mode);
-          } else if (freq is num) {
-            // HALO-32: the frequency command (typing "14285 " into the call
-            // field) doesn't carry a mode of its own — guess it from the
-            // band plan, same as typing directly into the Frequency field.
-            // Unlike that field, this fires once per dispatched command with
-            // a final, already-complete frequency — no mid-typing prefix to
-            // guard against — so a null guess simply leaves `_radio.mode` alone.
-            final guess = modeForFrequency(
-              freq.toDouble(),
-              ituRegion: widget.ourItuRegion,
-              countryCode: widget.ourCountryCode,
-            );
-            if (guess != null) _radio.applyModeGuess(guess);
-          }
+        _draft.populate(() {
+          setState(() {
+            final freq = params['freq'];
+            final band = params['band'];
+            final mode = params['mode'];
+            if (freq is num) {
+              _radio.setFrequency(freq.toDouble());
+            } else if (band is String) {
+              _radio.setBand(band);
+            }
+            if (mode is String) {
+              // Resolved like every other mode REQUEST. The command is the last
+              // path that reached here raw, and while editing an existing QSO
+              // `_onRadioVfoChanged` returns early, so nothing downstream would
+              // have corrected a generic `SSB` before it was logged.
+              _radio.mode = _radio.resolveMode(mode);
+            } else if (freq is num) {
+              // HALO-32: the frequency command (typing "14285 " into the call
+              // field) doesn't carry a mode of its own — guess it from the
+              // band plan, same as typing directly into the Frequency field.
+              // Unlike that field, this fires once per dispatched command with
+              // a final, already-complete frequency — no mid-typing prefix to
+              // guard against — so a null guess simply leaves `_radio.mode` alone.
+              final guess = modeForFrequency(
+                freq.toDouble(),
+                ituRegion: widget.ourItuRegion,
+                countryCode: widget.ourCountryCode,
+              );
+              if (guess != null) _radio.applyModeGuess(guess);
+            }
+          });
         });
-        _populating = false;
         if (params['freq'] is num || params['band'] is String || params['mode'] is String) {
           _radio.pushVfo();
         }
-        // The command changed band/mode/freq under `_populating`, which
+        // The command changed band/mode/freq under [QsoDraft.populate], which
         // suppressed the field listeners' own rescore — refresh the call-info
         // notices (New Band / New Mode / dupe) for the new radio state.
         _lookup.scheduleScore();
       } else if (map.containsKey('updateQso')) {
         final params = (map['updateQso'] as Map).cast<String, dynamic>();
         setState(() {
-          _currentQsoExtra.addAll(params);
+          _draft.extra.addAll(params);
         });
       } else if (map.containsKey('addQso')) {
         final params = (map['addQso'] as Map).cast<String, dynamic>();
@@ -4168,114 +3974,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
-  /// [callOverride] lets call stacking (`CallFieldText.pickStackedCall`) supply the one
-  /// segment it picked out of the "//"-separated field, instead of the raw
-  /// (still-stacked) field text.
-  ///
-  /// [composing] describes the new-QSO draft regardless of what
-  /// `widget.editingQso` currently is — needed to snapshot it for
-  /// [_composingSnapshot] from inside `didUpdateWidget`, where `widget`
-  /// already reflects the QSO about to be edited by the time this runs, and
-  /// `base`/`_time.effectiveStartAtMillis` would otherwise pull from THAT record
-  /// instead of from the still-blank-base draft being stepped away from.
-  Map<String, dynamic> _getCurrentQsoData({String? callOverride, bool composing = false}) {
-    final base = composing ? const <String, dynamic>{} : (widget.editingQso?.data ?? const <String, dynamic>{});
-    final call = callOverride ?? _call;
-    final startAtMillis = composing ? _time.manualStartAtMillis : _time.effectiveStartAtMillis;
-    final refs = _exchange.refsWithTextValues(_refs.allRefs);
-    return {
-      ...base,
-      // Unconditional (not `if (refs.isNotEmpty)`/`if (_radio.freq != null)`):
-      // `base` may already carry a non-empty value for these from the
-      // record being edited, and a merge-style `...base` above won't drop
-      // a stale one just because the live value is now empty/null — these
-      // have to actively overwrite every time, including with null/empty,
-      // for clearing a ref/freq/band during an edit to actually stick.
-      'refs': refs,
-      'our': {
-        ...?(base['our'] as Map<String, dynamic>?),
-        // The FIRST of the operation's callsigns, not the field: several
-        // callsigns live in it as one comma-separated string, and a contact
-        // holds exactly one. Stamping the field puts "N0DEV,KI2D" — which is
-        // not a callsign — on every contact and into the `our_call` column
-        // the cross-operation Logs view groups by. Which of several calls
-        // made a given contact is not recorded here (app-polo doesn't record
-        // it either); the exports fan out per call and restamp each file's
-        // records themselves (`ExportService._qsosAs`).
-        'call': widget.operation.stationCalls.first,
-        'sent': _rstOrDefault(_sentController.text.trim()),
-        ..._ourExtra,
-      },
-      'their': {
-        ...?(base['their'] as Map<String, dynamic>?),
-        if (_theirNameOverride != null) 'name': _theirNameOverride,
-        // Conditional on `_gridTouched`/`_stateTouched`, not just "is the
-        // controller non-empty": the controller may just be *displaying* a
-        // value populated from `editingQso.theirGrid`/`theirState` on load,
-        // which must NOT clobber `their.guess`'s fallback for a call this
-        // record hasn't actually been edited for (see `dataFor` below).
-        // Once touched, though, write it unconditionally — including empty
-        // — so deliberately clearing the field actually clears the stored
-        // value instead of leaving the old one from `...?(base['their'])`.
-        // Grid input is uppercase-only like every logging control, but the
-        // stored value gets the conventional Maidenhead casing back
-        // (FN31pr) via normalizeGrid; states are plain uppercase.
-        if (_gridTouched) 'grid': normalizeGrid(_gridController.text.trim()),
-        if (_stateTouched) 'state': _stateController.text.trim().toUpperCase(),
-        ..._theirExtra,
-        // A typed locator replaces whatever coordinate the record arrived with
-        // by its own square's center — a leftover pair outranks the grid
-        // everywhere it is read. After `_theirExtra`, so a pair typed into the
-        // More pane still wins, and tested AS a pair: the pane records its two
-        // fields apart, and a typed latitude beside a center's longitude is a
-        // point nobody stated. `locSource` goes too — app-polo sends it tagging
-        // a pair a west-positive centroid, and it would tag this center.
-        if (_gridTouched && locationFromLatLon(_theirExtra['lat'], _theirExtra['lon']) == null) ...{
-          'lat': locationForStatedGrid(_gridController.text)?.latitude,
-          'lon': locationForStatedGrid(_gridController.text)?.longitude,
-          'locSource': null,
-        },
-        'call': call,
-        'sent': _rstOrDefault(_rcvdController.text.trim()),
-        // Matches the `AnnotatedCallInfo` TS type (`CallInfo & {guess?:
-        // CallInfo, lookups?: CallInfoLookup[]}`, @ham2k/lib-qson-tools) and
-        // app-polo's convention: the merged lookup guess stays NESTED under
-        // `guess`/`lookups`, never flattened onto `their`'s own fields —
-        // readers fall back to `their.guess.x` when `their.x` isn't set.
-        if (_lookup.resultFor(call) case final result?) ...{'guess': result['guess'], 'lookups': result['lookups']},
-      },
-      'freq': _radio.freq,
-      'band': _radio.band,
-      'mode': _radio.mode,
-      // The field owns the QSO's power whenever power is part of the entry
-      // at all ([_powerShown]) — which is what keeps a record's own power
-      // from being dropped by a save that only corrected its RST. Written
-      // unconditionally then, INCLUDING null, exactly as refs/freq/band are
-      // above: this map is merged over the record, so an omitted key leaves
-      // the stored value standing and a wrong power could never be cleared.
-      if (_powerShown) 'power': _powerWatts,
-      'startAtMillis': ?startAtMillis,
-      ..._currentQsoExtra,
-      // The same active-overwrite rule as refs/freq/band/power above, and it
-      // has to be stated separately because [_currentQsoExtra] DROPS an empty
-      // note rather than holding one: an entry carrying nothing but a note
-      // that was typed and deleted again must not read as composed
-      // ([_hasComposedValues]). So the key is absent exactly when the note is
-      // empty, and this map is merged over the record — leaving a note
-      // deleted from a saved contact standing, with the field empty and the
-      // save reporting success.
-      //
-      // Only where there is something to clear, though: `mergeConcurrentEdit`
-      // reads what this map writes as an edit, so stamping an empty note on
-      // every save would let a contact merely opened and re-saved overwrite
-      // one another device added while the editor sat open. An empty string,
-      // not null, because that is what a deliberate clear stores everywhere
-      // else here — a stamp fills what is ABSENT, and this key is present.
-      if (_currentQsoExtra.containsKey('notes') || (asQsonString(base['notes']) ?? '').isNotEmpty)
-        'notes': (_currentQsoExtra['notes'] as String?) ?? '',
-    };
-  }
-
   // ---- "More" full-edit pane ----
   //
   // The form's shape — its sections, its fields and the rules about which of
@@ -4291,7 +3989,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // Captured so the Save handler below can tell "the user actually edited
     // Grid/State in this pane" from "the pane merely displayed whatever
     // was already there" — the latter must not turn a passive lookup guess
-    // into a deliberately-touched, sticky value (see _gridTouched's doc).
+    // into a deliberately-touched, sticky value (see _draft.gridTouched's doc).
     final gridBeforePane = _gridController.text.trim();
     final stateBeforePane = _stateController.text.trim();
     // Same displayed-vs-edited distinction for date/time: while composing,
@@ -4301,14 +3999,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final timeBeforePane = TimeControlModel.fmtTime(dt);
     // What the contact itself says, override included — never the operation's
     // stand-in, which is only ever a placeholder here.
-    final ourBeforePane = {...?asQsonMap(widget.editingQso?.data['our']), ..._ourExtra};
+    final ourBeforePane = {...?asQsonMap(widget.editingQso?.data['our']), ..._draft.ourExtra};
     final operatorBeforePane = (asQsonString(ourBeforePane['operatorCall']) ?? '').trim();
     final positionBeforePane = (asQsonString(ourBeforePane['multiIdentifier']) ?? '').trim();
     // The same displayed-vs-edited distinction once more, for every `their`
     // field the pane owns outright: a value merely shown must not be recorded
     // as an override, or a contact opened and saved would take its lookup's
     // guesses as entered values and stop tracking the lookup.
-    final theirBeforePane = {...?asQsonMap(widget.editingQso?.data['their']), ..._theirExtra};
+    final theirBeforePane = {...?asQsonMap(widget.editingQso?.data['their']), ..._draft.theirExtra};
     final theirValuesBeforePane = theirPaneValues(theirBeforePane);
 
     final result = await showQsoEditPane(
@@ -4322,7 +4020,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         guess: _currentGuess,
         rstPaneKeyOrder: _rstPaneKeyOrder,
         rstPlaceholder: _rstPlaceholder,
-        powerShown: _powerShown,
+        powerShown: _draft.powerShown,
         composing: widget.editingQso == null,
         currentMode: _radio.modeForEditing,
       ),
@@ -4332,7 +4030,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // guess) so a guessed-only name shows as the placeholder above instead
         // of being pre-filled — and merely viewing the pane never promotes a
         // passive guess to a sticky entered value.
-        'theirName': _theirNameOverride ?? asQsonString(asQsonMap(widget.editingQso?.data['their'])?['name']) ?? '',
+        'theirName': _draft.theirNameOverride ?? asQsonString(asQsonMap(widget.editingQso?.data['their'])?['name']) ?? '',
         'theirGrid': gridBeforePane,
         'theirState': stateBeforePane,
         'sent': _sentController.text.trim(),
@@ -4340,10 +4038,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         'freq': _radio.freq,
         'band': _radio.band ?? '',
         'mode': _radio.modeForEditing,
-        'power': _powerWatts,
+        'power': _draft.powerWatts,
         'date': TimeControlModel.fmtDate(dt),
         'time': TimeControlModel.fmtTime(dt),
-        'notes': (_currentQsoExtra['notes'] as String?) ?? '',
+        'notes': (_draft.extra['notes'] as String?) ?? '',
         'operatorCall': operatorBeforePane,
         if (widget.showPositionField) 'multiIdentifier': positionBeforePane,
         ...theirValuesBeforePane,
@@ -4358,91 +4056,87 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // raw typing — push immediately rather than via the frequency field's
     // debounce, and only while composing (rule: editing an existing QSO
     // applies changes to the QSO, never the VFO).
-    _populating = true;
-    setState(() {
-      _callController.text = ((result['theirCall'] as String?) ?? '').toUpperCase();
-      final name = (result['theirName'] as String?)?.trim();
-      _theirNameOverride = (name == null || name.isEmpty) ? null : name;
-      final grid = normalizeGrid(((result['theirGrid'] as String?) ?? '').trim());
-      final state = ((result['theirState'] as String?) ?? '').trim().toUpperCase();
-      // Normalized comparison, not raw string inequality: the pane's
-      // uppercase formatter rewrites the WHOLE field on any keystroke, so
-      // a net no-op edit over a lookup-guessed 'FN31pr' would come back
-      // 'FN31PR' and a raw compare would falsely promote the passive guess
-      // to a sticky touched override (see _gridTouched's doc). Case is not
-      // a deliberate edit; only a real value change is.
-      // Through [_markGridTouched], not a bare flag: the pane's on-screen
-      // coordinate clear runs on BLUR (`FormRenderer` hangs `onChange` off the
-      // focus node), and `submit()` snapshots its values before the unfocus it
-      // triggers has been delivered — so a grid typed and then saved with
-      // Enter, or with the field still focused, reaches here with the
-      // coordinate fields never blanked and no override recorded to blank
-      // them. The drop has to happen on the value that was actually saved.
-      if (grid != normalizeGrid(gridBeforePane)) _markGridTouched();
-      _stateTouched = _stateTouched || state != stateBeforePane.toUpperCase();
-      _gridController.text = grid;
-      _stateController.text = state;
-      _sentController.text = (result['sent'] as String?) ?? '';
-      _rcvdController.text = (result['rcvd'] as String?) ?? '';
+    _draft.populate(() {
+      setState(() {
+        _callController.text = ((result['theirCall'] as String?) ?? '').toUpperCase();
+        final name = (result['theirName'] as String?)?.trim();
+        _draft.theirNameOverride = (name == null || name.isEmpty) ? null : name;
+        final grid = normalizeGrid(((result['theirGrid'] as String?) ?? '').trim());
+        final state = ((result['theirState'] as String?) ?? '').trim().toUpperCase();
+        // Normalized comparison, not raw string inequality: the pane's
+        // uppercase formatter rewrites the WHOLE field on any keystroke, so
+        // a net no-op edit over a lookup-guessed 'FN31pr' would come back
+        // 'FN31PR' and a raw compare would falsely promote the passive guess
+        // to a sticky touched override (see [QsoDraft.gridTouched]). Case is not
+        // a deliberate edit; only a real value change is.
+        // Through [QsoDraft.markGridTouched], not a bare flag: the pane's on-screen
+        // coordinate clear runs on BLUR (`FormRenderer` hangs `onChange` off the
+        // focus node), and `submit()` snapshots its values before the unfocus it
+        // triggers has been delivered — so a grid typed and then saved with
+        // Enter, or with the field still focused, reaches here with the
+        // coordinate fields never blanked and no override recorded to blank
+        // them. The drop has to happen on the value that was actually saved.
+        if (grid != normalizeGrid(gridBeforePane)) _draft.markGridTouched();
+        _draft.stateTouched = _draft.stateTouched || state != stateBeforePane.toUpperCase();
+        _gridController.text = grid;
+        _stateController.text = state;
+        _sentController.text = (result['sent'] as String?) ?? '';
+        _rcvdController.text = (result['rcvd'] as String?) ?? '';
 
-      final freq = result['freq'];
-      if (freq is num) {
-        _radio.setFrequency(freq.toDouble());
-      } else {
-        final band = (result['band'] as String?)?.trim();
-        _radio.setBand((band == null || band.isEmpty) ? null : band);
-      }
+        final freq = result['freq'];
+        if (freq is num) {
+          _radio.setFrequency(freq.toDouble());
+        } else {
+          final band = (result['band'] as String?)?.trim();
+          _radio.setBand((band == null || band.isEmpty) ? null : band);
+        }
 
-      // Resolved against the freq/band the pane just wrote above, like every
-      // other mode PICK, and never skipped for an untouched select: the pane
-      // can move the frequency, and an untouched `SSB` has to re-derive
-      // against where the contact now is. Lossless because the rule is total
-      // — see docs/design/cat.md's "Showing it back".
-      final panedMode = result['mode'] as String?;
-      if (panedMode != null) _radio.mode = _radio.resolveMode(panedMode);
+        // Resolved against the freq/band the pane just wrote above, like every
+        // other mode PICK, and never skipped for an untouched select: the pane
+        // can move the frequency, and an untouched `SSB` has to re-derive
+        // against where the contact now is. Lossless because the rule is total
+        // — see docs/design/cat.md's "Showing it back".
+        final panedMode = result['mode'] as String?;
+        if (panedMode != null) _radio.mode = _radio.resolveMode(panedMode);
 
-      // Written even when the pane didn't offer the field: absent means the
-      // form dropped it, and `result` then carries a null this must not read
-      // as the operator clearing a value they were never shown.
-      if (result.containsKey('power')) {
-        final power = result['power'];
-        _powerController.text = power is num ? '$power' : '';
-      }
+        // Written even when the pane didn't offer the field: absent means the
+        // form dropped it, and `result` then carries a null this must not read
+        // as the operator clearing a value they were never shown.
+        if (result.containsKey('power')) {
+          final power = result['power'];
+          _powerController.text = power is num ? '$power' : '';
+        }
 
-      final stamped = paneStartAtMillis(result, dateBeforePane, timeBeforePane);
-      if (stamped != null) _time.manualStartAtMillis = stamped;
+        final stamped = paneStartAtMillis(result, dateBeforePane, timeBeforePane);
+        if (stamped != null) _time.manualStartAtMillis = stamped;
 
-      final notes = ((result['notes'] as String?) ?? '').trim();
-      if (notes.isEmpty) {
-        _currentQsoExtra.remove('notes');
-      } else {
-        _currentQsoExtra['notes'] = notes;
-      }
-      // The Notes control shows the same value; without this it would go on
-      // showing what the contact said before the pane was opened.
-      _notesController.text = notes;
+        final notes = ((result['notes'] as String?) ?? '').trim();
+        _draft.setNote(notes);
+        // The Notes control shows the same value; without this it would go on
+        // showing what the contact said before the pane was opened.
+        _notesController.text = notes;
 
-      _theirExtra.addAll(theirPaneOverrides(result, theirValuesBeforePane));
+        _draft.theirExtra.addAll(theirPaneOverrides(result, theirValuesBeforePane));
 
-      // Recorded only where the pane actually changed them, so a contact
-      // merely opened and saved keeps taking the operation's stamp — and an
-      // emptied field records the empty string, which the stamp then leaves
-      // alone (it fills what is absent).
-      // Compared uppercased on both sides, like the grid two blocks up: the
-      // pane's callsign field rewrites the whole field in uppercase, so a
-      // record whose stored operator came in lowercase (an ADIF import's
-      // OPERATOR, a peer from another client) would otherwise record an
-      // override — and read as composed — from merely being opened.
-      final operatorCall = ((result['operatorCall'] as String?) ?? '').trim().toUpperCase();
-      if (operatorCall != operatorBeforePane.toUpperCase()) _ourExtra['operatorCall'] = operatorCall;
-      if (widget.showPositionField) {
-        final position = panePosition(result['multiIdentifier']);
-        if (position != positionBeforePane) _ourExtra['multiIdentifier'] = position;
-      }
+        // Recorded only where the pane actually changed them, so a contact
+        // merely opened and saved keeps taking the operation's stamp — and an
+        // emptied field records the empty string, which the stamp then leaves
+        // alone (it fills what is absent).
+        // Compared uppercased on both sides, like the grid two blocks up: the
+        // pane's callsign field rewrites the whole field in uppercase, so a
+        // record whose stored operator came in lowercase (an ADIF import's
+        // OPERATOR, a peer from another client) would otherwise record an
+        // override — and read as composed — from merely being opened.
+        final operatorCall = ((result['operatorCall'] as String?) ?? '').trim().toUpperCase();
+        if (operatorCall != operatorBeforePane.toUpperCase()) _draft.ourExtra['operatorCall'] = operatorCall;
+        if (widget.showPositionField) {
+          final position = panePosition(result['multiIdentifier']);
+          if (position != positionBeforePane) _draft.ourExtra['multiIdentifier'] = position;
+        }
 
-      _time.seedFields();
+        _time.seedFields();
+      });
     });
-    _populating = false;
     if (widget.editingQso == null) {
       // Power first: the frequency push notifies, and the seed that follows
       // rewrites the power field from the VFO — which would put the value
@@ -4554,7 +4248,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   bool get _callInfoActive => _callInfoAlnumLength >= 3;
 
   void _onCallChanged() {
-    if (_populating) return;
+    if (_draft.isPopulating) return;
     // Past the guard, the change is the operator's own — typing, or the clear
     // that `_wipe` does — which is exactly what the spots list wants to hear
     // about. A suggestion filling the field never reaches here.
@@ -4648,7 +4342,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// [CallLookupModel.relookupForRefsChanged], gated on this panel not being
   /// in the middle of writing the fields itself.
   void _relookupForRefsChanged() {
-    if (_populating) return;
+    if (_draft.isPopulating) return;
     _lookup.relookupForRefsChanged();
   }
 
@@ -4688,9 +4382,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     if (widget.editingQso != null) {
       widget.onEditCanceled?.call();
-    } else if (_hasComposedValues) {
+    } else if (_draft.hasComposedValues) {
       _handleWipeTap();
-    } else if (_wipeUndoSlot.value != null) {
+    } else if (_draft.undoSlot.value != null) {
       _restoreFromUndoSlot();
     } else {
       _wipe();
@@ -4713,17 +4407,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _clearRSTs();
     _gridController.clear();
     _stateController.clear();
-    _theirNameOverride = null;
-    _gridTouched = false;
-    _stateTouched = false;
+    _draft.clear();
     _lookup.cancelLookup();
     _lookup.reset();
     _refs.clear();
     _exchange.clear();
-    _currentQsoExtra.clear();
     _notesController.clear();
-    _ourExtra.clear();
-    _theirExtra.clear();
     _time.manualStartAtMillis = null;
     _selectedControlKey = null;
     _clearPowerEntry();
@@ -4737,7 +4426,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   // ---- Wipe/undo, delete/undo, revert-changes: the info row's second button ----
 
-  /// The part of [_hasComposedValues] a spot slide may not overwrite. The
+  /// The part of [QsoDraft.hasComposedValues] a spot slide may not overwrite. The
   /// slide is made on another surface, so what it would destroy has to be
   /// worth a prompt from over there: a station being composed is, while a
   /// frequency, a reference or a stray field with no call attached is
@@ -4750,47 +4439,25 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// filled in a moment earlier.
   bool get _hasComposedCall => _call.isNotEmpty && !_callIsUntouchedSuggestion;
 
-  /// Whether the in-progress new QSO has anything actually worth wiping —
-  /// the wipe button stays visible but disabled when this is false. With a
-  /// `radioService`, freq/band merely mirror the operation's VFO (seeded on
-  /// entry, not something the operator composed for this specific QSO) and
-  /// don't count; without one, they fall back to the pre-VFO behavior.
-  bool get _hasComposedValues =>
-      _call.isNotEmpty ||
-      (widget.radioService == null && (_radio.freqController.text.trim().isNotEmpty || _radio.manualBand != null)) ||
-      _time.manualStartAtMillis != null ||
-      _theirNameOverride != null ||
-      _refs.hasRefs ||
-      _exchange.hasTypedValues ||
-      _currentQsoExtra.isNotEmpty ||
-      _ourExtra.isNotEmpty ||
-      // A VALUE, not merely a key: a draft restored after a field was cleared
-      // in the More pane carries that field's null in the snapshot, and
-      // counting those would leave a visibly empty row guarding itself
-      // against a wipe and asking before a spot overwrites it.
-      _theirExtra.values.any((value) => value != null) ||
-      _gridController.text.trim().isNotEmpty ||
-      _stateController.text.trim().isNotEmpty;
-
   /// Stashes the in-progress new QSO into the undo slot (for 5 seconds,
   /// even if the user keeps typing — see `_buildWipeOrEditButton`), then
   /// wipes the form.
   void _handleWipeTap() {
-    _wipeUndoSlot.set(_getCurrentQsoData(), onExpire: () {
+    _draft.undoSlot.set(_draft.toData(), onExpire: () {
       if (mounted) setState(() {});
     });
     _wipe();
   }
 
   void _restoreFromUndoSlot() {
-    final data = _wipeUndoSlot.take();
+    final data = _draft.undoSlot.take();
     if (data == null) return;
-    _populating = true;
-    _applyFieldsFromData(data);
-    _time.manualStartAtMillis = data['startAtMillis'] as int?;
-    setState(() {});
-    _populating = false;
-    // _populating suppressed _onCallChanged's own _scheduleLookup()/
+    _draft.populate(() {
+      _applyFieldsFromData(data);
+      _time.manualStartAtMillis = data['startAtMillis'] as int?;
+      setState(() {});
+    });
+    // The populate bracket suppressed _onCallChanged's own _scheduleLookup()/
     // _lookup.scheduleScore() calls above (population isn't the user typing) —
     // the wipe this undoes already cleared the lookup cache and score
     // notices, so a restored call would otherwise sit there unlooked-up
@@ -4821,54 +4488,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
-  /// Deep, order-insensitive-for-lists equality — used to detect whether
-  /// the fields being edited still match the stored record. Lists compare
-  /// as multisets (via sorted JSON) rather than element-by-element, since
-  /// `refs` is the only list-valued field here and its order is an
-  /// artifact of how the refs model iterates, not a meaningful edit. A key
-  /// missing entirely, an empty Map/List/String, and an explicit null all
-  /// count as equivalent — `_getCurrentQsoData()` always emits fields like
-  /// `their.sent`/`mode`/`freq`/`band`/`refs`, even when blank/null/empty,
-  /// but a record with nothing recorded there yet might simply lack the
-  /// key, which isn't a meaningful edit either.
-  bool _deepEquals(dynamic a, dynamic b) {
-    if (_isEmptyish(a) && _isEmptyish(b)) return true;
-    if (a is Map || b is Map) {
-      final ma = a is Map ? a : const <dynamic, dynamic>{};
-      final mb = b is Map ? b : const <dynamic, dynamic>{};
-      for (final key in {...ma.keys, ...mb.keys}) {
-        if (!_deepEquals(ma[key], mb[key])) return false;
-      }
-      return true;
-    }
-    if (a is List || b is List) {
-      final la = a is List ? a : const <dynamic>[];
-      final lb = b is List ? b : const <dynamic>[];
-      if (la.length != lb.length) return false;
-      final sa = la.map(jsonEncode).toList()..sort();
-      final sb = lb.map(jsonEncode).toList()..sort();
-      for (var i = 0; i < sa.length; i++) {
-        if (sa[i] != sb[i]) return false;
-      }
-      return true;
-    }
-    return a == b;
-  }
-
-  bool _isEmptyish(dynamic v) =>
-      v == null ||
-      (v is String && v.isEmpty) ||
-      (v is Map && v.isEmpty) ||
-      (v is List && v.isEmpty);
-
   /// Whether the fields being edited differ from the stored record — drives
   /// the "revert changes" vs. "delete" state of the info row's second
   /// button while editing.
   bool _qsoDataChanged() {
     final editingQso = widget.editingQso;
     if (editingQso == null) return false;
-    if (editingQso.isEvent) return !_deepEquals(_eventDataForSave(editingQso), editingQso.data);
-    return !_deepEquals(_getCurrentQsoData(), editingQso.data);
+    if (editingQso.isEvent) return !qsoDataEquivalent(_eventDataForSave(editingQso), editingQso.data);
+    return _draft.differsFrom(editingQso);
   }
 
   /// The info row's second (no-background) button — a single control whose
@@ -4881,14 +4508,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final VoidCallback? onPressed;
 
     if (editingQso == null) {
-      if (_wipeUndoSlot.value != null) {
+      if (_draft.undoSlot.value != null) {
         icon = MdiIcons.undo;
         actionLabel = t.loggingControls.undo;
         onPressed = _restoreFromUndoSlot;
       } else {
         icon = MdiIcons.backspaceOutline;
         actionLabel = t.loggingControls.wipe;
-        onPressed = _hasComposedValues ? _handleWipeTap : null;
+        onPressed = _draft.hasComposedValues ? _handleWipeTap : null;
       }
     } else if (editingQso.deleted) {
       // An already-deleted QSO (selected via the "show deleted QSOs"
@@ -5171,10 +4798,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       final calls = stacked?.calls ?? _callList;
       final isList = calls.length > 1;
       // `their.call` for the whole batch comes from `dataFor` below, but the
-      // cached lookup only rides along when `_getCurrentQsoData` is asked
+      // cached lookup only rides along when [QsoDraft.toData] is asked
       // about the call it was made for — the raw stacked field text never
       // matches it.
-      final baseData = _getCurrentQsoData(callOverride: stacked?.calls.first);
+      final baseData = _draft.toData(callOverride: stacked?.calls.first);
       final baseStartAtMillis =
           (baseData['startAtMillis'] as int?) ?? nowMillis();
 
@@ -5205,11 +4832,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             if (keepOriginal) ...?(baseData['their'] as Map<String, dynamic>?),
             'call': call,
             'sent': _rstOrDefault(_rcvdController.text.trim()),
-            if (keepOriginal && _theirNameOverride != null) 'name': _theirNameOverride,
-            // Same normalization as _getCurrentQsoData: canonical Maidenhead
+            if (keepOriginal && _draft.theirNameOverride != null) 'name': _draft.theirNameOverride,
+            // Same normalization as [QsoDraft.toData]: canonical Maidenhead
             // casing for grids, uppercase for states.
-            if (_gridTouched) 'grid': normalizeGrid(_gridController.text.trim()),
-            if (_stateTouched) 'state': _stateController.text.trim().toUpperCase(),
+            if (_draft.gridTouched) 'grid': normalizeGrid(_gridController.text.trim()),
+            if (_draft.stateTouched) 'state': _stateController.text.trim().toUpperCase(),
           },
           'startAtMillis': baseStartAtMillis + index * 5000,
         };
@@ -6026,7 +5653,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   ///
   /// Never while editing an event row. A NOTE is not a contact and needs no
   /// band, and the `event` band sentinel it carries does not survive into
-  /// `_radio.band`: the record's zero frequency sends `_applyFieldsFromData` down
+  /// `_radio.band`: the record's zero frequency sends [QsoDraft.applyData] down
   /// its frequency branch, which drops `_radio.manualBand`. On a tuned rig
   /// `_seedFromRadioService` then fills it from the VFO and the question never
   /// arises; on the untuned one these warnings exist for, this guard is all
@@ -6151,7 +5778,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// wrong whenever a field is added. The cost is bounded by the null check
   /// at the call site — a host with no such consumer never gets here.
   ///
-  /// A published draft is READ-ONLY to everyone downstream. `_getCurrentQsoData`
+  /// A published draft is READ-ONLY to everyone downstream. [QsoDraft.toData]
   /// shares nested references with the QSO being edited and with the lookup
   /// result, and the map handed out below is the same one kept here — so
   /// mutating a published draft in place moves both sides of the comparison
@@ -6164,7 +5791,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (!wantsDraft && !wantsPeer) return;
     // Built once and handed to both — the deep compare below is the expensive
     // half, not this.
-    final qso = _getCurrentQsoData();
+    final qso = _draft.toData();
     final unchanged = const DeepCollectionEquality().equals(qso, _lastPublishedQso);
     // Deduped separately, never on `unchanged` alone: a report the operator
     // types over its own placeholder leaves the draft identical and changes

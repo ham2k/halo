@@ -9,6 +9,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
+import 'package:halo_widgets/src/logging_controls_draft.dart';
 import 'package:halo_widgets/src/logging_controls_radio.dart';
 
 class _FakeVfoStore implements VfoStore {
@@ -35,7 +36,9 @@ class _FakeVfoStore implements VfoStore {
 class _Harness {
   final store = _FakeVfoStore();
   Qso? editingQso;
-  bool populating = false;
+  /// Only its populating bracket is read by the model under test; the
+  /// draft's own data paths are never asked, so it has nothing to read.
+  late final draft = QsoDraft(config: () => throw UnsupportedError('the draft is not read here'));
   int rescores = 0;
   int notifications = 0;
   late final model = RadioControlModel(
@@ -47,7 +50,7 @@ class _Harness {
       enabledBands: null,
       enabledModes: null,
     ),
-    isPopulating: () => populating,
+    draft: draft,
     onRescore: () => rescores++,
   )
     ..addListener(() => notifications++)
@@ -70,12 +73,13 @@ void main() {
   testWidgets('a record with no band stays bandless, whatever frequency the operator last typed', (tester) async {
     final h = _Harness();
     h.model.freqController.text = '14074';
-    h.populating = true;
-    h.model.setBand(null);
-    expect(h.model.band, isNull, reason: 'the empty-field fallback must not refill a null band');
-    expect(h.model.freq, isNull);
-    h.model.setBand('40m');
-    expect(h.model.band, '40m');
+    h.draft.populate(() {
+      h.model.setBand(null);
+      expect(h.model.band, isNull, reason: 'the empty-field fallback must not refill a null band');
+      expect(h.model.freq, isNull);
+      h.model.setBand('40m');
+      expect(h.model.band, '40m');
+    });
     h.model.dispose();
   });
 
@@ -95,8 +99,7 @@ void main() {
 
   testWidgets('a programmatic write neither guesses a mode nor arms a push', (tester) async {
     final h = _Harness();
-    h.populating = true;
-    h.model.freqController.text = '14074';
+    h.draft.populate(() => h.model.freqController.text = '14074');
     expect(h.model.mode, 'SSB');
     expect(h.model.freqTouched, isFalse);
     await tester.pump(const Duration(seconds: 5));

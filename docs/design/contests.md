@@ -1543,7 +1543,7 @@ in the first cut of write-through:
   rest of the pileup got the next numbers in the series, so `dataFor` strips the
   field for index > 0 and lets the sequence issue them.
 - **An existing QSO opened for editing.** That record's number was sent long
-  ago. `_applyFieldsFromData` restores it from the ref (it must treat `serial`
+  ago. `QsoDraft.applyData` restores it from the ref (it must treat `serial`
   exactly as `text`, or the field is left empty *and* any sibling field on the
   same ref goes unrestored and is cleared on save), and the exchange model's
   `refreshSerialPreviews` refuses to run at all while `editingQso != null`.

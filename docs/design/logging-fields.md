@@ -11,9 +11,10 @@ beside it: the Radio control (`logging_controls_radio.dart`), the callsign looku
 (`logging_controls_lookup.dart`), the command being typed (`logging_controls_command.dart`), the Time
 and Spotting controls (`logging_controls_time.dart`, `logging_controls_spotting.dart`), the contest
 exchange fields with their options menu and serial previews (`logging_controls_exchange.dart`), the
-activity refs and the controls they belong to (`logging_controls_refs.dart`), and the default-focus
-backstop (`logging_controls_focus.dart`); the call field's reading rules are `call_field_text.dart`,
-the row's sizing arithmetic
+activity refs and the controls they belong to (`logging_controls_refs.dart`), the draft itself —
+what the record carries beyond the fields, and the one bracket for a programmatic write
+(`logging_controls_draft.dart`) — and the default-focus backstop (`logging_controls_focus.dart`); the
+call field's reading rules are `call_field_text.dart`, the row's sizing arithmetic
 `logging_controls_metrics.dart`, and the information area `logging_info_area.dart`.
 
 ## The three parts
@@ -739,11 +740,11 @@ callsign, and nothing here could correct it.
 
 **A value the pane merely displayed is never recorded as an entered one.**
 Every `their` field the pane owns outright goes into the record through an
-override map (`_theirExtra`, the same shape `_ourExtra` has for
+override map (`QsoDraft.theirExtra`, the same shape `ourExtra` has for
 Operator/Position), and a key lands there only where the pane actually
 CHANGED it. Without that, opening a contact and saving it would promote its
 lookup's guesses to entered values and stop the lookup tracking them — the
-same trap `_gridTouched` exists for on the primary Grid field.
+same trap `QsoDraft.gridTouched` exists for on the primary Grid field.
 
 **Editing the Grid drops the coordinate override, and blanks the two fields
 on screen.** The drop is what counts: the pane's on-screen clear runs on blur,

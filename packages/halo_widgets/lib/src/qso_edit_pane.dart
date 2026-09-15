@@ -326,7 +326,7 @@ Future<Map<String, dynamic>?> showQsoEditPane(
         }
         // A typed locator replaces whatever coordinate the record arrived
         // with, and the save path clears the pair for exactly that reason
-        // (LoggingControls' `_getCurrentQsoData`). Blanking the fields here is
+        // (`QsoDraft.toData`). Blanking the fields here is
         // what keeps the pane honest about it: locations.md's rule is that a
         // field the operator types into shows what would be stored if they
         // left it alone, and a coordinate left on screen beside a corrected

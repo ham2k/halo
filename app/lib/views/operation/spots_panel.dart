@@ -263,7 +263,7 @@ List<({String key, List<Map<String, dynamic>> spots})> sectionSpots(
 /// relevant to prefill (their.call, freq, band, mode, refs). Deliberately
 /// omits `our`/`startAtMillis`/RST (those belong to the current moment and
 /// station, not the spot) and any spot-only metadata (`icon`, `spot.*`) —
-/// `LoggingControls._applyFieldsFromData` copies every top-level key it
+/// the logging panel's `QsoDraft.applyData` copies every top-level key it
 /// doesn't recognize into the eventually-logged QSO, so a raw spot map
 /// would leak spot bookkeeping into a real QSO record. Public for
 /// `spots_panel_merge_test.dart`.
