@@ -35,8 +35,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'package:ham2k_logger/main.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_platform_interface.dart';
+
+import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/services/unclean_quit.dart';
 
 import '../support/halo_test_support.dart';
@@ -91,7 +95,7 @@ void main() {
       // ErrorPolicy from uploading them as sync and peer defects.
       expect(ErrorPolicy.appIsExiting, isTrue);
       await expectLater(services.db.customSelect('SELECT 1').get(), throwsA(isA<StateError>()));
-      expect(services.settings.prefs.getBool(uncleanQuitKey), isNull,
+      expect(lastQuitStage(services.settings.prefs), isNull,
           reason: 'a close that finished must not leave the next boot reporting a lost write');
 
       // Still here, seconds later, with a database that cannot be reopened —
@@ -228,7 +232,103 @@ void main() {
 
       await closeDatabaseOnExit(services);
 
-      expect(services.settings.prefs.getBool(uncleanQuitKey), isNull);
+      expect(lastQuitStage(services.settings.prefs), isNull);
+    });
+
+
+  });
+
+  group('the stage mark', () {
+    test('the radios are marked before they are told to let go', () async {
+      // The step that can WEDGE rather than fail, and the one the mark has to
+      // reach first: without it a quit that dies saying goodbye to a radio
+      // leaves no trace of any kind — no process to report it, since a wedged
+      // one never dies, and on Windows a window that makes every later launch
+      // a silent no-op instead.
+      //
+      // Marked BEFORE the step, not after: a mark written afterwards names
+      // the last step that SUCCEEDED, which cannot tell a quit that died in
+      // the next step from a clean one that got that far.
+      late final _StageRecordingCat cat;
+      final harness = await makeHaLoServices(
+        cat: (settings) => cat = _StageRecordingCat(settings),
+      );
+
+      await tearDownForExit(harness.services);
+
+      expect(cat.stageWhenToldToShutDown, QuitStage.cat);
+    });
+
+    test('a mark the store REFUSES leaves no stale step behind', () async {
+      // The failure mode that matters on the platform this exists for:
+      // shared_preferences_windows catches its own IO and answers false, so a
+      // refused write never throws and a guard against a throw sees nothing.
+      // Left alone, the previous step stays in the pref and the next boot
+      // names it with full confidence — a quit that died in the database
+      // reported as one that died on a radio, sending whoever reads it after
+      // a serial port. No mark says less, and lies less.
+      // Over a close that FAILS, so nothing else clears the mark on the way
+      // past: with a close that succeeds, the ordinary clean-quit clear wipes
+      // the stale step too and the assertion holds whether the refusal is
+      // handled or not.
+      final harness = await makeHaLoServices(
+        prefs: {quitStageKey: QuitStage.cat.name},
+        db: _ClosingFailsDatabase(),
+      );
+      final previous = SharedPreferencesStorePlatform.instance;
+      addTearDown(() => SharedPreferencesStorePlatform.instance = previous);
+      SharedPreferencesStorePlatform.instance = _RefusingStore();
+
+      await closeDatabaseOnExit(harness.services);
+
+      // Not `QuitStage.cat`, which is what an unhandled refusal leaves: the
+      // database failed, and naming the radios would be a confident lie.
+      expect(lastQuitStage(harness.settings.prefs), isNull);
+    });
+
+    test('a close that fails LEAVES the mark for the next boot to report', () async {
+      // The other half, and the one the rest of the file cannot see: every
+      // other assertion here is that a finished quit clears the mark, so
+      // moving the clear where it always runs — into a finally, or past the
+      // close — would keep them all green while the feature silently stopped
+      // reporting anything at all.
+      final harness = await makeHaLoServices(db: _ClosingFailsDatabase());
+
+      await closeDatabaseOnExit(harness.services);
+
+      expect(lastQuitStage(harness.settings.prefs), QuitStage.databaseClose);
     });
   });
+}
+
+/// A [CatService] that answers one question: what had the teardown recorded
+/// by the time it reached the radios.
+class _StageRecordingCat extends CatService {
+  _StageRecordingCat(this._settings) : super(_settings);
+
+  final SettingsService _settings;
+
+  QuitStage? stageWhenToldToShutDown;
+
+  @override
+  Future<void> shutdown() async => stageWhenToldToShutDown = lastQuitStage(_settings.prefs);
+}
+
+/// A database whose close refuses, which is the only way a test can reach the
+/// path where the mark has to survive.
+class _ClosingFailsDatabase extends HaLoDatabase {
+  _ClosingFailsDatabase() : super(NativeDatabase.memory());
+
+  @override
+  Future<void> close() async => throw StateError('close refused');
+}
+
+/// A preferences store that REFUSES writes the way the Windows one does —
+/// answering false rather than throwing, which is what makes the failure
+/// invisible to a caller guarding only against an exception.
+class _RefusingStore extends InMemorySharedPreferencesStore {
+  _RefusingStore() : super.empty();
+
+  @override
+  Future<bool> setValue(String valueType, String key, Object value) async => false;
 }

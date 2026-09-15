@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/catalog_service.dart';
 import 'package:ham2k_logger/services/extension_service.dart';
+import 'package:ham2k_logger/services/cat/cat_service.dart';
 import 'package:ham2k_logger/services/halo_services.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 
@@ -41,25 +42,39 @@ class HaLoHarness {
 /// it. Secure storage is [FakeSecureStorage] unless [secureStorage] says
 /// otherwise: the real plugin has no platform channel under test. [catalog]
 /// replaces the lazy extension catalog for a test that opens it — the real
-/// one would reach catalog.ham2k.net.
+/// one would reach catalog.ham2k.net. [cat] builds a CatService over the
+/// settings this creates — a builder, because CatService needs them and they
+/// do not exist until here — and stands in for one that can otherwise only
+/// reach a radio through hardware. [db] hands in a database double; one made
+/// here is closed for you, one handed in is yours to manage.
 Future<HaLoHarness> makeHaLoServices({
   Map<String, Object>? prefs = const {},
   Map<String, Object?> stubs = const {},
   ExtensionService? extensions,
   FlutterSecureStorage? secureStorage,
   CatalogService? catalog,
+  HaLoDatabase? db,
+  CatService Function(SettingsService settings)? cat,
 }) async {
   if (prefs != null) SharedPreferences.setMockInitialValues({...prefs});
   final settings = SettingsService(
     await SharedPreferences.getInstance(),
     secureStorage: secureStorage ?? FakeSecureStorage(),
   );
-  final db = HaLoDatabase(NativeDatabase.memory());
-  addTearDown(db.close);
+  // Only a database this harness OWNS gets closed for the caller: one handed
+  // in may be a double whose close is the thing under test, and closing it
+  // here would fail the test in teardown rather than in its body.
+  final HaLoDatabase database;
+  if (db != null) {
+    database = db;
+  } else {
+    database = HaLoDatabase(NativeDatabase.memory());
+    addTearDown(database.close);
+  }
   final ext = (extensions ?? ExtensionServiceWithFakeHost(FakeExtensionHost(stubs)))..settings = settings;
   return HaLoHarness(
-    services: HaLoServices(db, settings, extensions: ext, catalog: catalog),
-    db: db,
+    services: HaLoServices(database, settings, extensions: ext, catalog: catalog, cat: cat?.call(settings)),
+    db: database,
     settings: settings,
     extensions: ext,
   );

@@ -39,12 +39,48 @@ void main() {
   setUp(ErrorReportingService.resetForTesting);
 
   test('a mark left by the previous run is reported, once', () async {
-    final prefs = await _prefs({uncleanQuitKey: true});
+    final prefs = await _prefs({quitStageKey: QuitStage.databaseClose.name});
 
     final lines = await capturedPrints(() => reportUncleanQuit(prefs));
 
     expect(lines.join('\n'), contains('db:unclean-quit'));
-    expect(prefs.getBool(uncleanQuitKey), isNull, reason: 'a second boot must not report it again');
+    expect(lastQuitStage(prefs), isNull, reason: 'a second boot must not report it again');
+  });
+
+  test('the report names the step that was running, not just "a quit"', () async {
+    // The whole point of the stage: a quit wedged in the radio shutdown and a
+    // quit that lost a database write are different bugs with different
+    // fixes, and a single message for both groups them into one issue where
+    // the rarer of the two is never seen.
+    final prefs = await _prefs({quitStageKey: QuitStage.cat.name});
+
+    final lines = await capturedPrints(() => reportUncleanQuit(prefs));
+
+    expect(lines.join('\n'), contains('radios'));
+    expect(lines.join('\n'), contains('db:unclean-quit:cat'));
+  });
+
+  test("an older build's bare mark still reports, as the close it meant", () async {
+    // The bool was only ever written in front of the close. An operator
+    // upgrading into this build carries one from their last quit, and a boot
+    // that only understood the new key would drop it silently.
+    final prefs = await _prefs({uncleanQuitKey: true});
+
+    final lines = await capturedPrints(() => reportUncleanQuit(prefs));
+
+    expect(lines.join('\n'), contains('closing the database'));
+    expect(prefs.getBool(uncleanQuitKey), isNull, reason: 'and must not report on every boot after');
+  });
+
+  test('a stage name from a newer build reports rather than vanishing', () async {
+    // Downgrades happen, and a stage this build does not know is still an
+    // unclean quit. Dropping it would make the quit path look healthier the
+    // older the build is.
+    final prefs = await _prefs({quitStageKey: 'somethingThisBuildNeverHeardOf'});
+
+    final lines = await capturedPrints(() => reportUncleanQuit(prefs));
+
+    expect(lines.join('\n'), contains('db:unclean-quit'));
   });
 
   test('an ordinary boot reports nothing', () async {
@@ -59,7 +95,7 @@ void main() {
     // `notify` would put a "Something went wrong" card in front of an operator
     // starting a session, and `logOnly` would mean nobody ever learns the quit
     // path is failing in the field.
-    final decision = ErrorPolicy.decide(const UncleanDatabaseQuit());
+    final decision = ErrorPolicy.decide(const UncleanDatabaseQuit(QuitStage.cat));
     expect(decision.disposition, ErrorDisposition.report);
     expect(decision.disposition.uploads, isTrue);
     expect(decision.disposition.notifies, isFalse);

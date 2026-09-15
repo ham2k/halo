@@ -77,6 +77,11 @@ void shutdownOnExit(HaLoServices services) {
 /// teardown — rather than as a block of steps wrapped in a closure.
 @visibleForTesting
 Future<AppExitResponse> tearDownForExit(HaLoServices services) async {
+  // In FRONT of the radios: this is the step that can wedge rather than
+  // fail, and a wedge here is invisible everywhere else — the process never
+  // dies to be reported, and the next launch is a silent no-op rather than a
+  // crash.
+  await _markStage(services, QuitStage.cat);
   try {
     // Bounded. shutdown() awaits each node in turn, and while the Icom
     // path is bounded (600ms ack + 20ms), a serial port wedged mid-write
@@ -150,23 +155,16 @@ const _extensionsBudget = Duration(seconds: 2);
 /// the next open recovers. What these steps buy is the write that would
 /// otherwise be rolled back, and an exit that isn't a crash report.
 ///
-/// The breadcrumb around it all is the only part that outlives the process:
+/// The stage mark around it all is the only part that outlives the process:
 /// the engine tears the app down the moment this returns, so a `report()` from
 /// a failed close never reaches the backend. The next boot reports it instead
-/// (`reportUncleanQuit`, wired into [bootstrap]).
+/// (`reportUncleanQuit`, wired into [bootstrap]), naming the step that was
+/// still running — which is why each step marks itself rather than one mark
+/// covering the lot.
 @visibleForTesting
 Future<void> closeDatabaseOnExit(HaLoServices services) async {
   final prefs = services.settings.prefs;
-  // Guarded and bounded like everything else on this path, and for a sharper
-  // reason: the mark is worth less than the close it describes. An unwritable
-  // prefs file or a wedged platform channel must not throw or hang in FRONT of
-  // the close — that would leave the process to abort on the way out, which is
-  // the very failure the mark exists to record.
-  try {
-    await markDatabaseClosing(prefs).timeout(_markBudget);
-  } catch (e, st) {
-    ErrorReportingService.report(e, st, context: 'db:mark-on-exit');
-  }
+  await _markStage(services, QuitStage.databaseDrain);
   services.syncEngine.dispose();
   try {
     await services.db.transaction(() async {}).timeout(_drainBudget);
@@ -176,11 +174,63 @@ Future<void> closeDatabaseOnExit(HaLoServices services) async {
     // the process aborts on the way out with that write lost anyway.
     ErrorReportingService.report(e, st, context: 'db:drain-on-exit');
   }
+  await _markStage(services, QuitStage.databaseClose);
   try {
     await services.db.close().timeout(_closeBudget);
-    await markDatabaseClosed(prefs).timeout(_markBudget);
   } catch (e, st) {
     ErrorReportingService.report(e, st, context: 'db:close-on-exit');
+    // The mark stays: a close that did not finish is exactly what the next
+    // boot has to hear about.
+    return;
+  }
+  try {
+    await clearQuitStage(prefs).timeout(_markBudget);
+  } catch (e, st) {
+    // Its own guard, so a slow clear is not reported as a failed close — and
+    // so a quit that went perfectly is not filed as an unclean one.
+    ErrorReportingService.report(e, st, context: 'db:unmark-on-exit');
+  }
+}
+
+/// Records that [stage] is about to run, without ever being the reason it
+/// does not.
+///
+/// Guarded and bounded, because the mark is worth less than the step it
+/// describes: an unwritable prefs file or a wedged platform channel must not
+/// throw or hang in FRONT of a teardown step — that would leave the process
+/// to abort on the way out, which is the very failure the mark exists to
+/// record. The `report` is inside a guard of its own for the same reason: it
+/// reaches the backend synchronously, and a throw from there would skip the
+/// radios' disconnect entirely.
+///
+/// A write that is REFUSED rather than failed takes the stale mark with it.
+/// The previous stage is still sitting in the pref, and left there it would
+/// have the next boot name the wrong step with full confidence — a quit that
+/// wedged in the drain reported as one that wedged on a radio, sending
+/// whoever reads it after a serial port. No mark at all says less and lies
+/// less; the report below is what says a mark went missing.
+///
+/// Console-only, in practice. Everything reported from here runs in the last
+/// moments of the process, which is the whole reason the mark exists, so
+/// treat these as log lines rather than as backend coverage.
+Future<void> _markStage(HaLoServices services, QuitStage stage) async {
+  final prefs = services.settings.prefs;
+  try {
+    if (await markQuitStage(prefs, stage).timeout(_markBudget)) return;
+    await clearQuitStage(prefs).timeout(_markBudget);
+    _reportQuietly(StateError('the $stage quit mark was refused'), StackTrace.current);
+  } catch (e, st) {
+    _reportQuietly(e, st);
+  }
+}
+
+/// [ErrorReportingService.report], for a caller that cannot afford a throw.
+void _reportQuietly(Object error, StackTrace stackTrace) {
+  try {
+    ErrorReportingService.report(error, stackTrace, context: 'db:mark-on-exit');
+  } catch (_) {
+    // Nowhere left to report a reporting failure, and the teardown step this
+    // sits in front of matters more than any record of it.
   }
 }
 
