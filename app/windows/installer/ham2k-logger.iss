@@ -317,7 +317,7 @@ begin
 
   if (CurUninstallStep = usPostUninstall) and not UninstallSilent then
   begin
-    if MsgBox('Also delete your {#AppName} data - logged QSOs, settings, and your saved QRZ.com login? This cannot be undone.',
+    if MsgBox('Also delete your {#AppName} data - logs, settings and accounts? This cannot be undone.',
        mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
     begin
       // The database, preferences and data-file cache all live together here
