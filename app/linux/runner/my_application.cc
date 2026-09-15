@@ -225,8 +225,9 @@ static void my_application_activate(GApplication* application) {
   // forces its usual themed background and padding down to nothing.
   GtkWidget* titlebar = gtk_header_bar_new();
   gtk_header_bar_set_show_close_button(GTK_HEADER_BAR(titlebar), FALSE);
-  gtk_header_bar_set_title(GTK_HEADER_BAR(titlebar), nullptr);
-  gtk_widget_set_size_request(titlebar, -1, 1);
+  gtk_header_bar_set_has_subtitle(GTK_HEADER_BAR(titlebar), FALSE);
+  gtk_header_bar_set_custom_title(GTK_HEADER_BAR(titlebar), 
+                                  gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
   GtkStyleContext* titlebar_style = gtk_widget_get_style_context(titlebar);
   gtk_style_context_add_class(titlebar_style, "ham2k-invisible-titlebar");
   g_autoptr(GtkCssProvider) titlebar_css = gtk_css_provider_new();
