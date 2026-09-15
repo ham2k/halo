@@ -172,8 +172,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
 #endif
 
   // Attach to console when present (e.g., 'flutter run') or create a
-  // new console when running with a debugger.
-  if (!::AttachConsole(ATTACH_PARENT_PROCESS) && ::IsDebuggerPresent()) {
+  // new console when running with a debugger. A launch from a Command
+  // Prompt attaches too but inherits no stdout handle at all (GUI
+  // subsystem), so the streams are pointed at the console there; under
+  // 'flutter run' stdout is the tool's pipe — the VM service URI travels
+  // on it — and must be left alone.
+  HANDLE inherited_stdout = ::GetStdHandle(STD_OUTPUT_HANDLE);
+  bool has_stdout =
+      inherited_stdout != nullptr && inherited_stdout != INVALID_HANDLE_VALUE;
+  if (::AttachConsole(ATTACH_PARENT_PROCESS)) {
+    if (!has_stdout) {
+      RedirectStreamsToConsole();
+    }
+  } else if (::IsDebuggerPresent()) {
     CreateAndAttachConsole();
   }
 

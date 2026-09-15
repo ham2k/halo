@@ -194,6 +194,34 @@ The gate itself is one `kIsWeb` check and is verified by reading; the risk it
 carries is that a future edit removes it silently. That is what this entry is
 for.
 
+## Windows: a map click blurs the page mid-press, and MapLibre drops the drag
+
+**Breaks:** dragging the map on Windows — on and off, sometimes every other
+drag, sometimes never — while marker clicks and wheel zoom keep working.
+
+`flutter_inappwebview_windows` hosts WebView2 in composition mode and forwards
+Flutter's pointer events with `SendMouseInput`. Chromium takes keyboard focus
+on every mousedown it receives; its window sits under a hidden *owned*
+top-level the plugin creates, so that focus change deactivates the main
+window, and the runner's `WM_ACTIVATE` handler (`win32_window.cpp`) refocuses
+the Flutter view at once — unconditionally, on `WA_INACTIVE` too. The page
+therefore sees a window `blur` in the middle of every press. MapLibre's
+handler manager treats a blur as "stop every gesture", which disarms the drag
+the mousedown just started; whether the blur or the mousedown reaches the
+page first is a race, hence the erratic pattern.
+
+**Where the fix lives:** `mapbox_webview_map_view.dart` builds the map page
+with `suppressWindowBlur` on Windows, a capture-phase `blur` listener in the
+page's head that stops the event before MapLibre's own listener (registered
+later) runs. Keyboard focus stays in Flutter, which is what a logger wants.
+Nothing is changed on other platforms: the blur-cancels-drag behaviour is what
+ends a drag cleanly when the window really does lose focus mid-gesture.
+
+The focus round-trip itself (main window deactivated and reactivated within
+one press) still happens on every map click. Nothing visible depends on it
+today; if it ever does, the runner's unconditional `SetFocus` on
+`WA_INACTIVE` is where to look.
+
 ## `flutter_secure_storage` on Linux needs libsecret AND a Secret Service
 
 **Breaks:** two different ways, and they are worth keeping apart.

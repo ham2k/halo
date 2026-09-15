@@ -4,6 +4,11 @@
 #include <string>
 #include <vector>
 
+// Points the CRT's stdout/stderr (and the Flutter library's) at the console
+// the process is attached to. A GUI-subsystem exe starts with no usable
+// stdout, so attaching a console alone leaves printf output going nowhere.
+void RedirectStreamsToConsole();
+
 // Creates a console for the process, and redirects stdout and stderr to
 // it for both the runner and the Flutter library.
 void CreateAndAttachConsole();

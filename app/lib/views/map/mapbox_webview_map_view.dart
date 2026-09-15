@@ -76,6 +76,101 @@ class MapboxWebviewMapView extends StatefulWidget {
 
   @override
   State<MapboxWebviewMapView> createState() => _MapboxWebviewMapViewState();
+
+  // The marker/line/popup logic lives in the shared mapGlScript (also used
+  // by the Flutter web backend); this page just hosts it and bridges the
+  // window.polo* entry points the Dart side calls. The script's event
+  // callback crosses on its own 'poloMapEvent' handler rather than riding
+  // onConsoleMessage: a console line is a debug print, and these have to
+  // reach ErrorPolicy.
+  //
+  // `suppressWindowBlur` is for Windows. There the composition-hosted
+  // WebView2 takes keyboard focus on every mousedown the plugin forwards,
+  // and the runner takes it straight back (its WM_ACTIVATE handler refocuses
+  // the Flutter view — the webview's window lives under a hidden owned
+  // top-level, so Chromium focusing itself deactivates the main window). The
+  // page sees a window `blur` in the middle of every press, and MapLibre's
+  // handler manager treats a blur as "stop every gesture", which disarms the
+  // drag that press just started; whether the blur lands before or after
+  // the mousedown is a race, so drags fail on and off. The blur is swallowed
+  // before MapLibre's own listener runs (ours registers first, so it runs
+  // first) — and with it every later `blur` listener on `window`, so none
+  // may be added to this page and expected to fire on Windows. Not done
+  // elsewhere: the blur-cancels-drag behaviour is what ends a drag cleanly
+  // when the window really does lose focus mid-gesture. On Windows that
+  // case now rides on MapLibre's other guard instead — a mousemove whose
+  // `buttons` no longer carries the pressed button resets the drag — so a
+  // drag interrupted by a real focus loss ends on the next move rather than
+  // following the cursor.
+  @visibleForTesting
+  static String pageHtml(bool isDark, String styleUrl, String styleUrlDark, bool notifyClicks,
+          {required bool suppressWindowBlur}) =>
+      '''
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
+  <script>
+    ${suppressWindowBlur ? "window.addEventListener('blur', function (e) { e.stopImmediatePropagation(); }, true);" : ''}
+    // Installed before anything can fail: an uncaught page error (the GL
+    // script missing so create() throws ReferenceError, WebGL init failing)
+    // happens before the map's own error channel exists, and onConsoleMessage
+    // never sees uncaught exceptions. Buffered until the bridge is ready —
+    // these errors tend to fire exactly in the window where it isn't yet.
+    window.__poloPendingErrors = [];
+    function __poloPageError(text) {
+      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
+        window.flutter_inappwebview.callHandler('poloMapEvent', 'page-error', text);
+      } else {
+        window.__poloPendingErrors.push(text);
+      }
+    }
+    window.onerror = function (message, source, line) {
+      __poloPageError(message + ' (' + source + ':' + line + ')');
+      return false;
+    };
+    window.addEventListener('flutter_inappwebviewready', function () {
+      var pending = window.__poloPendingErrors;
+      window.__poloPendingErrors = [];
+      pending.forEach(__poloPageError);
+    });
+  </script>
+  <script src="$mapGlScriptUrl"
+    onerror="__poloPageError('failed to load the maplibre script from $mapGlScriptUrl')"></script>
+  <link href="$mapGlCssUrl" rel="stylesheet" />
+  <style>
+    body, html, #map { margin: 0; padding: 0; height: 100%; width: 100%; }
+    .maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }
+    #map { background: ${mapLibreSpaceBackgroundCss()}; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>$mapGlScript</script>
+  <script>
+    const handle = window.poloMapGl.create(
+      document.getElementById('map'), '$styleUrl', '$styleUrlDark',
+      $isDark,
+      function (kind, message) {
+        window.flutter_inappwebview.callHandler('poloMapEvent', kind, message);
+      }, $notifyClicks);
+    window.poloSetMarkers = handle.setMarkers;
+    window.poloSetLines = handle.setLines;
+    window.poloSetShapes = handle.setShapes;
+    window.poloSetProjection = handle.setProjection;
+    window.poloMoveTo = handle.moveTo;
+    window.poloZoomIn = handle.zoomIn;
+    window.poloZoomOut = handle.zoomOut;
+    window.poloSetDark = handle.setDark;
+    window.poloUpdateStyles = handle.updateStyles;
+    handle.onLoad(function () {
+      window.flutter_inappwebview.callHandler('poloMapReady');
+    });
+  </script>
+</body>
+</html>
+''';
 }
 
 class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with WidgetsBindingObserver {
@@ -252,7 +347,8 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
       // the exe (see WindowsWebView).
       webViewEnvironment: WindowsWebView.environment,
       initialData: InAppWebViewInitialData(
-        data: _html(widget.isDark, widget.styleUrl, widget.styleUrlDark, widget.onMarkerTap != null),
+        data: MapboxWebviewMapView.pageHtml(widget.isDark, widget.styleUrl, widget.styleUrlDark, widget.onMarkerTap != null,
+            suppressWindowBlur: defaultTargetPlatform == TargetPlatform.windows),
         baseUrl: WebUri('https://ham2k.com/'),
       ),
       initialSettings: InAppWebViewSettings(transparentBackground: true),
@@ -300,76 +396,4 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
       ],
     );
   }
-
-  // The marker/line/popup logic lives in the shared mapGlScript (also used
-  // by the Flutter web backend); this page just hosts it and bridges the
-  // window.polo* entry points the Dart side calls. The script's event
-  // callback crosses on its own 'poloMapEvent' handler rather than riding
-  // onConsoleMessage: a console line is a debug print, and these have to
-  // reach ErrorPolicy.
-  static String _html(bool isDark, String styleUrl, String styleUrlDark, bool notifyClicks) => '''
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no" />
-  <script>
-    // Installed before anything can fail: an uncaught page error (the GL
-    // script missing so create() throws ReferenceError, WebGL init failing)
-    // happens before the map's own error channel exists, and onConsoleMessage
-    // never sees uncaught exceptions. Buffered until the bridge is ready —
-    // these errors tend to fire exactly in the window where it isn't yet.
-    window.__poloPendingErrors = [];
-    function __poloPageError(text) {
-      if (window.flutter_inappwebview && window.flutter_inappwebview.callHandler) {
-        window.flutter_inappwebview.callHandler('poloMapEvent', 'page-error', text);
-      } else {
-        window.__poloPendingErrors.push(text);
-      }
-    }
-    window.onerror = function (message, source, line) {
-      __poloPageError(message + ' (' + source + ':' + line + ')');
-      return false;
-    };
-    window.addEventListener('flutter_inappwebviewready', function () {
-      var pending = window.__poloPendingErrors;
-      window.__poloPendingErrors = [];
-      pending.forEach(__poloPageError);
-    });
-  </script>
-  <script src="$mapGlScriptUrl"
-    onerror="__poloPageError('failed to load the maplibre script from $mapGlScriptUrl')"></script>
-  <link href="$mapGlCssUrl" rel="stylesheet" />
-  <style>
-    body, html, #map { margin: 0; padding: 0; height: 100%; width: 100%; }
-    .maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }
-    #map { background: ${mapLibreSpaceBackgroundCss()}; }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
-  <script>$mapGlScript</script>
-  <script>
-    const handle = window.poloMapGl.create(
-      document.getElementById('map'), '$styleUrl', '$styleUrlDark',
-      $isDark,
-      function (kind, message) {
-        window.flutter_inappwebview.callHandler('poloMapEvent', kind, message);
-      }, $notifyClicks);
-    window.poloSetMarkers = handle.setMarkers;
-    window.poloSetLines = handle.setLines;
-    window.poloSetShapes = handle.setShapes;
-    window.poloSetProjection = handle.setProjection;
-    window.poloMoveTo = handle.moveTo;
-    window.poloZoomIn = handle.zoomIn;
-    window.poloZoomOut = handle.zoomOut;
-    window.poloSetDark = handle.setDark;
-    window.poloUpdateStyles = handle.updateStyles;
-    handle.onLoad(function () {
-      window.flutter_inappwebview.callHandler('poloMapReady');
-    });
-  </script>
-</body>
-</html>
-''';
 }
