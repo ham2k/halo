@@ -1,20 +1,16 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// Guards the vendored `universal_ble` copy: that Windows resolves to it
-// rather than to the published package, and that the four hunks inside it
-// survive — the `HAM2K_BLE_MODE` header, its two call sites, and the Release
-// PDB flags.
+// Guards the vendored `universal_ble` copy: that Windows resolves to it rather
+// than to the published package, and that the hunks inside it survive — the
+// UI-thread hop's teardown gate, its atomic `hwnd_`, and the Release PDB flags.
 //
 // All of it is invisible to every other signal, for the same reason the
 // webview override tests exist (see webview_plugin_overrides_test.dart):
 // nothing in ./scripts/test.sh or in any GitHub CI job compiles C++ or
 // configures CMake, so a dropped hunk stays green everywhere until a
-// tag-triggered Codemagic release — and for THIS patch the failure would not
-// even be a build error, just a diagnostic build that silently answers the
-// wrong question on the one machine that can run the experiment.
-//
-// Delete this file with the override it guards, once HALO-290 has its answer.
+// tag-triggered Codemagic release — and for these hunks the failure would not
+// be a build error either, just a crash that comes back.
 
 import 'dart:convert';
 import 'dart:io';
@@ -71,138 +67,15 @@ void main() {
     expect(_posixPath(plugin!['path']), contains('packages/universal_ble_patched'));
   });
 
-  test('the A/B switch header is still there', () {
-    // Resolving to the vendored directory is not the same as the patch being
-    // in it: PATCH.md's re-vendor procedure is "copy the new package over
-    // this directory, then re-apply", and a copy that stops after the first
-    // half leaves the assertion above true.
-    final source = _vendored('windows/src/ham2k_ble_mode.h');
-    expect(source, contains('HAM2K_BLE_MODE'));
-    for (final arm in [
-      'kOff',
-      'kRegistrarOnly',
-      'kConstructOnly',
-      'kNoChannels',
-      'kNoDelegate',
-      'kNoInit',
-      'kNormal',
-    ]) {
-      expect(
-        source,
-        contains(arm),
-        reason: 'the arms form a ladder from the known-good arm (off) to the '
-            'known-bad one (noinit); losing a rung leaves a gap the bisect '
-            'cannot close, and the gap is invisible until someone runs it',
-      );
-    }
-  });
-
-  test('each rung of the ladder is actually wired to something', () {
-    // An arm that parses but gates nothing is worse than no arm: it launches,
-    // reads as exonerating the step it names, and sends the next round after
-    // the wrong code. Build 155 cost a release cycle per answer, so a dud rung
-    // is expensive.
-    expect(
-      _vendored('windows/universal_ble_plugin_c_api.cpp'),
-      contains('kRegistrarOnly'),
-      reason: 'the registrar arm has to stop BETWEEN GetRegistrar and '
-          'RegisterWithRegistrar, which only the C API can do',
-    );
-    expect(
-      _vendored('windows/src/universal_ble_plugin.cpp'),
-      contains('kNoChannels'),
-      reason: 'the nochannels arm gates the four SetUp calls in '
-          'RegisterWithRegistrar',
-    );
-    expect(
-      _vendored('windows/src/ui_thread_handler.hpp'),
-      contains('kNoDelegate'),
-      reason: 'the nodelegate arm gates RegisterTopLevelWindowProcDelegate, '
-          'the window proc hook mtx_do_lock is reached through',
-    );
-  });
-
-  test('the trace brackets member construction, the stretch no arm can reach', () {
-    // Every arm so far could only bisect between STATEMENTS in
-    // RegisterWithRegistrar. The crash is now known to be inside constructing
-    // the plugin or AddPlugin, and member initialisation happens before the
-    // constructor's body — so no arm can reach into it and only these two
-    // trace points bracket it. Lose either and the trace still prints, still
-    // looks complete, and silently skips the very region it was added for.
-    final handler = _vendored('windows/src/ui_thread_handler.hpp');
-    expect(
-      handler,
-      contains('05 UiThreadHandler ctor entered'),
-      reason: 'the plugin\'s first non-trivial member; this opens the bracket',
-    );
-    final plugin = _vendored('windows/src/universal_ble_plugin.cpp');
-    expect(
-      plugin,
-      contains('06 plugin ctor body reached'),
-      reason: 'reaching the ctor body means every member survived; this '
-          'closes the bracket',
-    );
-  });
-
-  test('tracing is off unless asked for, and independent of the mode', () {
-    // Two properties, both load-bearing. It must be silent by default, or
-    // every Windows operator gets probe output on an ordinary launch. And it
-    // must key off its OWN variable, because the arm that most needs tracing
-    // is the CONTROL one — with no mode set at all.
-    final source = _vendored('windows/src/ham2k_ble_mode.h');
-    expect(source, contains('HAM2K_BLE_TRACE'));
-    final body = source.substring(source.indexOf('inline void Ham2kBleTrace'));
-    expect(
-      body.substring(0, body.indexOf('\n}')),
-      contains('Ham2kBleTraceEnabled()'),
-      reason: 'an ungated trace prints on every launch for every operator',
-    );
-    expect(
-      body.substring(0, body.indexOf('\n}')),
-      isNot(contains('Ham2kBleMode()')),
-      reason: 'gating the trace on the mode would make the control arm — the '
-          'one that crashes — the one arm that cannot be traced',
-    );
-  });
-
-  test('the construct arm leaks rather than destroying the plugin', () {
-    // It isolates construction. Letting the unique_ptr run the destructor
-    // would fold teardown into the result, so a crash there would read as
-    // "construction is the problem" when it was the destructor.
-    final source = _vendored('windows/src/universal_ble_plugin.cpp');
-    final body = source.substring(source.indexOf('kConstructOnly'));
-    expect(
-      body.substring(0, body.indexOf('\n  }')),
-      contains('plugin.release()'),
-      reason: 'without release() the destructor runs and the arm answers a '
-          'different question than the one it is asked',
-    );
-  });
-
-  test('the nodelegate arm does not unregister a delegate it never registered', () {
-    // Without the guard, teardown hands the engine a window-proc id that was
-    // never issued. That is its own crash, in the one arm whose result we most
-    // need to trust — and it would read as "the delegate IS the problem", the
-    // exact conclusion the arm exists to test.
-    //
-    // The guard lives in Shutdown(), which the destructor delegates to.
-    final source = _vendored('windows/src/ui_thread_handler.hpp');
-    final shutdown = source.substring(source.indexOf('void Shutdown()'));
-    expect(
-      shutdown.substring(0, shutdown.indexOf('\n    }')),
-      contains('if (registered_)'),
-      reason: 'teardown must skip UnregisterTopLevelWindowProcDelegate when '
-          'the nodelegate arm skipped the registration',
-    );
-  });
-
   test('the UI-thread hop refuses work once teardown has begun', () {
-    // HALO-290's minidump puts universal_ble_plugin.dll directly beneath a
-    // faulting mtx_do_lock, reached from the UI thread's message loop, on a
-    // mutex whose internals read as zero — a lock taken on an object that is
-    // going away. Post() and the queue drain both check `accepting_` under the
-    // mutex so a callback queued during teardown is dropped rather than run
-    // against members already reset.
+    // Resolving to the vendored directory is not the same as the patch being
+    // in it: PATCH.md's re-vendor procedure is "copy the new package over this
+    // directory, then re-apply", and a copy that stops after the first half
+    // leaves the assertion above true.
+    //
+    // Post() and the queue drain both check `accepting_` under the mutex, so a
+    // callback queued during teardown is dropped rather than run against
+    // members already reset.
     final source = _vendored('windows/src/ui_thread_handler.hpp');
     expect(source, contains('accepting_'));
     final post = source.substring(source.indexOf('void Post('));
@@ -218,6 +91,31 @@ void main() {
       contains('if (!accepting_)'),
       reason: 'a window message already posted before Shutdown() still arrives '
           'afterwards; the drain has to refuse it too',
+    );
+  });
+
+  test('Shutdown() is idempotent, because teardown calls it twice', () {
+    // ~UniversalBlePlugin calls Shutdown() explicitly, and then the member's
+    // own destructor calls it again. Without the early return the second call
+    // hands the engine a window-proc id it has already retired. `accepting_`
+    // is the only thing standing between those two calls, and it must be
+    // cleared BEFORE the unregister: it is what makes a message already in
+    // the queue harmless, so it has to be false before the delegate can stop
+    // being called, not after.
+    final source = _vendored('windows/src/ui_thread_handler.hpp');
+    final shutdown = source.substring(source.indexOf('void Shutdown()'));
+    final body = shutdown.substring(0, shutdown.indexOf('\n    }'));
+    expect(
+      body,
+      contains('if (!accepting_)'),
+      reason: 'without the early return, teardown double-unregisters the '
+          'delegate on every single shutdown',
+    );
+    expect(
+      body.indexOf('accepting_ = false'),
+      lessThan(body.indexOf('UnregisterTopLevelWindowProcDelegate')),
+      reason: 'clearing the flag after the unregister leaves a window where '
+          'the delegate is gone but the queue still accepts work',
     );
   });
 
@@ -241,64 +139,15 @@ void main() {
 
   test('hwnd_ is atomic, which upstream has not fixed', () {
     // Written by the UI thread on the first window message, read by whichever
-    // thread calls Post(). Upstream races on it on every launch. A re-vendor
-    // that takes upstream's newer copy of this file wholesale would drop the
-    // fix while looking like an upgrade.
+    // thread calls Post(). Upstream races on it on every launch, so unlike the
+    // teardown gate this hunk cannot be recovered by taking their newer file:
+    // a re-vendor would drop it while looking like an upgrade.
     final source = _vendored('windows/src/ui_thread_handler.hpp');
     expect(
       source,
       contains('std::atomic<HWND> hwnd_'),
       reason: 'a plain HWND here is a data race between the UI thread and '
           'every Post() caller',
-    );
-  });
-
-  test('the off arm still skips registration', () {
-    final source = _vendored('windows/universal_ble_plugin_c_api.cpp');
-    expect(
-      source,
-      contains('ham2k::BleMode::kOff'),
-      reason: 'returning before RegisterWithRegistrar IS the off arm; without '
-          'it HAM2K_BLE_MODE=off registers the plugin anyway and the operator '
-          'reads "the crash survives disabling BLE" from a build that never '
-          'disabled it',
-    );
-    // Order is the whole content of the off arm: it must return BEFORE
-    // GetRegistrar, or the arm silently stops testing the first step of the
-    // ladder while still reading as "nothing ran".
-    expect(
-      source.indexOf('kOff'),
-      lessThan(source.indexOf('GetRegistrar')),
-      reason: 'the off arm must return before GetRegistrar<>(), otherwise the '
-          'registrar rung below it is comparing two arms that both ran it',
-    );
-  });
-
-  test('the noinit arm still skips InitializeAsync', () {
-    final source = _vendored('windows/src/universal_ble_plugin.cpp');
-    expect(
-      source,
-      contains('ham2k::Ham2kBleMode() == ham2k::BleMode::kNoInit'),
-      reason: 'returning before InitializeAsync() IS the noinit arm — the one '
-          'that separates "registering this plugin crashes" from "enumerating '
-          'radios crashes", which the off arm alone cannot tell apart',
-    );
-  });
-
-  test('the control arm is still upstream behaviour', () {
-    // The experiment's control has to be untouched upstream code. The
-    // temptation on a card this old is to fold in "one harmless fix" —
-    // upstream main's try/catch around InitializeAsync is the specific one
-    // this patch deliberately withholds (PATCH.md). Landing it here makes
-    // every arm's result unattributable.
-    final source = _vendored('windows/src/universal_ble_plugin.cpp');
-    final initializeAsync = source.substring(source.indexOf('fire_and_forget UniversalBlePlugin::InitializeAsync'));
-    expect(
-      initializeAsync.substring(0, initializeAsync.indexOf('\n}')),
-      isNot(contains('catch')),
-      reason: 'InitializeAsync must stay exception-free for this build: it is '
-          'the control arm, and a quietly improved control answers nothing. '
-          'The try/catch lands in the build AFTER the A/B reports.',
     );
   });
 
@@ -315,9 +164,9 @@ void main() {
       source,
       contains(r'target_link_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/DEBUG>)'),
       reason: 'MSVC emits the linked PDB only with the linker\'s /DEBUG — /Zi '
-          'alone leaves compiler-side PDBs that build-windows.ps1 never '
-          'finds, so dropping just this line defeats the hunk while the /Zi '
-          'check above stays green',
+          'alone leaves compiler-side PDBs the release pipeline never uploads, '
+          'so dropping just this line defeats the hunk while the /Zi check '
+          'above stays green',
     );
   });
 }

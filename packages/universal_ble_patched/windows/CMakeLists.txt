@@ -48,7 +48,6 @@ list(APPEND PLUGIN_SOURCES
   "src/enum_parser.h"
   "src/helper/universal_ble_logger.cpp"
   "src/helper/universal_ble_logger.h"
-  "src/ham2k_ble_mode.h"
 )
 
 add_library(${PLUGIN_NAME} SHARED
@@ -76,12 +75,12 @@ target_compile_definitions(${PLUGIN_NAME} PRIVATE FLUTTER_PLUGIN_IMPL)
 
 # A Release PDB for this plugin's own code. Without it a crash whose real
 # site is in here resolves in Sentry to the nearest exported symbol with no
-# line and no non-exported frames -- which is exactly how HALO-290 spent three
-# rounds attributing this plugin's frames to MSVCP140's `mtx_do_lock`. MSVC
-# emits the linked PDB only when the LINKER gets /DEBUG; /Zi alone produces
-# compiler-side PDBs that the upload in app_dist/ci/build-windows.ps1 never
+# line and no non-exported frames -- which is exactly how HALO-290 spent
+# several rounds attributing this plugin's frames to MSVCP140's `mtx_do_lock`.
+# MSVC emits the linked PDB only when the LINKER gets /DEBUG; /Zi alone
+# produces compiler-side PDBs the release pipeline's symbol upload never
 # finds, so both lines are load-bearing. Debug info only -- this changes no
-# generated code, which is what lets it ride along in the A/B's control arm.
+# generated code.
 target_compile_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/Zi>)
 target_link_options(${PLUGIN_NAME} PRIVATE $<$<CONFIG:Release>:/DEBUG>)
 

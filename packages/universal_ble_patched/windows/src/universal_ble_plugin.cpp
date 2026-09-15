@@ -15,7 +15,6 @@
 #include <thread>
 
 #include "enum_parser.h"
-#include "ham2k_ble_mode.h"
 #include "generated/universal_ble.g.h"
 #include "helper/universal_ble_logger.h"
 #include "helper/universal_enum.h"
@@ -69,49 +68,19 @@ IPropertyValue lookup_i_property_value(
 
 void UniversalBlePlugin::RegisterWithRegistrar(
     flutter::PluginRegistrarWindows *registrar) {
-  ham2k::Ham2kBleTrace(L"[ham2k] 04 constructing UniversalBlePlugin\n");
   auto plugin = std::make_unique<UniversalBlePlugin>(registrar);
-  ham2k::Ham2kBleTrace(L"[ham2k] 07 plugin constructed\n");
-  if (ham2k::Ham2kBleMode() == ham2k::BleMode::kConstructOnly) {
-    // Deliberately leaked: running the destructor here would fold teardown
-    // into the answer, and this arm exists to isolate construction alone.
-    // A probe arm, not a code path any operator reaches.
-    plugin.release();
-    return;
-  }
-  // HALO-290 `nochannels`: the plugin and its window proc delegate exist, but
-  // nothing is bound to the messenger. Dart calls then fail with
-  // MissingPluginException, which is harmless here only because the peer BLE
-  // sub-switch defaults off.
-  if (ham2k::Ham2kBleMode() != ham2k::BleMode::kNoChannels) {
-    ham2k::Ham2kBleTrace(L"[ham2k] 08 setting up channels\n");
-    UniversalBlePlatformChannel::SetUp(registrar->messenger(), plugin.get());
-    UniversalBlePeripheralChannel::SetUp(registrar->messenger(), plugin.get());
-    callback_channel =
-        std::make_unique<UniversalBleCallbackChannel>(registrar->messenger());
-    peripheral_callback_channel_ =
-        std::make_unique<UniversalBlePeripheralCallback>(registrar->messenger());
-  }
-  ham2k::Ham2kBleTrace(L"[ham2k] 09 calling AddPlugin\n");
+  UniversalBlePlatformChannel::SetUp(registrar->messenger(), plugin.get());
+  UniversalBlePeripheralChannel::SetUp(registrar->messenger(), plugin.get());
+  callback_channel =
+      std::make_unique<UniversalBleCallbackChannel>(registrar->messenger());
+  peripheral_callback_channel_ =
+      std::make_unique<UniversalBlePeripheralCallback>(registrar->messenger());
   registrar->AddPlugin(std::move(plugin));
 }
 
 UniversalBlePlugin::UniversalBlePlugin(
     flutter::PluginRegistrarWindows *registrar)
     : registrar_(registrar), ui_thread_handler_(registrar) {
-  // Reaching here means every member -- the WinRT handles, the ThreadSafeMaps
-  // and their shared_mutexes, peripheral_mutex_ -- constructed without dying.
-  ham2k::Ham2kBleTrace(L"[ham2k] 06 plugin ctor body reached\n");
-  // HALO-290: `noinit` keeps everything registration does -- the channels and
-  // the top-level window proc delegate `ui_thread_handler_` hooks above -- and
-  // skips only the WinRT radio enumeration. That is the whole point of the
-  // arm: it separates "registering this plugin crashes the app" from
-  // "enumerating Bluetooth radios crashes the app", which `off` alone cannot
-  // tell apart. `initialized_` stays false, so the availability getters
-  // answer `kUnknown` rather than claiming an answer nothing computed.
-  if (ham2k::Ham2kBleMode() == ham2k::BleMode::kNoInit) {
-    return;
-  }
   InitializeAsync();
 }
 

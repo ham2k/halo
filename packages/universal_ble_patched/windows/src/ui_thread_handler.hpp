@@ -4,8 +4,6 @@
 
 #include <flutter/plugin_registrar_windows.h>
 
-#include "ham2k_ble_mode.h"
-
 #include <algorithm>
 #include <atomic>
 #include <functional>
@@ -24,25 +22,11 @@ public:
     explicit UniversalBleUiThreadHandler(flutter::PluginRegistrarWindows *registrar)
         : registrar_(registrar)
     {
-        // Members initialize in declaration order and this is the plugin's
-        // first non-trivial one, so this line and "06" bracket the whole of
-        // member construction -- the one stretch no arm could ever reach.
-        ham2k::Ham2kBleTrace(L"[ham2k] 05 UiThreadHandler ctor entered\n");
-        // HALO-290 `nodelegate`: the one arm that subtracts. Everything else
-        // about the plugin is built; only the top-level window proc hook is
-        // absent. `mtx_do_lock` is reached through a window message, so this
-        // is the direct test of whether that path is the crash.
-        if (ham2k::Ham2kBleMode() == ham2k::BleMode::kNoDelegate)
-        {
-            return;
-        }
         windowProcId_ = registrar_->RegisterTopLevelWindowProcDelegate(
             [this](HWND hwnd, UINT message, WPARAM wparam, LPARAM lparam)
             {
                 return HandleWindowMessage(hwnd, message, wparam, lparam);
             });
-        registered_ = true;
-        ham2k::Ham2kBleTrace(L"[ham2k] 05b delegate registered\n");
     }
 
     ~UniversalBleUiThreadHandler() { Shutdown(); }
@@ -85,13 +69,11 @@ public:
             accepting_ = false;
             queuedFuncs_.clear();
         }
-        // Unregistering an id that was never handed out is not a no-op in the
-        // engine's delegate map -- the `nodelegate` arm must not do it.
-        if (registered_)
-        {
-            registrar_->UnregisterTopLevelWindowProcDelegate(windowProcId_);
-            registered_ = false;
-        }
+        // Unconditional because the constructor always registers, so
+        // `windowProcId_` is always an id the engine issued. Handing it one it
+        // never issued is not a no-op in its delegate map -- so an early
+        // return added to that constructor has to set a flag this reads.
+        registrar_->UnregisterTopLevelWindowProcDelegate(windowProcId_);
     }
 
 private:
@@ -137,7 +119,6 @@ private:
 
     flutter::PluginRegistrarWindows *registrar_;
     int windowProcId_ = 0;
-    bool registered_ = false;
     std::atomic<HWND> hwnd_ = nullptr;
     std::list<std::function<void()>> queuedFuncs_;
     std::mutex mutex_;
