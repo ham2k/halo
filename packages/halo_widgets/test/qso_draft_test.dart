@@ -186,7 +186,7 @@ void main() {
       // wipe undone, a detour through an earlier QSO.
       final again = _Harness();
       addTearDown(again.dispose);
-      again.draft.populate(() => again.draft.applyData(data));
+      again.draft.populate(() => again.draft.applyData(data, restoringDraft: true));
       expect(again.draft.theirNameOverride, 'Hiram');
       expect(again.draft.ourExtra, {'operatorCall': 'N0DEV'}, reason: "a draft's override survives the trip");
       expect(again.draft.theirExtra['city'], 'Newington');
@@ -195,13 +195,30 @@ void main() {
       expect(again.notes.text, 'first contact');
       expect(again.grid.text, 'FN31pr');
       expect(again.radio.freq, 14285);
-      // The field comes back, the flag does not: it is the panel's, restored
-      // from the snapshot's keys on the detour path.
-      expect(again.draft.gridTouched, isFalse);
-      again.draft.markGridTouched();
+      // The flag comes back with the field: a draft carries a grid only
+      // because it was touched, and without the flag the restored grid would
+      // show in the field and drop out of the logged record.
+      expect(again.draft.gridTouched, isTrue);
+      expect(again.draft.stateTouched, isFalse, reason: 'no state in the draft: nothing was touched');
       final back = again.draft.toData();
-      expect(back['their'], data['their']);
       expect(back['our'], data['our']);
+      // Minus `locSource`: the first record wrote the grid's center with a
+      // null `locSource` to clear a stored one; the restored draft carries
+      // that center as a pair of its own, so the second record leaves the key
+      // alone — nothing stored to clear.
+      expect(back['their'], {...their}..remove('locSource'));
+    });
+
+    test('a suggestion carrying a grid displays it without making it touched', () {
+      final h = _Harness();
+      addTearDown(h.dispose);
+      // A deep link or a spot that names a grid: shown, and left for the
+      // lookup to keep tracking — a touched grid would stick across every
+      // call of a list, and put a grid-center pair on the record.
+      h.draft.populate(() => h.draft.applyData({'their': {'call': 'W1AW', 'grid': 'FN31pr'}}));
+      expect(h.grid.text, 'FN31pr');
+      expect(h.draft.gridTouched, isFalse);
+      expect((h.draft.toData()['their'] as Map).containsKey('grid'), isFalse);
     });
 
     test('a state is written once touched, uppercased, and even empty', () {
@@ -281,7 +298,7 @@ void main() {
       final qso = Qso(uuid: 'q1', operationUuid: 'op', data: {
         'uuid': 'q1',
         'our': {'call': 'KI2D', 'sent': '59', 'operatorCall': 'N0DEV'},
-        'their': {'call': 'W1AW', 'sent': '57', 'city': 'Newington'},
+        'their': {'call': 'W1AW', 'sent': '57', 'city': 'Newington', 'grid': 'FN31pr'},
         'freq': 14285,
         'band': '20m',
         'mode': 'SSB',
@@ -294,6 +311,7 @@ void main() {
       h.draft.ourExtra['operatorCall'] = 'W1ABC';
       h.draft.populate(() => h.draft.applyData(qso.data));
       expect(h.draft.ourExtra, isEmpty, reason: 'a record already in the log is not an override');
+      expect(h.draft.gridTouched, isFalse, reason: "a record's grid is displayed, not entered — the guess keeps tracking");
       expect(h.draft.theirExtra, isEmpty);
       expect(h.draft.powerOnRecord, isTrue);
       expect(h.power.text, '100');

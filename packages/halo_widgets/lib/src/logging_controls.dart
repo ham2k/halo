@@ -1373,33 +1373,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       } else {
         final composingSnapshot = _draft.takeComposingSnapshot();
         _resetLocalFields();
-        if (composingSnapshot != null) {
-          // Same restore idiom as _restoreFromUndoSlot: overlay the draft
-          // back on top of the blank fields _resetLocalFields just seeded.
-          _draft.populate(() {
-            _applyFieldsFromData(composingSnapshot);
-            _time.manualStartAtMillis = composingSnapshot['startAtMillis'] as int?;
-            // _applyFieldsFromData only sets the controllers' text — it never
-            // touches these, and _resetLocalFields just cleared them. A
-            // grid/state the operator had typed (present in the snapshot only
-            // because it was touched — see [QsoDraft.toData]'s `composing`
-            // branch) would otherwise show on screen but silently drop out of
-            // the saved record, since [QsoDraft.toData] gates their.grid/
-            // their.state on the flag, not on the controller text.
-            final theirSnapshot = composingSnapshot['their'] as Map<String, dynamic>?;
-            _draft.gridTouched = theirSnapshot?.containsKey('grid') ?? false;
-            _draft.stateTouched = theirSnapshot?.containsKey('state') ?? false;
-            setState(() {});
-          });
-          // Same reasoning as _restoreFromUndoSlot: the populate bracket suppressed
-          // _onCallChanged's own _scheduleLookup()/_lookup.scheduleScore(), and
-          // _resetLocalFields already cleared the lookup cache and score
-          // notices — without this the restored callsign sits unenriched,
-          // without its dupe/New-* pills, until the operator edits the call
-          // field again.
-          _scheduleLookup();
-          _lookup.scheduleScore();
-        }
+        // Overlaid back on top of the blank fields _resetLocalFields just
+        // seeded.
+        if (composingSnapshot != null) _restoreDraft(composingSnapshot);
       }
       // Self- vs other-spot eligibility can differ per extension (e.g. only
       // self-spotting an operation with an activation ref) — re-fetch
@@ -1761,8 +1737,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// live controllers/state. The draft does the fields and the models; what
   /// stays here is the panel's own context — the lookup, the open control,
   /// the command line.
-  void _applyFieldsFromData(Map<String, dynamic> data) {
-    _draft.applyData(data);
+  void _applyFieldsFromData(Map<String, dynamic> data, {bool restoringDraft = false}) {
+    _draft.applyData(data, restoringDraft: restoringDraft);
     _lookup.reset();
     _selectedControlKey = null;
     // Command state must never survive into a freshly populated QSO
@@ -4452,17 +4428,24 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _restoreFromUndoSlot() {
     final data = _draft.undoSlot.take();
     if (data == null) return;
+    _restoreDraft(data);
+  }
+
+  /// Puts one of the draft's own records ([QsoDraft.toData]) back — a wipe
+  /// undone, or a detour through an earlier contact returned from. One
+  /// method for both, or the next rule added to one path is missed by the
+  /// other.
+  void _restoreDraft(Map<String, dynamic> data) {
     _draft.populate(() {
-      _applyFieldsFromData(data);
+      _applyFieldsFromData(data, restoringDraft: true);
       _time.manualStartAtMillis = data['startAtMillis'] as int?;
       setState(() {});
     });
     // The populate bracket suppressed _onCallChanged's own _scheduleLookup()/
-    // _lookup.scheduleScore() calls above (population isn't the user typing) —
-    // the wipe this undoes already cleared the lookup cache and score
-    // notices, so a restored call would otherwise sit there unlooked-up
-    // and without its dupe/New-* pills until the user edited the field
-    // themselves.
+    // _lookup.scheduleScore() calls above (population isn't the user typing),
+    // and the wipe or the reset before this cleared the lookup cache and score
+    // notices — without these a restored call sits unlooked-up and without
+    // its dupe/New-* pills until the operator edits the call field again.
     _scheduleLookup();
     _lookup.scheduleScore();
   }

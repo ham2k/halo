@@ -241,6 +241,30 @@ class _RefTextInputState extends State<RefTextInput> {
 
   String _joined(List<Map<String, dynamic>> refs) => refs.map((r) => r['ref'] as String? ?? '').join(', ');
 
+  /// The maps the parent hands over are what [_emit] must hand back: a ref a
+  /// lookup guessed after this field was built is taken back BY IDENTITY when
+  /// the call changes, and a keystroke here that rebuilt it as a fresh map
+  /// would leave the guess on the QSO past the call it was made for. Keyed
+  /// the way [_emit] looks codes up — trimmed and uppercased — so a code a
+  /// feed handed over in another case still finds its map.
+  void _seedDecorations(List<Map<String, dynamic>> refs) {
+    for (final ref in refs) {
+      final code = ref['ref'] as String?;
+      if (code != null) _decorations[code.trim().toUpperCase()] = ref;
+    }
+  }
+
+  /// Codes whose decorate round trip has completed — including one that added
+  /// nothing, or the field would ask again on every keystroke.
+  final Set<String> _decorated = {};
+
+  /// Whether [code] is owed a round trip: not once one has completed, and not
+  /// for a map that already carries more than the code itself. A bare
+  /// `{type, ref}` handed over — a lookup's guess — is still owed its name.
+  bool _isDecorated(String code) =>
+      _decorated.contains(code) ||
+      (_decorations[code]?.keys.any((key) => key != 'type' && key != 'ref') ?? false);
+
   RegExp? get _regex => compileRefPattern(widget.pattern);
 
   /// Whether any segment currently in the field fails [RefTextInput.pattern],
@@ -264,10 +288,7 @@ class _RefTextInputState extends State<RefTextInput> {
   @override
   void initState() {
     super.initState();
-    for (final ref in widget.refs) {
-      final code = ref['ref'] as String?;
-      if (code != null) _decorations[code] = ref;
-    }
+    _seedDecorations(widget.refs);
     // A caller-supplied controller (unlike the lazily-created own one) isn't
     // constructed with the refs' text baked in, so seed it here — the same
     // text `didUpdateWidget` below keeps it in sync with afterwards.
@@ -303,10 +324,15 @@ class _RefTextInputState extends State<RefTextInput> {
       _focus.addListener(_onFocusChange);
     }
     // Only resync the field's text from the parent's refs while it isn't
-    // focused — otherwise a decorate() round trip landing mid-keystroke
-    // would fight the user's typing.
-    if (!_focus.hasFocus && !identical(oldWidget.refs, widget.refs)) {
-      _controller.text = _joined(widget.refs);
+    // being typed in — otherwise a decorate() round trip landing
+    // mid-keystroke would fight the user's typing. A focused field with
+    // nothing in it has no typing to fight, and a guess that lands while the
+    // operator sits in it would otherwise count on the chip and read blank
+    // here, until a keystroke that then replaces it.
+    if (!identical(oldWidget.refs, widget.refs)) {
+      if (!_focus.hasFocus || _controller.text.isEmpty) _controller.text = _joined(widget.refs);
+      // Seeded whether or not the field has focus — this is data, not text.
+      _seedDecorations(widget.refs);
     }
     // Both inputs to the tint can change without a keystroke: the text just
     // above, and the pattern itself when the expanded panel is reused for a
@@ -350,7 +376,7 @@ class _RefTextInputState extends State<RefTextInput> {
     final decorate = widget.decorate;
     if (decorate == null) return;
     for (final code in codes) {
-      if (_decorations.containsKey(code)) continue;
+      if (_isDecorated(code)) continue;
       // A code that cannot be a reference of this type has nothing to look up:
       // the round trip would answer "unknown" at best, once per keystroke.
       if (regex != null && !regex.hasMatch(code)) continue;
@@ -361,7 +387,16 @@ class _RefTextInputState extends State<RefTextInput> {
   Future<void> _decorateOne(String code, RefDecorator decorate) async {
     final decorated = await decorate({'type': widget.refType, 'ref': code});
     if (!mounted) return;
-    _decorations[code] = decorated;
+    // Merged INTO a map already held, never swapped for it: that map may be a
+    // guess the panel takes back by identity, and it gains its name and
+    // location without changing who it is.
+    final held = _decorations[code];
+    if (held == null) {
+      _decorations[code] = decorated;
+    } else {
+      held.addAll(decorated);
+    }
+    _decorated.add(code);
     _emit(_controller.text);
   }
 

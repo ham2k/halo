@@ -190,6 +190,60 @@ void main() {
         reason: 'a well-formed GMA reference must not read as invalid');
   });
 
+  testWidgets('a reference handed over after the field was built is handed back as the same map', (tester) async {
+    // A lookup's guess lands after the chip was opened. The panel takes a
+    // guess back BY IDENTITY when the call changes, so a keystroke here that
+    // re-emitted the park as a fresh map would leave it on the QSO past the
+    // call it was guessed for.
+    final guessed = <String, dynamic>{'type': 'pota', 'ref': 'US-2080', 'name': 'Guessed Park'};
+    List<Map<String, dynamic>>? emitted;
+    await tester.pumpWidget(build(onChanged: (refs) => emitted = refs));
+    await tester.pumpWidget(build(refs: [guessed], onChanged: (refs) => emitted = refs));
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'US-2080');
+    await tester.enterText(find.byType(TextField), 'US-2080,');
+    expect(emitted, hasLength(1));
+    expect(identical(emitted!.single, guessed), isTrue);
+  });
+
+  testWidgets('a reference arriving while the empty field has focus shows; one arriving mid-typing does not',
+      (tester) async {
+    final park = <String, dynamic>{'type': 'pota', 'ref': 'US-2080'};
+    await tester.pumpWidget(build());
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    // The operator is sitting in the empty field when the guess lands: the
+    // chip will count it, so the field has to show it.
+    await tester.pumpWidget(build(refs: [park]));
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'US-2080');
+    // Mid-typing, a round trip landing must not fight the keystrokes.
+    await tester.enterText(find.byType(TextField), 'US-2080, US-1');
+    await tester.pumpWidget(build(refs: [park, {'type': 'pota', 'ref': 'US-1234'}]));
+    expect(tester.widget<TextField>(find.byType(TextField)).controller!.text, 'US-2080, US-1');
+  });
+
+  testWidgets('a handed-over reference finds its map whatever case it came in, and decoration joins that map',
+      (tester) async {
+    // A feed hands the code over raw; the field looks codes up uppercased.
+    // The decorate round trip then adds the name INTO the guess's own map —
+    // the panel takes a guess back by identity, so a swap would lose it.
+    final guessed = <String, dynamic>{'type': 'pota', 'ref': 'us-2080'};
+    List<Map<String, dynamic>>? emitted;
+    var decorations = 0;
+    Future<Map<String, dynamic>> decorate(Map<String, dynamic> ref) async {
+      decorations++;
+      return {...ref, 'name': 'Park ${ref['ref']}'};
+    }
+    await tester.pumpWidget(build(onChanged: (refs) => emitted = refs, decorate: decorate));
+    await tester.pumpWidget(build(refs: [guessed], onChanged: (refs) => emitted = refs, decorate: decorate));
+    await tester.enterText(find.byType(TextField), 'US-2080,');
+    await tester.pump();
+    expect(identical(emitted!.single, guessed), isTrue);
+    expect(decorations, 1, reason: 'a bare guess is still owed its name');
+    expect(guessed['name'], 'Park US-2080');
+    await tester.enterText(find.byType(TextField), 'US-2080, ');
+    expect(decorations, 1, reason: 'decorated now: no second round trip');
+  });
+
   group('a reference the pattern rejects', () {
     // The pattern is HaLo's idea of the program, not the program's own: a
     // format that changed, or one this app has wrong, must not cost the

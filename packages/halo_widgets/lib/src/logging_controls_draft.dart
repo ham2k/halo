@@ -387,7 +387,14 @@ class QsoDraft extends ChangeNotifier with PanelModel {
   /// Pushes a `data` map — a saved record, a suggestion, a parked or wiped
   /// draft — back into the fields and the models. Programmatic by nature,
   /// so the panel runs it under [populate].
-  void applyData(Map<String, dynamic> data) {
+  ///
+  /// [restoringDraft] says [data] is one of this draft's own records
+  /// ([toData]), coming back after a wipe or a detour: those carry
+  /// `their.grid`/`their.state` only because the fields were touched, so
+  /// their presence restores the flags. A suggestion — a spot, a deep link —
+  /// is not: a grid it carries is displayed, never promoted to a touched
+  /// value that would stick across a call list.
+  void applyData(Map<String, dynamic> data, {bool restoringDraft = false}) {
     final config = this.config();
     final our = asQsonMap(data['our']) ?? const {};
     final their = asQsonMap(data['their']) ?? const {};
@@ -427,6 +434,13 @@ class QsoDraft extends ChangeNotifier with PanelModel {
     // composed.
     ourExtra.clear();
     theirExtra.clear();
+    if (restoringDraft) {
+      // Without this, a wipe undone or a detour returned from shows the grid
+      // in the field and logs a record without it: [toData] gates the write
+      // on the flag, not on the field.
+      gridTouched = their.containsKey('grid');
+      stateTouched = their.containsKey('state');
+    }
     if ((asQsonString(data['uuid']) ?? '').isEmpty) {
       for (final key in const ['operatorCall', 'multiIdentifier']) {
         if (our.containsKey(key)) ourExtra[key] = asQsonString(our[key]) ?? '';

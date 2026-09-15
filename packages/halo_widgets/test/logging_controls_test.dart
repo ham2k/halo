@@ -11648,6 +11648,25 @@ void main() {
       expect(find.byIcon(wipeIcon), findsOneWidget);
     });
 
+    testWidgets('a wipe undone brings a typed grid back onto the record, not just onto the screen', (tester) async {
+      // The record writes a grid only once the field was touched; the wipe
+      // clears that with the rest of the draft. An undo that restored the
+      // text without the flag would show the grid and log a QSO without it.
+      await tester.pumpWidget(host(showGridField: true));
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN31PR');
+      await tester.pump();
+      await tester.tap(find.byIcon(wipeIcon));
+      await tester.pump();
+      await tester.tap(find.byIcon(undoIcon));
+      await tester.pump();
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Grid')).controller!.text, 'FN31pr');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.theirGrid, 'FN31pr');
+    });
+
     testWidgets('wipe stays disabled for a fresh new QSO even though the Radio control shows the VFO frequency',
         (tester) async {
       fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
@@ -13233,6 +13252,62 @@ void main() {
       final refs = (logged.single.data['refs'] as List).cast<Map>();
       expect(refs, contains(containsPair('ref', 'US-0001')), reason: "the operator's park");
       expect(refs, isNot(contains(containsPair('ref', 'W2/GC-001'))), reason: "KI2D's summit");
+    });
+
+    testWidgets('a guess is taken back even after the operator typed in the open POTA field', (tester) async {
+      // The chip is open BEFORE the guess lands, so the field is handed the
+      // park after it was built and re-emits it on the next keystroke. The
+      // take-back is by identity: only the map the field hands back being the
+      // one the guess put there keeps KI2E off KI2D's park — and the field
+      // has to be told the list changed, or it goes on showing the park.
+      final lookup = refLookup(const [
+        {'type': 'potaHunter', 'ref': 'US-2080'}
+      ], forCall: 'KI2D');
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            radioService: tunedRadio,
+            operation: operation,
+            qsosRepository: qsos,
+            activityControls: const [hunter],
+            lookup: lookup.fn,
+          ),
+        ),
+      ));
+      await openControl(tester, MdiIcons.pineTree);
+      TextField potaField() => tester.widget<TextField>(find.widgetWithText(TextField, 'POTA'));
+      // A park typed and deleted again leaves the field holding an empty
+      // list — the one a guess could grow in place without the field noticing.
+      await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-0001');
+      await tester.enterText(find.widgetWithText(TextField, 'POTA'), '');
+      await tester.pump();
+      expect(potaField().controller!.text, isEmpty);
+
+      await typeCall(tester, 'KI2D');
+      expect(find.text('✓ POTA'), findsOneWidget);
+      expect(potaField().controller!.text, 'US-2080', reason: 'the field shows what the chip counts');
+
+      // The operator deletes the park. The re-lookup that triggers proposes
+      // it again — and must not put it back into the field they just cleared.
+      await tester.enterText(find.widgetWithText(TextField, 'POTA'), '');
+      await tester.pump(const Duration(milliseconds: 350));
+      await tester.pump();
+      expect(potaField().controller!.text, isEmpty, reason: 'a guess the operator removed stays removed');
+      expect(find.text('✓ POTA'), findsNothing);
+
+      // Typed back in on purpose, then a keystroke on the way to a second park.
+      await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-2080');
+      await tester.enterText(find.widgetWithText(TextField, 'POTA'), 'US-2080,');
+      await tester.pump();
+      expect(find.text('✓ POTA'), findsOneWidget);
+
+      await typeCall(tester, 'KI2E');
+      expect(find.text('✓ POTA'), findsNothing);
+      expect(potaField().controller!.text, isEmpty, reason: 'the field agrees with the chip');
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      final logged = await waitForQsos(tester, 1);
+      expect(logged.single.theirCall, 'KI2E');
+      expect((logged.single.data['refs'] as List?) ?? const [], isNot(contains(containsPair('ref', 'US-2080'))));
     });
 
     testWidgets('stacking a second call keeps the ref the first one earned', (tester) async {

@@ -140,6 +140,44 @@ void main() {
       expect(h.model.hasRefs, isFalse);
     });
 
+    test('lands in a new list, and is taken back into a new list, so the field holding it notices', () {
+      final h = _Harness(controls: [_hunter, _sota]);
+      addTearDown(h.model.dispose);
+      final typed = {'type': 'potaHunter', 'ref': 'US-0001'};
+      h.model.setRefs('pota/hunter', [typed]);
+      final park = h.model.refsFor('pota/hunter');
+      // The operator typed a summit and deleted it: the field left an empty
+      // list behind. The field resyncs only when handed a DIFFERENT list; that
+      // same list grown in place would leave it reading blank under a chip
+      // counting one.
+      h.model.setRefs('sota/hunter', []);
+      final empty = h.model.refsFor('sota/hunter');
+      final summit = {'type': 'sotaHunter', 'ref': 'W7O/CN-001'};
+      h.model.applyGuessRefs(_guess([summit]), 'W1AW');
+      expect(h.model.refsFor('sota/hunter'), [summit]);
+      expect(identical(h.model.refsFor('sota/hunter'), empty), isFalse, reason: 'landed in a new list');
+      final grown = h.model.refsFor('sota/hunter');
+      h.model.clearGuessedRefs();
+      expect(h.model.refsFor('sota/hunter'), isEmpty);
+      expect(identical(h.model.refsFor('sota/hunter'), grown), isFalse, reason: 'taken back into a new list');
+      expect(identical(h.model.refsFor('pota/hunter'), park), isTrue, reason: 'a list nothing left is left alone');
+    });
+
+    test('deleted from the field, is not proposed again for the same call', () {
+      final h = _Harness(controls: [_hunter]);
+      addTearDown(h.model.dispose);
+      final park = {'type': 'potaHunter', 'ref': 'US-1234'};
+      h.model.applyGuessRefs(_guess([park]), 'W1AW');
+      // The operator empties the POTA field; the re-lookup that triggers
+      // proposes the same park, into a type now free — and must not put it
+      // straight back into the field they just cleared.
+      h.model.setRefs('pota/hunter', []);
+      expect(h.model.applyGuessRefs(_guess([{'type': 'potaHunter', 'ref': 'US-1234'}]), 'W1AW'), isFalse);
+      expect(h.model.refsFor('pota/hunter'), isEmpty);
+      // A different park for the same call is still news.
+      expect(h.model.applyGuessRefs(_guess([{'type': 'potaHunter', 'ref': 'US-5678'}]), 'W1AW'), isTrue);
+    });
+
     test('is taken back by identity, leaving an equal ref the operator typed alone', () {
       final h = _Harness(controls: [_hunter]);
       addTearDown(h.model.dispose);

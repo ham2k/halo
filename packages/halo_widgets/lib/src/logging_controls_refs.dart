@@ -100,7 +100,10 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
   /// otherwise log the second station at the first one's park. Only refs
   /// this model actually inserted are tracked, and [clearGuessedRefs]
   /// removes them BY IDENTITY — an operator-typed ref that happens to equal
-  /// one of these is not ours to take back.
+  /// one of these is not ours to take back. One exception follows from the
+  /// field keeping the maps it is handed: a code the guess supplied, deleted
+  /// from the field and typed back in, comes back as the guess's own map, and
+  /// goes with the guess — it was the old call's park either way.
   String? _guessedFor;
   List<Map<String, dynamic>> _guessed = const [];
 
@@ -204,7 +207,8 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
   /// the unmatched refs when no control claims it.
   void restore(Map<String, dynamic> ref, {required String? controlKey}) {
     if (controlKey != null) {
-      (_controlRefs[controlKey] ??= []).add(ref);
+      // Replaced, never mutated in place — see [applyGuessRefs].
+      _controlRefs[controlKey] = [...?_controlRefs[controlKey], ref];
     } else {
       _unmatched = [..._unmatched, ref];
     }
@@ -246,9 +250,16 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
     };
     final added = <String, List<Map<String, dynamic>>>{};
     final addedUnmatched = <Map<String, dynamic>>[];
+    // Given once per call: a guess the operator deleted from the field frees
+    // its type, and the re-lookup that deletion triggers proposes the same
+    // park again — which would put it straight back into the field they
+    // just emptied.
+    bool alreadyGiven(Map<String, dynamic> ref) =>
+        _guessedFor == forCall && _guessed.any((g) => g['type'] == ref['type'] && g['ref'] == ref['ref']);
     for (final ref in proposed) {
       final type = ref['type'];
       if (type is! String || type.isEmpty || ref['ref'] == null) continue;
+      if (alreadyGiven(ref)) continue;
       if (!claimedTypes.add(type)) continue;
       final key = refListControlKeyForType(type);
       if (key != null) {
@@ -259,9 +270,12 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
     }
     if (added.isEmpty && addedUnmatched.isEmpty) return false;
 
-    added.forEach((key, refs) => (_controlRefs[key] ??= []).addAll(refs));
-    // Rebuilt rather than mutated: the unmatched list starts life as a const
-    // literal, which cannot be added to.
+    // Replaced, never mutated in place: the field holding this list resyncs
+    // only when it is handed a DIFFERENT list, so an in-place add would show
+    // "✓ POTA" on the chip over a field still reading blank.
+    added.forEach((key, refs) => _controlRefs[key] = [...?_controlRefs[key], ...refs]);
+    // Rebuilt as well — and it must be: the unmatched list starts life as a
+    // const literal, which cannot be added to.
     if (addedUnmatched.isNotEmpty) _unmatched = [..._unmatched, ...addedUnmatched];
     // Remembered so they can be taken back when the call changes — see
     // [_guessed]. Appended, not replaced: the offline pass and the online
@@ -297,17 +311,23 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
     _guessed = const [];
     bool isStale(Map<String, dynamic> ref) => stale.any((s) => identical(s, ref));
 
+    // [list] without the stale refs, or null when it held none — a list
+    // nothing left is left alone, so the field holding it is not resynced.
+    // Replaced, never mutated in place — see [applyGuessRefs]: a take-back
+    // the field did not notice would keep showing the park, and the next
+    // keystroke there would put it back on the QSO.
+    List<Map<String, dynamic>>? without(List<Map<String, dynamic>> list) =>
+        list.any(isStale) ? [for (final ref in list) if (!isStale(ref)) ref] : null;
+
     var removed = false;
-    for (final list in _controlRefs.values) {
-      final before = list.length;
-      list.removeWhere(isStale);
-      removed |= list.length != before;
+    for (final key in _controlRefs.keys) {
+      final kept = without(_controlRefs[key]!);
+      if (kept == null) continue;
+      _controlRefs[key] = kept;
+      removed = true;
     }
-    if (_unmatched.any(isStale)) {
-      _unmatched = [
-        for (final ref in _unmatched)
-          if (!isStale(ref)) ref,
-      ];
+    if (without(_unmatched) case final kept?) {
+      _unmatched = kept;
       removed = true;
     }
     return removed;
