@@ -99,6 +99,67 @@ void main() {
       expect(guess['grid'], 'FN31pr');
     });
 
+    test("converts ADIF-form coordinates, the shape polo's ADIF import copies verbatim", () {
+      // app-polo writes `MY_LAT`/`LAT` straight into `our.lat`/`their.lat`
+      // as `N041 41.250`. As a plain number field that string is DROPPED —
+      // a well-formed coordinate lost on the way into storage, and a
+      // malformed-data report filed for it. locations.md: decimal degrees
+      // always, converted on the way in. The mutation to catch is the slot
+      // going back to `number`, which every numeric-string test still passes.
+      final violations = <QsonTypeViolation>[];
+      final normalized = normalizeQsoQson({
+        'our': {'lat': 'N041 41.250', 'lon': 'W074 32.520'},
+        'their': {
+          'lat': 'S034 18.750',
+          'lon': '151.2',
+          'guess': {'lat': 'N040 04.900', 'lon': 'W105 15.000'},
+        },
+      }, violations: violations);
+      final our = normalized['our'] as Map;
+      final their = normalized['their'] as Map;
+      final guess = their['guess'] as Map;
+      expect(our['lat'], closeTo(41.6875, 1e-9));
+      expect(our['lon'], closeTo(-74.542, 1e-9));
+      expect(their['lat'], closeTo(-34.3125, 1e-9));
+      expect(their['lon'], 151.2, reason: 'a numeric string keeps its exact value');
+      expect(guess['lat'], closeTo(40.081667, 1e-6));
+      expect(guess['lon'], closeTo(-105.25, 1e-9));
+      expect(violations, isEmpty, reason: 'a coercion is not a violation');
+    });
+
+    test('a coordinate on the wrong axis is still dropped, and reported', () {
+      // `lat: 'W074 32.520'` is not a latitude whatever the digits say —
+      // likelier swapped fields than a location — same refusal as an ADIF
+      // import. Dropping keeps the invariant that a stored pair is usable.
+      final violations = <QsonTypeViolation>[];
+      final normalized = normalizeQsoQson({
+        'our': {'lat': 'W074 32.520', 'lon': 'N041 41.250'},
+      }, violations: violations);
+      expect((normalized['our'] as Map).containsKey('lat'), isFalse);
+      expect((normalized['our'] as Map).containsKey('lon'), isFalse);
+      expect(violations.map((v) => v.path), ['our.lat', 'our.lon']);
+    });
+
+    test('one axis dropped takes the other with it — a coordinate is a pair', () {
+      // Readers need both and fall through to the grid; but a writer that
+      // asks "does this record have a location?" by either key (the export's
+      // segment stamp) would see the lone survivor and stamp nothing, so the
+      // record leaves with no usable location at all. The sibling goes
+      // silently: the violation is the axis that failed, and one report per
+      // pair is the honest count.
+      final violations = <QsonTypeViolation>[];
+      final normalized = normalizeQsoQson({
+        'our': {'lat': 41.6875, 'lon': 'garbage', 'grid': 'FN21'},
+        'their': {'lat': 'N034 18.750', 'lon': 'E151 12.000'},
+      }, violations: violations);
+      final our = normalized['our'] as Map;
+      expect(our.containsKey('lat'), isFalse, reason: 'the good axis goes with the bad one');
+      expect(our.containsKey('lon'), isFalse);
+      expect(our['grid'], 'FN21');
+      expect((normalized['their'] as Map)['lat'], closeTo(34.3125, 1e-9), reason: 'a whole pair is untouched');
+      expect(violations.map((v) => v.path), ['our.lon']);
+    });
+
     test('does not touch the original record', () {
       // The caller may still be holding the map it passed in — a normalizer
       // that mutated its argument would change a Qso out from under whoever
@@ -196,6 +257,12 @@ void main() {
 
     test('drops a refs value that is not a list', () {
       expect(normalizeOperationQson({'refs': 'POTA'}).containsKey('refs'), isFalse);
+    });
+
+    test('converts ADIF-form coordinates on the operation too', () {
+      final normalized = normalizeOperationQson({'lat': 'N041 41.250', 'lon': 'W074 32.520', 'grid': 'FN21'});
+      expect(normalized['lat'], closeTo(41.6875, 1e-9));
+      expect(normalized['lon'], closeTo(-74.542, 1e-9));
     });
   });
 }

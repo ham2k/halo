@@ -15,6 +15,8 @@
 /// this job for the extension bridge.
 library;
 
+import '../adif/adif_to_qson.dart' show parseAdifCoordinate;
+
 /// A string, or null for anything else.
 ///
 /// Deliberately does NOT stringify a non-string: `mode: true` would become
@@ -122,7 +124,15 @@ class MalformedQsonDataException implements Exception {
 void Function(String context, QsonTypeViolation violation)? onQsonTypeViolation;
 
 /// What [normalizeQsoQson] expects one field to hold.
-enum QsonFieldType { string, number, map, list }
+///
+/// [latitude] and [longitude] are numbers that also coerce ADIF's
+/// `N041 41.250` form (docs/design/locations.md: decimal degrees always,
+/// converted on the way in). app-polo's ADIF import copies `MY_LAT`/`LAT`
+/// verbatim, so that string reaches here over sync, and as a plain number
+/// field it would be DROPPED — a well-formed coordinate lost, and a
+/// malformed-data report filed for it. The axis matters: a latitude signed
+/// E/W is refused, the same as on an ADIF import.
+enum QsonFieldType { string, number, latitude, longitude, map, list }
 
 /// One field [normalizeQsoQson] could not use and dropped, for a caller that
 /// wants to report it. [path] is dotted from the record root (`their.guess.grid`), so
@@ -153,8 +163,8 @@ const _qsoFields = <String, QsonFieldType>{
   'power': QsonFieldType.number,
   'startAtMillis': QsonFieldType.number,
   'updatedAtMillis': QsonFieldType.number,
-  'lat': QsonFieldType.number,
-  'lon': QsonFieldType.number,
+  'lat': QsonFieldType.latitude,
+  'lon': QsonFieldType.longitude,
   'our': QsonFieldType.map,
   'their': QsonFieldType.map,
   'event': QsonFieldType.map,
@@ -173,8 +183,8 @@ const _qsoOurFields = <String, QsonFieldType>{
   'antenna': QsonFieldType.string,
   'key': QsonFieldType.string,
   'sent': QsonFieldType.string,
-  'lat': QsonFieldType.number,
-  'lon': QsonFieldType.number,
+  'lat': QsonFieldType.latitude,
+  'lon': QsonFieldType.longitude,
 };
 
 /// Shared by `their` and the `their.guess` sub-map, which the coalescing
@@ -199,8 +209,8 @@ const _qsoTheirFields = <String, QsonFieldType>{
   'sent': QsonFieldType.string,
   'exchange': QsonFieldType.string,
   'power': QsonFieldType.number,
-  'lat': QsonFieldType.number,
-  'lon': QsonFieldType.number,
+  'lat': QsonFieldType.latitude,
+  'lon': QsonFieldType.longitude,
   // The nested lookup result. Descended into with [_qsoGuessFields] below.
   'guess': QsonFieldType.map,
   // Per-source lookup entries. Read as a list by the call-info panel, so a
@@ -234,8 +244,8 @@ const _operationFields = <String, QsonFieldType>{
   'userTitle': QsonFieldType.string,
   'title': QsonFieldType.string,
   'grid': QsonFieldType.string,
-  'lat': QsonFieldType.number,
-  'lon': QsonFieldType.number,
+  'lat': QsonFieldType.latitude,
+  'lon': QsonFieldType.longitude,
   // No getter for these five — `operation_dialogs.dart`,
   // `activities_view.dart` and `operation_location_screen.dart` read them
   // straight off the blob. Normalized here so what they read is a string by
@@ -257,15 +267,22 @@ const _operationFields = <String, QsonFieldType>{
 Object? _coerce(Object? value, QsonFieldType type) => switch (type) {
       QsonFieldType.string => asQsonString(value),
       QsonFieldType.number => asQsonNum(value),
+      QsonFieldType.latitude => _coerceCoordinate(value, latitude: true),
+      QsonFieldType.longitude => _coerceCoordinate(value, latitude: false),
       QsonFieldType.map => asQsonMap(value),
       QsonFieldType.list => asQsonList(value),
     };
+
+/// [asQsonNum] first, so a numeric string keeps its exact value; only what
+/// that refuses is read as ADIF, whose hemisphere letter is what marks it.
+num? _coerceCoordinate(Object? value, {required bool latitude}) =>
+    asQsonNum(value) ?? (value is String ? parseAdifCoordinate(value, latitude: latitude) : null);
 
 /// True when [value] already satisfies [type] with nothing to rewrite, so a
 /// clean record can be returned unchanged rather than rebuilt.
 bool _isClean(Object? value, QsonFieldType type) => switch (type) {
       QsonFieldType.string => value is String,
-      QsonFieldType.number => value is num,
+      QsonFieldType.number || QsonFieldType.latitude || QsonFieldType.longitude => value is num,
       QsonFieldType.map => value is Map,
       QsonFieldType.list => value is List,
     };
@@ -279,6 +296,7 @@ Map<String, dynamic> _normalize(
 ) {
   Map<String, dynamic>? rebuilt;
   Map<String, dynamic> mutable() => rebuilt ??= Map<String, dynamic>.of(data);
+  final dropped = <String>{};
 
   for (final entry in fields.entries) {
     final key = entry.key;
@@ -300,9 +318,21 @@ Map<String, dynamic> _normalize(
     if (coerced == null) {
       found?.add(QsonTypeViolation('$prefix$key', entry.value, value.runtimeType.toString()));
       mutable().remove(key);
+      dropped.add(key);
     } else {
       mutable()[key] = coerced;
     }
+  }
+
+  // A coordinate is a PAIR (locations.md): one axis dropped takes the other
+  // with it, unreported — the violation was the axis that failed. Left
+  // behind, a lone `lat` reads as "this record has a location" to a writer
+  // that checks for either key (the export's segment stamp) while every
+  // reader falls through to the grid: a QSO placed on screen and exported
+  // with no usable location at all.
+  if (dropped.contains('lat') != dropped.contains('lon')) {
+    if ((rebuilt ?? data).containsKey('lat')) mutable().remove('lat');
+    if ((rebuilt ?? data).containsKey('lon')) mutable().remove('lon');
   }
 
   // Descend only into sub-maps that came back as maps — a `their` that was a

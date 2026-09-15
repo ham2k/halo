@@ -22,7 +22,10 @@ Alongside `grid`, wherever one is stored:
 
 Signed decimal degrees, always — never ADIF's `N041 22.500`, which
 `parseAdifCoordinate` converts on the way in and `formatAdifCoordinate`
-(extensions/core/adif) converts on the way out.
+(extensions/core/adif) converts on the way out. "On the way in" includes
+the QSON normalizer (`qson_values.dart`), not just the ADIF importer: a
+peer that stored the ADIF form verbatim — app-polo's import does — sends it
+over sync, and a normalizer that only knew numbers would drop the pair.
 
 ## The invariant
 
