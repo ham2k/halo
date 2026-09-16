@@ -1729,6 +1729,60 @@ void main() {
       ]);
     });
 
+    // A push-only round (the debounced reaction to a logged QSO) also answers, and on a device in
+    // use it answers often. Lifting the cap on ANY answer would put the page back at full size
+    // between every two timeouts, and the shrink would never hold on the link it exists for.
+    test('a push that lands does not lift a page shrunk by a failed pull', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      final pullLimits = <int>[];
+      var failPulls = true;
+      transport.responder = (method, args) {
+        final sync = ((args['meta'] as Map?)?['sync'] as Map?)?['qsos'] as Map?;
+        if (sync != null) {
+          pullLimits.add(sync['limit'] as int);
+          if (failPulls) throw Exception('timed out');
+        }
+        return const {'meta': {'qsos': {'records_left': 5}, 'operations': {'records_left': 0}}};
+      };
+      await engine.runOneRound(); // pull fails: shrunk
+      final op = await operations.create(stationCall: 'KI2D');
+      await qsos.add(op.uuid, {'their': {'call': 'W1AW'}});
+      await engine.runOneRound(smallBatch: true); // push lands
+      failPulls = false;
+      await engine.runOneRound();
+      expect(pullLimits, [SyncEngine.backfillPullLimit, SyncEngine.backfillPullLimit ~/ 2]);
+    });
+
+    // The not-ready path returns before the flag is cleared beside the transport call. Left set,
+    // the next failure that throws BEFORE that call — here the account lookup a device makes
+    // once it no longer knows its account — would be read as a failed pull and shrink a page
+    // that never went out.
+    test('a transport that was not ready does not leave the next failure shrinking the page', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      final pullLimits = <int>[];
+      var mode = 'not-ready';
+      transport.responder = (method, args) {
+        final sync = ((args['meta'] as Map?)?['sync'] as Map?)?['qsos'] as Map?;
+        if (sync != null) pullLimits.add(sync['limit'] as int);
+        switch (mode) {
+          case 'not-ready':
+            throw const SyncTransportNotReady();
+          case 'fail':
+            throw Exception('boom');
+          default:
+            return const {'meta': {'qsos': {'records_left': 5}, 'operations': {'records_left': 0}}};
+        }
+      };
+      await engine.runOneRound(); // backfill pull, transport not ready
+      settings.state = {};
+      mode = 'fail';
+      await engine.runOneRound(); // getAccountData throws, before any pull is built
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      mode = 'ok';
+      await engine.runOneRound();
+      expect(pullLimits.last, SyncEngine.backfillPullLimit, reason: 'nothing about page size failed');
+    });
+
     test('the page never shrinks below one merge slice', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1'};
       final limits = <int>[];

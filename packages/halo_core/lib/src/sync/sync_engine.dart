@@ -377,14 +377,18 @@ class SyncEngine {
   /// and reset once it moves — see `_processResponseMeta`.
   int _backfillLimitBoost = 1;
 
-  /// Divisor on the backfill pull limit, doubled each time a backfill pull
-  /// fails outright and reset by the first page that lands. A page is
-  /// megabytes, and the transport has a fixed timeout: a link too slow to
-  /// move one page inside it would otherwise time out on the identical
-  /// request forever. Floored at one merge slice.
-  int _backfillPageShrink = 1;
+  /// Ceiling on the backfill pull limit, halved from the limit actually
+  /// asked for each time a backfill pull fails outright, lifted by the first
+  /// backfill page that lands. A page is megabytes under a fixed transport
+  /// timeout: a link too slow for one page would otherwise time out on the
+  /// identical request forever. Halved from what was ASKED for, not divided
+  /// off the nominal page: a boosted page sits clamped at the server's cap,
+  /// where a divisor takes several failures to change anything.
+  int _backfillPageCap = serverMaxPullLimit;
 
-  /// Whether the round in flight is a backfill pull, for the failure path.
+  /// Whether the round in flight is a backfill pull. Read by the failure
+  /// path to decide the cap applies, and by the success path to decide it
+  /// lifts — a push-only round that lands says nothing about page size.
   bool _backfillPullInFlight = false;
 
   /// Whether this run has already swept orphaned purged QSOs
@@ -729,10 +733,10 @@ class SyncEngine {
   ///   uuid, then marks it pending for the user to resolve.
   ///
   /// The backfill pull limit as it stands this round: the page, grown by the
-  /// tie boost, shrunk by the failure divisor, and never past what the
-  /// server will send or below one merge slice.
+  /// tie boost, held under the failure cap, and never past what the server
+  /// will send or below one merge slice.
   int get _backfillPullLimit =>
-      (backfillPullLimit * _backfillLimitBoost ~/ _backfillPageShrink).clamp(mergeChunkSize, serverMaxPullLimit);
+      (backfillPullLimit * _backfillLimitBoost).clamp(mergeChunkSize, _backfillPageCap.clamp(mergeChunkSize, serverMaxPullLimit));
 
   /// Once linked, a "small batch" round (a debounced reaction to a local
   /// edit) always has something to push, by construction, and never pulls.
@@ -824,8 +828,8 @@ class SyncEngine {
         'sync',
         await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit),
       );
+      if (_backfillPullInFlight) _backfillPageCap = serverMaxPullLimit;
       _backfillPullInFlight = false;
-      _backfillPageShrink = 1;
       if (generation != _generation) return _abandonRound();
 
       // The transport turns a rejected round into data instead of throwing
@@ -1013,12 +1017,9 @@ class SyncEngine {
     } catch (e, st) {
       _errorCount++;
       log?.call('[sync] round failed (error #$_errorCount${smallBatch ? ', small batch' : ''}): $e');
-      if (_backfillPullInFlight) {
-        _backfillPullInFlight = false;
-        if (_backfillPullLimit > mergeChunkSize) {
-          _backfillPageShrink *= 2;
-          log?.call('[sync] backfill pull failed; shrinking the page to $_backfillPullLimit');
-        }
+      if (_backfillPullInFlight && _backfillPullLimit > mergeChunkSize) {
+        _backfillPageCap = _backfillPullLimit ~/ 2;
+        log?.call('[sync] backfill pull failed; shrinking the page to $_backfillPullLimit');
       }
       // Exactly at the threshold, never past it: a device that stays
       // offline for a day would otherwise just swap a flood of first
@@ -1042,6 +1043,9 @@ class SyncEngine {
       final unreachable = _roundReachedService == false;
       _scheduleLoop(unreachable && backoff > unreachableBackoffCeiling ? unreachableBackoffCeiling : backoff);
     } finally {
+      // Whichever way the round ended — including the not-ready path above,
+      // which never reaches the reassignment beside the transport call.
+      _backfillPullInFlight = false;
       _running = false;
     }
   }
