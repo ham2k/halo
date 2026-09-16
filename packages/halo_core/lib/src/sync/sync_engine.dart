@@ -25,6 +25,7 @@ import '../app_clock.dart';
 import '../models/models.dart';
 import '../repo/operations_repository.dart';
 import '../repo/qsos_repository.dart';
+import 'sync_progress.dart';
 
 /// Calls the highest-priority `syncTransport` hook's `method` with `args`
 /// and returns its JSON result. Implemented by the app layer (wrapping
@@ -117,28 +118,6 @@ class SyncBatch {
   final List<Qso> qsos;
   const SyncBatch({this.operations = const [], this.qsos = const []});
   bool get isEmpty => operations.isEmpty && qsos.isEmpty;
-}
-
-/// Server-reported sync progress, for the app layer to surface (status bar,
-/// Settings). The counts come from the sync response's per-side meta
-/// (`records_left` / `total_records`) — the server includes them even in
-/// cooldown-gated responses that carry no records, so progress stays fresh
-/// between real pages. [backfilling] flips false on the round that
-/// completes the backfill, so the surface can finish and dismiss itself.
-class SyncProgress {
-  final bool backfilling;
-  final int? qsosTotal;
-  final int? qsosLeft;
-  final int? operationsTotal;
-  final int? operationsLeft;
-
-  const SyncProgress({
-    required this.backfilling,
-    this.qsosTotal,
-    this.qsosLeft,
-    this.operationsTotal,
-    this.operationsLeft,
-  });
 }
 
 /// How to reconcile this device's local data with a new (or newly
@@ -312,6 +291,23 @@ class SyncEngine {
   /// stuck-cursor handling.
   static const maxBackfillLimitBoost = 64;
 
+  /// Rows per merge slice while backfilling — see
+  /// [mergeQsosReportingProgress]. A prime on purpose: the count the
+  /// footer shows climbs in steps that never land on a round number, which
+  /// reads as records arriving rather than a meter ticking.
+  static const mergeChunkSize = 743;
+
+  /// Records requested per backfill page — a whole number of merge slices,
+  /// so every slice but a short last page's is full.
+  static const backfillPullLimit = mergeChunkSize * 7;
+
+  /// api-lofi's `MAX_LIMIT` (`paginable.rb`). A request past it is clamped
+  /// and still answered, so the limit this engine judges "full page" by must
+  /// never exceed what the server can send — a clamped page would read as a
+  /// short one, and on a server reporting no `records_left` a short page
+  /// means the backfill is done.
+  static const serverMaxPullLimit = 20000;
+
   /// Where each side's opaque server cursor lives in [SyncSettings.state]
   /// (LOFI-41). Four, not two: a cursor names a row's position in ONE sort,
   /// and backfill pages `synced_until` descending while forward mode pages
@@ -381,6 +377,16 @@ class SyncEngine {
   /// and reset once it moves — see `_processResponseMeta`.
   int _backfillLimitBoost = 1;
 
+  /// Divisor on the backfill pull limit, doubled each time a backfill pull
+  /// fails outright and reset by the first page that lands. A page is
+  /// megabytes, and the transport has a fixed timeout: a link too slow to
+  /// move one page inside it would otherwise time out on the identical
+  /// request forever. Floored at one merge slice.
+  int _backfillPageShrink = 1;
+
+  /// Whether the round in flight is a backfill pull, for the failure path.
+  bool _backfillPullInFlight = false;
+
   /// Whether this run has already swept orphaned purged QSOs
   /// (`QsosRepository.hardDeletePurgedOrphans`) — see its call site for why
   /// that sweep is not run on every round.
@@ -393,6 +399,13 @@ class SyncEngine {
   /// view to say when the next attempt is due; null while nothing is
   /// scheduled.
   DateTime? _nextAttemptAt;
+
+  /// Whether the last backfill page came back on a cursor the server would
+  /// not move (`_processResponseMeta`). Retried at the loop delay like any
+  /// full page — unless that delay is zero, when re-serving the same page
+  /// with no wait is a tight loop re-merging thousands of rows, so it waits
+  /// the check period instead.
+  bool _lastPageStuck = false;
 
   /// Whether the transport answered during the round currently running —
   /// what tells [retryNow] whether its attempt learned anything. A round can
@@ -715,6 +728,12 @@ class SyncEngine {
   ///   `getAccountData` call (no push, no pull) just to learn the account
   ///   uuid, then marks it pending for the user to resolve.
   ///
+  /// The backfill pull limit as it stands this round: the page, grown by the
+  /// tie boost, shrunk by the failure divisor, and never past what the
+  /// server will send or below one merge slice.
+  int get _backfillPullLimit =>
+      (backfillPullLimit * _backfillLimitBoost ~/ _backfillPageShrink).clamp(mergeChunkSize, serverMaxPullLimit);
+
   /// Once linked, a "small batch" round (a debounced reaction to a local
   /// edit) always has something to push, by construction, and never pulls.
   /// A "large batch" round (the periodic loop) always calls the transport,
@@ -781,10 +800,11 @@ class SyncEngine {
 
       final backfilling = state['completedFullSync'] != true;
       final batchSize = smallBatch ? smallBatchSize : _largeBatchSize;
-      // The pull limit grows past the push batch size only while a backfill
-      // cursor is stuck on a page of identical timestamps — see
-      // _processResponseMeta.
-      final pullLimit = backfilling ? batchSize * _backfillLimitBoost : batchSize;
+      // A backfill pulls big pages, not the plan's batch size: every page
+      // costs a cooldown wait and merges at ~0.1 ms/row, so the page count is
+      // the backfill's duration. The push batch stays at the plan's size —
+      // that is where the server does per-record work.
+      final pullLimit = backfilling ? _backfillPullLimit : batchSize;
       final batch = await selectBatch(qsoBatchSize: batchSize, operationBatchSize: batchSize);
 
       if (batch.isEmpty && smallBatch) return;
@@ -799,10 +819,13 @@ class SyncEngine {
           for (final entry in (backfilling ? backfillCursorKeys : forwardCursorKeys).entries)
             entry.key: settings.state[entry.value] as String?,
       };
+      _backfillPullInFlight = pull && backfilling;
       final response = await _callTransport(
         'sync',
         await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit),
       );
+      _backfillPullInFlight = false;
+      _backfillPageShrink = 1;
       if (generation != _generation) return _abandonRound();
 
       // The transport turns a rejected round into data instead of throwing
@@ -903,7 +926,12 @@ class SyncEngine {
       final inboundQsos = (response['qsos'] as List?)?.cast<Map<String, dynamic>>() ?? const [];
       if (generation != _generation) return _abandonRound();
       final opWatermark = inboundOperations.isEmpty ? null : await operations.mergeFromSync(inboundOperations);
-      final qsoWatermark = inboundQsos.isEmpty ? null : await qsos.mergeFromSync(inboundQsos);
+      final qsoWatermark = inboundQsos.isEmpty
+          ? null
+          : await mergeQsosReportingProgress(qsos, inboundQsos, response,
+              sliceSize: mergeChunkSize,
+              onProgress: backfilling ? onProgress : null,
+              abandoned: () => generation != _generation);
 
 
       // The QSOs the `hardDeletePurgedForOperation` loop above can no longer
@@ -970,7 +998,7 @@ class SyncEngine {
         // the idle rate.
         _scheduleLoop(morePending
             ? Duration.zero
-            : fullPage
+            : fullPage && !(_lastPageStuck && _loopDelay == Duration.zero)
                 ? _loopDelay
                 : _checkPeriod);
       }
@@ -985,6 +1013,13 @@ class SyncEngine {
     } catch (e, st) {
       _errorCount++;
       log?.call('[sync] round failed (error #$_errorCount${smallBatch ? ', small batch' : ''}): $e');
+      if (_backfillPullInFlight) {
+        _backfillPullInFlight = false;
+        if (_backfillPullLimit > mergeChunkSize) {
+          _backfillPageShrink *= 2;
+          log?.call('[sync] backfill pull failed; shrinking the page to $_backfillPullLimit');
+        }
+      }
       // Exactly at the threshold, never past it: a device that stays
       // offline for a day would otherwise just swap a flood of first
       // failures for a flood of streak reports. A success resets the count
@@ -1296,8 +1331,12 @@ class SyncEngine {
     final suggestedBatchSize = knob('suggestedSyncBatchSize', 'suggested_sync_batch_size');
     if (suggestedBatchSize != null && suggestedBatchSize > 0) _largeBatchSize = suggestedBatchSize;
 
+    // Zero is a value here, not an absence: a plan with no cooldown says so
+    // by suggesting no delay, and treating it as unset would page at the
+    // 20 s default instead. Only the check period refuses zero — that one
+    // sets the idle rate, and zero there is a hot loop.
     final suggestedLoopDelayMillis = knob('suggestedSyncLoopDelay', 'suggested_sync_loop_delay');
-    if (suggestedLoopDelayMillis != null && suggestedLoopDelayMillis > 0) {
+    if (suggestedLoopDelayMillis != null && suggestedLoopDelayMillis >= 0) {
       _loopDelay = Duration(milliseconds: suggestedLoopDelayMillis);
     }
 
@@ -1451,11 +1490,14 @@ class SyncEngine {
           updates[key] = null;
         }
         _backfillLimitBoost = 1;
+        _lastPageStuck = false;
       } else if (cursorStuck) {
         // A cursor that will not move is not a page-size problem, so growing the limit is not the
-        // answer; the full page it came on is already scheduled at the loop delay.
+        // answer; the full page it came on is scheduled at the loop delay (see [_lastPageStuck]).
+        _lastPageStuck = true;
         log?.call('[sync] backfill cursor came back unchanged; retrying at the loop delay');
       } else if (timestampTieStuck) {
+        _lastPageStuck = !cursorAdvanced;
         if (_backfillLimitBoost < maxBackfillLimitBoost) {
           _backfillLimitBoost *= 2;
           log?.call('[sync] backfill cursor stuck on a timestamp tie; growing pull limit to ${_backfillLimitBoost}x');
@@ -1464,6 +1506,7 @@ class SyncEngine {
         }
       } else {
         _backfillLimitBoost = 1;
+        _lastPageStuck = false;
       }
 
       _reportProgress(meta, completed: updates['completedFullSync'] == true);
@@ -1482,15 +1525,7 @@ class SyncEngine {
   /// the surface always gets its terminal update).
   void _reportProgress(Map<String, dynamic> meta, {required bool completed}) {
     if (onProgress == null) return;
-    int? count(String side, String camel, String snake) {
-      final sideMeta = meta[side] as Map?;
-      return ((sideMeta?[camel] ?? sideMeta?[snake]) as num?)?.toInt();
-    }
-
-    final qsosLeft = count('qsos', 'recordsLeft', 'records_left');
-    final qsosTotal = count('qsos', 'totalRecords', 'total_records');
-    final operationsLeft = count('operations', 'recordsLeft', 'records_left');
-    final operationsTotal = count('operations', 'totalRecords', 'total_records');
+    final (:qsosLeft, :qsosTotal, :operationsLeft, :operationsTotal) = serverCounts(meta);
     if (!completed && qsosLeft == null && qsosTotal == null && operationsLeft == null && operationsTotal == null) return;
 
     onProgress!(SyncProgress(

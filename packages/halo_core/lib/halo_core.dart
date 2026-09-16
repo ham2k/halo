@@ -37,4 +37,5 @@ export 'src/repo/inbound_capture_repository.dart';
 export 'src/repo/sequences.dart';
 export 'src/repo/write_policy.dart';
 export 'src/sync/sync_engine.dart';
+export 'src/sync/sync_progress.dart' show SyncProgress;
 export 'src/wsjtx/wsjtx_qso_logged.dart';

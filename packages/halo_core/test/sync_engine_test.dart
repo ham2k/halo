@@ -864,6 +864,25 @@ void main() {
     expect(transport.calls, hasLength(1));
   });
 
+  // A plan with no cooldown suggests a delay of 0. Read as "unset", that falls back to the 20 s
+  // default and a backfill pages twenty times slower than the server asked for.
+  test('a suggested loop delay of zero pages straight through, not at the default', () async {
+    transport.responder = (method, args) => {
+          'qsos': inboundFrom(args, totalAvailable: 150).take(SyncEngine.defaultLargeBatchSize).toList(),
+          'meta': {
+            'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 60000},
+          },
+        };
+
+    await engine.runOneRound();
+    expect(transport.calls, hasLength(1));
+
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+    expect(transport.calls, hasLength(2), reason: 'the second page follows without a wait');
+    // Caught up after the short second page: idle at the check period, never the zero delay.
+    expect(engine.nextAttemptAt!.difference(realNowUtc()), greaterThan(const Duration(seconds: 59)));
+  });
+
   test('a partial page means caught up, and the loop idles at the check period', () async {
     transport.responder = (method, args) => pagedResponse(inboundFrom(args, totalAvailable: 50));
 
@@ -1081,16 +1100,18 @@ void main() {
 
     test('backfill pages backward and hands off to forward mode once caught up', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1'}; // linked, but completedFullSync is not yet true
-      const totalAvailable = 250;
-      // A server holding 250 historical QSOs (syncedAtMillis 0..249, oldest
+      // A page and a half of history, whatever the page is.
+      final totalAvailable = SyncEngine.backfillPullLimit + SyncEngine.backfillPullLimit ~/ 2;
+      // A server holding that many historical QSOs (syncedAtMillis 0.., oldest
       // first). Each call returns whatever's strictly older than `until`,
       // newest-first, capped at the page limit — the same "keep asking for
       // what's older than my cursor" shape the real server implements. It
       // reports no recordsLeft meta, so this also covers the legacy-server
       // fallback: completion inferred from a shorter-than-limit page.
       transport.responder = (method, args) {
-        final until = (((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['syncedUntilMillis'] as int;
-        expect((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['anyClient'], isTrue);
+        final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
+        final until = sync['syncedUntilMillis'] as int;
+        expect(sync['anyClient'], isTrue);
         final page = [
           for (var s = totalAvailable - 1; s >= 0; s--)
             if (s < until)
@@ -1101,7 +1122,7 @@ void main() {
                 'startAtMillis': s,
                 'syncedAtMillis': s,
               },
-        ].take(SyncEngine.defaultLargeBatchSize).toList();
+        ].take(sync['limit'] as int).toList();
         return {'qsos': page};
       };
 
@@ -1110,7 +1131,7 @@ void main() {
       await engine.runOneRound();
       expect(settings.state['completedFullSync'], isNot(true));
 
-      // Keep running rounds until the (250-record) history is
+      // Keep running rounds until the history is
       // exhausted and the engine flips over to forward mode.
       var guard = 0;
       while (settings.state['completedFullSync'] != true && guard < 10) {
@@ -1176,10 +1197,11 @@ void main() {
     // backfill.
     test('backfill on the millisecond window loses nothing to a page-sized tie', () async {
       settings.state = {'lastSyncAccountUUID': 'acct-1'};
-      // 40 newer records at distinct stamps, then 120 sharing stamp 100 - a bulk import whose
-      // tie is larger than a full page (100). Mixed stamps on purpose: with a single stamp
+      // 40 newer records at distinct stamps, then a tie sharing stamp 100 that is wider than a
+      // full backfill page - a bulk import. Mixed stamps on purpose: with a single stamp
       // throughout, a fake that mismodels the extension still passes.
-      const totalAvailable = 160;
+      final tieWidth = SyncEngine.backfillPullLimit + 200;
+      final totalAvailable = 40 + tieWidth;
       transport.responder = (method, args) {
         final sync = ((args['meta'] as Map)['sync'] as Map)['qsos'] as Map;
         final until = sync['syncedUntilMillis'] as int;
@@ -1193,7 +1215,7 @@ void main() {
               'startAtMillis': 500 + i,
               'syncedAtMillis': 200 - i,
             },
-          for (var i = 0; i < 120; i++)
+          for (var i = 0; i < tieWidth; i++)
             {
               'uuid': 'tie-$i',
               'operation': 'op1',
@@ -1535,13 +1557,13 @@ void main() {
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
       transport.responder = (method, args) => {
             'qsos': [
-              for (var i = 0; i < 100; i++)
+              for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
                 {
                   'uuid': 'q$i',
                   'operation': 'op1',
                   'their': {'call': 'W1AW$i'},
                   'startAtMillis': i,
-                  'syncedAtMillis': 400 - i,
+                  'syncedAtMillis': 4000 - i,
                 },
             ],
             'meta': {
@@ -1576,8 +1598,8 @@ void main() {
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
       transport.responder = (method, args) => {
             'qsos': [
-              for (var i = 0; i < 100; i++)
-                {'uuid': 'q$i', 'operation': 'op1', 'their': {'call': 'W1AW$i'}, 'startAtMillis': i, 'syncedAtMillis': 400 - i},
+              for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
+                {'uuid': 'q$i', 'operation': 'op1', 'their': {'call': 'W1AW$i'}, 'startAtMillis': i, 'syncedAtMillis': 4000 - i},
             ],
             'meta': {
               'qsos': {'next_cursor': 'row:8', 'records_left': 5},
@@ -1621,6 +1643,171 @@ void main() {
       expect(settings.state['latestQSOSyncedAtMillis'], 899,
           reason: 'the page stopped inside stamp 900, so banking 900 would ask for `> 900` and '
               'skip the rest of it with nothing counting the loss');
+    });
+
+    // The trap is the arithmetic: a slice's report must add the page's UNMERGED rest onto the
+    // server's `records_left`, which counts from after the whole page. Reporting the server
+    // number early shows the page as landed before it is; reporting merged rows alone runs
+    // the meter backwards.
+    test('a backfill page reports progress per merge slice, landing on the server count', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      final reports = <SyncProgress>[];
+      engine.dispose();
+      engine = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        settings: settings,
+        transport: transport.call,
+        onProgress: reports.add,
+      );
+      final pageSize = SyncEngine.mergeChunkSize * 2 + 10;
+      transport.responder = (method, args) => {
+            'qsos': [
+              for (var i = 0; i < pageSize; i++)
+                {'uuid': 'q$i', 'operation': 'op1', 'their': {'call': 'W1AW$i'}, 'syncedAtMillis': 1000 - i},
+            ],
+            'meta': {
+              'qsos': {'records_left': 500, 'total_records': 500 + pageSize},
+              'operations': {'records_left': 0, 'total_records': 1},
+            },
+          };
+
+      await engine.runOneRound();
+
+      expect(reports.map((r) => r.qsosLeft), [
+        500 + pageSize - SyncEngine.mergeChunkSize,
+        500 + pageSize - 2 * SyncEngine.mergeChunkSize,
+        500,
+      ]);
+      expect(reports.every((r) => r.backfilling && r.qsosTotal == 500 + pageSize), isTrue);
+      expect(await qsos.watchForOperation('op1').first, hasLength(pageSize));
+      // One watermark for the page, whichever slice held its edges.
+      expect(settings.state['earliestQSOSyncedAtMillis'], 1000 - (pageSize - 1));
+    });
+
+    // The server clamps a limit past its maximum and answers anyway; judged against the number
+    // ASKED for, that clamped page reads as short, and a short page is how a server with no
+    // `records_left` says the backfill is over.
+    test('the pull limit never asks the server for more than it can send', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      final limits = <int>[];
+      transport.responder = (method, args) {
+        limits.add((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int);
+        return const {'qsos': [], 'meta': {'qsos': {'records_left': 0}, 'operations': {'records_left': 0}}};
+      };
+      await engine.runOneRound();
+      expect(limits.single, SyncEngine.backfillPullLimit);
+      expect(SyncEngine.backfillPullLimit * SyncEngine.maxBackfillLimitBoost, greaterThan(SyncEngine.serverMaxPullLimit),
+          reason: 'sanity: the boost CAN overshoot, so the clamp is load-bearing');
+    });
+
+    // A page is megabytes under a fixed transport timeout. Retrying the identical request on
+    // a link that cannot move it in time never completes; a smaller page can.
+    test('a failed backfill pull halves the page, and the first page that lands restores it', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      final limits = <int>[];
+      var fail = 2;
+      transport.responder = (method, args) {
+        limits.add((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int);
+        if (fail-- > 0) throw Exception('timed out');
+        return {
+          'qsos': [
+            {'uuid': 'q1', 'operation': 'op1', 'their': {'call': 'W1AW'}, 'syncedAtMillis': 100},
+          ],
+          'meta': {'qsos': {'records_left': 5}, 'operations': {'records_left': 0}},
+        };
+      };
+      await engine.runOneRound();
+      await engine.runOneRound();
+      await engine.runOneRound();
+      await engine.runOneRound();
+      expect(limits, [
+        SyncEngine.backfillPullLimit,
+        SyncEngine.backfillPullLimit ~/ 2,
+        SyncEngine.backfillPullLimit ~/ 4,
+        SyncEngine.backfillPullLimit,
+      ]);
+    });
+
+    test('the page never shrinks below one merge slice', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      final limits = <int>[];
+      transport.responder = (method, args) {
+        limits.add((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int);
+        throw Exception('timed out');
+      };
+      for (var i = 0; i < 8; i++) {
+        await engine.runOneRound();
+      }
+      expect(limits.last, SyncEngine.mergeChunkSize);
+      expect(limits.every((l) => l >= SyncEngine.mergeChunkSize), isTrue);
+    });
+
+    // A wipe between two slices of one page: the rest of that page belongs to the account being
+    // left, and inserting it marked `synced` into the cleared tables leaves rows nothing will
+    // ever push or remove.
+    test('a reconciliation mid-page stops the remaining slices from landing', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1'};
+      final pageSize = SyncEngine.mergeChunkSize * 3;
+      Future<bool>? resync;
+      engine.dispose();
+      engine = SyncEngine(
+        operations: operations,
+        qsos: qsos,
+        settings: settings,
+        transport: transport.call,
+        onProgress: (progress) {
+          // Not awaited here on purpose: what matters is that the generation bumps synchronously
+          // before the next slice, exactly as an operator's tap would.
+          resync ??= engine.forceFullResync();
+        },
+      );
+      transport.responder = (method, args) => {
+            'qsos': [
+              for (var i = 0; i < pageSize; i++)
+                {'uuid': 'q$i', 'operation': 'op1', 'their': {'call': 'W1AW$i'}, 'syncedAtMillis': 1000 - i},
+            ],
+            'meta': {
+              'qsos': {'records_left': 0, 'total_records': pageSize},
+              'operations': {'records_left': 0, 'total_records': 0},
+            },
+          };
+
+      await engine.runOneRound();
+      // Before the rounds the abandon and the resync each scheduled can run: either would pull
+      // the page again, legitimately, and hide whether the abandoned round's tail landed.
+      engine.dispose();
+      expect(resync, isNotNull, reason: 'sanity: the first slice reported, and the wipe was requested');
+      await resync;
+
+      expect(await db.select(db.qsosBackup).get(), hasLength(SyncEngine.mergeChunkSize),
+          reason: 'sanity: exactly the first slice was in the tables when the wipe ran');
+      final rows = await qsos.watchForOperation('op1').first;
+      expect(rows, isEmpty, reason: 'the slices after the wipe must not have landed');
+      expect(settings.state['completedFullSync'], isNot(true), reason: 'and the abandoned round wrote no state');
+    });
+
+    // With no cooldown the loop delay is zero, and a page the server keeps re-serving on an
+    // unmoving cursor would be re-requested and re-merged with no wait at all.
+    test('a stuck cursor on a zero loop delay retries at the check period, not instantly', () async {
+      settings.state = {'lastSyncAccountUUID': 'acct-1', 'backfillQSOCursor': 'row:7'};
+      transport.responder = (method, args) => {
+            'qsos': [
+              for (var i = 0; i < ((((args['meta'] as Map)['sync'] as Map)['qsos'] as Map)['limit'] as int); i++)
+                {'uuid': 'q$i', 'operation': 'op1', 'their': {'call': 'W1AW$i'}, 'startAtMillis': i, 'syncedAtMillis': 9000 - i},
+            ],
+            'meta': {
+              'qsos': {'next_cursor': 'row:7', 'records_left': 99},
+              'operations': {'records_left': 0},
+              'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 7000},
+            },
+          };
+
+      await engine.runOneRound();
+
+      final wait = engine.nextAttemptAt!.difference(realNowUtc());
+      expect(wait, greaterThan(const Duration(seconds: 6)));
+      expect(wait, lessThanOrEqualTo(const Duration(seconds: 7)));
     });
 
     test('backfill rounds report server counts as progress, ending with a terminal update', () async {
