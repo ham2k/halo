@@ -47,6 +47,8 @@ import 'keyboard_dismiss.dart';
 import 'logging_controls_command.dart';
 import 'logging_controls_controller.dart';
 import 'logging_controls_draft.dart';
+import 'logging_controls_entry_row.dart';
+import 'logging_controls_event_row.dart';
 import 'logging_controls_exchange.dart';
 import 'logging_controls_ladder.dart';
 import 'logging_controls_focus.dart';
@@ -966,7 +968,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   );
 
   /// Editing an event/annotation row (NOTE, TODO, BREAK, …) rather than a
-  /// contact — the main fields swap for [_buildEventFields], built from the
+  /// contact — the main fields swap for [EventFieldRow], built from the
   /// same field primitives so the row's shape doesn't change, and every
   /// secondary control but Time is disabled (not hidden — see
   /// `SecondaryControlSpec.enabled`), since nothing else applies to a
@@ -2203,7 +2205,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// the keyboard's path through it, and the More pane — so the row can never
   /// disagree with the order Space and Tab actually walk. Which controller is
   /// Sent and which is Rcvd never changes; only where each is drawn does.
-  List<({FocusNode focus, TextEditingController controller, String label})> get _rstPair {
+  List<RstFieldSlot> get _rstPair {
     final pair = [
       (focus: _sentFocus, controller: _sentController, label: t.loggingControls.sent),
       (focus: _rcvdFocus, controller: _rcvdController, label: t.loggingControls.rcvd),
@@ -2339,119 +2341,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// change rebuilds — and off a squeezed row it would be a rebuild that
   /// changes nothing.
   bool _mainFieldsSqueezed = false;
-
-  /// The geometry the row was last laid out against, so a change in the space
-  /// available can be told apart from a change in what wants it — see
-  /// [_mainFieldWidthDuration].
-  (double, double)? _lastRowGeometry;
-
-  /// How long the fields take to reach a new width: [fieldWidthDuration] when
-  /// the space available hasn't changed, and **instantly** when it has.
-  ///
-  /// Animating a resize would be worse, not better. The callsign is `Expanded`
-  /// and so is never animated — it takes whatever the others leave, the moment
-  /// they leave it. Animate the others through a window drag and the callsign
-  /// spends the whole gesture absorbing their lag, jittering while every field
-  /// beside it glides. A focus change is the opposite case: nothing else about
-  /// the row is moving, so the one field that is should be followed rather than
-  /// snapped at.
-  ///
-  /// [buttonWidth] counts as much as [rowWidth]: it is measured off the
-  /// rendered row, so the first frame of a freshly opened panel always resolves
-  /// against the fallback and the second against the real thing. Left out, that
-  /// correction would animate — the whole row visibly gliding a few pixels
-  /// every time the panel appears.
-  Duration _mainFieldWidthDuration(double rowWidth, double buttonWidth) {
-    final geometry = (rowWidth, buttonWidth);
-    final changed = _lastRowGeometry != geometry;
-    _lastRowGeometry = geometry;
-    return changed ? Duration.zero : fieldWidthDuration;
-  }
-
-  /// One of the narrow secondary logging fields — Sent, Rcvd, State, Grid —
-  /// which share everything but their controller/label and a couple of
-  /// input-shaping knobs. Amateur-radio codes, not prose: stop the
-  /// soft keyboard from autocorrecting, spell-checking, suggesting, or
-  /// smart-punctuating the value into garbage (autocorrect:false also turns
-  /// off iOS spell check; the smart types stop "-" → "–"). Uppercased like
-  /// all logging input, and Enter logs.
-  ///
-  /// [width] and [padding] are resolved by [resolveMainFieldLayout], not
-  /// chosen here: [fixedFieldMinWidth] whenever the row has room, and less
-  /// when it doesn't.
-  Widget _fixedField(
-    BuildContext context, {
-    required TextEditingController controller,
-    required FocusNode focusNode,
-    required bool enabled,
-    required String label,
-    required double width,
-    required double padding,
-    required Duration duration,
-    TextInputType? keyboardType,
-    TextCapitalization textCapitalization = TextCapitalization.none,
-    TextInputFormatter? filter,
-    String? hintText,
-    /// Only for a field that tracks whether the operator has touched it.
-    /// Typing already reaches the controller's own listeners, so a field with
-    /// nothing extra to record omits this rather than passing a no-op.
-    ValueChanged<String>? onChanged,
-  }) {
-    return AnimatedContainer(
-      duration: duration,
-      curve: Curves.easeOut,
-      width: width,
-      child: TextField(
-        controller: controller,
-        focusNode: focusNode,
-        selectAllOnFocus: false,
-        enabled: enabled,
-        style: mainFieldStyle(context, fontWeight: FontWeight.w500),
-        keyboardType: keyboardType,
-        textCapitalization: textCapitalization,
-        autocorrect: false,
-        enableSuggestions: false,
-        smartDashesType: SmartDashesType.disabled,
-        smartQuotesType: SmartQuotesType.disabled,
-        inputFormatters: [_virtualSpace, ?filter, const UpperCaseTextFormatter()],
-        decoration: mainFieldDecoration(context, label, hintText: hintText, horizontalPadding: padding),
-        onChanged: onChanged,
-        onEditingComplete: () => _finishEditingWithoutBlur(controller),
-        onSubmitted: (_) => _log(),
-      ),
-    );
-  }
-
-  /// What every main logging field does instead of `EditableText`'s default
-  /// end-of-editing behavior.
-  ///
-  /// That default **unfocuses the field before it calls `onSubmitted`** — so
-  /// left alone, every Enter blurs the field that submitted it, and the entry
-  /// row only looked like it kept focus because the ordinary logging paths
-  /// happen to re-focus afterwards (`_wipe` after a logged QSO, the `!_canLog`
-  /// guard otherwise). Any path that didn't — running a command, saving an
-  /// edit, a second Enter while one is still in flight — left the operator
-  /// with nothing focused at all.
-  ///
-  /// Here Enter means "log", never "done editing": the entry row is a loop the
-  /// keyboard stays inside (docs/design/logging-fields.md § "Enter and focus"),
-  /// so the field that submitted keeps focus unless something downstream
-  /// deliberately moves it. Suppressing the blur at the three build sites fixes
-  /// every submit path at once, rather than making each new branch of [_log]
-  /// remember to put focus back.
-  ///
-  /// Supplying `onEditingComplete` replaces the branch that did BOTH of those,
-  /// so the composing-region cleanup is reinstated here by hand. It does not
-  /// replace everything: `_finalizeEditing`'s trailing
-  /// `if (shouldUnfocus) _scheduleRestartConnection()` still runs, and
-  /// actually restarts the platform input connection rather than finding it
-  /// already closed — which is what keeps the keyboard from blinking per QSO.
-  ///
-  /// Secondary controls are deliberately not covered — they keep their widget
-  /// defaults (docs/design/logging-fields.md § "The three parts"), and the
-  /// radio control's field moves focus to its pill itself on submit.
-  ///
-  void _finishEditingWithoutBlur(TextEditingController controller) => controller.clearComposing();
 
   // ---- Control identity, order and visibility ----
   //
@@ -2642,105 +2531,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     ];
   }
 
-  /// The main-fields row while editing an event/annotation: the kind is
-  /// plain text — not a value the operator edits, so it gets no field
-  /// chrome — baseline-aligned with whatever sits beside it. That's
-  /// NOTE/TODO's real, editable text field; everything else (SOLAR/
-  /// WEATHER's fetched description, or nothing at all for BREAK/START/END,
-  /// whose grid/contest-exchange segment override has no editing UI yet —
-  /// docs/design/contests.md §5.1.3) goes through [_chromelessValueField]
-  /// instead of a plain `Text`, so the row reaches a real field's height by
-  /// construction rather than by approximating it: `TextField` and `Text`
-  /// size themselves through different render objects (`RenderEditable` vs
-  /// `RenderParagraph`), which don't agree to the pixel even given the same
-  /// decoration.
-  Widget _buildEventFields(BuildContext context, ThemeData theme, bool fieldsLocked) {
-    final editingQso = widget.editingQso!;
-    final kind = editingQso.eventKind;
-    final event = editingQso.event;
-    final label = kind?.toUpperCase() ?? 'EVENT';
-    final textStyle = mainFieldStyle(context, fontWeight: FontWeight.w500)
-        .copyWith(color: theme.colorScheme.onTertiaryContainer);
-
-    Widget trailing;
-    if (kind == 'note' || kind == 'todo') {
-      final decoration = mainFieldDecoration(
-        context,
-        kind == 'todo' ? t.loggingControls.todoField : t.loggingControls.noteField,
-        horizontalPadding: materialFilledInputGap,
-      );
-      trailing = TextField(
-        controller: _eventTextController,
-        focusNode: _eventTextFocus,
-        enabled: !fieldsLocked,
-        style: mainFieldStyle(context, fontWeight: FontWeight.w400),
-        // The done checkbox rides in the field's own prefixIcon slot rather
-        // than sitting beside it in the row: a Checkbox can't answer the
-        // dry-baseline query `IntrinsicHeight`/`CrossAxisAlignment.baseline`
-        // need (its check mark paints through a `RenderCustomPaint`, which
-        // doesn't implement one) — the decorator already knows how to place
-        // a prefix icon without asking it for a baseline.
-        decoration: kind == 'todo'
-            ? decoration.copyWith(
-                prefixIcon: Checkbox(
-                  value: _eventTodoDone,
-                  onChanged:
-                      fieldsLocked ? null : (value) => setState(() => _eventTodoDone = value ?? false),
-                ),
-              )
-            : decoration,
-        onSubmitted: (_) => _log(),
-      );
-    } else {
-      trailing = _chromelessValueField(
-        context,
-        keySuffix: kind ?? 'event',
-        value: (kind == 'solar' || kind == 'weather') ? (event?['description'] as String?) ?? '' : '',
-        style: textStyle,
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.baseline,
-      textBaseline: TextBaseline.alphabetic,
-      children: [
-        Text(label, style: textStyle),
-        const SizedBox(width: Space.md),
-        Expanded(child: trailing),
-      ],
-    );
-  }
-
-  /// A read-only, chrome-less field standing in for plain text wherever
-  /// [_buildEventFields] has no editable value: same decoration function
-  /// NOTE/TODO's real field uses (so it claims the identical vertical
-  /// space), with everything that paints stripped off (`filled: false`, no
-  /// border, no label) — a real `TextField` under the hood so its height
-  /// matches one exactly, but nothing on screen betrays that it is one.
-  /// Keyed on its own value: `initialValue` only applies once per State, so
-  /// a field showing a different event's text after a selection change
-  /// (same widget position, new `editingQso`) needs a new key to pick it up.
-  Widget _chromelessValueField(
-    BuildContext context, {
-    required String keySuffix,
-    required String value,
-    required TextStyle style,
-  }) =>
-      TextFormField(
-        key: ValueKey('event-$keySuffix-$value'),
-        initialValue: value,
-        readOnly: true,
-        enabled: false,
-        maxLines: 1,
-        style: style,
-        decoration: mainFieldDecoration(context, '', horizontalPadding: materialFilledInputGap).copyWith(
-          filled: false,
-          border: InputBorder.none,
-          enabledBorder: InputBorder.none,
-          focusedBorder: InputBorder.none,
-        ),
-      );
-
   /// Adds this panel's keyboard policy to a control spec: a focus node for its
   /// pill, and a non-focusable ancestor over its expanded content that watches
   /// for the keys which close it again. Applied once, over the assembled list,
@@ -2865,119 +2655,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           ],
         ),
       );
-
-  /// Sent and Rcvd, in the order the operator reads them — reversed by
-  /// `switchSentRcvd`, which [_rstPair] resolves once for every surface.
-  ///
-  /// The gaps belong to the POSITION, not to the field: whichever report comes
-  /// first opens the group after the callsign, and the second sits a plain
-  /// field gap along from it. Reversing the pair alone would carry the wide
-  /// gap into the middle of it.
-  List<MainField> _rstMainFields(BuildContext context, {required bool enabled}) => [
-        for (final (index, field) in _rstPair.indexed)
-          (
-            gapBefore: index == 0 ? mainFieldGroupGap : mainFieldGap,
-            minWidth: fixedFieldMinWidth,
-            focusNode: field.focus,
-            build: (width, padding, duration) => _fixedField(
-              context,
-              controller: field.controller,
-              focusNode: field.focus,
-              enabled: enabled,
-              label: field.label,
-              width: width,
-              padding: padding,
-              duration: duration,
-              // Letters are legitimate in RSTs (CW's "5NN" shorthand, aurora
-              // "59A") and the Edit QSO pane accepts them — a digits-only
-              // filter here would silently strip a pane-saved letter on the
-              // next keystroke, since filtering formatters re-run over the
-              // whole text.
-              keyboardType: _numbersAndPunctuationOnIOS,
-              filter: FilteringTextInputFormatter.allow(RegExp(r'[0-9a-zA-Z+\-]')),
-              hintText: _rstPlaceholder,
-            ),
-          ),
-      ];
-
-  /// The main logging fields that follow the callsign, in row order.
-  ///
-  /// The single source of truth for both [resolveMainFieldLayout] and the row
-  /// that renders them in [build], so a field can never be in the layout
-  /// arithmetic and missing from the row (or the reverse) — the same drift
-  /// [_primaryFields] exists to prevent for the keyboard, and the same order.
-  ///
-  /// The callsign is deliberately not here: it is `Expanded` over whatever
-  /// these leave it, and it is never squeezed.
-  List<MainField> _trailingMainFields(BuildContext context, {required bool enabled}) => [
-        if (widget.showRSTFields) ..._rstMainFields(context, enabled: enabled),
-        // Contest exchanges, inline right after the RSTs — see `_textControls`
-        // for why these are primary.
-        for (final control in _textControls)
-          (
-            gapBefore: mainFieldGap,
-            minWidth: exchangeFieldMinWidth,
-            focusNode: _exchange.focusFor(control['key'] as String),
-            build: (width, padding, duration) => ExchangeField(
-              model: _exchange,
-              control: control,
-              enabled: enabled,
-              width: width,
-              padding: padding,
-              duration: duration,
-              virtualSpace: _virtualSpace,
-              numericKeyboardType: _numbersAndPunctuationOnIOS,
-              onEditingComplete: _finishEditingWithoutBlur,
-              onSubmitted: _handleEnter,
-            ),
-          ),
-        if (widget.showStateField)
-          (
-            gapBefore: mainFieldGroupGap,
-            minWidth: fixedFieldMinWidth,
-            focusNode: _stateFocus,
-            build: (width, padding, duration) => _fixedField(
-              context,
-              controller: _stateController,
-              focusNode: _stateFocus,
-              enabled: enabled,
-              label: t.qsoEditForm.theirState,
-              width: width,
-              padding: padding,
-              duration: duration,
-              textCapitalization: TextCapitalization.characters,
-              // The guessed state (e.g. from a callsign lookup) shows as a
-              // faint placeholder while the field is empty — never pre-filled
-              // as a real value.
-              hintText: _currentGuess?['state'] as String?,
-              onChanged: (_) {
-                _draft.stateTouched = true;
-                // Scored on (New State / New Province), so a typed state has
-                // to reach the scorer like a band or mode change does.
-                _lookup.scheduleScore();
-              },
-            ),
-          ),
-        if (widget.showGridField)
-          (
-            gapBefore: mainFieldGroupGap,
-            minWidth: fixedFieldMinWidth,
-            focusNode: _gridFocus,
-            build: (width, padding, duration) => _fixedField(
-              context,
-              controller: _gridController,
-              focusNode: _gridFocus,
-              enabled: enabled,
-              label: t.qsoEditForm.theirGrid,
-              width: width,
-              padding: padding,
-              duration: duration,
-              textCapitalization: TextCapitalization.characters,
-              hintText: _guessGridHint,
-              onChanged: (_) => _draft.markGridTouched(),
-            ),
-          ),
-      ];
 
   /// The contact's own note. Wider than the other controls' fields — a note
   /// is a sentence, not a value — and explicitly mixed-case, like Name and
@@ -3146,7 +2823,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             label: t.qsoEditForm.theirState,
             focus: _stateFocus,
             controller: _stateController,
-            hint: _currentGuess?['state'] as String?,
+            hint: _guessStateHint,
           ),
         if (widget.showGridField)
           (
@@ -3252,6 +2929,11 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// own Grid field hints through too so the two can never show different
   /// squares for one station.
   String? get _guessGridHint => guessGridDisplay(_currentGuess);
+
+  /// The guessed state (e.g. from a callsign lookup), shown as a faint
+  /// placeholder while the State field is empty — never pre-filled as a
+  /// real value.
+  String? get _guessStateHint => _currentGuess?['state'] as String?;
 
   /// Inserts a numbers-row key at the focused field's cursor. `_insertAtCursor`
   /// writes the controller value directly, which fires the controller
@@ -4010,6 +3692,49 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return _draft.differsFrom(editingQso);
   }
 
+  /// HaLo's big light-blue log button — a circle as tall as the text fields
+  /// beside it, which [LoggingEntryRow] places at either end of the row and
+  /// keys there, since it is that row that moves it. (A LayoutBuilder here to
+  /// size the icon off the button's resolved constraints would seem natural,
+  /// but the row's IntrinsicHeight needs to query this subtree's intrinsic
+  /// dimensions, which LayoutBuilder explicitly doesn't support — so the icon
+  /// just uses a fixed, comfortable size.) #236: stable id for agent/browser
+  /// tooling. [_submitButtonKey] is for the post-frame measurement.
+  Widget _buildSubmitButton(ThemeData accentTheme, {required bool editing, required bool deletedQso}) =>
+      semanticId(
+          'action.log',
+          AspectRatio(
+            key: _submitButtonKey,
+            aspectRatio: 1,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: FilledButton(
+                // Disabled while viewing a deleted QSO — there's nothing to
+                // save; restore first. `_command.hasExecutableCommand` lets
+                // the button accept a command too, matching Enter (a command
+                // isn't a callsign, so `_canLog` alone would leave it
+                // disabled — see that getter). `_editingEvent` skips both: an
+                // event row has neither a callsign nor a command to accept.
+                onPressed:
+                    (!deletedQso && (_pendingDelete || _canLog || _command.hasExecutableCommand || _editingEvent))
+                        ? _log
+                        : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: accentTheme.colorScheme.tertiary,
+                  foregroundColor: accentTheme.colorScheme.onTertiary,
+                  minimumSize: Size.zero,
+                  padding: EdgeInsets.zero,
+                  shape: const CircleBorder(),
+                ),
+                child: Icon(
+                  _pendingDelete ? MdiIcons.trashCan : (editing ? MdiIcons.contentSave : MdiIcons.upload),
+                  size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
+                ),
+              ),
+            ),
+          ),
+      );
+
   /// The info row's second (no-background) button — a single control whose
   /// icon/action depends on whether we're composing a new QSO or editing
   /// an existing one, per the state machine in the class doc comment above.
@@ -4679,223 +4404,51 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                       Stack(
                         clipBehavior: Clip.none,
                         children: [
-                      // OUTSIDE the IntrinsicHeight below, never within it: a
-                      // LayoutBuilder cannot answer an intrinsic-dimension
-                      // query, and IntrinsicHeight asks its whole subtree one.
-                      // Out here it sees exactly the width the Row will get,
-                      // which is all `resolveMainFieldLayout` needs.
-                      LayoutBuilder(builder: (context, constraints) {
-                      // The log button is a circle as tall as the row, so the
-                      // height already measured for it is also its width. The
-                      // 44 fallback (first frame, before that measurement
-                      // lands) matches the info area's own above. Read ONCE
-                      // and handed to both: the row is reserved against it and
-                      // a change in it counts as a re-layout, and those two
-                      // must never disagree about which frame's value they saw.
-                      final buttonWidth = _editButtonDiameter ?? 44;
-                      // HaLo's big light-blue log button — a circle as
-                      // tall as the text fields beside it. (A
-                      // LayoutBuilder here to size the icon off the
-                      // button's resolved constraints would seem
-                      // natural, but IntrinsicHeight above needs to
-                      // query this subtree's intrinsic dimensions, which
-                      // LayoutBuilder explicitly doesn't support — so
-                      // the icon just uses a fixed, comfortable size.)
-                      // #236: stable id for agent/browser tooling.
-                      //
-                      // Keyed at this outer level (not just _submitButtonKey
-                      // on the AspectRatio inside) because leftieMode moves
-                      // this same widget between the Row's first and last
-                      // slot below — without a key on the widget actually
-                      // sitting in Row.children, Flutter's positional
-                      // matching sees a plain, unkeyed Semantics widget at
-                      // each slot and treats the move as two unrelated
-                      // widgets (drop one, mount another) rather than one
-                      // widget relocating. That's harmless on its own, but
-                      // doing it while a Dialog route is simultaneously open
-                      // above this screen (HALO-55's settings dialog, for
-                      // one) corrupts the semantics tree —
-                      // `identical(childRenderObject, parentRenderObject)`
-                      // asserting in RenderObject.computeChildGeometry — a
-                      // live crash toggling Leftie Mode from that dialog.
-                      final submitButtonWidget = KeyedSubtree(
-                        key: const ValueKey('logging-controls-submit-button'),
-                        child: semanticId(
-                          'action.log',
-                          AspectRatio(
-                            key: _submitButtonKey,
-                            aspectRatio: 1,
-                            child: MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: FilledButton(
-                                // Disabled while viewing a deleted QSO —
-                                // there's nothing to save; restore first.
-                                // `_command.hasExecutableCommand` lets the button
-                                // accept a command too, matching Enter (a
-                                // command isn't a callsign, so `_canLog` alone
-                                // would leave it disabled — see that getter).
-                                // `_editingEvent` skips both: an event row has
-                                // neither a callsign nor a command to accept.
-                                onPressed: (!deletedQso &&
-                                        (_pendingDelete || _canLog || _command.hasExecutableCommand || _editingEvent))
-                                    ? _log
-                                    : null,
-                                style: FilledButton.styleFrom(
-                                  backgroundColor: accentTheme.colorScheme.tertiary,
-                                  foregroundColor: accentTheme.colorScheme.onTertiary,
-                                  minimumSize: Size.zero,
-                                  padding: EdgeInsets.zero,
-                                  shape: const CircleBorder(),
-                                ),
-                                child: Icon(
-                                  _pendingDelete
-                                      ? MdiIcons.trashCan
-                                      : (editing ? MdiIcons.contentSave : MdiIcons.upload),
-                                  size: 24 * 1.2 * MediaQuery.textScalerOf(context).scale(1.0),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-
-                      // An event/annotation row has no callsign or exchange —
-                      // just a kind label and, for NOTE/TODO, the text (and
-                      // done state) the annotation commands wrote. Swap the
-                      // whole main-fields row for that instead of running it
-                      // through `_trailingMainFields`/`resolveMainFieldLayout`,
-                      // which only make sense for a QSO's field set.
-                      if (_editingEvent) {
-                        return IntrinsicHeight(
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (widget.leftieMode) ...[
-                                submitButtonWidget,
-                                SizedBox(width: logButtonGap),
-                              ],
-                              Expanded(
-                                child: _buildEventFields(context, accentTheme, fieldsLocked),
-                              ),
-                              if (!widget.leftieMode) ...[
-                                SizedBox(width: logButtonGap),
-                                submitButtonWidget,
-                              ],
-                            ],
-                          ),
-                        );
-                      }
-
-                      final trailingFields = _trailingMainFields(context, enabled: !fieldsLocked);
-                      final (layout: fieldLayout, :squeezed) = resolveMainFieldLayout(
-                        fields: trailingFields,
-                        maxWidth: constraints.maxWidth,
-                        buttonWidth: buttonWidth,
-                        floors: mainFieldFloors(context),
-                      );
-                      _mainFieldsSqueezed = squeezed;
-                      final widthDuration =
-                          _mainFieldWidthDuration(constraints.maxWidth, buttonWidth);
-                      final logButtonGapBox = SizedBox(width: logButtonGap * fieldLayout.gapScale);
-
-                      // IntrinsicHeight + stretch, rather than a guessed
-                      // pixel height, so the submit button (an AspectRatio
-                      // circle) is guaranteed to exactly match whatever
-                      // height the text fields actually render at — not an
-                      // eyeballed constant that drifts if their font size,
-                      // padding, or text scale ever changes.
-                      return IntrinsicHeight(
-                        child: Row(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          if (widget.leftieMode) ...[
-                            submitButtonWidget,
-                            logButtonGapBox,
-                          ],
-                          Expanded(
-                            // #236: stable id for agent/browser tooling.
-                            child: semanticId('field.call', TextField(
-                              controller: _callController,
-                              focusNode: _callFocus,
-                              // Desktop platforms (see selectAllOnFocus's
-                              // default) select-all on focus by default,
-                              // which runs *after* our own focus listener
-                              // above and silently overwrites its
-                              // cursor-at-end placement — this is the only
-                              // way to actually suppress it.
-                              selectAllOnFocus: false,
-                              enabled: !fieldsLocked,
-                              // The callsign field is the default focus —
-                              // except on mobile with no physical keyboard,
-                              // where the view starts unfocused so the
-                              // operator isn't met with a virtual keyboard
-                              // covering half the screen
-                              // (docs/design/logging-fields.md). Read per
-                              // build, not watched: the channel's answer
-                              // normally beats navigation into an operation,
-                              // and losing that race only costs one tap.
-                              autofocus: !isMobilePlatform || hardwareKeyboardAttached.value,
-                              autocorrect: _command.mixedCase,
-                              enableSuggestions: _command.mixedCase,
-                              // A command awaiting parameters (expectsParams)
-                              // switches the field to free-text entry —
-                              // spaces allowed, no callsign character
-                              // restriction — but stays uppercase-only
-                              // unless the command itself declared
-                              // `mixedCase: true` (e.g. NOTE, whose
-                              // parameter is free prose): all logging input
-                              // is uppercase unless explicitly mixed-case.
-                              textCapitalization: _command.mixedCase
-                                  ? TextCapitalization.sentences
-                                  : TextCapitalization.characters,
-                              // In command free-text modes a space is a literal
-                              // parameter character, so those modes take the
-                              // narrower interceptor: it stands aside for every
-                              // space but the double-space that leaves the
-                              // field. Normal callsign mode routes every space
-                              // to focus/command handling. Asked via
-                              // [_command.fieldAcceptsSpaces], the same getter
-                              // `_handleSpace` uses to decide the exit — the two
-                              // must never disagree about the field's mode.
-                              inputFormatters: !_command.fieldAcceptsSpaces
-                                  ? [
-                                      _virtualSpace,
-                                      FilteringTextInputFormatter.allow(RegExp('[$callsignCharacters]')),
-                                      if (isMobilePlatform) MobileDotToSlashFormatter(),
-                                      const UpperCaseTextFormatter(),
-                                    ]
-                                  : _command.mixedCase
-                                      ? [_commandVirtualSpace]
-                                      : [_commandVirtualSpace, const UpperCaseTextFormatter()],
-                              style: mainFieldStyle(context, fontWeight: FontWeight.w500),
-                              decoration: mainFieldDecoration(
-                                context,
-                                t.loggingControls.theirCall,
-                                horizontalPadding: fieldLayout.fieldPadding,
-                              ),
-                              onEditingComplete: () => _finishEditingWithoutBlur(_callController),
-                              onSubmitted: (_) => _log(),
-                            )),
-                          ),
-                          // Declared and sized in `_trailingMainFields` /
-                          // `resolveMainFieldLayout` above, so the row and the
-                          // width arithmetic can't disagree about which fields
-                          // are on and how much room they take. The gaps carry
-                          // the same scale as the padding inside the fields —
-                          // they are given up together, as one concession.
-                          for (var i = 0; i < trailingFields.length; i++) ...[
-                            SizedBox(width: trailingFields[i].gapBefore * fieldLayout.gapScale),
-                            trailingFields[i]
-                                .build(fieldLayout.widths[i], fieldLayout.fieldPadding, widthDuration),
-                          ],
-                          if (!widget.leftieMode) ...[
-                            logButtonGapBox,
-                            submitButtonWidget,
-                          ],
-                        ],
-                        ),
-                      );
-                      }),
+                      LoggingEntryRow(
+                        call: (controller: _callController, focus: _callFocus),
+                        rstFields: widget.showRSTFields ? _rstPair : const [],
+                        rstPlaceholder: _rstPlaceholder,
+                        numericKeyboardType: _numbersAndPunctuationOnIOS,
+                        exchange: _exchange,
+                        textControls: _textControls,
+                        state: widget.showStateField ? (controller: _stateController, focus: _stateFocus) : null,
+                        stateHint: _guessStateHint,
+                        onStateChanged: (_) {
+                          _draft.stateTouched = true;
+                          // Scored on (New State / New Province), so a typed
+                          // state has to reach the scorer like a band or mode
+                          // change does.
+                          _lookup.scheduleScore();
+                        },
+                        grid: widget.showGridField ? (controller: _gridController, focus: _gridFocus) : null,
+                        gridHint: _guessGridHint,
+                        onGridChanged: (_) => _draft.markGridTouched(),
+                        command: _command,
+                        virtualSpace: _virtualSpace,
+                        commandVirtualSpace: _commandVirtualSpace,
+                        enabled: !fieldsLocked,
+                        leftieMode: widget.leftieMode,
+                        // The log button is a circle as tall as the row, so the
+                        // height already measured for it is also its width. The
+                        // 44 fallback (first frame, before that measurement
+                        // lands) matches the info area's own above.
+                        buttonWidth: _editButtonDiameter ?? 44,
+                        submitButton: _buildSubmitButton(accentTheme, editing: editing, deletedQso: deletedQso),
+                        eventFields: _editingEvent
+                            ? EventFieldRow(
+                                editingQso: widget.editingQso!,
+                                textController: _eventTextController,
+                                textFocus: _eventTextFocus,
+                                enabled: !fieldsLocked,
+                                todoDone: _eventTodoDone,
+                                onTodoDoneChanged: (done) => setState(() => _eventTodoDone = done),
+                                onSubmitted: _log,
+                              )
+                            : null,
+                        onSqueezed: (squeezed) => _mainFieldsSqueezed = squeezed,
+                        onSubmitted: _log,
+                        onExchangeSubmitted: _handleEnter,
+                      ),
                           if (exchangeMenu != null)
                             ExchangeSuggestionsMenu(model: _exchange, menu: exchangeMenu, theme: accentTheme),
                         ],

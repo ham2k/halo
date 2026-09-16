@@ -891,7 +891,6 @@ class ExchangeField extends StatelessWidget {
     required this.duration,
     required this.virtualSpace,
     required this.numericKeyboardType,
-    required this.onEditingComplete,
     required this.onSubmitted,
   });
 
@@ -918,8 +917,6 @@ class ExchangeField extends StatelessWidget {
   /// The keyboard a numeric field (a serial, or `numeric: true`) asks for;
   /// null keeps the platform default.
   final TextInputType? numericKeyboardType;
-
-  final void Function(TextEditingController controller) onEditingComplete;
 
   /// Enter — the panel's own handler, which picks a highlighted suggestion
   /// before it logs.
@@ -1010,7 +1007,7 @@ class ExchangeField extends StatelessWidget {
             focusedBorder: isInvalid ? haloInvalidInputBorder(context, width: 2) : null,
           ),
           onChanged: (text) => model.typed(key, text),
-          onEditingComplete: () => onEditingComplete(model.controllerFor(key)),
+          onEditingComplete: () => finishEditingWithoutBlur(model.controllerFor(key)),
           onSubmitted: (_) => onSubmitted(),
         ),
       ),

@@ -349,15 +349,15 @@ void main() {
       // dialog threw `identical(childRenderObject, parentRenderObject)`.
       // Traced (by bypassing every layer of this dialog one at a time,
       // down to calling SettingsService.setSettingValue directly while the
-      // dialog sat open) to logging_controls.dart's submit button — leftie
-      // mode moves it between the main Row's first and last slot, and
+      // dialog sat open) to the logging panel's submit button — leftie
+      // mode moves it between the entry row's first and last slot, and
       // without a stable Key on the widget actually sitting in
       // Row.children (only an inner AspectRatio had one), Flutter treated
       // the move as unmount-one/mount-another. Harmless on its own; fatal
       // while a Dialog route was simultaneously open and running its own
-      // semantics pass. Fixed at the source (a KeyedSubtree around
-      // submitButtonWidget) — this test exercises the actual dialog path
-      // that crashed, not the underlying Row.
+      // semantics pass. Fixed at the source (the KeyedSubtree
+      // LoggingEntryRow wraps the button in) — this test exercises the
+      // actual dialog path that crashed, not the underlying Row.
       tester.view.physicalSize = const Size(430, 800);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(tester.view.reset);

@@ -16,7 +16,10 @@ what the record carries beyond the fields, and the one bracket for a programmati
 (`logging_controls_draft.dart`) — the focus ladder, every keyboard move between the rungs
 (`logging_controls_ladder.dart`), and the default-focus backstop (`logging_controls_focus.dart`); the
 call field's reading rules are `call_field_text.dart`, the row's sizing arithmetic
-`logging_controls_metrics.dart`, and the information area `logging_info_area.dart`.
+`logging_controls_metrics.dart`, the entry row itself — the callsign, its trailing fields and the log
+button laid out against the width the panel has — `logging_controls_entry_row.dart`, the event row
+that takes the fields' place while an annotation is edited `logging_controls_event_row.dart`, and
+the information area `logging_info_area.dart`.
 
 ## The three parts
 
@@ -373,7 +376,7 @@ keeps the log itself from re-asserting it.
 This has to be asserted, not assumed. A single-line `TextField` unfocuses
 itself *before* calling `onSubmitted` — Flutter's default end-of-editing
 behavior — so every main logging field supplies `onEditingComplete` to
-suppress that (`_finishEditingWithoutBlur`). Without it the entry row only
+suppress that (`finishEditingWithoutBlur`). Without it the entry row only
 *looks* intact, because the two commonest paths happen to re-focus afterwards
 and the rest silently leave nothing focused at all.
 

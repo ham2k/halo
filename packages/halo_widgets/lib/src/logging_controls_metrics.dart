@@ -277,3 +277,33 @@ MainFieldFloors mainFieldFloors(BuildContext context) => (
   }
   return (layout: (widths: widths, gapScale: scale, fieldPadding: padding), squeezed: squeezed);
 }
+
+/// What every main logging field does instead of `EditableText`'s default
+/// end-of-editing behavior.
+///
+/// That default **unfocuses the field before it calls `onSubmitted`** — so
+/// left alone, every Enter blurs the field that submitted it, and the entry
+/// row only looked like it kept focus because the ordinary logging paths
+/// happen to re-focus afterwards (the wipe after a logged QSO, the can't-log
+/// guard otherwise). Any path that didn't — running a command, saving an
+/// edit, a second Enter while one is still in flight — left the operator
+/// with nothing focused at all.
+///
+/// Here Enter means "log", never "done editing": the entry row is a loop the
+/// keyboard stays inside (docs/design/logging-fields.md § "Enter and focus"),
+/// so the field that submitted keeps focus unless something downstream
+/// deliberately moves it. Suppressing the blur at the three build sites fixes
+/// every submit path at once, rather than making each new branch of the log
+/// path remember to put focus back.
+///
+/// Supplying `onEditingComplete` replaces the branch that did BOTH of those,
+/// so the composing-region cleanup is reinstated here by hand. It does not
+/// replace everything: `_finalizeEditing`'s trailing
+/// `if (shouldUnfocus) _scheduleRestartConnection()` still runs, and
+/// actually restarts the platform input connection rather than finding it
+/// already closed — which is what keeps the keyboard from blinking per QSO.
+///
+/// Secondary controls are deliberately not covered — they keep their widget
+/// defaults (docs/design/logging-fields.md § "The three parts"), and the
+/// radio control's field moves focus to its pill itself on submit.
+void finishEditingWithoutBlur(TextEditingController controller) => controller.clearComposing();

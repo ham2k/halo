@@ -5902,7 +5902,7 @@ void main() {
   // only looked intact because the two ordinary paths re-focus afterwards
   // (`_wipe` after a logged QSO, the `!_canLog` guard otherwise); every path
   // that didn't — running a command, saving an edit, a second Enter while one
-  // was in flight — left nothing focused. `_finishEditingWithoutBlur` suppresses
+  // was in flight — left nothing focused. `finishEditingWithoutBlur` suppresses
   // the blur at the field, so all of them are covered at once.
   //
   // These drive the submit the way the ENGINE does, via
@@ -5973,7 +5973,7 @@ void main() {
       expect((await waitForQsos(tester, 1)).single.theirCall, 'W1AW');
     });
 
-    // The other half of `_finishEditingWithoutBlur`. Supplying `onEditingComplete`
+    // The other half of `finishEditingWithoutBlur`. Supplying `onEditingComplete`
     // replaces the branch that ALSO cleared the composing region, so the helper
     // reinstates it — and that half is invisible to every other test here,
     // because `enterText` never produces a composing range. `updateEditingValue`
@@ -6013,7 +6013,7 @@ void main() {
     // `_lastPrimaryFocus` with it, so collapsing a secondary control later
     // returns to the wrong field.
     //
-    // `Sent` is an RST field, built by `_fixedField` — one of the three build
+    // `Sent` is an RST field, built by `LoggingEntryRow`'s fixed-field builder — one of the three build
     // sites, and NOT the exchange-field builder, which the next test covers.
     testWidgets('a command submitted from an RST field leaves focus in that field', (tester) async {
       await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
@@ -11947,7 +11947,7 @@ void main() {
 
       // A BREAK's row is just the kind label, plain text with nothing as
       // tall as a text field — the invisible InputDecorator floor
-      // `_buildEventFields` wraps it in reserves that height anyway, or
+      // `EventFieldRow` wraps it in reserves that height anyway, or
       // IntrinsicHeight would shrink the submit button beside it.
       expect(markerButtonHeight, noteButtonHeight);
     });
@@ -12814,7 +12814,7 @@ void main() {
     /// Three frames because the row reserves the log button's MEASURED width:
     /// the first resolves against the fallback, the second against the real
     /// thing once that measurement lands. (A change of available width is not
-    /// animated — see `_mainFieldWidthDuration` — so no settling is needed on
+    /// animated — see `LoggingEntryRow`'s width duration — so no settling is needed on
     /// top of that.)
     Future<void> pumpAt(WidgetTester tester, double width, {Widget? at}) async {
       await tester.binding.setSurfaceSize(Size(width, 600));
