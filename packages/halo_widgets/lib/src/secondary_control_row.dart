@@ -239,7 +239,7 @@ class _SecondaryControlRowState extends State<SecondaryControlRow> with SingleTi
   /// The one-line strip's own scroll position — explicit (rather than the
   /// `SingleChildScrollView`'s implicit one) purely so [_measure] can listen
   /// to it. A focus change scrolls the newly-selected pill toward the
-  /// centre of the strip (`LoggingControls._focusPill`'s own
+  /// centre of the strip (`LoggingFocusLadder`'s own
   /// `Scrollable.ensureVisible`, found via the nearest ancestor `Scrollable`
   /// — it doesn't need this controller to work), and that scroll runs as a
   /// 150ms animation entirely inside the `Scrollable`'s own position: it

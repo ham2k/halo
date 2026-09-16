@@ -55,8 +55,7 @@ typedef ExchangeFieldsConfig = ({
 });
 
 /// An open suggestions menu: the focused `options` control and what it
-/// offers. Resolved once per panel build, for the arrow-key bindings and the
-/// menu alike.
+/// offers. Resolved once per panel build, for the menu.
 typedef ExchangeMenu = ({Map<String, dynamic> control, List<ExchangeOption> suggestions});
 
 /// The exchange fields' state. See the file comment.
@@ -248,18 +247,35 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// behind, it is stepping away from a field the operator may be about to
   /// return to.
   ///
-  /// On the node itself rather than as a panel-wide shortcut: binding Tab in
-  /// `CallbackShortcuts` would take it away from Flutter's traversal for the
-  /// whole panel, which would then have to be reimplemented here. This only
-  /// ADDS the accept, then hands the event to [onPrimaryFieldKeyEvent] — an
-  /// exchange is a main logging field, so it gets the same edge-wrap and
-  /// arrow traversal as the rest, and everything those two decline stays with
-  /// the ordinary traversal.
+  /// On the node itself rather than as a panel-wide shortcut: binding Tab or
+  /// the arrows in `CallbackShortcuts` would take them away from Flutter's
+  /// traversal and the fields' own caret movement for the whole panel, which
+  /// would then have to be reimplemented here. This only ADDS the accept and,
+  /// while the suggestion menu is showing, the highlight walk — the menu can
+  /// only be open while one of these nodes has focus, so this is the one
+  /// place its arrows can live — then hands the event to
+  /// [onPrimaryFieldKeyEvent]: an exchange is a main logging field, so it
+  /// gets the same edge-wrap and arrow traversal as the rest, and everything
+  /// those decline stays with the ordinary traversal.
   KeyEventResult _onKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is KeyDownEvent &&
-        event.logicalKey == LogicalKeyboardKey.tab &&
-        !HardwareKeyboard.instance.isShiftPressed) {
-      acceptOnLeave();
+    if (event is KeyDownEvent || event is KeyRepeatEvent) {
+      final key = event.logicalKey;
+      final keyboard = HardwareKeyboard.instance;
+      // A bare arrow only, as every rung's handler: Shift/Cmd/Ctrl/Alt+arrow
+      // are the field's own selection and caret moves and stay its. The key
+      // is tested before the menu, which is resolved from the options on
+      // every ask — a plain keystroke must not pay for that.
+      final bare =
+          !(keyboard.isShiftPressed || keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed);
+      if (bare && (key == LogicalKeyboardKey.arrowUp || key == LogicalKeyboardKey.arrowDown) && menuOpen) {
+        // The menu is drawn best-at-the-bottom, so Up walks up the screen,
+        // away from the field, which is +1 in rank order.
+        moveSelection(key == LogicalKeyboardKey.arrowUp ? 1 : -1);
+        return KeyEventResult.handled;
+      }
+      if (event is KeyDownEvent && key == LogicalKeyboardKey.tab && !keyboard.isShiftPressed) {
+        acceptOnLeave();
+      }
     }
     return onPrimaryFieldKeyEvent(node, event);
   }
@@ -1040,7 +1056,7 @@ class ExchangeSuggestionsMenu extends StatelessWidget {
   final ExchangeFieldsModel model;
 
   /// [ExchangeFieldsModel.openMenu], resolved once by the panel's build for
-  /// both the arrow-key bindings and this menu.
+  /// this menu.
   final ExchangeMenu menu;
 
   /// The panel's accent theme — the menu's colours come from it, not from the

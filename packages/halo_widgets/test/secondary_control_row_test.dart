@@ -211,7 +211,7 @@ void main() {
 
   testWidgets('re-measures the expanded panel\'s alignment when the strip scrolls without a widget rebuild',
       (tester) async {
-    // Reproduces the real bug: LoggingControls._focusPill scrolls the newly
+    // Reproduces the real bug: LoggingFocusLadder scrolls the newly
     // focused chip toward the strip's centre via `Scrollable.ensureVisible`,
     // a 150ms animation that runs entirely inside the Scrollable's own
     // position — it never touches this widget's `build`/`didUpdateWidget`.
@@ -239,7 +239,7 @@ void main() {
     // 800px-wide row) — the panel is edge-clamped, not freely centered on it.
     expect((beforePanelCenter - beforeChipCenter).abs(), greaterThan(50));
 
-    // The exact call `LoggingControls._focusPill` makes, driving the SAME
+    // The exact call `LoggingFocusLadder` makes on a pill focus, driving the SAME
     // Scrollable this widget owns, without going through a widget rebuild
     // (`didUpdateWidget` never runs for this).
     unawaited(Scrollable.ensureVisible(

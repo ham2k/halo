@@ -13,7 +13,8 @@ and Spotting controls (`logging_controls_time.dart`, `logging_controls_spotting.
 exchange fields with their options menu and serial previews (`logging_controls_exchange.dart`), the
 activity refs and the controls they belong to (`logging_controls_refs.dart`), the draft itself —
 what the record carries beyond the fields, and the one bracket for a programmatic write
-(`logging_controls_draft.dart`) — and the default-focus backstop (`logging_controls_focus.dart`); the
+(`logging_controls_draft.dart`) — the focus ladder, every keyboard move between the rungs
+(`logging_controls_ladder.dart`), and the default-focus backstop (`logging_controls_focus.dart`); the
 call field's reading rules are `call_field_text.dart`, the row's sizing arithmetic
 `logging_controls_metrics.dart`, and the information area `logging_info_area.dart`.
 

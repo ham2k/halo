@@ -91,7 +91,7 @@ void main() {
   String loadedCall(WidgetTester tester) => callField(tester).controller?.text ?? '';
 
   /// Which pill holds the keyboard, by control key (`pill:<key>` debug
-  /// labels, set by LoggingControls' `_pillFocusFor`), or null for none.
+  /// labels, set by `LoggingFocusLadder.pillFocusFor`), or null for none.
   String? focusedPill(WidgetTester tester) {
     for (final chip in tester.widgetList<ChoiceChip>(find.byType(ChoiceChip))) {
       final node = chip.focusNode;

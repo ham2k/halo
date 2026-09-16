@@ -48,6 +48,7 @@ import 'logging_controls_command.dart';
 import 'logging_controls_controller.dart';
 import 'logging_controls_draft.dart';
 import 'logging_controls_exchange.dart';
+import 'logging_controls_ladder.dart';
 import 'logging_controls_focus.dart';
 import 'logging_controls_lookup.dart';
 import 'logging_controls_radio.dart';
@@ -748,7 +749,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       call: _call,
     ),
     draftQsoData: _draft.toData,
-    onPrimaryFieldKeyEvent: _onPrimaryFieldKeyEvent,
+    onPrimaryFieldKeyEvent: _ladder.onPrimaryFieldKeyEvent,
     onFocusChanged: _onExchangeFocusChanged,
   );
 
@@ -804,6 +805,24 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       editingQso: widget.editingQso,
       operation: widget.operation,
     ),
+  );
+
+  /// The focus ladder — see [LoggingFocusLadder]. The panel hands it the row
+  /// and each control's fields, and keeps opening a control for itself.
+  late final LoggingFocusLadder _ladder = LoggingFocusLadder(
+    config: () => (
+      primaryFields: () => _primaryFields,
+      expandedFocusFor: _expandedFocusFor,
+      expandedFieldOrderFor: _expandedFieldOrderFor,
+      selectedControlKey: _selectedControlKey,
+      fieldsLocked: () => _fieldsLocked,
+      editingEvent: _editingEvent,
+      eventTextFocus: _eventTextFocus,
+      callFocus: _callFocus,
+      navigateToQsoList: widget.onNavigateToQsoList,
+    ),
+    selectControl: _onSelectControl,
+    showControl: _showControl,
   );
 
   /// Drives the info area's cross-fade (issue #40): `_infoGeneration` bumps
@@ -1002,7 +1021,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       selection: TextSelection.collapsed(offset: baseText.length),
       composing: TextRange.empty,
     );
-    _advancePrimaryFocus();
+    _ladder.advancePrimaryFocus();
   }
 
   /// Keyboard for the numeric-leaning primary fields (RST, frequency) on iOS.
@@ -1138,9 +1157,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     ]) {
       focus.addListener(() {
         if (focus.hasFocus) {
-          _notePrimaryFocus(focus);
+          _ladder.notePrimaryFocus(focus);
           controller.selection = TextSelection.collapsed(
-            offset: _takePendingCaretOffset(focus, controller) ?? controller.text.length,
+            offset: _ladder.takePendingCaretOffset(focus, controller) ?? controller.text.length,
           );
           if (identical(focus, _radio.freqFocus)) _radio.onFreqFocusChanged(hasFocus: true);
         } else if (identical(focus, _radio.freqFocus)) {
@@ -1149,7 +1168,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // Committed on blur rather than on every keystroke: typing "100"
           // passes through 1 and 10, and each would be a power command sent
           // to the radio. Blur covers Enter too — it closes the control
-          // (_onExpandedKeyEvent) and takes the focus with it.
+          // (`LoggingFocusLadder.onExpandedKeyEvent`) and takes the focus with it.
           _commitPower();
         } else if (identical(focus, _sentFocus) || identical(focus, _rcvdFocus)) {
           // Show the operator what their shorthand became, at the moment they
@@ -1175,9 +1194,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // same handler through the exchange model's own Tab handler, which their
     // nodes are built with; Freq and Time are secondary-control fields and
     // deliberately keep the default (they're a rung up already — their way
-    // out is Down/Enter, see [_onExpandedKeyEvent]).
+    // out is Down/Enter, see [LoggingFocusLadder.onExpandedKeyEvent]).
     for (final node in [_callFocus, _sentFocus, _rcvdFocus, _stateFocus, _gridFocus]) {
-      node.onKeyEvent = _onPrimaryFieldKeyEvent;
+      node.onKeyEvent = _ladder.onPrimaryFieldKeyEvent;
     }
     _spotting.refreshSources();
     // Constructed already editing a QSO (rather than transitioning into it via
@@ -1202,8 +1221,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       wipe: _wipe,
       isFieldsLocked: () => _fieldsLocked,
       focusCall: _callFocus.requestFocus,
-      focusSecondaryControls: _focusPillAndOpen,
-      focusLastPrimaryField: _focusLastPrimaryField,
+      focusSecondaryControls: _ladder.focusPillAndOpen,
+      focusLastPrimaryField: _ladder.focusLastPrimaryField,
     );
     // Settles the serial previews' baseline: an idle panel shows no number
     // (docs/design/contests.md §5.8.1), but a panel constructed mid-contact —
@@ -1384,8 +1403,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         wipe: _wipe,
         isFieldsLocked: () => _fieldsLocked,
         focusCall: _callFocus.requestFocus,
-        focusSecondaryControls: _focusPillAndOpen,
-        focusLastPrimaryField: _focusLastPrimaryField,
+        focusSecondaryControls: _ladder.focusPillAndOpen,
+        focusLastPrimaryField: _ladder.focusLastPrimaryField,
       );
     }
   }
@@ -1995,9 +2014,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _refs.dispose();
     _notesController.dispose();
     _notesFocus.dispose();
-    for (final node in _pillFocus.values) {
-      node.dispose();
-    }
+    _ladder.dispose();
     _callController.dispose();
     _sentController.dispose();
     _rcvdController.dispose();
@@ -2143,7 +2160,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // moment to call "done", so the setting simply doesn't apply.
     final full = rstLengthFor(_radio.mode);
     if (full == null) return;
-    if (previous < full && length >= full) _advancePrimaryFocus();
+    if (previous < full && length >= full) _ladder.advancePrimaryFocus();
   }
 
   void _clearRSTs() {
@@ -2201,33 +2218,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   // ---- Secondary control row ----
 
-  /// The primary field the cursor was in most recently, so collapsing a
-  /// secondary control puts the operator back where they left off rather than
-  /// always at Call. Null until one has been focused at all.
-  ///
-  /// Tracked continuously, NOT sampled when a chip is tapped: by the time the
-  /// tap reaches [_onSelectControl] the field has usually already been blurred
-  /// (the app root's TapToDismissEmptyField drops focus on any tap outside a
-  /// field), so "which field has focus right now" reads as none and every
-  /// collapse fell back to Call.
-  FocusNode? _lastPrimaryFocus;
-
-  /// Only [_primaryFocusOrder]'s own nodes reach here — a secondary control's
-  /// field (Frequency, Time, a ref) must never become the place we return to.
-  void _notePrimaryFocus(FocusNode node) {
-    if (_primaryFocusOrder.any((f) => identical(f, node))) _lastPrimaryFocus = node;
-  }
-
   /// An exchange field's focus node fired: the ladder notes it, and a gain of
   /// focus lands the caret — the same cursor-at-end-on-focus rule the fixed
   /// primary fields get in initState. An exchange field is a main logging
   /// field too, and `selectAllOnFocus: false` alone only stops the
   /// select-all; it leaves the caret wherever it happened to be last.
   void _onExchangeFocusChanged(FocusNode node, TextEditingController controller) {
-    _notePrimaryFocus(node);
+    _ladder.notePrimaryFocus(node);
     if (node.hasFocus) {
       controller.selection = TextSelection.collapsed(
-        offset: _takePendingCaretOffset(node, controller) ?? controller.text.length,
+        offset: _ladder.takePendingCaretOffset(node, controller) ?? controller.text.length,
       );
     }
   }
@@ -2275,7 +2275,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// way in from Tab would skip Band entirely).
   ///
   /// Cursor keys do NOT walk this list field by field — see
-  /// [_crossToNextControl] — so Band and Mode being here only matters for
+  /// the ladder's cursor-key crossing — so Band and Mode being here only matters for
   /// Tab/Shift-Tab, which do still visit them.
   List<(FocusNode, TextEditingController)> _expandedFieldOrderFor(String key) {
     switch (key) {
@@ -2298,429 +2298,38 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
-  // ── The focus ladder (APP-19) ─────────────────────────────────────────────
-  //
-  //     QSO list  ──▲──  secondary pills  ──▲──  main logging fields
-  //               ──▼──                   ──▼──
-  //
-  // Arrow Up walks outward from the fields, Arrow Down walks back in, so the
-  // whole panel is reachable without leaving the home row. Every rung hangs
-  // its handling off a FocusNode's own `onKeyEvent` rather than the panel-wide
-  // `CallbackShortcuts` in `build`: a node handler only sees keys aimed at
-  // that rung, while a panel-wide arrow binding would swallow the arrow keys
-  // for everything in the panel — including a text field's own caret movement
-  // (the same reason the options menu binds its arrows only while it's open).
-  //
-  // Crossing out of the panel is the host's business, not this widget's:
-  // `onNavigateToQsoList` hands the keyboard up, and `LoggingControlsController`
-  // hands it back.
+  // ── The focus ladder: [LoggingFocusLadder] (logging_controls_ladder.dart).
+  // What stays here is what the ladder cannot know: which fields are on the
+  // row, what each control opens into, and opening a control.
 
-  /// One node per secondary control pill, so the keyboard can sit on a pill
-  /// the way it sits on a field. Owned here rather than inside
-  /// [SecondaryControlRow] so all of the panel's keyboard policy stays in one
-  /// place; the row just passes it to the chip. Long-lived — the chips
-  /// themselves are rebuilt constantly and animate in and out.
-  final Map<String, FocusNode> _pillFocus = {};
-
-  FocusNode _pillFocusFor(String key) => _pillFocus[key] ??= FocusNode(
-        debugLabel: 'pill:$key',
-        onKeyEvent: (node, event) => _onPillKeyEvent(key, event),
-      );
-
-  /// The pill keys on the strip, in display order — recorded by
-  /// [_buildSecondaryControls] as it assembles the specs, so the arrow keys
-  /// walk exactly what is on screen (hidden controls, an activity that
-  /// stopped applying, a reorder from the settings dialog) instead of a
-  /// second list that could drift from it.
-  List<String> _pillOrder = const [];
-
-  /// The pill the keyboard was last on, so stepping down to a field and back
-  /// up returns to where you were rather than to the start of the strip.
-  String? _lastPillKey;
-
-  /// Moves the keyboard onto the pill strip — at [key] when given, else the
-  /// pill it was last on, else the first. A no-op when there are no pills.
-  /// Returns the pill it landed on (null when there were none), so callers
-  /// that also need to open it don't have to re-derive the same target.
-  ///
-  /// The strip scrolls horizontally and can hold more pills than fit, so a
-  /// focused pill also has to be scrolled into view: focus alone doesn't move
-  /// a viewport.
-  String? _focusPill([String? key]) {
-    final order = _pillOrder;
-    if (order.isEmpty) return null;
-    final remembered = _lastPillKey;
-    final target = (key != null && order.contains(key))
-        ? key
-        : (remembered != null && order.contains(remembered) ? remembered : order.first);
-    _lastPillKey = target;
-    final node = _pillFocusFor(target);
-    node.requestFocus();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final context = node.context;
-      if (context == null || !mounted) return;
-      Scrollable.ensureVisible(
-        context,
-        alignment: 0.5,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOut,
-      );
-    });
-    return target;
-  }
-
-  /// [_focusPill], then opens whatever it landed on — the single motion that
-  /// replaces the old separate "land on the pill, then Enter to open" steps.
-  /// Skips `more`: it pops a dialog rather than expanding inline, and arriving
-  /// by keyboard shouldn't trigger that on its own (Enter still does, same as
-  /// a tap).
-  void _focusPillAndOpen([String? key]) {
-    final target = _focusPill(key);
-    if (target == null) return;
-    if (target == 'more') {
-      // more never opens, but whatever WAS open (a control left visibly
-      // expanded from before this Up, e.g. a mouse click into a main field)
-      // still needs to close.
-      if (_selectedControlKey != null) setState(() => _selectedControlKey = null);
-      return;
-    }
-    _onSelectControl(target);
-  }
-
-  /// Crosses onto [key]'s pill for Tab/Shift-Tab — opens its control (unless
-  /// `more`, which pops a dialog rather than expanding) and lands on its own
-  /// first (`fromStart: true`) or last field, NOT the one field it opens into
-  /// on a tap or on arrival via Up (`_focusPillAndOpen`'s target — Radio's
-  /// Frequency, the field the operator actually types into). Landing there
-  /// from a Tab crossing in from Time would skip Band entirely. A fieldless
-  /// control just leaves the keyboard on its own chip, same as
-  /// `_focusPillAndOpen`.
-  ///
-  /// Left/Right go through [_crossToNextControl] instead, which always lands
-  /// on the canonical field regardless of direction — see its own doc for why.
-  void _crossToPill(String key, {required bool fromStart}) {
-    _focusPill(key);
-    if (key == 'more') {
-      // more never opens, but whatever WAS open (crossed in from) still
-      // needs to close — otherwise its panel is left rendered under a
-      // keyboard that already moved on.
-      if (_selectedControlKey != null) setState(() => _selectedControlKey = null);
-      return;
-    }
+  /// Shows (or, with null, hides) a control without moving focus — the
+  /// ladder's crossings land on the field they chose; [LoggingFocusLadder
+  /// .openControl] focuses after this. An event row refuses every control but
+  /// Time here as well as on a tap: a Tab across the strip must not expand a
+  /// control whose chip is disabled.
+  void _showControl(String? key) {
+    if (_editingEvent && key != null && key != 'time') return;
     setState(() {
       if (key == 'time' && _selectedControlKey != 'time') _time.seedFields();
       _selectedControlKey = key;
     });
-    final fields = _expandedFieldOrderFor(key);
-    if (fields.isEmpty) return;
-    final target = fromStart ? fields.first.$1 : fields.last.$1;
-    _requestFocusOnceBuilt(key, target);
   }
 
-  /// Requests focus for [target], a field belonging to [key]'s control,
-  /// retrying one extra frame later if it can't take focus yet.
-  ///
-  /// A DropdownMenu field (Band/Mode) re-entered after being closed needs a
-  /// frame of its own beyond the rebuild that reopens it: closing disables
-  /// the supplied FocusNode's `canRequestFocus` as part of tearing the
-  /// internal widget down, and DropdownMenu restores it (our own
-  /// `expandedBuilder` sets it back to `typeable`) only once ITS rebuild has
-  /// run — which can land one frame after ours. A single post-frame
-  /// callback can lose that race and silently do nothing (`requestFocus()`
-  /// on a non-requestable node is a no-op), so this retries once rather than
-  /// leaving the keyboard nowhere.
-  void _requestFocusOnceBuilt(String key, FocusNode target) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || _selectedControlKey != key) return;
-      if (target.canRequestFocus) {
-        target.requestFocus();
-        return;
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _selectedControlKey == key) target.requestFocus();
-      });
-    });
-  }
-
-  /// Moves from field [currentIndex] of [key]'s own field list (`-1` when it
-  /// can't be determined) to the next (`forward`) or previous one, or — once
-  /// [key]'s own fields are exhausted — across to the neighbouring pill via
-  /// [_crossToPill], wrapping at both ends of the strip. Tab and Shift-Tab's
-  /// own move — a control with several fields (Time's Date, Radio's Band and
-  /// Mode) is walked in full before the strip moves on. Cursor keys use
-  /// [_crossToNextControl] instead: they treat a whole control as one stop,
-  /// same as they treat one main field.
-  void _stepSecondaryField(String key, int currentIndex, {required bool forward}) {
-    final fields = _expandedFieldOrderFor(key);
-    final next = forward ? currentIndex + 1 : currentIndex - 1;
-    if (next >= 0 && next < fields.length) {
-      fields[next].$1.requestFocus();
-      return;
-    }
-    final order = _pillOrder;
-    final pillIndex = order.indexOf(key);
-    if (pillIndex < 0 || order.isEmpty) return;
-    _crossToPill(order[(pillIndex + (forward ? 1 : -1)) % order.length], fromStart: forward);
-  }
-
-  /// Crosses straight to the next (`forward`) or previous pill, wrapping at
-  /// both ends of the strip, and lands on ITS `_expandedFocusFor` target —
-  /// the one field a tap or arriving via Up focuses (Radio's Frequency) —
-  /// rather than a first-or-last pick from [_expandedFieldOrderFor]. Unlike
-  /// [_stepSecondaryField] (Tab's own move), this never stops at a sibling
-  /// field within [key]'s own control first, and unlike [_crossToPill] it
-  /// doesn't care which direction it arrived from either: Left/Right treat
-  /// the whole neighbouring control as one stop with one entry point, the
-  /// way they treat one main field, rather than a first-field-forward /
-  /// last-field-backward pair that would put Left on Mode and Right on Band.
-  void _crossToNextControl(String key, {required bool forward}) {
-    final order = _pillOrder;
-    final pillIndex = order.indexOf(key);
-    if (pillIndex < 0 || order.isEmpty) return;
-    _focusPillAndOpen(order[(pillIndex + (forward ? 1 : -1)) % order.length]);
-  }
-
-  /// Back to the field the operator was last in, with Call as the fallback
-  /// for a remembered node whose field is gone (the contest changed, RSTs
-  /// were hidden) — such a node has no context and would swallow the request
-  /// silently.
-  void _focusLastPrimaryField() {
-    if (_editingEvent) {
-      // Neither the callsign field nor a remembered primary field exists
-      // while an event is loaded — NOTE/TODO's own text is the only
-      // focusable main field, if this event even has one.
-      if (_eventTextFocus.context != null) _eventTextFocus.requestFocus();
-      return;
-    }
-    final remembered = _lastPrimaryFocus;
-    ((remembered?.context != null) ? remembered! : _callFocus).requestFocus();
-  }
-
-  KeyEventResult _onPillKeyEvent(String key, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
-    final keyboard = HardwareKeyboard.instance;
-    final shift = keyboard.isShiftPressed;
-    // Ctrl/Meta/Alt are always someone else's (platform gestures). Shift is
-    // checked per key below instead of folded in here, because Tab needs it
-    // for its own reversal — the same split [_onExpandedKeyEvent] and
-    // [_onPrimaryFieldKeyEvent] make.
-    if (keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed) {
-      return KeyEventResult.ignored;
-    }
-    // Tab/Shift-Tab walk the same strip Left/Right do, chip to chip, opening
-    // whatever they land on — but not quite the same landing: Tab picks a
-    // first-or-last FIELD ([_crossToPill]'s `fromStart`), Left/Right always
-    // land on the control's one canonical field ([_crossToNextControl]).
-    // Checked first since nothing past this point answers Shift.
-    if (event.logicalKey == LogicalKeyboardKey.tab) {
-      final order = _pillOrder;
-      final index = order.indexOf(key);
-      if (index < 0 || order.length < 2) return KeyEventResult.ignored;
-      final forward = !shift;
-      _crossToPill(order[(index + (forward ? 1 : -1)) % order.length], fromStart: forward);
-      return KeyEventResult.handled;
-    }
-    if (shift) return KeyEventResult.ignored;
-    switch (event.logicalKey) {
-      case LogicalKeyboardKey.arrowLeft:
-      case LogicalKeyboardKey.arrowRight:
-        final order = _pillOrder;
-        final index = order.indexOf(key);
-        // Wraps at both ends: the strip is a short ring, and running off it
-        // into the fields would make Left/Right two different gestures
-        // depending on where you happened to be standing.
-        //
-        // With nowhere to go (one pill, or a key that has just left the strip)
-        // the keystroke is passed on rather than swallowed — a handler that
-        // silently eats keys it does nothing with is how a strip ends up
-        // blocking a shortcut nobody remembers binding.
-        if (index < 0 || order.length < 2) return KeyEventResult.ignored;
-        // Opens the pill it steps to, same as Tab — a chip is never a
-        // resting stop of its own now, it's just what a fieldless control
-        // (More, Spotting without a comment) leaves the keyboard on. Goes
-        // through _crossToNextControl, not _crossToPill directly, so the
-        // landing field matches [_onExpandedKeyEvent]'s cursor-key move.
-        _crossToNextControl(key, forward: event.logicalKey == LogicalKeyboardKey.arrowRight);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowUp:
-        // Off the top of the panel, into the QSO list — when the host has one.
-        // Without a host to take it, the pills are simply the top rung.
-        widget.onNavigateToQsoList?.call();
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.arrowDown:
-        // Closes whatever this pill has open (a fieldless control — one with
-        // a field parked the keyboard inside it instead, on `_onExpandedKeyEvent`'s
-        // turf) on the way back to the main field, same as Escape below.
-        _onSelectControl(null);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.enter:
-      case LogicalKeyboardKey.numpadEnter:
-        // A pill's control opens the moment the keyboard lands on it, so by
-        // the time Enter is pressed here it's normally already open — Enter
-        // then closes it, same as it does from inside the field. `more` never
-        // auto-opens (see `_focusPillAndOpen`/`_crossToPill`), so this still
-        // opens it fresh, same as a tap.
-        _onSelectControl(_selectedControlKey == key ? null : key);
-        return KeyEventResult.handled;
-      case LogicalKeyboardKey.escape:
-        // Same "out of here entirely" meaning Escape has inside an open
-        // control, from one rung further out. Handled here rather than left to
-        // `_handleEscape` because that one would read a merely-parked keyboard
-        // as a cue to wipe the form the operator hasn't touched.
-        _onSelectControl(null);
-        return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
-  /// Down or Enter inside an open secondary control's field closes it and
-  /// puts the keyboard straight back on the main field the operator was in —
-  /// the control opened itself on arrival (`_focusPillAndOpen`), so there's no
-  /// pill stop to return to on the way out either.
-  ///
-  /// Up closes it too, but keeps going one rung further, the way Up already
-  /// does from a bare pill — straight on to the QSO list rather than
-  /// stopping at the main fields.
-  ///
-  /// Escape does the Down/Enter thing too, via the panel-wide shortcut
-  /// (`_handleEscape`) rather than here — it needs to fire even when nothing
-  /// in the control has focus to bubble an event up from.
-  ///
-  /// Tab/Shift-Tab move within this control's own fields, then across to the
-  /// next/previous pill once they're exhausted (`_stepSecondaryField`) — a
-  /// control with several fields (Time's Date, Radio's Band and Mode) is
-  /// walked in full before the strip moves on. An edge-of-value cursor key
-  /// skips straight to the next/previous pill instead (`_crossToNextControl`)
-  /// — Left/Right treat a whole control as one stop, the way they treat one
-  /// main field.
-  ///
-  /// A dropdown's own arrow handling (the Band/Mode fields, or an open
-  /// suggestion menu) already claims and consumes Up/Down before it gets
-  /// here, so this only ever sees the ones meant for us.
-  ///
-  /// Enter deliberately does NOT log the QSO from ANY expanded control's
-  /// fields — without this handler it would, via the Radio control's own
-  /// `onSubmitted` or, for the activity reference controls and the spot
-  /// comment (which declare none), the panel's root Enter shortcut this
-  /// handler intercepts below. APP-19 asks for close-first, and Enter logs
-  /// again one rung down, from any main field.
-  KeyEventResult _onExpandedKeyEvent(String key, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
-    final logicalKey = event.logicalKey;
-    final keyboard = HardwareKeyboard.instance;
-    final shift = keyboard.isShiftPressed;
-    // Ctrl/Meta/Alt are always someone else's (platform gestures) — Cmd+Down
-    // is "caret to the end of the text" on macOS, for instance. Shift is
-    // checked per key below instead, since Tab needs it for its own
-    // reversal while the others treat it as "text selection, leave it alone"
-    // (same split [_onPillKeyEvent] and [_onPrimaryFieldKeyEvent] make).
-    if (keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed) {
-      return KeyEventResult.ignored;
-    }
-
-    if (logicalKey == LogicalKeyboardKey.tab) {
-      final fields = _expandedFieldOrderFor(key);
-      final currentIndex = fields.indexWhere((f) => f.$1.hasFocus);
-      _stepSecondaryField(key, currentIndex, forward: !shift);
-      return KeyEventResult.handled;
-    }
-
-    if (logicalKey == LogicalKeyboardKey.arrowLeft || logicalKey == LogicalKeyboardKey.arrowRight) {
-      // Shift-arrow is selecting text, and a non-collapsed selection means
-      // the arrow collapses it rather than leaving the field — only a bare
-      // caret sitting against an edge is asking to travel. Same rule the
-      // main fields' own Left/Right apply.
-      if (shift) return KeyEventResult.ignored;
-      final fields = _expandedFieldOrderFor(key);
-      final currentIndex = fields.indexWhere((f) => f.$1.hasFocus);
-      if (currentIndex < 0) return KeyEventResult.ignored;
-      final selection = fields[currentIndex].$2.selection;
-      if (!selection.isCollapsed || selection.baseOffset < 0) return KeyEventResult.ignored;
-      final forward = logicalKey == LogicalKeyboardKey.arrowRight;
-      final atEdge = forward ? selection.baseOffset >= fields[currentIndex].$2.text.length : selection.baseOffset == 0;
-      if (!atEdge) return KeyEventResult.ignored;
-      _crossToNextControl(key, forward: forward);
-      return KeyEventResult.handled;
-    }
-
-    if (shift) return KeyEventResult.ignored;
-    if (logicalKey == LogicalKeyboardKey.arrowUp) {
-      _closeExpandedControlToQsoList(key);
-      return KeyEventResult.handled;
-    }
-    if (logicalKey == LogicalKeyboardKey.arrowDown ||
-        logicalKey == LogicalKeyboardKey.enter ||
-        logicalKey == LogicalKeyboardKey.numpadEnter) {
-      // Spotting's Send button has no FocusNode of its own — Tab never
-      // reaches it, the same accepted gap the main Log button has (see
-      // logging-fields.md). Enter from its comment field is the substitute,
-      // same as Enter from any main field reaches Log.
-      if (key == 'spotting' &&
-          (logicalKey == LogicalKeyboardKey.enter || logicalKey == LogicalKeyboardKey.numpadEnter) &&
-          _spotting.commentFocus.hasFocus &&
-          _spotting.state.enabled &&
-          !_spotting.sending) {
-        unawaited(_spotting.send());
-      }
-      _closeExpandedControl(key);
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
-
-  /// Closes [key]'s control and returns the keyboard to the main field the
-  /// operator was in before, but only if that control is still the one open —
-  /// idempotent, because Enter can arrive twice for one keypress: once as a
-  /// raw key event here, and again through a field's `onSubmitted` once the
-  /// platform turns it into a text-input action (see the Frequency field's
-  /// own `onSubmitted`, which calls this directly for that second route).
-  void _closeExpandedControl(String key) {
-    if (_selectedControlKey != key) return;
-    setState(() => _selectedControlKey = null);
-    _focusLastPrimaryField();
-  }
-
-  /// Closes [key]'s control and hands the keyboard on to the QSO list —
-  /// Up's own close, one rung further out than Down/Enter/Escape's: leaving
-  /// a control by Up keeps walking outward past the main fields, the same
-  /// direction Up already takes from a bare pill, rather than stopping at
-  /// them.
-  void _closeExpandedControlToQsoList(String key) {
-    if (_selectedControlKey != key) return;
-    setState(() => _selectedControlKey = null);
-    // Nothing navigable (an empty operation, or one holding only event
-    // markers) leaves the callback with nowhere to put the keyboard — this
-    // control just collapsed, so without a fallback focus would be left on
-    // no field at all rather than merely stuck where it started.
-    if (widget.onNavigateToQsoList?.call() != true) _focusLastPrimaryField();
-  }
-
+  /// A tap on a chip, or the keyboard arriving on one: what a tap means is
+  /// the panel's — `more` pops the full-edit pane instead of expanding, and
+  /// the chip itself already refuses a tap on an event row
+  /// (ChoiceChip.onSelected: null, see _ControlChip), which this repeats for
+  /// the keyboard paths. Everything else is the ladder's open and close.
   void _onSelectControl(String? key) {
-    // The chip itself already refuses a tap (ChoiceChip.onSelected: null,
-    // see _ControlChip) — this covers the keyboard paths, which call here
-    // directly rather than through the chip.
     if (_editingEvent && key != null && key != 'time') return;
     if (key == 'more') {
       _openMoreEditor();
       return;
     }
-    setState(() {
-      if (key == 'time' && _selectedControlKey != 'time') _time.seedFields();
-      _selectedControlKey = key;
-    });
-    final target = _expandedFocusFor(key);
-    if (target != null) {
-      // After the frame, not during: the panel's field doesn't exist yet at
-      // this point, and a node with no context silently drops the request.
-      // (app-polo does the same thing with a 200ms timer; a post-frame
-      // callback is the same idea without guessing at a duration.)
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _selectedControlKey == key) target.requestFocus();
-      });
-    }
     if (key == null) {
-      // Collapsing hands the cursor back so logging continues without a tap.
-      _focusLastPrimaryField();
+      _ladder.closeControl();
+    } else {
+      _ladder.openControl(key);
     }
   }
 
@@ -3027,7 +2636,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
     // The strip's keys, for the arrow keys to walk. Recorded from the list
     // actually handed to the row, so the two can't drift apart.
-    _pillOrder = [for (final spec in specs) spec.key];
+    _ladder.pillOrder = [for (final spec in specs) spec.key];
     return [
       for (final spec in specs) _withKeyboardNavigation(spec, enabled: enabledFor?.call(spec.key) ?? true),
     ];
@@ -3141,14 +2750,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// re-listing the fields here drops any the spec grows later, and a chip
   /// rendering the default is not a failure anything reports.
   SecondaryControlSpec _withKeyboardNavigation(SecondaryControlSpec spec, {bool enabled = true}) => spec.copyWith(
-        focusNode: _pillFocusFor(spec.key),
+        focusNode: _ladder.pillFocusFor(spec.key),
         enabled: enabled,
         expandedBuilder: (context) => Focus(
           // Not a stop on the way anywhere: it exists only to see key events
           // on their way up from whatever inside the control has focus.
           canRequestFocus: false,
           skipTraversal: true,
-          onKeyEvent: (node, event) => _onExpandedKeyEvent(spec.key, event),
+          onKeyEvent: (node, event) => _ladder.onExpandedKeyEvent(spec.key, event),
           child: spec.expandedBuilder(context),
         ),
       );
@@ -3186,7 +2795,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           // symbols, and a space bar for Space-to-advance); other platforms
           // keep the decimal pad.
           freqKeyboardType: _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true),
-          onFreqSubmitted: () => _closeExpandedControl('radio'),
+          onFreqSubmitted: () => _ladder.closeExpandedControl('radio'),
           onPicked: _callFocus.requestFocus,
         ),
       );
@@ -3411,7 +3020,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // depended on it, and leaving a field shouldn't wait on a bridge call.
       if (_command.fieldAcceptsSpaces && _atTrailingSpace(_callController)) {
         _removeTrailingSpace(_callController);
-        _advancePrimaryFocus();
+        _ladder.advancePrimaryFocus();
         return;
       }
       final call = _call;
@@ -3444,10 +3053,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         }
       }
 
-      _advancePrimaryFocus();
+      _ladder.advancePrimaryFocus();
     } else if (_radio.freqFocus.hasFocus) {
       _callFocus.requestFocus();
-    } else if (_primaryFocusOrder.any((node) => node.hasFocus)) {
+    } else if (_ladder.primaryFocusOrder.any((node) => node.hasFocus)) {
       // An options field accepts the highlighted suggestion first, then advances
       // like everything else. The advance is unconditional either way: it is what
       // an operator's hands expect, and losing it to a field that happens to be
@@ -3461,7 +3070,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // asked against the same list the advance walks, so a newly added kind of
       // primary field can never end up in one and not the other. (Call and Freq
       // are caught above; neither is reachable here.)
-      _advancePrimaryFocus();
+      _ladder.advancePrimaryFocus();
     } else if (_spotting.commentFocus.hasFocus) {
       // Free prose, like NOTE's parameter: Space types a literal space —
       // the panel-wide shortcut would otherwise swallow it.
@@ -3486,8 +3095,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// exchanges, then State/Grid (when their "..." menu toggles are on).
   ///
   /// The single source of truth for what "a primary field" means to the
-  /// keyboard: [_advancePrimaryFocus] walks it, `_handleSpace` asks it whether
-  /// Space should advance, and [_onPrimaryFieldKeyEvent] reads it for Tab's
+  /// keyboard: [LoggingFocusLadder.advancePrimaryFocus] walks it, `_handleSpace`
+  /// asks it whether Space should advance, and
+  /// [LoggingFocusLadder.onPrimaryFieldKeyEvent] reads it for Tab's
   /// edge-wrap and the arrow keys' end-of-value traversal. Any new kind of
   /// primary field is in all of them the moment it appears here — an exchange
   /// field that cycled on Tab but sat inert on Space (because only Space's
@@ -3547,141 +3157,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             hint: _guessGridHint,
           ),
       ];
-
-  /// Just the nodes of [_primaryFields], for the callers that only move focus
-  /// and never read a value.
-  List<FocusNode> get _primaryFocusOrder => [for (final field in _primaryFields) field.focus];
-
-  /// Moves focus to the next primary field, wrapping back to Call after the
-  /// last one.
-  void _advancePrimaryFocus() {
-    final order = _primaryFocusOrder;
-    final current = order.indexWhere((f) => f.hasFocus);
-    final next = order[(current + 1) % order.length];
-    next.requestFocus();
-  }
-
-  /// Where the next primary field to gain focus should put its caret, and the
-  /// node that instruction belongs to.
-  ///
-  /// Set ONLY for a rightward arrow move — the single path that wants anything
-  /// other than the end-of-value default the focus listeners already apply. A
-  /// leftward move and both Tab wraps want the end, so they set nothing:
-  /// writing `text.length` for them too means Tab onto an already-focused node
-  /// (a row with one primary field) leaves an instruction nobody collects, and
-  /// the next field to focus — Frequency, say — takes it and puts its caret
-  /// at 0.
-  ///
-  /// Keyed to the node because `requestFocus` does NOT deliver focus
-  /// synchronously: `FocusManager` applies it on a microtask, so another node
-  /// can reach the listeners first.
-  ({FocusNode node, int offset})? _pendingCaret;
-
-  /// The pending caret offset for [node], if it is the node the instruction was
-  /// meant for.
-  ///
-  /// Only a PRIMARY field resolves an instruction: Freq and Time share these
-  /// focus listeners but are secondary-control fields, so they must neither
-  /// consume one nor discard one in passing. Any other primary field arriving
-  /// first DOES clear it — by then it is stale, and leaving it set would
-  /// misplace the caret the next time its target happened to take focus.
-  int? _takePendingCaretOffset(FocusNode node, TextEditingController controller) {
-    final pending = _pendingCaret;
-    if (pending == null) return null;
-    if (!_primaryFocusOrder.any((f) => identical(f, node))) return null;
-    _pendingCaret = null;
-    return identical(pending.node, node) ? pending.offset.clamp(0, controller.text.length) : null;
-  }
-
-  /// Moves focus to [index] in [_primaryFields] (wrapping at either end) and
-  /// says where the caret should land — the start of the value for a rightward
-  /// move, the end for a leftward one, so the caret keeps travelling in the
-  /// direction the arrow key was pushing it.
-  void _movePrimaryFocus(int index, {required bool caretAtStart}) {
-    final fields = _primaryFields;
-    final node = fields[(index + fields.length) % fields.length].focus;
-    // Assigning null on the end-of-value path also clears any instruction left
-    // over from a move whose target never arrived.
-    _pendingCaret = caretAtStart ? (node: node, offset: 0) : null;
-    node.requestFocus();
-  }
-
-  /// Tab and the arrow keys inside a main logging field.
-  ///
-  /// Only the EDGES are intercepted. Tab in the middle of the row, and an arrow
-  /// key anywhere but the end of a value, stay with Flutter's own traversal and
-  /// caret handling — the entry row is laid out left-to-right in
-  /// [_primaryFields]' order, so the default already agrees with us there and
-  /// reimplementing it would only be a way to disagree later. What the default
-  /// gets wrong is only the two ends: Tab off the last field walks on into the
-  /// chips and the Log button, and Shift-Tab off the callsign walks backwards
-  /// out of the row entirely. The entry row is a loop, not a waypoint.
-  KeyEventResult _onPrimaryFieldKeyEvent(FocusNode node, KeyEvent event) {
-    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
-    final fields = _primaryFields;
-    final index = fields.indexWhere((f) => identical(f.focus, node));
-    // A node that isn't currently a primary field (its control stopped being
-    // rendered, say) keeps whatever the platform would do.
-    if (index < 0) return KeyEventResult.ignored;
-    final key = event.logicalKey;
-    final keyboard = HardwareKeyboard.instance;
-    final shift = keyboard.isShiftPressed;
-    // Shift is the only modifier that means anything to us (it reverses Tab).
-    // Everything else belongs to the platform or the field: Cmd/Option+arrow
-    // are line- and word-wise caret moves, and Ctrl+Tab is a pane switch on
-    // every desktop — claiming them would take real editing gestures away and
-    // teleport the operator to another field instead.
-    if (keyboard.isControlPressed || keyboard.isMetaPressed || keyboard.isAltPressed) {
-      return KeyEventResult.ignored;
-    }
-
-    // Arrow Up leaves the row upward, for the secondary control pills — the
-    // keyboard-only way out that the Tab loop above deliberately doesn't
-    // provide (APP-19), opening the pill it lands on immediately rather than
-    // waiting for a separate Enter. Inert while an options suggestion menu is
-    // open, since Up and Down belong to its highlight for as long as it is
-    // showing, and while the fields are locked: a staged-delete or deleted
-    // QSO's secondary controls are pointer-blocked and dimmed, and the
-    // keyboard shouldn't reach past that either.
-    if (key == LogicalKeyboardKey.arrowUp) {
-      if (_exchange.menuOpen || _fieldsLocked) return KeyEventResult.ignored;
-      _focusPillAndOpen();
-      return KeyEventResult.handled;
-    }
-
-    if (key == LogicalKeyboardKey.tab) {
-      if (!shift && index == fields.length - 1) {
-        _movePrimaryFocus(0, caretAtStart: false);
-        return KeyEventResult.handled;
-      }
-      if (shift && index == 0) {
-        _movePrimaryFocus(fields.length - 1, caretAtStart: false);
-        return KeyEventResult.handled;
-      }
-      return KeyEventResult.ignored;
-    }
-
-    if (key != LogicalKeyboardKey.arrowRight && key != LogicalKeyboardKey.arrowLeft) {
-      return KeyEventResult.ignored;
-    }
-    // Shift-arrow is selecting text, and a non-collapsed selection means the
-    // arrow collapses it rather than leaving the field. Only a bare caret
-    // sitting against an edge is asking to travel.
-    if (shift || fields.length < 2) return KeyEventResult.ignored;
-    final controller = fields[index].controller;
-    final selection = controller.selection;
-    if (!selection.isCollapsed || selection.baseOffset < 0) return KeyEventResult.ignored;
-
-    if (key == LogicalKeyboardKey.arrowRight && selection.baseOffset >= controller.text.length) {
-      _movePrimaryFocus(index + 1, caretAtStart: true);
-      return KeyEventResult.handled;
-    }
-    if (key == LogicalKeyboardKey.arrowLeft && selection.baseOffset == 0) {
-      _movePrimaryFocus(index - 1, caretAtStart: false);
-      return KeyEventResult.handled;
-    }
-    return KeyEventResult.ignored;
-  }
 
   /// Whether the caret sits at the end of a value that already ends in a space
   /// — the double-space that exits a field which otherwise accepts spaces (see
@@ -5003,7 +4478,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _infoGeneration++;
     }
 
-    // Resolved once: the arrow-key bindings and the menu read the same offer.
+    // Resolved once per build, for the menu.
     final exchangeMenu = _exchange.openMenu;
     final panel = CallbackShortcuts(
       bindings: {
@@ -5015,15 +4490,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         const SingleActivator(LogicalKeyboardKey.enter): _handleEnter,
         const SingleActivator(LogicalKeyboardKey.numpadEnter): _handleEnter,
         const SingleActivator(LogicalKeyboardKey.space): _handleSpace,
-        // Only while an exchange menu is actually open. Bound unconditionally,
-        // these would swallow the arrow keys everywhere else in the panel —
-        // including a text field's own caret movement.
-        if (exchangeMenu != null) ...{
-          // The menu is drawn best-at-the-bottom, so Up walks up the screen,
-          // away from the field, which is +1 in rank order.
-          const SingleActivator(LogicalKeyboardKey.arrowUp): () => _exchange.moveSelection(1),
-          const SingleActivator(LogicalKeyboardKey.arrowDown): () => _exchange.moveSelection(-1),
-        },
       },
       child: FocusTraversalGroup(
         child: Material(

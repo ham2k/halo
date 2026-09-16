@@ -12349,7 +12349,7 @@ void main() {
   // — these cover everything the panel can answer on its own.
   group('keyboard navigation of the secondary controls', () {
     /// Which pill currently holds the keyboard, by control key — read off the
-    /// chips' own focus nodes (`_pillFocusFor` labels them `pill:<key>`), so
+    /// chips' own focus nodes (`LoggingFocusLadder.pillFocusFor` labels them `pill:<key>`), so
     /// the assertions name a control rather than a widget index.
     String? focusedPill(WidgetTester tester) {
       for (final chip in tester.widgetList<ChoiceChip>(find.byType(ChoiceChip))) {

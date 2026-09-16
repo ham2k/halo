@@ -11,6 +11,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -40,7 +41,22 @@ typedef SpottingState = ({String summary, String buttonLabel, bool enabled, bool
 
 /// The Spotting control's state. See the file comment.
 class SpottingControlModel extends ChangeNotifier with PanelModel {
-  SpottingControlModel({required this.config});
+  SpottingControlModel({required this.config}) {
+    // Enter in the comment field sends. The Send button has no FocusNode of
+    // its own — Tab never reaches it, the same accepted gap the main Log
+    // button has (logging-fields.md) — so Enter here is the substitute, the
+    // way Enter from any main field reaches Log. Ignored rather than handled,
+    // so the ladder's handler on the control still closes it afterwards.
+    commentFocus.onKeyEvent = (node, event) {
+      if ((event is KeyDownEvent || event is KeyRepeatEvent) &&
+          (event.logicalKey == LogicalKeyboardKey.enter || event.logicalKey == LogicalKeyboardKey.numpadEnter) &&
+          state.enabled &&
+          !_sending) {
+        unawaited(send());
+      }
+      return KeyEventResult.ignored;
+    };
+  }
 
   /// The panel's configuration as it stands right now.
   final SpottingConfig Function() config;

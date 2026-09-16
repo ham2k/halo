@@ -4,6 +4,8 @@
 // SpottingControlModel on its own: the state machine ham2k/halo-dist#10
 // specifies, and what a send does to the per-source status.
 
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/src/logging_controls_spotting.dart';
@@ -108,6 +110,24 @@ void main() {
     expect((h.sent.single['sources'] as List).length, 2);
     expect(h.model.statusOf('pota'), isTrue, reason: 'the answer belongs to the source that was asked');
     expect(h.model.statusOf('sota'), isTrue);
+    h.model.dispose();
+  });
+
+  testWidgets('Enter in the comment field sends, and only while a send is possible', (tester) async {
+    final h = _Harness();
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: TextField(focusNode: h.model.commentFocus, controller: h.model.commentController)),
+    ));
+    h.model.commentFocus.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(h.sent, isEmpty, reason: 'no frequency: nothing to spot at');
+    h.vfo = const Vfo(freq: 14285, mode: 'SSB');
+    await h.model.refreshSources();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump();
+    expect(h.sent, hasLength(1));
     h.model.dispose();
   });
 }
