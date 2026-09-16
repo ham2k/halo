@@ -581,6 +581,18 @@ Silent/unattended binary updates require the artifacts to be trusted by the OS:
 Without this, updaters are blocked and the auto-update story fails. Budget setup
 time for certificates, notarization, and stapling before wiring the updater.
 
+Every direct-download installer is published with a **SHA-256 sidecar** beside
+it — `<file>.sha256` under the same key, one line in `sha256sum` format, so
+`sha256sum -c <file>.sha256` (or `shasum -a 256 -c`) verifies a download as-is.
+The same hash is the `sha256` field of the platform's manifest entry, and the
+download page prints it under the filename, linked to the sidecar. Both are
+computed from the exact local file that was uploaded, by the same publish step.
+The checksum is an integrity check, not a trust root: the page and the sidecar
+sit on the same host as the installer, so it catches a truncated or corrupted
+download, while the signature above is what proves who built it. Store-only
+entries carry none, and neither do the self-update enclosures — Sparkle and
+WinSparkle already verify those against their signing keys.
+
 ### 3.4 The approval manifest — what a store will actually serve
 
 The download manifests (`halo-<edition>/<platform>.json`, written by
