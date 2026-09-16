@@ -15,6 +15,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../config/experiments.dart';
+import '../../config/navigation.dart';
 import '../../services/extension_catalog_migration.dart';
 import '../../services/halo_services.dart';
 
@@ -50,9 +51,15 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     if (!await canReachCatalog(widget.services.extensions)) return;
     if (!mounted) return;
 
-    final t = context.t.extensionsPanel;
+    // This gate sits in MaterialApp.builder, ABOVE the Navigator, so its own
+    // context cannot push a dialog: showDialog would throw into this
+    // unawaited future and the offer would silently never appear. The app's
+    // navigator key is the route in.
+    final navigator = navigatorKey.currentContext;
+    if (navigator == null || !navigator.mounted) return;
+    final t = navigator.t.extensionsPanel;
     final accepted = await showDialog<bool>(
-          context: context,
+          context: navigator,
           builder: (context) => HaloDialog(
             title: Text(t.upgradeTitle),
             content: Text(t.upgradeBody),
@@ -66,9 +73,9 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     if (!accepted || !mounted) return;
 
     final done = await migrateToCatalogExtensions(widget.services.extensions);
-    if (done || !mounted) return;
+    if (done || !mounted || !navigator.mounted) return;
     await showDialog<void>(
-      context: context,
+      context: navigator,
       builder: (context) => HaloDialog(
         title: Text(t.upgradeFailedTitle),
         content: Text(t.upgradeFailedBody),

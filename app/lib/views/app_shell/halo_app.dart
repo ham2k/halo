@@ -409,9 +409,12 @@ class _HaLoAppState extends State<HaLoApp> {
                           services: widget.services,
                           child: ReleaseOverlayGate(
                             services: widget.services,
-                            // Innermost of the startup gates: a one-time
-                            // upgrade asked for over the release notes is two
-                            // dialogs deep on the same launch.
+                            // Innermost of the startup gates. Its offer is
+                            // a dialog on the Navigator below, so the release
+                            // notes (an overlay above it) paint over the
+                            // offer on a launch that has both; the offer
+                            // waits underneath and returns next launch if
+                            // it is dismissed unseen.
                             child: ExtensionUpgradeGate(
                               services: widget.services,
                               child: StatusBarOverlay(services: widget.services, child: content),
