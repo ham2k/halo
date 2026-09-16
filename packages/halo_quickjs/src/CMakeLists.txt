@@ -56,6 +56,18 @@ if (MSVC)
   # C_STANDARD onto MSVC in 3.20, and this file targets 3.10.
   target_compile_options(halo_quickjs PRIVATE /std:c11)
   target_compile_definitions(halo_quickjs PRIVATE _CRT_SECURE_NO_WARNINGS _CRT_NONSTDC_NO_DEPRECATE)
+
+  # Emit a PDB for the Release build (MSVC's default Release flags carry no
+  # debug info) so a native crash inside the engine or the shim can be
+  # symbolicated once the release pipeline uploads it to Sentry. This is an
+  # FFI plugin, so the per-plugin loop in app/windows/CMakeLists.txt that sets
+  # these for FLUTTER_PLUGIN_LIST never sees it; the flags have to live here.
+  # The pipeline asserts halo_quickjs.pdb exists before uploading.
+  # target_link_options is a 3.13 command, past this file's 3.10 minimum; it
+  # is fine here because this branch only runs under the MSVC toolchain, where
+  # Flutter's Windows build already requires a far newer CMake.
+  target_compile_options(halo_quickjs PRIVATE $<$<CONFIG:Release>:/Zi>)
+  target_link_options(halo_quickjs PRIVATE $<$<CONFIG:Release>:/DEBUG>)
 endif()
 
 # Release builds only; a debug-assert build of quickjs is far slower and we
