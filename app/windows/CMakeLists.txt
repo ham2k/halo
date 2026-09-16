@@ -70,8 +70,10 @@ include(flutter/generated_plugins.cmake)
 # every build. FLUTTER_PLUGIN_LIST is what that file defines, so this covers
 # whatever the current plugin set happens to be.
 #
-# The release pipeline sweeps build/windows/x64 recursively for symbols, so
-# the PDBs upload with no pipeline change.
+# The release pipeline uploads symbols from build/windows/x64/runner/Release
+# and build/windows/x64/plugins only, and refuses to ship a *_plugin.dll whose
+# *_plugin.pdb it cannot find under the latter. A plugin whose PDB lands
+# anywhere else is outside the sweep, and the build says so.
 #
 # A plugin that ships no native code of its own registers <name>_plugin as an
 # ALIAS to another target (sentry_flutter aliases sentry-native's `sentry`),

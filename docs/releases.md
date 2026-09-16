@@ -656,7 +656,13 @@ the download page and every install has seen it there is no taking it back.
 **Windows is not covered**: `build-windows.ps1` publishes through a PowerShell
 sibling and writes its own WinSparkle appcast, neither of which can source the
 guard, and there is no Regular Windows workflow yet. Wiring one means porting the
-guard first.
+guard first. What Windows has instead is a gate on the *trigger*: the script
+publishes only when Codemagic set `CM_TAG`, i.e. a release tag started the run.
+A `windows-next-release` started by hand from a branch builds, signs and uploads
+its symbols, then stops after the artifacts zip — which is how the pipeline is
+exercised without touching the download that every Next install points at. A
+manual-start Regular Windows workflow, like its macOS sibling, would need this
+gate revisited alongside the port.
 
 The three Regular workflows (`ios-prod-release`, `macos-prod-release`,
 `android-prod-release`) set it from the `hold_regular` anchor in
