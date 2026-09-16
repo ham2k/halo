@@ -714,9 +714,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   );
 
   /// The command being typed into the call field — see
-  /// [CommandInterpretationModel]. Running one is still this panel's
-  /// ([_log] dispatches the actions), and so is the field's own reading
-  /// ([_callText]).
+  /// [CommandInterpretationModel], which also decides what Enter does with
+  /// it ([CommandInterpretationModel.runOnEnter]). Dispatching the actions
+  /// is still this panel's ([_dispatchActions]), and so is the field's own
+  /// reading ([_callText]).
   late final _command = CommandInterpretationModel(
     config: () => (
       interpretCommand: widget.interpretCommand,
@@ -1246,7 +1247,28 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   @override
   void didUpdateWidget(LoggingControls oldWidget) {
     super.didUpdateWidget(oldWidget);
-    // First, before any of the guards below can return: see [_handleLogRequest].
+    // In this order, and each on its own: a block that returns early is
+    // written as one that says so, so nothing after it runs — or fails to
+    // run — by accident.
+    final logRequested = _syncLogRequest(oldWidget);
+    _syncPowerInPlay(oldWidget);
+    _syncSuggestionLifecycle(oldWidget, logRequested: logRequested);
+    _syncKeyboardAccessory(oldWidget);
+    _syncActivityControls(oldWidget);
+    _syncSerialSource(oldWidget);
+    _syncController(oldWidget);
+    _syncRadioUpdates(oldWidget);
+    if (_syncEditingQso(oldWidget)) return;
+    // Nothing below applies while editing an existing QSO — a suggestion or
+    // a refs change must never clobber an in-progress edit.
+    if (widget.editingQso != null) return;
+    _syncComposingInputs(oldWidget);
+  }
+
+  /// A log request landed with this update — see [_handleLogRequest]. Runs
+  /// before the editing guards in [didUpdateWidget] can return; says so,
+  /// because a suggestion arriving on the same frame reads differently.
+  bool _syncLogRequest(LoggingControls oldWidget) {
     final request = widget.logRequest;
     final logRequested = request != null && request.serial != oldWidget.logRequest?.serial;
     if (logRequested) {
@@ -1255,6 +1277,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _heldSuggestion = null;
       unawaited(_handleLogRequest(request.qso));
     }
+    return logRequested;
+  }
+
+  void _syncPowerInPlay(LoggingControls oldWidget) {
     // Power may have just come into play — the operator added the control to
     // the row, or switched station-info tracking on. The field is seeded from
     // the VFO only while power IS in play, so without this it stays empty
@@ -1269,9 +1295,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       final power = widget.radioService?.vfoA.power;
       _powerController.text = power == null ? '' : '$power';
     }
-    // The rest of the slide's lifecycle, up here for the same reason: an edit
-    // in progress is exactly when a tentative suggestion has something to say,
-    // and the guards below would swallow all three of these.
+  }
+
+  /// A slid spot row's suggestion: withdrawn, held, or confirmed. Runs before
+  /// the editing guards in [didUpdateWidget]: an edit in progress is exactly
+  /// when a tentative suggestion has something to say, and those guards
+  /// would swallow all three of these.
+  void _syncSuggestionLifecycle(LoggingControls oldWidget, {required bool logRequested}) {
     if (oldWidget.suggestedQso != null && widget.suggestedQso == null) _withdrawTentativeSuggestion();
     if (!logRequested &&
         widget.suggestedQsoIsTentative &&
@@ -1296,20 +1326,26 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         unawaited(_confirmHeldSuggestion(held));
       }
     }
+  }
+
+  void _syncKeyboardAccessory(LoggingControls oldWidget) {
     // Withdraw from the controller we actually published to. `deactivate` only
     // ever sees the CURRENT one, so without this a swapped controller keeps a
     // row nothing can ever take back.
     if (!identical(oldWidget.keyboardAccessory, widget.keyboardAccessory)) {
       oldWidget.keyboardAccessory?.clearIfOwner(this);
     }
+  }
+
+  void _syncActivityControls(LoggingControls oldWidget) {
     // The controls a contest contributes arrive asynchronously, after this
     // widget first builds — so a serial field is typically declared here
     // rather than in initState, and this is where its first preview comes
     // from. The operation's own refs matter just as much, since they decide
     // which primary controls survive `_textControls` at all: adding the
-    // activity is what makes the serial field appear. Deliberately outside the
-    // editingQso guards below: showing the right number never depends on what
-    // is being composed.
+    // activity is what makes the serial field appear. Deliberately before the
+    // editing guards in [didUpdateWidget]: showing the right number never
+    // depends on what is being composed.
     if (!identical(oldWidget.activityControls, widget.activityControls) ||
         !identical(oldWidget.operation.data['refs'], widget.operation.data['refs'])) {
       // A per-QSO refresh cached before this change must not shadow it —
@@ -1324,6 +1360,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       if (_lookup.lookupFor != null) unawaited(_refs.refreshControlsFor(_lookup.lookupFor!));
       unawaited(_exchange.refreshSerialPreviews());
     }
+  }
+
+  void _syncSerialSource(LoggingControls oldWidget) {
     // The source is the panel's only handle on its held number: a source
     // swapped out (sharing switched off) or an operation swapped under the
     // panel would otherwise leave that number held with nothing left to
@@ -1334,6 +1373,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _exchange.forgetSerialState();
       unawaited(_exchange.refreshSerialPreviews());
     }
+  }
+
+  void _syncController(LoggingControls oldWidget) {
     if (oldWidget.controller != widget.controller) {
       oldWidget.controller?.detach();
       widget.controller?.attach(
@@ -1346,20 +1388,29 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         focusLastPrimaryField: _focusLastPrimaryField,
       );
     }
+  }
+
+  void _syncRadioUpdates(LoggingControls oldWidget) {
     // The VFO notifier can be swapped with the widget (a different
     // HaLoServices in a harness, a future per-profile RadioService). Without
     // this the listener stays on the OLD notifier and `dispose` removes it
     // from the new one, so following dies and the old notifier keeps this
     // State alive.
     //
-    // Above the editingQso guards below, alongside `controller` and for the
-    // same reason: re-subscribing is bookkeeping about which notifier this
-    // State is attached to, not something a QSO being edited gets a say in.
+    // Before the editing guards in [didUpdateWidget], like [_syncController]
+    // and for the same reason: re-subscribing is bookkeeping about which
+    // notifier this State is attached to, not something a QSO being edited
+    // gets a say in.
     // Below them it simply never ran while an edit was open.
     if (!identical(oldWidget.radioUpdates, widget.radioUpdates)) {
       oldWidget.radioUpdates?.removeListener(_onRadioVfoChanged);
       widget.radioUpdates?.addListener(_onRadioVfoChanged);
     }
+  }
+
+  /// A QSO opened for editing, or the edit ended. True when that was the
+  /// update: the fields are a new context's, and nothing below applies.
+  bool _syncEditingQso(LoggingControls oldWidget) {
     if (oldWidget.editingQso?.uuid != widget.editingQso?.uuid) {
       // Captured before _resetEditingSessionState() below, which clears
       // _draft.theirNameOverride — a snapshot taken after that would silently drop
@@ -1383,15 +1434,18 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _spotting.forgetSources();
       _spotting.refreshSources();
       // The fields are this panel's own again, which is exactly what anything
-      // parked was waiting for — and this branch returns, so it has to drain
-      // here rather than leave it to the bottom of the method.
+      // parked was waiting for — and [didUpdateWidget] stops here, so the
+      // drain is this method's, not the end of the update's.
       _drainPending();
-      return;
+      return true;
     }
-    // Nothing below applies while editing an existing QSO — a suggestion or
-    // a refs change must never clobber an in-progress edit.
-    if (widget.editingQso != null) return;
+    return false;
+  }
 
+  /// While composing: the operation's refs changed, or a new suggestion
+  /// arrived — and then whatever was parked waiting for the fields is
+  /// applied, unless a tentative suggestion was left held.
+  void _syncComposingInputs(LoggingControls oldWidget) {
     // While composing a new QSO, self-spot eligibility depends on the
     // operation's own activation refs (not editingQso, which stays null
     // throughout) — refresh when those refs change too.
@@ -1400,14 +1454,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
 
     // A new suggestion (e.g. tapping a different spot) — same reset scope
-    // as the editingQso-change branch above, applied for it instead.
-    // Deliberately independent from the refs check above (not `else if`),
+    // as [_syncEditingQso], applied for it instead. Deliberately independent
+    // from the refs check just above (not `else if`),
     // so both can fire in the same call — e.g. an operation-refs change and
     // a spot tap landing in the same frame would otherwise let one silently
     // suppress the other.
     if (widget.suggestedQso != null && !identical(oldWidget.suggestedQso, widget.suggestedQso)) {
       // A gesture the operator can still drag back may not take the fields or
-      // the VFO from work already in progress — it was held above instead.
+      // the VFO from work already in progress — [_syncSuggestionLifecycle]
+      // held it instead, and anything parked stays parked with it.
       if (widget.suggestedQsoIsTentative && _hasComposedCall) return;
       _resetEditingSessionState();
       _applySuggestedQso(widget.suggestedQso!);
@@ -1433,10 +1488,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// Applies whatever was parked waiting for an edit to be gone — see
   /// [_handleLogRequest] and [_confirmHeldSuggestion].
   ///
-  /// Called from BOTH ends of `didUpdateWidget`, because the update that
-  /// clears the edit is the editing-change branch, and that branch returns
-  /// before the bottom of the method ever runs. Draining only at the bottom
-  /// leaves the work parked until some unrelated rebuild — a spot poll, a
+  /// Called from BOTH [_syncEditingQso] and [_syncComposingInputs], because
+  /// the update that clears the edit is the former, and `didUpdateWidget`
+  /// stops there. Draining only at the end of an update leaves the work parked until some unrelated rebuild — a spot poll, a
   /// clock tick — picks it up seconds later, on top of whatever the operator
   /// has typed since, moving the VFO with it.
   void _drainPending() {
@@ -2006,7 +2060,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// which the NEXT Enter logs as a stacked call list. Returns whether it
   /// expanded anything, in which case this Enter logs nothing at all.
   ///
-  /// This exists because [_log]'s ordinary command path only ever sees the
+  /// This exists because the ordinary command path ([CommandInterpretationModel.runOnEnter]) only ever sees the
   /// WHOLE field, so a key stacked alongside other calls would never be
   /// offered for expansion at all. A whole-field "//KEY" that path already
   /// expanded never arrives here — it returned. One it could not expand does
@@ -4592,74 +4646,33 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       final settled = await _exchange.settleSerialClaims();
       if (!settled || !mounted || _call != call || _isLogging) return;
     }
-    if (widget.editingQso == null && call.isNotEmpty && widget.interpretCommand != null) {
-      final (:interpretation, :stale) = await _command.interpretNow(applyToDisplay: false);
-      {
-        // Stale — the call changed while awaiting. `_isLogging` is re-checked
-        // for a different reason: the entry guard above ran BEFORE this await,
-        // and the flag isn't set until one of the branches below commits to
-        // logging, so a second Enter arriving inside this window passed that
-        // guard too and is now racing us to the same QSO. This is the ordinary
-        // path, not an edge case — a plain callsign interprets to null, so
-        // nothing is ever cached and every logging Enter awaits here. The
-        // window is real: `interpretCommand` and `_decorated` are both JS
-        // runtime round-trips, and key auto-repeat fires well inside them.
-        if (stale || !mounted || _call != call || _isLogging) return;
-      }
-      // A recognized command that can't run in this context (its `error`
-      // field is set — see CommandInterpretation) — surface the message,
-      // keep the typed input for editing, and execute nothing.
-      if (interpretation != null && interpretation['error'] is String) {
-        _command.showError(interpretation['error'] as String);
-        return;
-      }
-      // A command still awaiting parameters (expectsParams) isn't complete
-      // — Enter shouldn't execute or clear the field, just fall through to
-      // ordinary logging (which _canLog below will normally reject, since
-      // it isn't a callsign either).
-      if (interpretation != null && interpretation['expectsParams'] != true) {
+    // The command line's own decision: whether the typed text is a command
+    // at all, what it interprets to, and whether Enter ran it, showed why it
+    // cannot, or falls through to logging. The panel supplies what is its own
+    // — the double-log guard, the field, the actions.
+    final consumed = await _command.runOnEnter(
+      alreadyLogging: () => _isLogging,
+      whileLogging: (body) async {
         _isLogging = true;
         try {
-          // The interpretation above may just be the debounce-time preview,
-          // whose `commands` a hook like SEED deliberately left cheap/empty
-          // (see CommandHook.interpret's `execute` doc) — re-interpret with
-          // execute:true now that we're actually about to run it, so those
-          // hooks generate the real commands instead of a stale preview's.
-          final executable = await _command.interpretForExecution();
-          if (!mounted || _call != call) return; // stale — the call changed while awaiting
-          if (executable == null) return;
-
-          // A command can also fail at execute time (e.g. SOLAR/WEATHER's
-          // network fetch, or the hook timing out entirely — see
-          // interpretCommand) — surface the message and keep the typed
-          // input, same treatment as the preview-time `error` branch above,
-          // including cancelling any pending confirm-clear timer that would
-          // otherwise wipe the error moments after it appears.
-          if (executable['error'] is String) {
-            _command.showError(executable['error'] as String);
-            return;
-          }
-
-          _callController.clear();
-          _command.commandExecuted(confirm: executable['confirm']);
-
-          final commands = executable['commands'];
-          if (commands is List) {
-            try {
-              await _dispatchActions(commands, skipOnlineLookup: executable['skipOnlineLookup'] == true);
-            } catch (e, stack) {
-              // A command's actions can write QSOs (e.g. a SEED batch) — a
-              // throw mid-dispatch must not vanish into the zone handler
-              // while the panel looks like the command ran.
-              _reportWriteFailure(e, stack);
-            }
-          }
+          await body();
         } finally {
           _isLogging = false;
         }
-        return;
-      }
-    }
+      },
+      clearField: _callController.clear,
+      dispatch: (commands, {required skipOnlineLookup}) async {
+        try {
+          await _dispatchActions(commands, skipOnlineLookup: skipOnlineLookup);
+        } catch (e, stack) {
+          // A command's actions can write QSOs (e.g. a SEED batch) — a
+          // throw mid-dispatch must not vanish into the zone handler
+          // while the panel looks like the command ran.
+          _reportWriteFailure(e, stack);
+        }
+      },
+    );
+    if (consumed) return;
 
     // Note expansion inside a stack (see [_expandStackedNote]): "KI2D//1AB"
     // becomes "KI2D//W1AB,W1AC" and logs NOTHING this time round. Placed
@@ -4683,44 +4696,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     if (editingQso != null && editingQso.deleted) return;
 
     if (editingQso != null && _pendingDelete) {
-      _isLogging = true;
-      try {
-        await widget.qsosRepository.softDelete(editingQso);
-      } catch (e, stack) {
-        // The row is untouched and the delete stays staged — say so and let
-        // the operator retry or cancel, instead of the editor silently
-        // closing over a QSO that never actually deleted.
-        _reportWriteFailure(e, stack, delete: true);
-        return;
-      } finally {
-        _isLogging = false;
-      }
-      widget.onQsoDeleted?.call(editingQso);
-      widget.onEditCanceled?.call();
+      await _commitStagedDelete(editingQso);
       return;
     }
 
     // Events have none of the callsign/band/mode fields the checks below
     // exist for — save them straight from the inline editor's state.
     if (editingQso != null && editingQso.isEvent) {
-      _isLogging = true;
-      try {
-        await widget.qsosRepository.update(
-          Qso(
-            uuid: editingQso.uuid,
-            operationUuid: widget.operation.uuid,
-            data: _eventDataForSave(editingQso),
-          ),
-          basedOn: editingQso,
-        );
-      } catch (e, stack) {
-        // Editor stays open with the typed values — nothing committed.
-        _reportWriteFailure(e, stack);
-        return;
-      } finally {
-        _isLogging = false;
-      }
-      widget.onEditCanceled?.call();
+      await _saveEvent(editingQso);
       return;
     }
 
@@ -4764,6 +4747,53 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       if (focusCall) _callFocus.requestFocus();
       return;
     }
+    await _saveContact(editingQso, focusCall: focusCall);
+  }
+
+  Future<void> _commitStagedDelete(Qso editingQso) async {
+    _isLogging = true;
+    try {
+      await widget.qsosRepository.softDelete(editingQso);
+    } catch (e, stack) {
+      // The row is untouched and the delete stays staged — say so and let
+      // the operator retry or cancel, instead of the editor silently
+      // closing over a QSO that never actually deleted.
+      _reportWriteFailure(e, stack, delete: true);
+      return;
+    } finally {
+      _isLogging = false;
+    }
+    widget.onQsoDeleted?.call(editingQso);
+    widget.onEditCanceled?.call();
+  }
+
+  /// An event row saved straight from the inline editor's state — events
+  /// have none of the callsign/band/mode fields the contact path checks.
+  Future<void> _saveEvent(Qso editingQso) async {
+    _isLogging = true;
+    try {
+      await widget.qsosRepository.update(
+        Qso(
+          uuid: editingQso.uuid,
+          operationUuid: widget.operation.uuid,
+          data: _eventDataForSave(editingQso),
+        ),
+        basedOn: editingQso,
+      );
+    } catch (e, stack) {
+      // Editor stays open with the typed values — nothing committed.
+      _reportWriteFailure(e, stack);
+      return;
+    } finally {
+      _isLogging = false;
+    }
+    widget.onEditCanceled?.call();
+  }
+
+  /// The contact — one QSO per call of a list or a stack segment, or the
+  /// edited record updated in place with any calls added to it logged
+  /// fresh. Everything up to here has already refused what cannot log.
+  Future<void> _saveContact(Qso? editingQso, {required bool focusCall}) async {
     _isLogging = true;
     try {
       // A comma-separated call list logs one QSO per call, all sharing the

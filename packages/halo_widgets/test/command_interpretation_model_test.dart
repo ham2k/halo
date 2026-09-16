@@ -9,23 +9,29 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/src/call_field_text.dart';
 import 'package:halo_widgets/src/logging_controls_command.dart';
 
 class _Harness {
   String text = '';
+  bool editing = false;
   final interpreted = <String>[];
   final messages = <String?>[];
   int notifications = 0;
   Map<String, dynamic>? Function(String input) answer = (input) => null;
 
+  /// The answer to an `execute: true` interpretation, when it differs from
+  /// the preview's — a hook whose preview leaves the commands cheap.
+  Map<String, dynamic>? Function(String input)? answerForExecution;
+
   late final model = CommandInterpretationModel(
     config: () => (
       interpretCommand: (input, [operation, qso, execute = false]) async {
         interpreted.add('$input${execute ? ' execute' : ''}');
-        return answer(input);
+        return execute && answerForExecution != null ? answerForExecution!(input) : answer(input);
       },
-      editingQso: null,
+      editingQso: editing ? const Qso(uuid: 'q', operationUuid: 'op', data: {}) : null,
       operationData: () => const {'uuid': 'op'},
       onMessageChanged: messages.add,
     ),
@@ -143,5 +149,171 @@ void main() {
     // to never delivers its done event, and the close would hang.
     await updates.close();
     h.model.dispose();
+  });
+
+  group('Enter on the call field', () {
+    /// The panel's side of [CommandInterpretationModel.runOnEnter]: its
+    /// double-log guard, its field, its actions, its failure channel.
+    ({
+      Future<bool> Function() enter,
+      List<String> log,
+      void Function() setLogging,
+    }) wire(_Harness h, {Object? throwOnDispatch}) {
+      final log = <String>[];
+      var logging = false;
+      Future<bool> enter() => h.model.runOnEnter(
+            alreadyLogging: () => logging,
+            whileLogging: (body) async {
+              log.add('logging on');
+              logging = true;
+              try {
+                await body();
+              } finally {
+                logging = false;
+                log.add('logging off');
+              }
+            },
+            clearField: () {
+              log.add('cleared');
+              // The real field's listener reads a programmatic clear as a
+              // keystroke, which drops the message.
+              h.model.keystroke();
+            },
+            dispatch: (commands, {required skipOnlineLookup}) async {
+              log.add('dispatch ${commands.join(',')} skipOnline=$skipOnlineLookup');
+              if (throwOnDispatch != null) {
+                log.add('failed: $throwOnDispatch');
+                return;
+              }
+            },
+          );
+      return (enter: enter, log: log, setLogging: () => logging = true);
+    }
+
+    test('a plain callsign is not a command: Enter falls through to logging, nothing cleared', () async {
+      final h = _Harness();
+      final w = wire(h);
+      h.text = 'W1AW';
+      expect(await w.enter(), isFalse);
+      expect(w.log, isEmpty);
+      expect(h.interpreted, ['W1AW'], reason: "Enter's own interpretation, once");
+      h.model.dispose();
+    });
+
+    test('a command that cannot run here shows why and keeps the text; one awaiting parameters falls through',
+        () async {
+      final h = _Harness();
+      final w = wire(h);
+      h.answer = (input) => {'error': 'Not while editing'};
+      h.text = 'RELOAD';
+      expect(await w.enter(), isTrue);
+      expect(h.model.message, 'Not while editing');
+      expect(w.log, isEmpty, reason: 'nothing ran, nothing cleared');
+
+      h.answer = (input) => {'expectsParams': true, 'describe': 'NOTE …'};
+      h.text = 'NOTE';
+      expect(await w.enter(), isFalse, reason: 'still being typed: Enter is just Enter');
+      expect(w.log, isEmpty);
+      h.model.dispose();
+    });
+
+    test('an executable command is re-interpreted for execution, clears the field, confirms and dispatches',
+        () async {
+      final h = _Harness();
+      final w = wire(h);
+      h.answer = (input) => {'describe': 'Tune'};
+      h.answerForExecution = (input) => {'commands': ['setVfo'], 'confirm': 'Tuned', 'skipOnlineLookup': true};
+      h.text = '14285';
+      expect(await w.enter(), isTrue);
+      expect(h.interpreted, ['14285', '14285 execute'],
+          reason: "the preview's commands may be a cheap placeholder; the run asks again with execute");
+      expect(w.log, ['logging on', 'cleared', 'dispatch setVfo skipOnline=true', 'logging off']);
+      expect(h.model.message, 'Tuned');
+      h.model.dispose();
+    });
+
+    test('a dispatch that fails is the panel\'s to report; the bracket still closes', () async {
+      final h = _Harness();
+      final w = wire(h, throwOnDispatch: StateError('disk full'));
+      h.answer = (input) => {'commands': ['addQso']};
+      h.text = 'SEED';
+      expect(await w.enter(), isTrue);
+      expect(w.log.last, 'logging off');
+      expect(w.log, contains('failed: Bad state: disk full'));
+      h.model.dispose();
+    });
+
+    test('nothing to consider while editing, with an empty field, or without an interpreter', () async {
+      final h = _Harness();
+      final w = wire(h);
+      h.answer = (input) => {'commands': ['setVfo']};
+      h.text = '';
+      expect(await w.enter(), isFalse);
+      h.text = '14285';
+      h.editing = true;
+      expect(await w.enter(), isFalse, reason: 'an edit never runs the text as a command');
+      expect(h.interpreted, isEmpty, reason: 'not even interpreted');
+      h.model.dispose();
+    });
+
+    test('a call that moved on, or a second Enter racing the first, consumes Enter and runs nothing', () async {
+      final h = _Harness();
+      final w = wire(h);
+      // The preview await returns to a field that no longer holds the text
+      // it was asked about — the second Enter of an auto-repeat is already
+      // in flight for it.
+      h.answer = (input) {
+        h.text = 'W1AW';
+        return {'commands': ['setVfo']};
+      };
+      h.text = '14285';
+      expect(await w.enter(), isTrue);
+      expect(w.log, isEmpty, reason: 'consumed, and nothing ran for the text that is gone');
+
+      // The first Enter commits to logging while this one is still awaiting
+      // its interpretation: the flag is read AFTER that await, or the race
+      // is not seen.
+      h.answer = (input) {
+        w.setLogging();
+        return {'commands': ['setVfo']};
+      };
+      h.text = '7200';
+      expect(await w.enter(), isTrue, reason: 'the racing Enter is dropped, not run twice');
+      expect(w.log, isEmpty);
+      h.model.dispose();
+    });
+
+    test('a call that moves on during the execute-time round trip runs nothing, and the field is kept', () async {
+      final h = _Harness();
+      final w = wire(h);
+      h.answer = (input) => {'describe': 'Tune'};
+      // Key auto-repeat fires well inside an extension round trip: the second
+      // Enter's own interpretation is what changes the field here.
+      h.answerForExecution = (input) {
+        h.text = 'W1AW';
+        return {'commands': ['setVfo']};
+      };
+      h.text = '14285';
+      expect(await w.enter(), isTrue);
+      expect(w.log, ['logging on', 'logging off'], reason: 'nothing cleared, nothing dispatched');
+      h.model.dispose();
+    });
+
+    test('an execute-time error keeps the text; a null execution runs nothing', () async {
+      final h = _Harness();
+      final w = wire(h);
+      h.answer = (input) => {'describe': 'Solar'};
+      h.answerForExecution = (input) => {'error': 'Fetch failed'};
+      h.text = 'SOLAR';
+      expect(await w.enter(), isTrue);
+      expect(h.model.message, 'Fetch failed');
+      expect(w.log, ['logging on', 'logging off'], reason: 'the bracket closed; the field was not cleared');
+
+      // No hook answered the execute-time interpretation.
+      h.answerForExecution = (input) => null;
+      expect(await w.enter(), isTrue);
+      expect(w.log, ['logging on', 'logging off', 'logging on', 'logging off'], reason: 'nothing to run');
+      h.model.dispose();
+    });
   });
 }

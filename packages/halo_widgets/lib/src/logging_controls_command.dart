@@ -5,9 +5,9 @@
 // Called Bob", "//KEY". What the panel knows about the command being typed —
 // the debounced describe preview, the interpretation retained for the
 // field's input mode, the message the info area shows and the timer that
-// clears a confirmation — lives here. Running a command is the panel's:
-// `LoggingControls._log` dispatches the actions, and reports back through
-// [CommandInterpretationModel.showError] and [commandExecuted].
+// clears a confirmation — lives here, and so does what Enter does with a
+// command ([CommandInterpretationModel.runOnEnter]). The panel supplies
+// the field, the action dispatcher and its double-log guard.
 
 import 'dart:async';
 
@@ -276,7 +276,7 @@ class CommandInterpretationModel extends ChangeNotifier with PanelModel {
 
   /// Applies an interpret() result (or an [_onUpdate] push) to the
   /// retained/displayed state — describe preview or error only, never
-  /// `commands`: dispatching those is the log path's job alone, gated on the
+  /// `commands`: dispatching those is [runOnEnter]'s job alone, gated on the
   /// user actually pressing Enter, not on a command merely being interpreted.
   void apply(Map<String, dynamic>? result) {
     _current = result;
@@ -373,6 +373,80 @@ class CommandInterpretationModel extends ChangeNotifier with PanelModel {
     if (isDisposed || callText().call != call) return (interpretation: null, stale: true);
     if (applyToDisplay) apply(result);
     return (interpretation: result, stale: false);
+  }
+
+  /// Enter on the call field: whether the typed text is a command at all,
+  /// what it interprets to, and what to do about it. True when Enter was
+  /// consumed here — a command ran, a recognized one said why it cannot, or
+  /// the call moved on under an await; false when there is no command to
+  /// consider (editing a saved QSO, an empty field, no interpreter), when
+  /// the text is not a command, or when one still awaits its parameters —
+  /// and Enter falls through to logging.
+  ///
+  /// The panel keeps what is its own: [alreadyLogging] and [whileLogging]
+  /// are its double-log guard, which the two awaits here race against — key
+  /// auto-repeat fires well inside an extension round trip; [clearField]
+  /// empties the call field; [dispatch] runs the actions, and answers for
+  /// its own failures.
+  Future<bool> runOnEnter({
+    required bool Function() alreadyLogging,
+    required Future<void> Function(Future<void> Function() body) whileLogging,
+    required VoidCallback clearField,
+    required Future<void> Function(List<dynamic> commands, {required bool skipOnlineLookup}) dispatch,
+  }) async {
+    // Shortcuts only apply while composing a new QSO. A real callsign is
+    // exceedingly unlikely to parse as one, but editing an existing entry
+    // shouldn't run it through command interpretation at all, least of all
+    // while confirming a staged delete.
+    final cfg = config();
+    final call = callText().call;
+    if (cfg.editingQso != null || call.isEmpty || cfg.interpretCommand == null) return false;
+    final (:interpretation, :stale) = await interpretNow(applyToDisplay: false);
+    // [alreadyLogging] is read AFTER the await: the panel's entry guard ran
+    // before it, and its flag is not set until a branch commits to logging,
+    // so a second Enter arriving inside this window passed that guard too
+    // and is racing to the same QSO. This is the ordinary path, not an edge
+    // case — a plain callsign interprets to null, so nothing is ever cached
+    // and every logging Enter awaits here.
+    if (stale || alreadyLogging()) return true;
+    if (interpretation == null) return false;
+    // A recognized command that can't run in this context (its `error`
+    // field is set — see CommandInterpretation): surface the message, keep
+    // the typed input for editing, and execute nothing.
+    if (interpretation['error'] is String) {
+      showError(interpretation['error'] as String);
+      return true;
+    }
+    // A command still awaiting parameters (expectsParams) isn't complete —
+    // Enter shouldn't execute or clear the field, just fall through to
+    // ordinary logging (which normally rejects it, since it isn't a callsign
+    // either).
+    if (interpretation['expectsParams'] == true) return false;
+    await whileLogging(() async {
+      // The interpretation above may just be the debounce-time preview,
+      // whose `commands` a hook like SEED deliberately left cheap/empty
+      // (see CommandHook.interpret's `execute` doc) — re-interpret with
+      // execute:true now that we're actually about to run it.
+      final executable = await interpretForExecution();
+      if (isDisposed || callText().call != call) return; // stale — the call changed while awaiting
+      if (executable == null) return;
+      // A command can also fail at execute time (e.g. SOLAR/WEATHER's network
+      // fetch, or the hook timing out entirely) — surface the message and
+      // keep the typed input, same treatment as the preview-time `error`
+      // branch above.
+      if (executable['error'] is String) {
+        showError(executable['error'] as String);
+        return;
+      }
+      // The field first: clearing it fires the panel's call listener, which
+      // treats the change as a keystroke and drops the message — so the
+      // confirmation has to be set after it, or it is wiped as it appears.
+      clearField();
+      commandExecuted(confirm: executable['confirm']);
+      final commands = executable['commands'];
+      if (commands is List) await dispatch(commands, skipOnlineLookup: executable['skipOnlineLookup'] == true);
+    });
+    return true;
   }
 
   /// Interprets for execution — the debounce-time preview's `commands` a hook
