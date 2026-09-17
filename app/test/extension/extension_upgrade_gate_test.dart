@@ -51,5 +51,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget);
+
+    // The release notes paint OVER this dialog on a launch that has both. A
+    // barrier tap or Esc aimed at the notes must not pop the offer unseen as
+    // "Later" — only its own buttons answer it.
+    await tester.tapAt(const Offset(2, 2));
+    await tester.pumpAndSettle();
+    expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget, reason: 'a barrier tap dismissed the offer');
   });
 }

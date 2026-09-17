@@ -58,8 +58,12 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     final navigator = navigatorKey.currentContext;
     if (navigator == null || !navigator.mounted) return;
     final t = navigator.t.extensionsPanel;
+    // A launch with fresh release notes paints them over this dialog. Left
+    // dismissible, an Esc aimed at the notes would pop the offer unseen as
+    // "Later"; the operator answers it on the buttons, once they can see it.
     final accepted = await showDialog<bool>(
           context: navigator,
+          barrierDismissible: false,
           builder: (context) => HaloDialog(
             title: Text(t.upgradeTitle),
             content: Text(t.upgradeBody),
