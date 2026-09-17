@@ -4,7 +4,7 @@
 #
 # How to write one, and what never goes in: docs/releases.md §2.7.
 
-upcoming:
+"168":
   changes:
     - "WWFF, LLOTA, WWBOTA, MOTA, SiOTA, TOTA and ZLOTA references now autoformat as you type, like POTA's"
 
