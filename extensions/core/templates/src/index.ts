@@ -9,6 +9,8 @@
 // nothing else: the same `templateContext` every panel and export builds,
 // so a placeholder means the same thing in a CW message as in a pane.
 
+import { EXPORT_DEFAULTS, prepareExportOption, resolveExportSettings } from "@ham2k/extension-sdk"
+import type { ExportOption, ExportSettings, ExportTypeDefinition } from "@ham2k/extension-sdk"
 import { TemplateError, defineExtension, renderTemplate, templateContext } from "@ham2k/extension-sdk"
 import type { HookContext, JSONValue } from "@ham2k/extension-sdk"
 
@@ -19,6 +21,7 @@ export interface TemplateRenderArgs {
   operation?: Record<string, JSONValue>
   qso?: Record<string, JSONValue>
   qsoCount?: number
+  log?: Record<string, JSONValue>
 }
 
 /// `text` on success; `error` — the renderer's own message — when the
@@ -31,6 +34,7 @@ export interface TemplateRenderManyArgs {
   operation?: Record<string, JSONValue>
   qso?: Record<string, JSONValue>
   qsoCount?: number
+  log?: Record<string, JSONValue>
 }
 
 function renderOne(template: string, context: Record<string, unknown>): TemplateRenderResult {
@@ -43,11 +47,25 @@ function renderOne(template: string, context: Record<string, unknown>): Template
 }
 
 const TemplateHook = {
+  async exportSettings(args: { definitions: ExportTypeDefinition[]; global?: ExportSettings; overrides?: Record<string, ExportSettings> }) {
+    return [
+      { exportType: 'default', format: 'adif', label: '', defaults: EXPORT_DEFAULTS, settings: { ...EXPORT_DEFAULTS, ...args.global } },
+      ...args.definitions.map((definition) => ({
+        ...definition,
+        defaults: resolveExportSettings(definition, args.global),
+        settings: resolveExportSettings(definition, args.global, args.overrides?.[definition.exportType]),
+      })),
+    ]
+  },
+  async prepareExports(args: { options: (ExportOption & { exportSettings: ExportSettings })[]; operation: Record<string, JSONValue>; qsos: Record<string, JSONValue>[]; compactFilenames?: boolean }) {
+    return args.options.map((option) => prepareExportOption(option, args.operation, args.qsos, args.compactFilenames === true))
+  },
   async render(args: TemplateRenderArgs, ctx: HookContext): Promise<TemplateRenderResult> {
     const context = templateContext({
       operation: args.operation,
       qso: args.qso,
       qsoCount: args.qsoCount,
+      log: args.log,
       appName: ctx.appName,
     })
     return renderOne(args.template, context)
@@ -62,6 +80,7 @@ const TemplateHook = {
       operation: args.operation,
       qso: args.qso,
       qsoCount: args.qsoCount,
+      log: args.log,
       appName: ctx.appName,
     })
     return { results: (args.templates ?? []).map((template) => renderOne(template, context)) }

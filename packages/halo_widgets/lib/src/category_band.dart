@@ -37,7 +37,10 @@ class CategoryBand extends StatelessWidget {
   /// find.
   final Widget? trailing;
 
-  const CategoryBand(this.title, {super.key, this.color, this.subtitle, this.trailing});
+  /// A disclosure indicator or icon before the title.
+  final Widget? leading;
+
+  const CategoryBand(this.title, {super.key, this.color, this.subtitle, this.trailing, this.leading});
 
   @override
   Widget build(BuildContext context) {
@@ -52,6 +55,7 @@ class CategoryBand extends StatelessWidget {
         padding: EdgeInsets.fromLTRB(inset.left, Space.md, inset.right, Space.md),
         child: Row(
           children: [
+            if (leading != null) ...[leading!, const SizedBox(width: Space.md)],
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,

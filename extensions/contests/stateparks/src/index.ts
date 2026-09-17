@@ -21,6 +21,7 @@
 //   * Ohio exchanges a three-letter park abbreviation, which is this milestone's
 //     `kind: 'options'` field — 76 codes, searched, Space to accept.
 
+import { exportTypeDefinition } from "@ham2k/extension-sdk"
 import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, segmentsWith, startMillisOf, utcDateCompact } from "@ham2k/extension-sdk"
 import type {
@@ -377,7 +378,7 @@ function filenameFor(
 /// these two sponsors name in the filename and score the activation of.
 const POTA_ACTIVATION = 'potaActivation'
 
-/// Namespaces this hook's per-park exportType, and separates it from the ref.
+/// Namespaces this hook's per-park exportKey, and separates it from the ref.
 /// Split by prefix LENGTH, never by searching for the colon: a reference can
 /// contain one.
 const SPONSOR_ADIF = 'stateparks-adif'
@@ -396,9 +397,8 @@ function parksActivated(operation: Record<string, JSONValue>): string[] {
 ///
 /// Built here rather than through `exportFilename`'s compact form, which
 /// happens to render the same shape today: that form is the operator's
-/// preference and is on its way to being a template they can edit, while this
-/// one is a sponsor's requirement and has to survive them changing it. The
-/// slash of a portable callsign becomes a dash, as it must in any filename.
+/// preference; registered export settings use this sponsor pattern as their
+/// editable default. The slash of a portable callsign becomes a dash.
 function sponsorFilename(
   operation: Record<string, JSONValue>,
   qsos: Record<string, JSONValue>[],
@@ -412,6 +412,9 @@ function sponsorFilename(
 }
 
 const ExportHook = {
+  async getExportTypes() {
+    return [exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName), { exportType: SPONSOR_ADIF, format: 'adif', label: manifest.shortName, templateSample: { log: { ref: 'US-1234', refName: 'Example Park' } }, defaults: { filenameTemplate: '{{ log.station | dash }}@{{ log.ref }}-{{ op.dateCompact }}', compactFilenameTemplate: '{{ log.station | dash }}@{{ log.ref }}-{{ op.dateCompact }}' } }]
+  },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     const event = eventOn(args.operation)
     if (!event) return []
@@ -425,7 +428,8 @@ const ExportHook = {
     // which is `cabrilloName`, not the event key.
     if (event.exportsCabrillo) {
       return [{
-        exportType: 'cabrillo',
+        exportType: `${TYPE}-cabrillo`,
+        templateData: { activity: contestTag(args.operation) },
         format: 'cabrillo',
         label: t('cabrilloExport', { contest: contestTag(args.operation) }),
         filename: filenameFor(args.operation, args.qsos ?? [], 'log', args.compactFilenames),
@@ -442,7 +446,9 @@ const ExportHook = {
     if (!event.requiresNamedParkAdif) return []
 
     return parksActivated(args.operation).map((ref) => ({
-      exportType: `${SPONSOR_ADIF}${SEPARATOR}${ref}`,
+      exportType: SPONSOR_ADIF,
+      templateData: { activity: contestTag(args.operation), ref },
+      exportKey: `${SPONSOR_ADIF}${SEPARATOR}${ref}`,
       format: 'adif',
       label: t('sponsorAdifExport', { contest: contestTag(args.operation), ref }),
       filename: sponsorFilename(args.operation, args.qsos ?? [], ref),
@@ -465,10 +471,14 @@ const ExportHook = {
     const event = eventOn(args.operation)
     if (!event) return { filename: '', mimeType: '', content: '' }
 
-    if (exportType.startsWith(`${SPONSOR_ADIF}${SEPARATOR}`)) {
-      return await sponsorAdif(args, exportType.slice(SPONSOR_ADIF.length + SEPARATOR.length))
+    if (exportType === SPONSOR_ADIF) {
+      const exportKey = str(args.exportKey)
+      if (!exportKey.startsWith(`${SPONSOR_ADIF}${SEPARATOR}`)) {
+        throw new Error(`stateparks: unknown export key '${exportKey}'`)
+      }
+      return await sponsorAdif(args, exportKey.slice(SPONSOR_ADIF.length + SEPARATOR.length))
     }
-    if (exportType !== 'cabrillo') {
+    if (exportType !== `${TYPE}-cabrillo`) {
       return { filename: '', mimeType: '', content: '' }
     }
 
@@ -546,6 +556,10 @@ async function sponsorAdif(args: ExportRequest, wanted: string): Promise<ExportR
     qsos: args.qsos,
     segments: segmentsWith(args.segments, claimOnly),
     includePrivateData: args.includePrivateData,
+      includeLookupData: args.includeLookupData,
+      exportSettings: args.exportSettings,
+      exportData: args.exportData,
+      exportTitle: args.exportTitle,
     mainHandler: TYPE,
     includeFieldsFrom: ['pota'],
   })

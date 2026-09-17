@@ -323,6 +323,16 @@ class _HaLoAppState extends State<HaLoApp> {
         home: HomeView(services: widget.services),
         builder: (context, child) {
           if (child == null) return const SizedBox.shrink();
+          child = TemplateEditorScope(
+            preview: (template, sample) => widget.services.extensions.renderTemplate(
+              template,
+              operation: (sample['operation'] as Map?)?.cast<String, dynamic>(),
+              qso: (sample['qso'] as Map?)?.cast<String, dynamic>(),
+              log: (sample['log'] as Map?)?.cast<String, dynamic>(),
+              qsoCount: 25,
+            ),
+            child: child,
+          );
           final scale = widget.services.settings.fontScale.scaleFactor;
 
           // One knob scales the WHOLE interface (UiScale, halo_widgets) — not

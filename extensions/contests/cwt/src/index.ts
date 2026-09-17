@@ -17,6 +17,7 @@
 // — a `SuggestArgs.scoped` call — still offers the next four sessions on any
 // day, so setting one up in advance is never blocked.
 
+import { exportTypeDefinition } from "@ham2k/extension-sdk"
 import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
@@ -391,6 +392,9 @@ function filenameFor(
 }
 
 const ExportHook = {
+  async getExportTypes() {
+    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+  },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
@@ -398,7 +402,8 @@ const ExportHook = {
       filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
       {
-        exportType: 'contest-adif',
+        exportType: `${TYPE}-adif`,
+        templateData: { activity: filenameActivity(args.operation) },
         format: 'adif',
         label: t('adifExport', { contest: manifest.shortName }),
         filename: named('adi'),
@@ -406,7 +411,8 @@ const ExportHook = {
         refType: TYPE,
       },
       {
-        exportType: 'cabrillo',
+        exportType: `${TYPE}-cabrillo`,
+        templateData: { activity: filenameActivity(args.operation) },
         format: 'cabrillo',
         label: t('cabrilloExport', { contest: manifest.shortName }),
         filename: named('log'),
@@ -420,7 +426,7 @@ const ExportHook = {
     // Only the two exportTypes offered above. Belt and braces alongside the
     // keyed delegation in `adifForExport`: a hook answering for an exportType it never
     // offered makes the ADIF delegation recurse into itself.
-    if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
+    if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
       return { filename: '', mimeType: '', content: '' }
     }
 
@@ -429,7 +435,7 @@ const ExportHook = {
     const ourCall = str(operation.stationCall)
     const ours = ourExchange(opRef)
 
-    if (args.exportType === 'cabrillo') {
+    if (args.exportType === `${TYPE}-cabrillo`) {
       const power = POWER_CLASSES.find((entry) => entry.value === str(opRef?.power))
       const content = qsonToCabrillo(args.qsos, {
         headers: [
@@ -464,6 +470,10 @@ const ExportHook = {
       qsos: args.qsos,
       segments: args.segments,
       includePrivateData: args.includePrivateData,
+      includeLookupData: args.includeLookupData,
+      exportSettings: args.exportSettings,
+      exportData: args.exportData,
+      exportTitle: args.exportTitle,
       // This file is the CONTEST's log, so the core exporter asks this
       // extension's `adifFields` hook and no other's — app-polo's main
       // handler (see `ExportRequest.mainHandler`).

@@ -13,6 +13,7 @@
 // codes with names, searchable, Space to accept the top hit. app-polo hand-rolls
 // a suggestions list here; HaLo already has the control.
 
+import { exportTypeDefinition } from "@ham2k/extension-sdk"
 import {
   adifForExport,
   contestScorer,
@@ -391,18 +392,22 @@ const AdifFieldsHook = {
 }
 
 const ExportHook = {
+  async getExportTypes() {
+    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName)]
+  },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
     return [
-      { exportType: 'contest-adif', format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE },
+      { exportType: `${TYPE}-adif`,
+        templateData: { activity: manifest.shortName }, format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE },
     ]
   },
 
   async generateExport(args: ExportRequest, _ctx: HookContext): Promise<ExportResult> {
     // ADIF only: Winter Field Day asks entrants NOT to submit Cabrillo, so
     // offering it by default would hand over a file the organizers reject.
-    if (args.exportType !== 'contest-adif') {
+    if (args.exportType !== `${TYPE}-adif`) {
       return { filename: '', mimeType: '', content: '' }
     }
 
@@ -418,6 +423,10 @@ const ExportHook = {
       qsos: args.qsos,
       segments: args.segments,
       includePrivateData: args.includePrivateData,
+      includeLookupData: args.includeLookupData,
+      exportSettings: args.exportSettings,
+      exportData: args.exportData,
+      exportTitle: args.exportTitle,
       // This file is the CONTEST's log, so the core exporter asks this
       // extension's `adifFields` hook and no other's — app-polo's main
       // handler (see `ExportRequest.mainHandler`).

@@ -27,7 +27,7 @@ class _TemplateExtensions extends ExtensionService {
   Future<void> start() async {}
 
   @override
-  Future<String?> renderTemplate(String template, {Map<String, dynamic>? operation, Map<String, dynamic>? qso, int? qsoCount}) async =>
+  Future<String?> renderTemplate(String template, {Map<String, dynamic>? operation, Map<String, dynamic>? qso, int? qsoCount, Map<String, dynamic>? log}) async =>
       template.replaceAll('{{ qso.call }}', ((qso?['their'] as Map?)?['call'] as String?) ?? '');
 
   /// How many times the labels crossed the bridge — the batching is the point.

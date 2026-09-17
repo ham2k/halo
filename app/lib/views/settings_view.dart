@@ -821,6 +821,10 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       developerMode: widget.services.settings.developerMode,
       settingsList: true,
       onChange: _autosave,
+      onAction: (key, method, state) async {
+        await widget.group.openAction(context, key);
+        return null;
+      },
       onOpenLink: openExternalUrl,
       onOpenPanel: widget.openPanel,
       onSubmit: (_) {},

@@ -414,7 +414,10 @@ class _TargetSettingsFormState extends State<_TargetSettingsForm> {
 
   Future<FormActionResult?> _onAction(String actionKey, String method, Map<String, dynamic> state) async {
     final route = _extensionActionForKey[actionKey];
-    if (route == null) return null; // core groups declare no actions today.
+    if (route == null) {
+      await _groupForKey[actionKey]?.openAction(context, actionKey);
+      return null;
+    }
     final message = await widget.services.extensions.runSettingsAction(
       hookKey: route.hookKey,
       panelKey: route.panelKey,

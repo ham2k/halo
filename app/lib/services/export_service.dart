@@ -19,6 +19,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:halo_core/halo_core.dart';
 
 import 'android_file_save.dart';
+import 'export_preferences.dart';
 import 'extension_service.dart';
 import 'settings_service.dart';
 import 'web_download.dart';
@@ -294,6 +295,8 @@ class ExportService {
     // replaced.
     if (log == null) return <Map<String, dynamic>>[];
     final calls = log.segmented.allStationCalls;
+    final types = await extensions.exportTypeSettings(settings.exportGlobalSettings, settings.exportTypeOverrides);
+    final settingsByType = {for (final type in types) type['exportType']: type['settings']};
 
     final perCall = await Future.wait(calls.map((call) async {
       final payload = _payloadAs(call, operation, log.qsos, log.segmented);
@@ -312,10 +315,32 @@ class ExportService {
         (payload['operation'] as Map<String, dynamic>)['refs'] = log.segmented.allRefs;
       }
 
-      final options = await extensions.getExportOptions({
+      var options = await extensions.getExportOptions({
         ...payload,
         'compactFilenames': settings.useCompactFileNames,
       });
+      final registered = [
+        for (final option in options)
+          if (settingsByType.containsKey(option['exportType']))
+            {
+              ...option,
+              'exportSettings': settingsByType[option['exportType']],
+              // Match generation's activity and station scope. A hook may
+              // narrow it further, as a hunter log does, and supplies its count.
+              'qsoCount': option['qsoCount'] ??
+                  (_payloadAs(call, operation, _qsosForOption(option, log.qsos, log.segmented), log.segmented)['qsos'] as List).length,
+            },
+      ];
+      if (registered.isNotEmpty) {
+        final prepared = await extensions.prepareExports({
+          ...payload,
+          'options': registered,
+          'compactFilenames': settings.useCompactFileNames,
+        });
+        var index = 0;
+        options = [for (final option in options)
+          if (settingsByType.containsKey(option['exportType'])) prepared[index++] else option];
+      }
       return [
         for (final option in options) {...option, 'stationCall': call},
       ];
@@ -372,7 +397,7 @@ class ExportService {
       // generated against a base operation that no longer carries the activity.
       // For a contest that produced a file with no content and no name; for
       // `activityExportHook`, which throws when it can't find the reference its
-      // exportType names, it produces an outright export failure.
+      // exportKey names, it produces an outright export failure.
       //
       // NARROWER than the options call, deliberately. That one has to show every
       // hook every ref, since it is asking who has anything to offer. Here the
@@ -399,12 +424,16 @@ class ExportService {
         args: {
           ...args,
           'exportType': option['exportType'],
+          'exportKey': option['exportKey'] ?? option['exportType'],
           'compactFilenames': settings.useCompactFileNames,
-          // The whole-log backup opts out of the setting entirely (it is the
-          // copy the operator keeps); everything else — the files that get
-          // uploaded — respects it.
-          'includePrivateData':
-              option['alwaysIncludePrivateData'] == true || settings.includePrivateData,
+          'exportSettings': option['exportSettings'],
+          'exportData': option['exportData'],
+          'exportTitle': option['exportTitle'],
+          if (option['format'] == null || option['format'] == 'adif') ...{
+            'includeLookupData': (option['exportSettings'] as Map?)?['includeLookupData'] ?? true,
+            'includePrivateData': (option['exportSettings'] as Map?)?['includePrivateData'] ??
+                (option['alwaysIncludePrivateData'] == true || settings.includePrivateData),
+          },
         },
         timeout: const Duration(seconds: 30),
       ) as Map;

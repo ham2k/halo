@@ -75,6 +75,8 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$switchAccounts$en switchAccounts = Translations$switchAccounts$en.internal(_root);
 	late final Translations$adifImport$en adifImport = Translations$adifImport$en.internal(_root);
 	late final Translations$offline$en offline = Translations$offline$en.internal(_root);
+	late final Translations$exportSettings$en exportSettings = Translations$exportSettings$en.internal(_root);
+	late final Translations$templateEditor$en templateEditor = Translations$templateEditor$en.internal(_root);
 }
 
 // Path: common
@@ -2305,6 +2307,120 @@ class Translations$offline$en {
 
 	/// en: 'Already trying — hang on.'
 	String get retryInFlight => 'Already trying — hang on.';
+}
+
+// Path: exportSettings
+class Translations$exportSettings$en {
+	Translations$exportSettings$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Export settings could not be loaded.'
+	String get loadFailed => 'Export settings could not be loaded.';
+
+	/// en: 'Retry'
+	String get retry => 'Retry';
+
+	/// en: 'Compact filenames, such as N0CALL@US-1234-20260715.adi.'
+	String get compactFileNamesDescriptionOn => 'Compact filenames, such as N0CALL@US-1234-20260715.adi.';
+
+	/// en: 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.'
+	String get compactFileNamesDescriptionOff => 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.';
+
+	/// en: 'Names, towns, notes, and precise locations are included in ADIF files.'
+	String get includePrivateDataDescriptionOn => 'Names, towns, notes, and precise locations are included in ADIF files.';
+
+	/// en: 'Names, towns, and notes are omitted; locations are limited to six-character grids.'
+	String get includePrivateDataDescriptionOff => 'Names, towns, and notes are omitted; locations are limited to six-character grids.';
+
+	/// en: 'Information from callsign lookup services is included.'
+	String get includeLookupDataDescriptionOn => 'Information from callsign lookup services is included.';
+
+	/// en: 'Information from callsign lookup services is omitted; manually entered values are kept.'
+	String get includeLookupDataDescriptionOff => 'Information from callsign lookup services is omitted; manually entered values are kept.';
+
+	/// en: 'Your custom templates are active and can be edited below.'
+	String get customTemplatesDescriptionOn => 'Your custom templates are active and can be edited below.';
+
+	/// en: 'Default templates are active. Your custom templates are kept for later.'
+	String get customTemplatesDescriptionOff => 'Default templates are active. Your custom templates are kept for later.';
+
+	/// en: 'Export type'
+	String get type => 'Export type';
+
+	/// en: 'Defaults'
+	String get defaults => 'Defaults';
+
+	/// en: 'Include lookup data'
+	String get includeLookupData => 'Include lookup data';
+
+	/// en: 'Custom templates'
+	String get customTemplates => 'Custom templates';
+
+	/// en: 'File name template'
+	String get filenameTemplate => 'File name template';
+
+	/// en: 'Compact file name template'
+	String get compactFilenameTemplate => 'Compact file name template';
+
+	/// en: 'Title template'
+	String get titleTemplate => 'Title template';
+
+	/// en: 'ADIF QSO Notes'
+	String get adifNotesTemplate => 'ADIF QSO Notes';
+
+	/// en: 'ADIF QSO Comments'
+	String get adifCommentTemplate => 'ADIF QSO Comments';
+
+	/// en: 'ADIF QSL Message'
+	String get adifQslMessageTemplate => 'ADIF QSL Message';
+
+	/// en: 'Settings apply to every extension using this export type.'
+	String get shared => 'Settings apply to every extension using this export type.';
+
+	/// en: 'Turn on Custom templates to edit this type’s templates.'
+	String get defaultTemplates => 'Turn on Custom templates to edit this type’s templates.';
+}
+
+// Path: templateEditor
+class Translations$templateEditor$en {
+	Translations$templateEditor$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Preview:'
+	String get previewLabel => 'Preview:';
+
+	/// en: 'Reset'
+	String get reset => 'Reset';
+
+	/// en: 'Templating Docs'
+	String get docs => 'Templating Docs';
+
+	/// en: 'Sample preview'
+	String get preview => 'Sample preview';
+
+	/// en: 'Template reference'
+	String get reference => 'Template reference';
+
+	/// en: 'Available Attributes'
+	String get attributes => 'Available Attributes';
+
+	/// en: 'Filters'
+	String get filters => 'Filters';
+
+	/// en: 'Flow Control'
+	String get flowControl => 'Flow Control';
+
+	/// en: 'Preview is unavailable until extensions are ready.'
+	String get unavailable => 'Preview is unavailable until extensions are ready.';
+
+	/// en: '(empty output)'
+	String get empty => '(empty output)';
 }
 
 // Path: home.nav
@@ -8185,6 +8301,38 @@ extension on Translations {
 			'offline.retryDisabled' => 'Sync is switched off, so there is nothing to probe with.',
 			'offline.syncService' => 'Ham2K LoFi sync',
 			'offline.retryInFlight' => 'Already trying — hang on.',
+			'exportSettings.loadFailed' => 'Export settings could not be loaded.',
+			'exportSettings.retry' => 'Retry',
+			'exportSettings.compactFileNamesDescriptionOn' => 'Compact filenames, such as N0CALL@US-1234-20260715.adi.',
+			'exportSettings.compactFileNamesDescriptionOff' => 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.',
+			'exportSettings.includePrivateDataDescriptionOn' => 'Names, towns, notes, and precise locations are included in ADIF files.',
+			'exportSettings.includePrivateDataDescriptionOff' => 'Names, towns, and notes are omitted; locations are limited to six-character grids.',
+			'exportSettings.includeLookupDataDescriptionOn' => 'Information from callsign lookup services is included.',
+			'exportSettings.includeLookupDataDescriptionOff' => 'Information from callsign lookup services is omitted; manually entered values are kept.',
+			'exportSettings.customTemplatesDescriptionOn' => 'Your custom templates are active and can be edited below.',
+			'exportSettings.customTemplatesDescriptionOff' => 'Default templates are active. Your custom templates are kept for later.',
+			'exportSettings.type' => 'Export type',
+			'exportSettings.defaults' => 'Defaults',
+			'exportSettings.includeLookupData' => 'Include lookup data',
+			'exportSettings.customTemplates' => 'Custom templates',
+			'exportSettings.filenameTemplate' => 'File name template',
+			'exportSettings.compactFilenameTemplate' => 'Compact file name template',
+			'exportSettings.titleTemplate' => 'Title template',
+			'exportSettings.adifNotesTemplate' => 'ADIF QSO Notes',
+			'exportSettings.adifCommentTemplate' => 'ADIF QSO Comments',
+			'exportSettings.adifQslMessageTemplate' => 'ADIF QSL Message',
+			'exportSettings.shared' => 'Settings apply to every extension using this export type.',
+			'exportSettings.defaultTemplates' => 'Turn on Custom templates to edit this type’s templates.',
+			'templateEditor.previewLabel' => 'Preview:',
+			'templateEditor.reset' => 'Reset',
+			'templateEditor.docs' => 'Templating Docs',
+			'templateEditor.preview' => 'Sample preview',
+			'templateEditor.reference' => 'Template reference',
+			'templateEditor.attributes' => 'Available Attributes',
+			'templateEditor.filters' => 'Filters',
+			'templateEditor.flowControl' => 'Flow Control',
+			'templateEditor.unavailable' => 'Preview is unavailable until extensions are ready.',
+			'templateEditor.empty' => '(empty output)',
 			_ => null,
 		};
 	}

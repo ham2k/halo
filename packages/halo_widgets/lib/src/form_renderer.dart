@@ -22,6 +22,7 @@ import 'section_header.dart';
 import 'spacing.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
+import 'text_template_editor.dart';
 
 typedef FormValidator = Future<String?> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
 typedef FormTransformer = Future<dynamic> Function(String fieldKey, dynamic value, Map<String, dynamic> state);
@@ -488,7 +489,7 @@ class FormRendererState extends State<FormRenderer> {
     final focusNode = FocusNode();
     _focusNodes[key] = focusNode;
 
-    if (['text', 'multiline', 'email', 'callsign', 'number', 'secret'].contains(fieldType)) {
+    if (['text', 'multiline', 'textTemplate', 'email', 'callsign', 'number', 'secret'].contains(fieldType)) {
       // A number is SHOWN in the operator's own conventions and read back in
       // the same ones — see `_numberText`. `toString()` here would print a
       // period into a field whose decimal key types a comma, so the first
@@ -950,6 +951,7 @@ class FormRendererState extends State<FormRenderer> {
   /// control to hang off a labeled row.
   Widget _buildField(Map<String, dynamic> el, ThemeData theme) {
     final fieldType = el['fieldType'] as String?;
+    if (fieldType == 'textTemplate') return _buildTextRow(el, fieldType!, theme);
     // The surface decides, with `icon` as the standing exception: a form
     // whose element asked for the row shape still gets it, which is how
     // several extension forms already read.
@@ -1418,7 +1420,12 @@ class FormRendererState extends State<FormRenderer> {
       contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
-      subtitle: subtitle,
+      subtitle: fieldType == 'textTemplate'
+          ? Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+              ?subtitle,
+              TemplateSamplePreview(field: el, value: _displayValue(el, fieldType)),
+            ])
+          : subtitle,
       trailing: Icon(MdiIcons.chevronRight, color: devModeColor ?? theme.colorScheme.onSurfaceVariant),
       // Greyed rather than hidden, exactly as the inline field was — see the
       // `disabled` note on the text branch of [_buildField].
@@ -1452,6 +1459,11 @@ class FormRendererState extends State<FormRenderer> {
   /// keystroke to the settings store.
   Future<void> _openTextDialog(Map<String, dynamic> el, String fieldType) async {
     final key = el['key'] as String;
+    if (fieldType == 'textTemplate') {
+      final text = await showTextTemplateEditor(context, field: el, value: _controllerTextFor(key, _values[key]));
+      if (text != null && mounted) _commitTextEdit(el, fieldType, text);
+      return;
+    }
 
     await showHaloDialog<void>(
       context: context,
@@ -2386,6 +2398,16 @@ class FormRendererState extends State<FormRenderer> {
     final method = el['method'] as String? ?? '';
     final isRunning = _runningActions.contains(actionKey);
     final devModeColor = _devModeColor(el);
+    if (el['style'] == 'row') {
+      return ListTile(
+        contentPadding: _rowContentPadding,
+        leading: Icon(resolveIconName(el['icon'] as String? ?? 'cog-outline')),
+        title: Text(label),
+        trailing: Icon(MdiIcons.chevronRight),
+        onTap: widget.onAction == null || isRunning ? null : () => _runAction(actionKey, method),
+      );
+    }
+
 
     return Padding(
       padding: _rowContentPadding,

@@ -265,7 +265,7 @@ void main() {
     test('the Cabrillo line carries both stations, ours first', () async {
       final host = await hostFor('fd');
       final result = await host.invokeHook('export', key: 'fd', method: 'generateExport', args: {
-        'exportType': 'cabrillo',
+        'exportType': 'fd-cabrillo',
         'operation': {'stationCall': 'W1AW', 'refs': [{'type': 'fd', 'ourClass': '1D', 'ourSection': 'CT'}]},
         'qsos': [contestQso('fd', 'K1AAA', band: '20m', mode: 'SSB', theirClass: '2A', section: 'ENY')],
       }, timeout: const Duration(seconds: 20)) as Map;

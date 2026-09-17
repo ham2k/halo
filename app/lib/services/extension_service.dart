@@ -23,6 +23,7 @@ import 'package:halo_core/halo_core.dart';
 import 'catalog_service.dart';
 import 'connectivity_service.dart';
 import 'error_reporting_service.dart';
+import 'export_type_registry.dart';
 import 'extension_account_cache.dart';
 import 'extension_info.dart';
 import 'extension_keychain.dart';
@@ -744,6 +745,31 @@ class ExtensionService implements PanelExtensionSource {
       ))
           .items;
 
+  /// A shared type is listed once, using the highest-priority registration.
+  Future<List<Map<String, dynamic>>> getExportTypes() async {
+    final host = this.host;
+    return host == null ? [] : collectExportTypes(host);
+  }
+
+  Future<List<Map<String, dynamic>>> exportTypeSettings(
+    Map<String, dynamic> global,
+    Map<String, dynamic> Function(String type) overrides,
+  ) async {
+    if (host == null) return [];
+    final definitions = await getExportTypes();
+    final result = await host!.invokeHook('template', key: 'templates', method: 'exportSettings', args: {
+      'definitions': definitions,
+      'global': global,
+      'overrides': {for (final definition in definitions) definition['exportType'] as String: overrides(definition['exportType'] as String)},
+    });
+    return (result as List? ?? []).map((value) => Map<String, dynamic>.from(value as Map)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> prepareExports(Map<String, dynamic> args) async {
+    final result = await host!.invokeHook('template', key: 'templates', method: 'prepareExports', args: args);
+    return (result as List).map((value) => Map<String, dynamic>.from(value as Map)).toList();
+  }
+
   /// Every `spots` hook currently willing to post a spot (Spotting
   /// control), each tagged with `hookKey` so a later
   /// `sendSpot` call can be routed back to it. Calls `isSelfSpotEnabled`
@@ -1161,6 +1187,7 @@ class ExtensionService implements PanelExtensionSource {
     Map<String, dynamic>? operation,
     Map<String, dynamic>? qso,
     int? qsoCount,
+    Map<String, dynamic>? log,
   }) async {
     final host = this.host;
     if (host == null) return null;
@@ -1173,6 +1200,7 @@ class ExtensionService implements PanelExtensionSource {
         'operation': ?operation,
         'qso': ?qso,
         'qsoCount': ?qsoCount,
+        'log': ?log,
       },
       timeout: const Duration(seconds: 2),
     );

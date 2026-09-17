@@ -10,6 +10,7 @@
 // `ref` field as `${mode}-${year}` ("SSB-2026"), so the two runnings of one
 // year stay distinct events with distinct logs.
 
+import { exportTypeDefinition } from "@ham2k/extension-sdk"
 import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
@@ -338,6 +339,9 @@ function filenameFor(
 }
 
 const ExportHook = {
+  async getExportTypes() {
+    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+  },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
@@ -345,7 +349,8 @@ const ExportHook = {
       filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
       {
-        exportType: 'contest-adif',
+        exportType: `${TYPE}-adif`,
+        templateData: { activity: modeOfRef(str(refOfType(args.operation, TYPE)?.ref)) ? `R1-FD-${modeOfRef(str(refOfType(args.operation, TYPE)?.ref))}` : 'R1-FD' },
         format: 'adif',
         label: t('adifExport', { contest: manifest.shortName }),
         filename: named('adi'),
@@ -353,7 +358,8 @@ const ExportHook = {
         refType: TYPE,
       },
       {
-        exportType: 'cabrillo',
+        exportType: `${TYPE}-cabrillo`,
+        templateData: { activity: modeOfRef(str(refOfType(args.operation, TYPE)?.ref)) ? `R1-FD-${modeOfRef(str(refOfType(args.operation, TYPE)?.ref))}` : 'R1-FD' },
         format: 'cabrillo',
         label: t('cabrilloExport', { contest: manifest.shortName }),
         filename: named('log'),
@@ -367,7 +373,7 @@ const ExportHook = {
     // Only the two exportTypes offered above — a hook that answers for an
     // exportType it never offered makes the ADIF delegation recurse into
     // itself.
-    if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
+    if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
       return { filename: '', mimeType: '', content: '' }
     }
 
@@ -375,7 +381,7 @@ const ExportHook = {
     const opRef = refOfType(operation, TYPE)
     const ourCall = str(operation.stationCall)
 
-    if (args.exportType === 'cabrillo') {
+    if (args.exportType === `${TYPE}-cabrillo`) {
       // The CATEGORY block the DARC's sample logs show; the checker reads the
       // entry class from these lines, not from a claimed-category name.
       const mode = modeOfRef(str(opRef?.ref))
@@ -412,6 +418,10 @@ const ExportHook = {
       qsos: args.qsos,
       segments: args.segments,
       includePrivateData: args.includePrivateData,
+      includeLookupData: args.includeLookupData,
+      exportSettings: args.exportSettings,
+      exportData: args.exportData,
+      exportTitle: args.exportTitle,
       // This file is the CONTEST's log, so the core exporter asks this
       // extension's `adifFields` hook and no other's.
       mainHandler: TYPE,

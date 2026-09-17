@@ -753,6 +753,10 @@ defineExtension({
         key: 'pota',
         label: 'POTA',
         activationType: ACTIVATION_TYPE,
+        templateSample: {
+          log: { ref: 'US-1234', refName: 'Example Park' },
+          operation: { refs: [{ type: ACTIVATION_TYPE, ref: 'US-1234' }] },
+        },
         icon: 'pine-tree',
         // A park worked through a bird is still a park activation, and POTA's
         // uploader reads PROP_MODE/SAT_NAME — so the satellite's fields ride

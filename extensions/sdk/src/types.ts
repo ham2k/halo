@@ -775,7 +775,37 @@ export interface AdifImportHook {
   ): Promise<(AdifImportResult | null)[]>
 }
 
+/// Settings shared by every extension offering the same registered export type.
+export interface ExportSettings {
+  includePrivateData?: boolean
+  includeLookupData?: boolean
+  customTemplates?: boolean
+  filenameTemplate?: string
+  compactFilenameTemplate?: string
+  titleTemplate?: string
+  adifNotesTemplate?: string
+  adifCommentTemplate?: string
+  adifQslMessageTemplate?: string
+}
+
+export interface ExportTypeDefinition {
+  /// Global settings identity. Prefer `<activationType>-<format>` so another
+  /// extension serving the same activity can reuse it.
+  exportType: string
+  label: string
+  format: string
+  activationType?: string
+  defaults?: ExportSettings
+  /// Illustrative operation/log values used by the template editor.
+  templateSample?: Record<string, JSONValue>
+}
+
 export interface ExportRequest {
+  exportSettings?: ExportSettings
+  /// Metadata of the selected file for templates, preserved through delegation.
+  exportData?: Record<string, JSONValue>
+  exportTitle?: string
+  includeLookupData?: boolean
   operation: Record<string, JSONValue>
   qsos: Record<string, JSONValue>[]
   /// Present only when the operation has segments — the same payload
@@ -783,9 +813,11 @@ export interface ExportRequest {
   /// contact (a rover's county, the call at the key) the way the scorer does.
   /// `operationForQso` resolves one contact's operation from it.
   segments?: OperationSegmentPayload[]
-  /// Which of this hook's suggested options to generate — required once a
-  /// hook offers more than one via `suggestExportOptions`.
+  /// Stable kind of export, as returned by `suggestExportOptions`.
   exportType?: string
+  /// Selected option identity, passed back unchanged. Defaults to exportType
+  /// when the option omits exportKey.
+  exportKey?: string
   /// The user's "Use compact file names" setting. Pass it straight to
   /// `exportFilename` rather than branching on it: see exportNames.ts.
   compactFilenames?: boolean
@@ -845,11 +877,20 @@ export interface ExportOptionsRequest {
   compactFilenames?: boolean
 }
 
-/// One selectable export offered by a hook. `exportType` only needs to be
-/// unique within the hook that returned it — the core pairs it with the
-/// hook's own registration key when routing a later `generateExport` call.
+/// One selectable export offered by a hook. The core routes generation by
+/// the hook registration key and passes back both exportType and exportKey.
 export interface ExportOption {
+  /// Number of contacts after hook-specific filtering; otherwise derived by
+  /// the host from refType and station scope.
+  qsoCount?: number
+  /// File-specific template values under `log` (ref, refName, activity, modifier…).
+  templateData?: Record<string, JSONValue>
+  /// Stable export kind, shared by instances such as individual park logs.
   exportType: string
+  /// Unique option identity within this hook, e.g. "pota-adif:US-1234".
+  /// Omit when this hook offers only one option of this exportType; the core
+  /// then uses exportType as the key. Keep it stable across option reloads.
+  exportKey?: string
   /// Drives the panel's default mimeType/extension guess, e.g. 'adif'.
   format: string
   label: string
@@ -895,6 +936,8 @@ export interface ExportOption {
 }
 
 export interface ExportHook {
+  /// Registered independently of any operation, for the export settings UI.
+  getExportTypes?(args: Record<string, never>, ctx: HookContext): Promise<ExportTypeDefinition[]>
   /// Lists the export(s) this hook offers for the given operation/qsos, for
   /// the Exports Panel to show as selectable options. A hook that omits
   /// this never appears in the panel.
@@ -1925,6 +1968,7 @@ export interface DataFileDefinition {
 export type FormFieldType =
   | 'text'
   | 'multiline'
+  | 'textTemplate'
   | 'email'
   | 'callsign'
   | 'number'
@@ -1955,6 +1999,10 @@ export interface FormField {
   label: string
   value?: any
   placeholder?: string
+  /// Text-template editor vocabulary: filenames/titles or per-QSO ADIF fields.
+  templateContext?: 'export' | 'adif' | 'text'
+  /// Sample inputs for the preview (operation, qso, log).
+  templateSample?: Record<string, JSONValue>
   /// Forces typed input to uppercase (formatter, not just a soft-keyboard
   /// capitalization hint) on the text-like field types. `callsign` fields
   /// are always uppercase without this flag; use it for other logging data
@@ -2137,6 +2185,9 @@ export interface FormMarkdownBlock {
 /// result banner. Declarative like `NoticeAction` below — core renders and
 /// dispatches it, the hook just returns a result.
 export interface FormActionElement {
+  /// Row presentation opens a secondary surface; the default is a button.
+  style?: 'row'
+  icon?: string
   type: 'action'
   key: string
   label: string

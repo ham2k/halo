@@ -8,7 +8,7 @@
 // you were at.
 //
 // Driven through the real runtime with both bundles, because the whole
-// mechanism is `exportType` round-tripping through the core and the activity
+// mechanism is `exportKey` round-tripping through the core and the activity
 // delegating back to the `adif` extension inside the same kernel — a stub would
 // prove neither.
 
@@ -62,18 +62,40 @@ void main() {
     // offers several files for the same reference, and the reference alone
     // said nothing about which of them a row was.
     expect(options.map((o) => o['label']), ['ADIF for POTA US-0001', 'ADIF for POTA US-0002']);
-    // The exportType carries which park, since that is all the core gives back.
-    expect(options.map((o) => o['exportType']), ['pota-adif:US-0001', 'pota-adif:US-0002']);
+    // A stable kind groups park logs; distinct keys keep each park selectable.
+    expect(options.map((o) => o['exportType']), ['potaActivation-adif', 'potaActivation-adif']);
+    expect(options.map((o) => o['exportKey']), ['pota-adif:US-0001', 'pota-adif:US-0002']);
     // Distinct filenames, so two selected exports don't collide on disk.
     expect(options[0]['filename'], isNot(options[1]['filename']));
     // Declared so the core slices to segments where POTA was actually running.
     expect(options.every((o) => o['refType'] == 'potaActivation'), isTrue);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
+  test('a per-park export requires a valid instance key', () async {
+    final host = await startHost();
+    for (final key in [null, 'potaActivation-adif', 'sota-adif:US-0001']) {
+      await expectLater(
+        host.invokeHook(
+          'export',
+          key: 'pota',
+          method: 'generateExport',
+          args: {
+            'operation': operation(['US-0001']),
+            'qsos': qsos,
+            'exportType': 'potaActivation-adif',
+            'exportKey': ?key,
+          },
+          timeout: const Duration(seconds: 20),
+        ),
+        throwsA(anything),
+      );
+    }
+  });
+
   test('each file claims only its own park', () async {
     final host = await startHost();
 
-    Future<String> generate(String exportType) async {
+    Future<String> generate(String exportKey) async {
       final result = await host.invokeHook(
         'export',
         key: 'pota',
@@ -81,7 +103,8 @@ void main() {
         args: {
           'operation': operation(['US-0001', 'US-0002']),
           'qsos': qsos,
-          'exportType': exportType,
+          'exportType': 'potaActivation-adif',
+          'exportKey': exportKey,
         },
         timeout: const Duration(seconds: 20),
       ) as Map;
@@ -120,7 +143,7 @@ void main() {
       'export',
       key: 'pota',
       method: 'generateExport',
-      args: {'operation': base, 'qsos': qsos, 'segments': segments, 'exportType': 'pota-adif:US-0002'},
+      args: {'operation': base, 'qsos': qsos, 'segments': segments, 'exportType': 'potaActivation-adif', 'exportKey': 'pota-adif:US-0002'},
       timeout: const Duration(seconds: 20),
     ) as Map;
     final content = result['content'] as String;
@@ -158,7 +181,8 @@ void main() {
             ],
           },
         ],
-        'exportType': 'pota-adif:US-0001',
+        'exportType': 'potaActivation-adif',
+        'exportKey': 'pota-adif:US-0001',
       },
       timeout: const Duration(seconds: 20),
     ) as Map;
@@ -244,7 +268,8 @@ void main() {
             'refs': [{'type': 'satellite', 'ref': 'SO-50'}],
           },
         ],
-        'exportType': 'pota-adif:US-0001',
+        'exportType': 'potaActivation-adif',
+        'exportKey': 'pota-adif:US-0001',
       },
       timeout: const Duration(seconds: 20),
     ) as Map;
@@ -280,7 +305,8 @@ void main() {
           'qsos': [
             {...qsos.first, 'refs': [{'type': 'satellite', 'ref': 'SO-50'}]},
           ],
-          'exportType': 'pota-adif:US-0001',
+          'exportType': 'potaActivation-adif',
+          'exportKey': 'pota-adif:US-0001',
         },
         timeout: const Duration(seconds: 20),
       ),
@@ -377,7 +403,8 @@ void main() {
         args: {
           'operation': operation(['US-0001']),
           'qsos': qsos,
-          'exportType': 'pota-adif:US-0002',
+          'exportType': 'potaActivation-adif',
+          'exportKey': 'pota-adif:US-0002',
         },
         timeout: const Duration(seconds: 20),
       ),
@@ -424,7 +451,8 @@ void main() {
               'notes': 'met at Hamvention',
             },
           ],
-          'exportType': 'pota-adif:US-0001',
+          'exportType': 'potaActivation-adif',
+          'exportKey': 'pota-adif:US-0001',
           'includePrivateData': includePrivateData,
         },
         timeout: const Duration(seconds: 20),

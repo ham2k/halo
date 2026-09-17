@@ -116,7 +116,7 @@ void main() {
             ],
           },
           'qsos': qsosFor(key),
-          'exportType': 'contest-adif',
+          'exportType': '$key-adif',
         },
         timeout: const Duration(seconds: 10),
       ) as Map?;
@@ -150,7 +150,7 @@ void main() {
                 'their': {'call': 'W0AW', 'name': 'Alice', 'city': 'Dayton'},
               },
             ],
-            'exportType': 'contest-adif',
+            'exportType': '$key-adif',
             'includePrivateData': includePrivateData,
           },
           timeout: const Duration(seconds: 10),
@@ -189,7 +189,7 @@ void main() {
               ],
             },
           ],
-          'exportType': 'contest-adif',
+          'exportType': '$key-adif',
         },
         timeout: const Duration(seconds: 10),
       ) as Map;
@@ -266,7 +266,7 @@ void main() {
     // recommended POTA log format"), so POTA's own per-park export is the
     // submission and this extension offers nothing.
     final host = await sharedHost(['stateparks']);
-    Future<List<String>> typesFor(String event, {List<Map<String, dynamic>> parks = const []}) async {
+    Future<List<String>> keysFor(String event, {List<Map<String, dynamic>> parks = const []}) async {
       final base = operationFor('stateparks', event: event);
       final options = await host.invokeHook(
         'export',
@@ -278,7 +278,10 @@ void main() {
         },
         timeout: const Duration(seconds: 10),
       ) as List?;
-      return (options ?? []).map((o) => (o as Map)['exportType'] as String).toList();
+      if (event == 'TXSP' || event == 'GASP') {
+        expect((options ?? []).map((o) => (o as Map)['exportType']), everyElement('stateparks-adif'));
+      }
+      return (options ?? []).map((o) => ((o as Map)['exportKey'] ?? o['exportType']) as String).toList();
     }
 
     const twoParks = [
@@ -286,16 +289,16 @@ void main() {
       {'type': 'potaActivation', 'ref': 'US-3051'},
     ];
 
-    expect(await typesFor('OHSP', parks: twoParks), ['cabrillo'],
+    expect(await keysFor('OHSP', parks: twoParks), ['stateparks-cabrillo'],
         reason: 'a Cabrillo covers the whole entry, however many parks it was from');
-    expect(await typesFor('FLSP', parks: twoParks), isEmpty);
+    expect(await keysFor('FLSP', parks: twoParks), isEmpty);
     // One file per park, because the sponsor's filename names exactly one.
-    expect(await typesFor('TXSP', parks: twoParks),
+    expect(await keysFor('TXSP', parks: twoParks),
         ['stateparks-adif:US-2195', 'stateparks-adif:US-3051']);
-    expect(await typesFor('GASP', parks: twoParks),
+    expect(await keysFor('GASP', parks: twoParks),
         ['stateparks-adif:US-2195', 'stateparks-adif:US-3051']);
     // No park activated, nothing to name and nothing to submit.
-    expect(await typesFor('TXSP'), isEmpty);
+    expect(await keysFor('TXSP'), isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // Texas's uploader takes the park from the FILENAME, and Georgia §7.2.1
@@ -368,7 +371,8 @@ void main() {
             ],
           },
         ],
-        'exportType': 'stateparks-adif:US-3051',
+        'exportType': 'stateparks-adif',
+        'exportKey': 'stateparks-adif:US-3051',
       },
       timeout: const Duration(seconds: 10),
     ) as Map;
@@ -393,7 +397,8 @@ void main() {
         args: {
           'operation': operationFor('stateparks', event: 'TXSP'),
           'qsos': qsosFor('stateparks'),
-          'exportType': 'stateparks-adif:US-3051',
+          'exportType': 'stateparks-adif',
+          'exportKey': 'stateparks-adif:US-3051',
         },
         timeout: const Duration(seconds: 10),
       ),
@@ -445,7 +450,7 @@ void main() {
             'startAtMillis': DateTime.utc(2026, 9, 12, 15, 0).millisecondsSinceEpoch,
           },
         ],
-        'exportType': 'cabrillo',
+        'exportType': 'stateparks-cabrillo',
       },
       timeout: const Duration(seconds: 10),
     ) as Map?;

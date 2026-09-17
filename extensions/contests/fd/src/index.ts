@@ -10,6 +10,7 @@
 // codes with names, searchable, Space to accept the top hit. app-polo hand-rolls
 // a suggestions list here; HaLo already has the control.
 
+import { exportTypeDefinition } from "@ham2k/extension-sdk"
 import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import {
   adifForExport,
@@ -441,19 +442,24 @@ const AdifFieldsHook = {
 }
 
 const ExportHook = {
+  async getExportTypes() {
+    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+  },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
     return [
-      { exportType: 'contest-adif', format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE },
-      { exportType: 'cabrillo', format: 'cabrillo', label: t('cabrilloExport'), selectedByDefault: true, refType: TYPE },
+      { exportType: `${TYPE}-adif`,
+        templateData: { activity: manifest.shortName }, format: 'adif', label: t('adifExport'), selectedByDefault: true, refType: TYPE },
+      { exportType: `${TYPE}-cabrillo`,
+        templateData: { activity: manifest.shortName }, format: 'cabrillo', label: t('cabrilloExport'), selectedByDefault: true, refType: TYPE },
     ]
   },
 
   async generateExport(args: ExportRequest, _ctx: HookContext): Promise<ExportResult> {
     // Only the two offered above — a hook answering for an exportType it never
     // offered makes the ADIF delegation recurse into itself.
-    if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
+    if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
       return { filename: '', mimeType: '', content: '' }
     }
 
@@ -464,7 +470,7 @@ const ExportHook = {
     const ourSection = str(opRef?.ourSection).toUpperCase()
     const stamp = `FD-${ourCall || 'log'}`.replace(/[^A-Za-z0-9_-]+/g, '-')
 
-    if (args.exportType === 'cabrillo') {
+    if (args.exportType === `${TYPE}-cabrillo`) {
       const content = qsonToCabrillo(args.qsos, {
         headers: [
           // The registered CABRILLO name, which is not the ADIF CONTEST_ID
@@ -496,6 +502,10 @@ const ExportHook = {
       qsos: args.qsos,
       segments: args.segments,
       includePrivateData: args.includePrivateData,
+      includeLookupData: args.includeLookupData,
+      exportSettings: args.exportSettings,
+      exportData: args.exportData,
+      exportTitle: args.exportTitle,
       // This file is the CONTEST's log, so the core exporter asks this
       // extension's `adifFields` hook and no other's — app-polo's main
       // handler (see `ExportRequest.mainHandler`).

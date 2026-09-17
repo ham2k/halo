@@ -8,6 +8,7 @@
 // their program's fields via `adifFields` hooks. The three FREE-TEXT fields
 // are the exception, and are templated: see [TEXT_FIELD_TEMPLATES].
 
+import { exportQso } from "@ham2k/extension-sdk"
 import { fmtADIFDate, fmtADIFTime } from "@ham2k/lib-format-tools"
 import { locationToGrid6, locationToGrid8 } from "@ham2k/lib-geo-tools"
 import { adifModeAndSubmodeForMode } from "@ham2k/lib-operation-data"
@@ -144,8 +145,8 @@ function formatAdifFreq(freqKHz: number): string {
 /// them, so a two-line note written into COMMENT verbatim is a field a strict
 /// reader rejects.
 ///
-/// None are editable yet; the settings screen that makes them so is what
-/// `renderTemplate`'s error reporting is waiting for.
+/// Export settings can replace these defaults; invalid templates report
+/// their errors in the editor before they can be saved.
 ///
 /// `private` is the whole of the split: COMMENT says what NOTES says, so it
 /// is withheld on the same switch — a file uploaded to a program's servers
@@ -483,7 +484,7 @@ function baseFieldsFor(
   // templates are all withheld must not pay for it.
   let textContext: Record<string, unknown> | undefined
   for (const textField of textFields) {
-    textContext ??= { ...exportContext, qso: qsoValues(qso as Record<string, JSONValue>) }
+    textContext ??= { ...exportContext, qso: qsoValues(exportQso(qso as Record<string, JSONValue>, { includePrivateData })) }
     fields.push(renderTextField(textField, textContext))
   }
   // Last, keeping the order the table declares.
@@ -611,6 +612,12 @@ async function fieldSetsPerHook(
 }
 
 const ExportHandler = {
+  async getExportTypes() {
+    return [{ exportType: 'adif', format: 'adif', label: 'Full ADIF Export', defaults: {
+      includePrivateData: true,
+      adifQslMessageTemplate: '{{ op.refs | map: "ref" | compact | join: ", " }}',
+    } }]
+  },
   async suggestExportOptions(
     { operation, qsos, compactFilenames }: ExportOptionsRequest,
     _ctx: HookContext,
@@ -618,6 +625,7 @@ const ExportHandler = {
     return [
       {
         exportType: 'adif',
+        templateData: { modifier: [String(operation.title ?? ''), 'Full'].filter(Boolean).join(' ') },
         format: 'adif',
         // "Full", because this is the whole log — the one export that claims
         // no activity and slices nothing. The activity and contest exports
@@ -629,9 +637,8 @@ const ExportHandler = {
         // coloured rows above it each claim one, and the whole log claims
         // none.
         color: '#9E9E9E',
-        // The whole-log backup is complete by definition — it is the copy the
-        // operator keeps, not one they upload, so the private-data setting
-        // does not apply to it.
+        // Legacy hosts include private data in whole-log backups. Hosts with
+        // registered export settings use the operator’s per-type preference.
         alwaysIncludePrivateData: true,
         selectedByDefault: true,
         // Sorts BELOW every activity's and contest's own export (all
@@ -644,9 +651,10 @@ const ExportHandler = {
   },
 
   async generateExport(
-    { operation, qsos, segments, compactFilenames, includePrivateData, mainHandler, includeFieldsFrom }: ExportRequest,
+    { operation, qsos, segments, compactFilenames, includePrivateData, includeLookupData, exportSettings, exportData, exportTitle, mainHandler, includeFieldsFrom }: ExportRequest,
     ctx: HookContext,
   ): Promise<ExportResult> {
+    if (includeLookupData === false) qsos = qsos.map((qso) => exportQso(qso, { includeLookupData: false }))
     const stationCall = String(operation.stationCall ?? 'UNKNOWN')
     const title = String(operation.title ?? '')
     // Once for the file: an ADIF export is one station's log, and a segmented
@@ -655,7 +663,14 @@ const ExportHandler = {
     const ourEntity = entityForCall(stationCall)
     // Decided once, for the file: what a template is withheld for is a
     // property of the export, not of the contact it would have been written on.
-    const writable = TEXT_FIELD_TEMPLATES.filter(
+    const configured = TEXT_FIELD_TEMPLATES.map((field) => {
+      const key = ({ NOTES: 'adifNotesTemplate', COMMENT: 'adifCommentTemplate', QSLMSG: 'adifQslMessageTemplate' } as const)[field.name as 'NOTES' | 'COMMENT' | 'QSLMSG']
+      const custom = exportSettings?.[key]
+      return typeof custom === 'string'
+        ? { ...field, template: custom, wholeLogOnly: false, usesQso: true }
+        : field
+    })
+    const writable = configured.filter(
       (textField) =>
         textField.template !== '' &&
         (includePrivateData === true || !textField.private) &&
@@ -670,7 +685,7 @@ const ExportHandler = {
     // (`qsonToADIF.js:58`, `operation.userTitle && privateData`). Without
     // this the switch would strip every field a program might read while
     // still shipping the one line the operator wrote themselves.
-    const preamble = includePrivateData === true ? [stationCall, title] : [stationCall]
+    const preamble = exportTitle != null ? [exportTitle] : includePrivateData === true ? [stationCall, title] : [stationCall]
     lines.push(`ADIF export for ${preamble.filter((x) => x).join(' — ')}`)
     lines.push(field('ADIF_VER', ADIF_VERSION))
     lines.push(field('PROGRAMID', ctx.appName ?? DEFAULT_PROGRAM_ID))
@@ -679,7 +694,7 @@ const ExportHandler = {
     lines.push('')
 
     const exportContext = templateContext({
-      operation,
+      operation: includePrivateData === true ? operation : { ...operation, title: '', userTitle: '', userNotes: '', grid: String(operation.grid ?? '').slice(0, 6) },
       qsoCount: qsos.length,
       appName: ctx.appName,
       // The operation's row columns don't cross the bridge, so the log's own
@@ -687,7 +702,7 @@ const ExportHandler = {
       // uses, so a file and the fields inside it cannot disagree about when
       // the operation was.
       atMillis: startMillisOf(operation, qsos),
-      log: { station: stationCall, format: 'adif', exportType: 'adif', extension: 'adi', compact: compactFilenames },
+      log: { station: stationCall, format: 'adif', exportType: 'adif', extension: 'adi', compact: compactFilenames, ...exportData },
     })
 
     // The contact-independent half, rendered once now that `exportContext`

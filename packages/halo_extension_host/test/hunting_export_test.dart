@@ -7,7 +7,7 @@
 // for that half.
 //
 // Driven through the real runtime with both bundles, same reason
-// activity_export_test.dart is: the mechanism is `exportType` round-tripping
+// activity_export_test.dart is: the mechanism is export identity round-tripping
 // through the core and the activity delegating back to `adif` inside the same
 // kernel, which a stub would not exercise.
 
@@ -37,6 +37,35 @@ void main() {
       };
 
   Future<ExtensionHost> startHost() => sharedHost(['adif', 'sota']);
+
+  test('hunter template counts agree with the contacts written to the file', () async {
+    final host = await sharedHost(['adif', 'sota', 'templates']);
+    final payload = {
+      'operation': operation(),
+      'qsos': [qso('W0ABC', hunted: ['W7A/LC-001']), qso('W1AW')],
+    };
+    final options = await host.invokeHook('export', key: 'sota-hunter', method: 'suggestExportOptions', args: payload) as List;
+    final prepared = await host.invokeHook('template', key: 'templates', method: 'prepareExports', args: {
+      ...payload,
+      'options': [{
+        ...options.single as Map,
+        'exportSettings': {
+          'filenameTemplate': '{{ op.qsoCount }} QSOs',
+          'titleTemplate': '{{ op.qsoCount }} contacts',
+          'adifQslMessageTemplate': '{{ op.qsoCount }} contacts',
+        },
+      }],
+    }) as List;
+    final selected = prepared.single as Map;
+    final result = await host.invokeHook('export', key: 'sota-hunter', method: 'generateExport', args: {
+      ...payload, ...selected,
+    }) as Map;
+    expect(selected['filename'], '1 QSOs.adi');
+    expect(selected['exportTitle'], '1 contacts');
+    expect(result['content'], contains('ADIF export for 1 contacts'));
+    expect(result['content'], contains('<QSLMSG:10>1 contacts'));
+    expect('<EOR>'.allMatches(result['content'] as String), hasLength(1));
+  });
 
   test('hunting a summit offers a hunter export', () async {
     final host = await startHost();

@@ -29,6 +29,7 @@
 // stamp is a copy that a later correction cannot reach, and a county fixed in
 // setup or in a segment has to reach every contact of that stretch.
 
+import { exportTypeDefinition } from "@ham2k/extension-sdk"
 import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import {
   adifForExport,
@@ -609,6 +610,9 @@ function filenameFor(
 }
 
 const ExportHook = {
+  async getExportTypes() {
+    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+  },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     const party = partyOn(args.operation)
     if (!party) return []
@@ -617,7 +621,8 @@ const ExportHook = {
       filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
 
     const options: ExportOption[] = [{
-      exportType: 'contest-adif',
+      exportType: `${TYPE}-adif`,
+        templateData: { activity: party.short },
       format: 'adif',
       label: t('adifExport', { contest: party.short }),
       filename: named('adi'),
@@ -631,7 +636,8 @@ const ExportHook = {
     // submittable and is not.
     if (party.cabrilloName) {
       options.push({
-        exportType: 'cabrillo',
+        exportType: `${TYPE}-cabrillo`,
+        templateData: { activity: party.short },
         format: 'cabrillo',
         label: t('cabrilloExport', { contest: party.short }),
         filename: named('log'),
@@ -648,7 +654,7 @@ const ExportHook = {
     if (!party) return { filename: '', mimeType: '', content: '' }
     // Only the two exportTypes offered above: a hook answering for an
     // exportType it never offered makes the ADIF delegation recurse.
-    if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
+    if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
       return { filename: '', mimeType: '', content: '' }
     }
 
@@ -657,7 +663,7 @@ const ExportHook = {
     const segments = args.segments
     const lastLocation: Record<string, string> = {}
 
-    if (args.exportType === 'cabrillo') {
+    if (args.exportType === `${TYPE}-cabrillo`) {
       const content = qsonToCabrillo(args.qsos, {
         headers: [
           ['CONTEST', party.cabrilloName],
@@ -695,6 +701,10 @@ const ExportHook = {
       segments: segmentsWith(segments, marked),
       qsos: args.qsos,
       includePrivateData: args.includePrivateData,
+      includeLookupData: args.includeLookupData,
+      exportSettings: args.exportSettings,
+      exportData: args.exportData,
+      exportTitle: args.exportTitle,
       // This file is the CONTEST's log, so the core exporter asks this
       // extension's `adifFields` hook and no other's.
       mainHandler: TYPE,

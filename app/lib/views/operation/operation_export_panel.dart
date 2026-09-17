@@ -21,6 +21,7 @@
 // which made the row do two unrelated things and left Android with no
 // per-row save at all.
 
+import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show TargetPlatform, defaultTargetPlatform;
@@ -29,6 +30,8 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/halo_services.dart';
+import '../../services/settings_service.dart';
+import '../../settings/settings_target_dialog.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/export_service.dart';
@@ -156,66 +159,7 @@ Future<void> showOperationExportPanel(
 Future<void> showExportSettingsDialog(
   BuildContext context, {
   required HaLoServices services,
-}) {
-  final t = context.t;
-  return showHaloDialog<void>(
-    context: context,
-    builder: (context) => HaloDialog(
-      title: Text(t.operation.export.settingsTitle),
-      contentPadding: const EdgeInsets.symmetric(vertical: Space.md),
-      content: ListenableBuilder(
-        listenable: services.settings,
-        builder: (context, _) {
-          final settings = services.settings;
-          final names = context.t.operation.export.compactFileNames;
-          final private = context.t.operation.export.includePrivateData;
-          final theme = Theme.of(context);
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              SwitchListTile(
-                secondary: Icon(MdiIcons.fileCodeOutline),
-                title: Text(names.title),
-                subtitle: Text(settings.useCompactFileNames ? names.descriptionOn : names.descriptionOff),
-                value: settings.useCompactFileNames,
-                onChanged: settings.setUseCompactFileNames,
-              ),
-              SwitchListTile(
-                secondary: Icon(MdiIcons.accountLock),
-                title: Text(private.title),
-                subtitle: Text(
-                  settings.includePrivateData ? private.descriptionOn : private.descriptionOff,
-                ),
-                value: settings.includePrivateData,
-                onChanged: settings.setIncludePrivateData,
-              ),
-              // Said once, here, rather than as a caveat on the switch: the
-              // exemption is a property of that one export, and an operator
-              // who turns this off would otherwise reasonably expect their
-              // backup to be stripped too.
-              Padding(
-                padding: const EdgeInsets.fromLTRB(Space.xxl, 0, Space.xxl, Space.md),
-                child: Align(
-                  alignment: AlignmentDirectional.centerStart,
-                  child: Text(
-                    private.note,
-                    style: theme.textTheme.bodySmall?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
-      // Export settings apply as each switch changes, so this closes rather
-      // than confirms.
-      cancel: TextButton(
-        onPressed: () => Navigator.of(context).pop(),
-        child: Text(t.common.done),
-      ),
-    ),
-  );
-}
+}) => showSettingsForTarget(context, services: services, target: 'exports', title: context.t.operation.export.settingsTitle);
 
 class OperationExportPanel extends StatefulWidget {
   final HaLoServices services;
@@ -250,7 +194,12 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   /// evaluates on first ACCESS, which is inside the change listener, by which
   /// point the new value is already stored — so it would compare the setting
   /// against itself and never reload.
-  bool _compactNames = false;
+  String _exportSettingsSnapshot = '';
+
+  String _settingsSnapshot() => jsonEncode({
+    for (final entry in widget.services.settings.settingsGroup(SettingsService.exportsGroup).entries)
+      if (entry.key != 'editingType') entry.key: entry.value,
+  });
 
   /// Which [_load] is the current one. Flipping the filename setting twice in
   /// quick succession leaves two loads in flight — each now one bridge call
@@ -262,7 +211,7 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   @override
   void initState() {
     super.initState();
-    _compactNames = widget.services.settings.useCompactFileNames;
+    _exportSettingsSnapshot = _settingsSnapshot();
     widget.services.settings.addListener(_onSettingsChanged);
     _load();
   }
@@ -274,12 +223,9 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
   }
 
   void _onSettingsChanged() {
-    final compact = widget.services.settings.useCompactFileNames;
-    if (compact == _compactNames) return;
-    _compactNames = compact;
-    // Re-asks the extensions rather than rewriting the strings here: the
-    // names are theirs to build (`exportFilename` in the SDK), and each hook
-    // decides what its own compact form looks like.
+    final snapshot = _settingsSnapshot();
+    if (snapshot == _exportSettingsSnapshot) return;
+    _exportSettingsSnapshot = snapshot;
     _load();
   }
 
@@ -330,13 +276,11 @@ class _OperationExportPanelState extends State<OperationExportPanel> {
     }
   }
 
-  /// `exportType` is only unique within the hook that returned it (see
-  /// ExportOption in the extension SDK) — pair it with `hookKey` so two
-  /// hooks reusing the same exportType string don't collide in `_selected`,
-  /// and with the station callsign, since a multi-operator operation offers
-  /// the very same hook/exportType pair once per call.
+  /// A hook may offer multiple options of the same exportType. exportKey
+  /// distinguishes them, with exportType as the default for single options.
+  /// The callsign separates identical options offered for different stations.
   String _selectionKey(Map<String, dynamic> option) =>
-      '${option['stationCall'] ?? ''}|${option['hookKey']}:${option['exportType']}';
+      '${option['stationCall'] ?? ''}|${option['hookKey']}:${option['exportKey'] ?? option['exportType']}';
 
   List<Map<String, dynamic>> get _selectedOptions =>
       _options.where((o) => _selected[_selectionKey(o)] == true).toList();

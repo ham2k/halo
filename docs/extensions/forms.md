@@ -14,6 +14,7 @@ All types are defined in `extensions/sdk/src/types.ts`.
 export type FormFieldType =
   | 'text'
   | 'multiline'
+  | 'textTemplate'
   | 'email'
   | 'callsign'
   | 'number'
@@ -129,6 +130,8 @@ export interface FormMarkdownBlock {
 // SDK already permits (see settings.md's settingsPanel note). Not used for
 // account credentials — those have their own testCredentials on AccountHook.
 export interface FormActionElement {
+  style?: 'row'; // icon row with a chevron; omit for a button
+  icon?: string;
   type: 'action';
   key: string;
   label: string;
@@ -277,3 +280,28 @@ api.registerHook('form', {
    - Any validation error returns back to Dart and is displayed underneath the field. If any fields have errors, submission is aborted.
 3. **Submit transformation**: When all fields are successfully validated, Dart invokes any JS transformation callbacks for each field.
 4. **Completion**: The final transformed state is resolved and returned back to the caller (or saved in the view context).
+
+## Text templates
+
+`fieldType: 'textTemplate'` is a string field displayed as an editor row in
+forms and settings. It opens a multiline Liquid editor with a sample preview,
+syntax errors, insertable attributes and flow-control examples, and a read-only
+filter reference inside collapsed Templating Docs. Editing and preview stay
+above the scrollable reference. Template rows also display rendered samples. Save commits
+the draft; Cancel, Escape and dismissal discard it. `defaultValue` supplies
+the Reset button. Disabled fields cannot open the editor.
+
+```ts
+{
+  type: 'field', fieldType: 'textTemplate', key: 'filename',
+  label: 'File name', value: '{{ op.date }} {{ log.station }}',
+  templateContext: 'export', // 'adif' adds contact attributes; 'text' is generic
+  templateSample: { log: { activity: 'POTA', ref: 'US-1234' } },
+}
+```
+
+The preview uses the same runtime and vocabulary as exports; sample values
+are illustrative. `templateSample` can replace values in `operation`, `qso`
+and `log`. The app provides the rendering callback through
+`TemplateEditorScope`, keeping the form widget independent of extensions.
+See [templates.md](templates.md) for Liquid syntax and supported namespaces.

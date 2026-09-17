@@ -128,6 +128,22 @@ void main() {
       expect(find.text('Done'), findsOneWidget);
     });
 
+    testWidgets('parks sharing an export type can be selected independently', (tester) async {
+      exports.includeSecondPark = true;
+      await pump(tester);
+      expect(find.text('Save 2 files'), findsOneWidget);
+
+      await tester.tap(find.byType(Checkbox).first);
+      await tester.pumpAndSettle();
+      expect(find.text('Save 1 file'), findsOneWidget);
+
+      await tester.tap(find.text('Save 1 file'));
+      await tester.pumpAndSettle();
+      final selected = exports.generated.single.single;
+      expect(selected['exportType'], 'potaActivation-adif');
+      expect(selected['exportKey'], 'pota-adif:US-5678');
+    });
+
     testWidgets('lists every option with its filename, and counts the ticked ones', (tester) async {
       await pump(tester);
 
@@ -365,7 +381,7 @@ void main() {
       await tester.tap(find.text('Save 1 file'));
       await tester.pumpAndSettle();
 
-      expect(exports.generated.single.map((o) => o['exportType']), ['pota-adif:US-1234']);
+      expect(exports.generated.single.map((o) => o['exportKey']), ['pota-adif:US-1234']);
 
       // The whole point of the dialog over the old status-bar line: it names
       // WHERE the files went, and the operator cannot miss it.
@@ -927,6 +943,7 @@ class _FakeExportService extends ExportService {
   /// Whether to append a contest's Cabrillo, which names a refType but no
   /// icon or color of its own — the shape every contest hook returns.
   bool includeContest = false;
+  bool includeSecondPark = false;
 
   /// An icon name for that Cabrillo, for the test that gives it one that
   /// doesn't resolve.
@@ -960,7 +977,8 @@ class _FakeExportService extends ExportService {
       },
       {
         'hookKey': 'pota',
-        'exportType': 'pota-adif:US-1234',
+        'exportType': 'potaActivation-adif',
+        'exportKey': 'pota-adif:US-1234',
         'format': 'adif',
         // What ties this export to the POTA activity — the core slices its
         // QSOs by it, and the panel takes its accent color from it.
@@ -972,6 +990,18 @@ class _FakeExportService extends ExportService {
         'selectedByDefault': true,
         'priority': 0,
       },
+      if (includeSecondPark)
+        {
+          'hookKey': 'pota',
+          'exportType': 'potaActivation-adif',
+          'exportKey': 'pota-adif:US-5678',
+          'format': 'adif',
+          'stationCall': operation.stationCalls.first,
+          'label': 'POTA US-5678',
+          'filename': 'N0CALL-US-5678.adi',
+          'selectedByDefault': true,
+          'priority': 0,
+        },
       if (includeContest)
         {
           'hookKey': 'cqww',

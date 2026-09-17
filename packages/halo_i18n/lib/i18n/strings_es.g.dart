@@ -73,6 +73,8 @@ class TranslationsEs extends Translations with BaseTranslations<AppLocale, Trans
 	@override late final _Translations$switchAccounts$es switchAccounts = _Translations$switchAccounts$es._(_root);
 	@override late final _Translations$adifImport$es adifImport = _Translations$adifImport$es._(_root);
 	@override late final _Translations$offline$es offline = _Translations$offline$es._(_root);
+	@override late final _Translations$exportSettings$es exportSettings = _Translations$exportSettings$es._(_root);
+	@override late final _Translations$templateEditor$es templateEditor = _Translations$templateEditor$es._(_root);
 }
 
 // Path: common
@@ -1085,6 +1087,56 @@ class _Translations$offline$es extends Translations$offline$en {
 	@override String get retryDisabled => 'La sincronización está desactivada, así que no hay con qué sondear.';
 	@override String get syncService => 'Sincronización Ham2K LoFi';
 	@override String get retryInFlight => 'Ya se está intentando — un momento.';
+}
+
+// Path: exportSettings
+class _Translations$exportSettings$es extends Translations$exportSettings$en {
+	_Translations$exportSettings$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get loadFailed => 'No se pudieron cargar los ajustes de exportación.';
+	@override String get retry => 'Reintentar';
+	@override String get compactFileNamesDescriptionOn => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.';
+	@override String get compactFileNamesDescriptionOff => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.';
+	@override String get includePrivateDataDescriptionOn => 'Se incluyen nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.';
+	@override String get includePrivateDataDescriptionOff => 'Se omiten nombres, ciudades y notas; las ubicaciones se limitan a cuadrículas de seis caracteres.';
+	@override String get includeLookupDataDescriptionOn => 'Se incluye la información de los servicios de consulta de indicativos.';
+	@override String get includeLookupDataDescriptionOff => 'Se omite la información de los servicios de consulta de indicativos; se conservan los valores introducidos manualmente.';
+	@override String get customTemplatesDescriptionOn => 'Tus plantillas personalizadas están activas y se pueden editar a continuación.';
+	@override String get customTemplatesDescriptionOff => 'Se usan las plantillas predeterminadas. Tus plantillas personalizadas se conservan para más adelante.';
+	@override String get type => 'Tipo de exportación';
+	@override String get defaults => 'Valores predeterminados';
+	@override String get includeLookupData => 'Incluir datos de consultas';
+	@override String get customTemplates => 'Plantillas personalizadas';
+	@override String get filenameTemplate => 'Plantilla del nombre de archivo';
+	@override String get compactFilenameTemplate => 'Plantilla del nombre compacto';
+	@override String get titleTemplate => 'Plantilla del título';
+	@override String get adifNotesTemplate => 'Notas de QSO ADIF';
+	@override String get adifCommentTemplate => 'Comentarios de QSO ADIF';
+	@override String get adifQslMessageTemplate => 'Mensaje QSL ADIF';
+	@override String get shared => 'Los ajustes se aplican a todas las extensiones que usan este tipo de exportación.';
+	@override String get defaultTemplates => 'Activa Plantillas personalizadas para editar las plantillas de este tipo.';
+}
+
+// Path: templateEditor
+class _Translations$templateEditor$es extends Translations$templateEditor$en {
+	_Translations$templateEditor$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get previewLabel => 'Vista previa:';
+	@override String get reset => 'Restablecer';
+	@override String get docs => 'Documentación de plantillas';
+	@override String get preview => 'Vista previa de ejemplo';
+	@override String get reference => 'Referencia de plantillas';
+	@override String get attributes => 'Atributos disponibles';
+	@override String get filters => 'Filtros';
+	@override String get flowControl => 'Control de flujo';
+	@override String get unavailable => 'La vista previa estará disponible cuando las extensiones estén listas.';
+	@override String get empty => '(resultado vacío)';
 }
 
 // Path: home.nav
@@ -4738,6 +4790,38 @@ extension on TranslationsEs {
 			'offline.retryDisabled' => 'La sincronización está desactivada, así que no hay con qué sondear.',
 			'offline.syncService' => 'Sincronización Ham2K LoFi',
 			'offline.retryInFlight' => 'Ya se está intentando — un momento.',
+			'exportSettings.loadFailed' => 'No se pudieron cargar los ajustes de exportación.',
+			'exportSettings.retry' => 'Reintentar',
+			'exportSettings.compactFileNamesDescriptionOn' => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.',
+			'exportSettings.compactFileNamesDescriptionOff' => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.',
+			'exportSettings.includePrivateDataDescriptionOn' => 'Se incluyen nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.',
+			'exportSettings.includePrivateDataDescriptionOff' => 'Se omiten nombres, ciudades y notas; las ubicaciones se limitan a cuadrículas de seis caracteres.',
+			'exportSettings.includeLookupDataDescriptionOn' => 'Se incluye la información de los servicios de consulta de indicativos.',
+			'exportSettings.includeLookupDataDescriptionOff' => 'Se omite la información de los servicios de consulta de indicativos; se conservan los valores introducidos manualmente.',
+			'exportSettings.customTemplatesDescriptionOn' => 'Tus plantillas personalizadas están activas y se pueden editar a continuación.',
+			'exportSettings.customTemplatesDescriptionOff' => 'Se usan las plantillas predeterminadas. Tus plantillas personalizadas se conservan para más adelante.',
+			'exportSettings.type' => 'Tipo de exportación',
+			'exportSettings.defaults' => 'Valores predeterminados',
+			'exportSettings.includeLookupData' => 'Incluir datos de consultas',
+			'exportSettings.customTemplates' => 'Plantillas personalizadas',
+			'exportSettings.filenameTemplate' => 'Plantilla del nombre de archivo',
+			'exportSettings.compactFilenameTemplate' => 'Plantilla del nombre compacto',
+			'exportSettings.titleTemplate' => 'Plantilla del título',
+			'exportSettings.adifNotesTemplate' => 'Notas de QSO ADIF',
+			'exportSettings.adifCommentTemplate' => 'Comentarios de QSO ADIF',
+			'exportSettings.adifQslMessageTemplate' => 'Mensaje QSL ADIF',
+			'exportSettings.shared' => 'Los ajustes se aplican a todas las extensiones que usan este tipo de exportación.',
+			'exportSettings.defaultTemplates' => 'Activa Plantillas personalizadas para editar las plantillas de este tipo.',
+			'templateEditor.previewLabel' => 'Vista previa:',
+			'templateEditor.reset' => 'Restablecer',
+			'templateEditor.docs' => 'Documentación de plantillas',
+			'templateEditor.preview' => 'Vista previa de ejemplo',
+			'templateEditor.reference' => 'Referencia de plantillas',
+			'templateEditor.attributes' => 'Atributos disponibles',
+			'templateEditor.filters' => 'Filtros',
+			'templateEditor.flowControl' => 'Control de flujo',
+			'templateEditor.unavailable' => 'La vista previa estará disponible cuando las extensiones estén listas.',
+			'templateEditor.empty' => '(resultado vacío)',
 			_ => null,
 		};
 	}

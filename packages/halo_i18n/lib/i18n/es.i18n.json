@@ -2059,5 +2059,41 @@
     "retryDisabled": "La sincronización está desactivada, así que no hay con qué sondear.",
     "syncService": "Sincronización Ham2K LoFi",
     "retryInFlight": "Ya se está intentando — un momento."
+  },
+  "exportSettings": {
+    "loadFailed": "No se pudieron cargar los ajustes de exportación.",
+    "retry": "Reintentar",
+    "compactFileNamesDescriptionOn": "Nombres compactos, como N0CALL@US-1234-20260715.adi.",
+    "compactFileNamesDescriptionOff": "Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.",
+    "includePrivateDataDescriptionOn": "Se incluyen nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.",
+    "includePrivateDataDescriptionOff": "Se omiten nombres, ciudades y notas; las ubicaciones se limitan a cuadrículas de seis caracteres.",
+    "includeLookupDataDescriptionOn": "Se incluye la información de los servicios de consulta de indicativos.",
+    "includeLookupDataDescriptionOff": "Se omite la información de los servicios de consulta de indicativos; se conservan los valores introducidos manualmente.",
+    "customTemplatesDescriptionOn": "Tus plantillas personalizadas están activas y se pueden editar a continuación.",
+    "customTemplatesDescriptionOff": "Se usan las plantillas predeterminadas. Tus plantillas personalizadas se conservan para más adelante.",
+    "type": "Tipo de exportación",
+    "defaults": "Valores predeterminados",
+    "includeLookupData": "Incluir datos de consultas",
+    "customTemplates": "Plantillas personalizadas",
+    "filenameTemplate": "Plantilla del nombre de archivo",
+    "compactFilenameTemplate": "Plantilla del nombre compacto",
+    "titleTemplate": "Plantilla del título",
+    "adifNotesTemplate": "Notas de QSO ADIF",
+    "adifCommentTemplate": "Comentarios de QSO ADIF",
+    "adifQslMessageTemplate": "Mensaje QSL ADIF",
+    "shared": "Los ajustes se aplican a todas las extensiones que usan este tipo de exportación.",
+    "defaultTemplates": "Activa Plantillas personalizadas para editar las plantillas de este tipo."
+  },
+  "templateEditor": {
+    "previewLabel": "Vista previa:",
+    "reset": "Restablecer",
+    "docs": "Documentación de plantillas",
+    "preview": "Vista previa de ejemplo",
+    "reference": "Referencia de plantillas",
+    "attributes": "Atributos disponibles",
+    "filters": "Filtros",
+    "flowControl": "Control de flujo",
+    "unavailable": "La vista previa estará disponible cuando las extensiones estén listas.",
+    "empty": "(resultado vacío)"
   }
 }

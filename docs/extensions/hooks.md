@@ -248,23 +248,84 @@ fetch-only for now.
 
 ```ts
 interface ExportHook {
+  getExportTypes?(args: {}, ctx): Promise<ExportTypeDefinition[]>
   suggestExportOptions?(args: ExportOptionsRequest, ctx): Promise<ExportOption[]>
   generateExport(args: ExportRequest, ctx): Promise<ExportResult>
 }
 // ExportOptionsRequest: {operation, qsos, compactFilenames?}
-// ExportOption: {exportType, format, label, filename?, icon?, color?, refType?, priority?, selectedByDefault?}
-// ExportRequest: {operation, qsos, exportType?, compactFilenames?}  — full QSON, one coarse call
+// ExportOption: {exportType, exportKey?, format, label, filename?, icon?, color?, refType?, priority?, selectedByDefault?}
+// ExportRequest: {operation, qsos, exportType?, exportKey?, compactFilenames?}  — full QSON, one coarse call
 // ExportResult:  {filename, mimeType, content}
 ```
 
 Two-step flow: the Exports Panel calls `suggestExportOptions` on every
 `export` hook to build its selectable list (a hook that omits it never
 appears in the panel), then calls `generateExport` — passing back the
-chosen option's `exportType` — only for the options the user selected. The
-core owns file I/O and save/share; the hook only produces content.
+chosen option's `exportType` and `exportKey` — only for the options the user
+selected. The core owns file I/O and save/share; the hook only produces content.
+
+`exportType` is the stable kind (for example `potaActivation-adif`); `exportKey`
+identifies an individual option within the hook (for example
+`pota-adif:US-1234`). Options sharing a type must have distinct keys. Omit
+`exportKey` for a single option of a type: selection and generation default
+it to `exportType`. Both values round-trip unchanged when an explicit key is
+provided; the core does not interpret them. Selection also includes the
+hook key and station callsign, keeping different hooks and stations independent.
+
 Exporters should compose per-QSO program fields from `adifFields` hooks (see
-below) rather than knowing about specific activities. Implemented by: `adif`
-(key `adif`, one option); Cabrillo will register here too.
+below) rather than knowing about specific activities. Implemented by the whole-log `adif` exporter, activity exports, and contest
+ADIF/Cabrillo exporters.
+
+**Registering types and settings.** `getExportTypes` runs without an operation,
+so Settings can list types even before the operator has a matching log:
+
+```ts
+async getExportTypes() {
+  return [{
+    exportType: 'potaActivation-adif',
+    activationType: 'potaActivation',
+    format: 'adif',
+    label: 'POTA',
+    defaults: { includePrivateData: false, includeLookupData: true },
+  }]
+}
+```
+
+Prefer `<activationType>-<format>` to an extension-key namespace. Two
+extensions offering that type share one settings entry. The highest-priority
+registration supplies its definition; other exporters using it must honor
+that contract. Distinct sponsor requirements can use a distinct type. The
+SDK's `exportTypeDefinition(activationType, format, label, defaults?)` builds
+the conventional definition; the activity and hunting helpers register their
+own types. An exporter without `getExportTypes` still works, but does not
+appear in the type-settings selector.
+
+`ExportSettings` contains `includePrivateData`, `includeLookupData`,
+`customTemplates`, `filenameTemplate`, `compactFilenameTemplate`,
+`titleTemplate`, `adifNotesTemplate`, `adifCommentTemplate`, and
+`adifQslMessageTemplate`. All are optional. Defaults resolve from the SDK,
+then global preferences, then the type's declared defaults. Per-type data
+choices override those; per-type template overrides apply only when
+`customTemplates` is on. Empty templates intentionally suppress text. Turning
+custom templates off preserves the operator's edits for later. Non-ADIF
+formats expose only the filename templates and their custom-template switch.
+
+Type definitions may supply `templateSample: {operation, log}` for representative
+editor examples. Each format supplies its own filename extension in the sample.
+
+An option can supply `qsoCount` when its hook further filters the contacts
+(for example, a hunter export). Otherwise the host derives the count from
+activity and station scope. Filename and title templates use this count.
+
+Options can carry `templateData: {ref, refName, activity, modifier, ...}`,
+which populates the `log` namespace. The app renders filenames and titles
+before showing the option, and passes the same `exportSettings`, `exportData`
+and `exportTitle` to generation. It also passes the resolved
+`includePrivateData` and `includeLookupData` for ADIF. Forward those fields
+when delegating through `adifForExport`, or a program's preferences will not
+reach the ADIF writer. Settings apply globally and per type, never per operation.
+The whole-log ADIF defaults to including private data, but its type setting
+can override that default.
 
 **How a row looks.** `refType` names the activity the export covers — the
 core slices the file's QSOs by it, and the panel takes the row's icon and

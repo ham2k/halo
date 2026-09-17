@@ -88,16 +88,16 @@ Every app-polo OTA activity offers one ADIF per activated reference
 activating two parks at once means owing the program two logs, one claiming
 each. HaLo's `pota` and `sota` registered **no `export` hook at all**.
 
-Shipped as `extensions/sdk/src/activityExports.ts` —
-`activityExportHook(rules)`, registered by `pota` and `sota`. **It needed
-nothing from the core.** `exportType` is opaque to the core and round-trips
-verbatim into `generateExport`, and the Exports panel already keys selections
-by `hookKey:exportType` (`operation_export_panel.dart`'s `_selectionKey`) so several options
-from one hook are independently selectable — encoding the reference into the
-exportType (`pota-adif:US-0001`) is enough. `generateExport` narrows the
-operation to that one activation ref and delegates to the `adif` extension in
-the runtime, so each file is byte-identical to a normal export of that narrowed
-operation.
+The shared `extensions/sdk/src/activityExports.ts` helper,
+`activityExportHook(rules)`, offers a stable `exportType` (`potaActivation-adif`) and a
+per-reference `exportKey` (`pota-adif:US-0001`). Both round-trip into
+`generateExport`; the Exports panel keys selections by station callsign,
+hook key, and export key, so each park's file is independently selectable.
+An omitted export key defaults to the export type for hooks offering one
+option of each type. `generateExport` reads the reference from the key,
+narrows the operation to that one activation ref, and delegates to the
+`adif` extension in the runtime, so each file is byte-identical to a normal
+export of that narrowed operation.
 
 This is the multiplicity ham2k/halo-dist#389 left unbuilt for want of a
 producer; it consumes #389 rather than changing it, declaring `refType` so the

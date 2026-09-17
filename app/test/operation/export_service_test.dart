@@ -318,6 +318,20 @@ void main() {
       expect((host.calls.single['args'] as Map)['compactFilenames'], isTrue);
     });
 
+    test('generation receives the stable type and each selected option key', () async {
+      final host = _CapturingHost();
+      final service = ExportService(extensions: _ExtensionsWithHost(host), qsos: QsosRepository(db), settings: settings);
+
+      await service.generateExports(operation, [
+        {'hookKey': 'pota', 'exportType': 'potaActivation-adif', 'exportKey': 'pota-adif:US-1234'},
+        {'hookKey': 'pota', 'exportType': 'potaActivation-adif', 'exportKey': 'pota-adif:US-5678'},
+        {'hookKey': 'adif', 'exportType': 'adif'},
+      ]);
+      final args = host.calls.map((call) => call['args'] as Map).toList();
+      expect(args.map((a) => a['exportType']), ['potaActivation-adif', 'potaActivation-adif', 'adif']);
+      expect(args.map((a) => a['exportKey']), ['pota-adif:US-1234', 'pota-adif:US-5678', 'adif']);
+    });
+
     // Most exports exist to be uploaded — a park's log to POTA's servers, a
     // Cabrillo to a sponsor — and none of those want the operator's notes
     // about who they met. The whole-log backup is the exception.
@@ -326,14 +340,14 @@ void main() {
       final service = ExportService(extensions: _ExtensionsWithHost(host), qsos: QsosRepository(db), settings: settings);
 
       await service.generateExports(operation, [
-        {'hookKey': 'pota', 'exportType': 'pota-adif:US-1234'},
+        {'hookKey': 'pota', 'exportType': 'potaActivation-adif', 'exportKey': 'pota-adif:US-1234'},
       ]);
       expect((host.calls.single['args'] as Map)['includePrivateData'], isFalse);
 
       host.calls.clear();
       await settings.setIncludePrivateData(true);
       await service.generateExports(operation, [
-        {'hookKey': 'pota', 'exportType': 'pota-adif:US-1234'},
+        {'hookKey': 'pota', 'exportType': 'potaActivation-adif', 'exportKey': 'pota-adif:US-1234'},
       ]);
       expect((host.calls.single['args'] as Map)['includePrivateData'], isTrue);
     });
@@ -443,6 +457,18 @@ void main() {
           for (final qso in ((host.calls[callIndex]['args'] as Map)['qsos'] as List))
             ((qso as Map)['their'] as Map)['call'] as String,
         ];
+
+    test('prepared template counts match generation scope for each activity', () async {
+      final extension = _RegisteredCountExtensions(host);
+      final service = ExportService(extensions: extension, qsos: QsosRepository(db), settings: settings);
+      final options = await service.getExportOptions(segmentedOp);
+      expect(options.map((option) => option['qsoCount']), [1, 2]);
+      await service.generateExports(segmentedOp, options);
+      for (var index = 0; index < options.length; index++) {
+        final generatedQsos = (host.calls[index]['args'] as Map)['qsos'] as List;
+        expect(options[index]['qsoCount'], generatedQsos.length);
+      }
+    });
 
     // A hook is handed ONE operation for the whole file, so the base
     // operation's state, county and location are what it reads — and a rover
@@ -642,7 +668,7 @@ void main() {
       // its own ref — every shipped contest does — produced an empty file with
       // an empty filename for a log it had just offered to export. Since
       // `activityExportHook` THROWS when it can't find the reference its
-      // exportType names, the same gap turns POTA's per-park ADIF into an
+      // exportKey names, the same gap turns POTA's per-park ADIF into an
       // outright failure rather than a quiet one.
       await service.generateExports((await operations.get(created.uuid))!, [
         {'hookKey': 'cqww', 'exportType': 'cabrillo', 'refType': 'cqww'},
@@ -959,6 +985,10 @@ class _ExtensionsWithHost extends ExtensionService {
   final List<Map<String, dynamic>> optionRequests = [];
 
   @override
+  Future<List<Map<String, dynamic>>> exportTypeSettings(Map<String, dynamic> global, Map<String, dynamic> Function(String) overrides) async => [];
+
+
+  @override
   Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async {
     optionRequests.add(args);
     return const [];
@@ -971,6 +1001,26 @@ class _ExtensionsWithHost extends ExtensionService {
   Future<void> start() async {}
 
 
+}
+
+class _RegisteredCountExtensions extends _ExtensionsWithHost {
+  _RegisteredCountExtensions(super.mock);
+
+  @override
+  Future<List<Map<String, dynamic>>> exportTypeSettings(Map<String, dynamic> global, Map<String, dynamic> Function(String) overrides) async => [
+    {'exportType': 'potaActivation-adif', 'settings': <String, dynamic>{}},
+    {'exportType': 'adif', 'settings': <String, dynamic>{}},
+  ];
+
+  @override
+  Future<List<Map<String, dynamic>>> getExportOptions(Map<String, dynamic> args) async => [
+    {'exportType': 'potaActivation-adif', 'hookKey': 'pota', 'refType': 'pota', 'format': 'adif'},
+    {'exportType': 'adif', 'hookKey': 'adif', 'format': 'adif'},
+  ];
+
+  @override
+  Future<List<Map<String, dynamic>>> prepareExports(Map<String, dynamic> args) async =>
+      (args['options'] as List).cast<Map<String, dynamic>>();
 }
 
 /// Stands in for the platform channel, recording what the Android save flow

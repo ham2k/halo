@@ -621,7 +621,7 @@ class HaLoServices {
     ..register(RadioSettingsGroup(settings))
     ..register(MapSettingsGroup(settings))
     ..register(PrivacySettingsGroup(settings))
-    ..register(ExportsSettingsGroup(settings))
+    ..register(ExportsSettingsGroup(settings, extensions))
     ..register(SyncSettingsGroup(settings, onToggle: setSyncEnabled));
 
   /// One open Operation View's command context, for the ⌘K dialog: the

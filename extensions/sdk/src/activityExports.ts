@@ -10,10 +10,9 @@
 // multiplies by the references the OTHER station was at, WITHIN one file
 // (docs/design/activities.md §3.2).
 //
-// Needs nothing from the core. `exportType` is opaque to it and round-trips
-// verbatim into `generateExport`, and the Exports panel keys selections by
-// `hookKey:exportType` — so encoding the reference into the exportType is
-// enough to offer several options from one hook and know which was chosen.
+// Each export kind has a stable exportType; exportKey identifies the reference
+// within that kind. The core round-trips both into generateExport and uses the
+// key for independent selection of each reference's file.
 //
 // The QSO set is the core's business, not ours: declaring `refType` makes it
 // hand `generateExport` only the contacts made while this activity was actually
@@ -26,6 +25,7 @@
 
 import type {
   ExportOption,
+  ExportSettings,
   ExportOptionsRequest,
   ExportRequest,
   ExportResult,
@@ -33,6 +33,7 @@ import type {
   JSONValue,
   OperationSegmentPayload,
 } from "./types.ts"
+import { exportTypeDefinition } from "./exportSettings.ts"
 import { exportFilename, startMillisOf } from "./exportNames.ts"
 import { segmentsWith } from "./segments.ts"
 import { createCachedTranslator } from "./i18n.ts"
@@ -45,8 +46,10 @@ import es from "./i18n/activityExports.es.json" with { type: "json" }
 const tFor = createCachedTranslator({ en: { translation: en }, es: { translation: es } })
 
 export interface ActivityExportRules {
-  /// The extension's key, which namespaces the exportType — 'pota'.
+  /// The extension's key, which namespaces the export key — 'pota'.
   key: string
+  /// Representative values for the shared type's template previews.
+  templateSample?: Record<string, JSONValue>
   /// Short program name for the option label — 'POTA'.
   label: string
   /// The ref type an operation carries while activating ('potaActivation').
@@ -60,7 +63,7 @@ export interface ActivityExportRules {
   includeFieldsFrom?: string[]
 }
 
-/// Separates the program's own exportType prefix from the reference it names.
+/// Separates the program's own exportKey prefix from the reference it names.
 ///
 /// A colon CAN appear in a reference — `custom` lets the operator type one
 /// freely — which is why the split is by prefix LENGTH below rather than by
@@ -113,6 +116,15 @@ export function activityExportHook(rules: ActivityExportRules) {
   const prefix = `${rules.key}-adif`
 
   return {
+    async getExportTypes() {
+      return [{
+        ...exportTypeDefinition(rules.activationType, 'adif', rules.label),
+        templateSample: rules.templateSample ?? {
+          log: { ref: 'REF-1234', refName: 'Example Reference' },
+          operation: { refs: [{ type: rules.activationType, ref: 'REF-1234' }] },
+        },
+      }]
+    },
     async suggestExportOptions(
       { operation, qsos, compactFilenames }: ExportOptionsRequest,
       ctx: HookContext,
@@ -123,7 +135,9 @@ export function activityExportHook(rules: ActivityExportRules) {
       const t = tFor(ctx)
 
       return refs.map((ref) => ({
-        exportType: `${prefix}${SEPARATOR}${ref.ref}`,
+        exportType: `${rules.activationType}-adif`,
+        templateData: { ref: ref.ref, refName: ref.name ?? '', activity: rules.label },
+        exportKey: `${prefix}${SEPARATOR}${ref.ref}`,
         format: 'adif',
         // The FORMAT leads: a park activated on a contest weekend offers
         // several files for the same reference, and "POTA US-1234" alone said
@@ -142,14 +156,15 @@ export function activityExportHook(rules: ActivityExportRules) {
     },
 
     async generateExport(args: ExportRequest, ctx: HookContext): Promise<ExportResult> {
-      // Answer ONLY for the exportTypes suggested above. A hook that answers
-      // for one it never offered makes the ADIF delegation below recurse into
+      // Answer ONLY for the export type and keys suggested above. Answering
+      // for one never offered makes the ADIF delegation below recurse into
       // itself and hang the export (see contest_export_test.dart).
       const exportType = String(args.exportType ?? '')
-      if (!exportType.startsWith(`${prefix}${SEPARATOR}`)) {
-        throw new Error(`${rules.key}: unknown export type '${exportType}'`)
+      const exportKey = String(args.exportKey ?? '')
+      if (exportType !== `${rules.activationType}-adif` || !exportKey.startsWith(`${prefix}${SEPARATOR}`)) {
+        throw new Error(`${rules.key}: unknown export type/key '${exportType}' / '${exportKey}'`)
       }
-      const wanted = exportType.slice(prefix.length + SEPARATOR.length)
+      const wanted = exportKey.slice(prefix.length + SEPARATOR.length)
 
       // The option was listed from the operation's refs, but the two are read
       // at different moments — remove a park between opening the Exports panel
@@ -182,6 +197,10 @@ export function activityExportHook(rules: ActivityExportRules) {
         qsos: args.qsos,
         segments: segmentsWith(args.segments, claimOnly),
         includePrivateData: args.includePrivateData,
+        includeLookupData: args.includeLookupData,
+        exportSettings: args.exportSettings,
+        exportData: args.exportData,
+        exportTitle: args.exportTitle,
         mainHandler: rules.key,
         includeFieldsFrom: rules.includeFieldsFrom,
       })
@@ -195,7 +214,7 @@ export function activityExportHook(rules: ActivityExportRules) {
 }
 
 export interface HuntingExportRules {
-  /// The extension's key, which namespaces the exportType — 'sota'.
+  /// The extension's key, which namespaces the export type and key — 'sota'.
   key: string
   /// Short program name for the option label — 'SOTA'.
   label: string
@@ -254,13 +273,16 @@ function filenameForHunt(
 /// registerHook('export', { hook: huntingExportHook(SOTA_HUNTING), key: 'sota-hunter' })
 /// ```
 export function huntingExportHook(rules: HuntingExportRules) {
-  const exportType = `${rules.key}-hunter`
+  const exportType = `${rules.huntingType}-hunter`
 
   function huntedQsos(qsos: Record<string, JSONValue>[]): Record<string, JSONValue>[] {
     return qsos.filter((qso) => refsOfType(qso, rules.huntingType).length > 0)
   }
 
   return {
+    async getExportTypes() {
+      return [{ exportType, format: 'adif', label: `${rules.label} Hunter Log` }]
+    },
     async suggestExportOptions(
       { operation, qsos, compactFilenames }: ExportOptionsRequest,
       ctx: HookContext,
@@ -273,6 +295,8 @@ export function huntingExportHook(rules: HuntingExportRules) {
 
       return [{
         exportType,
+        qsoCount: huntedQsos(qsos ?? []).length,
+        templateData: { activity: rules.label },
         format: 'adif',
         label: t('adifForHunter', { program: rules.label }),
         filename: filenameForHunt(operation, qsos ?? [], rules.label, compactFilenames),
@@ -306,6 +330,10 @@ export function huntingExportHook(rules: HuntingExportRules) {
         qsos: huntedQsos(args.qsos ?? []),
         segments: args.segments,
         includePrivateData: args.includePrivateData,
+        includeLookupData: args.includeLookupData,
+        exportSettings: args.exportSettings,
+        exportData: args.exportData,
+        exportTitle: args.exportTitle,
         // The hunter file is submitted to ONE program too — see
         // `activityExportHook.generateExport`. `rules.key` is the ACTIVITY's
         // key ('pota'), which is what its `adifFields` hook registers under;
@@ -341,7 +369,7 @@ export function huntingExportHook(rules: HuntingExportRules) {
 /// branch and delegate again, forever. Being await-based there is no stack
 /// overflow to stop it — the export simply never returns.
 export async function adifForExport(
-  { operation, qsos, segments, includePrivateData, mainHandler, includeFieldsFrom }: {
+  { operation, qsos, segments, includePrivateData, includeLookupData, exportSettings, exportData, exportTitle, mainHandler, includeFieldsFrom }: {
     operation: Record<string, JSONValue>
     qsos: Record<string, JSONValue>[]
     /// Forwarded as `ExportRequest.segments`, so the core generator hands
@@ -349,6 +377,10 @@ export async function adifForExport(
     /// export that drops it exports a rover's whole log under one county.
     segments?: OperationSegmentPayload[]
     includePrivateData?: boolean
+    includeLookupData?: boolean
+    exportSettings?: ExportSettings
+    exportData?: Record<string, JSONValue>
+    exportTitle?: string
     mainHandler: string
     includeFieldsFrom?: string[]
   },
@@ -366,6 +398,10 @@ export async function adifForExport(
     // Forwarded, or the delegate defaults to withholding and the user's
     // "include private info" setting silently does nothing here.
     includePrivateData,
+    includeLookupData,
+    exportSettings,
+    exportData,
+    exportTitle,
     mainHandler,
     includeFieldsFrom,
   })

@@ -32,7 +32,7 @@
 //    field with no `target` simply never appears in a target-scoped modal,
 //    only in Settings.
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 /// One declared group of settings: an ordered section of FormRenderer
@@ -55,6 +55,9 @@ abstract class SettingsGroup {
   Future<List<Map<String, dynamic>>> buildElements();
 
   Future<void> commit(String fieldKey, dynamic value);
+
+  /// Opens a core settings action from either the settings list or a target modal.
+  Future<void> openAction(BuildContext context, String actionKey) async {}
 }
 
 /// Whether [element]'s `environment` attribute admits the current platform.

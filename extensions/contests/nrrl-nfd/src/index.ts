@@ -10,6 +10,7 @@
 // IARU R1 SSB Field Day, so both extensions may sit on ONE operation and score
 // it independently (docs/design/contests.md §5.1).
 
+import { exportTypeDefinition } from "@ham2k/extension-sdk"
 import { qsonToCabrillo } from "@ham2k/lib-qson-cabrillo"
 import { adifForExport, contestScorer, defineExtension, exportFilename, startMillisOf } from "@ham2k/extension-sdk"
 import type {
@@ -353,6 +354,9 @@ function filenameFor(
 }
 
 const ExportHook = {
+  async getExportTypes() {
+    return [exportTypeDefinition(TYPE, 'adif', manifest.shortName), exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName)]
+  },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     if (!refOfType(args.operation, TYPE)) return []
     const t = tFor(ctx)
@@ -360,7 +364,8 @@ const ExportHook = {
       filenameFor(args.operation, args.qsos ?? [], extension, args.compactFilenames)
     return [
       {
-        exportType: 'contest-adif',
+        exportType: `${TYPE}-adif`,
+        templateData: { activity: 'NRRL-NFD' },
         format: 'adif',
         label: t('adifExport', { contest: manifest.shortName }),
         filename: named('adi'),
@@ -368,7 +373,8 @@ const ExportHook = {
         refType: TYPE,
       },
       {
-        exportType: 'cabrillo',
+        exportType: `${TYPE}-cabrillo`,
+        templateData: { activity: 'NRRL-NFD' },
         format: 'cabrillo',
         label: t('cabrilloExport', { contest: manifest.shortName }),
         filename: named('log'),
@@ -382,7 +388,7 @@ const ExportHook = {
     // Only the two exportTypes offered above — a hook that answers for an
     // exportType it never offered makes the ADIF delegation recurse into
     // itself.
-    if (args.exportType !== 'cabrillo' && args.exportType !== 'contest-adif') {
+    if (args.exportType !== `${TYPE}-cabrillo` && args.exportType !== `${TYPE}-adif`) {
       return { filename: '', mimeType: '', content: '' }
     }
 
@@ -390,7 +396,7 @@ const ExportHook = {
     const opRef = refOfType(operation, TYPE)
     const ourCall = str(operation.stationCall)
 
-    if (args.exportType === 'cabrillo') {
+    if (args.exportType === `${TYPE}-cabrillo`) {
       const cls = str(opRef?.ourClass).toUpperCase()
       const designation = classDesignation(opRef)
       const content = qsonToCabrillo(args.qsos, {
@@ -436,6 +442,10 @@ const ExportHook = {
       qsos: args.qsos,
       segments: args.segments,
       includePrivateData: args.includePrivateData,
+      includeLookupData: args.includeLookupData,
+      exportSettings: args.exportSettings,
+      exportData: args.exportData,
+      exportTitle: args.exportTitle,
       // This file is the CONTEST's log, so the core exporter asks this
       // extension's `adifFields` hook and no other's.
       mainHandler: TYPE,

@@ -2070,5 +2070,41 @@
     "retryDisabled": "Sync is switched off, so there is nothing to probe with.",
     "syncService": "Ham2K LoFi sync",
     "retryInFlight": "Already trying — hang on."
+  },
+  "exportSettings": {
+    "loadFailed": "Export settings could not be loaded.",
+    "retry": "Retry",
+    "compactFileNamesDescriptionOn": "Compact filenames, such as N0CALL@US-1234-20260715.adi.",
+    "compactFileNamesDescriptionOff": "Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.",
+    "includePrivateDataDescriptionOn": "Names, towns, notes, and precise locations are included in ADIF files.",
+    "includePrivateDataDescriptionOff": "Names, towns, and notes are omitted; locations are limited to six-character grids.",
+    "includeLookupDataDescriptionOn": "Information from callsign lookup services is included.",
+    "includeLookupDataDescriptionOff": "Information from callsign lookup services is omitted; manually entered values are kept.",
+    "customTemplatesDescriptionOn": "Your custom templates are active and can be edited below.",
+    "customTemplatesDescriptionOff": "Default templates are active. Your custom templates are kept for later.",
+    "type": "Export type",
+    "defaults": "Defaults",
+    "includeLookupData": "Include lookup data",
+    "customTemplates": "Custom templates",
+    "filenameTemplate": "File name template",
+    "compactFilenameTemplate": "Compact file name template",
+    "titleTemplate": "Title template",
+    "adifNotesTemplate": "ADIF QSO Notes",
+    "adifCommentTemplate": "ADIF QSO Comments",
+    "adifQslMessageTemplate": "ADIF QSL Message",
+    "shared": "Settings apply to every extension using this export type.",
+    "defaultTemplates": "Turn on Custom templates to edit this type’s templates."
+  },
+  "templateEditor": {
+    "previewLabel": "Preview:",
+    "reset": "Reset",
+    "docs": "Templating Docs",
+    "preview": "Sample preview",
+    "reference": "Template reference",
+    "attributes": "Available Attributes",
+    "filters": "Filters",
+    "flowControl": "Flow Control",
+    "unavailable": "Preview is unavailable until extensions are ready.",
+    "empty": "(empty output)"
   }
 }

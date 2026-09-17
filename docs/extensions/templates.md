@@ -19,7 +19,7 @@ const text = renderTemplate("{{ op.station }} — {{ op.qsoCount }} QSOs", templ
 
 A template is DATA. Liquid parses and interprets; Handlebars compiles
 through `new Function`. These templates are written by operators, copied
-between operators, and will eventually be editable in settings, so the one
+between operators, and are editable in settings, so the one
 that cannot become code is the one to have. Liquid also has comparisons
 (`{% if op.qsoCount > 100 %}`) and loops built in, where Handlebars needs a
 registered helper for `>` and Mustache cannot compare at all.
@@ -42,15 +42,15 @@ the namespaces are deliberately polo's. The syntax around them does not:
 |---|---|---|---|---|
 | `app` | ✓ | — | ✓ | ✓ |
 | `now` | ✓ | ✓ | ✓ | ✓ |
-| `op` | ✓ | dates only | ✓ | ✓ |
+| `op` | ✓ | ✓ | ✓ | ✓ |
 | `qso` | when the placement's triggers ask for it | — | ✓ | the draft contact, as far as it is typed |
 | `config` | ✓ | — | — | — |
 | `log` | — | ✓ | ✓ | — |
 
 A namespace a surface has nothing for is **absent**, not blank — which is
-what makes `{% if qso %}` an honest question. Filenames get only the date
-half of `op` because a filename is built from parts rather than from an
-operation (`exportNames.ts`).
+what makes `{% if qso %}` an honest question. Registered exports get the operation plus the selected file’s `log` values.
+The low-level `exportFilename(parts)` helper still supplies only dates and
+filename parts.
 
 ### `app`
 `app.name` — the platform-appropriate name ("Ham2K Logger" on desktop,
@@ -191,16 +191,16 @@ will jump rather than count. Show HH:MM.
 | what | where | editable |
 |---|---|---|
 | Panel documents | `custom-text`'s content and tab name | by the operator, in the panel's config form |
-| Export filenames | `sdk/src/exportNames.ts` `NAME_TEMPLATES` | not yet |
-| ADIF NOTES / COMMENT / QSLMSG | `core/adif`'s `TEXT_FIELD_TEMPLATES` | not yet |
+| Export filenames and titles | Registered export types and `sdk/src/exportSettings.ts` | Settings → Exports, globally and per type |
+| ADIF NOTES / COMMENT / QSLMSG | Export type settings, consumed by `core/adif` | Settings → Exports; empty templates suppress a field |
 | CW messages | Radio settings `cwMessage1..8`, keyed on F1-F8 through the radio (docs/design/cat.md § CW keying) — rendered by the `template` hook (hooks.md) | by the operator, in the Station dialog's Messages… dialog |
 
-COMMENT and QSLMSG are empty, so nothing is written for them. app-polo
-defaults COMMENT to the QSO's notes and QSLMSG to the operation's
-references; both wait here until there is a settings screen to edit them in,
-since a default nobody can see is one nobody can turn off, and these fields
-travel to a program's servers.
+NOTES and COMMENT default to QSO notes and are withheld when private data
+is off. QSLMSG defaults to empty for program exports, and to the operation’s
+references for the whole-log ADIF. Custom QSL messages may use contact values.
+Templates receive no withheld private or lookup values. File titles obey the
+private-data choice; filename templates are labels for the operator’s files.
 
-Whatever fills them must respect the private/public split: `notes` is the
-operator's own words and belongs only in a field the export withholds when
-private data is off. NOTES is such a field. COMMENT and QSLMSG are not.
+The `textTemplate` form field provides sample previews and an insertable
+reference; see [forms.md](forms.md). Invalid Liquid reports an error rather
+than silently replacing the operator’s template with a default.
