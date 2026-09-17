@@ -70,6 +70,16 @@ void main() {
     });
   });
 
+  test('the extension service gets the real catalog, not the test override', () async {
+    // The production graph passes no `catalog:`, so a `catalog` read from
+    // inside the constructor resolves to that NULL parameter rather than to
+    // the lazy field of the same name. Wired that way nothing is ever fetched
+    // or adopted and the upgrade offer never appears — and no test sees it,
+    // because a test that cares about the catalog always passes one in.
+    final h = await makeHaLoServices();
+    expect(identical(h.services.extensions.catalog, h.services.catalog), isTrue);
+  });
+
   test('a migration that throws leaves the operator with the extensions they had', () async {
     // The flag is written FIRST — that is what lets the downloads run while
     // the built-ins still work. So the one state this must never end in is

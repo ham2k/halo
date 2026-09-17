@@ -424,11 +424,17 @@ class Translations$extensionsPanel$en {
 	/// en: 'Later'
 	String get upgradeLater => 'Later';
 
+	/// en: 'Your extensions are ready'
+	String get upgradeDoneTitle => 'Your extensions are ready';
+
+	/// en: 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.'
+	String get upgradeDoneBody => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.';
+
 	/// en: 'Your extensions were not upgraded'
 	String get upgradeFailedTitle => 'Your extensions were not upgraded';
 
-	/// en: 'We couldn't reach our servers. We will try again later.'
-	String get upgradeFailedBody => 'We couldn\'t reach our servers. We will try again later.';
+	/// en: 'We couldn't finish upgrading your extensions, so nothing has changed. We will try again later.'
+	String get upgradeFailedBody => 'We couldn\'t finish upgrading your extensions, so nothing has changed. We will try again later.';
 
 	/// en: '${name} was withdrawn'
 	String revokedTitle({required Object name}) => '${name} was withdrawn';
@@ -6576,8 +6582,10 @@ extension on Translations {
 			'extensionsPanel.upgradeBody' => 'This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.',
 			'extensionsPanel.upgradeAction' => 'Upgrade now',
 			'extensionsPanel.upgradeLater' => 'Later',
+			'extensionsPanel.upgradeDoneTitle' => 'Your extensions are ready',
+			'extensionsPanel.upgradeDoneBody' => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.',
 			'extensionsPanel.upgradeFailedTitle' => 'Your extensions were not upgraded',
-			'extensionsPanel.upgradeFailedBody' => 'We couldn\'t reach our servers. We will try again later.',
+			'extensionsPanel.upgradeFailedBody' => 'We couldn\'t finish upgrading your extensions, so nothing has changed. We will try again later.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} was withdrawn',
 			'extensionsPanel.revokedBody' => 'The catalog withdrew this version, so it has been disabled.',
 			'extensionsPanel.downloadHashMismatch' => 'That download is not the extension the catalog described.',
@@ -6986,10 +6994,10 @@ extension on Translations {
 			'operation.import.listenDescriptionOnBoth' => 'Listening for N1MM+ and WSJT-X',
 			'operation.import.listenDescriptionOff' => 'Off',
 			'operation.import.addToOperationTitle' => 'Add to this operation',
-			'operation.import.addToOperationDescriptionOn' => 'Captured QSOs are added to this operation as they arrive',
-			'operation.import.addToOperationDescriptionOff' => 'Captured QSOs are held until you turn this on',
 			_ => null,
 		} ?? switch (path) {
+			'operation.import.addToOperationDescriptionOn' => 'Captured QSOs are added to this operation as they arrive',
+			'operation.import.addToOperationDescriptionOff' => 'Captured QSOs are held until you turn this on',
 			'operation.import.pendingSectionTitle' => 'Captured QSOs',
 			'operation.import.pendingEmpty' => 'Nothing captured yet',
 			'operation.import.stationMismatch' => ({required Object call}) => 'Logged as ${call}, not this operation\'s station',
@@ -7500,10 +7508,10 @@ extension on Translations {
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'This device: ${qsos} · ${operations}',
 			'settings.syncPanel.countsPending' => ({required Object items}) => 'Waiting to upload: ${items}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}',
-			'settings.syncPanel.countsLocalChecking' => 'This device: checking…',
-			'settings.syncPanel.countsServerChecking' => 'Server: checking…',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.countsLocalChecking' => 'This device: checking…',
+			'settings.syncPanel.countsServerChecking' => 'Server: checking…',
 			'settings.syncPanel.countsServerUnavailable' => 'Server: not available',
 			'settings.syncPanel.replaceDialogBody' => ({required Object operations, required Object qsos}) => 'This backs up and clears ${operations} and ${qsos} from this device, then downloads the account\'s data instead. The backup stays in this device\'s database.',
 			'settings.syncPanel.replace' => 'Replace',
@@ -8014,10 +8022,10 @@ extension on Translations {
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
 			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',
 			'updates.updateAvailable' => 'Update available',
-			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
-			'updates.getIt' => 'Get it',
 			_ => null,
 		} ?? switch (path) {
+			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
+			'updates.getIt' => 'Get it',
 			'updates.ok' => 'OK',
 			'updates.updateReady' => 'Update ready',
 			'updates.restartToApply' => 'An update has been downloaded. Restart to apply it.',

@@ -39,6 +39,7 @@ import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'catalog_service.dart' show CatalogUnreachable;
+import 'extension_catalog_migration.dart' show CatalogNotWired;
 import 'extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
@@ -162,6 +163,16 @@ class ErrorPolicy {
           'clear',
       disposition: ErrorDisposition.report,
       matches: (error, _) => error is SyncRecordsRejected || error is SyncPayloadUnreadable,
+    ),
+    ErrorRule(
+      id: 'catalog-not-wired',
+      reason: 'the extension service was handed no catalog, so nothing can be fetched or adopted '
+          'and the upgrade offer cannot be made. A wiring defect rather than a server that cannot '
+          'be reached — which is what it looked like for as long as the two were folded together — '
+          'so it is uploaded rather than noticed: the operator can do nothing about it, and the '
+          'audience is whoever changes the service graph',
+      disposition: ErrorDisposition.report,
+      matches: (error, _) => error is CatalogNotWired,
     ),
     ErrorRule(
       id: 'web-focus-traversal-null',

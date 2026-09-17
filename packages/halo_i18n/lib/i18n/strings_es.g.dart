@@ -221,8 +221,10 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get upgradeBody => 'Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.';
 	@override String get upgradeAction => 'Actualizar ahora';
 	@override String get upgradeLater => 'Más tarde';
+	@override String get upgradeDoneTitle => 'Tus extensiones están listas';
+	@override String get upgradeDoneBody => 'Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.';
 	@override String get upgradeFailedTitle => 'Tus extensiones no se actualizaron';
-	@override String get upgradeFailedBody => 'No pudimos contactar con nuestros servidores. Lo intentaremos más tarde.';
+	@override String get upgradeFailedBody => 'No pudimos terminar de actualizar tus extensiones, así que nada ha cambiado. Lo intentaremos más tarde.';
 	@override String revokedTitle({required Object name}) => 'Se retiró ${name}';
 	@override String get revokedBody => 'El catálogo retiró esta versión, así que fue desactivada.';
 	@override String get downloadHashMismatch => 'Esa descarga no es la extensión que describe el catálogo.';
@@ -3144,8 +3146,10 @@ extension on TranslationsEs {
 			'extensionsPanel.upgradeBody' => 'Es una operación única que requiere conexión a Internet y tarda menos de un minuto. Si ahora no es buen momento, podemos hacerlo más tarde.',
 			'extensionsPanel.upgradeAction' => 'Actualizar ahora',
 			'extensionsPanel.upgradeLater' => 'Más tarde',
+			'extensionsPanel.upgradeDoneTitle' => 'Tus extensiones están listas',
+			'extensionsPanel.upgradeDoneBody' => 'Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.',
 			'extensionsPanel.upgradeFailedTitle' => 'Tus extensiones no se actualizaron',
-			'extensionsPanel.upgradeFailedBody' => 'No pudimos contactar con nuestros servidores. Lo intentaremos más tarde.',
+			'extensionsPanel.upgradeFailedBody' => 'No pudimos terminar de actualizar tus extensiones, así que nada ha cambiado. Lo intentaremos más tarde.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => 'Se retiró ${name}',
 			'extensionsPanel.revokedBody' => 'El catálogo retiró esta versión, así que fue desactivada.',
 			'extensionsPanel.downloadHashMismatch' => 'Esa descarga no es la extensión que describe el catálogo.',
@@ -3554,10 +3558,10 @@ extension on TranslationsEs {
 			'operation.import.listenDescriptionOnBoth' => 'Escuchando a N1MM+ y WSJT-X',
 			'operation.import.listenDescriptionOff' => 'Desactivado',
 			'operation.import.addToOperationTitle' => 'Agregar a esta operación',
-			'operation.import.addToOperationDescriptionOn' => 'Los QSOs capturados se agregan a esta operación según llegan',
-			'operation.import.addToOperationDescriptionOff' => 'Los QSOs capturados se retienen hasta que actives esto',
 			_ => null,
 		} ?? switch (path) {
+			'operation.import.addToOperationDescriptionOn' => 'Los QSOs capturados se agregan a esta operación según llegan',
+			'operation.import.addToOperationDescriptionOff' => 'Los QSOs capturados se retienen hasta que actives esto',
 			'operation.import.pendingSectionTitle' => 'QSOs capturados',
 			'operation.import.pendingEmpty' => 'Nada capturado todavía',
 			'operation.import.stationMismatch' => ({required Object call}) => 'Registrado como ${call}, no la estación de esta operación',
@@ -4068,10 +4072,10 @@ extension on TranslationsEs {
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'Este dispositivo: ${qsos} · ${operations}',
 			'settings.syncPanel.countsPending' => ({required Object items}) => 'Pendiente de subir: ${items}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Servidor: ${qsos} · ${operations}',
-			'settings.syncPanel.countsLocalChecking' => 'Este dispositivo: comprobando…',
-			'settings.syncPanel.countsServerChecking' => 'Servidor: comprobando…',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.countsLocalChecking' => 'Este dispositivo: comprobando…',
+			'settings.syncPanel.countsServerChecking' => 'Servidor: comprobando…',
 			'settings.syncPanel.countsServerUnavailable' => 'Servidor: no disponible',
 			'settings.syncPanel.replaceDialogBody' => ({required Object operations, required Object qsos}) => 'Esto respalda y borra ${operations} y ${qsos} de este dispositivo, y luego descarga los datos de la cuenta en su lugar. El respaldo se conserva en la base de datos de este dispositivo.',
 			'settings.syncPanel.replace' => 'Reemplazar',
@@ -4582,10 +4586,10 @@ extension on TranslationsEs {
 			'updates.appliesNextLaunch' => 'Se descargó una actualización. Se aplicará la próxima vez que abras la app.',
 			'updates.restartNow' => 'Reiniciar ahora',
 			'updates.reloadToUpdate' => 'Hay una versión más reciente de esta página disponible. Recarga para obtenerla.',
-			'updates.reloadNow' => 'Recargar ahora',
-			'updates.checkForUpdates' => 'Buscar actualizaciones',
 			_ => null,
 		} ?? switch (path) {
+			'updates.reloadNow' => 'Recargar ahora',
+			'updates.checkForUpdates' => 'Buscar actualizaciones',
 			'updates.checkingForUpdates' => 'Buscando actualizaciones…',
 			'updates.upToDate' => 'Actualizado',
 			'updates.automaticChecks' => 'Buscar automáticamente',

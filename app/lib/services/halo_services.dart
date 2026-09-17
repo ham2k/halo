@@ -573,8 +573,9 @@ class HaLoServices {
         staleness: staleness,
       );
 
-  /// The extension catalog (services/catalog_service.dart). Lazy: nothing
-  /// asks it until the Extensions panel opens or the update check runs.
+  /// The extension catalog (services/catalog_service.dart). Built at
+  /// construction, because [_wireExtensions] hands it to the extension
+  /// service there; every request it makes is still lazy.
   /// Injectable like [_exportsOverride], so a test hands in one over a
   /// MockClient rather than reaching catalog.ham2k.net.
   final CatalogService? _catalogOverride;
@@ -589,6 +590,7 @@ class HaLoServices {
     settings: settings,
     statusBar: statusBar,
     installed: () => extensions.availableExtensions,
+    inUse: (info) => !extensions.isSupersededByBuiltIn(info),
     applyAvailability: extensions.applyExtensionAvailability,
     openExtensions: () => openSettingsPanel('extensions'),
   );
@@ -979,19 +981,7 @@ class HaLoServices {
         // option listing awaits a drift stream's `.first`, which never
         // resolves under `testWidgets` (see operation_export_panel_test).
         _exportsOverride = exports {
-    this.extensions.settings = settings;
-    this.extensions.lookups = lookups;
-    this.extensions.statusBar = statusBar;
-    this.extensions.operations = operations;
-    this.extensions.qsos = qsos;
-    // `this.` is load-bearing: the constructor's `location` parameter is the
-    // OVERRIDE, null in every production build, and shadows the field here.
-    this.extensions.location = this.location;
-    this.extensions.spots = spots;
-    this.extensions.catalog = catalog;
-    this.extensions.onOpenAccount =
-        (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
-    this.extensions.onSearchSettings = (args, kind) => searchSettingsForCommand(this, args: args, kind: kind);
+    _wireExtensions();
     // Time travel is developer-mode-only, and this is the ONE place that can
     // see developer mode go off no matter which surface turned it off (DEVMODE,
     // the Settings toggle, a settings command). Leaving the clock travelled
@@ -1009,6 +999,28 @@ class HaLoServices {
     // is already updated whichever order the listeners ran in.
     settings.addListener(_applyNumberFormatting);
     _applyNumberFormatting();
+  }
+
+  /// Hands the extension service everything it reaches back through.
+  ///
+  /// A METHOD, not a stretch of the constructor body, and that is the whole
+  /// point: several of these fields have a same-named constructor parameter
+  /// holding the test override, which is null in every production build and
+  /// shadows the field inside the constructor. Wiring one of those up from
+  /// there silently hands over the null — nothing reaches the service, and
+  /// the feature behind it simply never happens. Parameters are out of scope
+  /// here, so every bare name below is the field.
+  void _wireExtensions() {
+    extensions.settings = settings;
+    extensions.lookups = lookups;
+    extensions.statusBar = statusBar;
+    extensions.operations = operations;
+    extensions.qsos = qsos;
+    extensions.location = location;
+    extensions.spots = spots;
+    extensions.catalog = catalog;
+    extensions.onOpenAccount = (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));
+    extensions.onSearchSettings = (args, kind) => searchSettingsForCommand(this, args: args, kind: kind);
   }
 
   /// Resolves the operator's Number Formatting choice into the two characters

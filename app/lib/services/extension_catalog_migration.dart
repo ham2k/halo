@@ -16,6 +16,18 @@ import 'error_reporting_service.dart';
 import 'extension_service.dart';
 import 'settings_service.dart';
 
+/// The graph handed the extension service no catalog — a wiring defect, and
+/// the reason this exists as a type is that it must not read as an
+/// unreachable server: its disposition is decided in `ErrorPolicy`
+/// (docs/design/error-reporting.md), where it uploads without a notice,
+/// because there is nothing the operator can do about it.
+class CatalogNotWired implements Exception {
+  const CatalogNotWired();
+
+  @override
+  String toString() => 'ExtensionService.catalog is null';
+}
+
 /// True while a migration or catch-up is in flight.
 ///
 /// Both entry points run off a runtime start, and a start happens again on
@@ -30,8 +42,25 @@ bool _inFlight = false;
 /// Asked before the upgrade is offered, so nobody is shown a dialog whose
 /// button cannot work. Forced past the listing cache: a five-minute-old yes is
 /// not evidence about the connection this launch has.
-Future<bool> canReachCatalog(ExtensionService service) async =>
-    await service.catalog?.fetchCatalog(force: true) != null;
+Future<bool> canReachCatalog(ExtensionService service) async {
+  final catalog = service.catalog;
+  // A catalog the graph never wired is not an unreachable one, and the `?.`
+  // that would fold the two together answers "offline" forever without
+  // reaching any of CatalogService's own logging — an install where the offer
+  // can never appear and nothing anywhere says why.
+  if (catalog == null) {
+    ErrorReportingService.report(const CatalogNotWired(), StackTrace.current, context: 'extensions:migrate');
+    return false;
+  }
+  final listing = await catalog.fetchCatalog(force: true);
+  // EMPTY is not ready either. A channel with nothing published answers `[]`
+  // rather than null, and an upgrade offered against it can only end in the
+  // failure dialog — then be offered again on the next launch, and every
+  // launch after it, with no answer it could ever give. Saying nothing and
+  // asking again once something is published is what an operator wants from
+  // both cases, so they are one case here.
+  return listing != null && listing.isNotEmpty;
+}
 
 /// Moves this install's extensions to the catalog, and answers whether it
 /// finished.

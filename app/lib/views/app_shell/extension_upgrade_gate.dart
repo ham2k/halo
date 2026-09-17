@@ -17,6 +17,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import '../../config/experiments.dart';
 import '../../config/navigation.dart';
 import '../../services/extension_catalog_migration.dart';
+import '../../services/installed_extensions.dart';
 import '../../services/halo_services.dart';
 
 class ExtensionUpgradeGate extends StatefulWidget {
@@ -41,6 +42,10 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     // Behind the experiment until this goes to everybody, at which point this
     // one condition is what changes.
     if (!settings.experimentEnabled(kCatalogExperiment)) return;
+    // Nowhere to put the replacements: web has no extension store, so every
+    // step of the upgrade no-ops and it ends in the failure dialog — asked
+    // again on every launch, and never able to answer differently.
+    if (!InstalledExtensions.isSupported) return;
     if (settings.extensionsMigrated) return;
     // Not while onboarding still owns the screen: a fresh install has no
     // extensions set up to carry, and stacking this behind the callsign
@@ -77,12 +82,15 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     if (!accepted || !mounted) return;
 
     final done = await migrateToCatalogExtensions(widget.services.extensions);
-    if (done || !mounted || !navigator.mounted) return;
+    if (!mounted || !navigator.mounted) return;
+    // Said either way: the operator agreed to an operation that withdraws the
+    // extensions they had, so leaving them to guess whether it happened is
+    // the one thing this must not do.
     await showDialog<void>(
       context: navigator,
       builder: (context) => HaloDialog(
-        title: Text(t.upgradeFailedTitle),
-        content: Text(t.upgradeFailedBody),
+        title: Text(done ? t.upgradeDoneTitle : t.upgradeFailedTitle),
+        content: Text(done ? t.upgradeDoneBody : t.upgradeFailedBody),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
       ),
     );

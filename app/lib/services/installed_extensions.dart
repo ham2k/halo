@@ -259,7 +259,17 @@ class InstalledExtensions {
   /// extensions through the app's own assets and a dev server instead — the
   /// same `kIsWeb` guard app_storage.dart uses for the rest of the app's
   /// directories.
-  static bool get isSupported => !kIsWeb;
+  static bool get isSupported => debugTreatAsUnsupported == true ? false : !kIsWeb;
+
+  /// Forces [isSupported] false, the way web answers it.
+  ///
+  /// Tests run in the VM, where the one branch that only ever happens on web
+  /// — no store to put an extension in, so the catalog upgrade cannot be
+  /// offered — is otherwise unreachable, and a guard no test can fail is a
+  /// guard that can be deleted without anything noticing (ErrorPolicy's
+  /// `debugTreatAsWeb` is the same seam for the same reason).
+  @visibleForTesting
+  static bool? debugTreatAsUnsupported;
 
   Future<Directory> _root() async {
     final root = rootOverride ?? Directory(p.join((await appDataDirectory()).path, kInstalledExtensionsDirName));
