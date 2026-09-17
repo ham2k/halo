@@ -1,6 +1,6 @@
 [tools]
 flutter = {
-  version = "3.44.6",
+  version = "3.44.9",
   platforms = {
     linux-x64 = { url = "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_{{ version }}-stable.tar.xz" },
     macos-arm64 = { url = "https://storage.googleapis.com/flutter_infra_release/releases/stable/macos/flutter_macos_arm64_{{ version }}-stable.zip" },

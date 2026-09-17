@@ -36,7 +36,23 @@ target 'Runner' do
 end
 
 post_install do |installer|
+  # The Pods project carries the `platform :osx` floor declared above; it is
+  # what a pod inherits when it declares no deployment target of its own.
+  floor = installer.pods_project.build_configurations.first.build_settings['MACOSX_DEPLOYMENT_TARGET']
+  raise "The Pods project declares no MACOSX_DEPLOYMENT_TARGET; is `platform :osx` still in this Podfile?" if floor.nil?
+
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+
+    # Flutter's helper forces a pod below 10.11 up to 10.11, and lets one
+    # inherit the floor only when it is below 10.15 AND depends on FlutterMacOS;
+    # every other pod keeps its own deployment target, and Xcode refuses to
+    # build a target below its supported range. Raise only: a pod that needs
+    # MORE than the floor keeps its value, so that incompatibility still errors.
+    target.build_configurations.each do |config|
+      declared = config.build_settings['MACOSX_DEPLOYMENT_TARGET']
+      next if declared.nil? || Gem::Version.new(declared) >= Gem::Version.new(floor)
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = floor
+    end
   end
 end

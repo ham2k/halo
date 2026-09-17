@@ -804,9 +804,11 @@ none**: it reloads the latest bundle on load.
 **Flutter version — floor is 3.44.5.** Shorebird's dashboard can only report
 **rollout adoption** (which code push each device is actually running) for releases
 built with **Flutter ≥ 3.44.5**; older releases still take code pushes fine, they just can't
-report. We therefore pin **3.44.6** (the current stable) in `mise.toml`,
+report. We therefore pin **3.44.9** in `mise.toml`,
 `codemagic.yaml`, and the build scripts — keep those three in step, and don't drop
-below 3.44.5 or adoption tracking goes dark. Because **code pushes inherit the
+below 3.44.5 or adoption tracking goes dark. Xcode 27 sets a second, higher floor
+of **3.44.9**: below it no universal macOS or iOS binary builds
+([quirks.md](quirks.md#xcode-27-rejects-deployment-targets-and-a-lipo-call-that-older-toolchains-accept)). Because **code pushes inherit the
 release's Flutter version**, a release built on an older Flutter can never gain
 adoption reporting: it needs a *new release* to do so.
 

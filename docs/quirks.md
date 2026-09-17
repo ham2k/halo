@@ -15,8 +15,9 @@ Dart suite passes clean while the app cannot be built.
 The plugin's `Package.swift` declares `.macOS("10.14")`, but its own
 `presentationAnchor(for:)` — the witness for that protocol — is annotated
 `@available(macOS 10.15, *)`, and Swift requires a witness to be available at
-the conformance's minimum. Under CocoaPods this never bit, because Flutter's
-podhelper raises every pod's `MACOSX_DEPLOYMENT_TARGET` to the app's (12.0);
+the conformance's minimum. Under CocoaPods this never bit, because the pod
+inherits the app's `MACOSX_DEPLOYMENT_TARGET` (12.0) — see the Xcode 27 entry
+below for which pods Flutter's podhelper does that for, and which our Podfile does;
 SPM honours the package's own declaration and an app cannot raise it. 6.2 is
 the first version to ship an SPM manifest, so the bug arrives with it. iOS is
 unaffected — there the same witness is annotated `@available(iOS 12.0, *)`,
@@ -43,6 +44,59 @@ re-vendoring commands.
 
 **When to revisit:** when an upstream release declares `.macOS("10.15")` or
 later. Upstream has not committed since 2026-02-10.
+
+## Xcode 27 rejects deployment targets, and a `lipo` call, that older toolchains accept
+
+**Breaks:** under Xcode 27 every macOS and iOS build fails — not a test
+failure, so the Dart suite passes clean while neither app can be built. Two
+separate errors, and the second only appears once the first is fixed:
+
+> error: The macOS deployment target 'MACOSX_DEPLOYMENT_TARGET' is set to
+> 10.13, but the range of supported deployment target versions is 12.0 to
+> 27.0.x. (in target 'Sparkle' from project 'Pods')
+
+> Target release_unpack_macos failed: Exception: Binary …/FlutterMacOS does
+> not contain architectures "arm64 x86_64".
+
+**Deployment targets.** Xcode 27 supports macOS 12.0+ and iOS 15.0+, and a
+target below that is an error rather than a warning. The app's own floors
+already sit there; the pods' do not. Flutter's podhelper
+(`flutter_additional_macos_build_settings` / `…_ios_…`) lets a pod inherit the
+app's floor only when the pod's target is below 10.15 (macOS) or 13 (iOS)
+**and** the pod depends on Flutter — so `Sparkle` (10.13) and `libserialport`
+(10.11), which do not depend on Flutter, and Flutter's own `FlutterMacOS`
+(exactly 10.15) and `Flutter` (exactly 13.0), all keep a value Xcode refuses.
+
+**Carried for it:** the `post_install` hook in `app/macos/Podfile` and
+`app/ios/Podfile` raises any pod configuration below the Pods project's floor
+up to it. CocoaPods derives that floor from the Podfile's `platform` line, so
+it is declared once per platform — and must agree with the Runner project's
+deployment target, which nothing checks. The hook is raise-only by design: a
+pod that needs *more* than the floor keeps its value, so that incompatibility
+still fails the build. Forcing every pod to the floor, or deleting the key so
+every pod inherits, would hide it.
+
+**`lipo`.** The second error is misleading: `lipo -info` on that binary lists
+both architectures. Flutter below 3.44.9 verifies a framework with one call,
+`lipo <binary> -verify_arch arm64 x86_64`, and Xcode 27's `lipo` accepts a
+single architecture there ("-verify_arch requires exactly one input file"),
+so every multi-architecture build fails: macOS release and profile, and the
+iOS generic simulator. A single-architecture build — macOS debug — never
+reaches it, which is why a debug build passing says nothing about a release.
+
+**Carried for it:** the Flutter pin is at least **3.44.9**, which verifies one
+architecture per call ([releases.md §4.5](releases.md) holds the pin and its
+other floor). On an older pin, `FLUTTER_XCODE_ARCHS=arm64 flutter build …`
+builds a single-architecture binary for local checks only.
+
+**Nothing re-checks this.** The release pipeline pins an older Xcode, so only
+a local build under Xcode 27 exercises either half.
+
+**When to revisit:** the `lipo` half has no workaround left to remove — it is
+a floor on the pin, and goes away when 3.44.9 is no longer a version anyone
+would pin. The Podfile hooks can go when a build with them deleted passes
+under the newest Xcode: that needs every pod to ship a supported target and
+podhelper to stop gating its own rule on a Flutter dependency.
 
 ## Linux has no web view, and the override in `app/pubspec.yaml` keeps it that way
 
