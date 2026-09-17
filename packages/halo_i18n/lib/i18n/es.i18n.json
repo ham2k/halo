@@ -1011,6 +1011,7 @@
     },
     "radio": {
       "title": "Radio",
+      "moreSettings": "Más ajustes de configuración de la estación",
       "units": {
         "ms": "ms",
         "kHz": "kHz",
@@ -1130,8 +1131,11 @@
       "contact": "Contáctanos",
       "contactDescription": "help@ham2k.com — ¡pero prueba primero los Foros o el Chat!"
     },
+    "exports": {
+      "title": "Exportaciones"
+    },
     "map": {
-      "title": "Mapa",
+      "title": "Mapas",
       "style": {
         "title": "Estilo del Mapa"
       },
@@ -1161,7 +1165,8 @@
     },
     "operatorCall": "Indicativo del Operador",
     "sync": {
-      "title": "LoFi Cloud Sync",
+      "title": "Sincronización en la Nube",
+      "moreSettings": "Más ajustes de sincronización",
       "enable": "Habilitar Sincronización",
       "deviceKey": "Clave del Dispositivo"
     },
@@ -1275,7 +1280,7 @@
       "openSettings": "Abrir configuración de Sync"
     },
     "accounts": {
-      "title": "Cuentas y servicios",
+      "title": "Cuentas, Servicios y Fuentes de Datos",
       "none": "No hay extensiones activas con cuentas",
       "notConfigured": "Sin configurar",
       "connected": "Conectado",
@@ -1625,7 +1630,7 @@
     },
     "search": {
       "clear": "Borrar",
-      "hint": "Buscar en la configuración"
+      "hint": "Buscar preferencias"
     },
     "developer": {
       "developerModeDescription": "Habilita avisos de desarrollador, registros de depuración y herramientas.",
@@ -1685,17 +1690,15 @@
       "copiedVersion": "Detalles de versión copiados al portapapeles"
     },
     "panels": {
-      "settings": "Ajustes",
-      "settingsDescription": "Todos los ajustes disponibles en un solo lugar",
-      "commonSettings": "Ajustes comunes",
+      "settings": "Preferencias de la Aplicación",
+      "settingsDescription": "Haz que la app funcione como quieras",
+      "commonSettings": "Preferencias Comunes",
       "syncDescription": "Respalda y sincroniza tus registros entre dispositivos",
-      "accountsDescription": "Inicia sesión en servicios y búsquedas en línea",
+      "accountsDescription": "Credenciales de servicios, datos sin conexión y más",
       "extensions": "Funciones y extensiones",
-      "extensionsDescription": "Activa o desactiva funciones opcionales",
+      "extensionsDescription": "Actividades, concursos y más funciones",
       "profilesDescription": "Indicativo del operador y perfil de la estación",
       "stationProfiles": "Perfiles de estación",
-      "dataFiles": "Archivos de datos",
-      "dataFilesDescription": "Administra las fuentes de datos en caché",
       "developerSettings": "Ajustes de desarrollador",
       "developerSettingsDescription": "Herramientas de depuración y desarrollo",
       "about": "Acerca de",
@@ -1705,7 +1708,7 @@
       "station": "Configuración de Estación",
       "stationDescription": "Control CAT y más opciones",
       "peers": "Dispositivos",
-      "peersDescription": "Comparte una operación con tus otros dispositivos en la misma red"
+      "peersDescription": "Conéctate con otros dispositivos cercanos"
     },
     "showMoreSettings": "Mostrar más ajustes",
     "numberFormat": "Formato de números",

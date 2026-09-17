@@ -150,7 +150,7 @@ void main() {
 
     // Scoped to the sidebar list: the screen's own header carries the same
     // word.
-    await tester.tap(find.descendant(of: find.byType(ListView).first, matching: find.text('Settings')));
+    await tester.tap(find.descendant(of: find.byType(ListView).first, matching: find.text('Application Preferences')));
     await _settle(tester);
     expect(find.text('Callsign'), findsNothing, reason: 'the panel covers the sidebar at this width');
 

@@ -611,6 +611,7 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$logging$es logging = _Translations$settings$logging$es._(_root);
 	@override late final _Translations$settings$radio$es radio = _Translations$settings$radio$es._(_root);
 	@override late final _Translations$settings$help$es help = _Translations$settings$help$es._(_root);
+	@override late final _Translations$settings$exports$es exports = _Translations$settings$exports$es._(_root);
 	@override late final _Translations$settings$map$es map = _Translations$settings$map$es._(_root);
 	@override late final _Translations$settings$privacy$es privacy = _Translations$settings$privacy$es._(_root);
 	@override String get operatorCall => 'Indicativo del Operador';
@@ -1606,6 +1607,7 @@ class _Translations$settings$radio$es extends Translations$settings$radio$en {
 
 	// Translations
 	@override String get title => 'Radio';
+	@override String get moreSettings => 'Más ajustes de configuración de la estación';
 	@override late final _Translations$settings$radio$units$es units = _Translations$settings$radio$units$es._(_root);
 	@override late final _Translations$settings$radio$smartVfoSnap$es smartVfoSnap = _Translations$settings$radio$smartVfoSnap$es._(_root);
 	@override late final _Translations$settings$radio$snapDebounce$es snapDebounce = _Translations$settings$radio$snapDebounce$es._(_root);
@@ -1643,6 +1645,16 @@ class _Translations$settings$help$es extends Translations$settings$help$en {
 	@override String get contactDescription => 'help@ham2k.com — ¡pero prueba primero los Foros o el Chat!';
 }
 
+// Path: settings.exports
+class _Translations$settings$exports$es extends Translations$settings$exports$en {
+	_Translations$settings$exports$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get title => 'Exportaciones';
+}
+
 // Path: settings.map
 class _Translations$settings$map$es extends Translations$settings$map$en {
 	_Translations$settings$map$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -1650,7 +1662,7 @@ class _Translations$settings$map$es extends Translations$settings$map$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Mapa';
+	@override String get title => 'Mapas';
 	@override late final _Translations$settings$map$style$es style = _Translations$settings$map$style$es._(_root);
 	@override late final _Translations$settings$map$styleOpts$es styleOpts = _Translations$settings$map$styleOpts$es._(_root);
 }
@@ -1676,7 +1688,8 @@ class _Translations$settings$sync$es extends Translations$settings$sync$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'LoFi Cloud Sync';
+	@override String get title => 'Sincronización en la Nube';
+	@override String get moreSettings => 'Más ajustes de sincronización';
 	@override String get enable => 'Habilitar Sincronización';
 	@override String get deviceKey => 'Clave del Dispositivo';
 }
@@ -1810,7 +1823,7 @@ class _Translations$settings$accounts$es extends Translations$settings$accounts$
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get title => 'Cuentas y servicios';
+	@override String get title => 'Cuentas, Servicios y Fuentes de Datos';
 	@override String get none => 'No hay extensiones activas con cuentas';
 	@override String get notConfigured => 'Sin configurar';
 	@override String get connected => 'Conectado';
@@ -2133,7 +2146,7 @@ class _Translations$settings$search$es extends Translations$settings$search$en {
 
 	// Translations
 	@override String get clear => 'Borrar';
-	@override String get hint => 'Buscar en la configuración';
+	@override String get hint => 'Buscar preferencias';
 }
 
 // Path: settings.developer
@@ -2214,17 +2227,15 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get settings => 'Ajustes';
-	@override String get settingsDescription => 'Todos los ajustes disponibles en un solo lugar';
-	@override String get commonSettings => 'Ajustes comunes';
+	@override String get settings => 'Preferencias de la Aplicación';
+	@override String get settingsDescription => 'Haz que la app funcione como quieras';
+	@override String get commonSettings => 'Preferencias Comunes';
 	@override String get syncDescription => 'Respalda y sincroniza tus registros entre dispositivos';
-	@override String get accountsDescription => 'Inicia sesión en servicios y búsquedas en línea';
+	@override String get accountsDescription => 'Credenciales de servicios, datos sin conexión y más';
 	@override String get extensions => 'Funciones y extensiones';
-	@override String get extensionsDescription => 'Activa o desactiva funciones opcionales';
+	@override String get extensionsDescription => 'Actividades, concursos y más funciones';
 	@override String get profilesDescription => 'Indicativo del operador y perfil de la estación';
 	@override String get stationProfiles => 'Perfiles de estación';
-	@override String get dataFiles => 'Archivos de datos';
-	@override String get dataFilesDescription => 'Administra las fuentes de datos en caché';
 	@override String get developerSettings => 'Ajustes de desarrollador';
 	@override String get developerSettingsDescription => 'Herramientas de depuración y desarrollo';
 	@override String get about => 'Acerca de';
@@ -2234,7 +2245,7 @@ class _Translations$settings$panels$es extends Translations$settings$panels$en {
 	@override String get station => 'Configuración de Estación';
 	@override String get stationDescription => 'Control CAT y más opciones';
 	@override String get peers => 'Dispositivos';
-	@override String get peersDescription => 'Comparte una operación con tus otros dispositivos en la misma red';
+	@override String get peersDescription => 'Conéctate con otros dispositivos cercanos';
 }
 
 // Path: settings.numberFormatOpts
@@ -3854,6 +3865,7 @@ extension on TranslationsEs {
 			'settings.logging.bands' => 'Bandas',
 			'settings.logging.modes' => 'Modos',
 			'settings.radio.title' => 'Radio',
+			'settings.radio.moreSettings' => 'Más ajustes de configuración de la estación',
 			'settings.radio.units.ms' => 'ms',
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
@@ -3948,7 +3960,8 @@ extension on TranslationsEs {
 			'settings.help.blueskyDescription' => 'Síguenos para novedades y actualizaciones',
 			'settings.help.contact' => 'Contáctanos',
 			'settings.help.contactDescription' => 'help@ham2k.com — ¡pero prueba primero los Foros o el Chat!',
-			'settings.map.title' => 'Mapa',
+			'settings.exports.title' => 'Exportaciones',
+			'settings.map.title' => 'Mapas',
 			'settings.map.style.title' => 'Estilo del Mapa',
 			'settings.map.styleOpts.automatic' => 'Automático',
 			'settings.map.styleOpts.liberty' => 'Liberty',
@@ -3966,7 +3979,8 @@ extension on TranslationsEs {
 			'settings.privacy.privacyPolicy' => 'Política de Privacidad',
 			'settings.privacy.termsOfService' => 'Términos de Servicio',
 			'settings.operatorCall' => 'Indicativo del Operador',
-			'settings.sync.title' => 'LoFi Cloud Sync',
+			'settings.sync.title' => 'Sincronización en la Nube',
+			'settings.sync.moreSettings' => 'Más ajustes de sincronización',
 			'settings.sync.enable' => 'Habilitar Sincronización',
 			'settings.sync.deviceKey' => 'Clave del Dispositivo',
 			'settings.peers.title' => 'Dispositivos',
@@ -4056,18 +4070,18 @@ extension on TranslationsEs {
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Servidor: ${qsos} · ${operations}',
 			'settings.syncPanel.countsLocalChecking' => 'Este dispositivo: comprobando…',
 			'settings.syncPanel.countsServerChecking' => 'Servidor: comprobando…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.countsServerUnavailable' => 'Servidor: no disponible',
 			'settings.syncPanel.replaceDialogBody' => ({required Object operations, required Object qsos}) => 'Esto respalda y borra ${operations} y ${qsos} de este dispositivo, y luego descarga los datos de la cuenta en su lugar. El respaldo se conserva en la base de datos de este dispositivo.',
 			'settings.syncPanel.replace' => 'Reemplazar',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.pendingBannerTitle' => 'Nueva cuenta de Ham2K Log Filer detectada',
 			'settings.syncPanel.pendingBannerBody' => 'Conserva las operaciones y QSOs existentes en este dispositivo y combínalos con la cuenta, o reemplázalos con los datos de la cuenta (en ambos casos queda un respaldo en este dispositivo).',
 			'settings.syncPanel.combine' => 'Combinar',
 			'settings.syncPanel.authIssueTitle' => 'Sync no puede conectarse',
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer sigue rechazando este dispositivo. Revisa tu indicativo en la configuración de Sync.',
 			'settings.syncPanel.openSettings' => 'Abrir configuración de Sync',
-			'settings.accounts.title' => 'Cuentas y servicios',
+			'settings.accounts.title' => 'Cuentas, Servicios y Fuentes de Datos',
 			'settings.accounts.none' => 'No hay extensiones activas con cuentas',
 			'settings.accounts.notConfigured' => 'Sin configurar',
 			'settings.accounts.connected' => 'Conectado',
@@ -4401,7 +4415,7 @@ extension on TranslationsEs {
 			'settings.profiles.racSection' => 'Sección RAC',
 			'settings.profiles.section' => 'Sección',
 			'settings.search.clear' => 'Borrar',
-			'settings.search.hint' => 'Buscar en la configuración',
+			'settings.search.hint' => 'Buscar preferencias',
 			'settings.developer.developerModeDescription' => 'Habilita avisos de desarrollador, registros de depuración y herramientas.',
 			'settings.developer.experiments' => 'Experimentos',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${count} habilitado', other: '${count} habilitados', ), 
@@ -4446,17 +4460,15 @@ extension on TranslationsEs {
 			'settings.about.noticesDescription' => 'Anuncios y mensajes de estado',
 			'settings.about.releaseNotes' => 'Notas de la versión',
 			'settings.about.copiedVersion' => 'Detalles de versión copiados al portapapeles',
-			'settings.panels.settings' => 'Ajustes',
-			'settings.panels.settingsDescription' => 'Todos los ajustes disponibles en un solo lugar',
-			'settings.panels.commonSettings' => 'Ajustes comunes',
+			'settings.panels.settings' => 'Preferencias de la Aplicación',
+			'settings.panels.settingsDescription' => 'Haz que la app funcione como quieras',
+			'settings.panels.commonSettings' => 'Preferencias Comunes',
 			'settings.panels.syncDescription' => 'Respalda y sincroniza tus registros entre dispositivos',
-			'settings.panels.accountsDescription' => 'Inicia sesión en servicios y búsquedas en línea',
+			'settings.panels.accountsDescription' => 'Credenciales de servicios, datos sin conexión y más',
 			'settings.panels.extensions' => 'Funciones y extensiones',
-			'settings.panels.extensionsDescription' => 'Activa o desactiva funciones opcionales',
+			'settings.panels.extensionsDescription' => 'Actividades, concursos y más funciones',
 			'settings.panels.profilesDescription' => 'Indicativo del operador y perfil de la estación',
 			'settings.panels.stationProfiles' => 'Perfiles de estación',
-			'settings.panels.dataFiles' => 'Archivos de datos',
-			'settings.panels.dataFilesDescription' => 'Administra las fuentes de datos en caché',
 			'settings.panels.developerSettings' => 'Ajustes de desarrollador',
 			'settings.panels.developerSettingsDescription' => 'Herramientas de depuración y desarrollo',
 			'settings.panels.about' => 'Acerca de',
@@ -4466,7 +4478,7 @@ extension on TranslationsEs {
 			'settings.panels.station' => 'Configuración de Estación',
 			'settings.panels.stationDescription' => 'Control CAT y más opciones',
 			'settings.panels.peers' => 'Dispositivos',
-			'settings.panels.peersDescription' => 'Comparte una operación con tus otros dispositivos en la misma red',
+			'settings.panels.peersDescription' => 'Conéctate con otros dispositivos cercanos',
 			'settings.showMoreSettings' => 'Mostrar más ajustes',
 			'settings.numberFormat' => 'Formato de números',
 			'settings.numberFormatOpts.locale' => 'Usar la configuración del dispositivo',
@@ -4572,9 +4584,9 @@ extension on TranslationsEs {
 			'updates.reloadToUpdate' => 'Hay una versión más reciente de esta página disponible. Recarga para obtenerla.',
 			'updates.reloadNow' => 'Recargar ahora',
 			'updates.checkForUpdates' => 'Buscar actualizaciones',
-			'updates.checkingForUpdates' => 'Buscando actualizaciones…',
 			_ => null,
 		} ?? switch (path) {
+			'updates.checkingForUpdates' => 'Buscando actualizaciones…',
 			'updates.upToDate' => 'Actualizado',
 			'updates.automaticChecks' => 'Buscar automáticamente',
 			'updates.automaticChecksDescription' => 'Buscar nuevas versiones en segundo plano, a partir del próximo inicio',

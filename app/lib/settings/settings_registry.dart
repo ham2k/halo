@@ -14,11 +14,11 @@
 // any of the above — core groups and extension settingsPanels alike — drive
 // visibility instead of a central whitelist:
 //
-//  - `common: true` also shows the field in Settings' Common Settings
+//  - `common: true` also shows the field in Settings' Common Preferences
 //    section; everything else appears only under its own group's section.
 //  - `environment: 'ios,android'` (or `'-web'`, or a list of tokens) hides
 //    the field outside the named platform(s) — everywhere, not just
-//    Common Settings. Tokens: ios, android, macos, windows, linux, web — the
+//    Common Preferences. Tokens: ios, android, macos, windows, linux, web — the
 //    same vocabulary notices.dart's `_knownPlatforms` uses.
 //  - `target: 'logging'` (or a list, for a setting reachable from more than
 //    one target-built modal) opts the field into a target-scoped settings
@@ -107,7 +107,7 @@ bool elementMatchesTarget(Map<String, dynamic> element, String target) {
 }
 
 /// Whether [element] is flagged `common: true` — shown in Settings'
-/// Common Settings section as well as its own group's. Only meaningful for the
+/// Common Preferences section as well as its own group's. Only meaningful for the
 /// element kinds a settings panel actually persists/acts on (field, link,
 /// action) — headers/dividers/markdown are chrome, never individually
 /// whitelisted, same restriction [FormRenderer]'s own search already

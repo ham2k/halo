@@ -94,7 +94,7 @@ void main() {
     // fetching getDefinition.
     expect(panel['title'], 'Callsign Notes');
     expect(panel['sidebar'], false);
-    expect(panel['dataFilesSection'], true, reason: 'this is what makes it show up under Data Files');
+    expect(panel['dataFilesSection'], true, reason: 'this is what makes it show up under the data sources');
 
     final definition = await extensions.getSettingsPanelDefinition(hookKey: 'call-notes', panelKey: 'call-notes', kind: 'dynamic');
     expect(definition!['title'], isNull, reason: "the panel's own title (above) already labels the modal — no in-body title to double it");

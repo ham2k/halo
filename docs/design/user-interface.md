@@ -758,7 +758,7 @@ and these rules are what keep it one:
   row inset, so a host that pads its content horizontally has to spend that
   padding on its rows instead — `showFormPane` does, through the row theme —
   or the band floats in a gutter and reads as one highlighted row.
-- **The Settings panel is an accordion of categories** — Common Settings,
+- **The Application Preferences panel is an accordion of categories** — Common Preferences,
   then one per declared group and extension
   panel, one open at a time and remembered across visits. A category heads
   itself with that filled band and a chevron on its left; a section inside one (a panel's
@@ -777,10 +777,10 @@ and these rules are what keep it one:
   disposing a form takes the focus of whatever is being typed in with it —
   the live-filter rule above, which the panel's search depends on. A shut
   category is mounted but paints nothing, which is what makes it "offstage" to
-  a widget test's default finder. Inside Common Settings the
+  a widget test's default finder. Inside Common Preferences the
   contributing groups head their own rows with the unfilled section heading,
   so a row drawn from a dozen groups still says where it belongs. A search
-  opens every category that still matches (Common Settings excepted — its
+  opens every category that still matches (Common Preferences excepted — its
   rows are copies of the ones below, and it would answer every query twice),
   and clearing the query returns to the one remembered category.
 

@@ -1,6 +1,6 @@
 {
   "catalogCategory": "Configuración",
-  "catalogSet": "Buscar o cambiar una configuración",
+  "catalogSet": "Buscar o cambiar preferencias de la app",
   "catalogSetParams": "<configuración> [valor]",
   "catalogShow": "Activar una configuración",
   "catalogShowParams": "<configuración>",

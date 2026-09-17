@@ -26,7 +26,7 @@ int settingsRowIdentity(List<Map<String, dynamic>> elements) =>
     Object.hashAll([for (final el in elements) el['key'] ?? el['type']]);
 
 /// One CATEGORY of the Settings panel — a declared group, an extension's
-/// whole panel, or Common Settings — as a collapsible band of rows.
+/// whole panel, or Common Preferences — as a collapsible band of rows.
 ///
 /// A category heads itself with the filled band the app's sections have
 /// always used, precisely so it does not read as one of the headings a
@@ -35,7 +35,7 @@ int settingsRowIdentity(List<Map<String, dynamic>> elements) =>
 /// One is the shelf, the other names a group of rows on it.
 ///
 /// With no [onToggle] the rows are headed by a plain section heading and
-/// always show — how a group's contribution to Common Settings appears,
+/// always show — how a group's contribution to Common Preferences appears,
 /// where rows drawn from a dozen groups need saying which group each came
 /// from, and the collapsible category above owns them all.
 ///

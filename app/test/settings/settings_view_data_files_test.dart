@@ -54,7 +54,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Select the Data Files panel from the sidebar (wide/two-pane layout).
-    await tester.tap(find.text('Data Files'));
+    await tester.tap(find.text('Accounts, Services & Data Sources'));
     await tester.pumpAndSettle();
 
     // Both files render, sorted by name, each as its own row.
@@ -90,7 +90,7 @@ void main() {
 
     await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Data Files'));
+    await tester.tap(find.text('Accounts, Services & Data Sources'));
     await tester.pumpAndSettle();
 
     expect(fake.listCalls, 1, reason: 'listed once on load');
@@ -133,7 +133,7 @@ void main() {
 
     await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Data Files'));
+    await tester.tap(find.text('Accounts, Services & Data Sources'));
     await tester.pumpAndSettle();
 
     expect(fake.listCalls, 1, reason: 'listed once on load');

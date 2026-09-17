@@ -136,9 +136,12 @@ void main() {
 
     bool isMessageElement(Map<String, dynamic> el) => isCwMessageElement(el) || isVoiceMessageElement(el);
 
+    /// The row leading on to Station Configuration — navigation, not a knob.
+    bool isPanelLink(Map<String, dynamic> el) => el['type'] == 'link' && el['panel'] != null;
+
     Future<Set<String>> keysFor(SettingsService settings) async => {
           for (final el in await RadioSettingsGroup(settings).buildElements())
-            if (!isMessageElement(el)) el['key'] as String,
+            if (!isMessageElement(el) && !isPanelLink(el)) el['key'] as String,
         };
 
     test('contributes nothing at all until the CAT experiment is on', () async {
@@ -147,6 +150,15 @@ void main() {
       // Raw, not through keysFor — that helper filters the CW messages out,
       // and they are exactly what a guard left off would leak.
       expect(await RadioSettingsGroup(await settingsWith(cat: false)).buildElements(), isEmpty);
+    });
+
+    test('ends with a row that leads on to the Station Configuration panel', () async {
+      // Application Preferences only carries the app-wide radio behaviour;
+      // without this row an operator there has no path to the equipment
+      // itself short of backing out to the sidebar.
+      final elements = await RadioSettingsGroup(await settingsWith()).buildElements();
+      expect(elements.last['type'], 'link');
+      expect(elements.last['panel'], 'station');
     });
 
     test("Smart VFO Snap's knobs are emitted, not merely flagged, only in developer mode", () async {
@@ -192,7 +204,7 @@ void main() {
       final group = RadioSettingsGroup(settings);
       final knobs = [
         for (final el in await group.buildElements())
-          if (!toggles.contains(el['key']) && !isMessageElement(el)) el,
+          if (!toggles.contains(el['key']) && !isMessageElement(el) && !isPanelLink(el)) el,
       ];
       expect(knobs, hasLength(5));
       for (final el in knobs) {
@@ -361,5 +373,15 @@ void main() {
       await settings.setSettingValue(SettingsService.generalGroup, 'mapStyle', 'retiredStyle');
       expect(settings.mapStyle, MapStyle.automatic);
     });
+  });
+
+  test('SyncSettingsGroup ends with a row that leads on to the Cloud Sync panel', () async {
+    // Application Preferences holds only the on/off toggle; the account,
+    // devices and status live on the panel, which this row is the way to.
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final elements = await SyncSettingsGroup(settings, onToggle: (_) async {}).buildElements();
+    expect(elements.last['type'], 'link');
+    expect(elements.last['panel'], 'sync');
   });
 }

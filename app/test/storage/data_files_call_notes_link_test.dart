@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// HALO-53: the Data Files screen's "Extensions" section shows a row per
+// HALO-53: the data sources' "Extensions" section shows a row per
 // registered settingsPanel that explicitly opted INTO it (`dataFilesSection:
 // true`) — NOT every panel that merely opted out of the top-level sidebar
 // (`sidebar: false`). The two are independent settings; conflating them was
@@ -80,7 +80,7 @@ Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<Stri
   final services = HaLoServices(db, settings, extensions: extensions);
 
   await tester.pumpWidget(TranslationProvider(
-    child: MaterialApp(home: SettingsView(services: services, initialPanel: 'data_files')),
+    child: MaterialApp(home: SettingsView(services: services, initialPanel: 'accounts')),
   ));
   await tester.pumpAndSettle();
   return services;
@@ -89,7 +89,7 @@ Future<HaLoServices> _pumpDataFiles(WidgetTester tester, {required List<Map<Stri
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('dataFilesSection: true keeps a panel out of the top-level nav and shows it under Data Files instead',
+  testWidgets('dataFilesSection: true keeps a panel out of the top-level nav and shows it under the data sources instead',
       (tester) async {
     await _pumpDataFiles(tester, panels: [
       _panelEntry(panelKey: 'call-notes', title: 'Callsign Notes', sidebar: false, dataFilesSection: true),
@@ -97,21 +97,21 @@ void main() {
     ]);
 
     expect(find.text(t.settings.offlineData.extensionsSection), findsOneWidget);
-    // call-notes (sidebar: false, dataFilesSection: true): only the Data
-    // Files row — no sidebar entry, since it's reached from here instead.
+    // call-notes (sidebar: false, dataFilesSection: true): only the data
+    // sources row — no sidebar entry, since it's reached from here instead.
     expect(find.text('Callsign Notes'), findsOneWidget);
     // radio-commands (sidebar: true, the default; dataFilesSection: false):
-    // only its own sidebar entry — NOT also duplicated under Data Files'
+    // only its own sidebar entry — NOT also duplicated under the data sources'
     // Extensions section.
     expect(find.text('Radio Commands'), findsOneWidget,
-        reason: 'a sidebar:true panel already has its own nav entry; Data Files must not list it a second time');
+        reason: 'a sidebar:true panel already has its own nav entry; the data sources must not list it a second time');
   });
 
   testWidgets(
-      'sidebar: false alone does NOT show a panel under Data Files — dataFilesSection must be set explicitly', (tester) async {
+      'sidebar: false alone does NOT show a panel under the data sources — dataFilesSection must be set explicitly', (tester) async {
     // The regression this fix closed: a panel opting out of the sidebar for
     // some reason unrelated to data files (radio-commands is a stand-in for
-    // one) used to be swept into the Data Files screen anyway, just because
+    // one) used to be swept into the data sources anyway, just because
     // it shared `sidebar: false` with call-notes.
     await _pumpDataFiles(tester, panels: [
       _panelEntry(panelKey: 'radio-commands', title: 'Radio Commands', sidebar: false),
@@ -131,10 +131,10 @@ void main() {
       _panelEntry(panelKey: 'radio-commands', title: 'Radio Commands'),
     ]);
     expect(find.text(t.settings.offlineData.extensionsSection), findsNothing,
-        reason: 'nothing here opted into the Data Files section, so there is nothing left for it to show');
+        reason: 'nothing here opted into the data sources section, so there is nothing left for it to show');
   });
 
-  testWidgets('tapping a Data Files row opens that extension\'s own settings panel', (tester) async {
+  testWidgets('tapping a data sources row opens that extension\'s own settings panel', (tester) async {
     await _pumpDataFiles(tester, panels: [
       _panelEntry(panelKey: 'call-notes', title: 'Callsign Notes', sidebar: false, dataFilesSection: true),
       _panelEntry(panelKey: 'radio-commands', title: 'Radio Commands', sidebar: false, dataFilesSection: true),

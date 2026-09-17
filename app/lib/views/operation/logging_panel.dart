@@ -772,7 +772,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
             qsosRepository: widget.services.qsos,
             qsos: widget.qsos,
             settings: widget.services.settings,
-            leftieMode: _leftieMode,
+            // Leftie Mode is a one-handed-phone layout; a desktop or web session
+            // carrying a stored `true` (restored from a phone) has no toggle to
+            // clear it, so the platform gates the layout, not just the setting.
+            leftieMode: isMobilePlatform && _leftieMode,
             enabledBands: _enabledBands,
             enabledModes: _enabledModes,
             radioService: widget.services.radio,

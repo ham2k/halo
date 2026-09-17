@@ -35,7 +35,7 @@ class ExtensionSettingsPanel extends StatefulWidget {
   final bool embedded;
 
   /// What heads this panel in embedded mode — the category band it opens
-  /// under, or, inside Common Settings, the plain section heading over its
+  /// under, or, inside Common Preferences, the plain section heading over its
   /// contribution. Lives here (not in the parent) so a search query that
   /// empties the panel hides its heading along with it.
   final String? sectionTitle;
@@ -44,7 +44,7 @@ class ExtensionSettingsPanel extends StatefulWidget {
   /// everything.
   final String searchQuery;
 
-  /// Common Settings mode: keep only elements the extension flagged
+  /// Common Preferences mode: keep only elements the extension flagged
   /// `common: true` (settings_registry.dart's [elementIsCommon]) — same
   /// convention as `_SettingsGroupForm`'s `commonOnly` (settings_view.dart). False shows
   /// everything the panel declares (minus whatever `environment` rules
@@ -129,7 +129,7 @@ class _ExtensionSettingsPanelState extends State<ExtensionSettingsPanel> {
     widget.services.settings.addListener(_load);
     widget.services.extensions.runtimeGeneration.addListener(_runtimeChanged);
     // A commit made by ANOTHER instance of this same panel — the Settings
-    // panel shows a `common: true` field both under Common Settings and in
+    // panel shows a `common: true` field both under Common Preferences and in
     // the panel's own category. Neither commit path notifies
     // SettingsService, so the listener above never hears it, and the copy
     // left holding the old value writes it back on the next interaction.

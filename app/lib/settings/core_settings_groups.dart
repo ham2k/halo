@@ -288,7 +288,6 @@ class GeneralSettingsGroup extends SettingsGroup {
         for (final preference in DensityPreference.selectableValues)
           (label: t['settings.layoutDensityOpts.${preference.name}'] as String, value: preference.name),
       ],
-      common: true,
     );
   }
 
@@ -366,6 +365,7 @@ class LoggingSettingsGroup extends SettingsGroup {
         icon: 'hand-front-left',
         description: settings.leftieMode ? s.leftieMode.descriptionOn : s.leftieMode.descriptionOff,
         value: settings.leftieMode,
+        environment: 'ios,android',
         target: 'logging-extended',
       ),
       _toggle(
@@ -468,8 +468,8 @@ class LoggingSettingsGroup extends SettingsGroup {
       ),
       // The mobile numbers row — irrelevant without an
       // on-screen keyboard, hence `environment: 'ios,android'`, filtered out
-      // everywhere (not just Common Settings) on desktop/web. Flagged
-      // `common: true` so it's reachable from Common Settings too, not
+      // everywhere (not just Common Preferences) on desktop/web. Flagged
+      // `common: true` so it's reachable from Common Preferences too, not
       // just Settings. Its two sub-options only make sense while the
       // row is on, so they appear only then — buildElements re-runs on
       // every settings change (listenable: settings), so they show/hide as
@@ -773,6 +773,13 @@ class RadioSettingsGroup extends SettingsGroup {
             target: 'voice-messages',
           ),
       ],
+      {
+        'type': 'link',
+        'key': 'moreStationSettings',
+        'label': s.moreSettings,
+        'icon': 'cat',
+        'panel': 'station',
+      },
     ];
   }
 
@@ -971,7 +978,7 @@ class ExportsSettingsGroup extends SettingsGroup {
   String get key => 'exports';
 
   @override
-  String get title => t.operation.export.settingsTitle;
+  String get title => t.settings.exports.title;
 
   @override
   int get order => 25;
@@ -1061,6 +1068,13 @@ class SyncSettingsGroup extends SettingsGroup {
             : (account.isEmpty ? null : account),
         value: settings.syncEnabled,
       ),
+      {
+        'type': 'link',
+        'key': 'moreSyncSettings',
+        'label': t.settings.sync.moreSettings,
+        'icon': 'cloud-cog',
+        'panel': 'sync',
+      },
     ];
   }
 

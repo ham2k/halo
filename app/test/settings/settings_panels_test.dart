@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The registry-driven Settings panel: its leading Common Settings category
+// The registry-driven Settings panel: its leading Common Preferences category
 // must show ONLY elements flagged `common: true` (settings_registry.dart's
 // elementIsCommon) — the whole point of that category is a short list —
 // while the categories below it must cover every declared group (core +
@@ -56,7 +56,7 @@ Future<HaLoServices> makeServices({Map<String, Object> prefs = const {}}) async 
         'title': 'My Extension',
         'elements': [
           {'type': 'field', 'fieldType': 'text', 'key': 'foo', 'label': 'Foo Field'},
-          // common: true — should reach Common Settings too, same as a
+          // common: true — should reach Common Preferences too, same as a
           // core group's flagged field.
           {'type': 'field', 'fieldType': 'text', 'key': 'bar', 'label': 'Bar Field', 'common': true},
           // environment excludes macOS specifically — a platform gate, not
@@ -166,7 +166,7 @@ Future<void> pumpSettings(WidgetTester tester, HaLoServices services, {Size size
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('Common Settings shows only the whitelisted fields', (tester) async {
+  testWidgets('Common Preferences shows only the whitelisted fields', (tester) async {
     // debugDefaultTargetPlatformOverride must be back to null before the test
     // body returns — the framework's invariant check runs ahead of any
     // tearDown — hence try/finally rather than addTearDown (see
@@ -179,8 +179,8 @@ void main() {
       final services = await makeServices();
       await pumpSettings(tester, services);
 
-      // Common Settings leads the panel and opens on a first run.
-      expect(shown('Common Settings'), findsOneWidget);
+      // Common Preferences leads the panel and opens on a first run.
+      expect(shown('Common Preferences'), findsOneWidget);
 
       // Whitelisted, under a section heading naming the group each row came
       // from — rows drawn from a dozen groups need saying where they belong.
@@ -217,7 +217,7 @@ void main() {
       final services = await makeServices();
       await pumpSettings(tester, services);
 
-      // Common Settings: excluded regardless of common-ness.
+      // Common Preferences: excluded regardless of common-ness.
       expect(shown('Baz Field'), findsNothing);
 
       await tester.tap(shown('My Extension').last);
@@ -248,14 +248,14 @@ void main() {
     }
   });
 
-  testWidgets('Common Settings adds the numbers row on mobile only', (tester) async {
+  testWidgets('Common Preferences adds the numbers row on mobile only', (tester) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
       final services = await makeServices();
       await pumpSettings(tester, services);
 
       // The numbers row toggle is whitelisted on mobile, pulling a Logging
-      // band into Common Settings — but only its own field, not the rest of
+      // band into Common Preferences — but only its own field, not the rest of
       // the group's settings.
       expect(shown('Numbers Row'), findsOneWidget);
       expect(shown('Leftie Mode'), findsNothing);
@@ -272,10 +272,10 @@ void main() {
     expect(shown('User Interface'), findsWidgets);
     expect(shown('Logging'), findsWidgets);
     expect(shown('Privacy'), findsWidgets);
-    expect(shown('LoFi Cloud Sync'), findsWidgets);
+    expect(shown('Cloud Sync'), findsWidgets);
     // The extension panel is a category of its own, beside the sidebar's
     // always-on nav entry for the same panel and the section heading its
-    // `common: true` field earns inside Common Settings.
+    // `common: true` field earns inside Common Preferences.
     expect(shown('My Extension'), findsNWidgets(3), reason: 'sidebar + common heading + category band');
 
     // Privacy sits below every other category, extension-contributed ones
@@ -284,13 +284,13 @@ void main() {
     double headingY(Finder finder) => tester.getTopLeft(finder).dy;
     expect(headingY(shown('Privacy')), greaterThan(headingY(shown('My Extension').last)));
 
-    // Opening Logging shows its rows and closes Common Settings — one open
+    // Opening Logging shows its rows and closes Common Preferences — one open
     // category at a time.
     await tester.tap(shown('Logging').last);
     await tester.pumpAndSettle();
     expect(shown('Leftie Mode'), findsOneWidget);
     expect(shown('Country Flags'), findsOneWidget);
-    expect(shown('Theme Mode'), findsNothing, reason: 'Common Settings closed when Logging opened');
+    expect(shown('Theme Mode'), findsNothing, reason: 'Common Preferences closed when Logging opened');
     // Bands, in the same group, resolves its $core.bands system list and
     // summarizes the default selection.
     expect(find.textContaining('80m, 40m, 30m').hitTestable(), findsOneWidget);
@@ -311,7 +311,7 @@ void main() {
     expect(shown('Leftie Mode'), findsOneWidget);
 
     // A fresh SettingsView over the same prefs — what re-entering Settings
-    // amounts to. Without the stored key it would open on Common Settings.
+    // amounts to. Without the stored key it would open on Common Preferences.
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpAndSettle();
     await tester.pumpWidget(TranslationProvider(child: MaterialApp(home: SettingsView(services: services))));
@@ -340,7 +340,7 @@ void main() {
     // twice.
     expect(shown('Theme Mode'), findsNothing);
     expect(shown('User Interface'), findsNothing);
-    expect(shown('Common Settings'), findsNothing);
+    expect(shown('Common Preferences'), findsNothing);
     expect(shown('Foo Field'), findsNothing);
     expect(shown('My Extension'), findsOneWidget, reason: 'only the sidebar entry remains');
 
@@ -360,14 +360,14 @@ void main() {
     // not to everything the search had opened.
     await tester.tap(find.byIcon(MdiIcons.close));
     await tester.pumpAndSettle();
-    expect(shown('Common Settings'), findsOneWidget);
+    expect(shown('Common Preferences'), findsOneWidget);
     expect(shown('Theme Mode'), findsOneWidget);
     expect(shown('Leftie Mode'), findsNothing);
   });
 
   testWidgets('a commit reaches the OTHER copy of the same extension field', (tester) async {
     // The panel mounts an extension's `common: true` field twice — once
-    // under Common Settings, once in the extension's own category — and
+    // under Common Preferences, once in the extension's own category — and
     // neither commit path notifies SettingsService: a Tier 1 commit writes
     // straight to prefs, a Tier 2 one hands the value to the extension. So
     // the copy that did not commit has nothing to learn the change from,
@@ -410,7 +410,7 @@ void main() {
     await pumpSettings(tester, services, size: const Size(1000, 700));
 
     final list = find.byType(CustomScrollView).first;
-    final categoryBand = tester.getTopLeft(shown('Common Settings')).dy;
+    final categoryBand = tester.getTopLeft(shown('Common Preferences')).dy;
     final firstSection = tester.getTopLeft(shown('User Interface')).dy;
     final nextSection = tester.getTopLeft(shown('Logging')).dy;
     // Stacked, not overlapping: the section band starts where the category
@@ -422,7 +422,7 @@ void main() {
     await tester.drag(list, const Offset(0, -200));
     await tester.pumpAndSettle();
 
-    expect(tester.getTopLeft(shown('Common Settings')).dy, categoryBand, reason: 'the category band holds');
+    expect(tester.getTopLeft(shown('Common Preferences')).dy, categoryBand, reason: 'the category band holds');
     expect(tester.getTopLeft(shown('User Interface')).dy, firstSection,
         reason: 'and so does the band of the section being scrolled through');
     // The section that has not reached the top yet travels with its rows —
@@ -445,8 +445,8 @@ void main() {
 
     // Shut the category that opens on a first run, so what is left is a
     // stack of bands — and 'Logging' names one of them rather than the
-    // section of the same name inside Common Settings.
-    await tester.tap(shown('Common Settings'));
+    // section of the same name inside Common Preferences.
+    await tester.tap(shown('Common Preferences'));
     await tester.pumpAndSettle();
 
     // The BAND, not the title inside it: the band is what lands at the top,

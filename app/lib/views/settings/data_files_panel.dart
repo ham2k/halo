@@ -25,6 +25,8 @@ import 'extension_settings_panel.dart';
 class DataFilesPanel extends StatefulWidget {
   final HaLoServices services;
 
+  /// A SLIVER — this panel shares one scroll view with its sibling in the
+  /// Accounts, Services & Data Sources panel (settings_view.dart).
   const DataFilesPanel({super.key, required this.services});
 
   @override
@@ -136,11 +138,11 @@ class _DataFilesPanelState extends State<DataFilesPanel> {
   @override
   Widget build(BuildContext context) {
     final files = _files;
-    if (files == null) return const Center(child: CircularProgressIndicator());
+    // Nothing while loading: the accounts above already show the one
+    // spinner, and a second stacked under it reads as a glitch.
+    if (files == null) return const SliverToBoxAdapter();
 
-    return SectionedListView(
-      padding: const EdgeInsets.only(bottom: Space.md),
-      children: [
+    final children = <Widget>[
         SectionHeader(context.t.settings.offlineData.title),
         if (files.isEmpty)
           ListTile(
@@ -155,8 +157,8 @@ class _DataFilesPanelState extends State<DataFilesPanel> {
           SectionHeader(context.t.settings.offlineData.extensionsSection),
           for (final panel in _dataFileScopedPanels) _buildExtensionPanelRow(context, panel),
         ],
-      ],
-    );
+    ];
+    return SliverMainAxisGroup(slivers: sectionSlivers(context, children));
   }
 
   /// One row per [_dataFileScopedPanels] entry (HALO-53) — call-notes'

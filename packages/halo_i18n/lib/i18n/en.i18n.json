@@ -1011,6 +1011,7 @@
     },
     "radio": {
       "title": "Radio",
+      "moreSettings": "More station configuration settings",
       "units": {
         "ms": "ms",
         "kHz": "kHz",
@@ -1130,8 +1131,11 @@
       "contact": "Contact Us",
       "contactDescription": "help@ham2k.com — but try the Forums or Chat first!"
     },
+    "exports": {
+      "title": "Exports"
+    },
     "map": {
-      "title": "Map",
+      "title": "Maps",
       "style": {
         "title": "Map Style"
       },
@@ -1161,7 +1165,8 @@
     },
     "operatorCall": "Operator Callsign",
     "sync": {
-      "title": "LoFi Cloud Sync",
+      "title": "Cloud Sync",
+      "moreSettings": "More sync settings",
       "enable": "Enable Sync",
       "deviceKey": "Device Key"
     },
@@ -1275,7 +1280,7 @@
       "openSettings": "Open Sync settings"
     },
     "accounts": {
-      "title": "Accounts & Services",
+      "title": "Accounts, Services & Data Sources",
       "none": "No active extensions with accounts",
       "notConfigured": "Not configured",
       "connected": "Connected",
@@ -1633,7 +1638,7 @@
     },
     "search": {
       "clear": "Clear",
-      "hint": "Search settings"
+      "hint": "Search preferences"
     },
     "developer": {
       "developerModeDescription": "Enable developer warnings, debug logs, and tools.",
@@ -1693,17 +1698,15 @@
       "copiedVersion": "Copied version details to clipboard"
     },
     "panels": {
-      "settings": "Settings",
-      "settingsDescription": "Every available setting in one place",
-      "commonSettings": "Common Settings",
+      "settings": "Application Preferences",
+      "settingsDescription": "Make the app work how you want it",
+      "commonSettings": "Common Preferences",
       "syncDescription": "Back up and sync your logs across devices",
-      "accountsDescription": "Sign in to online services and lookups",
+      "accountsDescription": "Service credentials, offline data, and more",
       "extensions": "Features & Extensions",
-      "extensionsDescription": "Turn optional features on or off",
+      "extensionsDescription": "Activities, Contests and more features",
       "profilesDescription": "Operator callsign and station profile",
       "stationProfiles": "Station Profiles",
-      "dataFiles": "Data Files",
-      "dataFilesDescription": "Manage cached data sources",
       "developerSettings": "Developer Settings",
       "developerSettingsDescription": "Debugging and development tools",
       "about": "About",
@@ -1711,9 +1714,9 @@
       "unavailableTitle": "Some settings are unavailable",
       "unavailableText": "The extension runtime failed to start, so extension-contributed settings are missing.",
       "station": "Station Configuration",
-      "stationDescription": "CAT control & more options",
+      "stationDescription": "CAT control and more options",
       "peers": "Peer Devices",
-      "peersDescription": "Share an operation with your other devices on the same network"
+      "peersDescription": "Connect to other devices nearby"
     },
     "showMoreSettings": "Show more settings",
     "numberFormat": "Number Formatting",

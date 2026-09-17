@@ -6,6 +6,7 @@
 
 import 'dart:async';
 import 'dart:io' show Platform;
+import 'dart:math' show min;
 
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
@@ -164,12 +165,13 @@ class DeveloperPanel extends StatelessWidget {
             ],
             SectionHeader(context.t.settings.developer.systemInformation),
             _sectionBody(context, [
-              _infoRow(context, context.t.settings.sync.deviceKey, settings.syncDeviceKey ?? context.t.settings.developer.loading),
-              _infoRowWidget(
+              _infoRow(
                 context,
-                context.t.settings.developer.appVersion,
-                const VersionLabel(style: TextStyle(fontFamily: 'monospace', fontSize: 13)),
+                context.t.settings.sync.deviceKey,
+                settings.syncDeviceKey?.substring(0, min(8, settings.syncDeviceKey!.length)) ??
+                    context.t.settings.developer.loading,
               ),
+              _infoRowWidget(context, context.t.settings.developer.appVersion, const VersionLabel()),
               // Where the log database and the data-file cache live. Platform-
               // dependent, and relocated out of Documents on Windows and Linux
               // (see app_storage.dart), so it's worth being able to read it back
@@ -203,13 +205,9 @@ class DeveloperPanel extends StatelessWidget {
     return _infoRowWidget(
       context,
       label,
-      SelectableText(
-        value,
-        style: const TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 13,
-        ),
-      ),
+      // SelectionArea over a plain Text rather than SelectableText, which
+      // styles itself apart from the row and reads off-colour in dark mode.
+      SelectionArea(child: Text(value, style: const TextStyle(fontFamily: 'RobotoMono'))),
     );
   }
 

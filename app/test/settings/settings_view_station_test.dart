@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The Station Configuration section: that it's gated on the CAT
-// experiment, that it sits between Callsign and Settings, and
+// experiment, that it sits between Application Preferences and Cloud Sync, and
 // that it lists configured equipment with its live status.
 
 import 'dart:convert';
@@ -57,7 +57,7 @@ void main() {
     expect(find.text('Station Configuration'), findsNothing);
   });
 
-  testWidgets('with CAT on, the section sits between Callsign and Settings', (tester) async {
+  testWidgets('with CAT on, the section sits between Application Preferences and Cloud Sync', (tester) async {
     await pumpSettings(tester, catEnabled: true);
 
     expect(find.text('Station Configuration'), findsOneWidget);
@@ -72,8 +72,8 @@ void main() {
     double rowY(String label) =>
         tester.getTopLeft(find.descendant(of: sidebar, matching: find.text(label))).dy;
 
-    expect(rowY('Station Configuration'), greaterThan(rowY('Callsign')));
-    expect(rowY('Station Configuration'), lessThan(rowY('Settings')));
+    expect(rowY('Station Configuration'), greaterThan(rowY('Application Preferences')));
+    expect(rowY('Station Configuration'), lessThan(rowY('Cloud Sync')));
   });
 
   testWidgets('the panel starts empty and offers to add equipment', (tester) async {

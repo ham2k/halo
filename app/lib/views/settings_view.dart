@@ -114,12 +114,12 @@ List<_SettingsPanelEntry> _fixedCorePanels(Translations t) => [
           order: 40,
           description: t.settings.panels.extensionsDescription),
     ];
-// Before Common Settings (order 0) — the Profiles panel leads the list.
+// Before Application Preferences (order 0) — the Profiles panel leads the list.
 // Internally "profiles"; until multi-profile features are enabled it
 // presents itself as just "Callsign".
 const _profilesPanelOrder = -10;
-// Between Callsign and Common Settings (0) — see the entry itself.
-const _stationPanelOrder = -5;
+// Between Settings (0) and Sync (10) — see the entry itself.
+const _stationPanelOrder = 5;
 const _developerPanelOrder = 90;
 const _aboutPanelOrder = 100;
 const _extensionPanelDefaultOrder = 50;
@@ -253,8 +253,7 @@ class _SettingsViewState extends State<SettingsView> {
         order: _profilesPanelOrder,
       ),
       // Station equipment and CAT control (docs/design/cat.md). Between
-      // Callsign (-10) and Common Settings (0) — who you are, then what
-      // you're operating with, then how the app behaves. Not hidden
+      // Settings (0) and Sync (10). Not hidden
       // on web: the serial transport works there,
       // via the Web Serial API. TCP and the Icom network transport
       // don't — a radio using either throws UnsupportedError on
@@ -278,21 +277,10 @@ class _SettingsViewState extends State<SettingsView> {
           description: t.settings.panels.peersDescription,
         ),
       ..._fixedCorePanels(t),
-      // After the extension-contributed panels (default order 50): data
-      // files are contributed by extensions too, so they sit alongside
-      // them. Not in _fixedCorePanels because its icon resolves an MDI
-      // name at runtime.
-      _SettingsPanelEntry(
-        key: 'data_files',
-        title: t.settings.panels.dataFiles,
-        icon: MdiIcons.fileCabinet,
-        order: 60,
-        description: t.settings.panels.dataFilesDescription,
-      ),
       // sidebar: false (e.g. call-notes, HALO-53) opts a panel out of this
       // top-level list — it's still returned by getSettingsPanels() for
-      // whichever screen the extension links it from instead (Data Files'
-      // own "Extensions" section, here).
+      // whichever screen the extension links it from instead (the data
+      // sources' own "Extensions" section, here).
       for (final p in _extensionPanels)
         if (p['sidebar'] != false)
           _SettingsPanelEntry(
@@ -421,7 +409,7 @@ class _SettingsViewState extends State<SettingsView> {
             // edge, right up to the grab-strip clearance this cancels.
             body: SettingsList(
               extraLeft: safeLeft,
-              child: _buildPanelContent(effectivePanel, widget.services, _panels),
+              child: _buildPanelContent(effectivePanel, widget.services, _panels, _openPanel),
             ),
           ),
           );
@@ -440,6 +428,24 @@ class _SettingsViewState extends State<SettingsView> {
           ],
         ),
         body: _buildSidebar(context, isWide: false, panels: panels, selectedKey: effectivePanel.key),
+      );
+    }
+  }
+
+  /// Selects [key]'s panel — beside the sidebar on a wide window, as a
+  /// pushed screen on a narrow one. Also how a panel's own rows (a `panel`
+  /// link in Application Preferences) move to another panel.
+  void _openPanel(String key) {
+    if (!mounted) return;
+    final panel = _buildPanelEntries(widget.services.settings, context.t).where((p) => p.key == key).firstOrNull;
+    assert(panel != null, 'no settings panel "$key" to open');
+    if (panel == null) return;
+    setState(() => _selectedPanel = key);
+    if (!ShirtSize.of(context).isTwoPane) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (context) => _SettingsPanelScreen(panel: panel, services: widget.services, openPanel: _openPanel),
+        ),
       );
     }
   }
@@ -497,18 +503,7 @@ class _SettingsViewState extends State<SettingsView> {
           leading: Icon(panel.icon),
           title: titleWidget,
           subtitle: panel.description == null ? null : Text(panel.description!),
-          onTap: () {
-            setState(() {
-              _selectedPanel = panel.key;
-            });
-            if (!isWide) {
-              Navigator.of(context).push(
-                MaterialPageRoute<void>(
-                  builder: (context) => _SettingsPanelScreen(panel: panel, services: widget.services),
-                ),
-              );
-            }
-          },
+          onTap: () => _openPanel(panel.key),
           mouseCursor: SystemMouseCursors.click,
         );
       },
@@ -524,8 +519,9 @@ class _SettingsViewState extends State<SettingsView> {
 class _SettingsPanelScreen extends StatefulWidget {
   final _SettingsPanelEntry panel;
   final HaLoServices services;
+  final FormOpenPanel openPanel;
 
-  const _SettingsPanelScreen({required this.panel, required this.services});
+  const _SettingsPanelScreen({required this.panel, required this.services, required this.openPanel});
 
   @override
   State<_SettingsPanelScreen> createState() => _SettingsPanelScreenState();
@@ -567,7 +563,7 @@ class _SettingsPanelScreenState extends State<_SettingsPanelScreen> {
           windowsCaptionSpacer(context),
         ],
       ),
-      body: _buildPanelContent(panel, services, _panels),
+      body: _buildPanelContent(panel, services, _panels, widget.openPanel),
     );
   }
 }
@@ -579,7 +575,8 @@ class _SettingsPanelScreenState extends State<_SettingsPanelScreen> {
 String _panelUseName(_SettingsPanelEntry panel) =>
     panel.descriptor != null ? 'extension' : panel.key;
 
-Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, PanelUseTracker panels) {
+Widget _buildPanelContent(
+    _SettingsPanelEntry panel, HaLoServices services, PanelUseTracker panels, FormOpenPanel openPanel) {
   final Widget content;
   switch (panel.key) {
     case 'profiles':
@@ -587,7 +584,7 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, Pane
     case 'station':
       content = StationPanel(services: services);
     case 'settings':
-      content = _SettingsPanel(services: services);
+      content = _SettingsPanel(services: services, openPanel: openPanel);
     case 'extensions':
       content = ExtensionsPanel(services: services);
     case 'sync':
@@ -595,9 +592,15 @@ Widget _buildPanelContent(_SettingsPanelEntry panel, HaLoServices services, Pane
     case 'peers':
       content = PeersPanel(services: services);
     case 'accounts':
-      content = AccountsPanel(services: services);
-    case 'data_files':
-      content = DataFilesPanel(services: services);
+      // Service credentials and the offline data they and the extensions
+      // feed, in one scroll.
+      content = CustomScrollView(slivers: [
+        AccountsPanel(services: services),
+        SliverPadding(
+          padding: const EdgeInsets.only(bottom: Space.md),
+          sliver: DataFilesPanel(services: services),
+        ),
+      ]);
     case 'developer':
       content = DeveloperPanel(services: services);
     case 'about':
@@ -660,7 +663,7 @@ class _SettingsGroupForm extends StatefulWidget {
   final HaLoServices services;
   final SettingsGroup group;
 
-  /// Common Settings mode: keep only elements flagged `common: true`
+  /// Common Preferences mode: keep only elements flagged `common: true`
   /// (settings_registry.dart's [elementIsCommon]). False shows everything
   /// the group declares (minus whatever `environment` rules out — that
   /// filter always applies, common or not).
@@ -676,7 +679,7 @@ class _SettingsGroupForm extends StatefulWidget {
 
   /// Toggles [expanded], and by being non-null asks for the category
   /// heading. Null renders the rows BARE, which is how the groups inside
-  /// Common Settings appear: that one category heading owns them all.
+  /// Common Preferences appear: that one category heading owns them all.
   final VoidCallback? onToggle;
 
   /// Called when a load lands a DIFFERENT set of elements than the one
@@ -689,6 +692,9 @@ class _SettingsGroupForm extends StatefulWidget {
   /// Renders as a SLIVER rather than a box — see [ExtensionSettingsPanel.sliver].
   final bool sliver;
 
+  /// Where a `panel` link row goes. Null leaves such a row inert.
+  final FormOpenPanel? openPanel;
+
   const _SettingsGroupForm({
     super.key,
     required this.services,
@@ -699,6 +705,7 @@ class _SettingsGroupForm extends StatefulWidget {
     this.onToggle,
     this.onRowsChanged,
     this.sliver = false,
+    this.openPanel,
   });
 
   @override
@@ -815,6 +822,7 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
       settingsList: true,
       onChange: _autosave,
       onOpenLink: openExternalUrl,
+      onOpenPanel: widget.openPanel,
       onSubmit: (_) {},
       onCancel: () {},
     );
@@ -850,7 +858,9 @@ class _SettingsGroupFormState extends State<_SettingsGroupForm> {
 class _SettingsPanel extends StatefulWidget {
   final HaLoServices services;
 
-  const _SettingsPanel({required this.services});
+  final FormOpenPanel openPanel;
+
+  const _SettingsPanel({required this.services, required this.openPanel});
 
   @override
   State<_SettingsPanel> createState() => _SettingsPanelState();
@@ -1025,7 +1035,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
     });
   }
 
-  /// Every category below Common Settings, core and extension-contributed
+  /// Every category below Common Preferences, core and extension-contributed
   /// alike, in ONE order — the same rule the sidebar sorts its entries by.
   /// Rendering the registry's groups and then the extensions' panels
   /// instead would pin every extension below every core group, and a group
@@ -1045,6 +1055,7 @@ class _SettingsPanelState extends State<_SettingsPanel> {
           expanded: _expanded('group:${group.key}'),
           onToggle: () => _toggle('group:${group.key}'),
           onRowsChanged: _rowsChanged,
+          openPanel: widget.openPanel,
         ),
       ));
     }

@@ -45,6 +45,8 @@ String storageUnavailableMessage(BuildContext context) {
 class AccountsPanel extends StatefulWidget {
   final HaLoServices services;
 
+  /// A SLIVER — this panel shares one scroll view with its sibling in the
+  /// Accounts, Services & Data Sources panel (settings_view.dart).
   const AccountsPanel({super.key, required this.services});
 
   @override
@@ -107,7 +109,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
   @override
   Widget build(BuildContext context) {
     if (_accounts == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const SliverToBoxAdapter(child: Center(child: CircularProgressIndicator()));
     }
 
     // Grouped by the category of the extension each account belongs to, and
@@ -126,9 +128,7 @@ class _AccountsPanelState extends State<AccountsPanel> {
       grouped.putIfAbsent(categoryFor(account), () => []).add(account);
     }
 
-    return SectionedListView(
-      padding: const EdgeInsets.only(bottom: Space.md),
-      children: [
+    final children = <Widget>[
         // Said once, at
         // the top — beats each row claiming to be disconnected.
         if (_secureStorageUnavailable)
@@ -158,8 +158,8 @@ class _AccountsPanelState extends State<AccountsPanel> {
               );
             }),
           ],
-      ],
-    );
+    ];
+    return SliverMainAxisGroup(slivers: sectionSlivers(context, children));
   }
 }
 

@@ -70,8 +70,8 @@ export interface FormField {
   // fields — a whole section header can be dev-mode-only too.
   devMode?: boolean;
   // Settings-panel-only (ignored in ad hoc forms) — see settings.md's
-  // "Common Settings and environment gating". Also shows this field on
-  // the app's Common Settings quick-access panel.
+  // "Common Preferences and environment gating". Also shows this field on
+  // the app's Common Preferences quick-access panel.
   common?: boolean;
   // Settings-panel-only. Restricts which platform(s) show this field at
   // all: one or more platform tokens (`ios`, `android`, `macos`,

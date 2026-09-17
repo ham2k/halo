@@ -2046,15 +2046,15 @@ export interface FormField {
   /// value you want by the discriminator, never by "whichever is non-empty".
   visibleWhen?: { field: string; equals: any }
   /// Only meaningful within a settingsPanel (ignored in ad hoc forms) — see
-  /// docs/extensions/settings.md's "Common Settings and environment
-  /// gating". Also shows this field on the app's Common Settings
+  /// docs/extensions/settings.md's "Common Preferences and environment
+  /// gating". Also shows this field on the app's Common Preferences
   /// quick-access panel, in addition to the full settings list. Unrelated
   /// to FormFieldOption.common/uncommon above (a multiselect option's own
   /// disclosure tier) — different scope, an option inside one field vs.
   /// the field itself.
   common?: boolean
   /// Only meaningful within a settingsPanel. Restricts which platform(s)
-  /// show this field at all — Common Settings and the full settings
+  /// show this field at all — Common Preferences and the full settings
   /// list alike, not just one view of it. One or more platform tokens
   /// (`ios`, `android`, `macos`, `windows`, `linux`, `web`) as a
   /// comma-separated string or array. Every token unprefixed: show ONLY on
@@ -2102,7 +2102,7 @@ export interface FormHeader {
   /// headings take 'section'.
   style?: 'default' | 'section' | 'category'
   /// Settings-panel-only; see FormField.environment. Not `common` — a
-  /// header is chrome for the rows under it, and the Common Settings
+  /// header is chrome for the rows under it, and the Common Preferences
   /// section shows flagged rows with no bands at all, so there is nothing
   /// for a header to opt into there.
   environment?: string | string[]

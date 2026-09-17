@@ -1318,6 +1318,7 @@ class Translations$settings$en {
 	late final Translations$settings$logging$en logging = Translations$settings$logging$en.internal(_root);
 	late final Translations$settings$radio$en radio = Translations$settings$radio$en.internal(_root);
 	late final Translations$settings$help$en help = Translations$settings$help$en.internal(_root);
+	late final Translations$settings$exports$en exports = Translations$settings$exports$en.internal(_root);
 	late final Translations$settings$map$en map = Translations$settings$map$en.internal(_root);
 	late final Translations$settings$privacy$en privacy = Translations$settings$privacy$en.internal(_root);
 
@@ -3339,6 +3340,9 @@ class Translations$settings$radio$en {
 	/// en: 'Radio'
 	String get title => 'Radio';
 
+	/// en: 'More station configuration settings'
+	String get moreSettings => 'More station configuration settings';
+
 	late final Translations$settings$radio$units$en units = Translations$settings$radio$units$en.internal(_root);
 	late final Translations$settings$radio$smartVfoSnap$en smartVfoSnap = Translations$settings$radio$smartVfoSnap$en.internal(_root);
 	late final Translations$settings$radio$snapDebounce$en snapDebounce = Translations$settings$radio$snapDebounce$en.internal(_root);
@@ -3407,6 +3411,18 @@ class Translations$settings$help$en {
 	String get contactDescription => 'help@ham2k.com — but try the Forums or Chat first!';
 }
 
+// Path: settings.exports
+class Translations$settings$exports$en {
+	Translations$settings$exports$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Exports'
+	String get title => 'Exports';
+}
+
 // Path: settings.map
 class Translations$settings$map$en {
 	Translations$settings$map$en.internal(this._root);
@@ -3415,8 +3431,8 @@ class Translations$settings$map$en {
 
 	// Translations
 
-	/// en: 'Map'
-	String get title => 'Map';
+	/// en: 'Maps'
+	String get title => 'Maps';
 
 	late final Translations$settings$map$style$en style = Translations$settings$map$style$en.internal(_root);
 	late final Translations$settings$map$styleOpts$en styleOpts = Translations$settings$map$styleOpts$en.internal(_root);
@@ -3451,8 +3467,11 @@ class Translations$settings$sync$en {
 
 	// Translations
 
-	/// en: 'LoFi Cloud Sync'
-	String get title => 'LoFi Cloud Sync';
+	/// en: 'Cloud Sync'
+	String get title => 'Cloud Sync';
+
+	/// en: 'More sync settings'
+	String get moreSettings => 'More sync settings';
 
 	/// en: 'Enable Sync'
 	String get enable => 'Enable Sync';
@@ -3781,8 +3800,8 @@ class Translations$settings$accounts$en {
 
 	// Translations
 
-	/// en: 'Accounts & Services'
-	String get title => 'Accounts & Services';
+	/// en: 'Accounts, Services & Data Sources'
+	String get title => 'Accounts, Services & Data Sources';
 
 	/// en: 'No active extensions with accounts'
 	String get none => 'No active extensions with accounts';
@@ -4694,8 +4713,8 @@ class Translations$settings$search$en {
 	/// en: 'Clear'
 	String get clear => 'Clear';
 
-	/// en: 'Search settings'
-	String get hint => 'Search settings';
+	/// en: 'Search preferences'
+	String get hint => 'Search preferences';
 }
 
 // Path: settings.developer
@@ -4865,38 +4884,32 @@ class Translations$settings$panels$en {
 
 	// Translations
 
-	/// en: 'Settings'
-	String get settings => 'Settings';
+	/// en: 'Application Preferences'
+	String get settings => 'Application Preferences';
 
-	/// en: 'Every available setting in one place'
-	String get settingsDescription => 'Every available setting in one place';
+	/// en: 'Make the app work how you want it'
+	String get settingsDescription => 'Make the app work how you want it';
 
-	/// en: 'Common Settings'
-	String get commonSettings => 'Common Settings';
+	/// en: 'Common Preferences'
+	String get commonSettings => 'Common Preferences';
 
 	/// en: 'Back up and sync your logs across devices'
 	String get syncDescription => 'Back up and sync your logs across devices';
 
-	/// en: 'Sign in to online services and lookups'
-	String get accountsDescription => 'Sign in to online services and lookups';
+	/// en: 'Service credentials, offline data, and more'
+	String get accountsDescription => 'Service credentials, offline data, and more';
 
 	/// en: 'Features & Extensions'
 	String get extensions => 'Features & Extensions';
 
-	/// en: 'Turn optional features on or off'
-	String get extensionsDescription => 'Turn optional features on or off';
+	/// en: 'Activities, Contests and more features'
+	String get extensionsDescription => 'Activities, Contests and more features';
 
 	/// en: 'Operator callsign and station profile'
 	String get profilesDescription => 'Operator callsign and station profile';
 
 	/// en: 'Station Profiles'
 	String get stationProfiles => 'Station Profiles';
-
-	/// en: 'Data Files'
-	String get dataFiles => 'Data Files';
-
-	/// en: 'Manage cached data sources'
-	String get dataFilesDescription => 'Manage cached data sources';
 
 	/// en: 'Developer Settings'
 	String get developerSettings => 'Developer Settings';
@@ -4919,14 +4932,14 @@ class Translations$settings$panels$en {
 	/// en: 'Station Configuration'
 	String get station => 'Station Configuration';
 
-	/// en: 'CAT control & more options'
-	String get stationDescription => 'CAT control & more options';
+	/// en: 'CAT control and more options'
+	String get stationDescription => 'CAT control and more options';
 
 	/// en: 'Peer Devices'
 	String get peers => 'Peer Devices';
 
-	/// en: 'Share an operation with your other devices on the same network'
-	String get peersDescription => 'Share an operation with your other devices on the same network';
+	/// en: 'Connect to other devices nearby'
+	String get peersDescription => 'Connect to other devices nearby';
 }
 
 // Path: settings.numberFormatOpts
@@ -7284,6 +7297,7 @@ extension on Translations {
 			'settings.logging.bands' => 'Bands',
 			'settings.logging.modes' => 'Modes',
 			'settings.radio.title' => 'Radio',
+			'settings.radio.moreSettings' => 'More station configuration settings',
 			'settings.radio.units.ms' => 'ms',
 			'settings.radio.units.kHz' => 'kHz',
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
@@ -7378,7 +7392,8 @@ extension on Translations {
 			'settings.help.blueskyDescription' => 'Follow us for news and updates',
 			'settings.help.contact' => 'Contact Us',
 			'settings.help.contactDescription' => 'help@ham2k.com — but try the Forums or Chat first!',
-			'settings.map.title' => 'Map',
+			'settings.exports.title' => 'Exports',
+			'settings.map.title' => 'Maps',
 			'settings.map.style.title' => 'Map Style',
 			'settings.map.styleOpts.automatic' => 'Automatic',
 			'settings.map.styleOpts.liberty' => 'Liberty',
@@ -7396,7 +7411,8 @@ extension on Translations {
 			'settings.privacy.privacyPolicy' => 'Privacy Policy',
 			'settings.privacy.termsOfService' => 'Terms of Service',
 			'settings.operatorCall' => 'Operator Callsign',
-			'settings.sync.title' => 'LoFi Cloud Sync',
+			'settings.sync.title' => 'Cloud Sync',
+			'settings.sync.moreSettings' => 'More sync settings',
 			'settings.sync.enable' => 'Enable Sync',
 			'settings.sync.deviceKey' => 'Device Key',
 			'settings.peers.title' => 'Peer Devices',
@@ -7486,18 +7502,18 @@ extension on Translations {
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}',
 			'settings.syncPanel.countsLocalChecking' => 'This device: checking…',
 			'settings.syncPanel.countsServerChecking' => 'Server: checking…',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.countsServerUnavailable' => 'Server: not available',
 			'settings.syncPanel.replaceDialogBody' => ({required Object operations, required Object qsos}) => 'This backs up and clears ${operations} and ${qsos} from this device, then downloads the account\'s data instead. The backup stays in this device\'s database.',
 			'settings.syncPanel.replace' => 'Replace',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.pendingBannerTitle' => 'New Ham2K Log Filer account detected',
 			'settings.syncPanel.pendingBannerBody' => 'Keep this device\'s existing operations and QSOs and merge them into the account, or replace them with the account\'s data (a backup stays on this device either way).',
 			'settings.syncPanel.combine' => 'Combine',
 			'settings.syncPanel.authIssueTitle' => 'Sync can\'t connect',
 			'settings.syncPanel.authIssueText' => 'Ham2K Log Filer keeps rejecting this device. Check your callsign in Sync settings.',
 			'settings.syncPanel.openSettings' => 'Open Sync settings',
-			'settings.accounts.title' => 'Accounts & Services',
+			'settings.accounts.title' => 'Accounts, Services & Data Sources',
 			'settings.accounts.none' => 'No active extensions with accounts',
 			'settings.accounts.notConfigured' => 'Not configured',
 			'settings.accounts.connected' => 'Connected',
@@ -7839,7 +7855,7 @@ extension on Translations {
 			'settings.profiles.racSection' => 'RAC Section',
 			'settings.profiles.section' => 'Section',
 			'settings.search.clear' => 'Clear',
-			'settings.search.hint' => 'Search settings',
+			'settings.search.hint' => 'Search preferences',
 			'settings.developer.developerModeDescription' => 'Enable developer warnings, debug logs, and tools.',
 			'settings.developer.experiments' => 'Experiments',
 			'settings.developer.experimentsEnabled' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${count} enabled', other: '${count} enabled', ), 
@@ -7884,17 +7900,15 @@ extension on Translations {
 			'settings.about.noticesDescription' => 'Announcements and status messages',
 			'settings.about.releaseNotes' => 'Release Notes',
 			'settings.about.copiedVersion' => 'Copied version details to clipboard',
-			'settings.panels.settings' => 'Settings',
-			'settings.panels.settingsDescription' => 'Every available setting in one place',
-			'settings.panels.commonSettings' => 'Common Settings',
+			'settings.panels.settings' => 'Application Preferences',
+			'settings.panels.settingsDescription' => 'Make the app work how you want it',
+			'settings.panels.commonSettings' => 'Common Preferences',
 			'settings.panels.syncDescription' => 'Back up and sync your logs across devices',
-			'settings.panels.accountsDescription' => 'Sign in to online services and lookups',
+			'settings.panels.accountsDescription' => 'Service credentials, offline data, and more',
 			'settings.panels.extensions' => 'Features & Extensions',
-			'settings.panels.extensionsDescription' => 'Turn optional features on or off',
+			'settings.panels.extensionsDescription' => 'Activities, Contests and more features',
 			'settings.panels.profilesDescription' => 'Operator callsign and station profile',
 			'settings.panels.stationProfiles' => 'Station Profiles',
-			'settings.panels.dataFiles' => 'Data Files',
-			'settings.panels.dataFilesDescription' => 'Manage cached data sources',
 			'settings.panels.developerSettings' => 'Developer Settings',
 			'settings.panels.developerSettingsDescription' => 'Debugging and development tools',
 			'settings.panels.about' => 'About',
@@ -7902,9 +7916,9 @@ extension on Translations {
 			'settings.panels.unavailableTitle' => 'Some settings are unavailable',
 			'settings.panels.unavailableText' => 'The extension runtime failed to start, so extension-contributed settings are missing.',
 			'settings.panels.station' => 'Station Configuration',
-			'settings.panels.stationDescription' => 'CAT control & more options',
+			'settings.panels.stationDescription' => 'CAT control and more options',
 			'settings.panels.peers' => 'Peer Devices',
-			'settings.panels.peersDescription' => 'Share an operation with your other devices on the same network',
+			'settings.panels.peersDescription' => 'Connect to other devices nearby',
 			'settings.showMoreSettings' => 'Show more settings',
 			'settings.numberFormat' => 'Number Formatting',
 			'settings.numberFormatOpts.locale' => 'Use device settings',
@@ -8002,9 +8016,9 @@ extension on Translations {
 			'updates.updateAvailable' => 'Update available',
 			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
 			'updates.getIt' => 'Get it',
-			'updates.ok' => 'OK',
 			_ => null,
 		} ?? switch (path) {
+			'updates.ok' => 'OK',
 			'updates.updateReady' => 'Update ready',
 			'updates.restartToApply' => 'An update has been downloaded. Restart to apply it.',
 			'updates.appliesNextLaunch' => 'An update has been downloaded. It will apply the next time you open the app.',

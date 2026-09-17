@@ -372,17 +372,18 @@ Aliases are for names an operator would plausibly *reach for* — not a thesauru
 Every alias is one more thing that can collide with another setting's real name,
 and a collision costs a disambiguation prompt on a query that used to be exact.
 
-## Common Settings and environment gating
+## Common Preferences and environment gating
 
-The app has one settings screen, **Settings**: a collapsible section per
-declared group and panel, led by **Common Settings**, a short list of the
+The app has one settings screen, **Settings**, whose **Application
+Preferences** panel has a collapsible section per declared group and panel,
+led by **Common Preferences**, a short list of the
 handful of settings most users ever touch. Which fields land on Common
-Settings —
+Preferences —
 and which platforms show a field at all — is declared per-element, not
 maintained as a separate list somewhere else in the app. Any field, link, or
 action (core-declared or extension-declared, Tier 1 or Tier 2 alike) can set:
 
-- **`common: true`** — also show this element in the Common Settings
+- **`common: true`** — also show this element in the Common Preferences
   section, on top of its own group's. Off by default. Not the same thing as
   `FormFieldOption.common`/`uncommon` above — that's a `multiselect`
   option's own disclosure tier (upfront vs. behind "Show more"), a
@@ -395,7 +396,7 @@ action (core-declared or extension-declared, Tier 1 or Tier 2 alike) can set:
 - **`environment: 'ios,android'`** (or `'-web'`, or an array either way) —
   restrict which platform(s) show this element at all. This is a platform
   gate, not a common-vs-everything one: an excluded field disappears from every
-  settings surface on that platform, not just Common Settings. Every
+  settings surface on that platform, not just Common Preferences. Every
   token unprefixed is a whitelist (show ONLY there); every token
   `-`-prefixed is a blacklist (show everywhere EXCEPT there); mixing the two
   forms in one attribute is invalid and treated as if `environment` were

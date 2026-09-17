@@ -59,7 +59,7 @@ Future<void> openSyncPanel(WidgetTester tester, HaLoServices services) async {
   await tester.pumpAndSettle();
   // `.first`: the sidebar's entry. The Settings panel showing beside it
   // carries a band of the same name.
-  await tester.tap(find.text('LoFi Cloud Sync').first);
+  await tester.tap(find.text('Cloud Sync').first);
   await tester.pumpAndSettle();
 }
 

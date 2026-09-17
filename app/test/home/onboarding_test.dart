@@ -540,7 +540,7 @@ void main() {
 
     // It should have pushed SettingsView
     expect(find.byType(SettingsView), findsOneWidget);
-    expect(find.text('LoFi Cloud Sync'), findsWidgets);
+    expect(find.text('Cloud Sync'), findsWidgets);
 
     await drainTimers(tester);
   });

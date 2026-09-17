@@ -29,6 +29,7 @@ typedef FormOnChange = Future<Map<String, dynamic>?> Function(String fieldKey, d
 typedef FormAction = Future<FormActionResult?> Function(String actionKey, String method, Map<String, dynamic> state);
 typedef FormManageAccount = void Function(String accountKey, String? subkey);
 typedef FormOpenLink = void Function(String url);
+typedef FormOpenPanel = void Function(String panelKey);
 
 /// What a `type: 'action'` element's handler — or, same contract, a
 /// `select` option with `isAction: true` — can do: show the operator a
@@ -200,6 +201,11 @@ class FormRenderer extends StatefulWidget {
   /// Opens a `type: 'link'` element's URL. The renderer stays free of any
   /// url_launcher dependency — the app decides how links open.
   final FormOpenLink? onOpenLink;
+
+  /// Opens the app screen a `type: 'link'` element names with `panel`
+  /// instead of a `url`. App-side only — no extension surface wires it, so
+  /// such a link is inert there.
+  final FormOpenPanel? onOpenPanel;
   final void Function(Map<String, dynamic> values) onSubmit;
   final VoidCallback onCancel;
   final bool showActions;
@@ -261,6 +267,7 @@ class FormRenderer extends StatefulWidget {
     this.saveLabel,
     this.settingsList = false,
     this.sliver = false,
+    this.onOpenPanel,
   });
 
   @override
@@ -1482,31 +1489,41 @@ class FormRendererState extends State<FormRenderer> {
     unawaited(_handleFieldBlurOrInteraction(key, _values[key]));
   }
 
-  /// `{type: 'link', label, url, icon?, description?}` — an icon-row-styled
-  /// tile that hands its URL to [FormRenderer.onOpenLink] (no-op when the
-  /// presenter didn't wire one).
+  /// `{type: 'link', label, url | panel, icon?, description?}` — an
+  /// icon-row-styled tile that hands its URL to [FormRenderer.onOpenLink], or
+  /// its `panel` key to [FormRenderer.onOpenPanel] (no-op when the presenter
+  /// didn't wire the one it needs). A panel link stays inside the app, so it
+  /// wears a chevron rather than the open-in-new button.
   Widget _buildLink(Map<String, dynamic> el, ThemeData theme) {
     final label = el['label'] as String? ?? '';
     final description = el['description'] as String?;
     final icon = el['icon'] as String?;
     final url = el['url'] as String? ?? '';
+    final panel = el['panel'] as String?;
     final devModeColor = _devModeColor(el);
 
-    final open = url.isEmpty || widget.onOpenLink == null ? null : () => widget.onOpenLink!(url);
+    final VoidCallback? open;
+    if (panel != null) {
+      open = widget.onOpenPanel == null ? null : () => widget.onOpenPanel!(panel);
+    } else {
+      open = url.isEmpty || widget.onOpenLink == null ? null : () => widget.onOpenLink!(url);
+    }
     return ListTile(
       contentPadding: _rowContentPadding,
       leading: icon != null ? Icon(resolveIconName(icon), color: devModeColor) : null,
       title: Text(label, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.bold, color: devModeColor)),
       subtitle: description != null && description.isNotEmpty ? Text(description, style: TextStyle(color: devModeColor)) : null,
-      trailing: IconButton(
-        icon: Icon(
-          MdiIcons.openInNew,
-          size: 22,
-          color: devModeColor,
-          semanticLabel: t.formChrome.openPage,
-        ),
-        onPressed: open,
-      ),
+      trailing: panel != null
+          ? Icon(MdiIcons.chevronRight, color: devModeColor)
+          : IconButton(
+              icon: Icon(
+                MdiIcons.openInNew,
+                size: 22,
+                color: devModeColor,
+                semanticLabel: t.formChrome.openPage,
+              ),
+              onPressed: open,
+            ),
       onTap: open,
       mouseCursor: SystemMouseCursors.click,
     );

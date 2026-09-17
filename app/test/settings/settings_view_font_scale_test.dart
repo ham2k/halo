@@ -12,7 +12,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   testWidgets(
-    'the Common Settings category reflects a font scale change made outside the panel (e.g. the keyboard shortcut in main.dart)',
+    'the Common Preferences category reflects a font scale change made outside the panel (e.g. the keyboard shortcut in main.dart)',
     (tester) async {
       // The keyboard shortcut handler in main.dart calls
       // SettingsService.increaseFontScale() directly — it never goes
@@ -31,7 +31,7 @@ void main() {
       // 'Normal' / 'Larger'.
       //
       // `.hitTestable()`: the same field is mounted twice — once in the open
-      // Common Settings category, once in its own collapsed group's, which
+      // Common Preferences category, once in its own collapsed group's, which
       // stays in the tree (see _settingsSection).
       expect(find.text('Normal').hitTestable(), findsOneWidget);
 
