@@ -244,6 +244,7 @@
     }
   },
   "operation": {
+    "deletedReadOnly": "Esta operación está eliminada. Restáurala para registrar contactos o hacer cambios.",
     "tabs": {
       "qsos": "${count} QSOs",
       "info": "INFO",
@@ -281,6 +282,7 @@
       "showStateField": "Mostrar campo Estado/Provincia",
       "showGridField": "Mostrar campo Locador",
       "showDeletedQsos": "Mostrar QSOs eliminados",
+      "showDeletedOps": "Mostrar operaciones eliminadas",
       "showQsoNumbers": "Mostrar números de QSO",
       "lookupAllQsos": "Buscar datos de todos los QSOs",
       "loggingSettingsTitle": "Configuración de Registro",
@@ -700,6 +702,7 @@
     "share": "Compartir",
     "archive": "Archivar",
     "deleteOperation": "Borrar operación",
+    "undeleteOperation": "Restaurar operación",
     "alreadySelected": "Ya seleccionada",
     "retiredReference": "Retirada",
     "enableExtension": "Activar ${name}",

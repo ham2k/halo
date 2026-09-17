@@ -244,6 +244,7 @@
     }
   },
   "operation": {
+    "deletedReadOnly": "This operation is deleted. Undelete it to log or make changes.",
     "tabs": {
       "qsos": "${count} QSOs",
       "info": "INFO",
@@ -282,6 +283,7 @@
       "showStateField": "Show State field",
       "showGridField": "Show Grid field",
       "showDeletedQsos": "Show deleted QSOs",
+      "showDeletedOps": "Show deleted operations",
       "showQsoNumbers": "Show QSO Numbers",
       "lookupAllQsos": "Lookup all QSOs",
       "loggingSettingsTitle": "Logging Settings",
@@ -699,6 +701,7 @@
     "share": "Share",
     "archive": "Archive",
     "deleteOperation": "Delete Operation",
+    "undeleteOperation": "Undelete Operation",
     "alreadySelected": "Already selected",
     "retiredReference": "Retired",
     "enableExtension": "Enable ${name}",

@@ -555,6 +555,13 @@ class LoggingSettingsGroup extends SettingsGroup {
         target: 'logging',
       ),
       _toggle(
+        key: 'showQsoNumbers',
+        label: t.operation.menu.showQsoNumbers,
+        icon: 'counter',
+        target: 'logging',
+        value: settings.showQsoNumbers,
+      ),
+      _toggle(
         key: 'showDeletedQSOs',
         aliases: const ['deletedQSOs'],
         label: t.operation.menu.showDeletedQsos,
@@ -563,11 +570,12 @@ class LoggingSettingsGroup extends SettingsGroup {
         target: 'logging',
       ),
       _toggle(
-        key: 'showQsoNumbers',
-        label: t.operation.menu.showQsoNumbers,
-        icon: 'counter',
-        target: 'logging',
-        value: settings.showQsoNumbers,
+        key: 'showDeletedOps',
+        aliases: const ['deletedOps'],
+        label: t.operation.menu.showDeletedOps,
+        icon: 'delete',
+        value: settings.showDeletedOps,
+        target: 'logging-extended',
       ),
     ];
   }

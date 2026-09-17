@@ -73,18 +73,109 @@ void main() {
       'their': {'call': 'W1AW'},
     });
     await qsos.softDelete(byHand);
+    // Undelete tells the two deletes apart by their stamps, which have
+    // millisecond resolution: back to back, as only a test can do it, they tie.
+    await Future<void>.delayed(const Duration(milliseconds: 2));
 
     await operations.softDelete(op.uuid);
     expect(await qsos.historyForCall('W1AW'), isEmpty);
 
-    // Restoring the operation is a plain data write — no cascade to undo.
-    final restored = await operations.get(op.uuid);
-    await operations.saveData(restored!);
-    await (db.update(db.operations)..where((o) => o.uuid.equals(op.uuid)))
-        .write(const OperationsCompanion(deleted: Value(false)));
+    // No cascade to undo: the tombstone's stamp matches no QSO here.
+    await undeleteOperationWithQsos(db: db, operations: operations, qsos: qsos, uuid: op.uuid);
 
     final history = await qsos.historyForCall('W1AW');
     expect(history.length, 1, reason: 'the hand-deleted QSO stays deleted');
+  });
+
+  test('undelete re-stamps and unsyncs, or sync keeps the newer tombstone and re-deletes the operation', () async {
+    final op = await operations.create(stationCall: 'N0DEV');
+    await operations.softDelete(op.uuid);
+    final tombstone = (await operations.get(op.uuid))!;
+    await (db.update(db.operations)..where((o) => o.uuid.equals(op.uuid)))
+        .write(const OperationsCompanion(synced: Value(true)));
+    // The real clock has millisecond resolution; a restore landing in the
+    // tombstone's own millisecond would tie with it rather than beat it.
+    await Future<void>.delayed(const Duration(milliseconds: 2));
+
+    expect(await operations.undelete(op.uuid), isTrue);
+
+    final restored = (await operations.get(op.uuid))!;
+    expect(restored.deleted, isFalse);
+    expect(restored.synced, isFalse);
+    expect(restored.data['updatedAtMillis'] as int, greaterThan(tombstone.data['updatedAtMillis'] as int));
+    final row = await (db.select(db.operations)..where((o) => o.uuid.equals(op.uuid))).getSingle();
+    expect(row.updatedAtMillis, restored.data['updatedAtMillis'], reason: 'the column mirrors the data stamp');
+  });
+
+  test('undelete leaves a purged operation alone — its QSOs are purged and peers may have hard-deleted it', () async {
+    final op = await operations.create(stationCall: 'N0DEV/TEST');
+    await operations.purge(op.uuid);
+
+    expect(await operations.undelete(op.uuid), isFalse);
+    expect((await operations.get(op.uuid))!.deleted, isTrue);
+  });
+
+  test('the deleted list offers what can be undeleted: soft-deleted operations, never purged ones', () async {
+    final live = await operations.create(stationCall: 'N0DEV');
+    final deleted = await operations.create(stationCall: 'N0DEV');
+    final purged = await operations.create(stationCall: 'N0DEV/TEST');
+    await operations.softDelete(deleted.uuid);
+    await operations.purge(purged.uuid);
+
+    expect((await operations.watchAll().first).map((o) => o.uuid), [live.uuid]);
+    expect(
+      (await operations.watchAll(includeDeleted: true).first).map((o) => o.uuid),
+      unorderedEquals([live.uuid, deleted.uuid]),
+    );
+  });
+
+  // app-polo's `deleteOperation` tombstones every QSO along with the
+  // operation, writing ONE `Date.now()` to all of them, in its own dialect
+  // (`deleted: 1`). That shared stamp is the only thing telling those QSOs
+  // from the ones the operator deleted by hand, so it is what undelete keys on.
+  test('undeleting an operation app-polo deleted restores the QSOs it took, not the ones deleted by hand', () async {
+    final op = await operations.create(stationCall: 'N0DEV');
+    final taken = await qsos.add(op.uuid, {
+      'their': {'call': 'W1AW'},
+    });
+    final byHand = await qsos.add(op.uuid, {
+      'their': {'call': 'K2ABC'},
+    });
+    await qsos.softDelete(byHand);
+
+    // Newer than every local stamp, so the merge takes it; barely, so the
+    // restore below — stamped from the real clock — is newer still.
+    final poloDeletedAt = realNowMillis() + 5;
+    await operations.mergeFromSync([
+      {...(await operations.get(op.uuid))!.data, 'uuid': op.uuid, 'deleted': 1, 'updatedAtMillis': poloDeletedAt},
+    ]);
+    await qsos.mergeFromSync([
+      for (final qso in [taken, byHand])
+        {
+          ...(await qsos.get(qso.uuid))!.data,
+          'uuid': qso.uuid,
+          'operation': op.uuid,
+          'deleted': 1,
+          // The by-hand delete happened on the other device too, earlier.
+          'updatedAtMillis': qso.uuid == taken.uuid ? poloDeletedAt : poloDeletedAt - 1,
+        },
+    ]);
+    expect((await operations.get(op.uuid))!.deleted, isTrue);
+    expect((await qsos.get(taken.uuid))!.deleted, isTrue);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+
+    await undeleteOperationWithQsos(db: db, operations: operations, qsos: qsos, uuid: op.uuid);
+
+    final restored = (await qsos.get(taken.uuid))!;
+    expect(restored.deleted, isFalse);
+    final restoredRow = await (db.select(db.qsos)..where((q) => q.uuid.equals(taken.uuid))).getSingle();
+    expect(restoredRow.synced, isFalse, reason: 'unsynced, or the restore never leaves this device');
+    // A column that drifts from the data's stamp fails `markSynced`'s
+    // comparison forever, and the row re-pushes in a loop.
+    expect(restoredRow.updatedAtMillis, restored.data['updatedAtMillis']);
+    expect(restored.data['updatedAtMillis'] as int, greaterThan(poloDeletedAt));
+    expect((await qsos.get(byHand.uuid))!.deleted, isTrue);
+    expect((await operations.get(op.uuid))!.qsoCount, 1, reason: 'the cached count follows the restored QSO');
   });
 
   group('sync counts', () {

@@ -25,6 +25,11 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../config/user_agent.dart';
 import 'error_reporting_service.dart';
 import 'extension_store_settings.dart';
+import 'onboarding_flows.dart';
+
+// Importers of this file name a flow in the same breath as the calls that
+// take one.
+export 'onboarding_flows.dart';
 
 const _uuidGenerator = Uuid();
 
@@ -1447,6 +1452,9 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
 
   Future<void> setShowDeletedQSOs(bool value) => setSettingValue(loggingGroup, _showDeletedQSOsKey, value);
 
+  /// Key and alias are app-polo's (`showDeletedOps` / `deletedOps`).
+  bool get showDeletedOps => _loggingBool('showDeletedOps', false);
+
   bool get showQsoNumbers => _loggingBool(_showQsoNumbersKey, true);
 
   Future<void> setShowQsoNumbers(bool value) => setSettingValue(loggingGroup, _showQsoNumbersKey, value);
@@ -1766,25 +1774,4 @@ abstract final class LayoutKeys {
   /// [SettingsService.layoutData] only stores maps, hence the wrapper key
   /// rather than the list directly.
   static const logsQsoColumnOrder = 'logs.qsoColumnOrder';
-}
-
-/// Flow ids for [SettingsService.onboardingShownCount] /
-/// [SettingsService.recordOnboardingShown].
-abstract final class OnboardingFlows {
-  /// The app's first-run overlay.
-  static const firstUse = 'first-use';
-
-  /// The operation sheet, auto-opened once for a user who's never seen it —
-  /// independent of (and in addition to) the existing new-operation auto-open.
-  static const operationSheet = 'operation-sheet';
-
-  /// Not an overlay: counts new operations opened, so the home FAB's nudge
-  /// (see `_NewOperationNudge`) knows when to stop.
-  static const newOperation = 'new-operation';
-
-  /// Not an overlay either: counts ⌘K command-dialog opens, so the dialog
-  /// knows when to stop offering sample commands on an empty field (see
-  /// `CommandDialog._suggestionsThreshold`). Someone who has opened it a
-  /// dozen times knows what's in there.
-  static const commandDialog = 'command-dialog';
 }

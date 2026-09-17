@@ -83,12 +83,15 @@ class OperationsRepository {
     return operation;
   }
 
-  Stream<List<Operation>> watchAll() {
+  /// [includeDeleted] adds soft-deleted operations, which the operator can
+  /// still undelete — never purged ones: those are on their way to a hard
+  /// delete and have their own flow ([watchReceivedPurgesPending]).
+  Stream<List<Operation>> watchAll({bool includeDeleted = false}) {
     // Sorting falls back to fields within the JSON data blob (like
     // createdAtMillis) for operations with no QSOs, so the sort happens
     // in Dart rather than SQL.
     final query = (db.select(db.operations)
-      ..where((op) => op.deleted.equals(false)));
+      ..where((op) => includeDeleted ? op.purged.equals(false) : op.deleted.equals(false)));
     return query.watch().map((rows) {
       final list = rows.map(_operationFromRow).toList();
       list.sort((a, b) {
@@ -174,6 +177,27 @@ class OperationsRepository {
   }
 
   Future<void> softDelete(String uuid) => _writeDeleted(uuid, purged: false);
+
+  /// Restores a soft-deleted operation, re-stamped for the same reason
+  /// [_writeDeleted] is: the restore must sync as a revision newer than the
+  /// tombstone. Returns whether anything was restored. A purged operation
+  /// never is: its QSOs are purged too, and other devices may already have
+  /// hard-deleted it.
+  Future<bool> undelete(String uuid) async {
+    final now = realNowMillis();
+    final operation = await get(uuid);
+    if (operation == null || !operation.deleted || operation.purged) return false;
+    final refusal = WritePolicy.forOperation(operation);
+    if (refusal != null) throw refusal;
+    await (db.update(db.operations)..where((op) => op.uuid.equals(uuid))).write(OperationsCompanion(
+      deleted: const Value(false),
+      synced: const Value(false),
+      updatedAtMillis: Value(now),
+      data: Value(encodeOperationData({...operation.data, 'updatedAtMillis': now}, 'operations:undelete')),
+    ));
+    onChange?.call();
+    return true;
+  }
 
   /// Deletes a Test Operation for real: soft-deletes with `purged: true`
   /// and `purgedLocally: true` (same tombstone `softDelete` writes, so it

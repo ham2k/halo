@@ -35,6 +35,19 @@ void main() {
       expect(loggingKeys, baseKeys);
     });
 
+    // Preferences lists the group in declaration order, and the three "show"
+    // toggles about what a list holds read as one run: numbers, then the two
+    // kinds of deleted record.
+    test('Show QSO Numbers, Show deleted QSOs and Show deleted operations close the group, in that order', () async {
+      SharedPreferences.setMockInitialValues({});
+      final settings = SettingsService(await SharedPreferences.getInstance());
+      final elements = await LoggingSettingsGroup(settings).buildElements();
+
+      final keys = [for (final el in elements) el['key'] as String];
+      expect(keys.sublist(keys.length - 3), ['showQsoNumbers', 'showDeletedQSOs', 'showDeletedOps']);
+      expect(settings.showDeletedOps, isFalse, reason: 'off by default, as in app-polo');
+    });
+
     test('every other declared field is target: "logging-extended", not left untargeted', () async {
       SharedPreferences.setMockInitialValues({});
       final settings = SettingsService(await SharedPreferences.getInstance());

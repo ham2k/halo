@@ -317,6 +317,7 @@ class _Translations$operation$es extends Translations$operation$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
+	@override String get deletedReadOnly => 'Esta operación está eliminada. Restáurala para registrar contactos o hacer cambios.';
 	@override late final _Translations$operation$tabs$es tabs = _Translations$operation$tabs$es._(_root);
 	@override late final _Translations$operation$positions$es positions = _Translations$operation$positions$es._(_root);
 	@override String get stationCallsignNone => 'Sin indicativo de estación';
@@ -404,6 +405,7 @@ class _Translations$activitiesView$es extends Translations$activitiesView$en {
 	@override String get share => 'Compartir';
 	@override String get archive => 'Archivar';
 	@override String get deleteOperation => 'Borrar operación';
+	@override String get undeleteOperation => 'Restaurar operación';
 	@override String get alreadySelected => 'Ya seleccionada';
 	@override String get retiredReference => 'Retirada';
 	@override String enableExtension({required Object name}) => 'Activar ${name}';
@@ -1255,6 +1257,7 @@ class _Translations$operation$menu$es extends Translations$operation$menu$en {
 	@override String get showStateField => 'Mostrar campo Estado/Provincia';
 	@override String get showGridField => 'Mostrar campo Locador';
 	@override String get showDeletedQsos => 'Mostrar QSOs eliminados';
+	@override String get showDeletedOps => 'Mostrar operaciones eliminadas';
 	@override String get showQsoNumbers => 'Mostrar números de QSO';
 	@override String get lookupAllQsos => 'Buscar datos de todos los QSOs';
 	@override String get loggingSettingsTitle => 'Configuración de Registro';
@@ -3296,6 +3299,7 @@ extension on TranslationsEs {
 			'dialogs.callChange.contactsUnreadable' => 'No se pudieron leer los contactos de esta operación, así que cambiar un indicativo aquí no ofrecerá actualizarlos',
 			'dialogs.callChange.restampFailed' => ({required Object error}) => 'No se pudieron actualizar los contactos ya registrados, así que no se cambió nada: ${error}',
 			'dialogs.callChange.restampShortfall' => ({required Object written, required Object planned}) => 'Se actualizaron ${written} de ${planned} contactos — el resto ya no está en esta operación',
+			'operation.deletedReadOnly' => 'Esta operación está eliminada. Restáurala para registrar contactos o hacer cambios.',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
@@ -3328,6 +3332,7 @@ extension on TranslationsEs {
 			'operation.menu.showStateField' => 'Mostrar campo Estado/Provincia',
 			'operation.menu.showGridField' => 'Mostrar campo Locador',
 			'operation.menu.showDeletedQsos' => 'Mostrar QSOs eliminados',
+			'operation.menu.showDeletedOps' => 'Mostrar operaciones eliminadas',
 			'operation.menu.showQsoNumbers' => 'Mostrar números de QSO',
 			'operation.menu.lookupAllQsos' => 'Buscar datos de todos los QSOs',
 			'operation.menu.loggingSettingsTitle' => 'Configuración de Registro',
@@ -3608,10 +3613,10 @@ extension on TranslationsEs {
 			'operation.import.listenDescriptionOnN1mm' => 'Escuchando a N1MM+',
 			'operation.import.listenDescriptionOnWsjtx' => 'Escuchando a WSJT-X',
 			'operation.import.listenDescriptionOnBoth' => 'Escuchando a N1MM+ y WSJT-X',
-			'operation.import.listenDescriptionOff' => 'Desactivado',
-			'operation.import.addToOperationTitle' => 'Agregar a esta operación',
 			_ => null,
 		} ?? switch (path) {
+			'operation.import.listenDescriptionOff' => 'Desactivado',
+			'operation.import.addToOperationTitle' => 'Agregar a esta operación',
 			'operation.import.addToOperationDescriptionOn' => 'Los QSOs capturados se agregan a esta operación según llegan',
 			'operation.import.addToOperationDescriptionOff' => 'Los QSOs capturados se retienen hasta que actives esto',
 			'operation.import.pendingSectionTitle' => 'QSOs capturados',
@@ -3674,6 +3679,7 @@ extension on TranslationsEs {
 			'activitiesView.share' => 'Compartir',
 			'activitiesView.archive' => 'Archivar',
 			'activitiesView.deleteOperation' => 'Borrar operación',
+			'activitiesView.undeleteOperation' => 'Restaurar operación',
 			'activitiesView.alreadySelected' => 'Ya seleccionada',
 			'activitiesView.retiredReference' => 'Retirada',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Activar ${name}',
@@ -4121,11 +4127,11 @@ extension on TranslationsEs {
 			'settings.syncPanel.countOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} operación', other: '${n} operaciones', ), 
 			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
 			'settings.syncPanel.counts' => 'Datos Sincronizados',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'Este dispositivo: ${qsos} · ${operations}',
 			'settings.syncPanel.countsPending' => ({required Object items}) => 'Pendiente de subir: ${items}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Servidor: ${qsos} · ${operations}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.countsLocalChecking' => 'Este dispositivo: comprobando…',
 			'settings.syncPanel.countsServerChecking' => 'Servidor: comprobando…',
 			'settings.syncPanel.countsServerUnavailable' => 'Servidor: no disponible',
@@ -4635,11 +4641,11 @@ extension on TranslationsEs {
 			'updates.ok' => 'OK',
 			'updates.updateReady' => 'Actualización lista',
 			'updates.restartToApply' => 'Se descargó una actualización. Reinicia para aplicarla.',
+			_ => null,
+		} ?? switch (path) {
 			'updates.appliesNextLaunch' => 'Se descargó una actualización. Se aplicará la próxima vez que abras la app.',
 			'updates.restartNow' => 'Reiniciar ahora',
 			'updates.reloadToUpdate' => 'Hay una versión más reciente de esta página disponible. Recarga para obtenerla.',
-			_ => null,
-		} ?? switch (path) {
 			'updates.reloadNow' => 'Recargar ahora',
 			'updates.checkForUpdates' => 'Buscar actualizaciones',
 			'updates.checkingForUpdates' => 'Buscando actualizaciones…',

@@ -337,6 +337,9 @@ class HaLoServices {
     });
   }
 
+  Future<bool> undeleteOperation(String uuid) =>
+      undeleteOperationWithQsos(db: db, operations: operations, qsos: qsos, uuid: uuid);
+
   /// The operator confirmed the "these were removed elsewhere" prompt
   /// ([watchReceivedTestOperationPurges] below) for [uuids] — hard-deletes them and
   /// their QSOs. Unlike [purgeOperation], these were never purged on this

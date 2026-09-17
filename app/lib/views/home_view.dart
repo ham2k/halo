@@ -54,13 +54,19 @@ class _OperationRow extends StatelessWidget {
         ? suggestedSubtitle
         : operation.refs.map((r) => r['name']).whereType<String>().join(' • ');
 
-    return Material(
+    // A deleted operation reads as app-polo shows one: the whole row at half
+    // strength, its title line struck through.
+    final strike = operation.deleted ? TextDecoration.lineThrough : null;
+
+    final row = Material(
       color: theme.colorScheme.surface,
       child: InkWell(
         onTap: () => Navigator.of(context).push(
           slideInFromRight<void>((_) => OperationView(services: services, operationUuid: operation.uuid)),
         ),
-        onLongPress: () => confirmDeleteOperation(context, services, operation),
+        // Undelete lives in the operation's own tools menu, so a deleted row
+        // has nothing to offer here.
+        onLongPress: operation.deleted ? null : () => confirmDeleteOperation(context, services, operation),
         mouseCursor: SystemMouseCursors.click,
         child: Padding(
           padding: PaneSafeArea.symmetricOf(context, horizontal: 16, vertical: 10),
@@ -78,11 +84,12 @@ class _OperationRow extends StatelessWidget {
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w800,
                               fontFamily: 'RobotoMono',
+                              decoration: strike,
                             ),
                           ),
                           TextSpan(
                             text: ' ${displayTitleFor(context, operation)}',
-                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700, decoration: strike),
                           ),
                         ],
                       ),
@@ -120,6 +127,7 @@ class _OperationRow extends StatelessWidget {
         ),
       ),
     );
+    return operation.deleted ? Opacity(opacity: 0.5, child: row) : row;
   }
 
 }
@@ -401,7 +409,25 @@ class _HomeViewState extends State<HomeView>
   /// reruns on every window-resize frame — watchAll() returns a NEW drift
   /// stream per call, and an inline `stream:` would make the StreamBuilder
   /// resubscribe (and re-run the SELECT) each of those frames.
-  late final Stream<List<Operation>> _operationsStream = widget.services.operations.watchAll();
+  ///
+  /// Keyed on the Show Deleted Operations setting, the one thing that changes
+  /// which query this is.
+  Stream<List<Operation>>? _operationsStream;
+  bool? _operationsStreamIncludesDeleted;
+
+  Stream<List<Operation>> _operations() {
+    final includeDeleted = widget.services.settings.showDeletedOps;
+    if (_operationsStream == null || _operationsStreamIncludesDeleted != includeDeleted) {
+      _operationsStream = widget.services.operations.watchAll(includeDeleted: includeDeleted);
+      _operationsStreamIncludesDeleted = includeDeleted;
+    }
+    return _operationsStream!;
+  }
+
+  /// Nothing else rebuilds the operations pane when a setting changes.
+  void _onSettingsChanged() {
+    if (widget.services.settings.showDeletedOps != _operationsStreamIncludesDeleted) setState(() {});
+  }
 
   /// Blocks a second tap while _newOperation is in flight — a fast
   /// double-tap could otherwise create two operations before the pushed
@@ -453,6 +479,7 @@ class _HomeViewState extends State<HomeView>
     homeRail.expanded = widget.services.settings.homeNavExpanded;
     homeRail.destination = HomeDestination.operations;
     homeRail.addListener(_onRailChanged);
+    widget.services.settings.addListener(_onSettingsChanged);
     WidgetsBinding.instance.addObserver(this);
     _nudgeTimer = Timer(_newOperationNudgeDelay, () {
       if (mounted) setState(() => _nudgeArmed = true);
@@ -490,6 +517,7 @@ class _HomeViewState extends State<HomeView>
     _settingsSlide.dispose();
     _logsSlide.dispose();
     homeRail.removeListener(_onRailChanged);
+    widget.services.settings.removeListener(_onSettingsChanged);
     homeRouteObserver.unsubscribe(this);
     _fabSettleTimer?.cancel();
     _nudgeTimer?.cancel();
@@ -1012,7 +1040,7 @@ class _HomeViewState extends State<HomeView>
                     children: [
                       Positioned.fill(
                         child: StreamBuilder<List<Operation>>(
-                          stream: _operationsStream,
+                          stream: _operations(),
                           builder: (context, snapshot) {
                             // First real snapshot = bootstrap done + first data
                             // load complete: resolve the dev bridge's `ready`

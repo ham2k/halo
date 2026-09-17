@@ -137,8 +137,14 @@ fixes four rules it carries but never awards.
 
 ### Operations
 - **Operation templates** ("use as template" + suggestions on create). ⛔
-- **Operation undelete** UI (HaLo soft-deletes; QSO-level restore exists,
-  operation-level doesn't). ⛔
+- **Operation undelete** ✅ — Show Deleted Operations (PoLo's
+  `showDeletedOps`) lists them struck through and faded, as PoLo does, and
+  the operation's Tools menu offers Undelete in place of Delete. PoLo's
+  delete tombstones the operation's QSOs with the operation's own revision
+  stamp, where HaLo's leaves them alone, so Undelete also restores the
+  deleted QSOs carrying exactly that stamp and no others. Deliberately
+  unlike PoLo, a deleted operation is read-only until undeleted: a save
+  re-stamps it, which would strand those QSOs for good.
 - **Operation badge** screen (full-screen map/stats badge, reached from
   the map tab; user screenshots it manually — no share code). ⛔
 - Keep-device-awake while logging. ⛔ (no wakelock dependency at all)
@@ -305,5 +311,5 @@ HaLo has, PoLo lacks: `DEVSTATUS`/`DEVPROGRESS` (status-bar exercisers),
 8. ~~Multi-station / operator model~~ — done (HALO-370, HALO-279). What is
    left of §2's "Station & operator model" is profiles (HALO-107).
 9. Long tail (HamQTH/QRZCALL.EU, todo done-toggle and the pending-to-dos
-   export warning, global Spots screen, operation templates/undelete/badge,
+   export warning, global Spots screen, operation templates/badge,
    keep-awake, credits/community links, dev-mode database surgery, polish).

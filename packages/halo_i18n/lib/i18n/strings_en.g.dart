@@ -624,6 +624,10 @@ class Translations$operation$en {
 	final Translations _root; // ignore: unused_field
 
 	// Translations
+
+	/// en: 'This operation is deleted. Undelete it to log or make changes.'
+	String get deletedReadOnly => 'This operation is deleted. Undelete it to log or make changes.';
+
 	late final Translations$operation$tabs$en tabs = Translations$operation$tabs$en.internal(_root);
 	late final Translations$operation$positions$en positions = Translations$operation$positions$en.internal(_root);
 
@@ -833,6 +837,9 @@ class Translations$activitiesView$en {
 
 	/// en: 'Delete Operation'
 	String get deleteOperation => 'Delete Operation';
+
+	/// en: 'Undelete Operation'
+	String get undeleteOperation => 'Undelete Operation';
 
 	/// en: 'Already selected'
 	String get alreadySelected => 'Already selected';
@@ -2638,6 +2645,9 @@ class Translations$operation$menu$en {
 
 	/// en: 'Show deleted QSOs'
 	String get showDeletedQsos => 'Show deleted QSOs';
+
+	/// en: 'Show deleted operations'
+	String get showDeletedOps => 'Show deleted operations';
 
 	/// en: 'Show QSO Numbers'
 	String get showQsoNumbers => 'Show QSO Numbers';
@@ -6796,6 +6806,7 @@ extension on Translations {
 			'dialogs.callChange.contactsUnreadable' => 'This operation\'s contacts could not be read, so changing a callsign here won\'t offer to update them',
 			'dialogs.callChange.restampFailed' => ({required Object error}) => 'The contacts already logged could not be updated, so nothing was changed: ${error}',
 			'dialogs.callChange.restampShortfall' => ({required Object written, required Object planned}) => '${written} of ${planned} contacts were updated — the rest are no longer in this operation',
+			'operation.deletedReadOnly' => 'This operation is deleted. Undelete it to log or make changes.',
 			'operation.tabs.qsos' => ({required Object count}) => '${count} QSOs',
 			'operation.tabs.info' => 'INFO',
 			'operation.tabs.spots' => 'SPOTS',
@@ -6829,6 +6840,7 @@ extension on Translations {
 			'operation.menu.showStateField' => 'Show State field',
 			'operation.menu.showGridField' => 'Show Grid field',
 			'operation.menu.showDeletedQsos' => 'Show deleted QSOs',
+			'operation.menu.showDeletedOps' => 'Show deleted operations',
 			'operation.menu.showQsoNumbers' => 'Show QSO Numbers',
 			'operation.menu.lookupAllQsos' => 'Lookup all QSOs',
 			'operation.menu.loggingSettingsTitle' => 'Logging Settings',
@@ -7108,10 +7120,10 @@ extension on Translations {
 			'operation.import.listenDescriptionOnN1mm' => 'Listening for N1MM+',
 			'operation.import.listenDescriptionOnWsjtx' => 'Listening for WSJT-X',
 			'operation.import.listenDescriptionOnBoth' => 'Listening for N1MM+ and WSJT-X',
-			'operation.import.listenDescriptionOff' => 'Off',
-			'operation.import.addToOperationTitle' => 'Add to this operation',
 			_ => null,
 		} ?? switch (path) {
+			'operation.import.listenDescriptionOff' => 'Off',
+			'operation.import.addToOperationTitle' => 'Add to this operation',
 			'operation.import.addToOperationDescriptionOn' => 'Captured QSOs are added to this operation as they arrive',
 			'operation.import.addToOperationDescriptionOff' => 'Captured QSOs are held until you turn this on',
 			'operation.import.pendingSectionTitle' => 'Captured QSOs',
@@ -7173,6 +7185,7 @@ extension on Translations {
 			'activitiesView.share' => 'Share',
 			'activitiesView.archive' => 'Archive',
 			'activitiesView.deleteOperation' => 'Delete Operation',
+			'activitiesView.undeleteOperation' => 'Undelete Operation',
 			'activitiesView.alreadySelected' => 'Already selected',
 			'activitiesView.retiredReference' => 'Retired',
 			'activitiesView.enableExtension' => ({required Object name}) => 'Enable ${name}',
@@ -7621,11 +7634,11 @@ extension on Translations {
 			'settings.syncPanel.countOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} operation', other: '${n} operations', ), 
 			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
 			'settings.syncPanel.counts' => 'Synced Data',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'This device: ${qsos} · ${operations}',
 			'settings.syncPanel.countsPending' => ({required Object items}) => 'Waiting to upload: ${items}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.countsLocalChecking' => 'This device: checking…',
 			'settings.syncPanel.countsServerChecking' => 'Server: checking…',
 			'settings.syncPanel.countsServerUnavailable' => 'Server: not available',
@@ -8135,11 +8148,11 @@ extension on Translations {
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from disabled extensions.', other: 'Removed data for ${count} data files from disabled extensions.', ), 
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
 			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',
 			'updates.updateAvailable' => 'Update available',
-			_ => null,
-		} ?? switch (path) {
 			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
 			'updates.getIt' => 'Get it',
 			'updates.ok' => 'OK',

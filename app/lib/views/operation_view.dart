@@ -42,6 +42,7 @@ import 'operation/operation_import_panel.dart';
 import 'operation/spots_panel.dart';
 import 'tester_overlay.dart' show testerOverlayCovering;
 import 'operation/positions_panel.dart';
+import 'operation/read_only_while_deleted.dart';
 import 'peers_panel.dart';
 import '../tools/operation_title.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -636,6 +637,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// Log a spot outright, without surfacing the logging panel: the operator
   /// stays on the spots list and the contact is logged behind it.
   void _logQsoFromSpot(Map<String, dynamic> qso) {
+    if (_operation?.deleted ?? false) return;
     final zeroBeat = zeroBeatSuggestionFor(qso, services: widget.services, offsetter: _zeroBeat);
     setState(() {
       _suggestedQso = zeroBeat;
@@ -1591,7 +1593,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     );
   }
 
-  Future<void> _editActivities(Operation operation) => _openOperationSheet(operation);
+  Future<void> _editActivities(Operation operation) async {
+    if (operation.deleted) return;
+    await _openOperationSheet(operation);
+  }
 
   /// Opens the operation sheet, or — if the profile still has no operator
   /// callsign (fresh install, no onboarding flow existed for it before) —
@@ -1600,6 +1605,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// ITSELF actually opens: the callsign prompt isn't the sheet, so hitting
   /// that branch must not count as having seen it.
   void _openActivitiesOrPromptForCallsign(Operation operation, {required bool markOnboardingSeen}) {
+    // Both branches write to the operation, and a deleted one is read-only.
+    if (operation.deleted) return;
     // The screen we were pushed over can still hold focus while its
     // subtree goes away; leaving it focused lets the engine move DOM
     // focus through a Focus node that is already inactive (web).
@@ -2012,8 +2019,18 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   Future<void> _export(Operation operation) =>
       showOperationExportPanel(context, services: widget.services, operation: operation);
 
-  Future<void> _import(Operation operation) =>
-      showOperationImportPanel(context, services: widget.services, operation: operation);
+  Future<void> _import(Operation operation) async {
+    if (operation.deleted) return;
+    await showOperationImportPanel(context, services: widget.services, operation: operation);
+  }
+
+  /// Counted only once it has happened: a refusal throws past the `then`,
+  /// and an operation something else already restored reports false.
+  void _undelete(Operation operation) {
+    unawaited(widget.services.undeleteOperation(operation.uuid).then((restored) {
+      if (restored) widget.services.track('operation_undeleted');
+    }));
+  }
 
   /// The header's trailing controls: the operation's own Exports/Imports/
   /// Tools, and the view's layout controls beside them where the dock layout
@@ -2343,7 +2360,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   unawaited(_export(operation));
                 },
               ),
-            if (includeImport)
+            if (includeImport && !operation.deleted)
               ListTile(
                 leading: const Icon(MdiIcons.import),
                 title: Text(t.imports),
@@ -2361,14 +2378,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   startLayoutEditing();
                 },
               ),
-            ListTile(
-              leading: const Icon(MdiIcons.noteEditOutline),
-              title: Text(t.operationDetails),
-              onTap: () {
-                Navigator.of(dialogContext).pop();
-                unawaited(editOperationDetails(context, widget.services, operation));
-              },
-            ),
+            if (!operation.deleted)
+              ListTile(
+                leading: const Icon(MdiIcons.noteEditOutline),
+                title: Text(t.operationDetails),
+                onTap: () {
+                  Navigator.of(dialogContext).pop();
+                  unawaited(editOperationDetails(context, widget.services, operation));
+                },
+              ),
             ListTile(
               enabled: false,
               leading: const Icon(MdiIcons.shareVariant),
@@ -2379,20 +2397,30 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               leading: Icon(MdiIcons.archiveOutline),
               title: Text(t.archive),
             ),
-            ListTile(
-              leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
-              title: Text(t.deleteOperation, style: TextStyle(color: theme.colorScheme.error)),
-              // The menu closes with the confirmation: deleting is about the
-              // operation as a whole, and its confirmation belongs to the
-              // screen underneath, not to a menu that is going away.
-              onTap: () {
-                Navigator.of(dialogContext).pop();
-                unawaited(confirmDeleteOperation(context, widget.services, operation).then((deleted) {
-                  if (!deleted || !mounted) return;
-                  Navigator.of(context).pop();
-                }));
-              },
-            ),
+            if (operation.deleted)
+              ListTile(
+                leading: Icon(MdiIcons.deleteRestore, color: theme.colorScheme.error),
+                title: Text(t.undeleteOperation, style: TextStyle(color: theme.colorScheme.error)),
+                onTap: () {
+                  Navigator.of(dialogContext).pop();
+                  _undelete(operation);
+                },
+              )
+            else
+              ListTile(
+                leading: Icon(MdiIcons.delete, color: theme.colorScheme.error),
+                title: Text(t.deleteOperation, style: TextStyle(color: theme.colorScheme.error)),
+                // The menu closes with the confirmation: deleting is about the
+                // operation as a whole, and its confirmation belongs to the
+                // screen underneath, not to a menu that is going away.
+                onTap: () {
+                  Navigator.of(dialogContext).pop();
+                  unawaited(confirmDeleteOperation(context, widget.services, operation).then((deleted) {
+                    if (!deleted || !mounted) return;
+                    Navigator.of(context).pop();
+                  }));
+                },
+              ),
             // Past the destructive row on purpose: it is a readout, not an
             // action, so it must not sit between two things the operator
             // taps.
@@ -2929,6 +2957,9 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
           key: _loggingKey,
           child: Listener(
             onPointerDown: (_) => _panels.used('logging'),
+            child: ReadOnlyWhileDeleted(
+            operation: operation,
+            onUndelete: () => _undelete(operation),
             child: LoggingPanel(
             operation: operation,
             services: widget.services,
@@ -3029,7 +3060,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                 _peerSharingDrafts ? (qso, fields) => _onPeerDraft(operation, qso, fields) : null,
             onCallInfoTap: () => _handleCallInfoTap(operation),
             onOperationInfoTap: () => _handleOperationInfoTap(operation, qsos),
-            ),
+            )),
           ),
         );
         final spotsPanel = KeyedSubtree(
@@ -3411,12 +3442,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             // the operation, not onto some particular panel — the operator is
             // dropping it "into this operation", and which pane happened to be
             // under the cursor is not a distinction they are making.
-            onFile: (file) => importAdifFile(
-              context,
-              services: widget.services,
-              operation: operation,
-              file: file,
-            ),
+            onFile: (file) async {
+              if (operation.deleted) return;
+              await importAdifFile(context, services: widget.services, operation: operation, file: file);
+            },
             child: PaneSafeArea.root(
             context,
             // Real device safe-area insets (notch, home indicator) bubble

@@ -50,6 +50,7 @@ Names and property keys follow app-polo's set; HaLo-only additions marked *.
 | `panel_used` * | `screen`, `panel` | first real input in a panel, once per screen visit |
 | `operation_created` | — | new operation |
 | `operation_deleted` | — | confirmed delete |
+| `operation_undeleted` | — | Undelete from the tools menu |
 | `operation_exported` | `formats`, `files`, `action` | export generated |
 | `qso_added` / `qso_edited` / `qso_deleted` / `qso_undeleted` | `their_prefix`, `refs` (types only) | logging actions |
 | `activity_added` / `activity_removed` | `activity` (ref type) | operation activity refs |
