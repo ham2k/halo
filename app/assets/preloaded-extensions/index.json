@@ -44,9 +44,9 @@
     },
     {
       "key": "ham2k-wwff",
-      "version": "0.2.1",
-      "file": "ham2k-wwff-0.2.1.h2kext",
-      "sha256": "41a5f67d4bb3132fcb2cb905dcc38ee69ee5eabbf23d263d4cbf2c7b9c686b75"
+      "version": "0.2.2",
+      "file": "ham2k-wwff-0.2.2.h2kext",
+      "sha256": "88b15f37aace48e5675156c72c20b7fa2b35f5a0b1f3fe920e5d2244fcafa7b2"
     }
   ]
 }

@@ -21,6 +21,7 @@ import {
 } from "@ham2k/extension-sdk"
 import type {
   DataFileDefinition,
+  RefTransform,
   HookContext,
   PostOtherSpotRequest,
   PostResult,
@@ -38,6 +39,14 @@ import manifest from "../manifest.json" with { type: "json" }
 const HUNTING_TYPE = 'mota'
 const ACTIVATION_TYPE = 'motaActivation'
 const REFERENCE_REGEX = /^X[0-9]{5}$/i
+
+/// Live-typing reformatting, app-polo's MOTAInput chain: a bare number takes
+/// the "X" every mill carries ("00001" -> "X00001"), at the start of the
+/// field or after a separator, which is replayed rather than consumed.
+export const TRANSFORMS: RefTransform[] = [
+  { pattern: '(^|,\\s*)(\\d\\d+)', replacement: '${1}X${2}', flags: 'gi' },
+  { pattern: '[^A-Z0-9, ]', replacement: '', flags: 'gi' },
+]
 
 /// Duplicate rules only. A repeat contact on the same band and day is a
 /// duplicate; a new band or day makes it fresh again. A mill the station hasn't
@@ -69,6 +78,7 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   icon: manifest.icon,
   color: manifest.accentColor,
   placeholder: 'X00001',
+  transforms: TRANSFORMS,
   tFor,
   // The GMA site carries the reference lists for the castle, lighthouse and
   // mill programs as well as its own summits — one page per reference,

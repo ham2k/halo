@@ -225,3 +225,30 @@ export async function loadExtension(
     },
   }
 }
+
+/// Runs a control's `input.transforms` over [text] the way the core's input
+/// does (`packages/halo_widgets/lib/src/ref_text_input.dart`'s
+/// `RefTransformFormatter`): braced `${n}` placeholders, `g` and `i` flags,
+/// two passes so a multi-character paste converges.
+export function applyRefTransforms(text: string, transforms: { pattern: string; replacement: string; flags?: string }[]): string {
+  const applyOnce = (t: string) => {
+    for (const transform of transforms) {
+      const regex = new RegExp(transform.pattern, transform.flags ?? "")
+      t = t.replace(regex, (...args) => {
+        const groups = args.slice(1, -2) as string[]
+        return transform.replacement.replace(/\$\{(\d+)\}/g, (_, i) => groups[Number(i) - 1] ?? "")
+      })
+    }
+    return t
+  }
+  return applyOnce(applyOnce(text))
+}
+
+/// What the field holds after [text] is typed one character at a time, the
+/// transforms running after each keystroke — the case the end-anchored rules
+/// are written for, and one a single paste does not exercise.
+export function typeRefText(text: string, transforms: { pattern: string; replacement: string; flags?: string }[]): string {
+  let field = ""
+  for (const char of text) field = applyRefTransforms(field + char, transforms)
+  return field
+}

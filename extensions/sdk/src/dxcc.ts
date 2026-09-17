@@ -58,6 +58,21 @@ export function regionAndCountryForDxccCode(
   return { ituRegion: entity?.ituRegion, countryCode: entity?.countryCode }
 }
 
+/// The real-world country a callsign's entity sits in, as an uppercase ISO
+/// 3166 code — the prefix POTA ("US-1234") and LLOTA ("LLUS-0001") build
+/// their references from, which is NOT the ham-radio DXCC entity: Hawaii is
+/// its own entity ("KH6") but its parks are "US-"; a Canadian call's entity
+/// prefix is "VE" but its parks are "CA-"; an EA3 call's is "EA" but Spain's
+/// are "ES-". `@ham2k/lib-dxcc-data`'s `countryCode` carries that mapping;
+/// the handful of entities without one (mostly long-deleted) fall back to
+/// the entity prefix itself.
+export function countryPrefixForCall(call: string | undefined): string | undefined {
+  if (!call) return undefined
+  const annotated = annotateCallAgainstCountryFile(call)
+  const { countryCode } = regionAndCountryForDxccCode(annotated.dxccCode)
+  return countryCode ? countryCode.toUpperCase() : annotated.entityPrefix
+}
+
 /// The DXCC entity a callsign belongs to — for our OWN station, whose entity
 /// an operation records nowhere, having only the callsign it resolves from.
 ///

@@ -448,8 +448,7 @@ class _RefTextInputState extends State<RefTextInput> {
           // since a segment is kept whether or not it matches the pattern, a
           // stripped slash is stored and exported as the operator's own code.
           // SOTA gets away without it only because its `transforms` put the
-          // slash back; the fourteen programs built on `referenceActivity`
-          // declare no transforms at all.
+          // slash back; a program with no transforms has nothing to.
           FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9\-/, ]')),
           _upperCaseFormatter,
           if (widget.transforms.isNotEmpty) RefTransformFormatter(widget.transforms),

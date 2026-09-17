@@ -8,16 +8,16 @@
 // move, county lists and bonus stations change — stays a file copy and a
 // legible diff, as `stateparks` does.
 //
-// **Six files now diverge, and a re-sync must not silently revert them.** BC,
-// NC, NJ, NV, SC and WA still carried 2025 dates (NC's END year alone, SC's an
+// **Five files now diverge, and a re-sync must not silently revert them.** BC,
+// NC, NJ, NV and SC still carried 2025 dates (NC's END year alone, SC's an
 // impossible 29 February); each was re-checked against the sponsor's own rules
 // in September 2026 and now carries what they publish, with `status` saying
-// what was verified and `lastUpdated` saying when. WA's `url` moved with the
-// event (`warsalmonrun.org` no longer resolves; it is `salmonrun.wwdxc.org`),
-// and NJ and NV gained the rules URL they had none of. NEVER take polo's copy
-// of these six without re-reading the sponsor: polo's dates are older than
-// these, not newer. NSARA's dates are still 2025 — its contest page is gone
-// (404) and the party is `disabled` in the data anyway.
+// what was verified and `lastUpdated` saying when, and NJ and NV gained the
+// rules URL they had none of. NEVER take polo's copy of these five without
+// re-reading the sponsor: polo's dates are older than these, not newer. (WA
+// diverged the same way until polo re-verified it for 2026; the two agree
+// again.) NSARA's dates are still 2025 — its contest page is gone (404) and
+// the party is `disabled` in the data anyway.
 //
 // Everything that reads these files goes through `partyFor`, which is where the
 // shapes forty-nine hand-edited files have grown are absorbed:

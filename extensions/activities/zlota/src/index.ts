@@ -19,7 +19,7 @@ import {
   huntingExportHook,
   referenceActivity,
 } from "@ham2k/extension-sdk"
-import type { DataFileDefinition, HookContext, Spot } from "@ham2k/extension-sdk"
+import type { DataFileDefinition, HookContext, RefTransform, Spot } from "@ham2k/extension-sdk"
 import { bandForFrequency } from "@ham2k/lib-operation-data"
 
 import { tFor } from "./i18n.ts"
@@ -30,6 +30,19 @@ const HUNTING_TYPE = 'zlota'
 const ACTIVATION_TYPE = 'zlotaActivation'
 
 const REFERENCE_REGEX = /^ZL(?:B\/[0-9]{3}|[HI]\/[A-Z]{2}-[0-9]{3}|L\/[0-9]{4}|P\/[A-Z]{2}-[0-9]{4}|V\/[A-Z]{2,3}-[0-9]{3})$/i
+
+/// Live-typing reformatting, app-polo's ZLOTAInput chain: a scheme letter
+/// typed on its own takes the "ZL" ("P" -> "ZLP"), the code after it gets
+/// its slash ("ZLPOT" -> "ZLP/OT") and, for the schemes whose number follows
+/// letters, its dash ("ZLP/OT1" -> "ZLP/OT-1"). The slash and dash rules are
+/// anchored to the END of the field, so they shape the reference being typed
+/// and leave the finished ones before it alone.
+export const TRANSFORMS: RefTransform[] = [
+  { pattern: '(^|,\\s*)([BHILPV])', replacement: '${1}ZL${2}', flags: 'gi' },
+  { pattern: '\\bZL([BHILPV])([0-9A-Z]+(?:-[0-9])?)$', replacement: 'ZL${1}/${2}', flags: 'i' },
+  { pattern: '\\bZL([BHILPV]/[A-Z]+)([0-9]+)$', replacement: 'ZL${1}-${2}', flags: 'i' },
+  { pattern: '[^A-Z0-9/\\-, ]', replacement: '', flags: 'gi' },
+]
 
 /// The third character of a reference names the kind of place.
 const ASSET_TYPE_BY_CODE: Record<string, string> = {
@@ -89,6 +102,7 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   icon: manifest.icon,
   color: manifest.accentColor,
   placeholder: 'ZLH/AA-001',
+  transforms: TRANSFORMS,
   tFor,
   // ontheair.nz names an asset page after its code with the slash written as
   // an underscore — `/assets/ZLB_001`, not `ZLB/001`, which is a different route.

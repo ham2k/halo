@@ -18,7 +18,7 @@ import {
   huntingExportHook,
   referenceActivity,
 } from "@ham2k/extension-sdk"
-import type { DataFileDefinition, HookContext } from "@ham2k/extension-sdk"
+import type { DataFileDefinition, HookContext, RefTransform } from "@ham2k/extension-sdk"
 
 import { tFor } from "./i18n.ts"
 
@@ -27,6 +27,16 @@ import manifest from "../manifest.json" with { type: "json" }
 const HUNTING_TYPE = 'siota'
 const ACTIVATION_TYPE = 'siotaActivation'
 const REFERENCE_REGEX = /^VK-[A-Z]{3}[0-9]+$/i
+
+/// Live-typing reformatting, app-polo's SiOTAInput chain: "VKABC" gets its
+/// dash ("VK-ABC"), and a silo typed without the country ("ABC1") gets both
+/// ("VK-ABC1") — once a digit follows, so the three letters of a silo code
+/// being typed are not mistaken for one before it is complete.
+export const TRANSFORMS: RefTransform[] = [
+  { pattern: '(^|,\\s*)VK([A-Z]+)', replacement: '${1}VK-${2}', flags: 'gi' },
+  { pattern: '(^|,\\s*)(?!VK-)([A-Z]{3}\\d)', replacement: '${1}VK-${2}', flags: 'gi' },
+  { pattern: '[^A-Z0-9\\-, ]', replacement: '', flags: 'gi' },
+]
 
 /// A repeat contact is a duplicate on the same band, mode AND day. A silo the
 /// station hasn't given before is called out and earns the Silo-to-Silo
@@ -55,6 +65,7 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   icon: manifest.icon,
   color: manifest.accentColor,
   placeholder: 'VK-ABC123',
+  transforms: TRANSFORMS,
   tFor,
   linkUrl: (reference: string) => `https://www.silosontheair.com/silo/${encodeURIComponent(reference)}`,
   // app-polo names every hunted silo in a single record's SIG_INFO.

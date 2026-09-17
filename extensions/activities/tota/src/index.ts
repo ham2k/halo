@@ -21,6 +21,7 @@ import {
 } from "@ham2k/extension-sdk"
 import type {
   DataFileDefinition,
+  RefTransform,
   HookContext,
   PostOtherSpotRequest,
   PostResult,
@@ -40,6 +41,14 @@ import manifest from "../manifest.json" with { type: "json" }
 const HUNTING_TYPE = 'tota'
 const ACTIVATION_TYPE = 'totaActivation'
 const REFERENCE_REGEX = /^[A-Z0-9]+R-[0-9]{4}$/i
+
+/// Live-typing reformatting, app-polo's TOTAInput chain: a run-on reference
+/// gets its dash ("OKR0001" -> "OKR-0001"). No default prefix — app-polo
+/// offers none either, the program spanning too many countries to guess.
+export const TRANSFORMS: RefTransform[] = [
+  { pattern: '(?<![A-Z0-9])([A-Z0-9]+R)(\\d+)', replacement: '${1}-${2}', flags: 'gi' },
+  { pattern: '[^A-Z0-9\\-, ]', replacement: '', flags: 'gi' },
+]
 
 const API_BASE = 'https://www.rozhledny.eu/apidata'
 
@@ -68,6 +77,7 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   icon: manifest.icon,
   color: manifest.accentColor,
   placeholder: 'OKR-0001',
+  transforms: TRANSFORMS,
   tFor,
   // The tower card, in English: the site also speaks Czech, German, Spanish,
   // French and Polish, and defaults to Czech without the parameter.

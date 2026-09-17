@@ -12,10 +12,12 @@ import {
   activityExportHook,
   activityScorer,
   contestScorer,
+  countryPrefixForCall,
   defineExtension,
   host,
   huntingExportHook,
   referenceActivity,
+  transformsForPrefix,
 } from "@ham2k/extension-sdk"
 import type {
   DataFileDefinition,
@@ -38,6 +40,16 @@ import manifest from "../manifest.json" with { type: "json" }
 const HUNTING_TYPE = 'llota'
 const ACTIVATION_TYPE = 'llotaActivation'
 const REFERENCE_REGEX = /^LL[A-Z0-9]+-(?:[0-9]{4,5}|TEST)$/i
+
+/// A reference's prefix is "LL" plus the lake's ISO country code — "LLUS",
+/// "LLGB", "LLPR" — the same real-world country POTA's prefixes follow, so a
+/// typed "0001" becomes "LLUS-0001" for a US station. The hunting control
+/// follows the OTHER station (their lake), the activation control our own.
+function defaultPrefix(operation: Record<string, unknown>, qso: Record<string, unknown> | undefined): string {
+  const theirCall = (qso?.their as Record<string, unknown> | undefined)?.call as string | undefined
+  const country = countryPrefixForCall(theirCall) ?? countryPrefixForCall(operation.stationCall as string | undefined)
+  return `LL${country ?? 'US'}`
+}
 
 const API_BASE = 'https://llota.app/api/public'
 
@@ -66,6 +78,10 @@ const { refHandler, activityHook, adifFieldsHook, adifImportHook } = referenceAc
   icon: manifest.icon,
   color: manifest.accentColor,
   placeholder: 'LLUS-0001',
+  refInput: ({ operation, qso, side }) => {
+    const prefix = defaultPrefix(operation, side === 'hunting' ? qso : undefined)
+    return { placeholder: `${prefix}-...`, transforms: transformsForPrefix(prefix) }
+  },
   tFor,
   linkUrl: (reference: string) => `https://llota.app/list/ref/${encodeURIComponent(reference)}`,
   // One record per hunted lake, like POTA.

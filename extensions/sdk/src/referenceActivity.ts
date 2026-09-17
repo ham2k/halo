@@ -35,6 +35,7 @@ import type {
   SuggestArgs,
   TitleSuggestion,
 } from "./types.ts"
+import type { RefTransform } from "./refTransforms.ts"
 
 /// The SDK barrel re-exports this module, so a static import of `host` from it
 /// would be circular. Imported once on first use, then cached by the module
@@ -103,6 +104,70 @@ export interface ReferenceActivityConfig {
   /// reference — several of these have none, and a link into a search form
   /// would be worse than no link at all.
   linkUrl?: (reference: string) => string
+  /// Live-typing reformatting for the reference field, applied by the core's
+  /// input on every keystroke (`RefListInputDescriptor.transforms`) — what
+  /// turns a typed "0001" into "X00001" or "VK-ABC1". Without it the field
+  /// takes what is typed as-is. For a program whose rules bake in a prefix
+  /// that depends on the station, see `refInput`.
+  transforms?: RefTransform[]
+  /// The field's placeholder and transforms resolved per controls build, for
+  /// a program whose default prefix follows a station's DXCC entity (WWFF's
+  /// "KFF"/"GFF", LLOTA's "LLUS"/"LLGB"). `side` says which control is being
+  /// built: the hunting control follows the OTHER station's entity (that of
+  /// the QSO's callsign) and the activation control our own — app-polo's
+  /// hunter/activator rule. What it answers wins over `placeholder` and
+  /// `transforms`; what it leaves out falls back to them.
+  refInput?: (args: RefInputArgs, ctx: HookContext) => Promise<RefInputExtras> | RefInputExtras
+}
+
+export interface RefInputArgs {
+  operation: Record<string, JSONValue>
+  qso?: Record<string, JSONValue>
+  side: 'activation' | 'hunting'
+}
+
+export interface RefInputExtras {
+  placeholder?: string
+  transforms?: RefTransform[]
+}
+
+/// The reference prefix a program uses for one DXCC entity, learned from the
+/// program's own loaded list rather than derived — WWFF's and WWBOTA's
+/// prefixes only mostly follow the entity prefix (Russia is "RFF", the
+/// Canaries are "EAFF", Canada is "B/CA"), and app-polo builds the same map
+/// while it loads the file. Asked of the lookups table by `subCategory`, which
+/// these programs' data-file mappers set to the entity prefix, and cached
+/// per entity for the session: one query per entity, not one per keystroke.
+///
+/// `fallback` answers when the list has nothing for that entity — not yet
+/// synced, or a country the program has no references in — so the field
+/// still autoformats to SOMETHING the operator can correct.
+const learnedPrefixes = new Map<string, string>()
+export async function learnedReferencePrefix(category: string, entityPrefix: string, fallback: string): Promise<string> {
+  const cacheKey = `${category}:${entityPrefix}`
+  const cached = learnedPrefixes.get(cacheKey)
+  if (cached) return cached
+  const host = await hostApi()
+  let rows: LookupRow[] = []
+  try {
+    rows = await host.dbLookupSelectAll(category, '', entityPrefix)
+  } catch (e) {
+    host.log(`${category}: prefix lookup failed for ${entityPrefix}: ${e}`)
+  }
+  // The most common prefix among the rows, not the first: a list can carry a
+  // stray reference filed under the wrong entity.
+  const counts = new Map<string, number>()
+  for (const row of rows) {
+    const prefix = row.key.split('-')[0]
+    if (prefix) counts.set(prefix, (counts.get(prefix) ?? 0) + 1)
+  }
+  let best: string | undefined
+  for (const [prefix, count] of counts) {
+    if (best === undefined || count > (counts.get(best) ?? 0)) best = prefix
+  }
+  if (best === undefined) return fallback
+  learnedPrefixes.set(cacheKey, best)
+  return best
 }
 
 function normalize(ref: string | undefined): string {
@@ -219,6 +284,23 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
     }
   }
 
+  /// The `input` of one control: the static placeholder/transforms, with
+  /// whatever `refInput` answers laid over them.
+  async function refListInput(
+    refType: string,
+    args: RefInputArgs,
+    ctx: HookContext,
+  ) {
+    const extras = config.refInput ? await config.refInput(args, ctx) : {}
+    return {
+      kind: 'refList' as const,
+      refType,
+      placeholder: extras.placeholder ?? config.placeholder,
+      pattern: config.referenceRegex.source,
+      transforms: extras.transforms ?? config.transforms,
+    }
+  }
+
   const refHandler = {
     async validateRef({ ref }: { ref: Ref }, _ctx: HookContext) {
       const normalized = normalize(ref.ref)
@@ -269,7 +351,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
 
   const activityHook = {
     async operationControls(
-      _args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
+      { operation }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
       ctx: HookContext,
     ) {
       return [
@@ -281,12 +363,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
           order: 10,
           optionType: 'optional',
           allowsMultiple,
-          input: {
-            kind: 'refList',
-            refType: config.activationType,
-            placeholder: config.placeholder,
-            pattern: config.referenceRegex.source,
-          },
+          input: await refListInput(config.activationType, { operation, side: 'activation' }, ctx),
         },
       ]
     },
@@ -299,7 +376,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
     ...(config.huntingType
       ? {
           async loggingControls(
-            _args: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
+            { operation, qso }: { operation: Record<string, JSONValue>; qso?: Record<string, JSONValue> },
             ctx: HookContext,
           ) {
             return [
@@ -311,12 +388,7 @@ export function referenceActivity(config: ReferenceActivityConfig): ReferenceAct
                 order: 10,
                 optionType: 'optional',
                 allowsMultiple: true,
-                input: {
-                  kind: 'refList',
-                  refType: config.huntingType,
-                  placeholder: config.placeholder,
-                  pattern: config.referenceRegex.source,
-                },
+                input: await refListInput(config.huntingType!, { operation, qso, side: 'hunting' }, ctx),
               },
             ]
           },
