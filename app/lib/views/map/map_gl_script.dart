@@ -37,12 +37,56 @@
 
 import 'dart:math';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
+import 'package:flutter/services.dart' show rootBundle;
+
 import '../../services/settings_service.dart' show MapStyle;
 
-/// Where MapLibre GL JS itself comes from — needs no access token, unlike
-/// the commercial GL libraries.
-const mapGlScriptUrl = 'https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js';
-const mapGlCssUrl = 'https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css';
+/// MapLibre GL JS itself — needs no access token, unlike the commercial GL
+/// libraries — vendored under `app/assets/maplibre/` rather than fetched from
+/// a CDN. The library is a fixed, version-pinned asset, and the Map tab must
+/// draw for an operator in a park with no signal; only the tiles and the
+/// style genuinely need the network. Bundled, the first map draw also skips
+/// about a megabyte of transfer that the pane's ready deadline was racing.
+///
+/// Update by replacing both files and `LICENSE.txt` beside them, from
+/// `https://unpkg.com/maplibre-gl@<version>/dist/`.
+const mapGlVersion = '5.6.0';
+const mapGlScriptAsset = 'assets/maplibre/maplibre-gl.js';
+const mapGlCssAsset = 'assets/maplibre/maplibre-gl.css';
+
+/// The vendored library, read once by [preloadMapGlLibrary] and then read
+/// synchronously by every page build.
+///
+/// Synchronous on purpose. Gating the web view's creation on an asset read
+/// makes the map pane unbuildable under `testWidgets`, where fakeAsync never
+/// advances real file I/O — so the page would wait forever for a library that
+/// is sitting on disk. Empty until the preload lands: the host page reports
+/// its own 'page-error' in that window, the same way it would for any missing
+/// library, rather than the pane hanging.
+String _glLibrarySource = '';
+String _glLibraryCss = '';
+
+String get mapGlLibrarySource => _glLibrarySource;
+String get mapGlLibraryCss => _glLibraryCss;
+
+/// Reads the vendored library into memory. Called once during startup, before
+/// the Map tab can be opened; idempotent, so a second call costs nothing.
+Future<void> preloadMapGlLibrary() async {
+  if (_glLibrarySource.isNotEmpty) return;
+  final source = await rootBundle.loadString(mapGlScriptAsset);
+  final css = await rootBundle.loadString(mapGlCssAsset);
+  _glLibrarySource = source;
+  _glLibraryCss = css;
+}
+
+/// Stands in for the preload, for tests that need a page with a library in it
+/// without waiting on I/O that a widget test cannot drive.
+@visibleForTesting
+void setMapGlLibraryForTests({required String source, required String css}) {
+  _glLibrarySource = source;
+  _glLibraryCss = css;
+}
 
 /// The automatic light/dark basemap — OpenFreeMap for light, since it ships
 /// no dark style of its own, and CARTO's Dark Matter (also tokenless) for

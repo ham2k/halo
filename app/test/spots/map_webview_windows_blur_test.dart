@@ -14,9 +14,17 @@ import 'package:ham2k_logger/views/map/mapbox_webview_map_view.dart';
 
 const _blurListener = "window.addEventListener('blur'";
 
+/// Stands in for the ~900KB bundled library. A sentinel rather than the real
+/// asset so the ordering assertion below names the library's position exactly,
+/// instead of matching the first incidental 'maplibre-gl' in its own licence
+/// header.
+const _glSentinel = '/* maplibre library goes here */';
+
 String _page({required bool suppressWindowBlur}) => MapboxWebviewMapView.pageHtml(
       false, mapDefaultStyleUrl, mapDefaultStyleUrlDark, false,
       suppressWindowBlur: suppressWindowBlur,
+      glSource: _glSentinel,
+      glCss: '/* maplibre css goes here */',
     );
 
 void main() {
@@ -25,7 +33,7 @@ void main() {
     expect(page, contains(_blurListener));
     // Registered ahead of the GL script, or MapLibre's own listener runs first
     // and the drag is already disarmed by the time ours stops the event.
-    expect(page.indexOf(_blurListener), lessThan(page.indexOf('maplibre-gl')));
+    expect(page.indexOf(_blurListener), lessThan(page.indexOf(_glSentinel)));
   });
 
   test("elsewhere the page keeps MapLibre's blur-ends-the-drag behaviour", () {

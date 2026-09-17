@@ -25,6 +25,7 @@ import 'package:flutter/services.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:timezone/data/latest.dart' as tz_data;
 
+import 'views/map/map_gl_script.dart' show preloadMapGlLibrary;
 import 'views/operation_view.dart';
 import 'config/dev_bridge.dart';
 import 'config/dev_bridge_installer.dart';
@@ -203,6 +204,11 @@ void _mainBody({
   // Kicked off before runApp (not awaited here) so the splash screen paints
   // on the very first frame instead of waiting on the DB/extension/settings
   // boot sequence — see `BootGate`.
+  // Reads the bundled MapLibre library into memory. Not awaited: the Map tab
+  // cannot be open before the first frame, and the page build that needs it
+  // reads a plain String rather than a Future precisely so the web view is
+  // never gated on I/O (see map_gl_script.dart).
+  unawaited(preloadMapGlLibrary());
   final servicesFuture = bootstrap(metrics: metrics, purchases: purchases, updates: updates, updateCheck: updateCheck);
   runApp(TranslationProvider(child: BootGate(servicesFuture: servicesFuture)));
 

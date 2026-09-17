@@ -231,6 +231,11 @@ flutter:
   uses-material-design: true
   assets:
     - assets/extensions/
+    # MapLibre GL JS itself, vendored so the Map tab draws with no network at
+    # all -- only the tiles and the style need one. See
+    # lib/views/map/map_gl_script.dart. LICENSE.txt rides along because the
+    # library is BSD-3-Clause and this ships a copy of it.
+    - assets/maplibre/
     # The `.h2kext` bundles the app pre-loads under the catalog experiment,
     # plus the index naming them (HALO-581). Tracked, unlike
     # `assets/extensions/`, which the extension build writes.

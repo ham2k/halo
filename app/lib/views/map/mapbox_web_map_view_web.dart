@@ -42,22 +42,16 @@ Future<void> _ensureGlLoaded() {
 Future<void> _loadGl() async {
   final head = web.document.head!;
 
-  head.append(web.HTMLLinkElement()
-    ..rel = 'stylesheet'
-    ..href = mapGlCssUrl);
+  // The library is read out of the app bundle, not fetched from a CDN, so
+  // there is nothing to await a load event for: appending a script with
+  // textContent executes it synchronously.
+  await preloadMapGlLibrary();
+  head.append(web.HTMLStyleElement()..textContent = mapGlLibraryCss);
   // Popup styling the webview backend gets from its own page's <style>.
   head.append(web.HTMLStyleElement()
     ..textContent = '.maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }');
 
-  final script = web.HTMLScriptElement()..src = mapGlScriptUrl;
-  final loaded = Completer<void>();
-  script.addEventListener(
-      'load', ((web.Event _) => loaded.complete()).toJS);
-  script.addEventListener(
-      'error', ((web.Event _) => loaded.completeError(StateError('$mapGlScriptUrl failed to load'))).toJS);
-  head.append(script);
-  await loaded.future;
-
+  head.append(web.HTMLScriptElement()..textContent = mapGlLibrarySource);
   head.append(web.HTMLScriptElement()..textContent = mapGlScript);
 }
 

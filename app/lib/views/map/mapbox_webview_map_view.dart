@@ -104,7 +104,7 @@ class MapboxWebviewMapView extends StatefulWidget {
   // following the cursor.
   @visibleForTesting
   static String pageHtml(bool isDark, String styleUrl, String styleUrlDark, bool notifyClicks,
-          {required bool suppressWindowBlur}) =>
+          {required bool suppressWindowBlur, required String glSource, required String glCss}) =>
       '''
 <!DOCTYPE html>
 <html>
@@ -136,9 +136,8 @@ class MapboxWebviewMapView extends StatefulWidget {
       pending.forEach(__poloPageError);
     });
   </script>
-  <script src="$mapGlScriptUrl"
-    onerror="__poloPageError('failed to load the maplibre script from $mapGlScriptUrl')"></script>
-  <link href="$mapGlCssUrl" rel="stylesheet" />
+  <script>$glSource</script>
+  <style>$glCss</style>
   <style>
     body, html, #map { margin: 0; padding: 0; height: 100%; width: 100%; }
     .maplibregl-popup-content { padding: 6px 10px; border-radius: 8px; }
@@ -348,7 +347,9 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
       webViewEnvironment: WindowsWebView.environment,
       initialData: InAppWebViewInitialData(
         data: MapboxWebviewMapView.pageHtml(widget.isDark, widget.styleUrl, widget.styleUrlDark, widget.onMarkerTap != null,
-            suppressWindowBlur: defaultTargetPlatform == TargetPlatform.windows),
+            suppressWindowBlur: defaultTargetPlatform == TargetPlatform.windows,
+            glSource: mapGlLibrarySource,
+            glCss: mapGlLibraryCss),
         baseUrl: WebUri('https://ham2k.com/'),
       ),
       initialSettings: InAppWebViewSettings(transparentBackground: true),
