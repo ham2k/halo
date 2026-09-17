@@ -66,8 +66,13 @@ class _FakeTransport {
   _TransportResponder responder;
   _FakeTransport(this.responder);
 
+  /// When set, every call waits on it before answering — holds a round in
+  /// flight so a test can act while the engine is busy.
+  Future<void>? gate;
+
   Future<Map<String, dynamic>> call(String method, Map<String, dynamic> args) async {
     calls.add((method, args));
+    if (gate != null) await gate;
     return responder(method, args);
   }
 }
@@ -612,8 +617,10 @@ void main() {
     // runtime) funnels into this one catch, and it must never be silent —
     // "not syncing" has to stay diagnosable. The log takes every failure
     // from the first.
+    // Counted by the failure line: a failed pull also logs the page it shrinks to.
+    Iterable<String> failures() => loggedLines.where((l) => l.contains('round failed'));
     await reportingEngine.runOneRound();
-    expect(loggedLines, hasLength(1));
+    expect(failures(), hasLength(1));
     // ...but the loop retries forever, so crash-reporting the first failure
     // files an event every few minutes for as long as a device is offline.
     expect(reported, isEmpty);
@@ -621,7 +628,7 @@ void main() {
     for (var i = 1; i < SyncEngine.errorReportThreshold; i++) {
       await reportingEngine.runOneRound();
     }
-    expect(loggedLines, hasLength(SyncEngine.errorReportThreshold));
+    expect(failures(), hasLength(SyncEngine.errorReportThreshold));
     expect(reported, hasLength(1));
     expect(reported.single.$1, isA<StateError>());
     expect(reported.single.$3, contains('sync:round'));
@@ -845,15 +852,32 @@ void main() {
     ];
   }
 
+  // The plan's batch size (50) is the PUSH batch. A forward pull that asked for that much would
+  // re-walk a rewound or long-absent device's history at 50 rows per loop delay — an hour of
+  // foreground time for a few thousand rows, which a phone opened for minutes never accumulates.
+  test('a forward pull asks for a backfill-sized page, not the push batch', () async {
+    transport.responder = (method, args) => {
+          'meta': {
+            'flags': {'suggested_sync_batch_size': 50},
+          },
+        };
+    await engine.runOneRound();
+    await engine.runOneRound();
+
+    final sync = (transport.calls.last.$2['meta'] as Map)['sync'] as Map;
+    expect((sync['qsos'] as Map)['limit'], SyncEngine.backfillPullLimit);
+    expect((sync['operations'] as Map)['limit'], SyncEngine.backfillPullLimit);
+  });
+
   test('a full page of inbound records reschedules after the loop delay, not sooner', () async {
-    // A server with 150 pending QSOs to hand back: a full page (100) the
-    // first call, the rest on the next — the same "keep looping until caught
-    // up" shape as app-polo's `receivedAllUpdates`.
-    transport.responder = (method, args) =>
-        pagedResponse(inboundFrom(args, totalAvailable: 150).take(SyncEngine.defaultLargeBatchSize).toList());
+    // A server with a page and a half of pending QSOs to hand back: a full
+    // page the first call, the rest on the next — the same "keep looping
+    // until caught up" shape as app-polo's `receivedAllUpdates`.
+    transport.responder = (method, args) => pagedResponse(
+        inboundFrom(args, totalAvailable: SyncEngine.backfillPullLimit + 50).take(SyncEngine.backfillPullLimit).toList());
 
     await engine.runOneRound();
-    expect(transport.calls, hasLength(1)); // first page: 100 records, a full page
+    expect(transport.calls, hasLength(1)); // first page: a full page
 
     final wait = engine.nextAttemptAt!.difference(realNowUtc());
     expect(wait, greaterThan(const Duration(seconds: 4)));
@@ -868,7 +892,9 @@ void main() {
   // default and a backfill pages twenty times slower than the server asked for.
   test('a suggested loop delay of zero pages straight through, not at the default', () async {
     transport.responder = (method, args) => {
-          'qsos': inboundFrom(args, totalAvailable: 150).take(SyncEngine.defaultLargeBatchSize).toList(),
+          'qsos': inboundFrom(args, totalAvailable: SyncEngine.backfillPullLimit + 50)
+              .take(SyncEngine.backfillPullLimit)
+              .toList(),
           'meta': {
             'flags': {'suggested_sync_loop_delay': 0, 'suggested_sync_check_period': 60000},
           },
@@ -892,6 +918,156 @@ void main() {
     final wait = engine.nextAttemptAt!.difference(realNowUtc());
     expect(wait, greaterThan(const Duration(seconds: 59)));
     expect(wait, lessThanOrEqualTo(const Duration(seconds: 60)));
+  });
+
+  // A small-batch round holds the engine for as long as its network call takes, and the periodic
+  // timer does not wait for it. Skipped outright, that periodic round is the last one: every
+  // reschedule is on the periodic path, and a small-batch round never asks to pull. The device
+  // keeps pushing its own contacts and receives nothing from the other devices, with no error to
+  // report — the loop just never fires again.
+  test('a periodic round that finds a small-batch round in flight still runs afterwards', () async {
+    await operations.create(stationCall: 'KI2D');
+    final gate = Completer<void>();
+    transport.gate = gate.future;
+
+    engine.notifyChanged();
+    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+    expect(transport.calls, hasLength(1), reason: 'the small-batch round is on the network');
+
+    // The periodic timer firing mid-flight.
+    await engine.runOneRound();
+    expect(transport.calls, hasLength(1));
+
+    gate.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    expect(engine.nextAttemptAt, isNotNull, reason: 'the loop must have a next round');
+    expect(transport.calls, hasLength(2), reason: 'the deferred periodic round runs once the engine is free');
+    expect(transport.calls.last.$2['meta']['inboundSync'], isTrue, reason: 'and it pulls');
+  });
+
+  // The failed round's catch already re-armed the timer, with a backoff. Running the deferred
+  // round at once instead would hit the same dead network a second time and count it twice.
+  test('a periodic round deferred behind a small-batch round that fails keeps that round\'s backoff', () async {
+    await operations.create(stationCall: 'KI2D');
+    final gate = Completer<void>();
+    transport.gate = gate.future;
+    transport.responder = (method, args) => throw StateError('server unreachable');
+
+    engine.notifyChanged();
+    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+    await engine.runOneRound();
+    gate.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    expect(transport.calls, hasLength(1), reason: 'no second attempt against a network that just failed');
+    expect(engine.nextAttemptAt!.difference(realNowUtc()), greaterThan(const Duration(seconds: 1)));
+  });
+
+  // A rejected registration has the same shape as a failure: the deferred round must wait out
+  // the rejection's backoff, not land streak #2 seconds after #1 and reach the user an interval
+  // early.
+  test('a periodic round deferred behind a rejected small-batch round waits out the rejection', () async {
+    await operations.create(stationCall: 'KI2D');
+    final gate = Completer<void>();
+    transport.gate = gate.future;
+    transport.responder = (method, args) => const {'error': 'stale registration', 'error_status': 422};
+
+    engine.notifyChanged();
+    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+    await engine.runOneRound();
+    gate.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    expect(transport.calls, hasLength(1));
+    expect(engine.nextAttemptAt!.difference(realNowUtc()), greaterThan(const Duration(seconds: 1)));
+  });
+
+  // The mirror collision. The periodic round's batch was selected before the write, and with
+  // nothing of its own to push it idles at the check period — so a dropped small-batch round
+  // leaves the record dirty for minutes instead of seconds.
+  test('a small-batch round that finds a periodic round in flight still runs afterwards', () async {
+    final gate = Completer<void>();
+    transport.gate = gate.future;
+
+    final periodic = engine.runOneRound();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(transport.calls, hasLength(1), reason: 'the periodic round is on the network');
+
+    await operations.create(stationCall: 'KI2D');
+    engine.notifyChanged();
+    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+    expect(transport.calls, hasLength(1), reason: 'the small-batch round found the engine busy');
+
+    gate.complete();
+    await periodic;
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    expect(transport.calls, hasLength(2), reason: 'the deferred small-batch round runs once the engine is free');
+    expect(transport.calls.last.$2['operations'], hasLength(1), reason: 'and pushes the write');
+  });
+
+  // The common collision in a run: the next contact is logged while the previous one's push is
+  // still on a slow link. Its debounce fires into the busy engine, and without the deferral it
+  // waits a whole check period.
+  test('a small-batch round that finds another small-batch round in flight still runs afterwards', () async {
+    await operations.create(stationCall: 'KI2D');
+    final gate = Completer<void>();
+    transport.gate = gate.future;
+
+    engine.notifyChanged();
+    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+    expect(transport.calls, hasLength(1), reason: 'the first push is on the network');
+
+    await operations.create(stationCall: 'KI2D');
+    engine.notifyChanged();
+    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+    expect(transport.calls, hasLength(1), reason: 'the second push found the engine busy');
+
+    gate.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    expect(transport.calls, hasLength(2), reason: 'the second push runs once the first lands');
+    expect(transport.calls.last.$2['operations'], hasLength(1));
+  });
+
+  // `retryNow` reads the round's reachability the moment its await returns. A deferred round
+  // started synchronously from the finishing round's `finally` clears that answer first, so the
+  // tap reports "not attempted" — and skips restoring the schedule, feeding the backoff the way
+  // retryNow promises never to.
+  test('a small-batch round deferred behind a manual retry does not clobber its answer', () async {
+    final gate = Completer<void>();
+    transport.gate = gate.future;
+
+    final retry = engine.retryNow();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await operations.create(stationCall: 'KI2D');
+    engine.notifyChanged();
+    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+    expect(transport.calls, hasLength(1));
+
+    gate.complete();
+    expect(await retry, SyncRetryOutcome.reached);
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    expect(transport.calls, hasLength(2), reason: 'the deferred push still runs');
+  });
+
+  test('a small-batch round deferred behind a round that outlives dispose never starts', () async {
+    final gate = Completer<void>();
+    transport.gate = gate.future;
+
+    final periodic = engine.runOneRound();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await operations.create(stationCall: 'KI2D');
+    engine.notifyChanged();
+    await Future<void>.delayed(SyncEngine.debounceDelay + const Duration(milliseconds: 300));
+    expect(transport.calls, hasLength(1));
+
+    engine.dispose();
+    gate.complete();
+    await periodic;
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
+    expect(transport.calls, hasLength(1), reason: 'nothing starts against a disposed engine');
   });
 
   test('notifyChanged debounces into a small-batch round', () async {
@@ -1998,8 +2174,9 @@ void main() {
 
       await engine.runOneRound();
 
-      expect(logs, hasLength(1));
-      expect(logs.single, contains('server exploded'));
+      // The failure itself, beside the page shrink a failed pull logs.
+      expect(logs.where((l) => l.contains('round failed')), hasLength(1));
+      expect(logs, contains(contains('server exploded')));
     });
 
     test('an account change mid-stream pauses sync without merging that response', () async {

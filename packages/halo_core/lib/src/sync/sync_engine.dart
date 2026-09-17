@@ -22,144 +22,10 @@
 import 'dart:async';
 
 import '../app_clock.dart';
-import '../models/models.dart';
 import '../repo/operations_repository.dart';
 import '../repo/qsos_repository.dart';
 import 'sync_progress.dart';
-
-/// Calls the highest-priority `syncTransport` hook's `method` with `args`
-/// and returns its JSON result. Implemented by the app layer (wrapping
-/// `ExtensionHost.invokeHook`) so this package stays free of a Flutter/
-/// extension-host dependency — the same reason `halo_core` has no Flutter
-/// import today.
-typedef SyncTransportCall = Future<Map<String, dynamic>> Function(String method, Map<String, dynamic> args);
-
-/// Thrown by a [SyncTransportCall] that cannot run YET, as opposed to one that
-/// failed.
-///
-/// The transport reaches the network through the `ham2k-lofi` extension, so it
-/// is unusable until the extension host has finished loading — which on a cold
-/// start is after the first periodic round has already fired. Without this
-/// distinction, every launch would count a sync failure and file a crash
-/// report for a race that resolves itself a moment later.
-///
-/// [SyncEngine.runOneRound] treats this like its other "nothing to do right
-/// now" exits: reschedule, no error count, no onError.
-class SyncTransportNotReady implements Exception {
-  final String message;
-  const SyncTransportNotReady([this.message = 'sync transport is not ready yet']);
-
-  @override
-  String toString() => 'SyncTransportNotReady: $message';
-}
-
-/// Records the server accepted the round but refused individually, so the app
-/// layer can report them somewhere a developer will see.
-///
-/// An exception rather than a plain callback argument so it travels the same
-/// `onError` path every other sync failure does, and `ErrorPolicy` classifies
-/// it in the one place that decision belongs.
-///
-/// Carries uuids and the server's error KEYS only — never a rejected record's
-/// field values, which hold callsigns, names and notes.
-class SyncRecordsRejected implements Exception {
-  SyncRecordsRejected(this.side, this.reasonsByUuid);
-
-  /// `operations` or `qsos`.
-  final String side;
-  final Map<String, String> reasonsByUuid;
-
-  @override
-  String toString() =>
-      'SyncRecordsRejected: the server refused ${reasonsByUuid.length} $side — '
-      '${reasonsByUuid.entries.map((e) => '${e.key}: ${e.value}').join('; ')}';
-}
-
-/// Records the server could not read at all, so it stored none of them and
-/// can name none of them.
-///
-/// Distinct from [SyncRecordsRejected] because there is no uuid to hold dirty:
-/// the entries were unreadable, so this device cannot tell which of the ones
-/// it sent are missing, and they are all marked sent. That makes this the one
-/// refusal that still loses data silently — which is exactly why it must be
-/// reported. An unusable payload is a fault in what this app WROTE, so the
-/// count is the whole signal.
-class SyncPayloadUnreadable implements Exception {
-  SyncPayloadUnreadable(this.side, this.count);
-
-  /// `operations` or `qsos`.
-  final String side;
-  final int count;
-
-  @override
-  String toString() => 'SyncPayloadUnreadable: the server could not read $count $side this device sent';
-}
-
-/// Sync-related state the engine reads/writes, backed by the app's
-/// SettingsService (SharedPreferences) rather than a drift table — see the
-/// design note in DESIGN.md §6: it's a handful of scalars, not per-row data.
-abstract class SyncSettings {
-  bool get enabled;
-  Map<String, dynamic> get state;
-  Future<void> setState(Map<String, dynamic> state);
-  bool get developerMode => false;
-  Future<void> setDeveloperMode(bool enabled) async {}
-
-  /// The active profile's operator callsign — empty before onboarding sets
-  /// one. Used only to decide whether a rejected registration is worth
-  /// telling the user about (see `runOneRound`'s handling of a `sync`
-  /// response's `error`): a device with no callsign and nothing logged yet
-  /// has nothing at stake, so there's nothing to warn about.
-  String get operatorCall => '';
-}
-
-class SyncBatch {
-  final List<Operation> operations;
-  final List<Qso> qsos;
-  const SyncBatch({this.operations = const [], this.qsos = const []});
-  bool get isEmpty => operations.isEmpty && qsos.isEmpty;
-}
-
-/// How to reconcile this device's local data with a new (or newly
-/// different) account, once the user answers the Settings banner.
-enum SyncAccountChoice {
-  /// Keep local data, mark it all dirty (`resetSyncedStatus`) so it merges
-  /// into the account alongside whatever backfill pulls down.
-  combine,
-
-  /// Back up local data (`backupAndClearAll`) and take the account's
-  /// version instead — backfill then repopulates everything from scratch.
-  replace,
-}
-
-/// What a manual [SyncEngine.retryNow] actually managed to do — the offline
-/// detail view's "retry now" reports back with this, and an operator who taps
-/// and is told nothing has learned nothing about whether we tried.
-enum SyncRetryOutcome {
-  /// The transport answered. Everything suspended on the offline state
-  /// resumes on the same path an automatic recovery takes.
-  reached,
-
-  /// The transport did not answer — still offline, and the schedule is left
-  /// exactly where it was (see [SyncEngine.retryNow]).
-  unreachable,
-
-  /// The round exited before it ever called the transport (nothing to push
-  /// on a small batch, an account change waiting on the operator). Nothing
-  /// was learned about reachability either way.
-  notAttempted,
-
-  /// Refused for coming too soon after the last one — see
-  /// [SyncEngine.manualRetryFloor].
-  throttled,
-
-  /// A round was already on the network when the operator asked. That round
-  /// is the attempt; its result arrives on its own.
-  inFlight,
-
-  /// Sync is switched off, so there is no probe to fire.
-  disabled,
-}
+import 'sync_types.dart';
 
 class SyncEngine {
   final OperationsRepository operations;
@@ -363,6 +229,27 @@ class SyncEngine {
   int _errorCount = 0;
   int _authErrorStreak = 0;
   bool _running = false;
+
+  /// Whether the round holding [_running] is a small-batch one.
+  bool _runningSmallBatch = false;
+
+  /// A periodic round the loop timer fired while a small-batch round held the
+  /// engine. It cannot simply be skipped: a small-batch round that lands
+  /// never re-arms the timer and never pulls — so a skipped one is the last,
+  /// and the device keeps pushing its own contacts and never receives
+  /// another. Run as soon as the engine is free instead — unless the
+  /// small-batch round exits with a considered wait of its own (a failure's
+  /// backoff, a rejection's), which the deferred round then takes; see
+  /// [_scheduleAfter].
+  bool _periodicRoundDeferred = false;
+
+  /// The mirror image: a small-batch round that found any round on the
+  /// engine. Its write is dirty and the running round's batch was selected
+  /// before it, so dropping it leaves the record waiting a whole check
+  /// period — behind a periodic round, or behind the previous contact's own
+  /// push on a link slower than the debounce. Run once the engine is free;
+  /// a deferred round with nothing left to send exits at once.
+  bool _smallBatchDeferred = false;
   bool _disposed = false;
 
   /// Bumped by [resolveAccountChange]/[forceFullResync] so a round whose
@@ -377,19 +264,19 @@ class SyncEngine {
   /// and reset once it moves — see `_processResponseMeta`.
   int _backfillLimitBoost = 1;
 
-  /// Ceiling on the backfill pull limit, halved from the limit actually
-  /// asked for each time a backfill pull fails outright, lifted by the first
-  /// backfill page that lands. A page is megabytes under a fixed transport
+  /// Ceiling on the pull limit, halved from the limit actually asked for
+  /// each time a pull fails outright, lifted by the first page that lands.
+  /// A page is megabytes under a fixed transport
   /// timeout: a link too slow for one page would otherwise time out on the
   /// identical request forever. Halved from what was ASKED for, not divided
   /// off the nominal page: a boosted page sits clamped at the server's cap,
   /// where a divisor takes several failures to change anything.
-  int _backfillPageCap = serverMaxPullLimit;
+  int _pullPageCap = serverMaxPullLimit;
 
-  /// Whether the round in flight is a backfill pull. Read by the failure
-  /// path to decide the cap applies, and by the success path to decide it
-  /// lifts — a push-only round that lands says nothing about page size.
-  bool _backfillPullInFlight = false;
+  /// Whether the round in flight pulls a page. Read by the failure path to
+  /// decide the cap applies, and by the success path to decide it lifts — a
+  /// push-only round that lands says nothing about page size.
+  bool _pullInFlight = false;
 
   /// Whether this run has already swept orphaned purged QSOs
   /// (`QsosRepository.hardDeletePurgedOrphans`) — see its call site for why
@@ -732,11 +619,11 @@ class SyncEngine {
   ///   `getAccountData` call (no push, no pull) just to learn the account
   ///   uuid, then marks it pending for the user to resolve.
   ///
-  /// The backfill pull limit as it stands this round: the page, grown by the
+  /// The pull limit as it stands this round: the page, grown by the backfill
   /// tie boost, held under the failure cap, and never past what the server
   /// will send or below one merge slice.
-  int get _backfillPullLimit =>
-      (backfillPullLimit * _backfillLimitBoost).clamp(mergeChunkSize, _backfillPageCap.clamp(mergeChunkSize, serverMaxPullLimit));
+  int get _pullLimit =>
+      (backfillPullLimit * _backfillLimitBoost).clamp(mergeChunkSize, _pullPageCap.clamp(mergeChunkSize, serverMaxPullLimit));
 
   /// Once linked, a "small batch" round (a debounced reaction to a local
   /// edit) always has something to push, by construction, and never pulls.
@@ -753,8 +640,17 @@ class SyncEngine {
   /// changed mid-stream, that response is discarded and the pending-account
   /// flow starts over, the same as a fresh link.
   Future<void> runOneRound({bool smallBatch = false}) async {
-    if (!_mayRun || _running) return;
+    if (!_mayRun) return;
+    if (_running) {
+      if (smallBatch) {
+        _smallBatchDeferred = true;
+      } else if (_runningSmallBatch) {
+        _periodicRoundDeferred = true;
+      }
+      return;
+    }
     _running = true;
+    _runningSmallBatch = smallBatch;
     // Cleared per round, not per call: [retryNow] reads it afterwards to tell
     // "we asked and got nothing" from "we never asked" (an account change
     // waiting on the operator, an empty small batch), which are different
@@ -769,7 +665,7 @@ class SyncEngine {
       var state = settings.state;
 
       if (state['pendingAccountUUID'] != null) {
-        if (!smallBatch) _scheduleLoop(_checkPeriod);
+        _scheduleAfter(smallBatch, _checkPeriod);
         return;
       }
 
@@ -796,7 +692,7 @@ class SyncEngine {
             return;
           }
         }
-        if (!smallBatch) _scheduleLoop(_checkPeriod);
+        _scheduleAfter(smallBatch, _checkPeriod);
         return;
       }
 
@@ -804,11 +700,18 @@ class SyncEngine {
 
       final backfilling = state['completedFullSync'] != true;
       final batchSize = smallBatch ? smallBatchSize : _largeBatchSize;
-      // A backfill pulls big pages, not the plan's batch size: every page
-      // costs a cooldown wait and merges at ~0.1 ms/row, so the page count is
-      // the backfill's duration. The push batch stays at the plan's size —
-      // that is where the server does per-record work.
-      final pullLimit = backfilling ? _backfillPullLimit : batchSize;
+      // Every pull asks for big pages, not the plan's batch size: every page
+      // costs a loop-delay wait and merges at ~0.1 ms/row, so the page count
+      // is the catch-up's duration. That holds in forward mode as much as in
+      // the backfill — a device away for a season, or one re-walking history
+      // after a cursor rewind, has thousands of rows ahead of its watermark,
+      // and at the plan's 50-row batch every 35 s it takes an hour of
+      // foreground time that a phone opened for minutes at a stretch never
+      // accumulates. A caught-up device asks for the same page and gets a
+      // handful of rows; the limit is a cap, not a cost. The push batch
+      // stays at the plan's size — that is where the server does per-record
+      // work.
+      final pullLimit = _pullLimit;
       final batch = await selectBatch(qsoBatchSize: batchSize, operationBatchSize: batchSize);
 
       if (batch.isEmpty && smallBatch) return;
@@ -823,13 +726,13 @@ class SyncEngine {
           for (final entry in (backfilling ? backfillCursorKeys : forwardCursorKeys).entries)
             entry.key: settings.state[entry.value] as String?,
       };
-      _backfillPullInFlight = pull && backfilling;
+      _pullInFlight = pull;
       final response = await _callTransport(
         'sync',
         await _buildPayload(batch, pull: pull, backfilling: backfilling, limit: pullLimit),
       );
-      if (_backfillPullInFlight) _backfillPageCap = serverMaxPullLimit;
-      _backfillPullInFlight = false;
+      if (_pullInFlight) _pullPageCap = serverMaxPullLimit;
+      _pullInFlight = false;
       if (generation != _generation) return _abandonRound();
 
       // The transport turns a rejected round into data instead of throwing
@@ -846,7 +749,7 @@ class SyncEngine {
           // nothing to warn about — stay fully silent, not even counted
           // toward the streak, rather than nagging someone who hasn't
           // started using the app yet.
-          if (!smallBatch) _scheduleLoop(_checkPeriod);
+          _scheduleAfter(smallBatch, _checkPeriod);
           return;
         }
         _authErrorStreak++;
@@ -855,7 +758,7 @@ class SyncEngine {
           onAuthError?.call(responseError, status: response['error_status'] as int?);
         }
         final backoffShift = _authErrorStreak < maxErrorBackoffShift ? _authErrorStreak : maxErrorBackoffShift;
-        if (!smallBatch) _scheduleLoop(_loopDelay + Duration(seconds: 1 << backoffShift));
+        _scheduleAfter(smallBatch, _loopDelay + Duration(seconds: 1 << backoffShift));
         return;
       }
       _authErrorStreak = 0;
@@ -1013,13 +916,13 @@ class SyncEngine {
       // seconds and the backoff would push the first real sync out for no
       // reason.
       log?.call('[sync] transport not ready, retrying shortly: $e');
-      if (!smallBatch) _scheduleLoop(const Duration(seconds: 2));
+      _scheduleAfter(smallBatch, const Duration(seconds: 2));
     } catch (e, st) {
       _errorCount++;
       log?.call('[sync] round failed (error #$_errorCount${smallBatch ? ', small batch' : ''}): $e');
-      if (_backfillPullInFlight && _backfillPullLimit > mergeChunkSize) {
-        _backfillPageCap = _backfillPullLimit ~/ 2;
-        log?.call('[sync] backfill pull failed; shrinking the page to $_backfillPullLimit');
+      if (_pullInFlight && _pullLimit > mergeChunkSize) {
+        _pullPageCap = _pullLimit ~/ 2;
+        log?.call('[sync] pull failed; shrinking the page to $_pullLimit');
       }
       // Exactly at the threshold, never past it: a device that stays
       // offline for a day would otherwise just swap a flood of first
@@ -1041,12 +944,28 @@ class SyncEngine {
       // reason keeps the general one: the service answered, and nothing is
       // waiting on this round to declare us back online.
       final unreachable = _roundReachedService == false;
-      _scheduleLoop(unreachable && backoff > unreachableBackoffCeiling ? unreachableBackoffCeiling : backoff);
+      _scheduleAfter(false, unreachable && backoff > unreachableBackoffCeiling ? unreachableBackoffCeiling : backoff);
     } finally {
       // Whichever way the round ended — including the not-ready path above,
       // which never reaches the reassignment beside the transport call.
-      _backfillPullInFlight = false;
+      _pullInFlight = false;
       _running = false;
+      if (_periodicRoundDeferred) {
+        _periodicRoundDeferred = false;
+        _scheduleLoop(Duration.zero);
+      }
+      if (_smallBatchDeferred) {
+        _smallBatchDeferred = false;
+        // From a timer, never synchronously: this round's caller (`retryNow`) resumes only after
+        // this `finally`, and the deferred round clears `_roundReachedService` before its first
+        // await — started here it would overwrite the answer the caller is about to read. A
+        // microtask is not late enough either; it runs before the caller's continuation. Not
+        // through _scheduleLoop, so its dispose guard is restated: a round landing after
+        // `dispose` must not start another against a closed database.
+        Timer.run(() {
+          if (!_disposed) unawaited(runOneRound(smallBatch: true));
+        });
+      }
     }
   }
 
@@ -1630,6 +1549,17 @@ class SyncEngine {
     final remaining = savedNextAttemptAt?.difference(realNowUtc());
     if (remaining != null) _scheduleLoop(remaining > Duration.zero ? remaining : _loopDelay);
     return SyncRetryOutcome.unreachable;
+  }
+
+  /// A round's own choice of next wait. A periodic round always sets it; a
+  /// small-batch round sets it only when a periodic round is waiting behind
+  /// it — that wait is the deferred round's, and running it at once instead
+  /// would hit the same dead network or stale registration a second time
+  /// and count it twice.
+  void _scheduleAfter(bool smallBatch, Duration delay) {
+    if (smallBatch && !_periodicRoundDeferred) return;
+    _periodicRoundDeferred = false;
+    _scheduleLoop(delay);
   }
 
   void _scheduleLoop(Duration delay) {
