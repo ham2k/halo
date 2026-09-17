@@ -23,8 +23,10 @@ import 'package:halo_core/halo_core.dart';
 import 'catalog_service.dart';
 import 'connectivity_service.dart';
 import 'error_reporting_service.dart';
+import 'extension_account_cache.dart';
 import 'extension_info.dart';
 import 'extension_keychain.dart';
+import 'extension_ref_results.dart';
 import 'extension_catalog_migration.dart';
 import 'extension_disabled_since.dart';
 import 'extension_secrets.dart';
@@ -53,6 +55,7 @@ import '../tools/qso_patch.dart';
 
 // The types callers pair with the runtime: one import serves both.
 export 'extension_info.dart';
+export 'extension_ref_results.dart';
 
 /// This device's LoFi identity: the Pusher channel to subscribe
 /// to, and the signed token a webhook-relayed OAuth login embeds in its
@@ -447,6 +450,15 @@ class ExtensionService implements PanelExtensionSource {
   /// way to completing — and the two wait on each other until the hook times
   /// out. See [_accountKeychainOptions].
   bool _refreshingAccountSynchronizable = false;
+
+  /// See [AccountContextCache] for what this is and the invariant every
+  /// writer of an account item below keeps.
+  final _accountItems = AccountContextCache();
+
+  /// The bypass flag as a seam, so a test can pin that a read made while the
+  /// flag refresh is in flight never lands in the cache.
+  @visibleForTesting
+  set debugRefreshingAccountSynchronizable(bool value) => _refreshingAccountSynchronizable = value;
 
   /// Rebuilds [_accountSynchronizable] from the current account definitions.
   /// Best-effort: a failure leaves accounts device-local, never crashes boot.
@@ -918,6 +930,11 @@ class ExtensionService implements PanelExtensionSource {
       ErrorReportingService.report(e, st, context: 'accounts:read-credentials');
       return null;
     }
+    // The keychain answered, and what it holds may differ from the copy — a
+    // failure that has since cleared, or a synced item from another device.
+    // The session is unknown here, so the entry is evicted rather than
+    // rewritten and the next host call rereads both.
+    _accountItems.remove(kvKey);
     if (raw == null) return const {};
     try {
       return (jsonDecode(raw) as Map).cast<String, String>();
@@ -928,16 +945,23 @@ class ExtensionService implements PanelExtensionSource {
 
   Future<void> setAccountCredentials(String kvKey, Map<String, String> credentials) async {
     final o = await _accountKeychainOptions(kvKey);
+    final encoded = jsonEncode(credentials);
     await _secureStorage.write(
       key: 'account_creds_$kvKey',
-      value: jsonEncode(credentials),
+      value: encoded,
       mOptions: o.mOptions,
       iOptions: o.iOptions,
     );
     // Any stored session was derived from the OLD credentials — e.g. OAuth
     // tokens refreshed from a previous login — and could keep acting as the
     // previous account if left behind.
-    await _deleteAccountItem('account_session_$kvKey', o);
+    // A copy saying "no session" over a keychain that still holds the old
+    // one would hide that leak until the next launch reads it back.
+    if (await _deleteAccountItem('account_session_$kvKey', o)) {
+      _accountItems[kvKey] = AccountItems(creds: encoded, session: null);
+    } else {
+      _accountItems.remove(kvKey);
+    }
     // Fresh credentials must reach the very next hook call, not whatever
     // the kernel's context cache still holds.
     _host?.invalidateHookContext();
@@ -947,18 +971,22 @@ class ExtensionService implements PanelExtensionSource {
     final o = await _accountKeychainOptions(kvKey);
     await _deleteAccountItem('account_creds_$kvKey', o);
     await _deleteAccountItem('account_session_$kvKey', o);
+    _accountItems.remove(kvKey);
     _host?.invalidateHookContext();
   }
 
   /// Best-effort keychain delete. Deleting an item that doesn't exist is
   /// fine everywhere except macOS 26, which reports it as
   /// errSecMissingEntitlement (-34018) instead of "not found" — so delete
-  /// failures are logged, never thrown.
-  Future<void> _deleteAccountItem(String key, ({MacOsOptions mOptions, IOSOptions iOptions}) o) async {
+  /// failures are logged, never thrown. Answers whether the delete went
+  /// through, for a caller whose cached copy must not claim more than that.
+  Future<bool> _deleteAccountItem(String key, ({MacOsOptions mOptions, IOSOptions iOptions}) o) async {
     try {
       await _secureStorage.delete(key: key, mOptions: o.mOptions, iOptions: o.iOptions);
+      return true;
     } catch (e) {
       debugPrint('[extensions] keychain delete $key failed (ignored): $e');
+      return false;
     }
   }
 
@@ -1601,6 +1629,8 @@ class ExtensionService implements PanelExtensionSource {
     // synchronizable flags are resolved (or start fails), so an early lookup
     // can't read an account under the wrong sync flag. Completed in `finally`.
     _accountSyncReady = Completer<void>();
+    // The flags the cache was read under may change with this generation.
+    _accountItems.clear();
     try {
       final index = jsonDecode(await rootBundle.loadString('assets/extensions/index.json')) as Map<String, dynamic>;
       final kernelSource = await rootBundle.loadString('assets/extensions/${index['kernel']}');
@@ -2312,6 +2342,12 @@ class ExtensionService implements PanelExtensionSource {
     switch (method) {
       case 'getAccount':
         final kvKey = params['kvKey'] as String;
+        final cached = _accountItems[kvKey];
+        if (cached != null) return cached.toHostResult();
+        // A read made through the deadlock bypass (below) used device-local
+        // options, which may not be this account's — its answer must not
+        // outlive the refresh that resolves the real flag.
+        final provisional = _refreshingAccountSynchronizable;
         final o = await _accountKeychainOptions(kvKey, fromHostCall: true);
         // This is the path an extension actually uses at runtime, so it must
         // not lie: an unguarded throw here rejects the host call, the
@@ -2322,25 +2358,36 @@ class ExtensionService implements PanelExtensionSource {
         try {
           final credsStr = await _secureStorage.read(key: 'account_creds_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
           final sessionStr = await _secureStorage.read(key: 'account_session_$kvKey', mOptions: o.mOptions, iOptions: o.iOptions);
-          return {
-            'credentials': credsStr != null ? jsonDecode(credsStr) : const <String, dynamic>{},
-            'session': sessionStr != null ? jsonDecode(sessionStr) : const <String, dynamic>{},
-          };
+          final items = AccountItems(creds: credsStr, session: sessionStr);
+          if (!provisional) _accountItems[kvKey] = items;
+          return items.toHostResult();
         } catch (e, st) {
           debugPrint('[extensions] secure storage unavailable for host getAccount $kvKey: $e');
           ErrorReportingService.report(e, st, context: 'accounts:host-get-account');
-          return {'credentials': const <String, dynamic>{}, 'session': const <String, dynamic>{}, 'unavailable': true};
+          final failed = AccountItems.unreadable();
+          if (!provisional) _accountItems[kvKey] = failed;
+          return failed.toHostResult();
         }
       case 'setAccountSession':
         final kvKey = params['kvKey'] as String;
         final o = await _accountKeychainOptions(kvKey, fromHostCall: true);
         final session = params['session'] as Map<dynamic, dynamic>;
+        final encoded = jsonEncode(session);
         await _secureStorage.write(
           key: 'account_session_$kvKey',
-          value: jsonEncode(session),
+          value: encoded,
           mOptions: o.mOptions,
           iOptions: o.iOptions,
         );
+        final current = _accountItems.current(kvKey);
+        if (current == null) return null;
+        // The write went through, so a remembered failure no longer holds;
+        // the next hook call rereads both items.
+        if (current.unavailable) {
+          _accountItems.remove(kvKey);
+        } else {
+          _accountItems[kvKey] = AccountItems(creds: current.creds, session: encoded);
+        }
         return null;
       case 'getSettings':
         // The full read view of the app's settings — resolved typed values
@@ -4024,92 +4071,6 @@ class ExtensionService implements PanelExtensionSource {
       return null;
     }
   }
-}
-
-/// Reads a `geojsonUrlForRef` answer, or `null` for anything the app would not
-/// fetch. Separate from the call so the shapes a hook can return are testable
-/// without a runtime, same as [refLinkFromHookResult].
-///
-/// Unlike a link, this URL is fetched rather than handed to the platform, so
-/// the check is on the SCHEME the fetch stack will accept — `https` only. A
-/// plaintext shape URL would silently downgrade every activator's connection
-/// on a program's say-so.
-RefGeojson? refGeojsonFromHookResult(dynamic result, {required String type}) {
-  if (result == null) return null;
-  if (result is! Map) {
-    debugPrint('[extensions] geojsonUrlForRef(ref:$type) answered ${result.runtimeType}, not a map');
-    return null;
-  }
-  final url = result['url'];
-  if (url is! String || !url.startsWith('https://') || url.length <= 'https://'.length) {
-    debugPrint('[extensions] geojsonUrlForRef(ref:$type) answered no usable https url');
-    return null;
-  }
-  return RefGeojson(
-    url: url,
-    maxAge: _positiveDays(result['maxAgeInDays']) ?? const Duration(days: 30),
-    missMaxAge: _positiveDays(result['missMaxAgeInDays']) ?? const Duration(days: 1),
-  );
-}
-
-/// A hook's day count as a duration, or null for anything that isn't a
-/// positive number — a zero or negative TTL would re-fetch on every rebuild
-/// of the map, so it falls back to the default rather than being honored.
-Duration? _positiveDays(dynamic value) {
-  final days = value is num ? value.toDouble() : null;
-  if (days == null || days <= 0) return null;
-  return Duration(milliseconds: (days * Duration.millisecondsPerDay).round());
-}
-
-/// One `geojsonUrlForRef` answer: where a reference's outline lives, and how
-/// long the app may keep it — [missMaxAge] being how long it remembers that
-/// there is no outline at all.
-class RefGeojson {
-  const RefGeojson({required this.url, required this.maxAge, required this.missMaxAge});
-
-  final String url;
-  final Duration maxAge;
-  final Duration missMaxAge;
-}
-
-/// Reads a `linkForRef` answer, or `null` for anything the app would not put a
-/// button on. Separate from the call so the shapes a hook can actually return
-/// are testable without a runtime.
-///
-/// [type] appears only in the log lines: a hook answering wrongly and a ref
-/// type with no link at all look identical from the row (neither draws a
-/// button), so the console is the only place the difference can show.
-RefLink? refLinkFromHookResult(dynamic result, {required String type}) {
-  // `null` is the ordinary answer — most ref types implement no link at all.
-  if (result == null) return null;
-  if (result is! Map) {
-    debugPrint('[extensions] linkForRef(ref:$type) answered ${result.runtimeType}, not a map');
-    return null;
-  }
-  final url = result['url'];
-  if (url is! String || url.isEmpty) {
-    debugPrint('[extensions] linkForRef(ref:$type) answered no usable url');
-    return null;
-  }
-  // Checked where the link is RESOLVED, not where it is tapped: the row draws
-  // its button because a link came back, so a URL the app would refuse to open
-  // has to be no link at all rather than a button that does nothing every time
-  // it is pressed.
-  if (!canOpenExternalUrl(url)) {
-    debugPrint('[extensions] linkForRef(ref:$type) offered an unopenable url: "$url"');
-    return null;
-  }
-  final label = result['label'];
-  return RefLink(url: url, label: label is String && label.isNotEmpty ? label : null);
-}
-
-/// One `linkForRef` answer: somewhere to read about a reference, and a name
-/// for the destination that the UI wraps in its own localized phrasing.
-class RefLink {
-  const RefLink({required this.url, this.label});
-
-  final String url;
-  final String? label;
 }
 
 /// Whether a dev-loop reload of one extension can be swapped into the running

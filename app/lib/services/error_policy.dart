@@ -296,7 +296,9 @@ class ErrorPolicy {
           'That case resolves on the next unlock; a macOS session that can never prompt is '
           'refused for the length of the process, and neither is something the operator can act '
           'on mid-activation. Uploaded rather than dropped, because the rate is what says how '
-          'often the app reaches for a secret it cannot have; never noticed, because the notice '
+          'often the app reaches for a secret it cannot have (for an extension account that is '
+          'once per retry interval, not once per hook call — the host remembers a refusal, see '
+          'AccountContextCache.unreadableRetry); never noticed, because the notice '
           'fires once per SESSION and would be spent on a background retry, leaving the next real '
           'error to arrive silently',
       disposition: ErrorDisposition.report,
