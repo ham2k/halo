@@ -148,10 +148,17 @@ class SpotsService extends ChangeNotifier {
         // operator back to the Home screen and stays for the session, long
         // after the feed recovers. [_doRefresh] covers the same hazard for a
         // fetch still in flight when this runs.
+        //
+        // The notice waits a microtask: the usual caller is a State's
+        // dispose, which runs while the widget tree is locked, and a listener
+        // there that reaches a ListenableBuilder (the status bar clearing its
+        // outage line) throws "setState() called when widget tree was locked".
         if (_unavailableSources.isNotEmpty || _failedSources.isNotEmpty) {
           _unavailableSources = const [];
           _failedSources = const [];
-          if (!_disposed) notifyListeners();
+          scheduleMicrotask(() {
+            if (!_disposed) notifyListeners();
+          });
         }
       }
     };

@@ -266,6 +266,27 @@ void main() {
     expect(service.unavailableSources, isEmpty);
   });
 
+  test('the last subscriber leaving notifies after dispose, not during it', () async {
+    // The last subscriber leaves from a State's dispose, while the widget
+    // tree is locked. A synchronous notice reaches the status bar's
+    // ListenableBuilder there and throws "setState() called when widget tree
+    // was locked" on every return to Home after an outage.
+    final service = SpotsService(
+      fetchSpots: () async => (items: const <Map<String, dynamic>>[], succeeded: const <String>[], unreachable: const ['sota'], failed: const <String>[]),
+    );
+    addTearDown(service.dispose);
+
+    final release = service.subscribe();
+    await service.refresh();
+    var notices = 0;
+    service.addListener(() => notices++);
+
+    release();
+    expect(notices, 0, reason: 'a notice inside dispose runs while the tree is locked');
+    await Future<void>.delayed(Duration.zero);
+    expect(notices, 1, reason: 'the cleared outage must still reach the status bar');
+  });
+
   test('a fetch that lands after the last subscriber left records no outage', () async {
     // The race the guard above does NOT cover: `release()` clears what is
     // already recorded, but a fetch still on the wire settles afterwards and
