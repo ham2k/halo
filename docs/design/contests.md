@@ -2051,7 +2051,7 @@ recorded where they belong (§5.3, §5.4) rather than only here:
   `mandatory` is how a control appears at all, whereas HaLo's row is **opt-out**
   — every contributed chip is already visible, so `mandatory` could only revoke
   the user's ability to hide one. Worse, it cannot reach a contest exchange at
-  all: `_ControlDescriptor` is built only for `kind: 'refList'`, and every
+  all: `ControlDescriptor` is built only for `kind: 'refList'`, and every
   contest exchange is a `text`/`serial` primary field. The three newest contests
   already omit the field.
 - **An exchange the operator EMPTIES stays empty** (M4). The guess above fires

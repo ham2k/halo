@@ -344,6 +344,20 @@ Future<Map<String, dynamic>?> showQsoEditPane(
 /// than a value, and explicitly mixed-case like Name and the spot comment.
 /// [onChanged] carries the value back to whatever owns it; the chip's summary
 /// is read from [controller] on every build, so it follows the same string.
+/// The More and Notes chips' glyphs — the settings dialog's entries read
+/// these too.
+const moreChipIcon = MdiIcons.pencil;
+const notesChipIcon = MdiIcons.noteOutline;
+
+/// The More chip. Never actually expanded — the logging panel special-cases
+/// 'more' to open this pane instead of expanding inline.
+SecondaryControlSpec moreControlSpec() => SecondaryControlSpec(
+      key: 'more',
+      icon: moreChipIcon,
+      summary: t.loggingControls.more,
+      expandedBuilder: (context) => const SizedBox.shrink(),
+    );
+
 SecondaryControlSpec notesControlSpec(
   ThemeData theme, {
   required TextEditingController controller,
@@ -353,7 +367,7 @@ SecondaryControlSpec notesControlSpec(
   final label = t.loggingControls.notesControl;
   return SecondaryControlSpec(
     key: 'notes',
-    icon: MdiIcons.noteOutline,
+    icon: notesChipIcon,
     // The same check mark the reference controls use to say a field is filled
     // in (U+2713, no emoji presentation, so it takes the label's own color).
     // A note is one thing or nothing, so there is no count.

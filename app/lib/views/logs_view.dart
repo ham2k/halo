@@ -2658,8 +2658,9 @@ class _LogQsoEditPanelState extends State<_LogQsoEditPanel> {
   /// Delete → staged (`_pendingDelete = true`, nothing written yet) → Save
   /// commits the delete, or Undo (this same slot) drops the stage — the same
   /// three-state cycle `LoggingControls` runs its own delete button through.
-  /// Icon-only, at the exact footprint `LoggingControls` gives its own
-  /// wipe/delete button (`_buildWipeOrEditButton`): a `SizedBox`-authoritative
+  /// Icon-only, at the exact footprint the logging panel gives its own
+  /// wipe/delete button (`LoggingActionButton`, in
+  /// `logging_controls_info_frame.dart`): a `SizedBox`-authoritative
   /// 44×44 box, zero internal padding, an icon at 60% of that diameter —
   /// not `IconButton`'s own default constraints, which run smaller.
   Widget _deleteButton(BuildContext context, ThemeData theme) {

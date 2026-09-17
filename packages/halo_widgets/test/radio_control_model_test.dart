@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/src/logging_controls_draft.dart';
 import 'package:halo_widgets/src/logging_controls_radio.dart';
+import 'package:halo_widgets/src/mdi_icons.g.dart';
 
 class _FakeVfoStore implements VfoStore {
   Vfo _vfoA = const Vfo();
@@ -36,6 +37,8 @@ class _FakeVfoStore implements VfoStore {
 class _Harness {
   final store = _FakeVfoStore();
   Qso? editingQso;
+  bool hasConfiguredRadio = false;
+  bool radioConnected = false;
   /// Only its populating bracket is read by the model under test; the
   /// draft's own data paths are never asked, so it has nothing to read.
   late final draft = QsoDraft(config: () => throw UnsupportedError('the draft is not read here'));
@@ -44,6 +47,10 @@ class _Harness {
   late final model = RadioControlModel(
     config: () => (
       radioService: store,
+      hasConfiguredRadio: hasConfiguredRadio,
+      radioConnected: radioConnected,
+      radioName: null,
+      onOpenStationConfig: null,
       editingQso: editingQso,
       ituRegion: 2,
       countryCode: 'US',
@@ -190,6 +197,19 @@ void main() {
     h.model.modeController.text = 'FT8'; // what DropdownMenu writes before onSelected
     h.model.pickMode('FT8');
     expect(h.model.modeMenuEntries.length, greaterThan(1), reason: 'a pick narrows nothing');
+    h.model.dispose();
+  });
+
+  testWidgets('the chip is a cat only for a configured rig, and coloured only then', (tester) async {
+    final h = _Harness();
+    expect(h.model.chipIcon, MdiIcons.radio);
+    expect(h.model.statusColor(ThemeData.light(), selected: false), isNull, reason: 'no radio to report on');
+    h.hasConfiguredRadio = true;
+    h.radioConnected = true;
+    // Read live from the configuration: the rig's status changes under a
+    // mounted panel, and a glyph captured once would show the old rig.
+    expect(h.model.chipIcon, MdiIcons.cat);
+    expect(h.model.statusColor(ThemeData.light(), selected: false), isNotNull);
     h.model.dispose();
   });
 }

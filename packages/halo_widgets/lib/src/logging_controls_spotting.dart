@@ -21,6 +21,7 @@ import 'icon_resolver.dart';
 import 'logging_controls_types.dart';
 import 'mdi_icons.g.dart';
 import 'panel_model.dart';
+import 'secondary_control_row.dart' show SecondaryControlSpec;
 import 'spacing.dart';
 import 'theme.dart';
 
@@ -314,4 +315,18 @@ class SpottingControlFields extends StatelessWidget {
       ],
     );
   }
+}
+
+/// The Spotting chip's glyph — the settings dialog's entry reads this too.
+const spottingChipIcon = MdiIcons.handWave;
+
+/// The Spotting chip and its expanded fields, read from [model].
+SecondaryControlSpec spottingControlSpec(SpottingControlModel model, ThemeData theme, HaLoColors colors) {
+  final state = model.state;
+  return SecondaryControlSpec(
+    key: 'spotting',
+    icon: spottingChipIcon,
+    summary: state.summary,
+    expandedBuilder: (context) => SpottingControlFields(model: model, state: state, theme: theme, colors: colors),
+  );
 }

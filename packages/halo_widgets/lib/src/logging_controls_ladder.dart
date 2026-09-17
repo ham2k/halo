@@ -30,6 +30,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'logging_controls_metrics.dart';
+import 'secondary_control_row.dart' show SecondaryControlSpec;
 
 /// What the ladder reads from the panel — re-read on every use rather than
 /// copied in, because each of these can change under a mounted panel.
@@ -654,6 +655,27 @@ class LoggingFocusLadder {
     // no field at all rather than merely stuck where it started.
     if (config().navigateToQsoList?.call() != true) focusLastPrimaryField();
   }
+
+  /// Adds the panel's keyboard policy to a control spec: a focus node for its
+  /// pill, and a non-focusable ancestor over its expanded content that watches
+  /// for the keys which close it again. Applied once, over the assembled list,
+  /// so a newly added kind of control can't arrive without it.
+  ///
+  /// Through `copyWith` rather than a fresh [SecondaryControlSpec]:
+  /// re-listing the fields here drops any the spec grows later, and a chip
+  /// rendering the default is not a failure anything reports.
+  SecondaryControlSpec withKeyboardNavigation(SecondaryControlSpec spec, {bool enabled = true}) => spec.copyWith(
+        focusNode: pillFocusFor(spec.key),
+        enabled: enabled,
+        expandedBuilder: (context) => Focus(
+          // Not a stop on the way anywhere: it exists only to see key events
+          // on their way up from whatever inside the control has focus.
+          canRequestFocus: false,
+          skipTraversal: true,
+          onKeyEvent: (node, event) => onExpandedKeyEvent(spec.key, event),
+          child: spec.expandedBuilder(context),
+        ),
+      );
 
   void dispose() {
     _disposed = true;

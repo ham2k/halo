@@ -39,17 +39,17 @@ import 'package:halo_i18n/halo_i18n.dart';
 
 import 'call_field_text.dart';
 import 'call_info_summary.dart';
-import 'halo_dialog.dart';
-import 'icon_resolver.dart';
 import 'inline_markdown.dart';
 import 'keyboard_accessory.dart';
 import 'keyboard_dismiss.dart';
+import 'logging_controls_catalog.dart';
 import 'logging_controls_command.dart';
 import 'logging_controls_controller.dart';
 import 'logging_controls_draft.dart';
 import 'logging_controls_entry_row.dart';
 import 'logging_controls_event_row.dart';
 import 'logging_controls_exchange.dart';
+import 'logging_controls_info_frame.dart';
 import 'logging_controls_ladder.dart';
 import 'logging_controls_focus.dart';
 import 'logging_controls_lookup.dart';
@@ -61,7 +61,6 @@ import 'logging_controls_time.dart';
 import 'logging_controls_types.dart';
 import 'logging_info_area.dart';
 import 'mdi_icons.g.dart';
-import 'modal_pane.dart' show showHaloDialog;
 import 'platform_chrome.dart';
 import 'qso_edit_pane.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
@@ -72,37 +71,6 @@ import 'spacing.dart';
 import 'text_formatters.dart';
 import 'theme.dart';
 import 'wall_clock.dart';
-
-
-/// A secondary control's identity for ordering/visibility purposes — the
-/// settings dialog's list and `_effectiveControlOrder` deal in these; the
-/// actual `SecondaryControlSpec` (which carries the live summary and
-/// expanded-input builder) is only built for controls that end up visible.
-class _ControlDescriptor {
-  final String key;
-  final IconData icon;
-  final String label;
-
-  /// Time and Radio — can't be hidden, so the settings dialog shows their
-  /// checkbox permanently checked and disabled.
-  final bool mandatory;
-
-  /// Off until the operator asks for it. The operator's own decision is
-  /// recorded the moment they save the settings dialog — which always
-  /// writes the full order — so "this key is not in `controlOrder` yet" is
-  /// what distinguishes "never decided" from "decided against", and is why
-  /// a default-hidden control needs no second stored set of its own.
-  final bool defaultHidden;
-
-  const _ControlDescriptor({
-    required this.key,
-    required this.icon,
-    required this.label,
-    this.mandatory = false,
-    this.defaultHidden = false,
-  });
-}
-
 
 class LoggingControls extends StatefulWidget {
   final Operation operation;
@@ -387,7 +355,7 @@ class LoggingControls extends StatefulWidget {
   /// (`'time'`, `'radio'`, an activity control's own key, `'more'`). Keys
   /// this doesn't mention are appended in their default order; keys it
   /// mentions that no longer exist (e.g. an uninstalled extension) are
-  /// ignored. Persisted by the caller — see `_effectiveControlOrder`.
+  /// ignored. Persisted by the caller — see [SecondaryControlCatalog.effectiveOrder].
   final List<String> controlOrder;
 
   /// Control keys hidden from the row. Time and Radio are never hidden
@@ -659,6 +627,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   late final RadioControlModel _radio = RadioControlModel(
     config: () => (
       radioService: widget.radioService,
+      hasConfiguredRadio: widget.hasConfiguredRadio,
+      radioConnected: widget.radioConnected,
+      radioName: widget.radioName,
+      onOpenStationConfig: widget.onOpenStationConfig,
       editingQso: widget.editingQso,
       ituRegion: widget.ourItuRegion,
       countryCode: widget.ourCountryCode,
@@ -826,12 +798,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     selectControl: _onSelectControl,
     showControl: _showControl,
   );
-
-  /// Drives the info area's cross-fade (issue #40): `_infoGeneration` bumps
-  /// only when `_infoAreaSignature` changes, giving the AnimatedSwitcher a
-  /// never-repeating key (see build).
-  String? _lastInfoSignature;
-  int _infoGeneration = 0;
 
   /// The operation resolved into its segments. `widget.qsos` is the whole log,
   /// which is what carries the `break`/`start` event rows; an unsegmented
@@ -1041,6 +1007,14 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// its existing keyboard on other platforms.
   TextInputType? get _numbersAndPunctuationOnIOS =>
       isIOSPlatform ? const TextInputType.numberWithOptions(signed: true) : null;
+
+  /// The keyboard for the frequency and power fields: iOS's
+  /// NumbersAndPunctuation (the decimal separators, the symbols, and a space
+  /// bar for Space-to-advance), the decimal pad elsewhere. Not the entry
+  /// row's: there a null deliberately keeps the RST fields' letter-bearing
+  /// default keyboard.
+  TextInputType get _decimalKeyboardType =>
+      _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true);
 
   void _scheduleSubmitButtonMeasurement() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -2342,184 +2316,68 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// changes nothing.
   bool _mainFieldsSqueezed = false;
 
-  // ---- Control identity, order and visibility ----
-  //
-  // Descriptors carry just enough for the settings dialog and ordering
-  // (key/icon/label/mandatory) — the actual SecondaryControlSpec (live
-  // summary + expanded-input builder) is only built for controls that end
-  // up visible, in _buildSecondaryControls below.
-
-  List<_ControlDescriptor> _controlDescriptors() => [
-        _ControlDescriptor(
-          key: 'time',
-          icon: MdiIcons.clockOutline,
-          label: t.loggingControls.timeControl,
-          mandatory: true,
-        ),
-        _ControlDescriptor(
-          key: 'radio',
-          icon: _radioChipIcon,
-          label: t.loggingControls.radioControl,
-          mandatory: true,
-        ),
-        // Only with somewhere to keep the value: power lives on the VFO
-        // ([Vfo.power]), and without a store the control would edit nothing.
-        if (widget.radioService != null)
-          _ControlDescriptor(
-            key: 'power',
-            icon: MdiIcons.flash,
-            label: t.loggingControls.powerControl,
-            defaultHidden: true,
-          ),
-        if (widget.suggestSpotSources != null && widget.sendSpot != null)
-          _ControlDescriptor(
-            key: 'spotting',
-            icon: MdiIcons.handWave,
-            label: t.loggingControls.spottingControl,
-          ),
-        for (final control in _refs.controls)
-          // `text` controls are primary fields (see `_textControls`), so only
-          // refList contributes a secondary chip.
-          if ((control['input'] as Map?)?['kind'] == 'refList')
-            _ControlDescriptor(
-              key: control['key'] as String,
-              icon: resolveIconName(control['icon'] as String?),
-              label: (control['label'] as String?) ?? control['key'] as String,
-            ),
-        // Beside More, and off until the operator has been asked: a note
-        // per contact is a thing few operators keep, and the ones who do
-        // know to go looking for it. The More pane edits the same value for
-        // everyone else.
-        _ControlDescriptor(
-          key: 'notes',
-          icon: MdiIcons.noteOutline,
-          label: t.loggingControls.notesControl,
-          defaultHidden: true,
-        ),
-        _ControlDescriptor(
-          key: 'more',
-          icon: MdiIcons.pencil,
-          label: t.loggingControls.more,
-        ),
-      ];
-
-  /// Whether this control stays out of the row. A [_ControlDescriptor
-  /// .defaultHidden] control is out until the operator has been asked —
-  /// which the saved order records, since the settings dialog writes every
-  /// key it offered whether or not it was checked.
-  bool _descriptorHidden(_ControlDescriptor descriptor) {
-    if (descriptor.mandatory) return false;
-    if (widget.hiddenControlKeys.contains(descriptor.key)) return true;
-    return descriptor.defaultHidden && !widget.controlOrder.contains(descriptor.key);
-  }
-
-  /// Whether the Power control is in the row.
-  bool get _powerControlVisible =>
-      _controlDescriptors().where((d) => d.key == 'power').map(_descriptorHidden).firstOrNull == false;
+  /// Which controls the strip offers, in what order, and which are hidden —
+  /// see [SecondaryControlCatalog]. The specs themselves are built in
+  /// [_buildSecondaryControls], only for the visible ones.
+  late final _catalog = SecondaryControlCatalog(
+    config: () => (
+      radioIcon: _radio.chipIcon,
+      hasPowerStore: widget.radioService != null,
+      canSpot: widget.suggestSpotSources != null && widget.sendSpot != null,
+      activityControls: _refs.controls,
+      controlOrder: widget.controlOrder,
+      hiddenControlKeys: widget.hiddenControlKeys,
+    ),
+  );
 
   /// Something is logging power for this QSO: the operator put the control
   /// in the row, or the app is capturing it with the rest of the station
   /// info. This is what lets a composed QSO carry a power at all — without
   /// it the field stays empty and nothing is stamped.
-  bool get _powerInPlay => _powerControlVisible || widget.trackingPower;
+  bool get _powerInPlay => _catalog.powerVisible || widget.trackingPower;
 
-  /// `widget.controlOrder`, filtered to keys that still exist and
-  /// de-duplicated, with any remaining known keys slotted in where the
-  /// descriptor list puts them — so a fresh install (empty order) or a
-  /// newly-added control both land in their intended place.
-  ///
-  /// Slotted rather than appended: every operator who has ever saved the
-  /// settings dialog has a stored order, and appending puts a new control
-  /// at the very end of the row — past More — however deliberately the
-  /// descriptor list placed it beside its neighbour. A key with no earlier
-  /// descriptor already in the order still goes last, which is what the
-  /// append did for all of them.
-  List<String> _effectiveControlOrder(List<_ControlDescriptor> descriptors) {
-    final allKeys = descriptors.map((d) => d.key).toSet();
-    final order = <String>[];
-    for (final key in widget.controlOrder) {
-      if (allKeys.contains(key) && !order.contains(key)) order.add(key);
-    }
-    for (final (index, descriptor) in descriptors.indexed) {
-      if (order.contains(descriptor.key)) continue;
-      // Immediately after the nearest preceding descriptor that IS placed —
-      // walking backwards, so a run of new keys keeps its own relative order.
-      var insertAt = order.length;
-      for (var previous = index - 1; previous >= 0; previous--) {
-        final at = order.indexOf(descriptors[previous].key);
-        if (at >= 0) {
-          insertAt = at + 1;
-          break;
-        }
-      }
-      order.insert(insertAt, descriptor.key);
-    }
-    return order;
-  }
-
-  SecondaryControlSpec _timeControlSpec() => SecondaryControlSpec(
-        key: 'time',
-        icon: MdiIcons.clockOutline,
-        summary: _time.summary,
-        // Live clock only while nothing overrides the timestamp (a manually
-        // set time, or editing an existing — necessarily historical — QSO);
-        // the chip re-reads this once per second without rebuilding the
-        // panel (a panel-level ticker calling setState on all of
-        // _LoggingControlsState would cost a full panel rebuild per tick).
-        liveSummary: _time.isLive ? () => _time.summary : null,
-        expandedBuilder: (context) => TimeControlFields(
-          model: _time,
-        ),
-      );
-
-  SecondaryControlSpec _spottingControlSpec(ThemeData theme, HaLoColors poloColors) {
-    final state = _spotting.state;
-    return SecondaryControlSpec(
-      key: 'spotting',
-      icon: MdiIcons.handWave,
-      summary: state.summary,
-      expandedBuilder: (context) => SpottingControlFields(
-        model: _spotting,
-        state: state,
-        theme: theme,
-        colors: poloColors,
-      ),
-    );
-  }
-
+  /// The strip's specs, in row order, each carrying the panel's keyboard
+  /// policy. Which controls appear is [_catalog]'s call; what each one shows
+  /// is its model's.
   List<SecondaryControlSpec> _buildSecondaryControls(
     ThemeData theme,
     HaLoColors poloColors, {
     bool Function(String key)? enabledFor,
   }) {
-    final descriptors = _controlDescriptors();
-    final byKey = {for (final d in descriptors) d.key: d};
     final specs = <SecondaryControlSpec>[];
-    for (final key in _effectiveControlOrder(descriptors)) {
-      final descriptor = byKey[key];
-      if (descriptor == null) continue;
-      if (_descriptorHidden(descriptor)) continue;
-      switch (key) {
+    for (final descriptor in _catalog.visibleControls()) {
+      switch (descriptor.key) {
         case 'time':
-          specs.add(_timeControlSpec());
+          specs.add(timeControlSpec(_time));
         case 'radio':
-          specs.add(_radioControlSpec(theme));
+          specs.add(radioControlSpec(
+            _radio,
+            theme,
+            selected: _selectedControlKey == 'radio',
+            freqInputFormatters: [_virtualSpace],
+            freqKeyboardType: _decimalKeyboardType,
+            onFreqSubmitted: () => _ladder.closeExpandedControl('radio'),
+            onPicked: _callFocus.requestFocus,
+          ));
         case 'power':
-          specs.add(_powerControlSpec());
+          specs.add(powerControlSpec(
+            controller: _powerController,
+            focusNode: _powerFocus,
+            summary: _powerSummary,
+            keyboardType: _decimalKeyboardType,
+            onSubmitted: _commitPower,
+          ));
         case 'spotting':
-          specs.add(_spottingControlSpec(theme, poloColors));
+          specs.add(spottingControlSpec(_spotting, theme, poloColors));
         case 'notes':
           specs.add(notesControlSpec(theme,
               controller: _notesController, focusNode: _notesFocus, onChanged: _onNotesChanged));
         case 'more':
-          specs.add(_moreControlSpec());
+          specs.add(moreControlSpec());
         default:
-          for (final control in _refs.controls) {
-            if (control['key'] == key) {
-              specs.add(activityControlSpec(_refs, control,
-                  onRefsChanged: _relookupForRefsChanged, decorate: widget.decorateRef));
-              break;
-            }
+          if (descriptor.activityControl case final control?) {
+            specs.add(activityControlSpec(_refs, control,
+                onRefsChanged: _relookupForRefsChanged, decorate: widget.decorateRef));
           }
       }
     }
@@ -2527,68 +2385,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // actually handed to the row, so the two can't drift apart.
     _ladder.pillOrder = [for (final spec in specs) spec.key];
     return [
-      for (final spec in specs) _withKeyboardNavigation(spec, enabled: enabledFor?.call(spec.key) ?? true),
+      for (final spec in specs) _ladder.withKeyboardNavigation(spec, enabled: enabledFor?.call(spec.key) ?? true),
     ];
   }
-
-  /// Adds this panel's keyboard policy to a control spec: a focus node for its
-  /// pill, and a non-focusable ancestor over its expanded content that watches
-  /// for the keys which close it again. Applied once, over the assembled list,
-  /// so a newly added kind of control can't arrive without it.
-  ///
-  /// Through `copyWith` rather than a fresh [SecondaryControlSpec]:
-  /// re-listing the fields here drops any the spec grows later, and a chip
-  /// rendering the default is not a failure anything reports.
-  SecondaryControlSpec _withKeyboardNavigation(SecondaryControlSpec spec, {bool enabled = true}) => spec.copyWith(
-        focusNode: _ladder.pillFocusFor(spec.key),
-        enabled: enabled,
-        expandedBuilder: (context) => Focus(
-          // Not a stop on the way anywhere: it exists only to see key events
-          // on their way up from whatever inside the control has focus.
-          canRequestFocus: false,
-          skipTraversal: true,
-          onKeyEvent: (node, event) => _ladder.onExpandedKeyEvent(spec.key, event),
-          child: spec.expandedBuilder(context),
-        ),
-      );
-
-  /// The glyph both the Radio chip and its settings-dialog entry use — a
-  /// transceiver should look like one thing throughout this row.
-  IconData get _radioChipIcon => widget.hasConfiguredRadio ? MdiIcons.cat : MdiIcons.radio;
-
-  SecondaryControlSpec _radioControlSpec(ThemeData theme) => SecondaryControlSpec(
-        key: 'radio',
-        icon: _radioChipIcon,
-        iconColor: radioStatusColor(
-          theme,
-          hasConfiguredRadio: widget.hasConfiguredRadio,
-          connected: widget.radioConnected,
-          selected: _selectedControlKey == 'radio',
-        ),
-        // `band` is null both when nothing is tuned at all and when the
-        // frequency in the field falls outside every ham band; `outOfBand`
-        // catches the case a band name can't — a frequency inside a ham band
-        // that the operator's own region or country doesn't allocate to
-        // amateurs (e.g. 7250 kHz in ITU Region 1).
-        alert: _radio.band == null || _radio.outOfBand,
-        summary: _radio.summary,
-        summaryParts: _radio.summaryParts(errorColor: theme.colorScheme.error),
-        expandedBuilder: (context) => RadioControlFields(
-          model: _radio,
-          theme: theme,
-          hasConfiguredRadio: widget.hasConfiguredRadio,
-          radioConnected: widget.radioConnected,
-          radioName: widget.radioName,
-          onOpenStationConfig: widget.onOpenStationConfig,
-          freqInputFormatters: [_virtualSpace],
-          // iOS: NumbersAndPunctuation (has the decimal separators, the
-          // symbols, and a space bar for Space-to-advance); other platforms
-          // keep the decimal pad.
-          freqKeyboardType: _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true),
-          onFreqSubmitted: () => _ladder.closeExpandedControl('radio'),
-          onPicked: _callFocus.requestFocus,
-        ),
-      );
 
   String get _powerSummary {
     final watts = _draft.powerWatts;
@@ -2614,48 +2413,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     widget.radioService?.setVfo('vfoA', power: watts, clearPower: watts == null);
   }
 
-  SecondaryControlSpec _powerControlSpec() => SecondaryControlSpec(
-        key: 'power',
-        icon: MdiIcons.flash,
-        summary: _powerSummary,
-        expandedBuilder: (context) => Row(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            SizedBox(
-              // Four digits is every legal amateur power, the same width the
-              // Station Configuration field is sized to.
-              width: 72,
-              child: TextField(
-                controller: _powerController,
-                focusNode: _powerFocus,
-                selectAllOnFocus: false,
-                style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
-                decoration: poloFieldDecoration(
-                  context,
-                  t.loggingControls.power,
-                  labelColor: Theme.of(context).colorScheme.onTertiaryContainer,
-                ),
-                keyboardType: _numbersAndPunctuationOnIOS ?? const TextInputType.numberWithOptions(decimal: true),
-                autocorrect: false,
-                enableSuggestions: false,
-                smartDashesType: SmartDashesType.disabled,
-                smartQuotesType: SmartQuotesType.disabled,
-                // A decimal point earns its place at the QRPp end (0.5 W);
-                // everything else a keyboard can offer here is noise.
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-                onSubmitted: (_) => _commitPower(),
-              ),
-            ),
-            const SizedBox(width: Space.sm),
-            Text(
-              t.loggingControls.powerUnit,
-              style: TextStyle(color: Theme.of(context).colorScheme.onTertiaryContainer),
-            ),
-          ],
-        ),
-      );
-
   /// The contact's own note. Wider than the other controls' fields — a note
   /// is a sentence, not a value — and explicitly mixed-case, like Name and
   /// the spot comment: free prose, not logging data.
@@ -2664,15 +2421,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// what pushes the draft up to the host: the post-frame notify in [build]
   /// runs on every rebuild.
   void _onNotesChanged(String value) => setState(() => _draft.setNote(value));
-
-  SecondaryControlSpec _moreControlSpec() => SecondaryControlSpec(
-        key: 'more',
-        icon: MdiIcons.pencil,
-        summary: t.loggingControls.more,
-        // Never actually shown — _onSelectControl special-cases 'more' to
-        // open the full-edit pane instead of expanding inline.
-        expandedBuilder: (context) => const SizedBox.shrink(),
-      );
 
   // ---- Command shortcuts ----
   //
@@ -3337,92 +3085,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   // ---- Secondary control settings (show/hide + reorder) ----
 
   Future<void> _openControlSettingsDialog() async {
-    final descriptors = _controlDescriptors();
-    final byKey = {for (final d in descriptors) d.key: d};
-    var order = _effectiveControlOrder(descriptors);
-    // The stored set FIRST, and kept whole: the descriptors are what this
-    // operation offers, so rebuilding the set from them alone would drop a
-    // control hidden while some other activity was running — saving the
-    // dialog here would then un-hide it everywhere. On top of that, the
-    // never-decided default-hidden controls, which must arrive unchecked;
-    // saving is what turns that into a recorded decision.
-    var hidden = {
-      ...widget.hiddenControlKeys,
-      for (final descriptor in descriptors)
-        if (_descriptorHidden(descriptor)) descriptor.key,
-    };
-
-    final result = await showHaloDialog<(List<String>, Set<String>)>(
-      context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (dialogContext, setDialogState) => HaloDialog(
-          title: Text(t.loggingControls.controlSettings),
-          // The ReorderableListView scrolls itself, so the shell must not:
-          // nesting two scrollables on one axis leaves the inner list with no
-          // scroll extent, and a drag toward the edge has nothing to
-          // auto-scroll. `wide` because this carries a list, not a prompt.
-          scrollable: false,
-          wide: true,
-          content: SizedBox(
-            width: 360,
-            child: ReorderableListView(
-              shrinkWrap: true,
-              buildDefaultDragHandles: false,
-              onReorderItem: (oldIndex, newIndex) => setDialogState(() {
-                final reordered = List<String>.from(order);
-                final key = reordered.removeAt(oldIndex);
-                reordered.insert(newIndex, key);
-                order = reordered;
-              }),
-              children: [
-                for (final (index, key) in order.indexed)
-                  if (byKey[key] case final descriptor?)
-                    ListTile(
-                      key: ValueKey(key),
-                      leading: ReorderableDragStartListener(
-                        index: index,
-                        child: const Icon(MdiIcons.dragHorizontalVariant),
-                      ),
-                      title: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(descriptor.icon, size: 18),
-                          const SizedBox(width: Space.lg),
-                          Text(descriptor.label),
-                        ],
-                      ),
-                      trailing: Checkbox(
-                        value: descriptor.mandatory || !hidden.contains(key),
-                        onChanged: descriptor.mandatory
-                            ? null
-                            : (checked) => setDialogState(() {
-                                  final updated = Set<String>.from(hidden);
-                                  if (checked == true) {
-                                    updated.remove(key);
-                                  } else {
-                                    updated.add(key);
-                                  }
-                                  hidden = updated;
-                                }),
-                      ),
-                    ),
-              ],
-            ),
-          ),
-          cancel: TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(t.common.cancel),
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop((order, hidden)),
-              child: Text(t.common.save),
-            ),
-          ],
-        ),
-      ),
-    );
-
+    final result = await showControlSettingsDialog(context, _catalog);
     if (result == null) return;
     widget.onControlsSettingsChanged?.call(result.$1, result.$2);
   }
@@ -3735,9 +3398,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           ),
       );
 
-  /// The info row's second (no-background) button — a single control whose
-  /// icon/action depends on whether we're composing a new QSO or editing
-  /// an existing one, per the state machine in the class doc comment above.
+  /// Which action the info row's second button is right now — per the state
+  /// machine in the class doc comment above — as a [LoggingActionButton]
+  /// sized to the log button.
   Widget _buildWipeOrEditButton(ThemeData accentTheme) {
     final editingQso = widget.editingQso;
     final IconData icon;
@@ -3779,26 +3442,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       onPressed = () => setState(() => _pendingDelete = true);
     }
 
-    // Same footprint as the submit button (measured post-frame, since that
-    // button's own size is layout-derived — see _editButtonDiameter), no
-    // background of its own, and its icon tinted with the color the submit
-    // button uses as its *background*, tying the two together visually.
-    final diameter = _editButtonDiameter ?? 44;
-    // #236: stable id for agent/browser tooling. Named for its default role
-    // (Wipe) even though it also serves Undo/Delete/Restore/Revert — it's the
-    // one secondary action slot, and the dev bridge drives it as `wipe`.
-    return semanticId('action.wipe', SizedBox(
-      width: diameter,
-      height: diameter,
-      child: IconButton(
-        onPressed: onPressed,
-        // Screen-reader name only — no hover tooltip (user-interface.md).
-        icon: Icon(icon, semanticLabel: actionLabel),
-        color: accentTheme.colorScheme.tertiary,
-        padding: EdgeInsets.zero,
-        iconSize: diameter * 0.5 * 1.2,
-      ),
-    ));
+    return LoggingActionButton(
+      diameter: _editButtonDiameter ?? 44,
+      icon: icon,
+      label: actionLabel,
+      onPressed: onPressed,
+      color: accentTheme.colorScheme.tertiary,
+    );
   }
 
   /// A QSO write threw: surface it in the info area (the same channel a
@@ -4191,18 +3841,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
     _syncNumbersRow(context, accentTheme);
 
-    // Bump a monotonic generation whenever the info area's displayed content
-    // changes, and key the AnimatedSwitcher by it below. A content-derived key
-    // that can repeat (stats→call→stats) would collide with a still-fading
-    // outgoing child of the same key and crash the switcher's Stack; a
-    // never-repeating generation can't. Identical content (e.g. the stats
-    // line's 1 Hz tick) leaves the signature unchanged, so it updates in place.
-    final infoSignature = _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso);
-    if (infoSignature != _lastInfoSignature) {
-      _lastInfoSignature = infoSignature;
-      _infoGeneration++;
-    }
-
     // Resolved once per build, for the menu.
     final exchangeMenu = _exchange.openMenu;
     final panel = CallbackShortcuts(
@@ -4307,92 +3945,20 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         ),
                       ),
                       const SizedBox(height: Space.md),
-                      // A min-height container: at least the second edit
-                      // button's own diameter (see _buildWipeOrEditButton) so a
-                      // one-line info area can't leave the button overflowing
-                      // upward into the secondary control chips above, but free
-                      // to grow taller for the call-info panel's up-to-three
-                      // lines (issue #40).
-                      Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                          ConstrainedBox(
-                            constraints: BoxConstraints(minHeight: _editButtonDiameter ?? 44),
-                            child: SizedBox(
-                              width: double.infinity,
-                              // Reserves room for the button positioned on
-                              // top of this box (below), so text truncates
-                              // before it rather than rendering underneath.
-                              child: Padding(
-                                padding: widget.leftieMode
-                                    ? EdgeInsets.only(left: (_editButtonDiameter ?? 44) + Space.md)
-                                    : EdgeInsets.only(right: (_editButtonDiameter ?? 44) + Space.md),
-                              // Top-aligned, with the height animating as the
-                              // content grows/shrinks and content swaps
-                              // cross-fading (issue #40). AnimatedSize drives the
-                              // height; AnimatedSwitcher fades between distinct
-                              // states, keyed by a signature that's stable
-                              // across the stats line's 1 Hz tick.
-                              child: AnimatedSize(
-                                duration: const Duration(milliseconds: 120),
-                                curve: Curves.easeOut,
-                                alignment: Alignment.topLeft,
-                                child: AnimatedSwitcher(
-                                  duration: const Duration(milliseconds: 120),
-                                  layoutBuilder: (currentChild, previousChildren) => Stack(
-                                    alignment: Alignment.topLeft,
-                                    children: [
-                                      ...previousChildren,
-                                      ?currentChild,
-                                    ],
-                                  ),
-                                  child: KeyedSubtree(
-                                    key: ValueKey(_infoGeneration),
-                                    // The tap-to-open-the-detail-panel gesture
-                                    // is applied inside `_buildInfoArea`, to
-                                    // the call-info content alone — the
-                                    // missing-band/mode row above it is about
-                                    // this station's radio, and must not answer
-                                    // a tap with a panel about the other one.
-                                    child: fieldsLocked
-                                        ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso))
-                                        : _buildInfoArea(accentTheme),
-                                  ),
-                                ),
-                              ),
-                            ),
-                            ),
-                          ),
-                          // In the same stack as the info area, under it, so
-                          // the wipe/undo button below pins to the bottom of
-                          // BOTH — directly over the log button — rather than
-                          // floating above the strip. Kept off the log button's
-                          // column: the strip ends over the rightmost field
-                          // (its close button sits there). Same reserve the
-                          // entry row makes — the button's diameter plus gap.
-                          if (widget.aboveEntryRow case final strip?)
-                            Padding(
-                              // No top inset of its own: the strip pads itself
-                              // inside its slide, so nothing is spent while it
-                              // is not showing.
-                              padding: EdgeInsets.only(
-                                right: widget.leftieMode ? 0 : (_editButtonDiameter ?? 44) + logButtonGap,
-                                left: widget.leftieMode ? (_editButtonDiameter ?? 44) + logButtonGap : 0,
-                              ),
-                              child: strip,
-                            ),
-                            ],
-                          ),
-                          Positioned(
-                            left: widget.leftieMode ? 0 : null,
-                            right: widget.leftieMode ? null : 0,
-                            bottom: 0,
-                            child: _buildWipeOrEditButton(accentTheme),
-                          ),
-                        ],
+                      LoggingInfoFrame(
+                        buttonDiameter: _editButtonDiameter ?? 44,
+                        leftieMode: widget.leftieMode,
+                        signature: _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso),
+                        strip: widget.aboveEntryRow,
+                        actionButton: _buildWipeOrEditButton(accentTheme),
+                        // The tap-to-open-the-detail-panel gesture is applied
+                        // inside `_buildInfoArea`, to the call-info content
+                        // alone — the missing-band/mode row above it is about
+                        // this station's radio, and must not answer a tap with
+                        // a panel about the other one.
+                        child: fieldsLocked
+                            ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso))
+                            : _buildInfoArea(accentTheme),
                       ),
                       const SizedBox(height: Space.md),
                       // A Stack so the `options` suggestion pills can float over
@@ -4705,9 +4271,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     ];
   }
 
-  /// AnimatedSwitcher key for the info area — changes when the DISPLAYED
-  /// content changes (mode, lookup result, notices), but is stable across the
-  /// stats line's 1 Hz clock tick, so only real content changes cross-fade.
+  /// What the info area is showing, as the signature [LoggingInfoFrame] keys
+  /// its cross-fade on — changes when the DISPLAYED content changes (mode,
+  /// lookup result, notices), but is stable across the stats line's 1 Hz
+  /// clock tick, so only real content changes cross-fade.
   ///
   /// The missing-band/mode warnings are deliberately outside it: they are a
   /// state of the radio, not of the area, and they come and go while the area

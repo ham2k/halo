@@ -49,6 +49,10 @@ class _Harness {
   late final RadioControlModel radio = RadioControlModel(
     config: () => (
       radioService: store,
+      hasConfiguredRadio: false,
+      radioConnected: false,
+      radioName: null,
+      onOpenStationConfig: null,
       editingQso: editingQso,
       ituRegion: 2,
       countryCode: 'US',

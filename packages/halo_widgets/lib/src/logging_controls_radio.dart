@@ -12,6 +12,11 @@
 // notifies on every change the panel has to repaint for, and never touches a
 // field that is not its own. [RadioControlFields] draws the control's
 // expanded row from it.
+//
+// The Power control lives here too — [PowerControlFields] and
+// [powerControlSpec] — because its value lives on the same VFO
+// (`Vfo.power`) the Radio control mirrors; the panel still owns its field's
+// controller and the push to the VFO.
 
 import 'dart:async';
 
@@ -27,7 +32,7 @@ import 'logging_controls_draft.dart';
 import 'logging_controls_metrics.dart';
 import 'mdi_icons.g.dart';
 import 'panel_model.dart';
-import 'secondary_control_row.dart' show SummaryPart;
+import 'secondary_control_row.dart' show SecondaryControlSpec, SummaryPart;
 import 'spacing.dart';
 import 'theme.dart';
 
@@ -37,6 +42,20 @@ import 'theme.dart';
 /// to refresh it.
 typedef RadioControlConfig = ({
   VfoStore? radioService,
+
+  /// The rig as the app resolved it — configured at all, connected right
+  /// now, and its name — and the way to its configuration. The model derives
+  /// the chip's glyph and colour from these ([RadioControlModel.chipIcon],
+  /// [RadioControlModel.statusColor]), and the expanded row's Station
+  /// Configuration button reads them here, so nothing can disagree with the
+  /// model about the radio. The rule for what goes where: anything about the
+  /// RIG is on this record; anything about the widgets' own plumbing
+  /// (formatters, keyboard, callbacks) is a parameter of the chip and row
+  /// builders.
+  bool hasConfiguredRadio,
+  bool radioConnected,
+  String? radioName,
+  VoidCallback? onOpenStationConfig,
   Qso? editingQso,
   int? ituRegion,
   String? countryCode,
@@ -258,6 +277,22 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     bandController.addListener(_onBandTextChanged);
     modeController.addListener(_onModeTextChanged);
     recordFreqText();
+  }
+
+  /// The chip's glyph — a transceiver should look like one thing throughout
+  /// the row, so the settings dialog's entry reads this too.
+  IconData get chipIcon => config().hasConfiguredRadio ? MdiIcons.cat : MdiIcons.radio;
+
+  /// The chip's icon colour for the rig's state — null when there is no
+  /// radio to report on. [selected] is the pill's own; see [radioStatusColor].
+  Color? statusColor(ThemeData theme, {required bool selected}) {
+    final config = this.config();
+    return radioStatusColor(
+      theme,
+      hasConfiguredRadio: config.hasConfiguredRadio,
+      connected: config.radioConnected,
+      selected: selected,
+    );
   }
 
   @override
@@ -937,10 +972,6 @@ class RadioControlFields extends StatelessWidget {
     super.key,
     required this.model,
     required this.theme,
-    required this.hasConfiguredRadio,
-    required this.radioConnected,
-    required this.radioName,
-    required this.onOpenStationConfig,
     required this.freqInputFormatters,
     required this.freqKeyboardType,
     required this.onFreqSubmitted,
@@ -953,10 +984,6 @@ class RadioControlFields extends StatelessWidget {
   /// have to be built against it rather than against `Theme.of(context)`.
   final ThemeData theme;
 
-  final bool hasConfiguredRadio;
-  final bool radioConnected;
-  final String? radioName;
-  final VoidCallback? onOpenStationConfig;
 
   /// The panel's own formatters for the frequency field — the Space-to-advance
   /// formatter is the panel's, since Space's meaning is the panel's contract.
@@ -978,17 +1005,9 @@ class RadioControlFields extends StatelessWidget {
   /// radio that isn't configured at all barely registers — a lighter tint of
   /// that same fill. Dimmed further while editing a logged QSO, when the
   /// button is disabled.
-  /// Editing an existing QSO: the Station Configuration button is disabled,
-  /// since retuning the shack shouldn't read as an action on a QSO that's
-  /// already in the log. Read from the model's own configuration so the two
-  /// can never disagree about which QSO this is.
-  bool get _editing => model.config().editingQso != null;
-
-  Color _stationConfigIconColor() {
-    final status = radioStatusColor(theme,
-            hasConfiguredRadio: hasConfiguredRadio, connected: radioConnected, selected: true) ??
-        Color.lerp(theme.colorScheme.tertiary, Colors.white, 0.4)!;
-    return _editing ? status.withValues(alpha: 0.38) : status;
+  Color _stationConfigIconColor({required bool editing}) {
+    final status = model.statusColor(theme, selected: true) ?? Color.lerp(theme.colorScheme.tertiary, Colors.white, 0.4)!;
+    return editing ? status.withValues(alpha: 0.38) : status;
   }
 
   /// The same density-resolved pair poloFieldDecoration gives the sibling
@@ -1035,6 +1054,13 @@ class RadioControlFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // One read of the model's configuration per build, so the row can never
+    // disagree with the model — or with itself — about the rig and which QSO
+    // this is. Editing an existing QSO: the Station Configuration button is
+    // disabled, since retuning the shack shouldn't read as an action on a
+    // QSO that's already in the log.
+    final config = model.config();
+    final editing = config.editingQso != null;
     final decorationTheme = _dropdownDecorationTheme(context);
     final textStyle = haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500);
     // DropdownMenu treats an explicit focusNode's canRequestFocus as
@@ -1142,7 +1168,7 @@ class RadioControlFields extends StatelessWidget {
             },
           ),
         ),
-        if (onOpenStationConfig != null) ...[
+        if (config.onOpenStationConfig case final onOpenStationConfig?) ...[
           const SizedBox(width: Space.sm),
           Semantics(
             identifier: 'action.stationConfig',
@@ -1150,7 +1176,7 @@ class RadioControlFields extends StatelessWidget {
             // so this label is the ONLY accessible name it has.
             label: t.settings.station.title,
             button: true,
-            enabled: !_editing,
+            enabled: !editing,
             child: InkWell(
               key: const ValueKey('stationConfigButton'),
               // Not one of Radio's fields (docs/design/logging-fields.md
@@ -1161,7 +1187,7 @@ class RadioControlFields extends StatelessWidget {
               // instead of exhausting the control and crossing to the next
               // pill.
               canRequestFocus: false,
-              onTap: _editing ? null : onOpenStationConfig,
+              onTap: editing ? null : onOpenStationConfig,
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 // Left-aligned so the icon and the (usually wider) name both
@@ -1172,20 +1198,20 @@ class RadioControlFields extends StatelessWidget {
                     child: Icon(
                       MdiIcons.cat,
                       size: stationConfigIconSize,
-                      color: _stationConfigIconColor(),
+                      color: _stationConfigIconColor(editing: editing),
                     ),
                   ),
-                  if (radioName != null)
+                  if (config.radioName case final radioName?)
                     ExcludeSemantics(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: stationConfigIconSize * 3),
                         child: Text(
-                          radioName!,
+                          radioName,
                           overflow: TextOverflow.ellipsis,
                           maxLines: 1,
                           style: TextStyle(
                             fontSize: 11,
-                            color: theme.colorScheme.onTertiary.withValues(alpha: _editing ? 0.38 : 1),
+                            color: theme.colorScheme.onTertiary.withValues(alpha: editing ? 0.38 : 1),
                           ),
                         ),
                       ),
@@ -1199,3 +1225,111 @@ class RadioControlFields extends StatelessWidget {
     );
   }
 }
+
+/// The Radio chip and its expanded fields, read from [model]. [selected] is
+/// whether this chip is the one expanded right now, which tints its icon.
+SecondaryControlSpec radioControlSpec(
+  RadioControlModel model,
+  ThemeData theme, {
+  required bool selected,
+  required List<TextInputFormatter> freqInputFormatters,
+  required TextInputType freqKeyboardType,
+  required VoidCallback onFreqSubmitted,
+  required VoidCallback onPicked,
+}) =>
+    SecondaryControlSpec(
+      key: 'radio',
+      icon: model.chipIcon,
+      iconColor: model.statusColor(theme, selected: selected),
+      // `band` is null both when nothing is tuned at all and when the
+      // frequency in the field falls outside every ham band; `outOfBand`
+      // catches the case a band name can't — a frequency inside a ham band
+      // that the operator's own region or country doesn't allocate to
+      // amateurs (e.g. 7250 kHz in ITU Region 1).
+      alert: model.band == null || model.outOfBand,
+      summary: model.summary,
+      summaryParts: model.summaryParts(errorColor: theme.colorScheme.error),
+      expandedBuilder: (context) => RadioControlFields(
+        model: model,
+        theme: theme,
+        freqInputFormatters: freqInputFormatters,
+        freqKeyboardType: freqKeyboardType,
+        onFreqSubmitted: onFreqSubmitted,
+        onPicked: onPicked,
+      ),
+    );
+
+/// The Power control's expanded field: watts, four digits wide. The value
+/// lives on the VFO ([Vfo.power]); the panel owns the field's controller and
+/// pushes it there on submit.
+class PowerControlFields extends StatelessWidget {
+  const PowerControlFields({
+    super.key,
+    required this.controller,
+    required this.focusNode,
+    required this.keyboardType,
+    required this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final TextInputType keyboardType;
+  final VoidCallback onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final labelColor = Theme.of(context).colorScheme.onTertiaryContainer;
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        SizedBox(
+          // Four digits is every legal amateur power, the same width the
+          // Station Configuration field is sized to.
+          width: 72,
+          child: TextField(
+            controller: controller,
+            focusNode: focusNode,
+            selectAllOnFocus: false,
+            style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
+            decoration: poloFieldDecoration(context, t.loggingControls.power, labelColor: labelColor),
+            keyboardType: keyboardType,
+            autocorrect: false,
+            enableSuggestions: false,
+            smartDashesType: SmartDashesType.disabled,
+            smartQuotesType: SmartQuotesType.disabled,
+            // A decimal point earns its place at the QRPp end (0.5 W);
+            // everything else a keyboard can offer here is noise.
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
+            onSubmitted: (_) => onSubmitted(),
+          ),
+        ),
+        const SizedBox(width: Space.sm),
+        Text(t.loggingControls.powerUnit, style: TextStyle(color: labelColor)),
+      ],
+    );
+  }
+}
+
+/// The Power chip's glyph — the settings dialog's entry reads this too.
+const powerChipIcon = MdiIcons.flash;
+
+/// The Power chip and its expanded field.
+SecondaryControlSpec powerControlSpec({
+  required TextEditingController controller,
+  required FocusNode focusNode,
+  required String summary,
+  required TextInputType keyboardType,
+  required VoidCallback onSubmitted,
+}) =>
+    SecondaryControlSpec(
+      key: 'power',
+      icon: powerChipIcon,
+      summary: summary,
+      expandedBuilder: (context) => PowerControlFields(
+        controller: controller,
+        focusNode: focusNode,
+        keyboardType: keyboardType,
+        onSubmitted: onSubmitted,
+      ),
+    );

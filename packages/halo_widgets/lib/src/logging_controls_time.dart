@@ -14,7 +14,9 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'logging_controls_draft.dart';
+import 'mdi_icons.g.dart';
 import 'panel_model.dart';
+import 'secondary_control_row.dart' show SecondaryControlSpec;
 import 'spacing.dart';
 import 'theme.dart';
 
@@ -209,3 +211,20 @@ class TimeControlFields extends StatelessWidget {
     );
   }
 }
+
+/// The Time chip's glyph — the settings dialog's entry reads this too.
+const timeChipIcon = MdiIcons.clockOutline;
+
+/// The Time chip and its expanded fields, read from [model].
+SecondaryControlSpec timeControlSpec(TimeControlModel model) => SecondaryControlSpec(
+      key: 'time',
+      icon: timeChipIcon,
+      summary: model.summary,
+      // Live clock only while nothing overrides the timestamp (a manually
+      // set time, or editing an existing — necessarily historical — QSO);
+      // the chip re-reads this once per second without rebuilding the
+      // panel (a panel-level ticker calling setState on the whole logging
+      // panel would cost a full panel rebuild per tick).
+      liveSummary: model.isLive ? () => model.summary : null,
+      expandedBuilder: (context) => TimeControlFields(model: model),
+    );

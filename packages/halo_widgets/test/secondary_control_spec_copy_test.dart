@@ -4,7 +4,7 @@
 // Pins every field of `SecondaryControlSpec` to its `copyWith`.
 //
 // The logging panel wraps each spec it builds on the way to the row
-// (`_withKeyboardNavigation`), which is a copy — and a copy that re-lists
+// (`LoggingFocusLadder.withKeyboardNavigation`), which is a copy — and a copy that re-lists
 // fields silently drops any the class grows afterwards. Nothing reports
 // that: the omitted field falls back to its default, the analyzer sees a
 // well-formed constructor call, and the chip renders as if the caller had

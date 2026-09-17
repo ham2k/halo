@@ -9,7 +9,8 @@ and the secondary logging controls.
 Implemented in `packages/halo_widgets/lib/src/logging_controls.dart`, which owns a model per concern
 beside it: the Radio control (`logging_controls_radio.dart`), the callsign lookup and scoring
 (`logging_controls_lookup.dart`), the command being typed (`logging_controls_command.dart`), the Time
-and Spotting controls (`logging_controls_time.dart`, `logging_controls_spotting.dart`), the contest
+and Spotting controls (`logging_controls_time.dart`, `logging_controls_spotting.dart`; Power's field sits
+beside the Radio control, whose VFO holds its value), the contest
 exchange fields with their options menu and serial previews (`logging_controls_exchange.dart`), the
 activity refs and the controls they belong to (`logging_controls_refs.dart`), the draft itself —
 what the record carries beyond the fields, and the one bracket for a programmatic write
@@ -18,8 +19,10 @@ what the record carries beyond the fields, and the one bracket for a programmati
 call field's reading rules are `call_field_text.dart`, the row's sizing arithmetic
 `logging_controls_metrics.dart`, the entry row itself — the callsign, its trailing fields and the log
 button laid out against the width the panel has — `logging_controls_entry_row.dart`, the event row
-that takes the fields' place while an annotation is edited `logging_controls_event_row.dart`, and
-the information area `logging_info_area.dart`.
+that takes the fields' place while an annotation is edited `logging_controls_event_row.dart`, the
+strip's catalog — which controls exist, their order and visibility, and the settings dialog —
+`logging_controls_catalog.dart`, the information area `logging_info_area.dart`, and the frame
+that seats it and the panel's second action button `logging_controls_info_frame.dart`.
 
 ## The three parts
 
