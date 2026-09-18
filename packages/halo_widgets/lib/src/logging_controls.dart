@@ -631,6 +631,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       radioConnected: widget.radioConnected,
       radioName: widget.radioName,
       onOpenStationConfig: widget.onOpenStationConfig,
+      powerInPlay: () => _powerInPlay,
       editingQso: widget.editingQso,
       ituRegion: widget.ourItuRegion,
       countryCode: widget.ourCountryCode,
@@ -644,10 +645,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   final _rcvdController = TextEditingController();
   final _gridController = TextEditingController();
   final _stateController = TextEditingController();
-  /// The Power control's watts. Mirrors the VFO's power while composing
-  /// (seeded by [_seedFromRadioService]) and the QSO's own while editing
-  /// one, exactly as the frequency field mirrors [Vfo.freq].
-  final _powerController = TextEditingController();
   // NOTE/TODO's inline editor — the only event kinds with editable free
   // text. Populated in `_populateFromEditingQso`, read back in
   // `_eventDataForSave`.
@@ -659,7 +656,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   final _rcvdFocus = FocusNode();
   final _gridFocus = FocusNode();
   final _stateFocus = FocusNode();
-  final _powerFocus = FocusNode();
 
 
 
@@ -756,7 +752,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       rcvdController: _rcvdController,
       gridController: _gridController,
       stateController: _stateController,
-      powerController: _powerController,
       notesController: _notesController,
       radio: _radio,
       time: _time,
@@ -765,7 +760,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       lookup: _lookup,
       call: _call,
       rstOrDefault: _rstOrDefault,
-      powerInPlay: () => _powerInPlay,
       hasRadioService: widget.radioService != null,
     ),
   );
@@ -1110,9 +1104,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // an optional Grid/State field changes too.
     _gridController.addListener(_onSentOrRcvdChanged);
     _stateController.addListener(_onSentOrRcvdChanged);
-    // Same reason again, plus the Power chip's own summary, which reads the
-    // field rather than the VFO (blur is what commits one to the other).
-    _powerController.addListener(_onSentOrRcvdChanged);
     // All fields place the cursor at the end on focus, rather than selecting
     // the existing text — switching fields (e.g. cycling back to the call
     // field via space without logging) shouldn't put you one keystroke away
@@ -1129,7 +1120,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       (_time.dateFocus, _time.dateController),
       (_gridFocus, _gridController),
       (_stateFocus, _stateController),
-      (_powerFocus, _powerController),
+      (_radio.powerFocus, _radio.powerController),
     ]) {
       focus.addListener(() {
         if (focus.hasFocus) {
@@ -1140,12 +1131,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           if (identical(focus, _radio.freqFocus)) _radio.onFreqFocusChanged(hasFocus: true);
         } else if (identical(focus, _radio.freqFocus)) {
           _radio.onFreqFocusChanged(hasFocus: false);
-        } else if (identical(focus, _powerFocus)) {
-          // Committed on blur rather than on every keystroke: typing "100"
-          // passes through 1 and 10, and each would be a power command sent
-          // to the radio. Blur covers Enter too — it closes the control
-          // (`LoggingFocusLadder.onExpandedKeyEvent`) and takes the focus with it.
-          _commitPower();
         } else if (identical(focus, _sentFocus) || identical(focus, _rcvdFocus)) {
           // Show the operator what their shorthand became, at the moment they
           // are done with the field — the save expands it either way
@@ -1286,10 +1271,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     final controlsChanged = oldWidget.trackingPower != widget.trackingPower ||
         !const ListEquality<String>().equals(oldWidget.controlOrder, widget.controlOrder) ||
         !const SetEquality<String>().equals(oldWidget.hiddenControlKeys, widget.hiddenControlKeys);
-    if (controlsChanged && _powerInPlay && widget.editingQso == null && !_powerFocus.hasFocus) {
-      final power = widget.radioService?.vfoA.power;
-      _powerController.text = power == null ? '' : '$power';
-    }
+    if (controlsChanged) _radio.seedPowerFromVfo();
   }
 
   /// A slid spot row's suggestion: withdrawn, held, or confirmed. Runs before
@@ -1877,24 +1859,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   /// Seeds the Radio control from the operation's `vfoA`
-  /// ([RadioControlModel.seedFromVfo]), and the Power field with it — that
-  /// one is the panel's, with its own rule about whose typing it may
-  /// overwrite. Never called while editing an existing *contact*, whose own
+  /// ([RadioControlModel.seedFromVfo]), the Power field with it under its
+  /// own rule. Never called while editing an existing *contact*, whose own
   /// recorded values always take priority ([QsoDraft.applyData]); an
   /// event's freq/mode are sentinels instead of a record, so
   /// `_populateFromEditingQso` calls this for one anyway, same as composing.
-  void _seedFromRadioService({bool skipFrequency = false}) {
-    final vfo = widget.radioService?.vfoA;
-    if (vfo == null) return;
-    _radio.seedFromVfo(skipFrequency: skipFrequency);
-    // Never over the operator's own typing, and never over a QSO already
-    // logged — an existing record's power is its own ([QsoDraft.applyData]
-    // seeds it), not whatever the rig happens to be set to now.
-    if (_powerInPlay && widget.editingQso == null && !_powerFocus.hasFocus) {
-      final text = vfo.power == null ? '' : '${vfo.power}';
-      if (_powerController.text != text) _powerController.text = text;
-    }
-  }
+  void _seedFromRadioService({bool skipFrequency = false}) => _radio.seedFromVfo(skipFrequency: skipFrequency);
 
   /// The VFO moved underneath us — a connected radio was tuned, or
   /// something else in the app wrote to it. Mirror it into the Radio
@@ -1956,7 +1926,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _time.manualStartAtMillis = null;
       _radio.manualBand = null;
       _selectedControlKey = null;
-      _clearPowerEntry();
+      _radio.clearPowerEntry();
       // Back to composing a new QSO — the Radio control goes back to
       // mirroring the operation's VFO, not whatever the just-edited QSO's
       // own freq/band/mode happened to be.
@@ -1996,7 +1966,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _rcvdController.dispose();
     _gridController.dispose();
     _stateController.dispose();
-    _powerController.dispose();
     _eventTextController.dispose();
     _focusBackstop.dispose();
     _eventTextFocus.dispose();
@@ -2005,7 +1974,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _rcvdFocus.dispose();
     _gridFocus.dispose();
     _stateFocus.dispose();
-    _powerFocus.dispose();
     _time.dispose();
     _radio.dispose();
     super.dispose();
@@ -2231,7 +2199,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       case 'radio':
         return _radio.freqFocus;
       case 'power':
-        return _powerFocus;
+        return _radio.powerFocus;
       case 'spotting':
         return _spotting.state.showComment ? _spotting.commentFocus : null;
       case 'notes':
@@ -2264,7 +2232,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           (_radio.modeFocus, _radio.modeController),
         ];
       case 'power':
-        return [(_powerFocus, _powerController)];
+        return [(_radio.powerFocus, _radio.powerController)];
       case 'spotting':
         return _spotting.state.showComment ? [(_spotting.commentFocus, _spotting.commentController)] : const [];
       case 'notes':
@@ -2360,13 +2328,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
             onPicked: _callFocus.requestFocus,
           ));
         case 'power':
-          specs.add(powerControlSpec(
-            controller: _powerController,
-            focusNode: _powerFocus,
-            summary: _powerSummary,
-            keyboardType: _decimalKeyboardType,
-            onSubmitted: _commitPower,
-          ));
+          specs.add(powerControlSpec(_radio, keyboardType: _decimalKeyboardType));
         case 'spotting':
           specs.add(spottingControlSpec(_spotting, theme, poloColors));
         case 'notes':
@@ -2387,30 +2349,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     return [
       for (final spec in specs) _ladder.withKeyboardNavigation(spec, enabled: enabledFor?.call(spec.key) ?? true),
     ];
-  }
-
-  String get _powerSummary {
-    final watts = _draft.powerWatts;
-    return watts == null ? '—' : '$watts ${t.loggingControls.powerUnit}';
-  }
-
-  /// Takes power back out of the entry: the field, and the record's own
-  /// value. Whatever the field holds belonged to the QSO just closed, and
-  /// [_seedFromRadioService] only refills it while power is in play.
-  void _clearPowerEntry() {
-    _draft.powerOnRecord = false;
-    _powerController.clear();
-  }
-
-  /// Pushes the field to the VFO, which is where every power surface reads
-  /// it from and how a connected radio hears about it (CAT forwards it the
-  /// way it forwards a typed frequency). Never while editing an existing
-  /// QSO: that applies changes to the QSO, never the VFO — the same rule the
-  /// Radio control follows.
-  void _commitPower() {
-    if (widget.editingQso != null) return;
-    final watts = _draft.powerWatts;
-    widget.radioService?.setVfo('vfoA', power: watts, clearPower: watts == null);
   }
 
   /// The contact's own note. Wider than the other controls' fields — a note
@@ -3039,7 +2977,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         // as the operator clearing a value they were never shown.
         if (result.containsKey('power')) {
           final power = result['power'];
-          _powerController.text = power is num ? '$power' : '';
+          _radio.powerController.text = power is num ? '$power' : '';
         }
 
         final stamped = paneStartAtMillis(result, dateBeforePane, timeBeforePane);
@@ -3077,7 +3015,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // rewrites the power field from the VFO — which would put the value
       // the pane just returned back to whatever it was before the pane
       // opened, and then commit THAT.
-      _commitPower();
+      _radio.commitPower();
       _radio.pushVfo();
     }
   }
@@ -3265,7 +3203,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     _notesController.clear();
     _time.manualStartAtMillis = null;
     _selectedControlKey = null;
-    _clearPowerEntry();
+    _radio.clearPowerEntry();
     // The VFO's power is ambient, not composed — a wipe drops what the entry
     // stated and goes back to mirroring it, the way the Radio control does.
     _seedFromRadioService();

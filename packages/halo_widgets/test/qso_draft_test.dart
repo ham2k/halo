@@ -41,7 +41,6 @@ class _Harness {
   final rcvd = TextEditingController();
   final grid = TextEditingController();
   final state = TextEditingController();
-  final power = TextEditingController();
   final notes = TextEditingController();
 
   String get callText => call.text.trim().toUpperCase();
@@ -53,6 +52,7 @@ class _Harness {
       radioConnected: false,
       radioName: null,
       onOpenStationConfig: null,
+      powerInPlay: () => powerInPlay,
       editingQso: editingQso,
       ituRegion: 2,
       countryCode: 'US',
@@ -106,7 +106,6 @@ class _Harness {
       rcvdController: rcvd,
       gridController: grid,
       stateController: state,
-      powerController: power,
       notesController: notes,
       radio: radio,
       time: time,
@@ -115,7 +114,6 @@ class _Harness {
       lookup: lookup,
       call: callText,
       rstOrDefault: (text) => text.isEmpty ? '59' : text,
-      powerInPlay: () => powerInPlay,
       hasRadioService: hasRadioService,
     ),
   );
@@ -127,7 +125,7 @@ class _Harness {
     exchange.dispose();
     time.dispose();
     radio.dispose();
-    for (final c in [call, sent, rcvd, grid, state, power, notes]) {
+    for (final c in [call, sent, rcvd, grid, state, notes]) {
       c.dispose();
     }
   }
@@ -318,12 +316,12 @@ void main() {
       expect(h.draft.gridTouched, isFalse, reason: "a record's grid is displayed, not entered — the guess keeps tracking");
       expect(h.draft.theirExtra, isEmpty);
       expect(h.draft.powerOnRecord, isTrue);
-      expect(h.power.text, '100');
+      expect(h.radio.powerController.text, '100');
       expect(h.draft.powerShown, isTrue, reason: 'it went out on the air with that power');
       expect(h.draft.toData()['power'], 100);
       expect(h.draft.differsFrom(qso), isFalse);
 
-      h.power.clear();
+      h.radio.powerController.clear();
       expect(h.draft.toData()['power'], isNull, reason: 'written even as null, so a wrong power can be cleared');
       expect(h.draft.differsFrom(qso), isTrue);
     });

@@ -16,6 +16,7 @@ import 'package:halo_widgets/src/mdi_icons.g.dart';
 class _FakeVfoStore implements VfoStore {
   Vfo _vfoA = const Vfo();
   final calls = <String>[];
+  final powerCalls = <String>[];
 
   @override
   Vfo get vfoA => _vfoA;
@@ -24,12 +25,14 @@ class _FakeVfoStore implements VfoStore {
   void setVfo(String key,
       {double? freq, String? band, String? mode, num? power, bool clearFreq = false, bool clearPower = false}) {
     calls.add('freq=$freq band=$band mode=$mode clearFreq=$clearFreq');
+    if (power != null || clearPower) powerCalls.add('power=$power clear=$clearPower');
+    final watts = clearPower ? null : (power ?? _vfoA.power);
     if (freq != null) {
-      _vfoA = Vfo(freq: freq, band: bandForFrequency(freq), mode: mode ?? _vfoA.mode);
+      _vfoA = Vfo(freq: freq, band: bandForFrequency(freq), mode: mode ?? _vfoA.mode, power: watts);
     } else if (band != null || clearFreq) {
-      _vfoA = Vfo(band: band ?? _vfoA.band, mode: mode ?? _vfoA.mode);
+      _vfoA = Vfo(band: band ?? _vfoA.band, mode: mode ?? _vfoA.mode, power: watts);
     } else {
-      _vfoA = Vfo(freq: _vfoA.freq, band: _vfoA.band, mode: mode ?? _vfoA.mode);
+      _vfoA = Vfo(freq: _vfoA.freq, band: _vfoA.band, mode: mode ?? _vfoA.mode, power: watts);
     }
   }
 }
@@ -39,6 +42,7 @@ class _Harness {
   Qso? editingQso;
   bool hasConfiguredRadio = false;
   bool radioConnected = false;
+  bool powerInPlay = false;
   /// Only its populating bracket is read by the model under test; the
   /// draft's own data paths are never asked, so it has nothing to read.
   late final draft = QsoDraft(config: () => throw UnsupportedError('the draft is not read here'));
@@ -51,6 +55,7 @@ class _Harness {
       radioConnected: radioConnected,
       radioName: null,
       onOpenStationConfig: null,
+      powerInPlay: () => powerInPlay,
       editingQso: editingQso,
       ituRegion: 2,
       countryCode: 'US',
@@ -210,6 +215,79 @@ void main() {
     // mounted panel, and a glyph captured once would show the old rig.
     expect(h.model.chipIcon, MdiIcons.cat);
     expect(h.model.statusColor(ThemeData.light(), selected: false), isNotNull);
+    h.model.dispose();
+  });
+
+  testWidgets('power follows the VFO only while in play, and never over typing or a logged QSO', (tester) async {
+    final h = _Harness();
+    h.store.setVfo('vfoA', power: 100);
+    h.model.seedFromVfo();
+    expect(h.model.powerController.text, isEmpty, reason: 'nothing asked for power to be logged');
+
+    h.powerInPlay = true;
+    h.model.seedFromVfo();
+    expect(h.model.powerController.text, '100');
+    expect(h.model.powerSummary, startsWith('100 '));
+
+    h.editingQso = const Qso(uuid: 'q1', operationUuid: 'op', data: {});
+    h.store.setVfo('vfoA', power: 50);
+    h.model.seedPowerFromVfo();
+    expect(h.model.powerController.text, '100', reason: "a logged QSO's power is its own, not the rig's");
+    h.editingQso = null;
+
+    // The trap: a seed that lands while the operator is typing overwrites
+    // their entry with the rig's — the field has to be left alone while it
+    // holds focus, and committed when focus leaves it.
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(body: TextField(controller: h.model.powerController, focusNode: h.model.powerFocus)),
+    ));
+    h.model.powerFocus.requestFocus();
+    await tester.pump();
+    h.model.powerController.text = '5';
+    h.model.seedPowerFromVfo();
+    expect(h.model.powerController.text, '5');
+    h.model.powerFocus.unfocus();
+    await tester.pump();
+    expect(h.store.powerCalls.last, 'power=5 clear=false', reason: 'blur is what commits the field to the VFO');
+    h.model.dispose();
+  });
+
+  test('committing power pushes the watts, clears an empty field, and never while editing', () {
+    final h = _Harness();
+    h.model.powerController.text = '100';
+    h.model.commitPower();
+    expect(h.store.powerCalls, ['power=100 clear=false']);
+    h.model.powerController.clear();
+    h.model.commitPower();
+    expect(h.store.powerCalls.last, 'power=null clear=true');
+
+    h.editingQso = const Qso(uuid: 'q1', operationUuid: 'op', data: {});
+    h.model.powerController.text = '25';
+    h.model.commitPower();
+    expect(h.store.powerCalls, hasLength(2), reason: 'an edit applies to the QSO, never the VFO');
+
+    h.draft.powerOnRecord = true;
+    h.model.clearPowerEntry();
+    expect(h.model.powerController.text, isEmpty);
+    expect(h.draft.powerOnRecord, isFalse, reason: 'the record the power belonged to is closed');
+    h.model.dispose();
+  });
+
+  test('a rig that drops its power empties the field, and every keystroke reaches the panel', () {
+    final h = _Harness()..powerInPlay = true;
+    h.store.setVfo('vfoA', power: 100);
+    h.model.seedPowerFromVfo();
+    expect(h.model.powerController.text, '100');
+    h.store.setVfo('vfoA', clearPower: true);
+    h.model.seedPowerFromVfo();
+    expect(h.model.powerController.text, isEmpty, reason: 'the field mirrors the VFO, absence included');
+
+    // The chip's summary and the action button read the field on every
+    // build, so a keystroke must repaint the panel — the model, not the
+    // panel, owns that listener now.
+    final before = h.notifications;
+    h.model.powerController.text = '5';
+    expect(h.notifications, greaterThan(before));
     h.model.dispose();
   });
 }

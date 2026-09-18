@@ -13,10 +13,11 @@
 // field that is not its own. [RadioControlFields] draws the control's
 // expanded row from it.
 //
-// The Power control lives here too — [PowerControlFields] and
-// [powerControlSpec] — because its value lives on the same VFO
-// (`Vfo.power`) the Radio control mirrors; the panel still owns its field's
-// controller and the push to the VFO.
+// The Power control lives here too — its field on the model, and
+// [PowerControlFields] / [powerControlSpec] beside the Radio ones — because
+// its value lives on the same VFO (`Vfo.power`) the Radio control mirrors:
+// seeded from it while composing, pushed back on commit, and never touched
+// by an edit, under the same rule as the frequency.
 
 import 'dart:async';
 
@@ -56,6 +57,14 @@ typedef RadioControlConfig = ({
   bool radioConnected,
   String? radioName,
   VoidCallback? onOpenStationConfig,
+
+  /// Whether power is part of the entry by the panel's own rule — the Power
+  /// control is in the row, or the app is tracking it with the rest of the
+  /// station info. Only then is the field seeded from the VFO. The record's
+  /// own power is the draft's ([QsoDraft.powerOnRecord]). A function:
+  /// answering it walks the control catalog, and most reads of this
+  /// configuration never ask.
+  bool Function() powerInPlay,
   Qso? editingQso,
   int? ituRegion,
   String? countryCode,
@@ -103,6 +112,12 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
 
   final freqController = TextEditingController();
   final freqFocus = FocusNode();
+
+  /// The Power control's watts. Mirrors the VFO's power while composing
+  /// ([seedPowerFromVfo]) and the QSO's own while editing one, exactly as
+  /// the frequency field mirrors [Vfo.freq].
+  final powerController = TextEditingController();
+  final powerFocus = FocusNode();
 
   // The Band/Mode dropdown text. Owned here (not left to DropdownMenu's
   // internal controller) so typed text can drive the entry filter and be
@@ -276,6 +291,12 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     freqController.addListener(_onFreqChanged);
     bandController.addListener(_onBandTextChanged);
     modeController.addListener(_onModeTextChanged);
+    // Every keystroke repaints: the chip's summary reads the field rather
+    // than the VFO (blur is what commits one to the other), and the panel's
+    // second action button re-reads whether the entry differs from the
+    // record, which the field's watts are part of.
+    powerController.addListener(notify);
+    powerFocus.addListener(_onPowerFocusChanged);
     recordFreqText();
   }
 
@@ -304,6 +325,8 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     bandFocus.dispose();
     modeFocus.dispose();
     freqFocus.dispose();
+    powerController.dispose();
+    powerFocus.dispose();
     super.dispose();
   }
 
@@ -405,8 +428,8 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// taking the mode: a pending edit is the operator's and newer, but only
   /// as far as the field they are actually typing in.
   ///
-  /// The VFO's power is the panel's to seed — it belongs to the Power
-  /// control, which has its own rules about whose typing it may overwrite.
+  /// The Power field is seeded with it, under its own rule
+  /// ([seedPowerFromVfo]).
   void seedFromVfo({bool skipFrequency = false}) {
     final vfo = config().radioService?.vfoA;
     if (vfo == null) return;
@@ -424,6 +447,64 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     if (vfo.mode != null && vfo.mode != mode) {
       mode = vfo.mode!;
     }
+    seedPowerFromVfo();
+  }
+
+  // ---- Power ----
+
+  /// Whether power is part of the entry — see [RadioControlConfig.powerInPlay].
+  bool get powerInPlay => config().powerInPlay();
+
+  /// The watts in the Power field, or null when it is empty (or holds
+  /// something that is not a number).
+  num? get powerWatts => num.tryParse(powerController.text.trim());
+
+  /// The chip's summary: the field's watts, or a dash.
+  String get powerSummary {
+    final watts = powerWatts;
+    return watts == null ? '—' : '$watts ${t.loggingControls.powerUnit}';
+  }
+
+  /// Seeds the Power field from the VFO, only while power is in play — never
+  /// over the operator's own typing, and never over a QSO already logged: an
+  /// existing record's power is its own ([QsoDraft.applyData] seeds it), not
+  /// whatever the rig happens to be set to now. Called on its own when power
+  /// has just come into play, and by [seedFromVfo] with the rest.
+  void seedPowerFromVfo() {
+    final config = this.config();
+    if (!config.powerInPlay() || config.editingQso != null || powerFocus.hasFocus) return;
+    final power = config.radioService?.vfoA.power;
+    final text = power == null ? '' : '$power';
+    if (powerController.text != text) powerController.text = text;
+  }
+
+  /// Pushes the field to the VFO, which is where every power surface reads
+  /// it from and how a connected radio hears about it (CAT forwards it the
+  /// way it forwards a typed frequency). Never while editing an existing
+  /// QSO: that applies changes to the QSO, never the VFO — the same rule the
+  /// frequency follows. Its own call, apart from [pushVfo]: a debounced
+  /// frequency push must not commit a power still being typed.
+  void commitPower() {
+    final config = this.config();
+    if (config.editingQso != null) return;
+    final watts = powerWatts;
+    config.radioService?.setVfo('vfoA', power: watts, clearPower: watts == null);
+  }
+
+  /// Committed on blur rather than on every keystroke: typing "100" passes
+  /// through 1 and 10, and each would be a power command sent to the radio.
+  /// Blur covers Enter too — it closes the control and takes the focus with
+  /// it.
+  void _onPowerFocusChanged() {
+    if (!powerFocus.hasFocus) commitPower();
+  }
+
+  /// Takes power back out of the entry: the field, and the record's own
+  /// value. Whatever the field holds belonged to the QSO just closed, and
+  /// [seedPowerFromVfo] only refills it while power is in play.
+  void clearPowerEntry() {
+    draft.powerOnRecord = false;
+    powerController.clear();
   }
 
   /// Ends a pending frequency edit at a QSO boundary — logging, wiping, or
@@ -1259,22 +1340,18 @@ SecondaryControlSpec radioControlSpec(
       ),
     );
 
-/// The Power control's expanded field: watts, four digits wide. The value
-/// lives on the VFO ([Vfo.power]); the panel owns the field's controller and
-/// pushes it there on submit.
+/// The Power control's expanded field: watts, four digits wide, read from
+/// [model], which seeds it from the VFO and pushes it back on submit or
+/// blur.
 class PowerControlFields extends StatelessWidget {
   const PowerControlFields({
     super.key,
-    required this.controller,
-    required this.focusNode,
+    required this.model,
     required this.keyboardType,
-    required this.onSubmitted,
   });
 
-  final TextEditingController controller;
-  final FocusNode focusNode;
+  final RadioControlModel model;
   final TextInputType keyboardType;
-  final VoidCallback onSubmitted;
 
   @override
   Widget build(BuildContext context) {
@@ -1288,8 +1365,8 @@ class PowerControlFields extends StatelessWidget {
           // Station Configuration field is sized to.
           width: 72,
           child: TextField(
-            controller: controller,
-            focusNode: focusNode,
+            controller: model.powerController,
+            focusNode: model.powerFocus,
             selectAllOnFocus: false,
             style: haloMonoStyle(context, fontSize: 15, fontWeight: FontWeight.w500),
             decoration: poloFieldDecoration(context, t.loggingControls.power, labelColor: labelColor),
@@ -1301,7 +1378,7 @@ class PowerControlFields extends StatelessWidget {
             // A decimal point earns its place at the QRPp end (0.5 W);
             // everything else a keyboard can offer here is noise.
             inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9.]'))],
-            onSubmitted: (_) => onSubmitted(),
+            onSubmitted: (_) => model.commitPower(),
           ),
         ),
         const SizedBox(width: Space.sm),
@@ -1314,22 +1391,11 @@ class PowerControlFields extends StatelessWidget {
 /// The Power chip's glyph — the settings dialog's entry reads this too.
 const powerChipIcon = MdiIcons.flash;
 
-/// The Power chip and its expanded field.
-SecondaryControlSpec powerControlSpec({
-  required TextEditingController controller,
-  required FocusNode focusNode,
-  required String summary,
-  required TextInputType keyboardType,
-  required VoidCallback onSubmitted,
-}) =>
+/// The Power chip and its expanded field, read from [model].
+SecondaryControlSpec powerControlSpec(RadioControlModel model, {required TextInputType keyboardType}) =>
     SecondaryControlSpec(
       key: 'power',
       icon: powerChipIcon,
-      summary: summary,
-      expandedBuilder: (context) => PowerControlFields(
-        controller: controller,
-        focusNode: focusNode,
-        keyboardType: keyboardType,
-        onSubmitted: onSubmitted,
-      ),
+      summary: model.powerSummary,
+      expandedBuilder: (context) => PowerControlFields(model: model, keyboardType: keyboardType),
     );

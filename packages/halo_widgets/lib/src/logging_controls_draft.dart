@@ -38,7 +38,6 @@ typedef QsoDraftConfig = ({
   TextEditingController rcvdController,
   TextEditingController gridController,
   TextEditingController stateController,
-  TextEditingController powerController,
   TextEditingController notesController,
   RadioControlModel radio,
   TimeControlModel time,
@@ -53,12 +52,6 @@ typedef QsoDraftConfig = ({
   /// Where a report becomes what actually gets stored: the placeholder if
   /// the field is blank, otherwise the operator's own shorthand completed.
   String Function(String text) rstOrDefault,
-
-  /// Whether power is part of the entry by the panel's own rule (the control
-  /// is visible, or power is being tracked) — the record's own power is
-  /// [QsoDraft.powerOnRecord]. A function: answering it walks the control
-  /// descriptors, and most reads of this configuration never ask.
-  bool Function() powerInPlay,
 
   /// Whether a freq/band mirrors the operation's VFO: then freq and band are
   /// not something the operator composed for this QSO.
@@ -179,9 +172,9 @@ class QsoDraft extends ChangeNotifier with PanelModel {
   /// nothing parseable — a lone "." mid-typing).
   num? get powerWatts => _powerWattsIn(config());
 
-  bool _powerShownIn(QsoDraftConfig config) => config.powerInPlay() || powerOnRecord;
+  bool _powerShownIn(QsoDraftConfig config) => config.radio.powerInPlay || powerOnRecord;
 
-  num? _powerWattsIn(QsoDraftConfig config) => num.tryParse(config.powerController.text.trim());
+  num? _powerWattsIn(QsoDraftConfig config) => config.radio.powerWatts;
 
   /// The operator edited the Grid field — the inline field, a numbers-row
   /// key, or the More pane. Every one of them goes through here rather than
@@ -419,7 +412,7 @@ class QsoDraft extends ChangeNotifier with PanelModel {
     config.radio.mode = asQsonString(data['mode']) ?? config.radio.mode;
     final power = asQsonNum(data['power']);
     powerOnRecord = power != null;
-    config.powerController.text = power == null ? '' : '$power';
+    config.radio.powerController.text = power == null ? '' : '$power';
     // A wholesale repopulate — a spot tapped, a QSO opened for editing —
     // replaces every field, so nothing in a dropdown survives it either.
     config.radio.resyncDropdownFields();
