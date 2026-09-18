@@ -69,6 +69,37 @@ test("alnum strips a date to a filename token", () => {
   assert.equal(renderTemplate("{{ d | alnum }}", { d: "2026-07-27" }), "20260727")
 })
 
+// A serial is stored unpadded, and whether it goes out as `7` or `007` is the
+// operator's choice. Blank is the case that matters: the draft has no serial
+// until the sequence answers, and `000` keyed in that gap is a number sent on
+// the air that the log will never agree with.
+test("pad fills a serial to width and leaves a missing one missing", () => {
+  assert.equal(renderTemplate("{{ n | pad: 3 }}", { n: 7 }), "007")
+  assert.equal(renderTemplate("{{ n | pad }}", { n: "42" }), "042")
+  assert.equal(renderTemplate("{{ n | pad: 3 }}", { n: 1234 }), "1234")
+  assert.equal(renderTemplate("[{{ n | pad: 3 }}]", { n: "" }), "[]")
+  assert.equal(renderTemplate("[{{ missing | pad: 3 }}]", {}), "[]")
+})
+
+test("cut sends T and N unless told which digits to cut", () => {
+  assert.equal(renderTemplate("{{ n | pad: 3 | cut }}", { n: 9 }), "TTN")
+  assert.equal(renderTemplate("{{ r | cut }}", { r: "599" }), "5NN")
+  assert.equal(renderTemplate("{{ n | cut }}", { n: 1590 }), "15NT")
+  assert.equal(renderTemplate('{{ n | cut: "0159" }}', { n: 1590 }), "AENT")
+  assert.equal(renderTemplate('{{ n | cut: "9" }}', { n: 1590 }), "15N0")
+  // Only the four digits that HAVE a cut form: a list naming others must not
+  // invent letters for them.
+  assert.equal(renderTemplate('{{ n | cut: "0123456789" }}', { n: 1234567890 }), "A234E678NT")
+})
+
+// Liquid reads a bare `0159` as the number 159 before the filter sees it, so
+// the zero — the most-cut digit there is — silently stops being cut. Nothing
+// here can recover it; this pins the behaviour templates.md warns about, so a
+// liquid upgrade that changes it shows up as a doc to update.
+test("an unquoted digit list loses its leading zero", () => {
+  assert.equal(renderTemplate("{{ n | cut: 09 }}", { n: 109 }), "10N")
+})
+
 // Our filters must not shadow liquid's: `registerFilter` overwrites in
 // silence, so a template written against liquid's documentation would return
 // plausible nonsense with no error. `compact` drops nils from an array, and

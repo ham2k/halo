@@ -1470,6 +1470,13 @@ because by the time any hook sees the QSO — `scoreQso`, `adifFields`,
 `generateExport` — the number is already persisted on it. **Zero lines of polo's
 counter logic survive the port.**
 
+**The field names are a convention, not a free choice.** A serial-exchange
+contest stores its numbers as `ourSerial` and `theirSerial` on its ref. The
+template vocabulary's `qso.serialSent` / `qso.serialRcvd`
+(docs/extensions/templates.md) find them by those names, because a CW message
+cannot know which contest's ref type it is running under — a contest that
+names the field anything else logs correctly and keys a blank serial.
+
 **Where it lives — one deliberate deviation from the brief.** You asked for the
 scoring service to own the sequences. Allocation itself can't: `ScoringService`
 is debounced, async, and degrades silently, while a serial must be allocated

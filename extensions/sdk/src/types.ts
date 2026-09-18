@@ -465,6 +465,9 @@ export interface SequenceBinding {
 export interface SerialInputDescriptor {
   kind: 'serial'
   refType: string
+  /// `'ourSerial'`, with the received number beside it as `'theirSerial'`:
+  /// templates find a contest's serials by these names (`qso.serialSent`,
+  /// docs/extensions/templates.md), so any other name keys a blank.
   field: string
   sequence: SequenceBinding
   /// Default true — an operator has to be able to correct what they actually

@@ -390,19 +390,21 @@ middle, and a set of action buttons pinned at the bottom. Clicking outside
 the dialog or pressing Escape dismisses it.
 
 Every footer is `haloDialogFooterRow` — one implementation, not a convention
-each dialog follows on its own. It carries four roles, and `HaloDialog`,
-`showFormDialog` and `showFormPane` all take the same four:
+each dialog follows on its own. It carries five roles; `HaloDialog` takes
+all of them, while `showFormDialog`, `showFormPane` and a modal pane's
+`haloDialogFooterBand` take all but `help`:
 
 | Role | Where it sits | What it is |
 | --- | --- | --- |
 | `destructive` | leading edge, alone | A verb that destroys what the operator is looking at |
+| `help` | leading edge, after `destructive` | Reading about the dialog — it changes nothing in it |
 | `secondary` | trailing group, leftmost | Something else to **do** with the thing being edited |
 | `cancel` | trailing group, next to the primary | The way out |
 | `actions` | trailing edge | The primary/confirm action, normally one `FilledButton` |
 
 This follows Material, which end-aligns dialog buttons with the dismissive
 action immediately left of the confirming one, and gives the leading edge to
-its `neutral` button — the position `destructive` takes here.
+its `neutral` button — the position `destructive` and `help` take here.
 
 **The one deliberate divergence** is the gap: `haloDialogCancelGap`
 (`Space.xxl`, three times the spacing between any other pair) separates

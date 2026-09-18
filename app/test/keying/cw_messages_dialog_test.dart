@@ -85,6 +85,39 @@ void main() {
     expect(services.settings.cwMessageLabel(3), 'Exchange');
   });
 
+  // Help is a detour, not a way out: an operator reaches for it WHILE
+  // writing a message, so its Done must land them back on the editor with
+  // the unsaved draft still in it. Popping one route too many — or Help
+  // sitting in the trailing group where Done reads as the editor's own —
+  // would cost them what they had typed.
+  testWidgets('Help opens over the editor at the leading edge, and Done returns to the draft', (tester) async {
+    await tester.pumpWidget(host());
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(ListTile).at(2));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'F3'), '{{ qso.call }} {{ qso.serial | pad: 3 }}');
+    await tester.tap(find.text('Save').last);
+    await tester.pumpAndSettle();
+
+    expect(tester.getCenter(find.text('Help')).dx, lessThan(tester.getCenter(find.text('Cancel')).dx));
+    await tester.tap(find.text('Help'));
+    await tester.pumpAndSettle();
+    expect(find.text('Writing CW Messages'), findsOneWidget);
+    for (final template in ['{{ op.call }}', '{{ qso.call }}', '{{ qso.rst }}', '{{ qso.serial }}']) {
+      expect(find.text(template), findsOneWidget);
+    }
+    expect(find.textContaining('| pad: 3 }}'), findsWidgets);
+    expect(find.textContaining('| cut }}'), findsWidgets);
+
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+    expect(find.text('Writing CW Messages'), findsNothing);
+    expect(find.text('CW Messages'), findsOneWidget, reason: 'the editor is still open behind it');
+    expect(find.text('{{ qso.call }} {{ qso.serial | pad: 3 }}'), findsOneWidget, reason: 'and still holds the draft');
+  });
+
   testWidgets('Cancel abandons every set the operator touched, not just the one on screen', (tester) async {
     await tester.pumpWidget(host());
     await tester.tap(find.text('open'));

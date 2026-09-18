@@ -6019,8 +6019,8 @@ class Translations$settings$radio$cwMessages$en {
 	/// en: 'CW Messages'
 	String get title => 'CW Messages';
 
-	/// en: 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rstSent }}` for the report you sent, `{{ qso.their.name }}` for their name.'
-	String get description => 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rstSent }}` for the report you sent, `{{ qso.their.name }}` for their name.';
+	/// en: 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rst }}` for the report you sent, `{{ qso.serial }}` for a contest serial number, `{{ qso.their.name }}` for their name. `| pad: 3` writes a serial as 007, and `| cut` sends cut numbers (5NN, TT7).'
+	String get description => 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rst }}` for the report you sent, `{{ qso.serial }}` for a contest serial number, `{{ qso.their.name }}` for their name. `| pad: 3` writes a serial as 007, and `| cut` sends cut numbers (5NN, TT7).';
 
 	/// en: 'F$n'
 	String key({required Object n}) => 'F${n}';
@@ -6090,6 +6090,39 @@ class Translations$settings$radio$cwMessages$en {
 
 	/// en: 'Close the keyer area'
 	String get closeArea => 'Close the keyer area';
+
+	/// en: 'Help'
+	String get help => 'Help';
+
+	/// en: 'Writing CW Messages'
+	String get helpTitle => 'Writing CW Messages';
+
+	/// en: 'A message is keyed as typed. Placeholders in double braces fill in from the operation and the contact being logged.'
+	String get helpIntro => 'A message is keyed as typed. Placeholders in double braces fill in from the operation and the contact being logged.';
+
+	/// en: 'Your callsign'
+	String get helpOpCall => 'Your callsign';
+
+	/// en: 'Their callsign'
+	String get helpQsoCall => 'Their callsign';
+
+	/// en: 'The report you are sending'
+	String get helpQsoRst => 'The report you are sending';
+
+	/// en: 'Your serial number, in a contest that sends one'
+	String get helpQsoSerial => 'Your serial number, in a contest that sends one';
+
+	/// en: 'Pads with zeros to that many digits: 7 is sent as 007'
+	String get helpPad => 'Pads with zeros to that many digits: 7 is sent as 007';
+
+	/// en: 'Cut numbers, T for 0 and N for 9: 599 is sent as 5NN'
+	String get helpCut => 'Cut numbers, T for 0 and N for 9: 599 is sent as 5NN';
+
+	/// en: 'Chooses the digits to cut, in quotes — 0 is T, 1 is A, 5 is E, 9 is N'
+	String get helpCutDigits => 'Chooses the digits to cut, in quotes — 0 is T, 1 is A, 5 is E, 9 is N';
+
+	/// en: 'Sends W1AW 5NN TT7'
+	String get helpExample => 'Sends W1AW 5NN TT7';
 }
 
 // Path: settings.radio.voiceMessages
@@ -7446,7 +7479,7 @@ extension on Translations {
 			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} wpm',
 			'settings.radio.keyerSpeed.pillUnknown' => '– wpm',
 			'settings.radio.cwMessages.title' => 'CW Messages',
-			'settings.radio.cwMessages.description' => 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rstSent }}` for the report you sent, `{{ qso.their.name }}` for their name.',
+			'settings.radio.cwMessages.description' => 'One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rst }}` for the report you sent, `{{ qso.serial }}` for a contest serial number, `{{ qso.their.name }}` for their name. `| pad: 3` writes a serial as 007, and `| cut` sends cut numbers (5NN, TT7).',
 			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
 			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Message (${n})',
 			'settings.radio.cwMessages.labelField' => 'Label',
@@ -7470,6 +7503,17 @@ extension on Translations {
 			'settings.radio.cwMessages.customField' => 'Message',
 			'settings.radio.cwMessages.send' => 'Send',
 			'settings.radio.cwMessages.closeArea' => 'Close the keyer area',
+			'settings.radio.cwMessages.help' => 'Help',
+			'settings.radio.cwMessages.helpTitle' => 'Writing CW Messages',
+			'settings.radio.cwMessages.helpIntro' => 'A message is keyed as typed. Placeholders in double braces fill in from the operation and the contact being logged.',
+			'settings.radio.cwMessages.helpOpCall' => 'Your callsign',
+			'settings.radio.cwMessages.helpQsoCall' => 'Their callsign',
+			'settings.radio.cwMessages.helpQsoRst' => 'The report you are sending',
+			'settings.radio.cwMessages.helpQsoSerial' => 'Your serial number, in a contest that sends one',
+			'settings.radio.cwMessages.helpPad' => 'Pads with zeros to that many digits: 7 is sent as 007',
+			'settings.radio.cwMessages.helpCut' => 'Cut numbers, T for 0 and N for 9: 599 is sent as 5NN',
+			'settings.radio.cwMessages.helpCutDigits' => 'Chooses the digits to cut, in quotes — 0 is T, 1 is A, 5 is E, 9 is N',
+			'settings.radio.cwMessages.helpExample' => 'Sends W1AW 5NN TT7',
 			'settings.radio.voiceMessages.title' => 'Voice Messages',
 			'settings.radio.voiceMessages.description' => 'The radio\'s own voice memories, played on F1 to F8 while the contact being logged is in a Phone mode. The audio is recorded in the radio; what is set here is only the name each memory shows.',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
@@ -7616,6 +7660,8 @@ extension on Translations {
 			'settings.syncPanel.resendConfirmation' => 'Resend Confirmation Email',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Waiting on ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Sent again to ${email}.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.deviceLinked' => 'That device is now linked to this account.',
 			'settings.syncPanel.checking' => 'Checking…',
 			'settings.syncPanel.notLinked' => 'Not linked yet',
@@ -7627,8 +7673,6 @@ extension on Translations {
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'This device: ${qsos} · ${operations}',
 			'settings.syncPanel.countsPending' => ({required Object items}) => 'Waiting to upload: ${items}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.countsLocalChecking' => 'This device: checking…',
 			'settings.syncPanel.countsServerChecking' => 'Server: checking…',
 			'settings.syncPanel.countsServerUnavailable' => 'Server: not available',
@@ -8130,6 +8174,8 @@ extension on Translations {
 			'spotting.notSent' => 'Spot not sent.',
 			'spotting.notRefreshedOffline' => 'No connection — spots were not refreshed',
 			'dataFiles.downloading' => 'Downloading…',
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',
@@ -8141,8 +8187,6 @@ extension on Translations {
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
 			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',
 			'updates.updateAvailable' => 'Update available',
-			_ => null,
-		} ?? switch (path) {
 			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
 			'updates.getIt' => 'Get it',
 			'updates.ok' => 'OK',

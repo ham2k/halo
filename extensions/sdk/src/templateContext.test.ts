@@ -83,6 +83,41 @@ test("the reports are named by direction, not by QSON's field name", () => {
   assert.equal(qso.call, "W1AW")
 })
 
+// A contest's serials live on its own ref, under a type a CW message has no
+// way to know. They are found by FIELD NAME, which is what lets one message
+// serve every serial contest — and what breaks silently if a contest names
+// its field anything else.
+test("serials are found on whichever ref carries them", () => {
+  const qso = qsoValues({
+    their: { call: "W1AW" },
+    refs: [{ type: "pota", ref: "US-1234" }, { type: "cqwpx", ourSerial: 12, theirSerial: "345" }],
+  })
+  assert.equal(qso.serialSent, "12")
+  assert.equal(qso.serialRcvd, "345")
+})
+
+// Sent, not received: these are typed into a message WE key. Pointing either
+// at the other side would send the other station their own exchange back.
+test("the short names are the sent side", () => {
+  const qso = qsoValues({
+    our: { sent: "599" },
+    their: { call: "W1AW", sent: "579" },
+    refs: [{ type: "cqwpx", ourSerial: 12, theirSerial: 345 }],
+  })
+  assert.equal(qso.rst, "599")
+  assert.equal(qso.serial, "12")
+})
+
+// The draft drops a cleared serial from its ref and an ordinary QSO has no
+// contest ref at all, but a ref from an import or another extension can carry
+// a blank or a null. All of them must render nothing — never "undefined", and
+// never a throw that takes the whole message with it.
+test("a QSO without a serial yields blanks", () => {
+  assert.equal(qsoValues({ their: { call: "W1AW" } }).serial, "")
+  assert.equal(qsoValues({ refs: [{ type: "cqwpx", ourSerial: "" }] }).serialSent, "")
+  assert.equal(qsoValues({ refs: [{ type: "cqwpx", ourSerial: null }, null, "x"] }).serialSent, "")
+})
+
 // The lookup's answer lives under `their.guess` and nowhere else, so the
 // nesting is passed through whole rather than flattened into a second
 // vocabulary for the same data.

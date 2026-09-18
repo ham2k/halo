@@ -124,10 +124,17 @@ export function opValues(
 /// reaches the lookup's answer — the nesting is the QSON shape, and
 /// flattening it here would invent a second vocabulary for the same data.
 /// The flat fields alongside them are the ones a template names constantly.
+///
+/// A contest keeps its serials on ITS OWN ref, under a type only it knows, so
+/// `serialSent`/`serialRcvd` are found by field name instead: the first ref
+/// carrying `ourSerial` / `theirSerial`. That makes those two names a
+/// convention every serial-exchange contest has to keep (contests.md §5.8) —
+/// one that names its field anything else logs correctly and keys a blank.
 export function qsoValues(qso: Record<string, JSONValue>): Record<string, JSONValue> {
   const their = (qso.their ?? {}) as Record<string, JSONValue>
   const our = (qso.our ?? {}) as Record<string, JSONValue>
   const startMillis = Number(qso.startAtMillis ?? 0)
+  const serialSent = refField(qso.refs, "ourSerial")
 
   return {
     call: (their.call ?? "") as JSONValue,
@@ -140,11 +147,34 @@ export function qsoValues(qso: Record<string, JSONValue>): Record<string, JSONVa
     // sides — `qso.our.sent` is what WE sent, i.e. the report they received.
     rstSent: (our.sent ?? "") as JSONValue,
     rstRcvd: (their.sent ?? "") as JSONValue,
+    // Unpadded, as stored: `001` or `1` is the operator's call, not the
+    // contest's, so it is left to the `pad` filter.
+    serialSent,
+    serialRcvd: refField(qso.refs, "theirSerial"),
+    // The short forms are the SENT side: a CW message is what we send, and
+    // that is where these get typed.
+    rst: (our.sent ?? "") as JSONValue,
+    serial: serialSent,
     notes: (qso.notes ?? "") as JSONValue,
     refs: (qso.refs ?? []) as JSONValue,
     ...(startMillis > 0 ? dateValues(startMillis) : { date: "", dateCompact: "", time: "", at: "" }),
     startAtMillis: startMillis,
   }
+}
+
+/// The first non-blank `field` among `refs`, as text — our own serial is
+/// stored as an integer, a received one as typed (not every sponsor's
+/// "serial" is a number).
+function refField(refs: JSONValue | undefined, field: string): string {
+  if (!Array.isArray(refs)) return ""
+  for (const ref of refs) {
+    if (ref === null || typeof ref !== "object" || Array.isArray(ref)) continue
+    const value = ref[field]
+    if (typeof value !== "string" && typeof value !== "number") continue
+    const text = String(value).trim()
+    if (text !== "") return text
+  }
+  return ""
 }
 
 /// What one export knows about itself, for the `log` namespace: which file

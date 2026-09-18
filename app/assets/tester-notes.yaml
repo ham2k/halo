@@ -11,6 +11,7 @@ upcoming:
     - "The Pennsylvania QSO Party now exchanges serial numbers"
     - "QSOs with a note show a note icon in their row"
     - "Esc no longer wipes the QSO being typed — Alt+W wipes, Cmd/Ctrl+Z undoes it"
+    - "CW messages can send contest serials and cut numbers — the Messages dialog's new Help shows how"
 
 "168":
   changes:

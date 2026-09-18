@@ -1048,7 +1048,7 @@
       },
       "cwMessages": {
         "title": "Mensajes de CW",
-        "description": "Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rstSent }}` el reporte enviado, `{{ qso.their.name }}` su nombre.",
+        "description": "Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rst }}` el reporte enviado, `{{ qso.serial }}` el número de serie de un concurso, `{{ qso.their.name }}` su nombre. `| pad: 3` escribe un número de serie como 007, y `| cut` envía números abreviados (5NN, TT7).",
         "key": "F$n",
         "messageTitle": "Mensaje ($n)",
         "labelField": "Etiqueta",
@@ -1071,7 +1071,18 @@
         "custom": "Mensaje libre",
         "customField": "Mensaje",
         "send": "Enviar",
-        "closeArea": "Cerrar el área del manipulador"
+        "closeArea": "Cerrar el área del manipulador",
+        "help": "Ayuda",
+        "helpTitle": "Cómo escribir mensajes de CW",
+        "helpIntro": "Un mensaje se manipula tal como se escribe. Los marcadores entre llaves dobles se rellenan con la operación y el contacto que se está registrando.",
+        "helpOpCall": "Tu indicativo",
+        "helpQsoCall": "Su indicativo",
+        "helpQsoRst": "El reporte que envías",
+        "helpQsoSerial": "Tu número de serie, en un concurso que lo envía",
+        "helpPad": "Rellena con ceros hasta esa cantidad de dígitos: 7 se envía como 007",
+        "helpCut": "Números abreviados, T por 0 y N por 9: 599 se envía como 5NN",
+        "helpCutDigits": "Elige qué dígitos abreviar, entre comillas — 0 es T, 1 es A, 5 es E, 9 es N",
+        "helpExample": "Envía W1AW 5NN TT7"
       },
       "voiceMessages": {
         "title": "Mensajes de voz",

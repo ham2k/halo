@@ -141,12 +141,15 @@ const double haloDialogCancelGap = Space.xxl;
 /// (`destructive`, `secondary`) is absent from the other, and the dialogs
 /// built on that one improvise it into [actions] instead.
 ///
-/// Four roles, laid out to Material's end-aligned convention:
+/// Five roles, laid out to Material's end-aligned convention:
 ///
 /// * [destructive] — alone at the LEADING edge, as far from the primary
 ///   action as the row allows. This is the position Material gives its
 ///   `neutral` button. A verb that destroys something the operator has
 ///   already made does not belong next to the one that saves it.
+/// * [help] — the leading edge, after [destructive] where a footer has both.
+///   Reading about the dialog, which changes nothing in it — so it sits away
+///   from the verbs that do.
 /// * [secondary] — trailing group, leftmost. Something else to DO with the
 ///   thing being edited, as opposed to a way out of the dialog.
 /// * [cancel] — trailing group, immediately left of [actions], separated
@@ -168,6 +171,7 @@ const double haloDialogCancelGap = Space.xxl;
 Widget haloDialogFooterRow({
   Widget? cancel,
   Widget? destructive,
+  Widget? help,
   Widget? secondary,
   List<Widget> actions = const [],
 }) {
@@ -190,6 +194,10 @@ Widget haloDialogFooterRow({
       // 300pt sitting unused.
       if (destructive != null) ...[
         destructive,
+        const SizedBox(width: Space.md),
+      ],
+      if (help != null) ...[
+        help,
         const SizedBox(width: Space.md),
       ],
       Expanded(
@@ -293,6 +301,10 @@ class HaloDialog extends StatelessWidget {
   /// [actions] beside the primary.
   final Widget? destructive;
 
+  /// A way to read about the dialog, changing nothing in it. Rendered at the
+  /// leading edge, away from the verbs that act.
+  final Widget? help;
+
   /// Something else to DO with the thing being edited, as opposed to a way
   /// out of the dialog. Sits in the trailing group, left of [cancel].
   final Widget? secondary;
@@ -332,6 +344,7 @@ class HaloDialog extends StatelessWidget {
     this.actions = const [],
     this.cancel,
     this.destructive,
+    this.help,
     this.secondary,
     this.scrollable = true,
     this.contentPadding,
@@ -409,12 +422,13 @@ class HaloDialog extends StatelessWidget {
             ?header,
             // Flexible, not Expanded: a short dialog still shrink-wraps.
             if (body != null) Flexible(child: body),
-            if (actions.isNotEmpty || cancel != null || destructive != null || secondary != null)
+            if (actions.isNotEmpty || cancel != null || destructive != null || help != null || secondary != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(Space.xxl, Space.lg, Space.xxl, Space.lg),
                 child: haloDialogFooterRow(
                   cancel: cancel,
                   destructive: destructive,
+                  help: help,
                   secondary: secondary,
                   actions: actions,
                 ),

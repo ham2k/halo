@@ -61,10 +61,10 @@ function liquid(): Liquid {
 
 /// Filters on top of liquid's own (`date`, `downcase`, `upcase`, `strip`,
 /// `default`, `join`, `size`, `round`, `truncate`, `first`, `last`, …). Kept
-/// to the two that liquid can't express and that the filename defaults need;
-/// polo's `slug` is `downcase | dash` and so isn't one of them.
+/// to what liquid can't express: two the filename defaults need, two a CW
+/// exchange does. polo's `slug` is `downcase | dash` and so isn't one of them.
 ///
-/// Neither name may collide with a built-in: `registerFilter` overwrites
+/// No name may collide with a built-in: `registerFilter` overwrites
 /// silently, so shadowing one would leave a template written against liquid's
 /// documentation producing plausible nonsense with no error. `alnum` is
 /// named the way it is for that reason — liquid's own `compact` drops nils
@@ -84,7 +84,28 @@ function registerFilters(liquid: Liquid): void {
   // `2026-07-27` → `20260727`. app-polo's `compact` helper under a name that
   // doesn't shadow liquid's.
   liquid.registerFilter("alnum", (value: unknown) => String(value ?? "").replace(/[^A-Za-z0-9]/g, ""))
+
+  // `7` → `007`. Blank stays blank: a serial that isn't there yet padded to
+  // `000` would go out on the air as a number.
+  liquid.registerFilter("pad", (value: unknown, width: unknown = 3) => {
+    const text = String(value ?? "").trim()
+    return text === "" ? "" : text.padStart(Number(width) || 0, "0")
+  })
+
+  // Cut numbers: `{{ 9 | pad: 3 | cut }}` → `TTN`. The argument lists WHICH
+  // digits are cut, since operators differ on how far to go — nearly all
+  // send T and N, fewer A, fewer still E.
+  //
+  // The list is read as text, and liquid parses a bare `0159` as the NUMBER
+  // 159 before it gets here — the leading zero is gone, and with it the T.
+  // Quoted (`cut: "0159"`) is the only form that survives; see templates.md.
+  liquid.registerFilter("cut", (value: unknown, digits: unknown = "09") => {
+    const chosen = String(digits ?? "")
+    return String(value ?? "").replace(/[0159]/g, (digit) => (chosen.includes(digit) ? CUT_NUMBERS[digit] : digit))
+  })
 }
+
+const CUT_NUMBERS: Record<string, string> = { "0": "T", "1": "A", "5": "E", "9": "N" }
 
 /// A template that failed to parse or render, carrying liquid's own message —
 /// which names the line and column, and is therefore worth showing to

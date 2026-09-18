@@ -2820,7 +2820,7 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 
 	// Translations
 	@override String get title => 'Mensajes de CW';
-	@override String get description => 'Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rstSent }}` el reporte enviado, `{{ qso.their.name }}` su nombre.';
+	@override String get description => 'Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rst }}` el reporte enviado, `{{ qso.serial }}` el número de serie de un concurso, `{{ qso.their.name }}` su nombre. `| pad: 3` escribe un número de serie como 007, y `| cut` envía números abreviados (5NN, TT7).';
 	@override String key({required Object n}) => 'F${n}';
 	@override String messageTitle({required Object n}) => 'Mensaje (${n})';
 	@override String get labelField => 'Etiqueta';
@@ -2844,6 +2844,17 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 	@override String get customField => 'Mensaje';
 	@override String get send => 'Enviar';
 	@override String get closeArea => 'Cerrar el área del manipulador';
+	@override String get help => 'Ayuda';
+	@override String get helpTitle => 'Cómo escribir mensajes de CW';
+	@override String get helpIntro => 'Un mensaje se manipula tal como se escribe. Los marcadores entre llaves dobles se rellenan con la operación y el contacto que se está registrando.';
+	@override String get helpOpCall => 'Tu indicativo';
+	@override String get helpQsoCall => 'Su indicativo';
+	@override String get helpQsoRst => 'El reporte que envías';
+	@override String get helpQsoSerial => 'Tu número de serie, en un concurso que lo envía';
+	@override String get helpPad => 'Rellena con ceros hasta esa cantidad de dígitos: 7 se envía como 007';
+	@override String get helpCut => 'Números abreviados, T por 0 y N por 9: 599 se envía como 5NN';
+	@override String get helpCutDigits => 'Elige qué dígitos abreviar, entre comillas — 0 es T, 1 es A, 5 es E, 9 es N';
+	@override String get helpExample => 'Envía W1AW 5NN TT7';
 }
 
 // Path: settings.radio.voiceMessages
@@ -3937,7 +3948,7 @@ extension on TranslationsEs {
 			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} ppm',
 			'settings.radio.keyerSpeed.pillUnknown' => '– ppm',
 			'settings.radio.cwMessages.title' => 'Mensajes de CW',
-			'settings.radio.cwMessages.description' => 'Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rstSent }}` el reporte enviado, `{{ qso.their.name }}` su nombre.',
+			'settings.radio.cwMessages.description' => 'Un mensaje por tecla de función, F1 a F8, que la radio manipula mientras hay una operación abierta. Los marcadores se rellenan con el contacto que se está registrando: `{{ qso.call }}` su indicativo, `{{ op.call }}` el tuyo, `{{ qso.rst }}` el reporte enviado, `{{ qso.serial }}` el número de serie de un concurso, `{{ qso.their.name }}` su nombre. `| pad: 3` escribe un número de serie como 007, y `| cut` envía números abreviados (5NN, TT7).',
 			'settings.radio.cwMessages.key' => ({required Object n}) => 'F${n}',
 			'settings.radio.cwMessages.messageTitle' => ({required Object n}) => 'Mensaje (${n})',
 			'settings.radio.cwMessages.labelField' => 'Etiqueta',
@@ -3961,6 +3972,17 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.customField' => 'Mensaje',
 			'settings.radio.cwMessages.send' => 'Enviar',
 			'settings.radio.cwMessages.closeArea' => 'Cerrar el área del manipulador',
+			'settings.radio.cwMessages.help' => 'Ayuda',
+			'settings.radio.cwMessages.helpTitle' => 'Cómo escribir mensajes de CW',
+			'settings.radio.cwMessages.helpIntro' => 'Un mensaje se manipula tal como se escribe. Los marcadores entre llaves dobles se rellenan con la operación y el contacto que se está registrando.',
+			'settings.radio.cwMessages.helpOpCall' => 'Tu indicativo',
+			'settings.radio.cwMessages.helpQsoCall' => 'Su indicativo',
+			'settings.radio.cwMessages.helpQsoRst' => 'El reporte que envías',
+			'settings.radio.cwMessages.helpQsoSerial' => 'Tu número de serie, en un concurso que lo envía',
+			'settings.radio.cwMessages.helpPad' => 'Rellena con ceros hasta esa cantidad de dígitos: 7 se envía como 007',
+			'settings.radio.cwMessages.helpCut' => 'Números abreviados, T por 0 y N por 9: 599 se envía como 5NN',
+			'settings.radio.cwMessages.helpCutDigits' => 'Elige qué dígitos abreviar, entre comillas — 0 es T, 1 es A, 5 es E, 9 es N',
+			'settings.radio.cwMessages.helpExample' => 'Envía W1AW 5NN TT7',
 			'settings.radio.voiceMessages.title' => 'Mensajes de voz',
 			'settings.radio.voiceMessages.description' => 'Las memorias de voz de la propia radio, reproducidas con F1 a F8 mientras el contacto que se está registrando está en un modo de fonía. El audio se graba en la radio; aquí solo se define el nombre que muestra cada memoria.',
 			'settings.radio.voiceMessages.key' => ({required Object n}) => 'M${n}',
@@ -4107,6 +4129,8 @@ extension on TranslationsEs {
 			'settings.syncPanel.resendConfirmation' => 'Reenviar email de confirmación',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Esperando a ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Enviado de nuevo a ${email}.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.deviceLinked' => 'Ese dispositivo ya está vinculado a esta cuenta.',
 			'settings.syncPanel.checking' => 'Comprobando…',
 			'settings.syncPanel.notLinked' => 'Aún no vinculado',
@@ -4118,8 +4142,6 @@ extension on TranslationsEs {
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'Este dispositivo: ${qsos} · ${operations}',
 			'settings.syncPanel.countsPending' => ({required Object items}) => 'Pendiente de subir: ${items}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Servidor: ${qsos} · ${operations}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.countsLocalChecking' => 'Este dispositivo: comprobando…',
 			'settings.syncPanel.countsServerChecking' => 'Servidor: comprobando…',
 			'settings.syncPanel.countsServerUnavailable' => 'Servidor: no disponible',
@@ -4621,6 +4643,8 @@ extension on TranslationsEs {
 			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Datos de extensiones limpiados',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.', other: 'Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas.', ), 
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} registros',
 			'dataFiles.definitionUnavailable' => 'La fuente del archivo no proporcionó una definición — su extensión puede estar reiniciándose o mal configurada. Inténtalo de nuevo en un momento.',
 			'updates.updateAvailable' => 'Actualización disponible',
@@ -4632,8 +4656,6 @@ extension on TranslationsEs {
 			'updates.appliesNextLaunch' => 'Se descargó una actualización. Se aplicará la próxima vez que abras la app.',
 			'updates.restartNow' => 'Reiniciar ahora',
 			'updates.reloadToUpdate' => 'Hay una versión más reciente de esta página disponible. Recarga para obtenerla.',
-			_ => null,
-		} ?? switch (path) {
 			'updates.reloadNow' => 'Recargar ahora',
 			'updates.checkForUpdates' => 'Buscar actualizaciones',
 			'updates.checkingForUpdates' => 'Buscando actualizaciones…',

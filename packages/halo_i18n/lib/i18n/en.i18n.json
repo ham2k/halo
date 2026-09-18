@@ -1048,7 +1048,7 @@
       },
       "cwMessages": {
         "title": "CW Messages",
-        "description": "One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rstSent }}` for the report you sent, `{{ qso.their.name }}` for their name.",
+        "description": "One message per function key, F1 to F8, keyed by the radio while an operation is open. Placeholders fill in from the contact being logged: `{{ qso.call }}` for their call, `{{ op.call }}` for yours, `{{ qso.rst }}` for the report you sent, `{{ qso.serial }}` for a contest serial number, `{{ qso.their.name }}` for their name. `| pad: 3` writes a serial as 007, and `| cut` sends cut numbers (5NN, TT7).",
         "key": "F$n",
         "messageTitle": "Message ($n)",
         "labelField": "Label",
@@ -1071,7 +1071,18 @@
         "custom": "Custom Message",
         "customField": "Message",
         "send": "Send",
-        "closeArea": "Close the keyer area"
+        "closeArea": "Close the keyer area",
+        "help": "Help",
+        "helpTitle": "Writing CW Messages",
+        "helpIntro": "A message is keyed as typed. Placeholders in double braces fill in from the operation and the contact being logged.",
+        "helpOpCall": "Your callsign",
+        "helpQsoCall": "Their callsign",
+        "helpQsoRst": "The report you are sending",
+        "helpQsoSerial": "Your serial number, in a contest that sends one",
+        "helpPad": "Pads with zeros to that many digits: 7 is sent as 007",
+        "helpCut": "Cut numbers, T for 0 and N for 9: 599 is sent as 5NN",
+        "helpCutDigits": "Chooses the digits to cut, in quotes — 0 is T, 1 is A, 5 is E, 9 is N",
+        "helpExample": "Sends W1AW 5NN TT7"
       },
       "voiceMessages": {
         "title": "Voice Messages",

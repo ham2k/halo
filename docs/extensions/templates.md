@@ -74,11 +74,21 @@ that contact's length.
 
 ### `qso` — one contact
 `call`, `their`, `our` (both whole, so `qso.their.guess.name` reaches the
-lookup's answer), `band`, `mode`, `freq`, `rstSent`, `rstRcvd`, `notes`,
-`date`, `dateCompact`, `time`, `at`, `startAtMillis`, `refs`.
+lookup's answer), `band`, `mode`, `freq`, `rstSent`, `rstRcvd`, `serialSent`,
+`serialRcvd`, `notes`, `date`, `dateCompact`, `time`, `at`, `startAtMillis`,
+`refs` — and two short forms for the sent side, `rst` (= `rstSent`) and
+`serial` (= `serialSent`), since a CW message is what we send and that is
+where these get typed: `{{ qso.call }} {{ qso.rst | cut }} {{ qso.serial | pad: 3 | cut }}`.
 
 `rstSent` is what WE sent — QSON stores each side's report under its own
 `sent`, and these are named for the operator's view of the contact.
+
+`serialSent` / `serialRcvd` are a contest's serial numbers, blank outside
+one. A contest keeps them on its own ref, so they are found by field name —
+the first ref carrying `ourSerial` / `theirSerial` — which is what lets one
+message serve every serial contest (docs/design/contests.md §5.8). In a CW
+message `serialSent` is the number the serial field is SHOWING, the one the
+QSO will be logged with. It is unpadded (`7`, not `007`): use `pad`.
 
 ### `config` — a panel's own form values
 Whatever that panel's `form` declared, under the keys it used.
@@ -112,12 +122,19 @@ with nothing to say it was invented.
 
 All of Liquid's own (`date`, `downcase`, `upcase`, `strip`, `default`,
 `join`, `size`, `first`, `last`, `round`, `truncate`, `replace`, `map`,
-`where`, …), plus two:
+`where`, …), plus four:
 
 | filter | does | example |
 |---|---|---|
 | `dash` | non-alphanumerics → `-`, collapsed and trimmed, **case preserved** | `N0CALL/P` → `N0CALL-P` |
 | `alnum` | strip to alphanumerics | `2026-07-27` → `20260727` |
+| `pad: n` | zero-pad on the left to `n` characters (default 3); **blank stays blank** | `7` → `007` |
+| `cut: "digits"` | CW cut numbers for the listed digits, of `0`→`T` `1`→`A` `5`→`E` `9`→`N`; default `"09"` | `599` → `5NN`, `{{ 9 \| pad: 3 \| cut }}` → `TTN` |
+
+`pad` leaves a blank alone because a CW message can be keyed before the
+serial field has a number, and `000` sent in that gap is a serial the log
+will never agree with. Order matters with `cut`: pad first, or the padding
+zeros go out uncut.
 
 `alnum` is app-polo's `compact` helper under a different name: Liquid already
 has a `compact` (it drops nils from an **array**, and `op.refs`/`qso.refs` are
@@ -139,6 +156,10 @@ Each of these was measured against the shipped runtime, not assumed.
 **A raw millisecond timestamp is not a date.** The `date` filter reads a
 number as SECONDS, so epoch millis render in the year 58567. Use the `…At`
 strings.
+
+**`cut`'s digit list must be quoted.** Liquid reads a bare `0159` as the
+number 159 before the filter sees it, so `{{ n | cut: 09 }}` cuts only the
+nines — the zero is gone with no error. Write `cut: "09"`.
 
 **Unknown names are silent.** An unknown variable renders empty and an
 unknown filter passes its value through. That is deliberate — an operator's
