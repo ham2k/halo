@@ -8,15 +8,17 @@
 // move, county lists and bonus stations change — stays a file copy and a
 // legible diff, as `stateparks` does.
 //
-// **Five files now diverge, and a re-sync must not silently revert them.** BC,
-// NC, NJ, NV and SC still carried 2025 dates (NC's END year alone, SC's an
-// impossible 29 February); each was re-checked against the sponsor's own rules
-// in September 2026 and now carries what they publish, with `status` saying
-// what was verified and `lastUpdated` saying when, and NJ and NV gained the
-// rules URL they had none of. NEVER take polo's copy of these five without
-// re-reading the sponsor: polo's dates are older than these, not newer. (WA
-// diverged the same way until polo re-verified it for 2026; the two agree
-// again.) NSARA's dates are still 2025 — its contest page is gone (404) and
+// **Six files now diverge, and a re-sync must not silently revert them.** SD
+// carries `SDQSOP`, the Cabrillo name the registry at contestcalendar.com
+// lists, where polo assumes `SD-QSO-PARTY`; a copy of polo's file would rename
+// the contest every submitted log declares. BC, NC, NJ, NV and SC still
+// carried 2025 dates (NC's END year alone, SC's an impossible 29 February);
+// each was re-checked against the sponsor's own rules in September 2026 and
+// now carries what they publish, with `status` saying what was verified and
+// `lastUpdated` saying when, and NJ and NV gained the rules URL they had none
+// of. NEVER take polo's copy of these six without re-reading the sponsor:
+// polo's dates are older than these, not newer. (WA diverged the same way
+// until polo re-verified it for 2026; the two agree again.) NSARA's dates are still 2025 — its contest page is gone (404) and
 // the party is `disabled` in the data anyway.
 //
 // Everything that reads these files goes through `partyFor`, which is where the

@@ -3,7 +3,8 @@
   "name": "Nevada QSO Party",
   "start": "2026-10-10 03:00Z",
   "end": "2026-10-11 21:00Z",
-  "status": "Dates DERIVED from the sponsor’s standing rule (second weekend in October); their site still shows 2025",
+  "internalNotes": "Offered without its multiplier rule: multipliers are ARRL/RAC sections per band, which is not supported, so it scores 1 point per QSO with counties as multipliers. 2026 rules were not posted as of 2026-09-17, dates follow the second-weekend rule.",
+  "status": "Dates derived from the second-weekend rule, 2026 rules not yet posted; the section multipliers are not supported",
   "counties": {
     "NVCAR": "Carson City",
     "NVCHU": "Churchill",
@@ -24,5 +25,5 @@
     "NVWHI": "White Pine"
   },
   "url": "http://nvqso.com/contest-rules/",
-  "lastUpdated": "2026-09-06 12:00Z"
+  "lastUpdated": "2026-09-17 12:00Z"
 }

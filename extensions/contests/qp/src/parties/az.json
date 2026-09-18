@@ -2,27 +2,33 @@
   "key": "AZ",
   "name": "Arizona QSO Party",
   "short": "AZQP",
+  "url": "https://www.azqp.org/",
   "start": "2026-10-10 15:00Z",
   "end": "2026-10-11 05:00Z",
-  "status": "Added from the sponsor’s rules (2026); scoring not yet verified against a submitted log",
-  "url": "https://www.azqp.org/",
   "cabrilloName": "AZ-QSO-PARTY",
-  "lastUpdated": "2026-09-06 12:00Z",
+  "notes": "",
+  "internalNotes": "The rules do not name a Cabrillo contest; AZ-QSO-PARTY is the name registered at contestcalendar.com/cabnames.php.",
+  "lastUpdated": "2026-09-17 12:00Z",
+  "status": "Verified for 2026 against azqp.org",
+  "bonusStations": {
+    "K7A": 100
+  },
   "options": {
     "dcCountsAsMaryland": true,
     "countyLine": true,
     "selfSpotting": true,
+    "dxIsMultiplier": false,
     "dxEntityIsMultiplier": true,
+    "dxLocationIsPrefix": false,
+    "stateCountsForInState": true,
+    "countiesCountForInState": false,
     "multsPerMode": true,
     "outOfStateMultsPerBand": true,
-    "countiesCountForInState": false
+    "bonusPostMultiplier": true
   },
   "points": {
     "PHONE": 1,
     "CW": 2
-  },
-  "bonusStations": {
-    "K7A": 100
   },
   "counties": {
     "APH": "Apache",

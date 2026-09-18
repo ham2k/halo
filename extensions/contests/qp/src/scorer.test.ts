@@ -527,3 +527,65 @@ test('the band table separates digital from CW even where the party scores them 
   const { summary } = run([qso({ mode: 'FT8', location: 'NJ' })], { party: 'DE', ourLocation: 'NDE' })
   assert.match(summary().longSummary as string, /\*\*20m\*\*: 0 CW, 0 SSB, 1 Digital, \*\*1 total\*\*/)
 })
+
+test('AZ: multipliers split by which side of the state line we are on', () => {
+  // Out of state: a county counts again on every band and every mode.
+  const outside = run([
+    qso({ location: 'MCP' }),
+    qso({ location: 'MCP', band: '40m' }),
+    qso({ location: 'MCP', band: '40m', mode: 'SSB' }),
+  ], { party: 'AZ', ourLocation: 'NY' })
+  assert.deepEqual(Object.keys(outside.sheet.mults).sort(), ['20m:CW:MCP', '40m:CW:MCP', '40m:PHONE:MCP'])
+
+  // In state: two Arizona counties on CW are one multiplier, Arizona itself —
+  // and `stateCountsForInState` names the same one, not a second. A DX station
+  // with no exchange is its entity, never a state that shares its prefix: `PA`
+  // read as a location would be Pennsylvania.
+  const inside = run([
+    qso({ location: 'MCP' }),
+    qso({ call: 'K1ABD', location: 'YMA' }),
+    qso({ call: 'K1ABE', location: 'NY' }),
+    qso({ call: 'K1ABF', location: 'NY', band: '40m' }),
+    qso({ call: 'PA3XYZ', entityPrefix: 'PA' }),
+  ], { party: 'AZ', ourLocation: 'PMA' })
+  assert.deepEqual(Object.keys(inside.sheet.mults).sort(), ['CW:AZ', 'CW:DX:PA', 'CW:NY'])
+  assert.equal(inside.sheet.entities.PA, 1)
+  assert.equal(inside.sheet.states.PA, undefined)
+
+  // The county still identifies the station: the same one from the same county
+  // is a repeat, and a mobile that has moved is a fresh contact worth points.
+  const repeat = run([qso({ call: 'K7XX', location: 'MCP' }), qso({ call: 'K7XX', location: 'MCP' })], { party: 'AZ', ourLocation: 'PMA' })
+  assert.equal(repeat.sheet.dupes, 1)
+  const moved = run([qso({ call: 'K7XX', location: 'MCP' }), qso({ call: 'K7XX', location: 'YMA' })], { party: 'AZ', ourLocation: 'PMA' })
+  assert.equal(moved.sheet.dupes, 0)
+  assert.equal(moved.sheet.points, 4)
+
+  // Total = (QSO points × multipliers) + bonus, with K7A worth 100 once.
+  const bonus = run([qso({ call: 'K7A', location: 'MCP' }), qso({ call: 'K7A', location: 'MCP', band: '40m' })], { party: 'AZ', ourLocation: 'NY' })
+  assert.equal(bonus.summary().total, 4 * 2 + 100)
+})
+
+test('PA: all DX is one multiplier, and K3ZMC pays per band after the multiplier', () => {
+  const dx = run(
+    ['DL', 'F', 'G'].map((prefix, index) => qso({ call: `${prefix}1AA${index}`, entityPrefix: prefix })),
+    { party: 'PA', ourLocation: 'ELK' },
+  )
+  assert.deepEqual(Object.keys(dx.sheet.mults), ['DX'])
+
+  // Each valid QSO with K3ZMC is worth 200, so a second band earns it again.
+  const bonus = run([qso({ call: 'K3ZMC', location: 'MGY' }), qso({ call: 'K3ZMC', location: 'MGY', band: '40m' })], { party: 'PA', ourLocation: 'ELK' })
+  assert.equal(bonus.sheet.bonusStations.K3ZMC, 400)
+  // Two CW QSOs at 2 points, one multiplier (the county), then the bonus.
+  assert.equal(bonus.sheet.points, 4)
+  assert.equal(Object.keys(bonus.sheet.mults).length, 1)
+  assert.equal(bonus.summary().total, 4 * 1 + 400)
+})
+
+test('SD and CA score as their sponsors publish for 2026', () => {
+  // South Dakota: QSO Points × Multipliers + Bonus — W0OJY pays 100 once,
+  // outside the multiplier.
+  const sd = run([qso({ call: 'W0OJY', location: 'MINN' }), qso({ call: 'W0OJY', location: 'MINN', band: '40m' })], { party: 'SD', ourLocation: 'NY' })
+  assert.equal(sd.summary().total, 4 * 1 + 100)
+  // California: phone is worth 3 points from 2026, the same as CW.
+  assert.equal(run([qso({ location: 'ALAM', mode: 'SSB' })], { party: 'CA', ourLocation: 'NY' }).scores[0].value, 3)
+})

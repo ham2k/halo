@@ -229,5 +229,13 @@ test('a slashed zero is a zero, so Missouri\'s bonus stations can be worked', ()
 test('the exchange is a location unless the file says otherwise', () => {
   assert.deepEqual(party('NY').exchange, { number: false, name: false })
   assert.deepEqual(party('CA').exchange, { number: true, name: false })
+  assert.deepEqual(party('PA').exchange, { number: true, name: false })
   assert.deepEqual(party('MN').exchange, { number: false, name: true })
+})
+
+test('South Dakota submits as SDQSOP, the registered Cabrillo name', () => {
+  // polo's file assumes `SD-QSO-PARTY` because the sponsor names nothing; the
+  // Cabrillo registry lists `SDQSOP`. A re-sync that copies polo's file over
+  // renames the contest in every submitted log, with no other test noticing.
+  assert.equal(party('SD').cabrilloName, 'SDQSOP')
 })
