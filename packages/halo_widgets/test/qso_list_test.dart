@@ -1152,6 +1152,167 @@ void main() {
     });
   });
 
+  group('badge column', () {
+    Qso noted(String? notes) => Qso(
+          uuid: 'q',
+          operationUuid: 'op-1',
+          data: {
+            'our': {'sent': '59'},
+            'their': {'call': 'K1ABC', 'name': 'Alice', 'sent': '59'},
+            'mode': 'SSB',
+            'startAtMillis': 1000,
+            'notes': ?notes,
+          },
+        );
+
+    Future<void> pumpRow(WidgetTester tester, Qso qso, {double width = 800}) => tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: width,
+                  child: QsoList(qsos: [qso], onSelect: (_) {}, ourEntityPrefix: 'K'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('a QSO with a note wears the notes marker against the signal reports', (tester) async {
+      await pumpRow(tester, noted('Met at Dayton'));
+
+      final marker = find.byIcon(MdiIcons.noteOutline);
+      expect(marker, findsOneWidget);
+      // Right-aligned with the ref badges, not trailing the name: down a log
+      // the markers form one column instead of a ragged edge set by each
+      // name's length.
+      final name = tester.getRect(find.text('Alice'));
+      final rst = tester.getRect(find.text('59 59'));
+      final box = tester.getRect(marker);
+      expect(box.left, greaterThanOrEqualTo(name.right));
+      expect(rst.left - box.right, inInclusiveRange(0, 12));
+    });
+
+    testWidgets('a QSO without a note, or with a blank one, wears no marker', (tester) async {
+      // The Logs edit form saves an untouched notes field as '', so "has a
+      // notes key" is not "has a note".
+      for (final notes in [null, '', '  \n']) {
+        await pumpRow(tester, noted(notes));
+        expect(find.byIcon(MdiIcons.noteOutline), findsNothing, reason: 'notes: ${notes == null ? 'absent' : '"$notes"'}');
+      }
+    });
+
+    testWidgets('a list too narrow for the badge column drops the marker rather than overflow', (tester) async {
+      // The marker lives in the refs column and is dropped with it: drawn
+      // outside the column plan, it is the one fixed-width child the width
+      // budget never counted. The width is found, not chosen — a literal
+      // would hold only for today's test font and column samples.
+      double? narrowest;
+      for (var width = 300.0; width <= 800 && narrowest == null; width += 2) {
+        await pumpRow(tester, noted('Met at Dayton'), width: width);
+        if (find.byIcon(MdiIcons.noteOutline).evaluate().isNotEmpty) narrowest = width;
+      }
+      expect(narrowest, isNotNull);
+      expect(narrowest, greaterThan(300), reason: 'the search must start below the threshold');
+
+      await pumpRow(tester, noted('Met at Dayton'), width: narrowest! - 2);
+      expect(find.byIcon(MdiIcons.noteOutline), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+
+    Qso row(String uuid, {bool conflict = false, String? notes}) => Qso(
+          uuid: uuid,
+          operationUuid: 'op-1',
+          data: {
+            'our': {'sent': '59'},
+            'their': {'call': 'K1ABC', 'name': 'Alice', 'sent': '59'},
+            'mode': 'SSB',
+            'startAtMillis': 1000,
+            'serialConflict': ?(conflict ? true : null),
+            'notes': ?notes,
+          },
+        );
+
+    Future<void> pumpList(WidgetTester tester, List<Qso> qsos, double width) => tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: width,
+                  child: QsoList(qsos: qsos, onSelect: (_) {}, ourEntityPrefix: 'K'),
+                ),
+              ),
+            ),
+          ),
+        );
+
+    testWidgets('marks on different rows share one slot instead of each reserving its own', (tester) async {
+      // The column's width is a budget, not a layout: it only decides whether
+      // the column FITS. So the observable is the narrowest list that still
+      // shows it — which a second kind of mark, on another row, must not move.
+      // Reserving a slot per kind list-wide costs a narrow split the whole
+      // column over a note that shares no row with anything.
+      final conflictOnly = [row('a', conflict: true)];
+      double? narrowest;
+      for (var width = 300.0; width <= 800 && narrowest == null; width += 2) {
+        await pumpList(tester, conflictOnly, width);
+        if (find.byIcon(MdiIcons.alert).evaluate().isNotEmpty) narrowest = width;
+      }
+      expect(narrowest, isNotNull);
+
+      await pumpList(tester, [row('a', conflict: true), row('b', notes: 'Met at Dayton')], narrowest!);
+      expect(find.byIcon(MdiIcons.alert), findsOneWidget);
+      expect(find.byIcon(MdiIcons.noteOutline), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets('a note never costs a contest log its exchange column', (tester) async {
+      // A column holding only notes markers ranks BELOW the exchange. Ranked
+      // above it, as references are, the marker's few pixels are admitted
+      // first, the exchange then misses the fit, and one note blanks the
+      // exchange on every row of a narrow pane.
+      Qso contact(String uuid, {String? notes}) => Qso(
+            uuid: uuid,
+            operationUuid: 'op-1',
+            data: {
+              'our': {'sent': '599', 'exchange': '042'},
+              'their': {'call': 'K1ABC', 'name': 'Alice', 'sent': '599', 'exchange': 'ZN14'},
+              'mode': 'CW',
+              'startAtMillis': 1000,
+              'notes': ?notes,
+            },
+          );
+      final exchange = find.textContaining('ZN14');
+
+      double? narrowest;
+      for (var width = 300.0; width <= 800 && narrowest == null; width += 2) {
+        await pumpList(tester, [contact('a')], width);
+        if (exchange.evaluate().isNotEmpty) narrowest = width;
+      }
+      expect(narrowest, isNotNull);
+      expect(narrowest, greaterThan(300), reason: 'the search must start below the threshold');
+
+      await pumpList(tester, [contact('a'), contact('b', notes: 'Met at Dayton')], narrowest!);
+      expect(exchange, findsNWidgets(2));
+      expect(tester.takeException(), isNull);
+
+      // And with room for both, the marker is back.
+      await pumpList(tester, [contact('a'), contact('b', notes: 'Met at Dayton')], 800);
+      expect(find.byIcon(MdiIcons.noteOutline), findsOneWidget);
+    });
+
+    testWidgets('a row carrying both marks is budgeted for both', (tester) async {
+      // The other half of sharing: one row's marks ADD. Budgeting the widest
+      // kind rather than the widest row would overflow exactly this row.
+      for (var width = 300.0; width <= 800; width += 2) {
+        await pumpList(tester, [row('a', conflict: true, notes: 'Met at Dayton')], width);
+        expect(tester.takeException(), isNull, reason: 'width $width');
+      }
+      expect(find.byIcon(MdiIcons.alert), findsOneWidget);
+      expect(find.byIcon(MdiIcons.noteOutline), findsOneWidget);
+    });
+  });
+
   group('DX/State column', () {
     testWidgets('shows a flag when both entities are known and differ', (
       tester,

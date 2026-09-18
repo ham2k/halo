@@ -326,6 +326,10 @@ class Qso {
   String? get mode => asQsonString(data['mode']);
   String? get notes => asQsonString(data['notes']);
 
+  /// Whether [notes] says anything. A blank note is no note: an edit form
+  /// saves its untouched field as `''`.
+  bool get hasNotes => (notes ?? '').trim().isNotEmpty;
+
   /// Our transmit power in watts — top-level, alongside [freq]/[band]/[mode],
   /// matching QSON convention elsewhere in the ecosystem (app-polo) rather
   /// than nesting under `our`. Station Configuration's "Track Station Info

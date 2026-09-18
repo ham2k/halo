@@ -2031,6 +2031,10 @@ int _maxFreqMhzDigits(List<Qso> qsos) {
   return digits;
 }
 
+/// What the notes marker adds to a Name cell, gap included — what
+/// [_autoFitColumnWidth] reserves for it.
+const double _notesMarkerExtent = Space.xs + qsoNotesMarkerSize;
+
 /// The narrowest [column] can get while still showing, in full, every value
 /// currently in [qsos] AND its own header label — double-clicking a
 /// [_QsoListHeaderRow] handle snaps to this, the same "auto-fit" gesture
@@ -2093,8 +2097,11 @@ double _autoFitColumnWidth(String column, BuildContext context, List<Qso> qsos, 
     'name' => (widest(qsos.map((qso) => qso.theirName ?? '')), nameStyle, t.name),
     _ => ('', monoStyle, ''),
   };
+  // The Name cell draws the notes marker beside the text, so a set with any
+  // noted QSO reserves it: this measures the column, not the string.
+  final markerExtent = column == 'name' && qsos.any((qso) => qso.hasNotes) ? _notesMarkerExtent : 0.0;
   final width = math.max(
-    textWidth(context, dataText, dataStyle ?? const TextStyle()),
+    textWidth(context, dataText, dataStyle ?? const TextStyle()) + markerExtent,
     textWidth(context, headerText, labelStyle ?? const TextStyle()),
   );
   return math.max(_LogsColumnWidths._min, width);
@@ -2229,11 +2236,25 @@ class _LogQsoSummaryRow extends StatelessWidget {
             : monoStyle,
       ),
       'call': callsignText,
-      'name': Text(
-        qso.theirName ?? '',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
+      // The notes marker rides in the Name cell, this row having no badge
+      // column: where Name goes — [compact], or hidden in the column menu —
+      // the marker goes with it, deliberately. A sibling of the text rather
+      // than a span inside it, which would go with the ellipsis.
+      'name': Row(
+        children: [
+          Flexible(
+            child: Text(
+              qso.theirName ?? '',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodyMedium?.copyWith(color: textColor),
+            ),
+          ),
+          if (qsoNotesMarker(qso, color: textColor ?? theme.textTheme.bodyMedium?.color) case final marker?) ...[
+            if ((qso.theirName ?? '').isNotEmpty) const SizedBox(width: Space.xs),
+            marker,
+          ],
+        ],
       ),
     };
     final rowChildren = <Widget>[];

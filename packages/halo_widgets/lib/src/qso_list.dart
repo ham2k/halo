@@ -18,13 +18,13 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:intl/intl.dart';
 
-import 'activity_controls.dart';
 import 'call_info_summary.dart' show glyphGlow;
 import 'density.dart';
 import 'flags.dart';
 import 'format_utils.dart';
 import 'icon_resolver.dart';
 import 'mdi_icons.g.dart';
+import 'qso_row_badges.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'semantic_id.dart';
 import 'spacing.dart';
@@ -68,47 +68,6 @@ const double _fitSlack = 1;
 
 /// The Mode column, wide enough for the longest mode name shown.
 const double _modeWidth = 42;
-
-/// One ref badge's icon — the unknown-type avatar (radius 8) is the widest
-/// of the two shapes, so it sets the column's per-type cost.
-const double _refIconWidth = 16;
-
-/// Trailing space after each ref badge.
-const double _refIconGap = 6;
-
-/// The refs a QSO shows as badges, by type, with how many of each — the
-/// "×N" suffix. Contest refs carry an exchange rather than a place, so they
-/// get no icon: every row in a contest log would otherwise wear the same
-/// badge, which says nothing while crowding the columns that do.
-///
-/// Shared by the per-row builder and the list-wide width budget, which have
-/// to agree about what a row draws or the budget reserves the wrong space.
-///
-/// A code rides along with each badge, because an extension may claim a
-/// reference by its code as well as its type (`alsoHandles`): without one, a
-/// legacy `{type: 'qp', ref: 'NY'}` draws the unknown marker while the
-/// activity row beside it names the party that handles it. Where a type has
-/// several references and only some are claimed, the badge takes the first
-/// claimed one's code — the icon then belongs to an extension that is
-/// actually installed.
-Map<String, ({int count, String? code})> _refCountsByType(Qso qso, List<Map<String, dynamic>> controls) {
-  final counts = <String, ({int count, String? code})>{};
-  final claimedTypes = <String>{};
-  for (final ref in qso.refs) {
-    final type = ref['type'] as String?;
-    if (type == null) continue;
-    if (_isContestRef(ref, controls)) continue;
-    final code = refCodeOf(ref);
-    final claimed = !claimedTypes.contains(type) && controlForRef(controls, type: type, code: code) != null;
-    if (claimed) claimedTypes.add(type);
-    final previous = counts[type];
-    counts[type] = (
-      count: (previous?.count ?? 0) + 1,
-      code: previous == null || claimed ? code : previous.code,
-    );
-  }
-  return counts;
-}
 
 /// Which optional columns a row actually shows.
 ///
@@ -187,29 +146,6 @@ enum DxFlags { dx, all, none }
 /// for that same boundary.
 const int _dayInMillis = 1000 * 60 * 60 * 24;
 
-/// Whether a ref is contest metadata rather than an activity reference.
-///
-/// Two independent signals, because either can be missing: the ref's own
-/// `program` (set by a contest's `decorateRef`, so it survives the extension
-/// being switched off), and the shape of the control that owns its type — a
-/// contest writes its exchange through a primary field, while an activity
-/// reference comes from a `refList`.
-///
-/// "Primary field" must mean the same set here as in the logging panel's
-/// `_textControls`, i.e. `text`, `serial` AND `options`: `controlForRefType`
-/// returns the FIRST control for a type, and CQ WPX declares its serial before
-/// its text exchange, so dropping `serial` here makes every WPX QSO read as an
-/// activity reference and wear an icon. `options` — the searchable exchange —
-/// belongs here for as long as it is in `_textControls`: the core writes only
-/// `{type, field}` onto the ref an exchange field fills, so a state-park QSO
-/// carries nothing else to say it is a contest contact.
-bool _isContestRef(Map<String, dynamic> ref, List<Map<String, dynamic>> controls) {
-  if (ref['program'] == 'Contest') return true;
-  final control = controlForRef(controls, type: ref['type'] as String?, code: refCodeOf(ref));
-  final kind = (control?['input'] as Map?)?['kind'];
-  return kind == 'text' || kind == 'serial' || kind == 'options' || kind == 'form';
-}
-
 /// The RST column's guaranteed minimum — CW/RTTY's 3-digit RS(T) on both
 /// sides.
 const String _rstMinSample = '599 599';
@@ -229,6 +165,10 @@ class _QsoListMetrics {
   final double rstWidth;
   final double exchangeWidth;
   final double refsWidth;
+
+  /// Whether notes markers are all the refs column holds — what lets the
+  /// column plan rank it below the exchange.
+  final bool refsAreNotesOnly;
   final int hzDigits;
   final bool usesMultipleModes;
   final List<int> dayKeys;
@@ -243,6 +183,7 @@ class _QsoListMetrics {
     required this.rstWidth,
     required this.exchangeWidth,
     required this.refsWidth,
+    required this.refsAreNotesOnly,
     required this.hzDigits,
     required this.usesMultipleModes,
     required this.dayKeys,
@@ -789,6 +730,7 @@ class _QsoListState extends State<QsoList> {
     final rstWidth = metrics.rstWidth;
     final exchangeWidth = metrics.exchangeWidth;
     final refsWidth = metrics.refsWidth;
+    final refsAreNotesOnly = metrics.refsAreNotesOnly;
     final hzDigits = metrics.hzDigits;
     final usesMultipleModes = metrics.usesMultipleModes;
     final dayKeys = metrics.dayKeys;
@@ -977,9 +919,9 @@ class _QsoListState extends State<QsoList> {
       }
 
       // One icon per distinct ref type, "×N" appended when the QSO carries
-      // more than one of that type — see [_refCountsByType], which the width
+      // more than one of that type — see [qsoRefCountsByType], which the width
       // budget uses to reserve this column.
-      final refCountsByType = _refCountsByType(qso, activityControls);
+      final refCountsByType = qsoRefCountsByType(qso, activityControls);
 
       // #236: stable id for agent/browser tooling — per-callsign so a specific
       // logged QSO's row is targetable.
@@ -1091,49 +1033,13 @@ class _QsoListState extends State<QsoList> {
                       ),
                     ),
                   ),
-                  if (plan.showRefs && (refCountsByType.isNotEmpty || qso.serialConflict)) ...[
+                  if (plan.showRefs && (refCountsByType.isNotEmpty || qso.serialConflict || qso.hasNotes)) ...[
                     const SizedBox(width: _columnGap),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // A serial another position also sent: the number
-                        // stands, and the row says it is not alone.
-                        if (qso.serialConflict) ...[
-                          Icon(MdiIcons.alert, size: 14, color: theme.colorScheme.error),
-                          const SizedBox(width: _refIconGap),
-                        ],
-                        for (final entry in refCountsByType.entries) ...[
-                          // An unrecognized type (its extension isn't
-                          // installed/loaded right now) gets a small
-                          // pale-red question-mark marker instead of the
-                          // usual themed icon (ham2k/halo-dist#261) —
-                          // via the shared activityRefIcon, sized down for
-                          // this compact inline usage; the known-type icon
-                          // stays bespoke, using the row's neutral
-                          // foreground rather than a per-control accent
-                          // (#354).
-                          if (isUnknownRefType(activityControls, entry.key, code: entry.value.code))
-                            activityRefIcon(activityControls, entry.key,
-                                code: entry.value.code, iconSize: 10, avatarRadius: _refIconWidth / 2)
-                          else
-                            Icon(
-                              resolveIconName(
-                                iconForRefType(activityControls, entry.key, code: entry.value.code),
-                              ),
-                              size: 14,
-                              // The row's dim gray, not the tertiary accent:
-                              // a reference reads at the weight of the time
-                              // and RST beside it.
-                              color: rowMonoDim.color,
-                            ),
-                          if (entry.value.count > 1)
-                            Text(
-                              '×${entry.value.count}',
-                              style: rowMonoDim.copyWith(fontSize: 11),
-                            ),
-                          const SizedBox(width: _refIconGap),
-                        ],
-                      ],
+                    QsoRowBadges(
+                      qso: qso,
+                      refCounts: refCountsByType,
+                      activityControls: activityControls,
+                      dimStyle: rowMonoDim,
                     ),
                   ],
                   if (plan.showRst)
@@ -1218,8 +1124,13 @@ class _QsoListState extends State<QsoList> {
       (id: _Column.dxState, earned: dxStateWidth > 0, width: dxStateWidth + _columnGap),
       (id: _Column.mode, earned: usesMultipleModes, width: _modeWidth + _columnGap),
       (id: _Column.rst, earned: showRSTFields, width: rstWidth),
-      (id: _Column.refs, earned: refsWidth > 0, width: refsWidth),
+      // A reference or a duplicate serial is logged data and outranks the
+      // exchange; a notes marker only says the edit pane holds more, so a
+      // column of nothing else yields to it. Without the split, one note in
+      // a contest log costs every row its exchange in a narrow pane.
+      if (!refsAreNotesOnly) (id: _Column.refs, earned: refsWidth > 0, width: refsWidth),
       (id: _Column.exchange, earned: exchangeWidth > 0, width: exchangeWidth + _columnGap),
+      if (refsAreNotesOnly) (id: _Column.refs, earned: refsWidth > 0, width: refsWidth),
     ];
 
     /// Keeps the optional columns that still fit, best-earned first. The
@@ -1412,12 +1323,18 @@ _QsoListMetrics _computeMetrics({
   // loop rather than per row.
   var mostRefIcons = 0;
   var largestRefCount = 0;
-  var anySerialConflict = false;
+  // The duplicate-serial mark (docs/design/contests.md §5.8.1) and the notes
+  // marker are badges in the same column, so they count toward the same
+  // widest-row total instead of each holding a slot of its own list-wide.
+  var mostBadges = 0;
+  var anyRefOrConflict = false;
   for (final q in qsos) {
     if (q.isEvent) continue;
-    final refCounts = _refCountsByType(q, activityControls);
+    final refCounts = qsoRefCountsByType(q, activityControls);
     if (refCounts.length > mostRefIcons) mostRefIcons = refCounts.length;
-    if (q.serialConflict) anySerialConflict = true;
+    final badges = refCounts.length + (q.serialConflict ? 1 : 0) + (q.hasNotes ? 1 : 0);
+    if (badges > mostBadges) mostBadges = badges;
+    if (refCounts.isNotEmpty || q.serialConflict) anyRefOrConflict = true;
     for (final entry in refCounts.values) {
       if (entry.count > largestRefCount) largestRefCount = entry.count;
     }
@@ -1514,12 +1431,11 @@ _QsoListMetrics _computeMetrics({
   // under-reserving costs a row that overflows.
   final refCountWidth =
       largestRefCount > 1 ? textWidth(context, '×$largestRefCount', mono.copyWith(fontSize: 11)) : 0.0;
-  // The duplicate-serial mark (docs/design/contests.md §5.8.1) shares the
-  // refs column, one more icon on the rows that carry it.
-  final conflictWidth = anySerialConflict ? _refIconWidth + _refIconGap : 0.0;
-  final refsWidth = mostRefIcons == 0 && !anySerialConflict
+  // The "×N" is reserved per REF icon on the row with the most of those,
+  // which need not be the row with the most badges: the sum bounds both.
+  final refsWidth = mostBadges == 0
       ? 0.0
-      : _columnGap + mostRefIcons * (_refIconWidth + _refIconGap + refCountWidth) + conflictWidth;
+      : _columnGap + mostBadges * (qsoRefIconWidth + qsoRefIconGap) + mostRefIcons * refCountWidth;
 
   // `qsos` arrives oldest-first (QsosRepository.watchForOperation orders
   // by startAtMillis) — bucket it into consecutive UTC-day runs so each
@@ -1547,6 +1463,7 @@ _QsoListMetrics _computeMetrics({
     rstWidth: rstWidth,
     exchangeWidth: exchangeWidth,
     refsWidth: refsWidth,
+    refsAreNotesOnly: !anyRefOrConflict,
     hzDigits: hzDigits,
     usesMultipleModes: usesMultipleModes,
     dayKeys: dayKeys,

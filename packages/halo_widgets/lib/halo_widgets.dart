@@ -32,6 +32,7 @@ export 'src/number_keys.dart';
 export 'src/option_matching.dart';
 export 'src/platform_chrome.dart';
 export 'src/qso_list.dart';
+export 'src/qso_row_badges.dart' show qsoNotesMarker, qsoNotesMarkerSize;
 export 'src/ref_text_input.dart';
 export 'src/resizable_split_view.dart';
 export 'src/row_select_field.dart';

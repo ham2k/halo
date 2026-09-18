@@ -9,6 +9,7 @@ upcoming:
     - "Customize export data and templates by type in Settings → Exports"
     - "New Show Deleted Operations preference; a deleted operation's Tools menu offers Undelete"
     - "The Pennsylvania QSO Party now exchanges serial numbers"
+    - "QSOs with a note show a note icon in their row"
 
 "168":
   changes:

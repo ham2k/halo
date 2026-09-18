@@ -44,7 +44,7 @@ const _ceilings = <String, int>{
   'lib/services/cat/cat_service.dart': 2628,
   'lib/views/station_panel.dart': 2030,
   'lib/views/dock_host.dart': 2094,
-  '../packages/halo_widgets/lib/src/qso_list.dart': 2000,
+  '../packages/halo_widgets/lib/src/qso_list.dart': 1993,
   'lib/services/halo_services.dart': 1987,
   '../packages/halo_widgets/lib/src/dock_layout.dart': 1817,
   'lib/views/home_view.dart': 1684,
