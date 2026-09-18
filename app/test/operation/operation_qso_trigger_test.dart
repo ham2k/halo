@@ -47,7 +47,6 @@ void main() {
     final HaLoHarness(:services, :settings) = await makeHaLoServices(stubs: mockHooks);
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    await settings.setLayoutCustomization(true);
     await settings.setLayoutData(
       LayoutKeys.operationDock,
       DockSplit(Axis.horizontal, [
@@ -174,7 +173,6 @@ void main() {
     final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    await settings.setLayoutCustomization(true);
     await settings.setLayoutData(
       LayoutKeys.operationDock,
       DockSplit(Axis.horizontal, [

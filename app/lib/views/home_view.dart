@@ -165,11 +165,7 @@ class OperationListPanel extends StatelessWidget {
 }
 
 class HomeView extends StatefulWidget {
-  /// Home's panes are user-arrangeable (docs/design/layouts.md). Unlike the
-  /// Operation view, this is NOT behind the Enable Layout Customization
-  /// setting: that setting exists so an operator can be talked through a
-  /// fixed logging screen over the air, and Home is not the screen anyone is
-  /// talked through mid-contact.
+  /// Home's panes are user-arrangeable (docs/design/layouts.md).
   static const layoutPolicy = ViewLayoutPolicy.customizable;
 
   /// The dock module ids Home builds itself.
@@ -956,15 +952,19 @@ class _HomeViewState extends State<HomeView>
               onPressed: () => homeRail.destination = HomeDestination.settings,
             ),
           ),
-          if (!layoutSheetOpen) HeaderProfileLabel(settings: widget.services.settings),
+          // The railless header is a phone's, with the product name and the
+          // cog already in it: the profile name and the way into layout
+          // editing wait for the rail, which is one tap on the logo away.
+          if (railPresent && !layoutSheetOpen) HeaderProfileLabel(settings: widget.services.settings),
           // The VIEW's own layout options, and the only route to Restore
           // Defaults — without it an operator who rearranges Home into
           // something they dislike, or drops a pane, has no way back to the
           // arrangement it ships with. Null unless editing.
           ?viewOptionsButton(context, editing: layoutEditing),
-          // Only where there is an arrangement to edit — the dock, which is
-          // two-pane. Same rule as the Operation view's.
-          ...layoutHeaderControls(context),
+          // `layoutEditing` keeps them through a rail toggled away MID-EDIT:
+          // once editing these are Save and Discard, and hiding them with the
+          // rail would leave the edit with no way to end.
+          if (railPresent || layoutEditing) ...layoutHeaderControls(context),
           const SizedBox(width: Space.md),
           windowsCaptionSpacer(context),
         ],

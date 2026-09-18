@@ -605,7 +605,6 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override late final _Translations$settings$themeDescription$es themeDescription = _Translations$settings$themeDescription$es._(_root);
 	@override String get fontScale => 'Tamaño de Letra';
 	@override late final _Translations$settings$fontScaleOpts$es fontScaleOpts = _Translations$settings$fontScaleOpts$es._(_root);
-	@override late final _Translations$settings$layoutCustomization$es layoutCustomization = _Translations$settings$layoutCustomization$es._(_root);
 	@override late final _Translations$settings$keepDeviceAwake$es keepDeviceAwake = _Translations$settings$keepDeviceAwake$es._(_root);
 	@override String get layoutDensity => 'Densidad del Diseño';
 	@override late final _Translations$settings$layoutDensityOpts$es layoutDensityOpts = _Translations$settings$layoutDensityOpts$es._(_root);
@@ -1582,18 +1581,6 @@ class _Translations$settings$fontScaleOpts$es extends Translations$settings$font
 	@override String get largest => 'Más grande';
 	@override String get largestPlus => 'Más grande+';
 	@override String get largestPlusPlus => 'Más grande++';
-}
-
-// Path: settings.layoutCustomization
-class _Translations$settings$layoutCustomization$es extends Translations$settings$layoutCustomization$en {
-	_Translations$settings$layoutCustomization$es._(TranslationsEs root) : this._root = root, super.internal(root);
-
-	final TranslationsEs _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'Personalización de Disposición';
-	@override String get descriptionOn => 'La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles';
-	@override String get descriptionOff => 'La vista de registro usa su disposición estándar';
 }
 
 // Path: settings.keepDeviceAwake
@@ -3871,9 +3858,6 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.largest' => 'Más grande',
 			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
-			'settings.layoutCustomization.title' => 'Personalización de Disposición',
-			'settings.layoutCustomization.descriptionOn' => 'La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles',
-			'settings.layoutCustomization.descriptionOff' => 'La vista de registro usa su disposición estándar',
 			'settings.keepDeviceAwake.title' => 'Mantener el Dispositivo Despierto',
 			'settings.keepDeviceAwake.descriptionOn' => 'El dispositivo no se duerme mientras estás en la vista de registro o una sincronización está en curso, y puede dormirse tras 15 minutos sin ninguna de las dos',
 			'settings.keepDeviceAwake.descriptionOff' => 'El dispositivo se duerme como de costumbre',
@@ -4131,11 +4115,11 @@ extension on TranslationsEs {
 			'settings.syncPanel.countOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} operación', other: '${n} operaciones', ), 
 			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
 			'settings.syncPanel.counts' => 'Datos Sincronizados',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'Este dispositivo: ${qsos} · ${operations}',
 			'settings.syncPanel.countsPending' => ({required Object items}) => 'Pendiente de subir: ${items}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Servidor: ${qsos} · ${operations}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.countsLocalChecking' => 'Este dispositivo: comprobando…',
 			'settings.syncPanel.countsServerChecking' => 'Servidor: comprobando…',
 			'settings.syncPanel.countsServerUnavailable' => 'Servidor: no disponible',
@@ -4645,11 +4629,11 @@ extension on TranslationsEs {
 			'updates.ok' => 'OK',
 			'updates.updateReady' => 'Actualización lista',
 			'updates.restartToApply' => 'Se descargó una actualización. Reinicia para aplicarla.',
-			_ => null,
-		} ?? switch (path) {
 			'updates.appliesNextLaunch' => 'Se descargó una actualización. Se aplicará la próxima vez que abras la app.',
 			'updates.restartNow' => 'Reiniciar ahora',
 			'updates.reloadToUpdate' => 'Hay una versión más reciente de esta página disponible. Recarga para obtenerla.',
+			_ => null,
+		} ?? switch (path) {
 			'updates.reloadNow' => 'Recargar ahora',
 			'updates.checkForUpdates' => 'Buscar actualizaciones',
 			'updates.checkingForUpdates' => 'Buscando actualizaciones…',

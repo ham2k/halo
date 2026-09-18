@@ -135,7 +135,6 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   static const _automaticUpdateChecksKey = 'automaticUpdateChecks';
   static const _localeKey = 'locale';
   static const _fontScaleKey = 'fontScale';
-  static const _layoutCustomizationKey = 'layoutCustomization';
   static const _keepDeviceAwakeKey = 'keepDeviceAwake';
   static const _homeNavExpandedKey = 'homeNavExpanded';
   static const _layoutDensityKey = 'layoutDensity';
@@ -1028,22 +1027,6 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   @override
   Future<void> setState(Map<String, dynamic> state) => setSyncState(state);
 
-  /// Whether a view that CAN be rearranged is (docs/design/layouts.md). Off,
-  /// the Operation View uses its fixed two-pane split and there is no layout
-  /// button in the header at all; on, it uses the dock and the header carries
-  /// the way into edit mode.
-  ///
-  /// Two-pane only, and off by default: a fixed arrangement is the one an
-  /// operator can be talked through over the air, so rearranging is something
-  /// they opt into.
-  /// Deliberately independent of which panels exist: enabling a dashboard
-  /// panel extension must never quietly rearrange the operator's view as
-  /// well — two features behind one switch.
-  bool get layoutCustomization => (settingValue(generalGroup, _layoutCustomizationKey) as bool?) ?? false;
-
-  Future<void> setLayoutCustomization(bool value) =>
-      setSettingValue(generalGroup, _layoutCustomizationKey, value);
-
   /// Whether the device is held awake while the operator is on the logging
   /// view or a sync is making progress — see `WakeLockService`, which is
   /// what actually holds it and lets go after fifteen idle minutes. Off by
@@ -1685,7 +1668,6 @@ enum FontScale {
 /// write can't typo apart (a forked key would silently reset the pane width
 /// on every launch, and only across restarts).
 abstract final class LayoutKeys {
-  static const operationLeftColumn = 'operation.leftColumn';
   static const operationDock = 'operation.dock';
 
   /// The dock's STATE — which pane is on top, and later which collapsible
@@ -1730,8 +1712,8 @@ abstract final class LayoutKeys {
   static const homeLeftColumn = 'home.leftColumn';
 
   /// Home's dock, in the same four parts and for the same reasons. There is no
-  /// live `leftColumn` counterpart to Operation's: Home's split IS the dock's,
-  /// and the dock carries its own weights.
+  /// live `leftColumn` beside it: Home's split IS the dock's, and the dock
+  /// carries its own weights.
   static const homeDock = 'home.dock';
   static const homeDockState = 'home.dockState';
   static const homePaneOptions = 'home.paneOptions';

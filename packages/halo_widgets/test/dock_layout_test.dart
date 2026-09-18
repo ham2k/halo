@@ -1215,7 +1215,7 @@ void main() {
     // Joining a group happens where its tabs are, not in the middle of its
     // body — and which SIDE of the tab decides where in the group it lands.
     // Not right up against the strip's trailing edge: that is the dock's
-    // horizontal centre, where the delete target sits flush with the top
+    // horizontal centre, where the delete target reaches down from the top
     // edge and takes the drop instead.
     await dragTab(tester, 'Bravo', Offset(alphaTab.right - 60, alphaTab.center.dy));
     final root = reported! as DockSplit;
@@ -1365,6 +1365,34 @@ void main() {
       // Reported AFTER the removal, so the caller can forget whatever else it
       // keeps under that id.
       expect(deleted, ['c']);
+    });
+
+    testWidgets('the delete circle clears the safe area, and the inset above it still takes the drop', (tester) async {
+      tester.view.devicePixelRatio = 1.0;
+      tester.view.padding = const FakeViewPadding(top: 40);
+      addTearDown(tester.view.reset);
+      final key = GlobalKey<DockLayoutViewState>();
+      await tester.pumpWidget(harness(spec: twoGroups(), editing: true, key: key));
+
+      final gesture = await tester.startGesture(tester.getCenter(find.text('Charlie').first));
+      await gesture.moveBy(const Offset(0, 90));
+      await tester.pump();
+      final circle = tester.getRect(find.ancestor(
+        of: find.byIcon(MdiIcons.trashCanOutline),
+        matching: find.byType(AnimatedContainer),
+      ));
+      // Flush with the window's edge, a notch or status bar covers the part
+      // of the circle a pane thrown upwards is aimed at.
+      expect(circle.top, 40 + Space.md);
+
+      // The trap in fixing that with padding OUTSIDE the target: the strip
+      // above the circle goes dead, and a throw that overshoots — the usual
+      // one — drops the pane back where it came from.
+      await gesture.moveTo(Offset(circle.center.dx, 2));
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+      expect(key.currentState!.modules, ['a', 'b']);
     });
 
     testWidgets('the last pane has no delete target at all', (tester) async {

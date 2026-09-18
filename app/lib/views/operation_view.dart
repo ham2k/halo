@@ -1,11 +1,9 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The logging view: four tabs, ported from app-polo's OperationView —
-// "N QSOs" (list + logging panel; a wide-layout info side panel appears
-// there too, the first step toward the module-docking layout of
-// DESIGN.md §7), Spots, Map, and Operation (settings/activities/data, a
-// scoped-down OpSettingsTab).
+// The logging view: a dock of panes (docs/design/layouts.md) — the QSO list
+// with its logging panel, Info, Spots and Map — under the operation's own
+// header, whose sheet holds settings, activities and data.
 
 import 'dart:async';
 import 'dart:convert';
@@ -57,10 +55,9 @@ import 'package:halo_i18n/halo_i18n.dart';
 const _sheetHandoffThreshold = 0.6;
 
 class OperationView extends StatefulWidget {
-  /// The Operation view is the (currently only) layout-customizable view
-  /// (docs/design/layouts.md): its panes are dock-arrangeable behind the
-  /// Enable Layout Customization setting, and ALL its dividers — the fixed split's and the
-  /// dock's — use the solid header-colored style (the default).
+  /// The Operation view's panes are user-arrangeable
+  /// (docs/design/layouts.md), and its dividers use the solid header-colored
+  /// style (the default).
   static const layoutPolicy = ViewLayoutPolicy.customizable;
 
   final HaLoServices services;
@@ -95,12 +92,7 @@ class OperationView extends StatefulWidget {
   State<OperationView> createState() => _OperationViewState();
 }
 
-// TickerProviderStateMixin, not the Single- variant: this State creates a NEW
-// TabController whenever the tab count changes (the two-pane breakpoint swaps
-// a 4-tab layout for a 3-tab one), so more than one ticker exists over its
-// lifetime — which is exactly what SingleTickerProviderStateMixin asserts
-// against, and what resizing across the breakpoint would trip.
-class _OperationViewState extends State<OperationView> with TickerProviderStateMixin, DockHost<OperationView> {
+class _OperationViewState extends State<OperationView> with DockHost<OperationView> {
   @override
   HaLoServices get dockServices => widget.services;
 
@@ -186,13 +178,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   late bool _switchSentRcvd = widget.services.settings.switchSentRcvd;
   late bool _jumpAfterRST = widget.services.settings.jumpAfterRST;
   late DxFlags _dxFlags = widget.services.settings.dxFlags;
-
-  /// Gate for the drag-and-drop dock layout (DESIGN.md §7), replacing the
-  /// wide arrangement's fixed split-plus-tabs with a user-arrangeable
-  /// [DockLayoutView]. Narrow layouts are unaffected. Driven by the operator's
-  /// own Enable Layout Customization setting — [_onSettingsChanged] keeps it
-  /// live, so turning it on re-arranges an open operation without a restart.
-  late bool _customLayout = widget.services.settings.layoutCustomization;
 
 
 
@@ -303,76 +288,10 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// that one only fires for a freshly created operation.
   bool _openedOperationSheetOnboarding = false;
 
-  /// Explicit (not `DefaultTabController`) so `_suggestQso` can switch to
-  /// the QSOs tab programmatically — this is its only use in the app.
-  /// Because of this, the `Scaffold` below is NOT wrapped in a
-  /// `DefaultTabController` — `TabBar`/`TabBarView` are given this
-  /// controller directly. `DefaultTabController` always creates its own
-  /// internal controller, so it can't be combined with an externally-owned
-  /// one without the two drifting out of sync. If a future descendant widget
-  /// calls `DefaultTabController.of(context)` here, it will throw (no
-  /// ancestor found) — reach for `_tabController` directly instead, or
-  /// thread it down explicitly.
-  TabController? _tabController;
-
-  /// Both layouts always show exactly 3 tabs — one primary tab (QSOs
-  /// narrow / Info wide) plus Spots and Map — which is why the call site
-  /// below can't just pass `tabs.length`: it has to run before `tabs` is
-  /// built (see that call site's own comment). Keep this in sync if a tab
-  /// is ever added to or removed from either layout's list.
-  static const int _kTabCount = 3;
-
-  /// Spots is the middle tab in both arrangements — QSOs/Info, Spots, Map.
-  /// Keep this in sync alongside [_kTabCount] if either list is reordered: it
-  /// decides whether the Spots pane thinks it is on screen, and pointing it at
-  /// the wrong tab means the hidden panel scrolls and the visible one doesn't.
-  static const int _kSpotsTabIndex = 1;
-
-  /// Map is the last tab in both arrangements. Like [_kSpotsTabIndex] it has
-  /// to move with any reorder: it decides whether the map thinks it is being
-  /// PAINTED, and a webview that is only laid out never renders — which is
-  /// the one thing MapLibre's `load` waits for, and the whole input to the
-  /// map's ready horizons (see MapReadyWatchdog).
-  static const int _kMapTabIndex = _kTabCount - 1;
-
-  /// Whether the Spots TAB is the selected one, for [SpotsPanel.visible].
-  /// Only half the answer — in the dock arrangement the pane's own
-  /// `DockPaneVisibility` is the other half, and the panel ANDs the two. This
-  /// side is a notifier rather than a prop because the tab controller notifies
-  /// on every frame of the tab-change animation, and nothing else in this view
-  /// rebuilds on a tab change.
-  final _spotsVisible = ValueNotifier(false);
-
-  /// Re-reads that, from [_wasTwoPane] rather than a fresh `ShirtSize.of` so
-  /// it can also run from the tab controller's listener — reading an inherited
-  /// widget outside build would register a dependency there. Safe to call from
-  /// build: `SpotsPanel` answers it without a setState of its own.
-  ///
-  /// The tab controller is only ever the answer for the FIXED narrow
-  /// arrangement — with customization on there is a dock at every width, and
-  /// this side is unconditionally true so `DockPaneVisibility` decides alone.
-  void _syncSpotsVisibility() {
-    _spotsVisible.value = _customLayout || _tabController?.index == _kSpotsTabIndex;
-  }
-
-  void _updateTabControllerIfNeeded(int requiredLength) {
-    if (_tabController == null || _tabController!.length != requiredLength) {
-      final oldIndex = _tabController?.index ?? 0;
-      final previous = _tabController;
-      _tabController = TabController(
-        length: requiredLength,
-        vsync: this,
-        initialIndex: oldIndex.clamp(0, requiredLength - 1),
-      )..addListener(_syncSpotsVisibility);
-      // Disposed after the frame, not here: this runs DURING build, and the
-      // TabBar/TabBarView still holding the old controller are only rebuilt
-      // with the new one later in the same frame — disposing it inline makes
-      // them touch a dead controller.
-      if (previous != null) {
-        WidgetsBinding.instance.addPostFrameCallback((_) => previous.dispose());
-      }
-    }
-  }
+  /// [SpotsPanel.visible]'s host half. The panel ANDs it with its pane's own
+  /// `DockPaneVisibility`, and in a dock that second half is the whole
+  /// answer, so this one never goes false.
+  final _spotsVisible = ValueNotifier(true);
 
   /// A QSON-shaped `{their: {call}, freq?, band?, mode?, refs?}` map handed
   /// from the Spots tab (tapping a spot — see `SpotsPanel.onSuggestQso`) to
@@ -389,20 +308,14 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   CallInfoData? _callInfo;
 
   /// Keep the pane subtrees' State alive when the layout flips between the
-  /// narrow tab arrangement and the wide split (docs/design/layouts.md rule
-  /// 2): Flutter reparents a GlobalKey'd subtree instead of rebuilding it,
-  /// so a half-typed callsign survives a window resize across the S/L
-  /// boundary. Both arrangements come from the one build below — the keys
-  /// are never mounted twice in a frame (rule 3).
+  /// narrow and the wide dock (docs/design/layouts.md): Flutter reparents a
+  /// GlobalKey'd subtree instead of rebuilding it, so a half-typed callsign
+  /// survives a window resize across the S/L boundary. Both classes are fed
+  /// from the one build below — the keys are never mounted twice in a frame.
   ///
-  /// Adoption only happens for subtrees BUILT in the new arrangement's
-  /// first frame: the logging pane always is (always-visible in wide;
-  /// didChangeDependencies snaps to its tab going narrow), and so is the
-  /// selected right-side tab. A visited-but-unselected Spots/Map pane lives
-  /// in the TabBarView's keep-alive bucket, which doesn't carry across the
-  /// flip — those reset. Known limitation, preferable to the alternatives
-  /// (transferring the bucket wholesale defers the page warp past the
-  /// frame, which would dispose the logging pane instead).
+  /// Adoption only happens for subtrees BUILT in the new class's first
+  /// frame, which a dock's are: it mounts every pane of a group, on top or
+  /// not. A pane the new class's arrangement does not hold is disposed.
   final _loggingKey = GlobalKey();
   final _spotsKey = GlobalKey();
   final _mapKey = GlobalKey();
@@ -552,11 +465,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     return 1.0 - (1.0 - 0.38) * growth;
   }
 
-  /// Tracks the arrangement across dependency changes so the flip can be
-  /// detected BEFORE build (see didChangeDependencies). Null until first
-  /// resolved.
-  bool? _wasTwoPane;
-
   /// [reveal] false fills the fields and leaves the operator where they are —
   /// what sliding a spot row open does. The spots list is the thing being
   /// worked in that gesture, and on a narrow window surfacing the logging
@@ -583,10 +491,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // is where that is put to the operator, once the gesture is over, and
     // [_withdrawSuggestedQso] is where it goes when the row closes.
     if (!reveal) return;
-    // On two-pane layouts the logging pane is already visible on the left —
-    // and tab 0 is Info there, so switching would be wrong twice over. In
-    // dock mode the user may have tabbed the logging pane behind others, so
-    // surface it (no-op when it's already visible).
+    // The operator may have tabbed the logging pane behind others, so
+    // surface it (no-op when it's already on top).
     _revealLoggingPanel();
   }
 
@@ -676,16 +582,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     return false;
   }
 
+  /// Whether the first dock this view mounts still owes the logging pane a
+  /// reveal, for the link that pushed the view with fields to fill. A dock
+  /// opens on its STORED selection, which is shared by every operation: left
+  /// on Spots anywhere, a phone would open this one on Spots too, with the
+  /// link's callsign filled in behind it and nothing on screen to say so.
+  late bool _revealLoggingOnMount = widget.initialSuggestedQso != null;
+
   /// Surface the logging panel wherever this layout keeps it.
-  void _revealLoggingPanel() {
-    // The dock answers for both classes; the tab controller only for the fixed
-    // narrow arrangement customization-off still draws.
-    if (_customLayout) {
-      dockKey.currentState?.revealModule('logging');
-    } else if (!ShirtSize.of(context).isTwoPane) {
-      _tabController?.animateTo(0);
-    }
-  }
+  void _revealLoggingPanel() => dockKey.currentState?.revealModule('logging');
 
   /// This view's zero-beat draw cache — per view, because it is keyed by spot
   /// and only meaningful for the spots this operation is working. The rule it
@@ -696,35 +601,14 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   void didChangeDependencies() {
     super.didChangeDependencies();
     _registerNativePanels();
-    final isTwoPane = ShirtSize.of(context).isTwoPane;
-    // Flipping to narrow, land on the QSOs tab: the logging pane was the
-    // always-visible left pane, so it's the natural continuation — and it
-    // MUST be the selected tab for its GlobalKey'd subtree to be built (and
-    // its State adopted) in the narrow TabBarView's first frame; on any
-    // other index, page 0 wouldn't be inflated and the in-progress QSO
-    // entry would be disposed.
-    // Only for the FIXED narrow arrangement: with customization on, narrowing
-    // hands over to the narrow DOCK, which opens on its own stored selection
-    // and keeps every pane mounted, so there is no page to inflate and no
-    // State to rescue. An edit in progress crosses the boundary with the
-    // operator (docs/design/layouts.md) rather than being stranded there.
-    if (!_customLayout && _wasTwoPane == true && !isTwoPane) _tabController?.index = 0;
-    _wasTwoPane = isTwoPane;
   }
 
   void _onSettingsChanged() {
     final s = widget.services.settings;
-    final enabled = s.layoutCustomization;
-    // Turning customization off mid-edit takes the dock away, and with it
-    // every control that could have finished the edit. Discard first, so the
-    // draft goes back to what was saved rather than becoming the arrangement
-    // that reappears when they turn it on again.
-    if (!enabled && layoutEditing) revertLayout();
     // Local mirrors of the logging panel's own toggles (see
     // _buildLoggingSettingsButton) — flipped from the settings dialog,
     // so this is the only place they follow SettingsService.
-    final changed = enabled != _customLayout ||
-        s.showRSTFields != _showRSTFields ||
+    final changed = s.showRSTFields != _showRSTFields ||
         s.showStateField != _showStateField ||
         s.showGridField != _showGridField ||
         s.showDeletedQSOs != _showDeletedQSOs ||
@@ -737,7 +621,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         s.dxFlags != _dxFlags;
     if (changed && mounted) {
       setState(() {
-        _customLayout = enabled;
         _showRSTFields = s.showRSTFields;
         _showStateField = s.showStateField;
         _showGridField = s.showGridField;
@@ -797,8 +680,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _commandContext.isVisible = () => mounted && (ModalRoute.of(context)?.isCurrent ?? false);
     // The link that pushed this view. Set directly rather than through
     // `_suggestQso`: that one calls setState and reveals the logging panel,
-    // neither of which is legal before the first build, and the panel it
-    // would reveal is the one about to be built anyway. No zero-beat offset
+    // neither of which is legal before the first build — the reveal waits for
+    // the dock instead (see [_revealLoggingOnMount]). No zero-beat offset
     // here for the same reason `measured` skips it above.
     _suggestedQso = widget.initialSuggestedQso;
     // F1-F8 key CW messages while this operation is in front — see
@@ -861,9 +744,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// Whether a panel in the CURRENT arrangement declared [trigger]. Every
   /// signal an extension panel can be woken by costs this view something to
   /// produce — a rebuild on a timer, or a QSO draft rebuilt per keystroke —
-  /// so each one is gated on somebody actually having asked for it. A layout
-  /// that can't hold an extension panel at all never gets past the first
-  /// line.
+  /// so each one is gated on somebody actually having asked for it.
   /// Reads the EFFECTIVE triggers, so a signal only one placement asked for
   /// in its last render — an operator's template naming the callsign being
   /// typed — starts being produced. `PanelService` notifies when that set
@@ -872,7 +753,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// necessarily happens before it: the panel is answered with no draft,
   /// then woken by the next change to one.
   bool _anyPanelWants(String trigger) {
-    if (!_customLayout) return false;
     return dockSpec?.collectModules().any((id) => widget.services.panels.triggersFor(id).contains(trigger)) ?? false;
   }
 
@@ -1253,7 +1133,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     _rescoreSub?.cancel();
     _rescoreDebounce?.cancel();
     _draftQsoDebounce?.cancel();
-    _tabController?.dispose();
     _spotsVisible.dispose();
     _sheetHeaderLines.dispose();
     widget.services.closeOperationContext(_commandContext);
@@ -1543,26 +1422,20 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     );
   }
 
-  /// On wide layouts the Info pane is already in the layout — surface it and
-  /// let it show whatever it shows. Answers whether it actually did: a custom
+  /// Where the Info pane is in the layout, surface it and let it show
+  /// whatever it shows. Answers whether it actually did: a custom
   /// layout the operator has dropped the Info pane out of has nothing to
   /// reveal (`revealModule` no-ops on a module that isn't there), and a tap
   /// that stops here would spend its splash on nothing. Saying so lets the
   /// caller fall back to the modal, which always works.
   bool _revealInfoPane() {
-    // Asked of the dock first, at either width: the narrow arrangement ships
+    // Asked of the dock, never of the width: the narrow arrangement ships
     // without an Info pane but the operator may have added one, and `modules`
     // is what actually answers that — a width test would refuse a pane that
     // is on screen.
-    if (_customLayout) {
-      final dock = dockKey.currentState;
-      if (dock == null || !dock.modules.contains('info')) return false;
-      dock.revealModule('info');
-      return true;
-    }
-    if (!ShirtSize.of(context).isTwoPane) return false;
-    if (_tabController == null) return false;
-    if (_tabController!.index != 0) _tabController!.animateTo(0);
+    final dock = dockKey.currentState;
+    if (dock == null || !dock.modules.contains('info')) return false;
+    dock.revealModule('info');
     return true;
   }
 
@@ -1839,7 +1712,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                                       unawaited(_showOperationOptions(op,
                                           includeExport: !isTwoPane,
                                           includeImport: !isTwoPane,
-                                          includeEditLayout: !isTwoPane && _customLayout && !layoutEditing));
+                                          includeEditLayout: !isTwoPane && !layoutEditing));
                                     }
                                   },
                                   onExport: () async {
@@ -2088,7 +1961,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // and one button, and the operation's own title has the better claim.
         // Once editing, the controls come back here at every width: a menu is
         // not somewhere to hide the only way out of a mode.
-        if (_customLayout && (isTwoPane || layoutEditing)) ...[
+        if (isTwoPane || layoutEditing) ...[
           // The LAYOUT sheet draws its own copy of these while IT is up; two
           // would be one too many, and the one down here would be the
           // unreachable one.
@@ -2233,7 +2106,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
     // would be measuring the placeholder font's glyph advance more than the
     // arithmetic, and would break on any padding change. It is here because
     // the budget must describe the row it is measuring.
-    final layoutControlsWidth = _customLayout && !layoutSheetOpen && (isTwoPane || layoutEditing)
+    final layoutControlsWidth = !layoutSheetOpen && (isTwoPane || layoutEditing)
         ? Space.md + kMinInteractiveDimension
         : 0.0;
 
@@ -2455,10 +2328,8 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   /// every declared setting targeting `'logging'`
   /// (settings/settings_target_dialog.dart), rather than the operation
   /// view's AppBar, since none of this applies to the Info/Spots/Map tabs.
-  /// Rendered at three call sites depending on layout (the dock module
-  /// header, the narrow tab bar's QSOs tab, the fixed wide split's new
-  /// logging-pane title bar) — same content everywhere, so they can't
-  /// drift.
+  /// Rendered on the logging module's own tab or pane header, in both dock
+  /// classes.
   Widget _buildLoggingSettingsButton(List<Qso> qsos, {BuildContext? context}) {
     // Defaults to this State's own context, but the dock layout's
     // `tabActions` is a `WidgetBuilder` specifically so its call site can
@@ -2508,190 +2379,26 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         title: (context ?? this.context).t.operation.menu.mapSettingsTitle,
       );
 
-  /// Floor for [_narrowTabBar]'s QSOs-tab padding — shrunk before the tab
-  /// is ever allowed to grow past an even third (and, in turn, before
-  /// Spots/Map are ever asked to give up any of their own share).
-  static const double _kNarrowTabMinPadding = 4;
-
-  /// The selection indicator's thickness, taken from the hand-rolled strips
-  /// so all three agree. Named here because the wide `TabBar` reports its
-  /// height as tab + indicator, so the tabs have to be sized against it for
-  /// the strip to land on the chrome height.
-  static const double _tabIndicatorWeight = TabChrome.defaultIndicatorWidth;
-
-  /// The narrow layout's tab strip. Hand-built rather than a stock [TabBar]
-  /// (which always splits its width equally across tabs): the QSOs tab
-  /// carries both its label and the settings button
-  /// (_buildLoggingSettingsButton), so on the narrowest phones an equal
-  /// third isn't always enough room for both, and a widget nested inside a
-  /// `Tab` competes with the tab bar's own tap handling for that gesture and
-  /// loses, so it never receives taps either. The label stays centered
-  /// across the tab's full width, same as any other tab, with the button
-  /// pinned to the tab's right edge regardless — which needs room for the
-  /// button on *both* sides of the centered label, not just the one it
-  /// occupies, to avoid the two overlapping. Fitting that: first the tab's
-  /// own horizontal padding shrinks (down to [_kNarrowTabMinPadding]); only
-  /// once padding is already at that floor does the tab grow past an even
-  /// third, taking space from Spots/Map. The reserved width always assumes
-  /// the button is showing (not just when QSOs is selected), so the strip
-  /// doesn't reflow when the selection changes.
-  PreferredSizeWidget _narrowTabBar(int realQsoCount, List<Qso> qsos) {
-    final theme = Theme.of(context);
-    final labelStyle = theme.textTheme.titleSmall;
-    final qsosLabel = context.t.operation.tabs.qsos(count: formatNumber(realQsoCount));
-    // textWidth (not a bare TextPainter): it folds in the ambient
-    // DefaultTextStyle and text scaler the same way the actual rendered
-    // Text does, so this reservation doesn't under-measure under OS/browser
-    // accessibility text scaling the way a raw TextPainter would.
-    final qsosLabelWidth = textWidth(context, qsosLabel, (labelStyle ?? const TextStyle()).copyWith(fontWeight: FontWeight.bold));
-    // The button's own width, reserved on both sides of the centered label
-    // (see the doc comment above).
-    final qsosContentWidth = qsosLabelWidth + LayoutDensity.chromeHeightOf(context) * 2;
-
-    return PreferredSize(
-      key: const Key('narrowTabBar'),
-      preferredSize: Size.fromHeight(LayoutDensity.chromeHeightOf(context)),
-      child: AnimatedBuilder(
-        animation: _tabController!,
-        builder: (context, child) {
-          return Material(
-            color: theme.appBarTheme.backgroundColor ?? theme.colorScheme.primary,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final evenShare = constraints.maxWidth / 3;
-                double qsosWidth;
-                double qsosPadding;
-                if (qsosContentWidth + kTabLabelPadding.horizontal <= evenShare) {
-                  qsosWidth = evenShare;
-                  qsosPadding = kTabLabelPadding.horizontal / 2;
-                } else if (qsosContentWidth + _kNarrowTabMinPadding * 2 <= evenShare) {
-                  qsosWidth = evenShare;
-                  qsosPadding = (evenShare - qsosContentWidth) / 2;
-                } else {
-                  qsosWidth = qsosContentWidth + _kNarrowTabMinPadding * 2;
-                  qsosPadding = _kNarrowTabMinPadding;
-                }
-                return Row(
-                  children: [
-                    SizedBox(
-                      width: qsosWidth,
-                      // Row's incoming height constraint here is loose, so a
-                      // shorter tab (Spots/Map, just a label) would
-                      // otherwise size its Container to its own content and
-                      // paint the bottom-border indicator at ITS bottom
-                      // edge — above the bar's true bottom — while the
-                      // taller QSOs tab (label + button) sits lower. An
-                      // explicit height forces every tab's Container to the
-                      // bar's full height regardless, so every indicator
-                      // lands flush at the same bottom edge, same as a
-                      // stock TabBar.
-                      height: LayoutDensity.chromeHeightOf(context),
-                      child: _narrowTab(
-                        0,
-                        qsosLabel,
-                        labelStyle,
-                        padding: EdgeInsets.symmetric(horizontal: qsosPadding),
-                        trailing: _buildLoggingSettingsButton(qsos),
-                      ),
-                    ),
-                    Expanded(
-                      child: SizedBox(
-                        height: LayoutDensity.chromeHeightOf(context),
-                        child: _narrowTab(1, context.t.operation.tabs.spots, labelStyle),
-                      ),
-                    ),
-                    Expanded(
-                      child: SizedBox(
-                        height: LayoutDensity.chromeHeightOf(context),
-                        child: _narrowTab(2, context.t.operation.tabs.map, labelStyle),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _narrowTab(
-    int index,
-    String label,
-    TextStyle? labelStyle, {
-    Widget? trailing,
-    EdgeInsetsGeometry padding = kTabLabelPadding,
-  }) {
-    final selected = _tabController!.index == index;
-    return TabChrome(
-      selected: selected,
-      semanticLabel: label,
-      padding: padding,
-      onTap: () => _tabController!.animateTo(index),
-      builder: (context, labelColor) {
-        final text = Text(label, style: labelStyle?.copyWith(color: labelColor, fontWeight: selected ? FontWeight.bold : null));
-        if (trailing == null) return Center(child: text);
-        return Stack(
-          alignment: Alignment.center,
-          children: [
-            Center(child: text),
-            Align(
-              alignment: Alignment.centerRight,
-              // Reserved width already accounts for the button whether
-              // it's showing or not (see _narrowTabBar's doc comment) —
-              // AnimatedOpacity never collapses its own layout space
-              // either way, so the tab doesn't reflow when the selection
-              // changes. IgnorePointer keeps the faded-out button from
-              // eating taps meant for the tab underneath it (opacity alone
-              // doesn't affect hit testing); ExcludeSemantics keeps a
-              // screen reader from landing on a "Show menu" control that
-              // isn't actually there to look at; ExcludeFocus does the
-              // same for keyboard/switch-access focus traversal, which
-              // IgnorePointer alone doesn't block.
-              child: ExcludeSemantics(
-                excluding: !selected,
-                child: ExcludeFocus(
-                  excluding: !selected,
-                  child: IgnorePointer(
-                    ignoring: !selected,
-                    child: AnimatedOpacity(
-                      opacity: selected ? 1 : 0,
-                      duration: const Duration(milliseconds: 150),
-                      child: trailing,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
-  /// The dock-layout prototype's wide arrangement: the same five panes as
-  /// the fixed layout, but arranged by a persisted, user-editable dock tree
-  /// (drag a tab to move a pane; see dock_layout.dart). The default mirrors
-  /// the fixed layout — logging on the left, the rest tabbed on the right.
-  /// No 'operation' pane: its settings live in the operation sheet.
+  /// The panes this view builds itself, arranged by a persisted,
+  /// user-editable dock tree (drag a tab to move a pane; see
+  /// dock_layout.dart). No 'operation' pane: its settings live in the
+  /// operation sheet.
   static const _dockModuleIds = ['logging', 'info', 'spots', 'map'];
 
-  /// Mirrors the fixed layout of its own class — and is what Restore Defaults
-  /// puts back.
+  /// What an operator who never edits sees, and what Restore Defaults puts
+  /// back.
   ///
   /// Wide: logging on the left, the rest tabbed on the right. Narrow: one tab
-  /// strip of QSOs, Spots and Map, exactly the set the hardcoded narrow
-  /// `TabBar` draws, so an operator who never edits sees nothing move. Info is
-  /// not in it there either — it is a tap away on the callsign area — but it
-  /// is offered by the sheet like any other panel.
+  /// strip of QSOs, Spots and Map. Info is not in the narrow one — it is a tap
+  /// away on the callsign area — but it is offered by the sheet like any
+  /// other panel.
   @override
   DockNode buildDefaultDockSpec(DockLayoutClass layoutClass, {bool migrate = true}) =>
       switch (layoutClass) {
         DockLayoutClass.narrow => DockGroup(['logging', 'spots', 'map']),
         DockLayoutClass.wide => DockSplit(Axis.horizontal, [
           DockGroup(['logging']),
-          // Selected: Info, matching the fixed wide layout's initial tab.
+          // Selected: Info.
           DockGroup(['info', 'spots', 'map']),
         ], [2, 1]),
       };
@@ -2937,21 +2644,23 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
         // through it.
         dockLayoutClass = isTwoPane ? DockLayoutClass.wide : DockLayoutClass.narrow;
 
-        // Edit mode as the HEADER sees it. `layoutEditing` alone is not
-        // enough: Save and Discard are only emitted where there is an
-        // arrangement to edit, so a header that dresses itself for editing on
-        // any wider condition strands the operator the moment there is none —
-        // the dock gone, the operation's own title and setup route replaced by
-        // a view name, and nothing on screen to end the edit with. With
-        // customization off that is exactly what a narrow window is, since the
-        // fixed `TabBar` is what it draws instead.
-        final editingHeader = layoutEditing && _customLayout;
+        if (_revealLoggingOnMount) {
+          _revealLoggingOnMount = false;
+          // After the frame: the dock this build mounts has no State until then.
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _revealLoggingPanel();
+          });
+        }
 
-        // The pane subtrees, built once and placed by whichever arrangement
-        // is active (their GlobalKeys carry the State across a flip).
+        // Edit mode as the HEADER sees it: the operation's own title and
+        // setup route give way to the view's name and its layout options.
+        final editingHeader = layoutEditing;
+
+        // The pane subtrees, built once and placed by whichever dock class is
+        // active (their GlobalKeys carry the State across a flip).
         // The Listeners below sit INSIDE each KeyedSubtree so the keys still
         // wrap the same subtree they always did — the reparenting between
-        // layouts depends on that. They only observe: pointer-down does not
+        // classes depends on that. They only observe: pointer-down does not
         // compete for the gesture or change hit testing.
         final loggingPanel = KeyedSubtree(
           key: _loggingKey,
@@ -3109,8 +2818,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             ),
           ),
         );
-        // ONE construction serving both wide arrangements (fixed tab slot 0
-        // and the dock's 'info' module) so their props can't drift apart.
         final infoPanel = Listener(
           onPointerDown: (_) => _panels.used('info'),
           child: InformationPanel(
@@ -3122,84 +2829,6 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             activityControls: _loggingControls,
           ),
         );
-        // Built before `tabBar`/`tabView`/`_narrowTabBar` below, all of
-        // which read `_tabController!` directly — the controller must
-        // already be this build's final instance, not the one about to be
-        // replaced, by the time any of them are constructed.
-        _updateTabControllerIfNeeded(_kTabCount);
-        // After the controller, and after `dockState`/`_customLayout` have
-        // settled for this build — the tab controller's own listener only
-        // covers the index moving under a view that isn't rebuilding.
-        _syncSpotsVisibility();
-
-        // Wide: Info, Spots, Map — logging has its own pane in the split.
-        // Narrow: QSOs, Spots, Map — logging is what the view is for, and
-        // Info is one tap away via the callsign area.
-        // `TabBar` has no height of its own: it reports its tallest Tab plus
-        // `indicatorWeight`. So the height goes on the Tabs, less the
-        // indicator, and the strip lands on exactly the chrome height — which
-        // is what makes it line up with the title bar across the divider.
-        // Left to Flutter's defaults this bar was 50 against the title bar's
-        // 48, and the comment at the split claimed they matched.
-        final tabHeight = LayoutDensity.chromeHeightOf(context) - _tabIndicatorWeight;
-        final List<Widget> tabs = [
-          if (!isTwoPane)
-            Tab(height: tabHeight, text: context.t.operation.tabs.qsos(count: formatNumber(realQsoCount))),
-          if (isTwoPane) Tab(height: tabHeight, text: context.t.operation.tabs.info),
-          Tab(height: tabHeight, text: context.t.operation.tabs.spots),
-          Tab(height: tabHeight, text: context.t.operation.tabs.map),
-        ];
-        final List<Widget> tabChildren = [
-          // The logging panel is kept alive behind the other tabs, so tabbing
-          // away leaves it built AND still holding focus. That is fine for the
-          // panel itself, but its mobile numbers row is drawn by the app's
-          // status-bar overlay, outside this tab view — so it has to be told
-          // when it is no longer the visible pane, or the row hangs over
-          // whatever tab replaced it and types into the hidden call field.
-          // ListenableBuilder because nothing else here rebuilds on tab change.
-          if (!isTwoPane)
-            ListenableBuilder(
-              listenable: _tabController!,
-              builder: (context, child) => KeyboardAccessoryVisibility(
-                visible: _tabController!.index == 0,
-                child: child!,
-              ),
-              child: _KeepAlive(child: loggingPanel),
-            ),
-          if (isTwoPane) infoPanel,
-          spotsPanel,
-          // The map's half of the same problem the logging panel has above,
-          // and the reason it needs telling at all: `_LazyTab` keeps the pane
-          // alive behind the other tabs, where it is neither laid out nor
-          // painted, so its webview cannot render and cannot report ready.
-          // Left unsaid, the pane reads the absence of a frame it was never
-          // going to get as a map that failed to load. The dock arrangement
-          // publishes this for itself; this is the fixed one's half.
-          ListenableBuilder(
-            listenable: _tabController!,
-            builder: (context, child) => DockPaneVisibility(
-              visible: _tabController!.index == _kMapTabIndex,
-              child: child!,
-            ),
-            child: mapPanel,
-          ),
-        ];
-
-        final tabBar = TabBar(
-          controller: _tabController!,
-          indicatorSize: TabBarIndicatorSize.tab,
-          indicatorWeight: _tabIndicatorWeight,
-          tabs: tabs,
-        );
-        final tabView = TabBarView(
-          controller: _tabController!,
-          // Tabs change only via the tab bar — horizontal swipes would
-          // fight the logging strip's own horizontal scrolling (and map
-          // panning), so page-swiping is disabled in both layouts.
-          physics: const NeverScrollableScrollPhysics(),
-          children: tabChildren,
-        );
-
         // Observes only: a pointer press or a scroll anywhere on the view is
         // activity for the awake hold, and this neither competes for the
         // gesture nor changes hit testing.
@@ -3254,8 +2883,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
               // theme's default gap here.
               titleSpacing: 0,
               // The logging-only settings menu travels with the logging
-              // panel itself, not this AppBar (dock module header,
-              // narrow QSOs tab, or the fixed wide split's pane title bar —
+              // panel itself, not this AppBar (its dock tab or pane header —
               // see _buildLoggingSettingsButton), since none of its toggles
               // apply to the Info/Spots/Map tabs.
               //
@@ -3285,7 +2913,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                           _draftOperation ?? operation,
                           includeExport: !isTwoPane,
                           includeImport: !isTwoPane,
-                          includeEditLayout: !isTwoPane && _customLayout && !layoutEditing,
+                          includeEditLayout: !isTwoPane && !layoutEditing,
                         ),
                       ),
                       onExport: () => unawaited(_export(_draftOperation ?? operation)),
@@ -3426,17 +3054,7 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
                   ),
                 ),
               ),
-              // On two-pane layouts the tabs move into the right-side pane
-              // below.
-              // The dock draws its own tab strip in both classes, so this
-              // one is only for the fixed narrow arrangement — the one
-              // `layoutCustomization` off still gets.
-              bottom: isTwoPane || _customLayout ? null : _narrowTabBar(realQsoCount, qsos),
             ),
-          // One tab set either way, always _kTabCount tabs on the one
-          // controller — it is never recreated, so the selected index
-          // carries across a flip: index 0 maps QSOs ↔ Info, which is
-          // sensible since logging is always visible in the wide split.
           body: AdifDropTarget(
             // Wraps the whole body so a log file can be dropped anywhere on
             // the operation, not onto some particular panel — the operator is
@@ -3451,90 +3069,15 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
             // Real device safe-area insets (notch, home indicator) bubble
             // in from here; PaneSafeArea's own
             // divider-clearance role composes with it further down.
-            child: _customLayout
-                ? withViewOverrides(_dockLayout(
-                    loggingPanel: loggingPanel,
-                    infoPanel: infoPanel,
-                    spotsPanel: spotsPanel,
-                    mapPanel: mapPanel,
-                    realQsoCount: realQsoCount,
-                    qsos: qsos,
-                    operation: operation,
-                  ))
-                : isTwoPane
-                ? ResizableSplitView(
-                    // Null when never dragged → the split's own 2/3-capped-
-                    // at-sMax default applies.
-                    preferredPrimaryWidth: widget.services.settings.layoutDimension(LayoutKeys.operationLeftColumn),
-                    onPreferredPrimaryWidthChanged: (width) =>
-                        widget.services.settings.setLayoutDimension(LayoutKeys.operationLeftColumn, width),
-                    // The fixed split's counterpart to the dock layout's
-                    // module header and the narrow view's QSOs tab: the
-                    // logging pane has no title of its own otherwise, and
-                    // that's where its settings button lives.
-                    // One chrome height for both sides of the split, so the
-                    // title bar and the secondary's TabBar line up at the
-                    // divider — see `tabHeight` above for why the TabBar has
-                    // to be told, rather than left to its own default.
-                    primary: Column(
-                      children: [
-                        Material(
-                          color:
-                              Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
-                          child: SizedBox(
-                            height: LayoutDensity.chromeHeightOf(context),
-                            // A Builder, not this method's own `context`: that
-                            // context is an ANCESTOR of the `PaneSafeArea.root`
-                            // wrapping the whole body below, so `leftOf` would
-                            // always resolve to its `?? 0` default instead of
-                            // the real inset — same pattern as
-                            // dock_layout.dart's `_buildGroup`.
-                            child: Builder(
-                              builder: (context) => Padding(
-                                padding: EdgeInsets.only(left: PaneSafeArea.leftOf(context)),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal: Space.xl),
-                                        child: Text(
-                                          context.t.operation.tabs.qsos(count: formatNumber(realQsoCount)),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                            color: Theme.of(context).appBarTheme.foregroundColor ??
-                                                Theme.of(context).colorScheme.onPrimary,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                    _buildLoggingSettingsButton(qsos),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        Expanded(child: loggingPanel),
-                      ],
-                    ),
-                    secondary: Column(
-                      children: [
-                        Material(
-                          // The TabBar theme assumes it sits on the AppBar's
-                          // color (see theme.dart's tabBarTheme note). Tabs
-                          // deliberately do NOT inset by PaneSafeArea: they
-                          // stretch to the split's very edge (the grab strip
-                          // shaving a sliver off the first tab's tap area is
-                          // fine for a wide target like a tab).
-                          color: Theme.of(context).appBarTheme.backgroundColor ?? Theme.of(context).colorScheme.primary,
-                          child: tabBar,
-                        ),
-                        Expanded(child: tabView),
-                      ],
-                    ),
-                  )
-                : tabView,
+            child: withViewOverrides(_dockLayout(
+              loggingPanel: loggingPanel,
+              infoPanel: infoPanel,
+              spotsPanel: spotsPanel,
+              mapPanel: mapPanel,
+              realQsoCount: realQsoCount,
+              qsos: qsos,
+              operation: operation,
+            )),
           ),
           ),
         ),
@@ -3544,36 +3087,11 @@ class _OperationViewState extends State<OperationView> with TickerProviderStateM
   }
 }
 
-/// Keeps the QSO list + logging panel's state alive while another tab is
-/// showing — a bare TabBarView disposes off-screen tabs by default, which
-/// would silently drop whatever's mid-typed in the logging panel the
-/// moment someone glances at the Map tab.
-class _KeepAlive extends StatefulWidget {
-  final Widget child;
-
-  const _KeepAlive({required this.child});
-
-  @override
-  State<_KeepAlive> createState() => _KeepAliveState();
-}
-
-class _KeepAliveState extends State<_KeepAlive> with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
-
-  @override
-  Widget build(BuildContext context) {
-    super.build(context);
-    return widget.child;
-  }
-}
-
-/// Like [_KeepAlive], but also defers [child]'s first build by
-/// [kTabScrollDuration] behind a placeholder — for panels (Spots, Map) whose
-/// first inflation is expensive enough to stutter if it lands on the same
-/// frames as the tab-switch animation that reveals them. Only defers once:
-/// [AutomaticKeepAliveClientMixin] keeps the real child alive afterward, so
-/// switching away and back doesn't show the placeholder again.
+/// Defers [child]'s first build by [kTabScrollDuration] behind a placeholder
+/// — for panels (Spots, Map) whose first inflation is expensive enough to
+/// stutter if it lands on the same frames as the view's own arrival. Only
+/// defers once: the dock keeps a mounted pane mounted, so switching away and
+/// back doesn't show the placeholder again.
 class _LazyTab extends StatefulWidget {
   final Widget child;
 
@@ -3583,7 +3101,7 @@ class _LazyTab extends StatefulWidget {
   State<_LazyTab> createState() => _LazyTabState();
 }
 
-class _LazyTabState extends State<_LazyTab> with AutomaticKeepAliveClientMixin {
+class _LazyTabState extends State<_LazyTab> {
   bool _ready = false;
 
   @override
@@ -3595,11 +3113,7 @@ class _LazyTabState extends State<_LazyTab> with AutomaticKeepAliveClientMixin {
   }
 
   @override
-  bool get wantKeepAlive => true;
-
-  @override
   Widget build(BuildContext context) {
-    super.build(context);
     return _ready ? widget.child : const Center(child: CircularProgressIndicator());
   }
 }

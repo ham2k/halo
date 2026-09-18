@@ -1308,7 +1308,6 @@ class Translations$settings$en {
 	String get fontScale => 'Font Scale';
 
 	late final Translations$settings$fontScaleOpts$en fontScaleOpts = Translations$settings$fontScaleOpts$en.internal(_root);
-	late final Translations$settings$layoutCustomization$en layoutCustomization = Translations$settings$layoutCustomization$en.internal(_root);
 	late final Translations$settings$keepDeviceAwake$en keepDeviceAwake = Translations$settings$keepDeviceAwake$en.internal(_root);
 
 	/// en: 'Layout Density'
@@ -3360,24 +3359,6 @@ class Translations$settings$fontScaleOpts$en {
 
 	/// en: 'Largest++'
 	String get largestPlusPlus => 'Largest++';
-}
-
-// Path: settings.layoutCustomization
-class Translations$settings$layoutCustomization$en {
-	Translations$settings$layoutCustomization$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'Enable Layout Customization'
-	String get title => 'Enable Layout Customization';
-
-	/// en: 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own'
-	String get descriptionOn => 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own';
-
-	/// en: 'The logging view uses its standard arrangement'
-	String get descriptionOff => 'The logging view uses its standard arrangement';
 }
 
 // Path: settings.keepDeviceAwake
@@ -7386,9 +7367,6 @@ extension on Translations {
 			'settings.fontScaleOpts.largest' => 'Largest',
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
-			'settings.layoutCustomization.title' => 'Enable Layout Customization',
-			'settings.layoutCustomization.descriptionOn' => 'The logging view can be rearranged: drag panes into splits and groups, and add panels of your own',
-			'settings.layoutCustomization.descriptionOff' => 'The logging view uses its standard arrangement',
 			'settings.keepDeviceAwake.title' => 'Keep Device Awake',
 			'settings.keepDeviceAwake.descriptionOn' => 'The device stays awake while you are on the logging view or a sync is in progress, and may sleep after 15 minutes without either',
 			'settings.keepDeviceAwake.descriptionOff' => 'The device sleeps as usual',
@@ -7646,11 +7624,11 @@ extension on Translations {
 			'settings.syncPanel.countOperations' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} operation', other: '${n} operations', ), 
 			'settings.syncPanel.countQsos' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: '${n} QSO', other: '${n} QSOs', ), 
 			'settings.syncPanel.counts' => 'Synced Data',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.countsLocal' => ({required Object qsos, required Object operations}) => 'This device: ${qsos} · ${operations}',
 			'settings.syncPanel.countsPending' => ({required Object items}) => 'Waiting to upload: ${items}',
 			'settings.syncPanel.countsServer' => ({required Object qsos, required Object operations}) => 'Server: ${qsos} · ${operations}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.countsLocalChecking' => 'This device: checking…',
 			'settings.syncPanel.countsServerChecking' => 'Server: checking…',
 			'settings.syncPanel.countsServerUnavailable' => 'Server: not available',
@@ -8160,11 +8138,11 @@ extension on Translations {
 			'dataFiles.importedData' => ({required Object label}) => 'Imported data for ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Cleaned up extension data',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'Removed data for ${count} data file from disabled extensions.', other: 'Removed data for ${count} data files from disabled extensions.', ), 
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} records',
 			'dataFiles.definitionUnavailable' => 'The file\'s source didn\'t provide a definition — its extension may be mid-restart or misconfigured. Try again in a moment.',
 			'updates.updateAvailable' => 'Update available',
+			_ => null,
+		} ?? switch (path) {
 			'updates.newVersionAvailable' => ({required Object version}) => 'A new version (${version}) is available.',
 			'updates.getIt' => 'Get it',
 			'updates.ok' => 'OK',

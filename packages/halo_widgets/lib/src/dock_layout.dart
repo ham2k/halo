@@ -47,8 +47,8 @@ import 'dock_tab.dart';
 /// something to keep current — an extension panel crossing the JS bridge —
 /// has no other way to know nobody is looking at it.
 ///
-/// Absent means visible: a pane outside a dock (the fixed layouts, a test)
-/// is on screen whenever it is built.
+/// Absent means visible: a pane outside a dock (a fixed view, a test) is on
+/// screen whenever it is built.
 class DockPaneVisibility extends InheritedWidget {
   final bool visible;
 
@@ -239,9 +239,8 @@ class DockLayoutView extends StatefulWidget {
 }
 
 /// Public so a view can hold a `GlobalKey<DockLayoutViewState>` and call
-/// [revealModule] — the dock-mode equivalent of the fixed layout's
-/// programmatic `TabController.animateTo` (surfacing command output, a
-/// tapped spot's logging pane, the call-info detail).
+/// [revealModule] — a programmatic tab selection (surfacing command output,
+/// a tapped spot's logging pane, the call-info detail).
 class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProviderStateMixin {
   late DockNode _spec = widget.initialSpec;
 
@@ -1467,8 +1466,8 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         selected: index == group.selected,
         editing: widget.editing,
         // A group of one is a PANE, not a tab bar of one: it renders as a
-        // plain title bar, like the fixed split's. There is nothing to
-        // select, so nothing should look selectable.
+        // plain title bar. There is nothing to select, so nothing should
+        // look selectable.
         solo: solo,
         isFirst: index == 0,
         isLast: index == group.modules.length - 1,
@@ -1544,11 +1543,11 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
         Material(
           color: headerColor,
           child: SizedBox(
-            // The same chrome height as every other tab strip — this IS the
-            // dock's tab strip, and it sits beside and below the ones in the
-            // fixed layouts. `chromeHeightOf` holds it to Material's minimum
-            // tap target on touch, which a shorter header would otherwise
-            // squeeze a module's `tabActions` IconButton below, silently.
+            // The same chrome height as every other strip of chrome — this
+            // IS the dock's tab strip. `chromeHeightOf` holds it to
+            // Material's minimum tap target on touch, which a shorter header
+            // would otherwise squeeze a module's `tabActions` IconButton
+            // below, silently.
             //
             // Snapped because the header's color meets the pane body at this
             // edge, and the height × the grid is fractional at some scale/DPR
@@ -1582,9 +1581,8 @@ class DockLayoutViewState extends State<DockLayoutView> with SingleTickerProvide
                       // Stretch, not the default center, in both strips:
                       // centered, a tab shrink-wraps its label and paints its
                       // bottom-border selection indicator at the LABEL's
-                      // bottom edge, well above the strip's — the same trap
-                      // operation_view's _narrowTabBar solves with an explicit
-                      // height. Stretch is what reaches the strip's height
+                      // bottom edge, well above the strip's. Stretch is what
+                      // reaches the strip's height
                       // from here: RenderFlex stretches to its incoming
                       // maxHeight, and the horizontal viewport passes the
                       // strip's height through as that max.

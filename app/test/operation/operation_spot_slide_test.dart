@@ -101,8 +101,7 @@ void main() {
 
   tearDown(() async => db.close());
 
-  Future<void> pumpOperation(WidgetTester tester, {bool customLayout = true}) async {
-    await settings.setLayoutCustomization(customLayout);
+  Future<void> pumpOperation(WidgetTester tester) async {
     // Wide enough for the two-pane arrangement, where the logging fields and
     // the spots list are on screen at the same time — the layout the gesture
     // was designed against.
@@ -118,16 +117,6 @@ void main() {
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(home: OperationView(services: services, operationUuid: operation.uuid)),
     ));
-    for (var i = 0; i < 8; i++) {
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-  }
-
-  /// The stock layout keeps the spots list behind a tab in the right pane —
-  /// the dock arrangement gives it a pane of its own. Selecting it is setup,
-  /// not part of what any of these tests are about.
-  Future<void> showSpotsTab(WidgetTester tester) async {
-    await tester.tap(find.widgetWithText(Tab, 'SPOTS'));
     for (var i = 0; i < 8; i++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
@@ -215,52 +204,6 @@ void main() {
     expect(callField(tester), 'W9XYZ', reason: 'and what they typed stands');
 
     await unmount(tester);
-  });
-
-  // The same three rules on the arrangement an operator gets without ever
-  // touching layout customization. The panel is wired once, but WHERE it is
-  // built differs — a dock pane in one, a tab page in the other — and a
-  // gesture that reaches back to another panel has to survive both.
-  group('with the stock layout', () {
-    testWidgets('sliding another row closes the first', (tester) async {
-      await pumpOperation(tester, customLayout: false);
-      await showSpotsTab(tester);
-      await slideOpen(tester, 'K1ABC');
-      await slideOpen(tester, 'W2DEF');
-
-      expect(openRows(tester), 1);
-      expect(callField(tester), 'W2DEF');
-
-      await unmount(tester);
-    });
-
-    testWidgets('tapping a spot closes the open row', (tester) async {
-      await pumpOperation(tester, customLayout: false);
-      await showSpotsTab(tester);
-      await slideOpen(tester, 'K1ABC');
-      await tester.tap(rowFor('W2DEF'));
-      for (var i = 0; i < 6; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
-      }
-
-      expect(openRows(tester), 0);
-
-      await unmount(tester);
-    });
-
-    testWidgets('typing in the call field closes the open row', (tester) async {
-      await pumpOperation(tester, customLayout: false);
-      await showSpotsTab(tester);
-      await slideOpen(tester, 'K1ABC');
-      await tester.enterText(find.widgetWithText(TextField, 'Their call').first, 'W9XYZ');
-      for (var i = 0; i < 6; i++) {
-        await tester.pump(const Duration(milliseconds: 50));
-      }
-
-      expect(openRows(tester), 0);
-
-      await unmount(tester);
-    });
   });
 
   testWidgets('dragging the row back empties the fields again', (tester) async {

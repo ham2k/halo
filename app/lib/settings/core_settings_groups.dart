@@ -207,20 +207,6 @@ class GeneralSettingsGroup extends SettingsGroup {
         ],
       ),
       _toggle(
-        key: 'layoutCustomization',
-        // NOT 'panels': this setting decides whether a view can be
-        // REARRANGED, not what there is to arrange. An operator told to
-        // "turn panels on" would get a rearrangeable view and still no
-        // Custom Text, which is an extension they enable separately.
-        aliases: const ['layout', 'dock'],
-        label: t.settings.layoutCustomization.title,
-        icon: 'view-dashboard',
-        description: settings.layoutCustomization
-            ? t.settings.layoutCustomization.descriptionOn
-            : t.settings.layoutCustomization.descriptionOff,
-        value: settings.layoutCustomization,
-      ),
-      _toggle(
         key: 'keepDeviceAwake',
         aliases: const ['awake', 'sleep', 'screen'],
         label: t.settings.keepDeviceAwake.title,
@@ -295,10 +281,6 @@ class GeneralSettingsGroup extends SettingsGroup {
 
   @override
   Future<void> commit(String fieldKey, dynamic value) async {
-    if (fieldKey == 'layoutCustomization') {
-      if (value is bool) await settings.setLayoutCustomization(value);
-      return;
-    }
     if (fieldKey == 'keepDeviceAwake') {
       if (value is bool) await settings.setKeepDeviceAwake(value);
       return;

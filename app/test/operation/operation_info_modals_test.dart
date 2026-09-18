@@ -31,7 +31,7 @@ void main() {
   late HaLoServices services;
   late Operation operation;
 
-  /// [dock], when given, puts the view on a custom layout holding exactly
+  /// [dock], when given, puts the view on an arrangement holding exactly
   /// those modules — the operator's own arrangement, which need not include
   /// the Info pane at all.
   Future<void> buildServices({List<String>? dock}) async {
@@ -42,7 +42,6 @@ void main() {
     // tap target, the failure these tests exist to catch.
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     if (dock != null) {
-      await settings.setLayoutCustomization(true);
       await settings.setLayoutData(
         LayoutKeys.operationDock,
         DockSplit(Axis.horizontal, [
@@ -132,22 +131,21 @@ void main() {
     });
     await pumpAt(tester, 1000);
 
-    // The SELECTION, not the widget: the tab view keeps every tab's content
-    // built, so InformationPanel is in the tree whichever tab is on top.
-    int selectedTab() => tester.widget<TabBar>(find.byType(TabBar)).controller!.index;
+    // Hit-testable, not merely found: the dock keeps every pane of a group
+    // mounted, so InformationPanel is in the tree whichever tab is on top.
+    final infoOnTop = find.byType(InformationPanel).hitTestable();
 
     // Off the Info tab first, so a reveal has somewhere to move from.
-    await tester.tap(find.widgetWithText(Tab, 'SPOTS'));
+    await tester.tap(find.text(AppLocale.en.buildSync().operation.tabs.spots));
     await tester.pumpAndSettle();
-    expect(selectedTab(), isNot(0));
+    expect(infoOnTop, findsNothing);
 
     await tester.tap(find.descendant(of: find.byType(DayHeaderRow), matching: find.byType(InkWell)));
     await tester.pumpAndSettle();
 
     // The pane in place, not a route over it: the wide layout already holds
     // the Info pane, and a modal on top of it would be a second copy.
-    expect(selectedTab(), 0);
-    expect(find.byType(InformationPanel), findsOneWidget);
+    expect(infoOnTop, findsOneWidget);
 
     await unmount(tester);
   });

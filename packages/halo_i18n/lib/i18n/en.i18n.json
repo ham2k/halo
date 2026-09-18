@@ -917,11 +917,6 @@
       "largestPlus": "Largest+",
       "largestPlusPlus": "Largest++"
     },
-    "layoutCustomization": {
-      "title": "Enable Layout Customization",
-      "descriptionOn": "The logging view can be rearranged: drag panes into splits and groups, and add panels of your own",
-      "descriptionOff": "The logging view uses its standard arrangement"
-    },
     "keepDeviceAwake": {
       "title": "Keep Device Awake",
       "descriptionOn": "The device stays awake while you are on the logging view or a sync is in progress, and may sleep after 15 minutes without either",

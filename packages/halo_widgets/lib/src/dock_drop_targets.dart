@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import 'density.dart';
 import 'layout.dart';
 import 'mdi_icons.g.dart';
+import 'spacing.dart';
 
 import 'dock_regions.dart';
 
@@ -249,9 +250,12 @@ class _DockTabDropSlotState extends State<DockTabDropSlot> {
 /// route, for a pointer that cannot make that journey, lives in the pane's
 /// own layout options.
 ///
-/// Bigger than a tap target and flush against the top edge, so a pane thrown
-/// upwards lands on it: mid-drag the pointer is already busy, and a target
-/// with a gap above it has to be aimed at.
+/// Bigger than a tap target, and what ACCEPTS the drop reaches the top edge
+/// even though the circle does not, so a pane thrown upwards lands on it:
+/// mid-drag the pointer is already busy, and a target with a dead gap above
+/// it has to be aimed at. The circle itself stands clear of the edge by a
+/// spacing unit, below whatever the device's safe area takes — flush, a notch
+/// or status bar covers the part of it the operator is aiming for.
 class DockDeleteDropTarget extends StatelessWidget {
   final ValueChanged<String> onDrop;
 
@@ -275,24 +279,28 @@ class DockDeleteDropTarget extends StatelessWidget {
       onAcceptWithDetails: (details) => onDrop(details.data),
       builder: (context, candidates, _) {
         final armed = candidates.isNotEmpty;
-        return AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          curve: layoutAnimationCurve,
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            // Solid once the pane is over it. Short of that it is a
-            // suggestion, not the loudest thing on a screen the operator is
-            // in the middle of rearranging.
-            color: theme.colorScheme.error.withValues(alpha: armed ? 1.0 : 0.75),
-            border: Border.all(color: theme.colorScheme.onError, width: armed ? 3 : 0),
-          ),
-          child: Icon(
-            MdiIcons.trashCanOutline,
-            color: theme.colorScheme.onError,
-            size: size * 0.5,
-            semanticLabel: MaterialLocalizations.of(context).deleteButtonTooltip,
+        return Padding(
+          // Inside the DragTarget, so the inset is still part of the target.
+          padding: EdgeInsets.only(top: MediaQuery.paddingOf(context).top + Space.md),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 120),
+            curve: layoutAnimationCurve,
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              // Solid once the pane is over it. Short of that it is a
+              // suggestion, not the loudest thing on a screen the operator is
+              // in the middle of rearranging.
+              color: theme.colorScheme.error.withValues(alpha: armed ? 1.0 : 0.75),
+              border: Border.all(color: theme.colorScheme.onError, width: armed ? 3 : 0),
+            ),
+            child: Icon(
+              MdiIcons.trashCanOutline,
+              color: theme.colorScheme.onError,
+              size: size * 0.5,
+              semanticLabel: MaterialLocalizations.of(context).deleteButtonTooltip,
+            ),
           ),
         );
       },

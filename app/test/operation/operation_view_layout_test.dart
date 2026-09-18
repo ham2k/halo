@@ -1,12 +1,12 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The Operation View's adaptive layout (issue #85, docs/design/layouts.md):
-// narrow shirt sizes tab through QSOs/Spots/Map/Operation, two-pane sizes
-// pin the logging pane left with Info/Spots/Map/Operation tabs on the
-// right. The load-bearing guarantees: the arrangement flips LIVE on a
-// window resize, and the logging pane's GlobalKey carries its State — a
-// half-typed callsign — across the flip instead of rebuilding it.
+// The Operation View's adaptive layout (docs/design/layouts.md): narrow
+// shirt sizes get one tab strip of QSOs/Spots/Map, two-pane sizes put the
+// logging pane on the left with Info/Spots/Map tabbed on the right. The
+// load-bearing guarantees: the arrangement flips LIVE on a window resize,
+// and the logging pane's GlobalKey carries its State — a half-typed
+// callsign — across the flip instead of rebuilding it.
 
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -42,11 +42,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // 1000 logical px → L: split layout with the Info tab, logging pane
-    // visible on the left. Its title bar shows the same "0 QSOs" label the
-    // narrow tab uses, but not as a tab — logging isn't a tab here.
+    // visible on the left under the same "0 QSOs" label the narrow tab uses.
     expect(find.text('INFO'), findsOneWidget);
     expect(find.text('0 QSOs'), findsOneWidget);
-    expect(find.widgetWithText(Tab, '0 QSOs'), findsNothing);
     expect(find.widgetWithText(TextField, 'Their call'), findsOneWidget);
 
     // Type into the logging pane, then flip to narrow.
@@ -57,11 +55,9 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 500));
 
-    // 430 → S: the tab arrangement, with the QSO-count tab back — Info
-    // isn't a narrow tab (it's one tap away via the callsign area instead),
-    // so QSOs/Spots/Map is what tells the two arrangements apart. Index 0
-    // was Info, so tab 0 (QSOs = the logging pane) shows, with the
-    // in-progress callsign intact (GlobalKey reparenting).
+    // 430 → S: the narrow arrangement — Info isn't in it (it's one tap away
+    // via the callsign area instead), so its absence is what tells the two
+    // apart. The in-progress callsign is intact (GlobalKey reparenting).
     expect(find.text('0 QSOs'), findsOneWidget);
     expect(find.text('INFO'), findsNothing);
     expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget);
@@ -71,14 +67,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.widgetWithText(Tab, '0 QSOs'), findsNothing, reason: 'the split\'s title bar shows the label, not a tab');
+    expect(find.text('INFO'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget);
 
-    // Flip with a NON-ZERO tab selected — the regression case. Wide with
-    // Spots selected, then narrow: the tab snaps to QSOs (the logging pane
-    // was the always-visible left pane) and the typed callsign survives,
-    // because page 0 must be the inflated page for the GlobalKey'd logging
-    // subtree to be adopted.
+    // Flip with another tab selected: the narrow dock opens on its own
+    // stored selection, and the typed callsign has to survive whichever pane
+    // that leaves on top.
     await tester.tap(find.text('SPOTS'));
     await tester.pumpAndSettle();
 
@@ -88,8 +82,8 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget, reason: 'logging input survives a flip made from the Spots tab');
 
-    // Narrow with Spots selected, then wide: the logging subtree is stolen
-    // from the TabBarView's keep-alive bucket into the split's left pane.
+    // Narrow with Spots on top, then wide: the logging subtree moves from
+    // behind the narrow strip's selection into the split's left pane.
     await tester.tap(find.text('SPOTS'));
     await tester.pumpAndSettle();
 
@@ -98,14 +92,41 @@ void main() {
     await tester.pump(const Duration(milliseconds: 500));
     expect(tester.takeException(), isNull);
     expect(find.widgetWithText(TextField, 'W1AW'), findsOneWidget, reason: 'logging input survives a flip made with Spots selected');
-    expect(
-      find.widgetWithText(Tab, '0 QSOs'),
-      findsNothing,
-      reason: 'back to the split, where logging has its own pane (with a title, not a tab)',
-    );
 
     // Tear the tree down and drain the services' debounce timers (rescore,
     // lookup) so the binding's pending-timer invariant passes.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+  });
+
+  testWidgets('a link that opens the view with a callsign lands on the logging pane, not the last tab used', (tester) async {
+    // The trap: a dock opens on its STORED selection, and that is shared by
+    // every operation. Left on Spots anywhere, a phone opens the next
+    // operation on Spots too — with the link's callsign filled in behind it
+    // and nothing on screen to say the link did anything.
+    tester.view.physicalSize = const Size(430, 800);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    final HaLoHarness(:services, :settings) = await makeHaLoServices();
+    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
+    await settings.setLayoutData(LayoutKeys.operationNarrowDockState, const DockState(selected: {'spots'}).toJson());
+    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        home: OperationView(
+          services: services,
+          operationUuid: operation.uuid,
+          initialSuggestedQso: const {
+            'their': {'call': 'W1AW'},
+          },
+        ),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    expect(find.widgetWithText(TextField, 'W1AW').hitTestable(), findsOneWidget);
+
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
   });
@@ -136,10 +157,9 @@ void main() {
   });
 
   testWidgets('closed header has no floating grab pill and keeps its original height', (tester) async {
-    // Narrow — the width where the AppBar gets `bottom: tabBar`, so a
-    // regression that adds height to the header (the old floating grab
-    // pill's job) would show up as the tab row no longer starting exactly
-    // at the toolbar's bottom edge (issue #266's original guarantee).
+    // A regression that adds height to the header (a floating grab pill's
+    // job) shows up as the panes no longer starting exactly at the toolbar's
+    // bottom edge.
     tester.view.physicalSize = const Size(430, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -158,8 +178,8 @@ void main() {
     expect(find.byWidgetPredicate((w) => w.runtimeType.toString() == '_HeaderDotsControl'), findsOneWidget);
 
     final toolbarHeight = Theme.of(tester.element(find.byType(AppBar))).appBarTheme.toolbarHeight ?? kToolbarHeight;
-    final tabBarTop = tester.getTopLeft(find.byKey(const Key('narrowTabBar'))).dy;
-    expect(tabBarTop, closeTo(toolbarHeight, 0.5));
+    final panesTop = tester.getTopLeft(find.byType(DockLayoutView)).dy;
+    expect(panesTop, closeTo(toolbarHeight, 0.5));
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
@@ -230,16 +250,16 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
-  testWidgets('the logging settings menu moved off the AppBar, onto the narrow QSOs tab, visible only when selected', (tester) async {
-    // Narrow: the settings menu used to live in the AppBar's actions,
-    // regardless of which tab was showing — but its toggles (RST/State/Grid
-    // fields, dupe/number display) only ever affected the logging panel.
+  testWidgets('on narrow the logging settings menu rides the QSOs tab, shown only while it is selected', (tester) async {
+    // Its toggles (RST/State/Grid fields, dupe/number display) only ever
+    // affect the logging panel, so it belongs to that pane's tab and not to
+    // the AppBar, where it would sit over whichever pane was showing.
     tester.view.physicalSize = const Size(430, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
     // Otherwise the 'operation-sheet' onboarding flow auto-opens the sheet
-    // on mount (issue #348), which sits over the whole header/tab area and
-    // swallows every tap below it.
+    // on mount, which sits over the whole header/tab area and swallows every
+    // tap below it.
     final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
     final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
@@ -251,35 +271,18 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(
-      find.descendant(of: find.byType(AppBar), matching: find.byIcon(MdiIcons.tune)),
-      findsOneWidget,
-      reason: 'lives with the tab bar now, not as a standalone action — but see the next check',
-    );
-    expect(
-      find.ancestor(of: find.byIcon(MdiIcons.tune), matching: find.byType(Tab)),
-      findsNothing,
-      reason: "overlaid next to the tab, not nested inside its Tab — nesting would compete with "
-          "the tab bar's own tap handling for the same tap and the button would never receive one",
-    );
-    expect(find.byIcon(MdiIcons.tune), findsOneWidget, reason: 'QSOs is the selected tab on mount');
-
-    // The button's own space stays reserved even when hidden (so the tab
-    // doesn't reflow on selection changes) — it fades via AnimatedOpacity
-    // rather than actually leaving the tree, which keeps the Icon mounted
-    // regardless. So `find.byIcon` alone can't tell hidden from shown;
-    // check the opacity that actually controls it (pumpAndSettle above
-    // and below waits out the fade, so it's always fully settled here).
-    double tuneOpacity() =>
-        tester.widget<AnimatedOpacity>(find.ancestor(of: find.byIcon(MdiIcons.tune), matching: find.byType(AnimatedOpacity))).opacity;
+    // The BUTTON: the Spots pane draws this glyph too, as a filter label.
+    final tune = find.widgetWithIcon(IconButton, MdiIcons.tune).hitTestable();
+    expect(find.descendant(of: find.byType(AppBar), matching: find.byIcon(MdiIcons.tune)), findsNothing);
+    expect(tune, findsOneWidget, reason: 'QSOs is the selected tab on mount');
 
     await tester.tap(find.text('SPOTS'));
     await tester.pumpAndSettle();
-    expect(tuneOpacity(), 0, reason: 'hidden once QSOs is no longer the active tab');
+    expect(tune, findsNothing, reason: 'hidden once QSOs is no longer the active tab');
 
     await tester.tap(find.text('0 QSOs'));
     await tester.pumpAndSettle();
-    expect(tuneOpacity(), 1, reason: 'reappears once QSOs is selected again');
+    expect(tune, findsOneWidget, reason: 'reappears once QSOs is selected again');
 
     // The menu itself is unchanged — same toggle, same effect.
     await tester.tap(find.byIcon(MdiIcons.tune));
@@ -649,9 +652,15 @@ void main() {
     final narrowTitleLeft = tester.getRect(find.text('N0CALL Test Op')).left;
     final narrowGap = narrowTitleLeft - closeRight;
 
-    // Wide: unchanged from before this — the AppBar's own default leading
-    // slot (56, explicit — see _leadingWidthFor), wider than the button it
-    // holds, plus the title's own inset.
+    // A fresh State for the second width: `pumpAt` builds new services, and
+    // a State kept across them is a view holding two operations' worth of
+    // subscriptions — not a thing the app ever does, and it never settles.
+    await tester.pumpWidget(const SizedBox());
+    await tester.pump(const Duration(seconds: 5));
+
+    // Wide: the AppBar's own default leading slot (56, explicit — see
+    // _leadingWidthFor), wider than the button it holds, plus the title's
+    // own inset.
     await pumpAt(1000);
     expect(tester.widget<AppBar>(find.byType(AppBar)).leadingWidth, 56.0);
     final wideCloseRight = tester.getRect(find.byIcon(MdiIcons.chevronLeft)).right;
@@ -724,7 +733,7 @@ void main() {
     await tester.pump(const Duration(seconds: 5));
   });
 
-  testWidgets('the fixed wide split gains a logging-pane title bar holding the settings menu', (tester) async {
+  testWidgets('on wide the logging pane\'s title bar holds the settings menu', (tester) async {
     tester.view.physicalSize = const Size(1000, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
@@ -744,57 +753,13 @@ void main() {
       findsNothing,
       reason: 'no longer a global AppBar action',
     );
-    // Exactly one — the split's own logging pane always shows (it has no
-    // other tab to hide behind), unlike the narrow case.
+    // Exactly one — the logging pane stands alone in its group, with no
+    // other tab to hide behind, unlike the narrow case.
     expect(find.byIcon(MdiIcons.tune), findsOneWidget);
 
     await tester.tap(find.byIcon(MdiIcons.tune));
     await tester.pumpAndSettle();
     expect(find.text('Show RST fields'), findsOneWidget);
-
-    await tester.pumpWidget(const SizedBox());
-    await tester.pump(const Duration(seconds: 5));
-  });
-
-  testWidgets('the wide split tab bar and pane title bar are the same height', (tester) async {
-    // They meet across the divider, so a mismatch reads as a misaligned seam
-    // down the whole window. `TabBar` has no height property — it reports its
-    // tallest Tab plus indicatorWeight — so left to its defaults it came out
-    // 50 against the title bar's 48, while the comment at the split claimed
-    // the two matched. Sizing the Tabs against the shared chrome height is
-    // what makes that claim true; this is what keeps it true.
-    tester.view.physicalSize = const Size(1000, 800);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-    final HaLoHarness(:services, :settings) = await makeHaLoServices();
-    await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    final operation = await services.operations.create(stationCall: 'N0CALL', userTitle: 'Test Op');
-
-    await tester.pumpWidget(TranslationProvider(
-      child: MaterialApp(
-        home: OperationView(services: services, operationUuid: operation.uuid),
-      ),
-    ));
-    await tester.pumpAndSettle();
-
-    final tabBar = find.byType(TabBar);
-    expect(tabBar, findsOneWidget, reason: 'this width is the two-pane arrangement');
-    final chromeHeight = LayoutDensity.chromeHeightOf(tester.element(tabBar));
-    expect(
-      tester.getSize(tabBar).height,
-      chromeHeight,
-      reason: 'the TabBar must land on the chrome height, not on Flutter default',
-    );
-
-    // The logging pane's title bar is the SizedBox holding the QSO count.
-    final titleBars = tester.widgetList<SizedBox>(
-      find.ancestor(of: find.textContaining('QSO'), matching: find.byType(SizedBox)),
-    );
-    expect(
-      titleBars.map((b) => b.height),
-      contains(chromeHeight),
-      reason: 'both sides of the divider share one height',
-    );
 
     await tester.pumpWidget(const SizedBox());
     await tester.pump(const Duration(seconds: 5));
@@ -825,12 +790,9 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    final strip = find.byKey(const Key('narrowTabBar'));
-    expect(strip, findsOneWidget, reason: 'this width is the narrow arrangement');
-    final chromeHeight = LayoutDensity.chromeHeightOf(tester.element(strip));
-
-    final button = find.descendant(of: strip, matching: find.byType(IconButton));
-    expect(button, findsOneWidget);
+    final button = find.widgetWithIcon(IconButton, MdiIcons.tune);
+    expect(button, findsOneWidget, reason: 'the QSOs tab is on top in the narrow arrangement');
+    final chromeHeight = LayoutDensity.chromeHeightOf(tester.element(button));
     expect(
       tester.getSize(button).height,
       chromeHeight,

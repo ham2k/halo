@@ -18,6 +18,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/main.dart';
 import 'package:ham2k_logger/views/home_navigation_rail.dart';
+import 'package:ham2k_logger/views/header_profile_label.dart';
 import 'package:ham2k_logger/views/home_view.dart';
 import 'package:ham2k_logger/views/settings_view.dart';
 
@@ -127,6 +128,47 @@ void main() {
     );
     expect(find.text('Operations'), findsNothing, reason: 'labels would take a third of a 400px window');
     expect(cog, findsNothing, reason: 'the header button goes as the rail arrives; the rail carries Settings now');
+    await _endOfTest(tester);
+  });
+
+  testWidgets('the railless header holds only the cog; the profile name and layout button come with the rail', (tester) async {
+    final services = await _services(tester);
+    await _pumpHome(tester, services, size: const Size(400, 800));
+
+    final profile = find.descendant(of: find.byType(AppBar), matching: find.byType(HeaderProfileLabel));
+    final layoutButton = find.descendant(of: find.byType(AppBar), matching: find.byIcon(MdiIcons.viewDashboard));
+    expect(_railWidth(tester), 0);
+    expect(profile, findsNothing, reason: 'a phone header already holds the product name and the cog');
+    expect(layoutButton, findsNothing);
+
+    await tester.tap(find.bySemanticsLabel('Show or hide the navigation labels'));
+    await _settle(tester);
+    expect(profile, findsOneWidget);
+    expect(layoutButton, findsOneWidget);
+    await _endOfTest(tester);
+  });
+
+  testWidgets('a rail toggled away mid-edit leaves the way out of the edit in the header', (tester) async {
+    // The trap in hiding the layout controls by the rail alone: once editing
+    // they are Save and Discard, and the rail going would take the only way
+    // out of the edit with it.
+    final services = await _services(tester);
+    await _pumpHome(tester, services, size: const Size(600, 800));
+    final logo = find.bySemanticsLabel('Show or hide the navigation labels');
+
+    await tester.tap(logo);
+    await _settle(tester);
+    await tester.tap(find.descendant(of: find.byType(AppBar), matching: find.byIcon(MdiIcons.viewDashboard)));
+    await _settle(tester);
+    await tester.tap(logo);
+    await _settle(tester);
+
+    expect(_railWidth(tester), 0);
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.byIcon(MdiIcons.contentSave)),
+      findsOneWidget,
+      reason: 'the edit controls outlive the rail',
+    );
     await _endOfTest(tester);
   });
 

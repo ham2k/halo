@@ -24,13 +24,12 @@ void main() {
   final t = AppLocale.en.buildSync().operation.layout;
   final tabs = AppLocale.en.buildSync().operation.tabs;
 
-  Future<HaLoServices> servicesWith(WidgetTester tester, {required bool layoutCustomization}) async {
+  Future<HaLoServices> servicesWith(WidgetTester tester) async {
     final HaLoHarness(:services, :settings) = await makeHaLoServices();
     await settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'KI2D');
     // Suppress the operation sheet's first-run auto-open, which would
     // otherwise cover the header this test is about.
     await settings.recordOnboardingShown(OnboardingFlows.operationSheet);
-    if (layoutCustomization) await settings.setLayoutCustomization(true);
     return services;
   }
 
@@ -100,7 +99,7 @@ void main() {
     // (the inert row in the AppBar, the live copy above the barrier) from one
     // builder — a layout control left enabled in that copy is the mutation
     // this catches, since the copy is the reachable one.
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     final layoutButton = find.byWidgetPredicate(
@@ -143,7 +142,7 @@ void main() {
   });
 
   testWidgets('the layout button goes straight into editing, and becomes the edit controls', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     // Always visible, not revealed on hover: an operator who has asked for a
@@ -166,7 +165,7 @@ void main() {
   });
 
   testWidgets('an edit is a draft: nothing reaches settings until Save Layout', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
     final settings = services.settings;
 
@@ -187,7 +186,7 @@ void main() {
   });
 
   testWidgets('discarding puts the arrangement back where editing found it, and ends the edit', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     await startEditing(tester);
@@ -221,7 +220,7 @@ void main() {
   });
 
   testWidgets('the plus lists what can be added, and adding puts it back', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     await startEditing(tester);
@@ -250,7 +249,7 @@ void main() {
   });
 
   testWidgets('a pane taken out and put back in the same edit keeps what was in it', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await services.settings.setLayoutData(LayoutKeys.operationPaneOptions, {
       'info': {'title': 'Chart'},
     });
@@ -279,7 +278,7 @@ void main() {
   });
 
   testWidgets("a removed pane's options do not reach storage", (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await services.settings.setLayoutData(LayoutKeys.operationPaneOptions, {
       'info': {'title': 'Chart'},
     });
@@ -302,7 +301,7 @@ void main() {
   });
 
   testWidgets('the sheet\'s own header offers no plus, and the guard holds anyway', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     await startEditing(tester);
@@ -338,7 +337,7 @@ void main() {
   });
 
   testWidgets('an edit crosses the two-pane boundary, and each class keeps its own draft', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     await startEditing(tester);
@@ -371,7 +370,7 @@ void main() {
   });
 
   testWidgets('saving commits BOTH classes, from whichever one is on screen', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
     final settings = services.settings;
 
@@ -400,7 +399,7 @@ void main() {
   });
 
   testWidgets('discarding from the other class rolls back both drafts', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     await startEditing(tester);
@@ -424,7 +423,7 @@ void main() {
   });
 
   testWidgets('a container holding every remaining pane offers no Remove', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     // Seeded rather than built by dragging: what this is about is the GUARD,
     // and the arrangement it has to refuse is one tab holding everything.
     await services.settings.setLayoutData(
@@ -455,7 +454,7 @@ void main() {
   });
 
   testWidgets('the narrow arrangement pins its logging pane', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     tester.view.physicalSize = const Size(600, 800);
@@ -483,7 +482,7 @@ void main() {
   });
 
   testWidgets('leaving edit mode from the sheet takes the sheet with it', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     await startEditing(tester);
@@ -500,33 +499,8 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('turning customization off mid-edit discards the draft even with no dock mounted', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
-    await pumpWide(tester, services);
-
-    await startEditing(tester);
-    await dragToDelete(tester, tabs.info);
-
-    // Narrow first: the dock is two-pane only, so this is exactly the state
-    // the discard has to work in — and a revert that needs a live dock bails
-    // here, leaving edit mode on and the draft alive to reappear later.
-    tester.view.physicalSize = const Size(600, 800);
-    await tester.pumpAndSettle();
-    await services.settings.setLayoutCustomization(false);
-    await tester.pumpAndSettle();
-    await services.settings.setLayoutCustomization(true);
-    await tester.pumpAndSettle();
-
-    tester.view.physicalSize = const Size(1200, 800);
-    await tester.pumpAndSettle();
-    expect(find.text(t.saveLayout), findsNothing, reason: 'the edit ended with the setting');
-    expect(find.text(tabs.info), findsOneWidget, reason: 'and the pane it dropped came back');
-
-    await unmount(tester);
-  });
-
   testWidgets('the sheet outliving the dock does not act on it', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     await startEditing(tester);
@@ -546,7 +520,7 @@ void main() {
   });
 
   testWidgets("a pane's layout options can remove it, and the last one cannot be removed", (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     await startEditing(tester);
@@ -579,7 +553,7 @@ void main() {
   });
 
   testWidgets('the last pane standing offers no Remove', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     // One pane, which is the floor `removeModule` enforces — an empty dock
     // has no tab left to drag anything back with. A Remove here would close
     // the dialog and do nothing, with no way to tell the operator why.
@@ -596,7 +570,7 @@ void main() {
   });
 
   testWidgets("the view's Restore Defaults puts the ARRANGEMENT back, not just the options", (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     await startEditing(tester);
@@ -622,7 +596,7 @@ void main() {
   });
 
   testWidgets('editing names the VIEW in the header, and offers the view its own options', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await pumpWide(tester, services);
 
     // Ordinarily the header is about the operation in the view.
@@ -642,7 +616,7 @@ void main() {
   });
 
   testWidgets('a view-level size override wraps the whole dock', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     await services.settings.setLayoutData(LayoutKeys.operationViewOptions, {'fontScale': 'larger'});
 
     // Every pane inherits it — a pane that names no size of its own is inside
@@ -658,7 +632,7 @@ void main() {
   });
 
   testWidgets('a pane with size overrides renders, rather than mounting forever', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: true);
+    final services = await servicesWith(tester);
     // Both overrides at once, which is what a pane gets after a trip through
     // Advanced Options.
     await services.settings.setLayoutData(LayoutKeys.operationPaneOptions, {
@@ -678,20 +652,9 @@ void main() {
     await unmount(tester);
   });
 
-  testWidgets('without layout customization the header has no layout controls', (tester) async {
-    final services = await servicesWith(tester, layoutCustomization: false);
-    await pumpWide(tester, services);
-
-    // The fixed layout has no arrangement to edit, so the button would open
-    // an editor over panes that cannot move.
-    expect(find.widgetWithIcon(IconButton, MdiIcons.viewDashboard), findsNothing);
-
-    await unmount(tester);
-  });
-
   group('a saved arrangement naming a module twice', () {
     Future<HaLoServices> servicesWithDuplicateSpec(WidgetTester tester) async {
-      final services = await servicesWith(tester, layoutCustomization: true);
+      final services = await servicesWith(tester);
       // Not reachable through the UI (both addModule and the drop handler
       // dedupe) — this is what a hand-edited or corrupted store looks like.
       await services.settings.setLayoutData(LayoutKeys.operationDock, DockGroup(['logging', 'logging']).toJson());

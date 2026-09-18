@@ -917,11 +917,6 @@
       "largestPlus": "Más grande+",
       "largestPlusPlus": "Más grande++"
     },
-    "layoutCustomization": {
-      "title": "Personalización de Disposición",
-      "descriptionOn": "La vista de registro se puede reorganizar: arrastra los paneles a divisiones y grupos, y añade tus propios paneles",
-      "descriptionOff": "La vista de registro usa su disposición estándar"
-    },
     "keepDeviceAwake": {
       "title": "Mantener el Dispositivo Despierto",
       "descriptionOn": "El dispositivo no se duerme mientras estás en la vista de registro o una sincronización está en curso, y puede dormirse tras 15 minutos sin ninguna de las dos",

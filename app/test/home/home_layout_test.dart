@@ -127,10 +127,14 @@ void main() {
           'would spend a third of a 400px window on the branding column beside it',
     );
     expect(find.byType(HomeQuickLookup), findsOneWidget);
+    // The way into editing comes with the rail (docs/design/layouts.md): the
+    // railless header has room for the cog and nothing beside it.
+    await tester.tap(find.bySemanticsLabel('Show or hide the navigation labels'));
+    await settleFrames(tester);
     expect(
       find.byIcon(MdiIcons.viewDashboard),
       findsOneWidget,
-      reason: 'with the way into editing it, which a phone had no route to at all',
+      reason: 'a phone can arrange its tree too, and needs a route into doing it',
     );
     await _endOfTest(tester);
   });

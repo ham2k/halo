@@ -29,9 +29,8 @@ import 'dock_chrome.dart';
 /// at a glance, unmistakable once aimed at.
 ///
 /// The recolour is a [ColorFilter], not a colour passed down: the action is
-/// the CALLER's widget and has already chosen its own colour (it is the same
-/// button the fixed split's title bar shows, where it must read against that
-/// header instead). srcIn repaints whatever it is handed.
+/// the CALLER's widget and has already chosen its own colour. srcIn repaints
+/// whatever it is handed.
 class _QuietTabAction extends StatefulWidget {
   final Widget child;
 
@@ -114,7 +113,7 @@ class DockTab extends StatelessWidget {
 
   /// Whether this is its group's ONLY module, in which case it is not a tab
   /// at all: no selection indicator, no tap, not announced as a tab, and its
-  /// title reads from the leading edge like the fixed split's pane title bar.
+  /// title reads from the leading edge, as a pane's title bar.
   /// A tab bar of one offers a choice that does not exist.
   final bool solo;
 
@@ -207,7 +206,7 @@ class DockTab extends StatelessWidget {
   /// title rather than a strip out of room.
   static double readableMinWidth(BuildContext context, {bool hasAction = false, bool solo = false}) {
     final width = textWidth(context, 'Abc…', Theme.of(context).textTheme.titleSmall ?? const TextStyle());
-    // A pane heading keeps the fixed split's wider trailing inset; a tab's
+    // A pane heading keeps a title bar's wider trailing inset; a tab's
     // trailing side is the gap to its action, not an edge — see [_tabContent].
     return width + Space.lg + (solo ? Space.lg : Space.sm) + Space.xxs * 2 + (hasAction ? minActionSizeOf(context) : 0);
   }
@@ -255,12 +254,10 @@ class DockTab extends StatelessWidget {
   /// empty would swing the label sideways every time the selection moved
   /// (the handle and the action only show on the active tab), and unequal
   /// slots would leave a tab with a settings button reading off-center
-  /// against its neighbours. Same reservation, for the same reason, as
-  /// operation_view.dart's `_narrowTab`.
+  /// against its neighbours.
   ///
   /// An action is assumed no wider than one chrome row is tall (the tap
-  /// target an icon button in this strip gets) — again as `_narrowTabBar`
-  /// assumes for its own trailing button.
+  /// target an icon button in this strip gets).
   /// A tab's contents: the grab handle (while editing) at the leading edge,
   /// then the module's name, then its action — packed together, with the
   /// slack after them.
@@ -308,9 +305,7 @@ class DockTab extends StatelessWidget {
         // line of text.
         Flexible(
           child: Padding(
-            // A pane heading takes the fixed split's own title-bar
-            // inset, so a solo dock pane and the split's logging pane
-            // read as the same kind of thing. A tab with no handle
+            // A pane heading takes a title bar's inset. A tab with no handle
             // starts its name at that same inset — nothing else stands
             // between the name and the tab's edge — while a tab being
             // rearranged gives it back to the handle already sitting
@@ -397,7 +392,7 @@ class DockTab extends StatelessWidget {
     // A group of one is a pane with a title bar, not a tab bar of one: no
     // TabChrome at all, so there is no selection indicator, no tap, and
     // nothing announced to a screen reader as a tab. Its colour comes from
-    // the app bar's, like the fixed split's title bar, rather than from the
+    // the app bar's, as a title bar's does, rather than from the
     // tab theme's label roles — which are about selected-vs-not, a
     // distinction this has no second thing to make.
     final tab = solo

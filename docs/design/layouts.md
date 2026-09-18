@@ -61,7 +61,7 @@ still tolerate them; users just can't *drag* a window below it.
 | View | XS / S | L / XL |
 |---|---|---|
 | **Home** | Navigation rail, then a **dock** holding the operation list, with Quick Lookup under both | Navigation rail, then a **dock**: Operation List (~2/3 width) beside Current Version — the default arrangement, which the operator may rearrange — with Quick Lookup under both |
-| **Operation** | A **dock**: one tab strip of QSOs, Spots and Map — or, with layout customization off, the fixed `TabBar` of the same three | Logging pane on the left (~2/3 width, resizable); right side tabs: Info, Spots, Map, Operation |
+| **Operation** | A **dock**: one tab strip of QSOs, Spots and Map | Logging pane on the left (~2/3 width, resizable); right side tabs: Info, Spots, Map, Operation |
 | **Settings** | Settings list; each panel pushes a full screen | Settings list stays as a left column (resizable); selected panel on the right |
 
 ### The navigation rail
@@ -86,6 +86,13 @@ only for the one arrangement with no rail to hold it — two ways to the same
 screen, one of them a permanent fixture of the other's chrome, is how an
 operator learns to distrust both — and it fades *and* closes up as the rail
 arrives, rather than leaving a hole where it stood.
+
+**The railless header holds the product name and the cog, and nothing else.**
+The profile name and the layout button come with the rail, which is one tap on
+the logo away: a phone's header has no room to carry them beside the cog. The
+exception is an edit already in progress — once editing, the layout controls
+are Save and Discard, so they stay through a rail toggled away mid-edit rather
+than leaving the edit with no way to end.
 
 **The mark is drawn by the window**, at a fixed position, rather than by the
 rail or by the header. It has to be: the operator's own gesture is what moves
@@ -203,18 +210,13 @@ Every root view is classified by `ViewLayoutPolicy`
 as a `layoutPolicy` const on the view class:
 
 - **`customizable`** — the view's panes are user-arrangeable via the dock
-  layout (`DockLayoutView`), behind the operator's own **Enable Layout
-  Customization** setting (Settings → User Interface), off by default: a
-  fixed arrangement is the one an operator can be talked through over the
-  air, so rearranging is opted into. The **LAYOUTS** command (LYT or LAYOUT
-  too) toggles it from the command bar — `SET LAYOUT` reaches the same
-  setting, but the word an operator is told over the air is this one. Currently only the **Operation** view.
-  This setting decides whether a view can be REARRANGED, never what there is
-  to arrange: the native panels ship with the app, and a dashboard PANEL
-  extension (Custom Text is the only one today) is enabled from the
-  Extensions panel like any other. The two are independent on purpose:
-  enabling a panel must not quietly rearrange somebody's view, and turning
-  customization on must not install anything.
+  layout (`DockLayoutView`): the **Operation** view and **Home**. There is
+  no setting behind it — a customizable view is always a dock, and an
+  operator who never enters edit mode sees its default arrangement.
+  Rearranging decides where panes go, never what there is to arrange: the
+  native panels ship with the app, and a dashboard PANEL extension (Custom
+  Text is the only one today) is enabled from the Extensions panel like any
+  other. Enabling a panel must not quietly rearrange somebody's view.
   A dragged tab can land on another group's
   **tab strip** (joining that group at the position aimed at, which is also
   how tabs reorder), on one of the **four split bands** over a group's body,
@@ -235,13 +237,9 @@ as a `layoutPolicy` const on the view class:
   can be let go, and without it every pixel of every pane would act on
   release.
 
-  All of a customizable view's dividers — the fixed split's and the dock's —
-  use the **solid** style below.
+  All of a customizable view's dividers use the **solid** style below.
 
-  **Home is customizable too, and is NOT behind that setting.** The setting
-  exists so a fixed logging screen is the one an operator can be talked
-  through over the air; Home is not the screen anyone is talked through
-  mid-contact, so its dock is simply on. It carries its own four
+  **Home** carries its own four
   `LayoutKeys` (`home.dock`, `home.dockState`, `home.paneOptions`,
   `home.viewOptions`) and its own two panels — Operation List and Current
   Version. Quick Lookup is NOT among them: it is chrome the operator cannot
@@ -374,8 +372,6 @@ The user's dragged width is a **preference, persisted per divider** through
 ([`app/lib/services/settings_service.dart`](../../app/lib/services/settings_service.dart)),
 stored as dotted keys under the `layout` setting:
 
-- `home.leftColumn`
-- `operation.leftColumn`
 - `settings.leftColumn`
 
 The split clamps the preference to what fits **at layout time only** — a
@@ -702,8 +698,7 @@ not what the tab is for, and one at full contrast beside every name competes
 with the one thing the strip exists to say. It darkens rather than fading out
 so it stays findable at a glance. The recolour is a `ColorFilter`, not a
 colour passed down, because the action is the caller's widget and has already
-chosen a colour for the fixed split's title bar, where it must read against
-that header instead.
+chosen its own colour.
 
 **A tab's action is painted quiet, but never below 3:1** against the header
 it sits on (WCAG 1.4.11). It darkens INTO the header rather than fading off
@@ -767,7 +762,7 @@ included; one left out of that sum is a tab that ellipsizes below the three
 letters the floor exists to keep.
 
 **A group of one is a pane, not a tab bar of one.** It renders as a plain
-title bar — the fixed split's idiom, reading from the leading edge — with no
+title bar, reading from the leading edge, with no
 selection indicator, no tap, and nothing announced to a screen reader as a
 tab. A tab bar of one offers a choice that does not exist. It is still the
 group's grab handle and still takes drops, so a second pane dropped on it
@@ -819,12 +814,15 @@ to its left. While editing:
   whatever the panel offers while it is being used. One or the other, never
   both: they are different questions, and edit mode is when only the second
   can be answered;
-- **deleting is a drag**, onto a circle flush with the dock's top edge that
-  exists only while something is in the air. Not a button on the pane: a
+- **deleting is a drag**, onto a circle at the top of the window that
+  exists only while something is in the air. The circle stands a spacing
+  unit clear of the edge, below the device's safe area, so a notch or status
+  bar never covers it — but the strip above it is part of the target, so the
+  throw that overshoots still lands. Not a button on the pane: a
   control sitting on every pane is one an operator can hit while doing
   something else, and what it destroys is a pane they arranged and
   configured. Reaching this one takes a deliberate journey with the pane
-  already in hand — and against the top edge is where a pane thrown upward
+  already in hand — and the top edge is where a pane thrown upward
   runs out of room, which beats a target that has to be aimed at while the
   pointer is already busy. Whether it arms is decided from where the
   PRESS landed, before the drag exists: anywhere outside its circle and it is
@@ -1003,25 +1001,16 @@ putting exactly the dead copy of the controls in the header that the rule
 above exists to prevent.
 
 A sheet outlives the dock it was opened over — a resize past the two-pane
-breakpoint unmounts one dock and mounts the other's, and turning the setting
-off leaves no dock at all, while the route stands through both — so everything
-it does re-reads `dockKey.currentState` rather than the one captured when it
+breakpoint unmounts one dock and mounts the other's, while the route stands
+through it — so everything it does re-reads `dockKey.currentState` rather than the one captured when it
 opened. That getter answers for the class ON SCREEN, which is the other half
 of the same rule: a captured key is stale about which dock as well as about
-whether there is one. The same goes for the discard, which must work with no
-dock mounted, because turning the setting off mid-edit is exactly when there
-is none.
+whether there is one.
 
 **Leaving edit mode from that header takes the sheet with it.** The sheet is
 a control panel for an edit in progress; left open past the exit, its add
 writes straight to settings on the next press, with the discard that was
-beside it gone. And the header dresses for editing only
-where there is a dock at all — with layout customization off a narrow window
-draws the fixed `TabBar` instead, and a header that went on naming the view
-there would strand the operator with no way out. Turning the setting off
-mid-edit therefore discards first, so the draft goes back to what was saved
-rather than becoming the arrangement that reappears when they turn it on
-again.
+beside it gone.
 
 **The dock's definition and its state are stored apart.** The definition
 (`LayoutKeys.operationDock`) is the tree — splits, weights, which modules sit

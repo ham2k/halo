@@ -129,9 +129,6 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
   /// The arrangement this view ships with for [layoutClass], and what Restore
   /// Defaults puts back.
   ///
-  /// A narrow default reproduces the fixed arrangement its view draws below
-  /// the boundary, so nothing moves for an operator who never edits.
-  ///
   /// [migrate] is false for a RESTORE: a view that folds an older stored
   /// dimension into its default (Home's pre-dock column width) must not fold
   /// it in here, or Restore Defaults hands back the operator's own old
@@ -806,7 +803,7 @@ mixin DockHost<T extends StatefulWidget> on State<T> {
       bumpSheet();
       return;
     }
-    // NOT required: a narrow window may have no dock mounted. Each class's
+    // NOT required: the class on screen may be between docks. Each class's
     // `spec` below is what a remounting dock reads.
     final dock = dockKey.currentState;
     // Panes this discard is DROPPING, per class: everything the edit brought

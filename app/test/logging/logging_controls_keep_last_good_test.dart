@@ -53,16 +53,20 @@ class _FailsAfterFirst extends ExtensionServiceWithFakeHost {
 class _FailsOnceThenRecovers extends ExtensionServiceWithFakeHost {
   _FailsOnceThenRecovers() : super(FakeExtensionHost({}));
 
-  int calls = 0;
+  /// Fetches made FOR THE REF. Keyed on what is asked rather than on call
+  /// order: the view is not the only caller — the Spots pane fetches once for
+  /// its row icons — and a script indexed by call count hands the failure to
+  /// whichever of them happens to ask second.
+  int refCalls = 0;
 
   @override
   Future<ControlsResult> loggingControls(
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
   }) async {
-    final call = calls++;
-    if (call == 0) return (controls: const <Map<String, dynamic>>[], loadFailed: false);
-    if (call == 1) return (controls: const <Map<String, dynamic>>[], loadFailed: true);
+    final refs = operationData['refs'];
+    if (refs is! List || refs.isEmpty) return (controls: const <Map<String, dynamic>>[], loadFailed: false);
+    if (refCalls++ == 0) return (controls: const <Map<String, dynamic>>[], loadFailed: true);
     return (controls: const [_exchangeControl], loadFailed: false);
   }
 }
@@ -185,7 +189,7 @@ void main() {
       ],
     }));
     await tester.pumpAndSettle();
-    expect(extensions.calls, 2, reason: 'the ref edit fetched, and lost the race');
+    expect(extensions.refCalls, 1, reason: 'the ref edit fetched, and lost the race');
     expect(find.widgetWithText(TextField, 'Exch'), findsNothing, reason: 'the failed fetch installed nothing');
 
     // The restart settling — extension_service.dart bumps this once the host
@@ -193,7 +197,7 @@ void main() {
     extensions.runtimeGeneration.value++;
     await tester.pumpAndSettle();
 
-    expect(extensions.calls, 3, reason: 'the generation tick retried');
+    expect(extensions.refCalls, 2, reason: 'the generation tick retried');
     expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget,
         reason: 'the retry succeeds once the runtime is back, without reopening the operation');
 
