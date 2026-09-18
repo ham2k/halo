@@ -182,6 +182,41 @@ void main() {
     expect(infoRowButton('Restore'), findsOneWidget);
     await drainLookupQueueTimer(tester);
   });
+
+  // A staged delete disables every field in LoggingControls, so nothing in
+  // there holds the keyboard and its own chord handler never sees the key.
+  // Drop the panel-level forwarder and this undo is reachable by mouse only.
+  testWidgets('Cmd+Z takes back a staged delete, though no compose field can hold focus', (tester) async {
+    // A record the form loads and reads back unchanged. The shared `qso` is
+    // not one: selecting it offers Revert, and there is no Delete to stage.
+    final complete = await services.qsos.add(operation.uuid, {
+      'their': {'call': 'K2HAM', 'sent': '59'},
+      'our': {'call': 'N0CALL', 'sent': '59'},
+      'mode': 'SSB',
+    });
+    await tester.pumpWidget(wrap(LoggingPanel(
+      operation: operation,
+      services: services,
+      qsos: [complete],
+      loggingControls: const [],
+      onCommandAction: (action, [params]) async {},
+    )));
+    await tester.pump();
+
+    await tester.tap(find.text('K2HAM'));
+    await tester.pump();
+    await tester.tap(infoRowButton('Delete'));
+    await tester.pump();
+    expect(infoRowButton('Undo delete'), findsOneWidget, reason: 'the delete is staged');
+
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.metaLeft);
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyZ);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.metaLeft);
+    await tester.pump();
+
+    expect(infoRowButton('Delete'), findsOneWidget, reason: 'back to an unmodified QSO being edited');
+    await drainLookupQueueTimer(tester);
+  });
 }
 
 /// Selecting a QSO for editing now enqueues it for a background lookup

@@ -927,7 +927,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // message cut short — so the play is stopped without CLAIMING the key,
     // which belongs to the field being typed into. Escape is left to the
     // handler below: it stops the same play but must also answer `true`, or
-    // the same keystroke wipes the logging fields (logging-fields.md).
+    // the same keystroke also cancels an edit in the logging fields
+    // (logging-fields.md).
     // A recording is never touched: it only runs from a dialog, where this
     // handler is not the front route at all.
     final playing = services.cat.voiceActivity.value;
@@ -942,7 +943,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
 
     if (event.logicalKey == LogicalKeyboardKey.escape) {
       // Stops a message from wherever focus is. NOT what keeps the logging
-      // fields from also wiping on the same keystroke — a handler's answer
+      // fields from also acting on the same keystroke — a handler's answer
       // here never stops the focus tree's dispatch — that is
       // LoggingControls.escapeClaimed, wired in logging_panel.dart. With
       // nothing to stop, Escape keeps its usual meaning. Ahead of the

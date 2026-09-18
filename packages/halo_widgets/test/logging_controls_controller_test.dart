@@ -1,10 +1,18 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 
+import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 void main() {
+  const chord = KeyDownEvent(
+    physicalKey: PhysicalKeyboardKey.keyZ,
+    logicalKey: LogicalKeyboardKey.keyZ,
+    timeStamp: Duration.zero,
+  );
+
   test('delegates to the attached LoggingControls, and no-ops when detached', () async {
     final controller = LoggingControlsController();
 
@@ -15,6 +23,9 @@ void main() {
     await controller.submit();
     expect(() => controller.wipe(), returnsNormally);
     expect(controller.isFieldsLocked, isFalse);
+    // Ignored, not handled: a detached controller must leave the key to
+    // whoever is next, or Cmd/Ctrl+Z dies above an unmounted panel.
+    expect(controller.handleChord(chord), KeyEventResult.ignored);
     expect(() => controller.focusCall(), returnsNormally);
     expect(() => controller.focusSecondaryControls(), returnsNormally);
     expect(() => controller.focusLastPrimaryField(), returnsNormally);
@@ -35,6 +46,7 @@ void main() {
       submit: () async => submitted = true,
       wipe: () => wiped = true,
       isFieldsLocked: () => locked,
+      handleChord: (event) => KeyEventResult.handled,
       focusCall: () => focusedCall = true,
       focusSecondaryControls: () => focusedPills = true,
       focusLastPrimaryField: () => focusedLastField = true,
@@ -50,6 +62,7 @@ void main() {
     expect(wiped, isTrue);
     locked = true;
     expect(controller.isFieldsLocked, isTrue);
+    expect(controller.handleChord(chord), KeyEventResult.handled);
     // The focus ladder's two ends (APP-19): Escape from the list hands the
     // keyboard back to the call field, Enter on a row back to whichever main
     // field the operator was last in, and walking off the newest row onto
@@ -70,5 +83,6 @@ void main() {
     controller.focusCall();
     expect(focusedCall, isFalse);
     expect(controller.isFieldsLocked, isFalse);
+    expect(controller.handleChord(chord), KeyEventResult.ignored);
   });
 }

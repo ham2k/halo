@@ -1174,6 +1174,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       submit: _log,
       wipe: _wipe,
       isFieldsLocked: () => _fieldsLocked,
+      handleChord: _handleChord,
       focusCall: _callFocus.requestFocus,
       focusSecondaryControls: _ladder.focusPillAndOpen,
       focusLastPrimaryField: _ladder.focusLastPrimaryField,
@@ -1353,6 +1354,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         submit: _log,
         wipe: _wipe,
         isFieldsLocked: () => _fieldsLocked,
+        handleChord: _handleChord,
         focusCall: _callFocus.requestFocus,
         focusSecondaryControls: _ladder.focusPillAndOpen,
         focusLastPrimaryField: _ladder.focusLastPrimaryField,
@@ -3109,23 +3111,23 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
 
   /// Escape backs out of the innermost thing that's open, one layer per
   /// press: an options menu, then an expanded secondary control, then the
-  /// editing session, then the composed QSO.
+  /// editing session. It stops there: a QSO being composed is never wiped by
+  /// Escape — that is Alt+W ([_handleChord]) or the wipe button.
   ///
   /// It must not blank the read-only view of a staged-delete or deleted QSO —
   /// the fields are the record's only display and can't be repopulated
   /// without reselecting it. When editing an existing QSO it discards any
   /// unsaved changes and ends the editing session entirely
   /// (ham2k/halo-dist#199), unlike Revert, which discards changes and
-  /// stays in edit mode. When composing a new QSO it goes through the wipe
-  /// button's path, so the 5-second undo offer applies to Esc too.
+  /// stays in edit mode.
   void _handleEscape() {
     if (_fieldsLocked) return;
     if (widget.escapeClaimed?.call() ?? false) return;
     // An open exchange menu takes the first Escape, and takes it whether or not
     // the operator has touched the highlight: with a menu up, Escape means "not
-    // that" — and everything else Escape does here throws away work (a wipe, a
-    // discarded edit, a deselected QSO). Losing a half-typed contact to a
-    // keystroke aimed at a dropdown is not a recoverable mistake.
+    // that" — and what Escape does below throws away work (a discarded edit, a
+    // deselected QSO). Losing a half-made correction to a keystroke aimed at a
+    // dropdown is not a recoverable mistake.
     if (_exchange.menuOpen) {
       _exchange.dismissMenu();
       return;
@@ -3139,15 +3141,64 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _onSelectControl(null);
       return;
     }
-    if (widget.editingQso != null) {
-      widget.onEditCanceled?.call();
-    } else if (_draft.hasComposedValues) {
-      _handleWipeTap();
-    } else if (_draft.undoSlot.value != null) {
-      _restoreFromUndoSlot();
-    } else {
-      _wipe();
+    if (widget.editingQso != null) widget.onEditCanceled?.call();
+  }
+
+  /// The panel's modifier chords, which are the second button's gestures on
+  /// the keyboard: Alt+W wipes the QSO being composed, and Cmd/Ctrl+Z takes
+  /// back a wipe (while its undo offer lasts) or a staged delete.
+  ///
+  /// A key handler rather than a `CallbackShortcuts` entry because Cmd/Ctrl+Z
+  /// must stay the focused field's own text undo whenever there is nothing
+  /// here to take back, and a shortcut binding claims its key unconditionally.
+  /// Revert-changes is deliberately not on it for the same reason: while
+  /// editing, the operator reaching for Cmd/Ctrl+Z means the last keystroke,
+  /// not the whole record.
+  ///
+  /// Alt+W resets the whole draft either way: with something composed it is
+  /// the wipe button's path and its undo offer, and with nothing composed it
+  /// still clears what [QsoDraft.hasComposedValues] does not count — a report,
+  /// a power entry, a pending frequency edit — which no other gesture resets.
+  /// It is claimed in every state, and on key repeat too: unclaimed, macOS
+  /// types Option+W into the focused field as "∑".
+  ///
+  /// Cmd/Ctrl+Z restores a wipe only onto a form with nothing composed since.
+  /// The undo offer outlives the operator starting the next contact, and a
+  /// Cmd/Ctrl+Z aimed at a typo in it would otherwise replace that contact
+  /// with the wiped one, with nothing left to take THAT back.
+  ///
+  /// Also reachable through [LoggingControlsController.handleChord]: a staged
+  /// delete disables every field here, so the event cannot arrive by focus.
+  KeyEventResult _handleChord(KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
+    final keyboard = HardwareKeyboard.instance;
+    final command = keyboard.isMetaPressed || keyboard.isControlPressed;
+    final alt = keyboard.isAltPressed;
+    if (keyboard.isShiftPressed || command == alt) return KeyEventResult.ignored;
+
+    if (alt && event.logicalKey == LogicalKeyboardKey.keyW) {
+      if (event is KeyDownEvent && widget.editingQso == null && !_fieldsLocked) {
+        if (_draft.hasComposedValues) {
+          _handleWipeTap();
+        } else {
+          _wipe();
+        }
+      }
+      return KeyEventResult.handled;
     }
+    if (event is KeyDownEvent && command && event.logicalKey == LogicalKeyboardKey.keyZ) {
+      // Not while the staged delete is being committed: un-staging then would
+      // show Delete again over a record that is already on its way out.
+      if (_pendingDelete && !_isLogging) {
+        setState(() => _pendingDelete = false);
+        return KeyEventResult.handled;
+      }
+      if (widget.editingQso == null && _draft.undoSlot.value != null && !_draft.hasComposedValues) {
+        _restoreFromUndoSlot();
+        return KeyEventResult.handled;
+      }
+    }
+    return KeyEventResult.ignored;
   }
 
   /// [focusCall] false leaves the focus where it is — for a wipe the operator
@@ -3964,7 +4015,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // primitive a dialog uses. Without it, Tab past the last field escapes
     // into the QSO list above. Programmatic focus moves and mouse clicks
     // still cross the boundary freely — only keyboard traversal is confined.
-    return FocusScope(node: _focusBackstop.panelScope, child: panel);
+    return FocusScope(
+      node: _focusBackstop.panelScope,
+      child: Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onKeyEvent: (node, event) => _handleChord(event),
+        child: panel,
+      ),
+    );
   }
 
   /// Rebuilds when the on-screen keyboard opens or closes — the numbers row

@@ -6,6 +6,8 @@
 // the logging loop without pixel-hunting the canvas. Create one, pass it to
 // LoggingControls (which attaches itself on mount), and call its methods.
 
+import 'package:flutter/widgets.dart';
+
 /// A handle a [LoggingControls] attaches itself to, exposing a few imperative
 /// actions. Inert (all methods no-op) while nothing is attached.
 class LoggingControlsController {
@@ -13,6 +15,7 @@ class LoggingControlsController {
   Future<void> Function()? _submit;
   void Function()? _wipe;
   bool Function()? _isFieldsLocked;
+  KeyEventResult Function(KeyEvent event)? _handleChord;
   void Function()? _focusCall;
   void Function()? _focusSecondaryControls;
   void Function()? _focusLastPrimaryField;
@@ -23,6 +26,7 @@ class LoggingControlsController {
     required Future<void> Function() submit,
     required void Function() wipe,
     required bool Function() isFieldsLocked,
+    required KeyEventResult Function(KeyEvent event) handleChord,
     required void Function() focusCall,
     required void Function() focusSecondaryControls,
     required void Function() focusLastPrimaryField,
@@ -31,6 +35,7 @@ class LoggingControlsController {
     _submit = submit;
     _wipe = wipe;
     _isFieldsLocked = isFieldsLocked;
+    _handleChord = handleChord;
     _focusCall = focusCall;
     _focusSecondaryControls = focusSecondaryControls;
     _focusLastPrimaryField = focusLastPrimaryField;
@@ -42,6 +47,7 @@ class LoggingControlsController {
     _submit = null;
     _wipe = null;
     _isFieldsLocked = null;
+    _handleChord = null;
     _focusCall = null;
     _focusSecondaryControls = null;
     _focusLastPrimaryField = null;
@@ -66,6 +72,13 @@ class LoggingControlsController {
   /// `LoggingControls._handleEscape`'s doc). False (never locked) while
   /// nothing is attached.
   bool get isFieldsLocked => _isFieldsLocked?.call() ?? false;
+
+  /// Offers a key event to the attached [LoggingControls]' modifier chords
+  /// (Alt+W, Cmd/Ctrl+Z — see `LoggingControls._handleChord`). For the host
+  /// to call from a handler above the controls: a staged delete disables
+  /// every field, so the keyboard is never inside the controls at the one
+  /// moment Cmd/Ctrl+Z has a delete to take back.
+  KeyEventResult handleChord(KeyEvent event) => _handleChord?.call(event) ?? KeyEventResult.ignored;
 
   /// Puts the keyboard back on the callsign field — the bottom rung of the
   /// focus ladder (docs/design/logging-fields.md), used when Escape ends an

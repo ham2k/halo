@@ -585,8 +585,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// all; Escape must deselect regardless of what has focus.
   ///
   /// It only ever deselects, never toggles: a second press must not
-  /// re-select the QSO the first had just dropped (mirroring the compose
-  /// form's wipe-undo would fight the focus ladder, where Escape is
+  /// re-select the QSO the first had just dropped (an undo on a second
+  /// press would fight the focus ladder, where Escape is
   /// uniformly the way *out* of wherever the keyboard is — walking back
   /// *in* is the one thing it must never do).
   ///
@@ -733,9 +733,9 @@ class _LoggingPanelState extends State<LoggingPanel> {
     // was selected via a list tap, which never focuses anything inside
     // LoggingControls). LoggingControls' own
     // CallbackShortcuts, closer to the compose form's fields, still handles
-    // Escape whenever focus IS there (discard-typed-changes, wipe/undo) —
+    // Escape whenever focus IS there (discard-typed-changes) —
     // this one only fires when that inner one doesn't.
-    return CallbackShortcuts(
+    final panel = CallbackShortcuts(
       bindings: {const SingleActivator(LogicalKeyboardKey.escape): _handlePanelEscape},
       child: Column(
         children: [
@@ -792,8 +792,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
             radioName: _radioName,
             // Only with CAT: the strip reads CatService.cwProgress, which
             // nothing writes without a keyer-capable radio.
-            // Escape stops a CW message, or a voice memory, before it wipes
-            // anything — see LoggingControls.escapeClaimed.
+            // Escape stops a CW message, or a voice memory, before it closes
+            // or cancels anything — see LoggingControls.escapeClaimed.
             escapeClaimed: _gatoEnabled && _keyerEnabled
                 ? () {
                     final cat = widget.services.cat;
@@ -928,6 +928,16 @@ class _LoggingPanelState extends State<LoggingPanel> {
           ),
         ],
       ),
+    );
+
+    // LoggingControls' modifier chords, for the same reason as Escape above:
+    // with a delete staged its fields are disabled, so the keyboard is in the
+    // list (or nowhere) exactly when Cmd/Ctrl+Z has something to take back.
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      onKeyEvent: (node, event) => _loggingController.handleChord(event),
+      child: panel,
     );
   }
 

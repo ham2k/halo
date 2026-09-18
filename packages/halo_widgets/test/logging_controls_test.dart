@@ -303,6 +303,14 @@ void main() {
     await tester.pump();
   }
 
+  /// Holds [modifier] down around one press of [key].
+  Future<void> sendChord(WidgetTester tester, LogicalKeyboardKey modifier, LogicalKeyboardKey key) async {
+    await tester.sendKeyDownEvent(modifier);
+    await tester.sendKeyEvent(key);
+    await tester.sendKeyUpEvent(modifier);
+    await tester.pump();
+  }
+
   /// Pumps until a serial field has picked up its number. The claim is a
   /// drift query kicked off outside the frame, so it needs interleaved pumps
   /// to resolve — same reasoning as waitForQsos below.
@@ -2179,8 +2187,7 @@ void main() {
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // wipes, offers undo
-    await tester.pump();
+    await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW); // wipes, offers undo
     await tester.tap(find.byIcon(MdiIcons.undo));
     await tester.pump();
 
@@ -2417,7 +2424,10 @@ void main() {
     expect(enqueued.map((q) => q.uuid).toList(), [logged.single.uuid]);
   });
 
-  testWidgets('Escape wipes the entry and offers the same undo as the wipe button', (tester) async {
+  // Escape is aimed at menus and open controls all day long; a contact lost to
+  // one press too many is not a recoverable mistake, so the wipe lives on a
+  // chord nobody hits by accident.
+  testWidgets('Escape leaves a QSO being composed alone', (tester) async {
     await tester.pumpWidget(host());
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -2425,11 +2435,21 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.escape);
     await tester.pump();
 
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
+    expect(find.byIcon(MdiIcons.undo), findsNothing, reason: 'nothing was wiped, so there is nothing to offer back');
+  });
+
+  testWidgets('Alt+W wipes the entry and offers the same undo as the wipe button', (tester) async {
+    await tester.pumpWidget(host());
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    await tester.pump();
+    await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW);
+
     final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
     expect(callField.controller!.text, isEmpty);
     expect(await waitForQsos(tester, 1), isEmpty);
 
-    // Esc goes through the wipe button's path, so the 5s undo offer applies.
     final undoIcon = MdiIcons.undo;
     expect(find.byIcon(undoIcon), findsOneWidget);
     await tester.tap(find.byIcon(undoIcon));
@@ -2437,47 +2457,105 @@ void main() {
     expect(callField.controller!.text, 'W1AW');
     expect(find.byIcon(undoIcon), findsNothing);
 
-    // With nothing composed, Esc doesn't stash an empty entry as undoable.
+    // With nothing composed, the chord doesn't stash an empty entry as undoable.
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), '');
     await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-    await tester.pump();
+    await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW);
     expect(find.byIcon(undoIcon), findsNothing);
   });
 
-  testWidgets('a second Escape restores an Escape-wiped entry, same as tapping Undo (issue #199 follow-up)',
-      (tester) async {
+  // A report typed with no call is not "composed" — the wipe button stays
+  // disabled over it — so the chord is the only gesture that resets it.
+  testWidgets('Alt+W resets what the wipe button does not count as composed', (tester) async {
     await tester.pumpWidget(host());
 
-    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+    final sent = find.widgetWithText(TextField, 'Sent');
+    await tester.enterText(sent, '57');
     await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // wipes, offers undo
-    await tester.pump();
+    await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW);
 
-    final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
-    expect(callField.controller!.text, isEmpty);
-
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // restores instead of re-wiping an empty form
-    await tester.pump();
-
-    expect(callField.controller!.text, 'W1AW');
-    expect(find.byIcon(MdiIcons.undo), findsNothing);
+    expect(tester.widget<TextField>(sent).controller!.text, isNot('57'));
+    expect(find.byIcon(MdiIcons.undo), findsNothing, reason: 'nothing composed, so nothing worth offering back');
   });
 
-  testWidgets('Escape on an already-empty form is an inert no-op', (tester) async {
-    // It used to ask the caller whether *it* had a QSO to undo-deselect, which
-    // made Escape walk back into a selection it had just left. APP-19's ladder
-    // makes Escape uniformly the way out, so the bottom of the stack is simply
-    // a wipe of an already-empty form: nothing to restore, nothing to break.
+  // Unclaimed, a held Option+W auto-repeats into the focused field as "∑".
+  testWidgets('Alt+W is claimed on key repeat too, without wiping again', (tester) async {
     await tester.pumpWidget(host());
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    final call = find.widgetWithText(TextField, 'Their call');
+    await tester.enterText(call, 'W1AW');
     await tester.pump();
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.altLeft);
+    await tester.sendKeyDownEvent(LogicalKeyboardKey.keyW);
+    await tester.pump();
+    await tester.enterText(call, 'K2HAM');
+    await tester.pump();
+    final claimed = await tester.sendKeyRepeatEvent(LogicalKeyboardKey.keyW);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.keyW);
+    await tester.sendKeyUpEvent(LogicalKeyboardKey.altLeft);
     await tester.pump();
 
-    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, isEmpty);
-    expect(find.byIcon(MdiIcons.undo), findsNothing);
+    expect(claimed, isTrue);
+    expect(tester.widget<TextField>(call).controller!.text, 'K2HAM');
+  });
+
+  // The undo offer outlives the operator starting the next contact. A Cmd+Z
+  // aimed at a typo in it must not swap that contact for the wiped one — the
+  // slot is single-use, so there would be nothing left to take THAT back.
+  testWidgets('Cmd+Z leaves a wipe alone once something new is composed', (tester) async {
+    await tester.pumpWidget(host());
+
+    final call = find.widgetWithText(TextField, 'Their call');
+    await tester.enterText(call, 'W1AW');
+    await tester.pump();
+    await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW);
+    await tester.enterText(call, 'K2HAM');
+    await tester.pump();
+
+    await sendChord(tester, LogicalKeyboardKey.metaLeft, LogicalKeyboardKey.keyZ);
+
+    expect(tester.widget<TextField>(call).controller!.text, isNot('W1AW'));
+    // Still on offer from the button, which says what it is about to do.
+    await tester.tap(find.byIcon(MdiIcons.undo));
+    await tester.pump();
+    expect(tester.widget<TextField>(call).controller!.text, 'W1AW');
+  });
+
+  for (final modifier in [LogicalKeyboardKey.metaLeft, LogicalKeyboardKey.controlLeft]) {
+    testWidgets('${modifier.keyLabel}+Z restores a wiped entry, same as tapping Undo', (tester) async {
+      await tester.pumpWidget(host());
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
+      await tester.pump();
+      await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW);
+
+      final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
+      expect(callField.controller!.text, isEmpty);
+
+      await sendChord(tester, modifier, LogicalKeyboardKey.keyZ);
+
+      expect(callField.controller!.text, 'W1AW');
+      expect(find.byIcon(MdiIcons.undo), findsNothing);
+    });
+  }
+
+  // The chord is claimed ONLY while there is a wipe to take back. Claimed
+  // unconditionally it would take text undo away from every logging field.
+  testWidgets('Ctrl+Z with no wipe to take back is still the field\'s own text undo', (tester) async {
+    await tester.pumpWidget(host());
+
+    final call = find.widgetWithText(TextField, 'Their call');
+    await tester.enterText(call, 'W1AW');
+    await tester.pump();
+    // The undo history coalesces edits made inside its throttle window.
+    await tester.pump(const Duration(seconds: 1));
+    await tester.enterText(call, 'W1AWX');
+    await tester.pump(const Duration(seconds: 1));
+
+    // Ctrl, not Cmd: the test platform is Android, whose text undo is Ctrl+Z.
+    await sendChord(tester, LogicalKeyboardKey.controlLeft, LogicalKeyboardKey.keyZ);
+
+    expect(tester.widget<TextField>(call).controller!.text, 'W1AW');
   });
 
   testWidgets('debounced lookup enriches the entry line and the logged QSO', (tester) async {
@@ -2567,8 +2645,7 @@ void main() {
     expect(lookups, 2); // offline + online pass
     expect(find.textContaining('ARRL HQ'), findsOneWidget);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // wipes, offers undo
-    await tester.pump();
+    await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW); // wipes, offers undo
     final callField = tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
     expect(callField.controller!.text, isEmpty);
 
@@ -2607,8 +2684,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 350));
     expect(find.text('Dupe!'), findsOneWidget);
 
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape); // wipes, offers undo
-    await tester.pump();
+    await sendChord(tester, LogicalKeyboardKey.altLeft, LogicalKeyboardKey.keyW); // wipes, offers undo
     expect(find.text('Dupe!'), findsNothing);
 
     await tester.tap(find.byIcon(MdiIcons.undo));
@@ -3246,8 +3322,8 @@ void main() {
     });
 
     testWidgets('Escape closes the menu and nothing else — the QSO survives it', (tester) async {
-      // Everything else Escape does in this panel throws away work: it wipes a
-      // composed QSO, discards an edit, or deselects. With a menu up, Escape
+      // What else Escape does in this panel throws away work: it discards an
+      // edit, or deselects. With a menu up, Escape
       // means "not that" — and losing a half-typed contact to a keystroke aimed
       // at a dropdown is not a recoverable mistake. It takes the menu whether or
       // not the highlight was ever touched.
@@ -3276,12 +3352,12 @@ void main() {
       await tester.pump();
       expect(find.byKey(exchangeSuggestionsKey), findsOneWidget);
 
-      // And with no menu open, Escape does what it always did.
+      // With no menu left to close, a further Escape has nothing to take.
       await tester.sendKeyEvent(LogicalKeyboardKey.escape); // closes the menu
       await tester.pumpAndSettle();
-      await tester.sendKeyEvent(LogicalKeyboardKey.escape); // now wipes
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
-      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller?.text, '');
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller?.text, 'W1AW');
     });
 
     testWidgets('Tab takes the offer on the way out, like Space — Shift+Tab does not', (tester) async {
@@ -11732,6 +11808,38 @@ void main() {
 
       expect(find.textContaining('will be deleted'), findsNothing);
       expect(find.byIcon(deleteIcon), findsOneWidget);
+    });
+
+    // Revert-changes is NOT on the chord: while editing, Cmd+Z means the last
+    // keystroke, and claiming it would throw the whole edit away instead.
+    testWidgets('Cmd+Z while editing a changed QSO does not revert it', (tester) async {
+      final existingQso = Qso(
+        uuid: 'existing-uuid',
+        operationUuid: operation.uuid,
+        data: {
+          'their': {'call': 'W1AW', 'sent': '59'},
+          'our': {'sent': '59', 'call': 'KI2D'},
+          'mode': 'SSB',
+        },
+      );
+
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, editingQso: existingQso),
+        ),
+      ));
+
+      // Two fields, so that whatever text undo does to the focused one, the
+      // other still tells a revert apart from it.
+      await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
+      await tester.pump();
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AWX');
+      await tester.pump();
+      expect(find.byIcon(undoIcon), findsOneWidget, reason: 'the second button offers revert');
+
+      await sendChord(tester, LogicalKeyboardKey.metaLeft, LogicalKeyboardKey.keyZ);
+
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).controller!.text, '57');
     });
 
     testWidgets('editing changes the second button to revert-changes; tapping restores the original values', (tester) async {

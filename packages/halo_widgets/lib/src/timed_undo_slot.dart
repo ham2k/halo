@@ -4,9 +4,9 @@
 import 'dart:async';
 
 /// A single-slot, timed undo stash: holds one value for [duration], then
-/// forgets it — restarted on every [set]. For "press again to undo"
-/// gestures (Escape-wipe, Escape-deselect) that only need to remember the
-/// most recently discarded thing, not a history of them.
+/// forgets it — restarted on every [set]. For short-lived undo offers (a
+/// wiped QSO) that only need to remember the most recently discarded thing,
+/// not a history of them.
 class TimedUndoSlot<T> {
   TimedUndoSlot({this.duration = const Duration(seconds: 5)});
 

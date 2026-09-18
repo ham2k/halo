@@ -10,6 +10,7 @@ upcoming:
     - "New Show Deleted Operations preference; a deleted operation's Tools menu offers Undelete"
     - "The Pennsylvania QSO Party now exchanges serial numbers"
     - "QSOs with a note show a note icon in their row"
+    - "Esc no longer wipes the QSO being typed — Alt+W wipes, Cmd/Ctrl+Z undoes it"
 
 "168":
   changes:

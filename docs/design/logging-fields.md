@@ -679,9 +679,29 @@ QSO list  ──▲──  secondary pills  ──▲──  main logging fields
 suggestion menu, then an open control (back to the main fields, the same
 destination Down/Enter reach above) — then the editing session, back
 specifically to the callsign field, a "start a fresh QSO" gesture unlike
-Enter/Down-past-the-newest's "resume where I left off" — then the composed
-QSO. It never walks back *in*: in particular a second Escape does not
-re-select the QSO the first one deselected, which it used to do.
+Enter/Down-past-the-newest's "resume where I left off". It stops there: a
+QSO being composed is never wiped by Escape, because Escape is aimed at menus
+and open controls all day long and one press too many must not cost a
+contact. It never walks back *in* either: in particular a second Escape does
+not re-select the QSO the first one deselected, which it used to do.
+
+**Wipe and undo** have chords of their own, the info row's second button on
+the keyboard. **Alt+W** wipes the QSO being composed (nothing else: while
+editing, the button is Delete/Revert and the chord does nothing), with the
+same 5-second undo offer as the button. It resets the whole draft, references
+included, and goes one step past the button: with nothing the button counts
+as composed — a lone report, a power entry — it still clears that and returns
+to the callsign field, with no undo offer, since no other gesture resets it.
+**Cmd/Ctrl+Z** takes back a wipe while that offer lasts, or a staged delete.
+It restores only onto a form with nothing composed since: the offer outlives
+the operator starting the next contact, and a Cmd/Ctrl+Z aimed at a typo in
+it must not swap that contact for the wiped one (the button still will — it
+says what it is about to do). With nothing to take back the chord is left
+alone, so it stays the focused field's own text undo — which is also why
+Revert-changes is *not* on it: while editing, Cmd/Ctrl+Z means the last
+keystroke, not the whole record. A staged delete disables every field, so
+the panel above forwards the chords to the controls
+(`LoggingControlsController.handleChord`), the same way it catches Escape.
 
 ### The composing draft
 
