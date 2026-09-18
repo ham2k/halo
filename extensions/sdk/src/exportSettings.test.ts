@@ -79,3 +79,36 @@ test('private operation grids and internal positions stay out of public template
   assert.deepEqual(exportQso({ our: { multiIdentifier: 'Private desk', grid: 'FN31pr12' } }, { includePrivateData: false }),
     { our: { grid: 'FN31pr' } })
 })
+
+test('global activity templates stay independent across formats and per-type overrides', () => {
+  const reference = { ...exportTypeDefinition('potaActivation', 'adif', 'POTA'), templateCategory: 'reference' as const }
+  const other = exportTypeDefinition('cqww', 'cabrillo', 'CQ WW')
+  const global = {
+    referenceFilenameTemplate: 'Park {{ log.ref }}', referenceCompactFilenameTemplate: 'R-{{ log.ref }}',
+    referenceTitleTemplate: 'Reference title', otherFilenameTemplate: 'Contest {{ log.activity }}',
+    otherCompactFilenameTemplate: 'C-{{ log.activity }}', otherTitleTemplate: 'Other title',
+    adifNotesTemplate: 'Shared notes',
+  }
+  const park = resolveExportSettings(reference, global)
+  const contest = resolveExportSettings(other, global)
+  assert.equal(park.filenameTemplate, global.referenceFilenameTemplate)
+  assert.equal(park.compactFilenameTemplate, global.referenceCompactFilenameTemplate)
+  assert.equal(park.titleTemplate, 'Reference title')
+  assert.equal(park.adifNotesTemplate, 'Shared notes')
+  assert.equal(contest.filenameTemplate, global.otherFilenameTemplate)
+  assert.equal(contest.compactFilenameTemplate, global.otherCompactFilenameTemplate)
+  assert.equal(contest.titleTemplate, undefined)
+  assert.equal(resolveExportSettings({ ...other, format: 'adif' }, global).titleTemplate, 'Other title')
+  assert.equal(resolveExportSettings(reference, global, { customTemplates: true, filenameTemplate: 'Mine' }).filenameTemplate, 'Mine')
+  assert.equal(resolveExportSettings({ ...reference, defaults: { filenameTemplate: 'Sponsor' } }, global).filenameTemplate, 'Sponsor')
+})
+
+test('saved common defaults survive until an activity category is customized', () => {
+  const reference = { ...exportTypeDefinition('potaActivation', 'adif', 'POTA'), templateCategory: 'reference' as const }
+  const other = exportTypeDefinition('cqww', 'adif', 'CQ WW')
+  const global = { filenameTemplate: 'Saved filename', titleTemplate: '', referenceFilenameTemplate: 'Park file' }
+  assert.equal(resolveExportSettings(reference, global).filenameTemplate, 'Park file')
+  assert.equal(resolveExportSettings(other, global).filenameTemplate, 'Saved filename')
+  assert.equal(resolveExportSettings(reference, global).titleTemplate, '')
+  assert.equal(resolveExportSettings(other, global).titleTemplate, '')
+})

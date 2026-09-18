@@ -53,6 +53,26 @@ offline and describe the version installed here rather than whatever the
 repository says today. If an agent is writing your extension, point it at
 `node_modules/@ham2k/extension-sdk/AGENTS.md` — `h2kext-init` does that for you.
 
+## Export types and settings
+
+Export hooks can register shared types with `getExportTypes()`. Use
+`exportTypeDefinition(activationType, format, label)` for an identity shared
+by extensions serving the same activity. `exportType` identifies the settings;
+`exportKey` identifies an individual file, such as one park in an activation.
+
+The `activityExportHook` and `huntingExportHook` helpers register their types
+and forward export settings to the ADIF generator. Reference activity types
+use `templateCategory: 'reference'`; other types use the other-activity defaults.
+`GlobalExportSettings` provides separate normal filename, compact filename,
+and title templates for each category, plus shared ADIF field templates.
+
+When updating an exporter from SDK 0.3, keep a reference-specific identifier
+in `exportKey`, register a stable `exportType`, and forward `exportSettings`,
+`exportData`, `exportTitle`, and `includeLookupData` when delegating generation.
+Per-type custom templates override inherited defaults only when enabled.
+See `docs/hooks.md` §`export` for the complete contract and `docs/forms.md`
+for the `textTemplate` form field.
+
 ## About the peer dependencies
 
 This package lists the libraries the extension host carries — `@ham2k/lib-*`,

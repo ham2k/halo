@@ -788,6 +788,16 @@ export interface ExportSettings {
   adifQslMessageTemplate?: string
 }
 
+/// Global filename/title defaults are independent for reference and other activities.
+export interface GlobalExportSettings extends ExportSettings {
+  referenceFilenameTemplate?: string
+  referenceCompactFilenameTemplate?: string
+  referenceTitleTemplate?: string
+  otherFilenameTemplate?: string
+  otherCompactFilenameTemplate?: string
+  otherTitleTemplate?: string
+}
+
 export interface ExportTypeDefinition {
   /// Global settings identity. Prefer `<activationType>-<format>` so another
   /// extension serving the same activity can reuse it.
@@ -795,6 +805,7 @@ export interface ExportTypeDefinition {
   label: string
   format: string
   activationType?: string
+  templateCategory?: 'reference' | 'other'
   defaults?: ExportSettings
   /// Illustrative operation/log values used by the template editor.
   templateSample?: Record<string, JSONValue>

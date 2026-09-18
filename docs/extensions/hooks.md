@@ -298,13 +298,20 @@ that contract. Distinct sponsor requirements can use a distinct type. The
 SDK's `exportTypeDefinition(activationType, format, label, defaults?)` builds
 the conventional definition; the activity and hunting helpers register their
 own types. An exporter without `getExportTypes` still works, but does not
-appear in the type-settings selector.
+appear in the export settings list.
 
 `ExportSettings` contains `includePrivateData`, `includeLookupData`,
 `customTemplates`, `filenameTemplate`, `compactFilenameTemplate`,
 `titleTemplate`, `adifNotesTemplate`, `adifCommentTemplate`, and
 `adifQslMessageTemplate`. All are optional. Defaults resolve from the SDK,
-then global preferences, then the type's declared defaults. Per-type data
+then global preferences, then the type's declared defaults.
+`GlobalExportSettings` adds `referenceFilenameTemplate`,
+`referenceCompactFilenameTemplate`, `referenceTitleTemplate` and the matching
+`other…` fields. A type with `templateCategory: 'reference'` uses the reference
+set; other types use the other set. The activity export helper registers
+reference types automatically. ADIF field templates remain common to both sets.
+Saved common filename/title defaults remain fallbacks for categories without
+an explicit setting. Per-type data
 choices override those; per-type template overrides apply only when
 `customTemplates` is on. Empty templates intentionally suppress text. Turning
 custom templates off preserves the operator's edits for later. Non-ADIF

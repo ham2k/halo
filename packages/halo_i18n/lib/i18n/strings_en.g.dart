@@ -2324,6 +2324,18 @@ class Translations$exportSettings$en {
 
 	// Translations
 
+	/// en: 'Base settings for all exports, with separate filename and title templates for reference activities and other activities. Each export type can provide its own defaults or custom settings.'
+	String get defaultsDescription => 'Base settings for all exports, with separate filename and title templates for reference activities and other activities. Each export type can provide its own defaults or custom settings.';
+
+	/// en: 'Reference Activities'
+	String get referenceActivities => 'Reference Activities';
+
+	/// en: 'Other Activities'
+	String get otherActivities => 'Other Activities';
+
+	/// en: 'ADIF Fields'
+	String get adifFields => 'ADIF Fields';
+
 	/// en: 'Export settings could not be loaded.'
 	String get loadFailed => 'Export settings could not be loaded.';
 
@@ -8314,6 +8326,10 @@ extension on Translations {
 			'offline.retryDisabled' => 'Sync is switched off, so there is nothing to probe with.',
 			'offline.syncService' => 'Ham2K LoFi sync',
 			'offline.retryInFlight' => 'Already trying — hang on.',
+			'exportSettings.defaultsDescription' => 'Base settings for all exports, with separate filename and title templates for reference activities and other activities. Each export type can provide its own defaults or custom settings.',
+			'exportSettings.referenceActivities' => 'Reference Activities',
+			'exportSettings.otherActivities' => 'Other Activities',
+			'exportSettings.adifFields' => 'ADIF Fields',
 			'exportSettings.loadFailed' => 'Export settings could not be loaded.',
 			'exportSettings.retry' => 'Retry',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Compact filenames, such as N0CALL@US-1234-20260715.adi.',

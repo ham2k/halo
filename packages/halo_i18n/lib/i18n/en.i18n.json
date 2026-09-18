@@ -2075,6 +2075,10 @@
     "retryInFlight": "Already trying — hang on."
   },
   "exportSettings": {
+    "defaultsDescription": "Base settings for all exports, with separate filename and title templates for reference activities and other activities. Each export type can provide its own defaults or custom settings.",
+    "referenceActivities": "Reference Activities",
+    "otherActivities": "Other Activities",
+    "adifFields": "ADIF Fields",
     "loadFailed": "Export settings could not be loaded.",
     "retry": "Retry",
     "compactFileNamesDescriptionOn": "Compact filenames, such as N0CALL@US-1234-20260715.adi.",

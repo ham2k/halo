@@ -413,7 +413,7 @@ function sponsorFilename(
 
 const ExportHook = {
   async getExportTypes() {
-    return [exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName), { exportType: SPONSOR_ADIF, format: 'adif', label: manifest.shortName, templateSample: { log: { ref: 'US-1234', refName: 'Example Park' } }, defaults: { filenameTemplate: '{{ log.station | dash }}@{{ log.ref }}-{{ op.dateCompact }}', compactFilenameTemplate: '{{ log.station | dash }}@{{ log.ref }}-{{ op.dateCompact }}' } }]
+    return [exportTypeDefinition(TYPE, 'cabrillo', manifest.shortName), { exportType: SPONSOR_ADIF, templateCategory: 'reference', format: 'adif', label: manifest.shortName, templateSample: { log: { ref: 'US-1234', refName: 'Example Park' } }, defaults: { filenameTemplate: '{{ log.station | dash }}@{{ log.ref }}-{{ op.dateCompact }}', compactFilenameTemplate: '{{ log.station | dash }}@{{ log.ref }}-{{ op.dateCompact }}' } }]
   },
   async suggestExportOptions(args: ExportOptionsRequest, ctx: HookContext): Promise<ExportOption[]> {
     const event = eventOn(args.operation)

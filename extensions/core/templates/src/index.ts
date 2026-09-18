@@ -9,8 +9,8 @@
 // nothing else: the same `templateContext` every panel and export builds,
 // so a placeholder means the same thing in a CW message as in a pane.
 
-import { EXPORT_DEFAULTS, prepareExportOption, resolveExportSettings } from "@ham2k/extension-sdk"
-import type { ExportOption, ExportSettings, ExportTypeDefinition } from "@ham2k/extension-sdk"
+import { GLOBAL_EXPORT_DEFAULTS, resolveGlobalExportSettings, prepareExportOption, resolveExportSettings } from "@ham2k/extension-sdk"
+import type { ExportOption, ExportSettings, ExportTypeDefinition, GlobalExportSettings } from "@ham2k/extension-sdk"
 import { TemplateError, defineExtension, renderTemplate, templateContext } from "@ham2k/extension-sdk"
 import type { HookContext, JSONValue } from "@ham2k/extension-sdk"
 
@@ -47,9 +47,9 @@ function renderOne(template: string, context: Record<string, unknown>): Template
 }
 
 const TemplateHook = {
-  async exportSettings(args: { definitions: ExportTypeDefinition[]; global?: ExportSettings; overrides?: Record<string, ExportSettings> }) {
+  async exportSettings(args: { definitions: ExportTypeDefinition[]; global?: GlobalExportSettings; overrides?: Record<string, ExportSettings> }) {
     return [
-      { exportType: 'default', format: 'adif', label: '', defaults: EXPORT_DEFAULTS, settings: { ...EXPORT_DEFAULTS, ...args.global } },
+      { exportType: 'default', format: 'adif', label: '', defaults: GLOBAL_EXPORT_DEFAULTS, settings: resolveGlobalExportSettings(args.global) },
       ...args.definitions.map((definition) => ({
         ...definition,
         defaults: resolveExportSettings(definition, args.global),

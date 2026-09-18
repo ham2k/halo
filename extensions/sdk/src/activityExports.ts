@@ -26,6 +26,7 @@
 import type {
   ExportOption,
   ExportSettings,
+  ExportTypeDefinition,
   ExportOptionsRequest,
   ExportRequest,
   ExportResult,
@@ -116,9 +117,10 @@ export function activityExportHook(rules: ActivityExportRules) {
   const prefix = `${rules.key}-adif`
 
   return {
-    async getExportTypes() {
+    async getExportTypes(): Promise<ExportTypeDefinition[]> {
       return [{
         ...exportTypeDefinition(rules.activationType, 'adif', rules.label),
+        templateCategory: 'reference',
         templateSample: rules.templateSample ?? {
           log: { ref: 'REF-1234', refName: 'Example Reference' },
           operation: { refs: [{ type: rules.activationType, ref: 'REF-1234' }] },
@@ -280,7 +282,7 @@ export function huntingExportHook(rules: HuntingExportRules) {
   }
 
   return {
-    async getExportTypes() {
+    async getExportTypes(): Promise<ExportTypeDefinition[]> {
       return [{ exportType, format: 'adif', label: `${rules.label} Hunter Log` }]
     },
     async suggestExportOptions(

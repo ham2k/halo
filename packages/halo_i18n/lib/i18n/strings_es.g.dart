@@ -1098,6 +1098,10 @@ class _Translations$exportSettings$es extends Translations$exportSettings$en {
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
+	@override String get defaultsDescription => 'Ajustes base para todas las exportaciones, con plantillas de nombre de archivo y título separadas para actividades con referencia y otras actividades. Cada tipo de exportación puede proporcionar sus propios valores predeterminados o ajustes personalizados.';
+	@override String get referenceActivities => 'Actividades con referencia';
+	@override String get otherActivities => 'Otras actividades';
+	@override String get adifFields => 'Campos ADIF';
 	@override String get loadFailed => 'No se pudieron cargar los ajustes de exportación.';
 	@override String get retry => 'Reintentar';
 	@override String get compactFileNamesDescriptionOn => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.';
@@ -4796,6 +4800,10 @@ extension on TranslationsEs {
 			'offline.retryDisabled' => 'La sincronización está desactivada, así que no hay con qué sondear.',
 			'offline.syncService' => 'Sincronización Ham2K LoFi',
 			'offline.retryInFlight' => 'Ya se está intentando — un momento.',
+			'exportSettings.defaultsDescription' => 'Ajustes base para todas las exportaciones, con plantillas de nombre de archivo y título separadas para actividades con referencia y otras actividades. Cada tipo de exportación puede proporcionar sus propios valores predeterminados o ajustes personalizados.',
+			'exportSettings.referenceActivities' => 'Actividades con referencia',
+			'exportSettings.otherActivities' => 'Otras actividades',
+			'exportSettings.adifFields' => 'Campos ADIF',
 			'exportSettings.loadFailed' => 'No se pudieron cargar los ajustes de exportación.',
 			'exportSettings.retry' => 'Reintentar',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.',

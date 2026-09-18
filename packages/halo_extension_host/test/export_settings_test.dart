@@ -22,6 +22,7 @@ void main() {
     final types = await host.invokeHook('export', key: 'pota', method: 'getExportTypes', args: {}) as List;
     expect((types.single as Map)['exportType'], 'potaActivation-adif');
     expect((types.single as Map)['activationType'], 'potaActivation');
+    expect((types.single as Map)['templateCategory'], 'reference');
   });
 
   test('per-type text and lookup settings survive POTA delegation to ADIF', () async {

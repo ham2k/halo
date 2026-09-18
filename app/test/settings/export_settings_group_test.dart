@@ -35,6 +35,34 @@ class _Extensions extends ExtensionService {
 }
 
 void main() {
+  test('defaults have two independent template categories and shared ADIF fields', () async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = SettingsService(await SharedPreferences.getInstance());
+    final extensions = _Extensions();
+    final group = ExportsSettingsGroup(settings, extensions);
+    final fields = await group.typeElements('default');
+    expect(fields.first['text'], t.exportSettings.defaultsDescription);
+    expect(fields.where((e) => e['type'] == 'header').map((e) => e['title']),
+        ['Reference Activities', 'Other Activities', 'ADIF Fields']);
+    final templates = fields.where((e) => e['fieldType'] == 'textTemplate').toList();
+    expect(templates, hasLength(9));
+    expect(templates.every((e) => e['disabled'] == false), isTrue);
+    expect(fields.any((e) => e['key'] == 'default::customTemplates'), isFalse);
+    final reference = templates.firstWhere((e) => e['key'] == 'default::referenceFilenameTemplate');
+    final other = templates.firstWhere((e) => e['key'] == 'default::otherFilenameTemplate');
+    expect(reference['templateSample']['log']['ref'], 'US-1234');
+    expect(other['templateSample']['log']['ref'], '');
+    expect(other['templateSample']['log']['activity'], 'CQ WW');
+    await group.commit('default::referenceFilenameTemplate', 'My park');
+    await group.commit('default::otherFilenameTemplate', 'My contest');
+    final updated = await group.typeElements('default');
+    expect(updated.firstWhere((e) => e['key'] == reference['key'])['value'], 'My park');
+    expect(updated.firstWhere((e) => e['key'] == other['key'])['value'], 'My contest');
+    expect((await group.typeElements('potaActivation-adif')).first['text'], t.exportSettings.shared);
+    settings.dispose();
+    extensions.runtimeGeneration.dispose();
+  });
+
   testWidgets('export rows open independent type settings without a shared selector', (tester) async {
     SharedPreferences.setMockInitialValues({});
     final settings = SettingsService(await SharedPreferences.getInstance());

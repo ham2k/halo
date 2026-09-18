@@ -2064,6 +2064,10 @@
     "retryInFlight": "Ya se está intentando — un momento."
   },
   "exportSettings": {
+    "defaultsDescription": "Ajustes base para todas las exportaciones, con plantillas de nombre de archivo y título separadas para actividades con referencia y otras actividades. Cada tipo de exportación puede proporcionar sus propios valores predeterminados o ajustes personalizados.",
+    "referenceActivities": "Actividades con referencia",
+    "otherActivities": "Otras actividades",
+    "adifFields": "Campos ADIF",
     "loadFailed": "No se pudieron cargar los ajustes de exportación.",
     "retry": "Reintentar",
     "compactFileNamesDescriptionOn": "Nombres compactos, como N0CALL@US-1234-20260715.adi.",

@@ -98,13 +98,20 @@ class ExportsSettingsGroup extends SettingsGroup {
         'disabled': id != 'default' && values['customTemplates'] != true,
         'templateSample': {
           ...sample,
-          'operation': {'refs': <dynamic>[], ...Map<String, dynamic>.from(sample['operation'] as Map? ?? {})},
-          'log': sampleLog,
+          'operation': {
+            'refs': <dynamic>[], ...Map<String, dynamic>.from(sample['operation'] as Map? ?? {}),
+            if (key.startsWith('reference')) 'refs': [{'type': 'potaActivation', 'ref': 'US-1234'}],
+          },
+          'log': {
+            ...sampleLog,
+            if (key.startsWith('reference')) ...{'activity': 'POTA', 'ref': 'US-1234', 'refName': 'Example Park'},
+            if (key.startsWith('other')) 'activity': 'CQ WW',
+          },
         },
       },
     };
     return [
-        {'type': 'markdown', 'text': labels.shared},
+        {'type': 'markdown', 'text': id == 'default' ? labels.defaultsDescription : labels.shared},
         if (definition['format'] == 'adif') ...[
           field('includePrivateData', t.operation.export.includePrivateData.title,
             icon: 'account-lock-outline', description: values['includePrivateData'] == true
@@ -116,10 +123,22 @@ class ExportsSettingsGroup extends SettingsGroup {
         if (id != 'default') field('customTemplates', labels.customTemplates,
           description: values['customTemplates'] == true
               ? labels.customTemplatesDescriptionOn : labels.customTemplatesDescriptionOff),
-        field('filenameTemplate', labels.filenameTemplate, template: true),
-        field('compactFilenameTemplate', labels.compactFilenameTemplate, template: true),
-        if (definition['format'] == 'adif') ...[
-          field('titleTemplate', labels.titleTemplate, template: true),
+        if (id == 'default') ...[
+          {'type': 'header', 'style': 'section', 'title': labels.referenceActivities},
+          field('referenceFilenameTemplate', labels.filenameTemplate, template: true),
+          field('referenceCompactFilenameTemplate', labels.compactFilenameTemplate, template: true),
+          field('referenceTitleTemplate', labels.titleTemplate, template: true),
+          {'type': 'header', 'style': 'section', 'title': labels.otherActivities},
+          field('otherFilenameTemplate', labels.filenameTemplate, template: true),
+          field('otherCompactFilenameTemplate', labels.compactFilenameTemplate, template: true),
+          field('otherTitleTemplate', labels.titleTemplate, template: true),
+          {'type': 'header', 'style': 'section', 'title': labels.adifFields},
+        ] else ...[
+          field('filenameTemplate', labels.filenameTemplate, template: true),
+          field('compactFilenameTemplate', labels.compactFilenameTemplate, template: true),
+          if (format == 'adif') field('titleTemplate', labels.titleTemplate, template: true),
+        ],
+        if (format == 'adif') ...[
           field('adifNotesTemplate', labels.adifNotesTemplate, template: true),
           field('adifCommentTemplate', labels.adifCommentTemplate, template: true),
           field('adifQslMessageTemplate', labels.adifQslMessageTemplate, template: true),

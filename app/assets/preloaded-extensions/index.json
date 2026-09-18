@@ -20,9 +20,9 @@
     },
     {
       "key": "ham2k-pota",
-      "version": "0.2.0",
-      "file": "ham2k-pota-0.2.0.h2kext",
-      "sha256": "36e1f03cfe29ee6b51b777b1dee2353d2e82d92998d0ce2400b52de5e07e5961"
+      "version": "0.2.1",
+      "file": "ham2k-pota-0.2.1.h2kext",
+      "sha256": "6d7a9403167f748ed578f01a05d394b4de0c5f2384df71eb1c501048580c5dbf"
     },
     {
       "key": "ham2k-qrz",
@@ -32,9 +32,9 @@
     },
     {
       "key": "ham2k-sota",
-      "version": "0.2.1",
-      "file": "ham2k-sota-0.2.1.h2kext",
-      "sha256": "27c62142653993f151dff1a460239db2a6d5d8cedd2f50711cbf4be7d29067e3"
+      "version": "0.2.2",
+      "file": "ham2k-sota-0.2.2.h2kext",
+      "sha256": "c017c663cfa90d800d71916ab32ec97586014ccd435b7b8fccbafd9c4ebb5ad9"
     },
     {
       "key": "ham2k-spot-history",
@@ -44,9 +44,9 @@
     },
     {
       "key": "ham2k-wwff",
-      "version": "0.2.2",
-      "file": "ham2k-wwff-0.2.2.h2kext",
-      "sha256": "88b15f37aace48e5675156c72c20b7fa2b35f5a0b1f3fe920e5d2244fcafa7b2"
+      "version": "0.2.3",
+      "file": "ham2k-wwff-0.2.3.h2kext",
+      "sha256": "883c68d5f91e8b863f5df98706e8d655a8a146e2830e947cf9f24fcd1f32ad87"
     }
   ]
 }
