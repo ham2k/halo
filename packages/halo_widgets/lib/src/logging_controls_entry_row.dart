@@ -19,6 +19,7 @@ import 'logging_controls_command.dart';
 import 'logging_controls_exchange.dart';
 import 'logging_controls_metrics.dart';
 import 'platform_chrome.dart';
+import 'rebuild_between_frames.dart';
 import 'semantic_id.dart';
 import 'text_formatters.dart';
 
@@ -55,7 +56,6 @@ class LoggingEntryRow extends StatefulWidget {
     required this.buttonWidth,
     required this.submitButton,
     required this.eventFields,
-    required this.onSqueezed,
     required this.onSubmitted,
     required this.onExchangeSubmitted,
   });
@@ -120,13 +120,6 @@ class LoggingEntryRow extends StatefulWidget {
   /// none of the QSO fields are built. See [EventFieldRow].
   final Widget? eventFields;
 
-  /// Whether the last layout couldn't give every main field its declared
-  /// minimum ([resolveMainFieldLayout]). Reported from within layout, on
-  /// every QSO layout pass: the panel reads it from its focus listeners to
-  /// decide whether a focus change needs a rebuild, and must not `setState`
-  /// in response — this fires from inside a `LayoutBuilder`.
-  final ValueChanged<bool> onSqueezed;
-
   /// Enter in the call field or a fixed field: log.
   final VoidCallback onSubmitted;
 
@@ -137,7 +130,47 @@ class LoggingEntryRow extends StatefulWidget {
   State<LoggingEntryRow> createState() => _LoggingEntryRowState();
 }
 
-class _LoggingEntryRowState extends State<LoggingEntryRow> {
+class _LoggingEntryRowState extends State<LoggingEntryRow> with RebuildsBetweenFrames {
+  /// Whether the last layout couldn't give every main field its declared
+  /// minimum ([resolveMainFieldLayout]). A squeezed row hands the focused
+  /// field its full width back, which only happens if a focus change
+  /// rebuilds — and off a squeezed row it would be a rebuild that changes
+  /// nothing, so the focus listener is gated on this.
+  bool _squeezed = false;
+
+  /// The trailing fields' focus nodes this row listens to. They are the
+  /// panel's and the exchange model's — never disposed here.
+  final _watched = <FocusNode>{};
+
+  @override
+  void dispose() {
+    _watchFields(const []);
+    super.dispose();
+  }
+
+  /// Re-registered from inside layout, over the fields the row is about to
+  /// build — never from a widget update. A layout is the only place a field
+  /// is known to exist: asking the exchange model for a node outside one
+  /// mints an orphan with no context (a panel kept alive in a hidden tab
+  /// updates without laying out), which focus traversal null-checks while
+  /// sorting. The set is small and the listener only marks dirty, so it is
+  /// replaced whole rather than diffed.
+  void _watchFields(List<MainField> fields) {
+    for (final node in _watched) {
+      node.removeListener(_onFieldFocusChanged);
+    }
+    _watched
+      ..clear()
+      ..addAll(fields.map((f) => f.focusNode));
+    for (final node in _watched) {
+      node.addListener(_onFieldFocusChanged);
+    }
+  }
+
+  void _onFieldFocusChanged() {
+    if (_squeezed) rebuildBetweenFrames();
+  }
+
   /// The geometry the row was last laid out against, so a change in the space
   /// available can be told apart from a change in what wants it — see
   /// [_widthDuration].
@@ -335,17 +368,19 @@ class _LoggingEntryRowState extends State<LoggingEntryRow> {
       // running it through `_trailingMainFields`/`resolveMainFieldLayout`,
       // which only make sense for a QSO's field set.
       if (widget.eventFields case final eventFields?) {
+        _watchFields(const []);
         return _withButton([Expanded(child: eventFields)], gapScale: 1);
       }
 
       final trailingFields = _trailingMainFields(context);
+      _watchFields(trailingFields);
       final (layout: fieldLayout, :squeezed) = resolveMainFieldLayout(
         fields: trailingFields,
         maxWidth: constraints.maxWidth,
         buttonWidth: widget.buttonWidth,
         floors: mainFieldFloors(context),
       );
-      widget.onSqueezed(squeezed);
+      _squeezed = squeezed;
       final widthDuration = _widthDuration(constraints.maxWidth, widget.buttonWidth);
 
       return _withButton(gapScale: fieldLayout.gapScale, [

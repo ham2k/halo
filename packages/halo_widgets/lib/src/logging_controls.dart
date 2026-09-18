@@ -31,7 +31,6 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 
 import 'package:halo_core/halo_core.dart';
@@ -63,6 +62,7 @@ import 'logging_info_area.dart';
 import 'mdi_icons.g.dart';
 import 'platform_chrome.dart';
 import 'qso_edit_pane.dart';
+import 'rebuild_between_frames.dart';
 import 'resizable_split_view.dart' show PaneSafeArea;
 import 'semantic_id.dart';
 import 'ref_text_input.dart';
@@ -618,7 +618,7 @@ class LoggingControls extends StatefulWidget {
   State<LoggingControls> createState() => _LoggingControlsState();
 }
 
-class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingObserver {
+class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingObserver, RebuildsBetweenFrames {
   final _callController = TextEditingController();
 
   /// The Radio control's state — frequency, band and mode, the Band/Mode
@@ -1139,13 +1139,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
           final expanded = expandRST(controller.text, _radio.mode);
           if (expanded != controller.text) controller.text = expanded;
         }
-        // A squeezed row hands the focused field its full width back
-        // (`resolveMainFieldLayout`), which can only happen if a focus change
-        // rebuilds. Off a squeezed row it would be a rebuild that changes
-        // nothing, so it's gated on that — focus alone rebuilds nothing here
-        // otherwise (see [ExchangeFieldsModel.focusFor], where the exchange
-        // fields' own listener notifies for the same reason).
-        if (_mainFieldsSqueezed) _rebuildBetweenFrames();
         // Keep the mobile numbers row in sync with which field has focus.
         _rebuildForNumbersRow();
       });
@@ -2277,13 +2270,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     }
   }
 
-  /// Whether the last layout couldn't give every main field its declared
-  /// minimum ([resolveMainFieldLayout]). Read by the focus listeners: the
-  /// focused field renders at full width, which only happens if a focus
-  /// change rebuilds — and off a squeezed row it would be a rebuild that
-  /// changes nothing.
-  bool _mainFieldsSqueezed = false;
-
   /// Which controls the strip offers, in what order, and which are hidden —
   /// see [SecondaryControlCatalog]. The specs themselves are built in
   /// [_buildSecondaryControls], only for the visible ones.
@@ -2643,22 +2629,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// otherwise.
   void _rebuildForNumbersRow() {
     if (!widget.showNumbersRow) return;
-    _rebuildBetweenFrames();
-  }
-
-  /// A rebuild requested from a focus notification, which can arrive mid-build
-  /// (autofocus on the first frame): synchronous only when we're safely
-  /// between frames, otherwise deferred to the end of the frame in progress.
-  void _rebuildBetweenFrames() {
-    if (!mounted) return;
-    final phase = WidgetsBinding.instance.schedulerPhase;
-    if (phase == SchedulerPhase.idle || phase == SchedulerPhase.postFrameCallbacks) {
-      setState(() {});
-    } else {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() {});
-      });
-    }
+    rebuildBetweenFrames();
   }
 
   Future<void> _dispatchActions(List<dynamic> actions, {bool skipOnlineLookup = false}) async {
@@ -3949,7 +3920,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 onSubmitted: _log,
                               )
                             : null,
-                        onSqueezed: (squeezed) => _mainFieldsSqueezed = squeezed,
                         onSubmitted: _log,
                         onExchangeSubmitted: _handleEnter,
                       ),

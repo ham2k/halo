@@ -12,6 +12,7 @@ import 'package:halo_widgets/src/call_field_text.dart';
 import 'package:halo_widgets/src/logging_controls_command.dart';
 import 'package:halo_widgets/src/logging_controls_entry_row.dart';
 import 'package:halo_widgets/src/logging_controls_exchange.dart';
+import 'package:halo_widgets/src/logging_controls_metrics.dart';
 import 'package:halo_widgets/src/text_formatters.dart';
 
 const _submitKey = ValueKey('submit');
@@ -27,7 +28,20 @@ class _Harness {
   final state = (controller: TextEditingController(), focus: FocusNode());
   final grid = (controller: TextEditingController(), focus: FocusNode());
 
-  final squeezed = <bool>[];
+  /// The contest exchange fields in the row, by key.
+  List<String> exchangeKeys = const [];
+  List<Map<String, dynamic>> get _exchangeControls => [
+        for (final key in exchangeKeys) {'key': key, 'label': key.toUpperCase(), 'input': {'kind': 'text'}},
+      ];
+
+  /// The row walks `textControls` every time it lays out, so a generator
+  /// counts its layouts without reaching into it.
+  int controlWalks = 0;
+  Iterable<Map<String, dynamic>> _controls() sync* {
+    controlWalks++;
+    yield* _exchangeControls;
+  }
+
   int submitted = 0;
   int exchangeSubmitted = 0;
 
@@ -44,7 +58,7 @@ class _Harness {
 
   late final exchange = ExchangeFieldsModel(
     config: () => (
-      textControls: () => const <Map<String, dynamic>>[],
+      textControls: () => _exchangeControls,
       editingQso: null,
       operationUuid: 'op',
       serialNumbers: null,
@@ -82,7 +96,7 @@ class _Harness {
                 rstPlaceholder: '59',
                 numericKeyboardType: null,
                 exchange: exchange,
-                textControls: const [],
+                textControls: _controls(),
                 state: showState ? state : null,
                 stateHint: null,
                 onStateChanged: (_) {},
@@ -97,7 +111,6 @@ class _Harness {
                 buttonWidth: 44,
                 submitButton: const SizedBox(key: _submitKey, width: 44),
                 eventFields: eventFields,
-                onSqueezed: squeezed.add,
                 onSubmitted: () => submitted++,
                 onExchangeSubmitted: () => exchangeSubmitted++,
               ),
@@ -142,16 +155,41 @@ void main() {
     expect(tester.getTopLeft(_fieldFor(h.rcvd.controller)).dx, lessThan(tester.getTopLeft(_fieldFor(h.sent.controller)).dx));
   });
 
-  testWidgets('a row short of room says so on every layout, and a roomy one says it is not', (tester) async {
-    final h = _Harness();
-    await tester.pumpWidget(h.host(width: 250));
-    expect(h.squeezed, isNotEmpty);
-    expect(h.squeezed.every((s) => s), isTrue, reason: 'four fixed fields cannot each get their minimum in 250px');
+  testWidgets('a squeezed row hands the focused field its width back on its own; a roomy one stays put',
+      (tester) async {
+    final h = _Harness()..exchangeKeys = const ['serial'];
+    // Squeezed — five trailing fields want 332px of the 300 — yet wide enough
+    // for any ONE of them at its full minimum beside the others at their
+    // floors, so the row never overflows when the focused one takes it.
+    await tester.pumpWidget(h.host(width: 300));
+    double width(TextEditingController c) => tester.getSize(_fieldFor(c)).width;
+    expect(width(h.sent.controller), lessThan(fixedFieldMinWidth),
+        reason: 'five trailing fields cannot each get their minimum in 300px');
 
-    h.squeezed.clear();
+    // The trap: the widening only happens if the focus change rebuilds the
+    // row, and nothing outside it is told about the focus change — for
+    // every kind of trailing field, not only the reports.
+    h.sent.focus.requestFocus();
+    await tester.pumpAndSettle();
+    expect(width(h.sent.controller), fixedFieldMinWidth);
+    expect(width(h.rcvd.controller), lessThan(width(h.sent.controller)),
+        reason: 'the others give up what the focused one takes');
+    h.grid.focus.requestFocus();
+    await tester.pumpAndSettle();
+    expect(width(h.grid.controller), fixedFieldMinWidth);
+    expect(width(h.sent.controller), lessThan(width(h.grid.controller)));
+    h.exchange.focusFor('serial').requestFocus();
+    await tester.pumpAndSettle();
+    expect(tester.getSize(find.byType(ExchangeField)).width, exchangeFieldMinWidth);
+    expect(width(h.grid.controller), lessThan(fixedFieldMinWidth));
+
     await tester.pumpWidget(h.host(width: 780));
-    expect(h.squeezed, isNotEmpty, reason: 'reported on the roomy layout too — the panel gates a rebuild on it');
-    expect(h.squeezed.every((s) => !s), isTrue);
+    await tester.pumpAndSettle();
+    final roomy = h.controlWalks;
+    h.sent.focus.requestFocus();
+    await tester.pumpAndSettle();
+    expect(h.controlWalks, roomy, reason: 'off a squeezed row a focus change would be a rebuild that changes nothing');
+    expect(width(h.sent.controller), fixedFieldMinWidth);
   });
 
   testWidgets('Enter in a field asks to log and leaves the field focused', (tester) async {
@@ -179,7 +217,6 @@ void main() {
     await tester.pumpWidget(h.host(eventFields: const Text('EVENT ROW'), leftieMode: true));
     expect(find.text('EVENT ROW'), findsOneWidget);
     expect(find.byType(TextField), findsNothing, reason: 'none of the QSO fields are built for an event');
-    expect(h.squeezed, isEmpty, reason: 'nothing was laid out to be squeezed');
     expect(tester.getTopRight(find.byKey(_submitKey)).dx, lessThan(tester.getTopLeft(find.text('EVENT ROW')).dx));
   });
 }

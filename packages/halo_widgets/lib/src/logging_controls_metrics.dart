@@ -218,7 +218,7 @@ MainFieldFloors mainFieldFloors(BuildContext context) => (
 /// and this arithmetic only reserves its minimum before dividing up the rest.
 ///
 /// `squeezed` says the row couldn't give every field its declared minimum.
-/// The panel's focus listeners read it: the focused field renders at full
+/// The row's own focus listener reads it: the focused field renders at full
 /// width, which only happens if a focus change rebuilds — and off a squeezed
 /// row it would be a rebuild that changes nothing.
 ({MainFieldLayout layout, bool squeezed}) resolveMainFieldLayout({
