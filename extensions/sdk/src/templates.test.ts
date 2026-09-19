@@ -100,6 +100,42 @@ test("an unquoted digit list loses its leading zero", () => {
   assert.equal(renderTemplate("{{ n | cut: 09 }}", { n: 109 }), "10N")
 })
 
+// The fallback is the point of `refLabels`: `map: "shortLabel"` would drop a
+// reference that resolved to nothing (it carries no labels), and an
+// operation at an unlisted park would print as if it had no park. A ref with
+// nothing to show — a QSO-side contest ref is only serials — must not leave a
+// gap; the OPERATION's contest ref is decorated and is listed like any other.
+test("refLabels falls back per ref, and skips refs with nothing to show", () => {
+  const refs = [
+    { type: "pota", ref: "US-1234", shortLabel: "POTA US-1234", label: "POTA US-1234: Some Park" },
+    { type: "cqwpx", ourSerial: 12 },
+    { type: "cqwpx", mode: "CW", program: "Contest", label: "CQ WPX CW", shortLabel: "CQ WPX CW" },
+    { type: "sota", ref: "W7W/KG-001", label: "SOTA W7W/KG-001: Peak" },
+    { type: "wwff", ref: " KFF-9999 ", shortLabel: undefined, label: undefined },
+    { type: "custom", ref: 1234, shortLabel: "" },
+    null,
+  ]
+  assert.equal(
+    renderTemplate("{{ refs | refLabels | join: '|' }}", { refs }),
+    "POTA US-1234|CQ WPX CW|SOTA W7W/KG-001: Peak|KFF-9999|1234",
+  )
+  assert.equal(renderTemplate("[{{ missing | refLabels | sentence }}]", {}), "[]")
+})
+
+// app-polo's `{{#join refs separator=", " final=" & "}}`. The two-item case
+// is the one a plain `join` plus a suffix gets wrong, and the blank item is
+// what would otherwise leave a title ending in " & ".
+test("sentence joins with a different last separator", () => {
+  const render = (list: unknown[]) => renderTemplate("{{ list | sentence }}", { list })
+  assert.equal(render([]), "")
+  assert.equal(render(["A"]), "A")
+  assert.equal(render(["A", "B"]), "A & B")
+  assert.equal(render(["A", "B", "C"]), "A, B & C")
+  assert.equal(render(["A", "", null, "B"]), "A & B")
+  assert.equal(renderTemplate('{{ list | sentence: "; ", " y " }}', { list: ["A", "B", "C"] }), "A; B y C")
+  assert.equal(renderTemplate("{{ text | sentence }}", { text: "not a list" }), "not a list")
+})
+
 // Our filters must not shadow liquid's: `registerFilter` overwrites in
 // silence, so a template written against liquid's documentation would return
 // plausible nonsense with no error. `compact` drops nils from an array, and

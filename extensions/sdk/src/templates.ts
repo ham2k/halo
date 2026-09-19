@@ -62,7 +62,8 @@ function liquid(): Liquid {
 /// Filters on top of liquid's own (`date`, `downcase`, `upcase`, `strip`,
 /// `default`, `join`, `size`, `round`, `truncate`, `first`, `last`, …). Kept
 /// to what liquid can't express: two the filename defaults need, two a CW
-/// exchange does. polo's `slug` is `downcase | dash` and so isn't one of them.
+/// exchange does, two that list references. polo's `slug` is
+/// `downcase | dash` and so isn't one of them.
 ///
 /// No name may collide with a built-in: `registerFilter` overwrites
 /// silently, so shadowing one would leave a template written against liquid's
@@ -102,6 +103,33 @@ function registerFilters(liquid: Liquid): void {
   liquid.registerFilter("cut", (value: unknown, digits: unknown = "09") => {
     const chosen = String(digits ?? "")
     return String(value ?? "").replace(/[0159]/g, (digit) => (chosen.includes(digit) ? CUT_NUMBERS[digit] : digit))
+  })
+
+  // `op.refs` → `["POTA US-1234", "SOTA W7W/KG-001"]`: each ref's
+  // `shortLabel`, else its `label`, else the bare `ref`. liquid's `map` reads
+  // ONE field, and a ref that resolved to nothing carries no labels at all,
+  // so without the fallback an unknown park drops out of the list unnoticed.
+  // A ref with none of the three is skipped rather than rendered blank. That
+  // is NOT a filter on contests: a contest's `decorateRef` labels its ref
+  // ("CQ WPX CW"), so on `op.refs` it is listed with the rest.
+  liquid.registerFilter("refLabels", (value: unknown) =>
+    (Array.isArray(value) ? value : []).flatMap((ref) => {
+      const label = [ref?.shortLabel, ref?.label, ref?.ref]
+        .map((text) => (typeof text === "string" || typeof text === "number" ? String(text).trim() : ""))
+        .find((text) => text !== "")
+      return label === undefined ? [] : [label]
+    }),
+  )
+
+  // `["A", "B", "C"]` → `A, B & C`. app-polo's `join … separator= final=`.
+  // liquid's `join` takes one separator, and its `array_to_sentence_string`
+  // always writes the serial comma (`A, B, & C`). Blanks are dropped so that
+  // `map: "name" | sentence` never ends in ` & `.
+  liquid.registerFilter("sentence", (value: unknown, separator: unknown = ", ", final: unknown = " & ") => {
+    if (!Array.isArray(value)) return String(value ?? "")
+    const items = value.map((item) => String(item ?? "").trim()).filter((item) => item !== "")
+    if (items.length < 2) return items.join("")
+    return `${items.slice(0, -1).join(String(separator))}${String(final)}${items[items.length - 1]}`
   })
 }
 

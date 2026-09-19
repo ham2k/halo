@@ -302,6 +302,7 @@ class _TextTemplateEditorState extends State<_TextTemplateEditor> {
                         '{{ op.startAt | date: "%Y-%m-%d" }}',
                         '{{ log.ref | default: "log" }}',
                         '{{ op.refs | map: "ref" | compact | join: ", " }}',
+                        '{{ op.refs | refLabels | sentence }}',
                         '{{ op.title | strip | replace: " ", "-" }}',
                       ], readOnly: true),
                       _examples(labels.flowControl, [

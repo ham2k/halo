@@ -34,7 +34,9 @@ about 2 µs each.
 the namespaces are deliberately polo's. The syntax around them does not:
 `{{#if}}` is `{% if %}{% endif %}`, `{{#each}}` is `{% for %}{% endfor %}`,
 `{{> Partial}}` has no equivalent, and helpers are filters
-(`{{ dash x }}` → `{{ x | dash }}`).
+(`{{ dash x }}` → `{{ x | dash }}`). polo's
+`{{#join op.refs separator=", " final=" & "}}{{or shortLabel label key}}{{/join}}`
+is `{{ op.refs | refLabels | sentence }}`.
 
 ## What a template can name
 
@@ -122,7 +124,7 @@ with nothing to say it was invented.
 
 All of Liquid's own (`date`, `downcase`, `upcase`, `strip`, `default`,
 `join`, `size`, `first`, `last`, `round`, `truncate`, `replace`, `map`,
-`where`, …), plus four:
+`where`, …), plus six:
 
 | filter | does | example |
 |---|---|---|
@@ -130,11 +132,19 @@ All of Liquid's own (`date`, `downcase`, `upcase`, `strip`, `default`,
 | `alnum` | strip to alphanumerics | `2026-07-27` → `20260727` |
 | `pad: n` | zero-pad on the left to `n` characters (default 3); **blank stays blank** | `7` → `007` |
 | `cut: "digits"` | CW cut numbers for the listed digits, of `0`→`T` `1`→`A` `5`→`E` `9`→`N`; default `"09"` | `599` → `5NN`, `{{ 9 \| pad: 3 \| cut }}` → `TTN` |
+| `refLabels` | a list of refs → each one's `shortLabel`, else `label`, else `ref`; a ref with none of them is skipped — an operation's contest ref HAS a label (`CQ WPX CW`) and is listed | `op.refs` → `POTA US-1234`, `KFF-9999` |
+| `sentence: "sep", "final"` | joins a list with a different LAST separator (defaults `", "` and `" & "`); blanks are dropped | `A, B & C`, `A & B` |
 
 `pad` leaves a blank alone because a CW message can be keyed before the
 serial field has a number, and `000` sent in that gap is a serial the log
 will never agree with. Order matters with `cut`: pad first, or the padding
 zeros go out uncut.
+
+`refLabels` exists because `map` reads one field: `map: "shortLabel"` drops a
+reference that resolved to nothing, since it carries no labels — an
+operation at an unlisted park would print as though it had none. Liquid's own
+`array_to_sentence_string` is the near miss for `sentence`: it always writes
+the serial comma (`A, B, & C`).
 
 `alnum` is app-polo's `compact` helper under a different name: Liquid already
 has a `compact` (it drops nils from an **array**, and `op.refs`/`qso.refs` are
