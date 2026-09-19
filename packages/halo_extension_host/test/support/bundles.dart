@@ -109,17 +109,7 @@ void _checkBundlesAreFresh() {
   }
   if (!_extensionSources.existsSync()) return;
 
-  DateTime? newestSource;
-  for (final entry in _extensionSources.listSync(recursive: true)) {
-    if (entry is! File) continue;
-    final path = entry.path;
-    if (!path.endsWith('.ts') && !path.endsWith('.json')) continue;
-    // node_modules is vendored input, not our source, and dwarfs everything
-    // else in the walk.
-    if (path.contains('/node_modules/')) continue;
-    final at = entry.statSync().modified;
-    if (newestSource == null || at.isAfter(newestSource)) newestSource = at;
-  }
+  final newestSource = newestExtensionSource(_extensionSources);
   if (newestSource == null) return;
 
   final builtAt = kernel.statSync().modified;
@@ -127,6 +117,34 @@ void _checkBundlesAreFresh() {
     fail('extension bundles are STALE — sources changed after the last build.\n'
         'Run `npm run build` in extensions/, or use scripts/test.sh, which builds them first.');
   }
+}
+
+/// When the newest TypeScript or JSON the bundles are built FROM last changed,
+/// or null when [root] holds none.
+///
+/// Build OUTPUT under [root] is not source, and has to be skipped by name: the
+/// SDK package build writes `.d.ts`, `.json` and copied sample `.ts` files into
+/// `sdk/dist` and `sdk/samples`, and a sample's own build writes a
+/// `build/manifest.json`. Counted, any of those built after the bundles makes
+/// every test here fail as STALE while no source has changed — and
+/// `sdk/samples` loses nothing by being skipped, because it is a copy of
+/// `samples/`, which is walked.
+DateTime? newestExtensionSource(Directory root) {
+  final prefix = root.path.length + 1;
+  DateTime? newest;
+  for (final entry in root.listSync(recursive: true)) {
+    if (entry is! File) continue;
+    final path = entry.path;
+    if (!path.endsWith('.ts') && !path.endsWith('.json')) continue;
+    final parts = path.substring(prefix).split(Platform.pathSeparator);
+    // node_modules is vendored input, not our source, and dwarfs everything
+    // else in the walk.
+    if (parts.contains('node_modules') || parts.contains('build')) continue;
+    if (parts.first == 'sdk' && parts.length > 1 && const {'dist', 'samples', 'docs'}.contains(parts[1])) continue;
+    final at = entry.statSync().modified;
+    if (newest == null || at.isAfter(newest)) newest = at;
+  }
+  return newest;
 }
 
 /// Answers every host call with a successful `null`.
