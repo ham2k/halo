@@ -224,6 +224,10 @@ function hooksForRef(category: string, key: string | null, args: unknown): HookR
 const IDENTITY_HOST_METHODS = new Set([
   'fetch',
   'getLocation',
+  'listRadios',
+  'readRadio',
+  'setRadioConnection',
+  'tuneRadio',
   'secret',
   'kvGet',
   'kvSet',

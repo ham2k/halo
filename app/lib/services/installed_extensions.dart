@@ -205,11 +205,14 @@ class InspectedBundle {
   /// permitted, so this list IS its network access.
   List<String> get domains => ((manifest['domains'] as List?) ?? const []).cast<String>();
   bool get requiresLocation => manifest['requiresLocation'] == true;
+  bool get requiresRadioWrite => manifest['requiresRadioWrite'] == true;
+  bool get requiresRadioRead => requiresRadioWrite || manifest['requiresRadioRead'] == true;
   bool get allowUserAgentOverride => manifest['allowUserAgentOverride'] == true;
 
   /// Whether it asks for anything at all beyond running. A bundle claiming
   /// nothing should not be dressed up as though it did.
-  bool get claimsCapabilities => domains.isNotEmpty || requiresLocation || allowUserAgentOverride;
+  bool get claimsCapabilities =>
+      domains.isNotEmpty || requiresLocation || requiresRadioRead || allowUserAgentOverride;
 
 }
 

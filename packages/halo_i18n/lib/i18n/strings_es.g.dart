@@ -183,6 +183,8 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String installVersion({required Object version}) => 'Versión ${version}';
 	@override String get canReach => 'Esta extensión puede contactar';
 	@override String get canUseLocation => 'Tu ubicación';
+	@override String get canReadRadio => 'Tu radio, para leer su frecuencia y modo';
+	@override String get canControlRadio => 'Tu radio, para sintonizarla y para conectarla o desconectarla';
 	@override String get canSetUserAgent => 'Identificarse ante servidores con su propio nombre';
 	@override String get noCapabilities => 'No pide nada fuera de la app.';
 	@override String get sandboxNote => 'Las extensiones se ejecutan aisladas: sin acceso a tus archivos, y sin más red que la indicada aquí.';
@@ -1310,6 +1312,7 @@ class _Translations$operation$layout$es extends Translations$operation$layout$en
 	@override String get layoutUnreadableAction => 'Usar esta disposición';
 	@override String panelRenderFailed({required Object panel}) => 'No se pudo mostrar ${panel}';
 	@override String get panelRenderRetry => 'Reintentar';
+	@override String get panelActionFailed => 'Esa acción del panel falló. Inténtalo de nuevo.';
 	@override late final _Translations$operation$layout$panels$es panels = _Translations$operation$layout$panels$es._(_root);
 	@override String get htmlPanelUnsupported => 'Este panel necesita un visor web, que esta plataforma no ofrece';
 	@override String get htmlPanelUnsupportedOnWeb => 'Este panel necesita un entorno aislado que la versión web no puede ofrecer';
@@ -3166,6 +3169,8 @@ extension on TranslationsEs {
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Versión ${version}',
 			'extensionsPanel.canReach' => 'Esta extensión puede contactar',
 			'extensionsPanel.canUseLocation' => 'Tu ubicación',
+			'extensionsPanel.canReadRadio' => 'Tu radio, para leer su frecuencia y modo',
+			'extensionsPanel.canControlRadio' => 'Tu radio, para sintonizarla y para conectarla o desconectarla',
 			'extensionsPanel.canSetUserAgent' => 'Identificarse ante servidores con su propio nombre',
 			'extensionsPanel.noCapabilities' => 'No pide nada fuera de la app.',
 			'extensionsPanel.sandboxNote' => 'Las extensiones se ejecutan aisladas: sin acceso a tus archivos, y sin más red que la indicada aquí.',
@@ -3375,6 +3380,7 @@ extension on TranslationsEs {
 			'operation.layout.layoutUnreadableAction' => 'Usar esta disposición',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => 'No se pudo mostrar ${panel}',
 			'operation.layout.panelRenderRetry' => 'Reintentar',
+			'operation.layout.panelActionFailed' => 'Esa acción del panel falló. Inténtalo de nuevo.',
 			'operation.layout.panels.loggingDescription' => 'El registro y los campos de entrada',
 			'operation.layout.panels.infoDescription' => 'Lo que sabemos de la estación contactada',
 			'operation.layout.panels.spotsDescription' => 'Spots de los clusters y programas de actividad',
@@ -3612,11 +3618,11 @@ extension on TranslationsEs {
 			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → pestaña Broadcast Data → marca «Enable Broadcasts» para la información de contactos. Pon la dirección IP en 127.0.0.1 si se ejecuta en esta misma computadora, o 255.255.255.255 para difundir en la red local actual.',
 			'operation.import.helpWsjtxSetup' => 'File → Settings → pestaña Reporting → sección UDP Server → marca «Accept UDP requests». Pon UDP Server en 127.0.0.1 si se ejecuta en esta misma computadora, o una dirección multicast como 239.239.0.2, y usa esa misma dirección en la configuración de arriba en esta aplicación.',
 			'operation.import.listenTitle' => 'Escuchar QSOs de otras aplicaciones',
+			_ => null,
+		} ?? switch (path) {
 			'operation.import.listenDescriptionOnN1mm' => 'Escuchando a N1MM+',
 			'operation.import.listenDescriptionOnWsjtx' => 'Escuchando a WSJT-X',
 			'operation.import.listenDescriptionOnBoth' => 'Escuchando a N1MM+ y WSJT-X',
-			_ => null,
-		} ?? switch (path) {
 			'operation.import.listenDescriptionOff' => 'Desactivado',
 			'operation.import.addToOperationTitle' => 'Agregar a esta operación',
 			'operation.import.addToOperationDescriptionOn' => 'Los QSOs capturados se agregan a esta operación según llegan',
@@ -4126,11 +4132,11 @@ extension on TranslationsEs {
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Un dispositivo espera unirse a esta cuenta', other: '${n} dispositivos esperan unirse a esta cuenta', ), 
 			'settings.syncPanel.accountEmailTitle' => 'Email de la cuenta',
 			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmación enviada a ${email}. Abre el enlace allí para completar el cambio.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.resendConfirmation' => 'Reenviar email de confirmación',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Esperando a ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Enviado de nuevo a ${email}.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.deviceLinked' => 'Ese dispositivo ya está vinculado a esta cuenta.',
 			'settings.syncPanel.checking' => 'Comprobando…',
 			'settings.syncPanel.notLinked' => 'Aún no vinculado',
@@ -4640,11 +4646,11 @@ extension on TranslationsEs {
 			'dataFiles.downloadTimedOut' => 'El servidor tardó demasiado en responder. Vuelve a intentarlo más tarde.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'No se pudo procesar ${name}',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} registro de ${label}.', other: 'Se importaron ${count} registros de ${label}.', ), 
+			_ => null,
+		} ?? switch (path) {
 			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Datos de extensiones limpiados',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.', other: 'Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas.', ), 
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.recordsProgress' => ({required Object end, required Object total}) => '${end} / ${total} registros',
 			'dataFiles.definitionUnavailable' => 'La fuente del archivo no proporcionó una definición — su extensión puede estar reiniciándose o mal configurada. Inténtalo de nuevo en un momento.',
 			'updates.updateAvailable' => 'Actualización disponible',

@@ -1,7 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MPL-2.0
 //
-// The eight-hour temperature curve, and the chance of rain under it.
+// Shared geometry for the eight-hour SVG temperature curve.
 //
 // The x mapping is a contract with the hour strip the panel draws below this:
 // both put hour `i` at the centre of the `i`th of `n` equal columns, so a
@@ -9,11 +9,10 @@
 // the other slides the labels off the shape they describe.
 //
 // The geometry is separated from the painting on purpose — `weatherCurve`
-// answers with a Path, which is measurable, where a Canvas is not.
+// answers with SVG commands and an equivalent measurable Path.
 
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// The centre of the `i`th of [count] equal columns across [width].
@@ -37,10 +36,10 @@ const double _padding = 6;
 /// those ends carry no marker and no label.
 ///
 /// Empty path and no points when nothing is known.
-({Path path, List<Offset> points}) weatherCurve(List<double?> temperatures, Size size) {
+({Path path, List<Offset> points, String svgPath}) weatherCurve(List<double?> temperatures, Size size) {
   final known = temperatures.whereType<double>().toList();
   if (known.isEmpty || size.width <= 0 || size.height <= 0) {
-    return (path: Path(), points: const []);
+    return (path: Path(), points: const [], svgPath: '');
   }
 
   var lo = known.reduce(math.min);
@@ -67,9 +66,11 @@ const double _padding = 6;
   final path = Path()
     ..moveTo(0, points.first.dy)
     ..lineTo(points.first.dx, points.first.dy);
-  _appendSpline(path, points);
+  final svg = StringBuffer('M0 ${points.first.dy} L${points.first.dx} ${points.first.dy}');
+  _appendSpline(path, points, svg);
   path.lineTo(size.width, points.last.dy);
-  return (path: path, points: points);
+  svg.write(' L${size.width} ${points.last.dy}');
+  return (path: path, points: points, svgPath: svg.toString());
 }
 
 /// Catmull-Rom through [points], as cubics, with each control point clamped
@@ -78,7 +79,7 @@ const double _padding = 6;
 /// The clamp is the whole reason this is not a plain spline: unclamped, three
 /// hours of 61°, 61°, 55° bulge ABOVE 61 on the way down, and the panel draws
 /// an hour warmer than any hour in the forecast.
-void _appendSpline(Path path, List<Offset> points) {
+void _appendSpline(Path path, List<Offset> points, StringBuffer svg) {
   for (var i = 0; i < points.length - 1; i++) {
     final p0 = points[i == 0 ? 0 : i - 1];
     final p1 = points[i];
@@ -89,100 +90,6 @@ void _appendSpline(Path path, List<Offset> points) {
     final c1 = Offset(p1.dx + (p2.dx - p0.dx) / 6, (p1.dy + (p2.dy - p0.dy) / 6).clamp(low, high));
     final c2 = Offset(p2.dx - (p3.dx - p1.dx) / 6, (p2.dy - (p3.dy - p1.dy) / 6).clamp(low, high));
     path.cubicTo(c1.dx, c1.dy, c2.dx, c2.dy, p2.dx, p2.dy);
+    svg.write(' C${c1.dx} ${c1.dy} ${c2.dx} ${c2.dy} ${p2.dx} ${p2.dy}');
   }
-}
-
-class WeatherChartPainter extends CustomPainter {
-  final List<double?> temperatures;
-
-  /// Percent per hour, null where the response carried none. Null and 0 are
-  /// deliberately different: no bar at all versus a bar of no height.
-  final List<int?> chances;
-
-  final Color line;
-  final Color fill;
-  final Color rain;
-  final Color baseline;
-
-  const WeatherChartPainter({
-    required this.temperatures,
-    required this.chances,
-    required this.line,
-    required this.fill,
-    required this.rain,
-    required this.baseline,
-  });
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.width <= 0 || size.height <= 0 || temperatures.isEmpty) return;
-
-    _paintRain(canvas, size);
-
-    final curve = weatherCurve(temperatures, size);
-    if (curve.points.isEmpty) return;
-
-    final under = Path.from(curve.path)
-      ..lineTo(size.width, size.height)
-      ..lineTo(0, size.height)
-      ..close();
-    canvas.drawPath(
-      under,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [fill, fill.withValues(alpha: 0)],
-        ).createShader(Offset.zero & size),
-    );
-
-    canvas.drawPath(
-      curve.path,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..color = line,
-    );
-
-    canvas.drawLine(
-      Offset(0, size.height - 0.5),
-      Offset(size.width, size.height - 0.5),
-      Paint()
-        ..strokeWidth = 1
-        ..color = baseline,
-    );
-  }
-
-  void _paintRain(Canvas canvas, Size size) {
-    // Half the band at most: this is the secondary series, and a 100% hour
-    // filling the pane would read as the temperature having collapsed.
-    final ceiling = size.height * 0.5;
-    final count = temperatures.length;
-    final barWidth = math.min(size.width / count * 0.44, 14.0);
-    final paint = Paint()..color = rain;
-    for (var i = 0; i < count; i++) {
-      final chance = i < chances.length ? chances[i] : null;
-      if (chance == null || chance <= 0) continue;
-      final height = ceiling * (chance.clamp(0, 100) / 100);
-      final center = weatherColumnCenter(size.width, count, i);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromLTWH(center - barWidth / 2, size.height - height, barWidth, height),
-          const Radius.circular(2),
-        ),
-        paint,
-      );
-    }
-  }
-
-  @override
-  bool shouldRepaint(WeatherChartPainter old) =>
-      !listEquals(old.temperatures, temperatures) ||
-      !listEquals(old.chances, chances) ||
-      old.line != line ||
-      old.fill != fill ||
-      old.rain != rain ||
-      old.baseline != baseline;
 }

@@ -135,6 +135,20 @@ void main() {
     expect(panels.renders, ['initial']);
   });
 
+  testWidgets('a queued refresh is withheld if its pane is hidden before dispatch', (tester) async {
+    final panels = _RecordingPanels();
+    await tester.pumpWidget(harness(panels, visible: true));
+    await tester.pump();
+    expect(panels.renders, ['initial']);
+    await tester.pumpWidget(harness(panels, visible: true, qsoCount: 1));
+    await tester.pumpWidget(harness(panels, visible: false, qsoCount: 1));
+    await settle(tester);
+    expect(panels.renders, ['initial']);
+    await tester.pumpWidget(harness(panels, visible: true, qsoCount: 1));
+    await settle(tester);
+    expect(panels.renders, ['initial', 'visible']);
+  });
+
   testWidgets('a trigger that fires behind a tab is remembered, not rendered', (tester) async {
     final panels = _RecordingPanels();
     await tester.pumpWidget(harness(panels, visible: true));

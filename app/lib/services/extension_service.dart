@@ -35,6 +35,7 @@ import 'installed_extensions.dart';
 import 'preloaded_extensions.dart';
 import 'location_service.dart';
 import 'panel_service.dart';
+import 'radio_host_calls.dart';
 import 'settings_service.dart';
 import 'spots_service.dart';
 import 'status_bar_service.dart';
@@ -364,7 +365,7 @@ class TemplateError implements Exception {
   String toString() => message;
 }
 
-class ExtensionService implements PanelExtensionSource {
+class ExtensionService implements PanelExtensionSource, PanelEventSource {
   ExtensionHost? _host;
   Future<void>? _starting;
   Timer? _restartTimer;
@@ -557,6 +558,9 @@ class ExtensionService implements PanelExtensionSource {
   /// back to. Optional like the other service references above.
   LocationService? location;
 
+  /// The radio host calls, behind their manifest capabilities.
+  final radioCalls = RadioHostCalls();
+
   /// Backs the `getSpotsForCall` host call (HookContext.getSpotsForCall),
   /// which the `spot-history` lookup hook reads. Optional like the other
   /// service references — a host without it answers with an empty list, so
@@ -575,11 +579,7 @@ class ExtensionService implements PanelExtensionSource {
   /// Whether [extensionKey] (or its bundle, for a sub-extension like
   /// `pota-all-parks`) may call `getLocation` — mirrors the prefix rule
   /// `ExtensionHost._fetchAllowlistFor` applies to `domains`.
-  bool _locationAllowed(String? extensionKey) {
-    if (extensionKey == null) return false;
-    if (_locationAllowlist.contains(extensionKey)) return true;
-    return _locationAllowlist.any((key) => extensionKey.startsWith('$key-') || extensionKey.startsWith('${key}_'));
-  }
+  bool _locationAllowed(String? extensionKey) => capabilityAllows(_locationAllowlist, extensionKey);
 
   bool get ready => _host != null;
   ExtensionHost? get host => _host;
@@ -1176,6 +1176,19 @@ class ExtensionService implements PanelExtensionSource {
     }
   }
 
+  @override
+  Future<Map<String, dynamic>?> panelEvent({
+    required String hookKey,
+    required String panelKey,
+    required Map<String, dynamic> args,
+  }) async {
+    final host = this.host;
+    if (host == null) throw StateError('Extension runtime unavailable');
+    final result = await host.invokeHook('panel',
+        key: hookKey, method: 'onEvent', args: {...args, 'panelKey': panelKey}, timeout: const Duration(seconds: 5));
+    return result is Map ? result.cast<String, dynamic>() : null;
+  }
+
   /// [template] rendered by the core `templates` extension's `template` hook
   /// (docs/extensions/templates.md), against [operation] and [qso] in the
   /// same shape the panels get — so `{{ qso.call }}` in a CW message means
@@ -1702,6 +1715,7 @@ class ExtensionService implements PanelExtensionSource {
           settings: settingsForStamps, available: availableExtensions, isActive: isExtensionActive);
       }
       _locationAllowlist = locationAllowlist;
+      radioCalls.allow(available.where((info) => loaded.contains(info.key)));
       // Pessimistic from the moment a host exists until its activations have
       // genuinely settled below, so a consumer reading it the instant `host`
       // goes non-null is not told the hook set is authoritative while
@@ -2073,9 +2087,7 @@ class ExtensionService implements PanelExtensionSource {
           runtimeAlive: !host.isDead,
           alreadyLoaded: _loadedExtensionKeys.contains(key),
           alreadyDevServed: previous != null,
-          capabilitiesUnchanged: previous != null &&
-              previous.info.requiresLocation == info.requiresLocation &&
-              previous.info.allowUserAgentOverride == info.allowUserAgentOverride,
+          capabilitiesUnchanged: previous != null && previous.info.sameStartTimeCapabilities(info),
         )) {
       await restartRuntime();
       return;
@@ -2367,6 +2379,7 @@ class ExtensionService implements PanelExtensionSource {
   Future<dynamic> debugHandleHostCall(String method, Map<String, dynamic> params) => _handleHostCall(method, params);
 
   Future<dynamic> _handleHostCall(String method, Map<String, dynamic> params) async {
+    if (RadioHostCalls.handles(method)) return radioCalls.handle(method, params);
     switch (method) {
       case 'getAccount':
         final kvKey = params['kvKey'] as String;
@@ -4116,8 +4129,8 @@ class ExtensionService implements PanelExtensionSource {
 /// the only thing that makes them absent.
 ///
 /// [capabilitiesUnchanged] covers the manifest flags a reload cannot carry:
-/// `domains` travels with the bundle, but `requiresLocation` and
-/// `allowUserAgentOverride` are start-time allowlists in the host.
+/// `domains` travels with the bundle, but the rest are start-time allowlists
+/// in the host ([ExtensionInfo.sameStartTimeCapabilities]).
 @visibleForTesting
 bool canHotSwapDevBundle({
   required bool runtimeAlive,

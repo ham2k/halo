@@ -277,6 +277,11 @@ class _ConsentDialog extends StatelessWidget {
               for (final domain in bundle.domains)
                 _Capability(icon: MdiIcons.web, label: domain),
               if (bundle.requiresLocation) _Capability(icon: MdiIcons.crosshairsGps, label: t.canUseLocation),
+              // One line, the stronger one: write implies read.
+              if (bundle.requiresRadioWrite)
+                _Capability(icon: MdiIcons.radio, label: t.canControlRadio)
+              else if (bundle.requiresRadioRead)
+                _Capability(icon: MdiIcons.radio, label: t.canReadRadio),
               if (bundle.allowUserAgentOverride) _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
             ],
             const SizedBox(height: Space.xl),
@@ -506,9 +511,13 @@ class _DetailsDialog extends StatelessWidget {
     // not a version anybody can act on — the row says so instead of a number,
     // and so does this.
     final version = info.isInstalled ? info.version : null;
-    // The same three things `InspectedBundle.claimsCapabilities` asks of a
-    // bundle at install, asked of the extension afterwards.
-    final claimsCapabilities = info.domains.isNotEmpty || info.requiresLocation || info.allowUserAgentOverride;
+    // The same things `InspectedBundle.claimsCapabilities` asks of a bundle
+    // at install, asked of the extension afterwards.
+    final claimsCapabilities = info.domains.isNotEmpty ||
+        info.requiresLocation ||
+        info.requiresRadioRead ||
+        info.requiresRadioWrite ||
+        info.allowUserAgentOverride;
     final hookLabels = extensionHookLabels(info.hooks, t);
 
     return HaloDialog(
@@ -541,6 +550,10 @@ class _DetailsDialog extends StatelessWidget {
             const SizedBox(height: Space.sm),
             for (final domain in info.domains) _Capability(icon: MdiIcons.web, label: domain),
             if (info.requiresLocation) _Capability(icon: MdiIcons.crosshairsGps, label: t.canUseLocation),
+            if (info.requiresRadioWrite)
+              _Capability(icon: MdiIcons.radio, label: t.canControlRadio)
+            else if (info.requiresRadioRead)
+              _Capability(icon: MdiIcons.radio, label: t.canReadRadio),
             if (info.allowUserAgentOverride)
               _Capability(icon: MdiIcons.cardAccountDetailsOutline, label: t.canSetUserAgent),
           ],

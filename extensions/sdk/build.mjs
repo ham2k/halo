@@ -11,7 +11,7 @@
 import { build } from 'esbuild'
 import { execFile } from 'node:child_process'
 import { cp, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
-import { dirname, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 
@@ -230,6 +230,7 @@ building — the header comment in each \`src/index.ts\` says what it leaves out
 | \`k2hrc-llota\` | An award program: references, an offline list, activation scoring |
 | \`k2hrc-cqww\` | A contest: an exchange to type, and a score to keep |
 | \`k2hrc-radio\` | An HTML panel, and why you should probably write markdown instead |
+| \`k2hrc-svg-scenes\` | Experimental SVG controls and animations, with simulated radio and weather panels |
 
 ## Running one
 
@@ -264,7 +265,7 @@ See \`../AGENTS.md\` for the map, and \`../docs/\` for the references.
 /// SDK and the tools through workspace paths; an author's copy reaches them
 /// through npm, and shipping the workspace form would hand every reader a
 /// build script that cannot resolve its own imports.
-const shippedSamples = ['k2hrc-hamqth', 'k2hrc-llota', 'k2hrc-cqww', 'k2hrc-radio']
+const shippedSamples = ['k2hrc-hamqth', 'k2hrc-llota', 'k2hrc-cqww', 'k2hrc-radio', 'k2hrc-svg-scenes']
 
 const samplesOut = join(here, 'samples')
 await rm(samplesOut, { recursive: true, force: true })
@@ -272,7 +273,7 @@ await rm(samplesOut, { recursive: true, force: true })
 for (const name of shippedSamples) {
   const from = join(here, '../samples', name)
   const to = join(samplesOut, name)
-  await cp(from, to, { recursive: true })
+  await cp(from, to, { recursive: true, filter: (path) => basename(path) !== 'build' && !path.endsWith('.test.ts') })
   await writeFile(join(to, 'build.mjs'), EXAMPLE_BUILD_SCRIPT)
 
   // A sample that names a shared library its manifest does not declare fails

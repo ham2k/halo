@@ -300,11 +300,13 @@ ensure_bundles() {
     if [[ -z "$oldest_bundle" || "$fpath" -ot "$oldest_bundle" ]]; then
       oldest_bundle="$fpath"
     fi
-  done < <(find "$ROOT_DIR/app/assets/extensions" -type f 2>/dev/null || true)
+  done < <(find "$ROOT_DIR/app/assets/extensions" "$ROOT_DIR/extensions/build/fixtures" -type f 2>/dev/null || true)
   if [[ -z "$oldest_bundle" ]]; then
     stale=1
   else
-    stale=$(find "$ROOT_DIR/extensions" -path "$ROOT_DIR/extensions/node_modules" -prune -o -type f -newer "$oldest_bundle" -print 2>/dev/null | head -1 || true)
+    # extensions/build is OUTPUT (the test fixtures): unpruned, a bundle written
+    # late in a build is newer than the oldest one and every run rebuilds.
+    stale=$(find "$ROOT_DIR/extensions" \( -path "$ROOT_DIR/extensions/node_modules" -o -path "$ROOT_DIR/extensions/build" \) -prune -o -type f -newer "$oldest_bundle" -print 2>/dev/null | head -1 || true)
     [[ -n "$stale" ]] && stale=1 || stale=0
   fi
   if [[ "$stale" == "1" ]]; then

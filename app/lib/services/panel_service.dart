@@ -435,6 +435,15 @@ abstract interface class PanelExtensionSource {
   });
 }
 
+/// Optional capability so ordinary panel sources need not implement events.
+abstract interface class PanelEventSource {
+  Future<Map<String, dynamic>?> panelEvent({
+    required String hookKey,
+    required String panelKey,
+    required Map<String, dynamic> args,
+  });
+}
+
 class PanelService extends ChangeNotifier {
   final PanelExtensionSource extensions;
 
@@ -676,7 +685,22 @@ class PanelService extends ChangeNotifier {
   /// they are widgets, and the view builds them itself.
   Future<Map<String, dynamic>?> render(PanelDefinition panel, Map<String, dynamic> args) {
     assert(panel.source == PanelSource.extension);
-    return extensions.renderPanel(hookKey: panel.hookKey!, panelKey: panel.panelKey!, args: args);
+    return extensions.renderPanel(hookKey: panel.hookKey!, panelKey: panel.panelKey!, args: {...args, 'instanceId': panel.id});
+  }
+
+  Future<Map<String, dynamic>?> event(
+    PanelDefinition panel,
+    Map<String, dynamic> args,
+  ) {
+    final source = extensions;
+    if (source is! PanelEventSource) {
+      throw StateError('Panel events unavailable');
+    }
+    return (source as PanelEventSource).panelEvent(
+      hookKey: panel.hookKey!,
+      panelKey: panel.panelKey!,
+      args: {...args, 'instanceId': panel.id},
+    );
   }
 
   Future<Map<String, dynamic>> configFor(PanelDefinition panel) =>

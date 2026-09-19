@@ -24,9 +24,13 @@ import type {
   StatusBarProgressParams,
   StatusBarNoticeParams,
   VersionInfo,
+  PanelRadioState,
+  PanelRadioTune,
+  PanelRadioTuneResult,
 } from "./types.ts"
 
 export * from "./types.ts"
+export * from "./svgScene.ts"
 export * from "./i18n.ts"
 export * from "./dxcc.ts"
 export * from "./location.ts"
@@ -141,6 +145,18 @@ export const hooks = {
 }
 
 export const host = {
+  async listRadios(): Promise<PanelRadioState[]> {
+    return await hostCallFn()('listRadios', {}) as PanelRadioState[]
+  },
+  async readRadio(id?: string): Promise<PanelRadioState | null> {
+    return await hostCallFn()('readRadio', { ...(id ? { id } : {}) }) as PanelRadioState | null
+  },
+  async setRadioConnection(args: { id: string; selection?: string; connected: boolean }): Promise<PanelRadioTuneResult> {
+    return await hostCallFn()('setRadioConnection', { ...args }) as PanelRadioTuneResult
+  },
+  async tuneRadio(args: PanelRadioTune): Promise<PanelRadioTuneResult> {
+    return await hostCallFn()('tuneRadio', { ...args }) as PanelRadioTuneResult
+  },
   async fetch(url: string, options?: FetchOptions): Promise<FetchResponse> {
     return (await hostCallFn()('fetch', { url, ...options })) as FetchResponse
   },

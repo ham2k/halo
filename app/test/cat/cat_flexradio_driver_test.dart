@@ -22,8 +22,7 @@ import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
 
 const _handshakeLines = ['V1.4.0.0', 'H5AC2F980'];
-const _radioStatusLine =
-    'S5AC2F980|radio slices=3 panadapters=3 lineout_gain=60 nickname=RadioRoom callsign=N0CALL';
+const _radioStatusLine = 'S5AC2F980|radio slices=3 panadapters=3 lineout_gain=60 nickname=RadioRoom callsign=N0CALL';
 const _sliceStatusLine =
     'S5AC2F980|slice 0 in_use=1 sample_rate=24000 RF_frequency=14.074000 client_handle=0x1C61D553 index_letter=A mode=DIGU wide=0';
 const _sliceStatusLineWithDecimals =
@@ -277,7 +276,122 @@ void main() {
     });
   });
 
+  group('GUI client power', () {
+    test('binds to the tracked slice owner regardless of discovery order', () {
+      for (final clientFirst in [false, true]) {
+        fakeAsync((async) {
+          final localSink = _FakeSink();
+          final rig = FlexRadioSession(localSink);
+          rig.startUpdates();
+          rig.feed('H5AC2F980\n');
+          final owner = 'S5AC2F980|client 0x1C61D553 connected client_id=owner-id program=SmartSDR\n';
+          final other = 'S5AC2F980|client 0x12345678 connected client_id=other-id program=SmartSDR\n';
+          rig.feed(other);
+          rig.feed(clientFirst ? owner : '$_sliceStatusLine\n');
+          rig.feed(clientFirst ? '$_sliceStatusLine\n' : owner);
+          expect(localSink.sent.where((s) => s.contains('client bind')), hasLength(1));
+          expect(localSink.sent.any((s) => s.contains('client bind client_id=owner-id')), true);
+          expect(localSink.sent.last, contains('sub tx all'));
+          rig.feed(owner);
+          expect(localSink.sent.where((s) => s.contains('client bind')), hasLength(1));
+          rig.feed('S5AC2F980|slice 0 client_handle=0x12345678\n');
+          expect(localSink.sent.any((s) => s.contains('client bind client_id=other-id')), true);
+          rig.teardown();
+        });
+      }
+    });
+    test('saved band powers do not overwrite the current transmit power', () {
+      session.feed('S5AC2F980|transmit freq=14.074000 rfpower=60\n');
+      session.feed('S5AC2F980|transmit band 0 band_name=160 rfpower=100\n');
+      session.feed('S5AC2F980|transmit band 13 band_name=15 rfpower=0\n');
+      expect(sink.powers, [60]);
+      session.feed('S5AC2F980|transmit rfpower=45\n');
+      expect(sink.powers, [60, 45]);
+    });
+  });
+
   group('commands', () {
+    test('reads back a tune without relying on an echo or inventing confirmation', () {
+      fakeAsync((async) {
+        session.startUpdates();
+        session.feed('H5AC2F980\n$_sliceStatusLine\n');
+        sink.sent.clear();
+        sink.readings.clear();
+        session.setFrequency(14141.4);
+        session.setMode('USB');
+        // A successful acknowledgement need not contain any slice status.
+        session.feed('R6|0|\n');
+        expect(sink.readings, isEmpty);
+        async.elapse(const Duration(milliseconds: 100));
+        expect(sink.sent.where((line) => line.contains('sub slice all')), hasLength(1));
+        expect(sink.readings, isEmpty);
+        // The radio's actual result, even if different, is authoritative.
+        session.feed('S5AC2F980|slice 0 RF_frequency=14.141000 mode=USB\n');
+        expect(sink.readings.last.freqKHz, 14141);
+        expect(sink.readings.last.mode, 'USB');
+        session.teardown();
+      });
+    });
+
+    test('cancels a queued tune read-back when updates stop or the session closes', () {
+      for (final teardown in [false, true]) {
+        fakeAsync((async) {
+          final rig = FlexRadioSession(sink);
+          rig.startUpdates();
+          rig.feed('H5AC2F980\n');
+          rig.setMode('CW');
+          if (teardown) {
+            rig.teardown();
+          } else {
+            rig.stopUpdates();
+          }
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 1));
+          expect(sink.sent, isEmpty);
+        });
+      }
+    });
+
+    test('reads back power bursts and reports only the radio-confirmed value', () {
+      fakeAsync((async) {
+        session.startUpdates();
+        session.feed('H5AC2F980\n');
+        sink.sent.clear();
+        session.setPower(50);
+        session.setPower(75);
+        session.feed('R6|0|\n');
+        expect(sink.powers, isEmpty);
+        async.elapse(const Duration(milliseconds: 100));
+        expect(sink.sent.where((line) => line.contains('sub tx all')), hasLength(1));
+        expect(sink.powers, isEmpty);
+        session.feed('S5AC2F980|transmit rfpower=70\n');
+        expect(sink.powers, [70]);
+        session.setPower(80);
+        async.elapse(const Duration(milliseconds: 100));
+        expect(sink.sent.where((line) => line.contains('sub tx all')), hasLength(2));
+        session.teardown();
+      });
+    });
+
+    test('cancels power read-back when updates stop or the session closes', () {
+      for (final teardown in [false, true]) {
+        fakeAsync((async) {
+          final rig = FlexRadioSession(sink);
+          rig.startUpdates();
+          rig.feed('H5AC2F980\n');
+          rig.setPower(50);
+          if (teardown) {
+            rig.teardown();
+          } else {
+            rig.stopUpdates();
+          }
+          sink.sent.clear();
+          async.elapse(const Duration(seconds: 1));
+          expect(sink.sent, isEmpty);
+        });
+      }
+    });
+
     test('builds a tune command in MHz from a frequency in kHz', () {
       session.setFrequency(14074);
       expect(sentAny('slice tune 0 14.074000'), isTrue);
@@ -416,8 +530,9 @@ void main() {
 
     test('reads the configured slice, and ignores the others', () {
       sliceB.feed('$_sliceStatusLine\n$_sliceBStatusLine\n');
-      expect(sink.readings, [const VfoReading(freqKHz: 7123, mode: 'LSB')],
-          reason: 'slice 0 is another slice now, not the tracked one');
+      expect(sink.readings, [
+        const VfoReading(freqKHz: 7123, mode: 'LSB'),
+      ], reason: 'slice 0 is another slice now, not the tracked one');
     });
 
     // Read and write must name the SAME slice: a node watching B while
@@ -697,5 +812,4 @@ void main() {
       expect(sink.txReports, isEmpty);
     });
   });
-
 }

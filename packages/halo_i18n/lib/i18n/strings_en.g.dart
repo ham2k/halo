@@ -312,6 +312,12 @@ class Translations$extensionsPanel$en {
 	/// en: 'Your location'
 	String get canUseLocation => 'Your location';
 
+	/// en: 'Your radio, to read its frequency and mode'
+	String get canReadRadio => 'Your radio, to read its frequency and mode';
+
+	/// en: 'Your radio, to tune it and to connect or disconnect it'
+	String get canControlRadio => 'Your radio, to tune it and to connect or disconnect it';
+
 	/// en: 'Identify itself to servers under its own name'
 	String get canSetUserAgent => 'Identify itself to servers under its own name';
 
@@ -2788,6 +2794,9 @@ class Translations$operation$layout$en {
 
 	/// en: 'Try again'
 	String get panelRenderRetry => 'Try again';
+
+	/// en: 'That panel action failed. Try again.'
+	String get panelActionFailed => 'That panel action failed. Try again.';
 
 	late final Translations$operation$layout$panels$en panels = Translations$operation$layout$panels$en.internal(_root);
 
@@ -6697,6 +6706,8 @@ extension on Translations {
 			'extensionsPanel.installVersion' => ({required Object version}) => 'Version ${version}',
 			'extensionsPanel.canReach' => 'This extension can contact',
 			'extensionsPanel.canUseLocation' => 'Your location',
+			'extensionsPanel.canReadRadio' => 'Your radio, to read its frequency and mode',
+			'extensionsPanel.canControlRadio' => 'Your radio, to tune it and to connect or disconnect it',
 			'extensionsPanel.canSetUserAgent' => 'Identify itself to servers under its own name',
 			'extensionsPanel.noCapabilities' => 'It asks for nothing outside the app.',
 			'extensionsPanel.sandboxNote' => 'Extensions run sandboxed: no access to your files, and no network beyond what is listed here.',
@@ -6907,6 +6918,7 @@ extension on Translations {
 			'operation.layout.layoutUnreadableAction' => 'Use this layout',
 			'operation.layout.panelRenderFailed' => ({required Object panel}) => '${panel} could not be displayed',
 			'operation.layout.panelRenderRetry' => 'Try again',
+			'operation.layout.panelActionFailed' => 'That panel action failed. Try again.',
 			'operation.layout.panels.loggingDescription' => 'The log and the entry fields',
 			'operation.layout.panels.infoDescription' => 'What we know about the station being worked',
 			'operation.layout.panels.spotsDescription' => 'Spots from the clusters and activity programs',
@@ -7143,11 +7155,11 @@ extension on Translations {
 			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.',
 			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.',
 			'operation.import.listenTitle' => 'Listen for QSOs from other apps',
+			_ => null,
+		} ?? switch (path) {
 			'operation.import.listenDescriptionOnN1mm' => 'Listening for N1MM+',
 			'operation.import.listenDescriptionOnWsjtx' => 'Listening for WSJT-X',
 			'operation.import.listenDescriptionOnBoth' => 'Listening for N1MM+ and WSJT-X',
-			_ => null,
-		} ?? switch (path) {
 			'operation.import.listenDescriptionOff' => 'Off',
 			'operation.import.addToOperationTitle' => 'Add to this operation',
 			'operation.import.addToOperationDescriptionOn' => 'Captured QSOs are added to this operation as they arrive',
@@ -7657,11 +7669,11 @@ extension on Translations {
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'A device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
 			'settings.syncPanel.accountEmailTitle' => 'Account email',
 			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmation sent to ${email}. Open the link there to finish the change.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.resendConfirmation' => 'Resend Confirmation Email',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Waiting on ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Sent again to ${email}.',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.deviceLinked' => 'That device is now linked to this account.',
 			'settings.syncPanel.checking' => 'Checking…',
 			'settings.syncPanel.notLinked' => 'Not linked yet',
@@ -8171,11 +8183,11 @@ extension on Translations {
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.notSent' => 'Spot not sent.',
 			'spotting.notRefreshedOffline' => 'No connection — spots were not refreshed',
 			'dataFiles.downloading' => 'Downloading…',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'Couldn\'t download ${name}',
 			'dataFiles.downloadFailedWebHint' => 'This could be a network issue, or this link\'s host may not support direct downloads from a web browser. Try the desktop or mobile app, or a different hosting location.',
 			'dataFiles.downloadTimedOut' => 'The server took too long to respond. Try again later.',

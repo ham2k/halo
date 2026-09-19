@@ -64,7 +64,11 @@ const only = argValue('--only', null)?.split(',').map((s) => s.trim()).filter(Bo
 
 const hostSharedVersions = await loadHostSharedVersions()
 
-const served = bundles.filter((b) => b.kind === 'extension' && (!only || only.includes(b.key)))
+// A fixture is served only when `--only` names it: it is no part of "every
+// extension", but it ships nowhere else a running app could load it from.
+const served = bundles.filter((b) =>
+  b.kind === 'extension' ? !only || only.includes(b.key) : b.kind === 'fixture' && only?.includes(b.key),
+)
 if (only) {
   const unknown = only.filter((k) => !bundles.some((b) => b.key === k))
   if (unknown.length) {

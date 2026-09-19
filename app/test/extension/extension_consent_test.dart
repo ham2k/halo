@@ -95,6 +95,23 @@ void main() {
     expect(find.text(t.extensionsPanel.canSetUserAgent), findsOneWidget);
   });
 
+  // Commanding the radio is the claim an operator most needs to see before
+  // agreeing: it retunes the rig and can drop the CAT link mid-QSO.
+  testWidgets('a claim to command the radio is named, in place of the read it implies', (tester) async {
+    await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'requiresRadioWrite': true})));
+
+    expect(find.text(t.extensionsPanel.noCapabilities), findsNothing);
+    expect(find.text(t.extensionsPanel.canControlRadio), findsOneWidget);
+    expect(find.text(t.extensionsPanel.canReadRadio), findsNothing);
+  });
+
+  testWidgets('a claim to read the radio is named, and does not read as control', (tester) async {
+    await show(tester, await inspect(withManifest((m) => {...m, 'domains': <String>[], 'requiresRadioRead': true})));
+
+    expect(find.text(t.extensionsPanel.canReadRadio), findsOneWidget);
+    expect(find.text(t.extensionsPanel.canControlRadio), findsNothing);
+  });
+
   testWidgets('an extension asking for nothing says so, rather than showing an empty list', (tester) async {
     final bundle = await inspect(withManifest((m) => {...m, 'domains': <String>[]}));
 

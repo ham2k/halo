@@ -1237,6 +1237,7 @@ own identity, config form and refresh budget.
 interface PanelHook {
   getPanels(args: {}, ctx): Promise<PanelDescriptor[]>
   render(args: PanelRenderArgs, ctx): Promise<PanelContent>
+  onEvent?(args: PanelRenderArgs & {event: PanelSceneEvent}, ctx): Promise<PanelSceneEventResult>
 }
 // PanelDescriptor: {key, title, description?, icon?, preview?, on?, form?}
 // PanelRenderArgs: {panelKey, operation, qso?, qsoCount, config, reason}
@@ -1246,6 +1247,101 @@ interface PanelHook {
 The host addresses a panel as `ext:<hookKey>:<key>`, and that id is stored
 inside saved layouts — renaming a `key` drops the panel out of every
 arrangement holding it.
+
+An experimental fourth kind, `svgScene`, adds native SVG layers, numeric bindings,
+local controls, and host-run animations. Its payload is `{kind: 'svgScene', scene,
+title?, triggers?}`; it does not have a `content` string. Scene-capable hosts pass
+`instanceId` on render/event calls. `onEvent` handles control events and returns
+numeric value patches; local-only controls and animation frames make no bridge
+calls. Controls with `continuous: true` send `change` events during dragging and a
+final `commit` on release; pending movements are coalesced to the newest value.
+Numeric text supports `scale`, `truncate`, `modulo`, and `minIntegerDigits`
+for local numeric formatting. The Radio Panel Example uses these for its Modern
+frequency groups; its settings offer Modern/LCD styles and radio selection. Local sliders may use `hover` and `discrete` hourly buckets. Text `samples`
+may hold numbers or preformatted strings; control `valueLabels` supplies accessible
+value descriptions. Transform/opacity bindings may also supply numeric `samples`,
+equally spaced over their `input` range, instead of the `output` ramp. The host
+interpolates and clamps these locally; chart markers and callouts can follow
+individual readings without bridge calls. See [the prototype contract and migration plan](../design/svg-scenes.md)
+and the `k2hrc-svg-scenes` sample. This API is experimental.
+
+Scene-capable hosts also supply `args.environment` on **render and event** calls:
+
+- `width`, `height`, and `safeInsets` describe the current panel in logical pixels.
+  The app's Font Scale is already applied to this coordinate space. Do not multiply
+  coordinates by a font-scale preference or `devicePixelRatio`.
+- `brightness` is resolved to `light` or `dark`, including system theme changes.
+  `colors` contains `surface`, `surfaceContainer`, `onSurface`, `onSurfaceVariant`,
+  `accent`, `primary`, `onPrimary`, `secondary`, `outline`, `outlineVariant`,
+  `error`, and `onError`, all `#RRGGBB` strings.
+- `typography` contains `body`, `label`, `title`, `display`, and `mono` roles, each
+  with `fontFamily`, fallbacks, `fontSize`, `scaledFontSize`, `fontWeight`,
+  `lineHeight`, and `letterSpacing`. Family can be null for a platform default.
+  `scaledFontSize` describes OS accessibility scaling **at that role's size**;
+  do not assume one linear factor for all sizes. Use it when reserving label space.
+  Supply the unscaled `fontSize` as scene text `size`: the host scales text once.
+- `locale`, `textDirection`, `devicePixelRatio`, `reducedMotion`, and `highContrast`
+  describe the resolved presentation context. Font names refer to host fonts;
+  they are not URLs or permission to load remote fonts.
+
+For a panel showing an `svgScene`, environment changes automatically request a
+render through the existing throttle, even with no triggers declared. Hidden
+panels catch up on reveal; repeated resize updates coalesce; a scene laid out for
+an old environment cannot overwrite a newer one. Markdown and HTML panels are
+themed and laid out by the host, so an environment change does not re-render
+them; their next render carries the current environment.
+`args.clock.nowMillis` follows the app clock; `realNowMillis` is for network retry
+and cache budgets, so developer time travel does not hammer an external API.
+Both `environment` and `clock` are optional in the SDK for older-host detection.
+
+Use scene **text layers** for typography; SVG `<text>` is not a portable text path
+through the renderer. Text supports either `literal` or bound `value`, plus
+`fontFamily`, `fontWeight`, `lineHeight`, and `letterSpacing`. Text participates
+in native directionality, accessibility scaling and semantics.
+Button controls can supply `menu: [{label, event}]` to open a native dropdown.
+Selecting an item emits its `event` as the action with the original control ID;
+dismissing the menu emits nothing.
+
+The `svg-weather`, `svg-solar`, and `svg-radio` reference panels live in
+[ham2k/extensions](https://github.com/ham2k/extensions/tree/main/extensions/dashboard).
+They use public host APIs and ship as `.h2kext` packages, not app assets.
+Install the packages, then add their panels through Edit Layout. Their original
+extension and panel keys are retained so existing placements and settings survive.
+See that repository’s dashboard README for building against the unreleased SDK.
+
+The radio host calls are manifest capabilities, refused unless declared — the
+same shape as `requiresLocation`, and shown to the operator at install:
+`"requiresRadioRead": true` allows `host.listRadios()` and `host.readRadio()`;
+`"requiresRadioWrite": true` allows `host.tuneRadio()` and
+`host.setRadioConnection()`, and implies read, since a command answers with the
+radio's state. An undeclared call rejects rather than answering null.
+
+**Radio Panel Example** is the CAT reference extension. `host.listRadios()` lists configured
+local transceivers. `host.readRadio(id?)` returns
+a **local** radio's reported frequency (Hz), mode, connection state,
+power, TX state and fresh telemetry, or null on hosts without this API.
+`meters.signalDbm` is receive power in whole dBm when supported, refreshed a few
+times a second; it expires after two seconds without a reading. The Flex driver receives the selected slice’s LEVEL
+meter through its native UDP channel. The reference panel draws a segmented
+receive meter and leaves it unlit when unavailable, stale, or transmitting. It does
+not substitute the app's manually entered VFO for a radio reading.
+`host.tuneRadio({id, frequencyHz?, mode?})` targets that same radio through the
+existing VFO/CAT service. Supported mode requests are LSB, USB, CW, AM and FM.
+The host rejects a changed designation, disconnected/stale radio, transmission
+in progress or malformed command, and spaces accepted tuning requests by at
+least 250 ms. Omitting a selection follows the designated logging radio; an explicit `selection`
+pins tuning to that local radio without changing the logging designation.
+An accepted result means requested, not confirmed; only subsequent
+reported state confirms it. Drivers retain their own protocol/echo handling.
+`host.setRadioConnection({id, selection?, connected})` starts or ends a local CAT
+connection using the same selection and identity checks. Acceptance starts the
+operation; follow reported connection state for completion. It does not switch
+the hardware's mains power or initiate transmission. The reference panel samples
+state once per second while visible; knob motion and LCD digit updates run locally,
+and tuning is sent continuously during dragging, paced by the CAT adapter. The
+main readout follows the requested value immediately; confirmation status distinguishes pending requests from the radio
+reporting the requested frequency. Radio-specific hardware verification remains
+necessary before considering the experimental control API stable.
 
 **Content is a document, not widgets** — the same UI-catalog seam every
 other declarative hook sits behind. Prefer `markdown`: it renders with the

@@ -81,7 +81,7 @@ will actually call.
 
 | Doing this | Read |
 | --- | --- |
-| Anything, before the reference — a whole worked extension of that shape | `samples/`: `k2hrc-hamqth` (lookup + credentials), `k2hrc-llota` (award program), `k2hrc-cqww` (contest + scoring), `k2hrc-radio` (HTML panel) |
+| Anything, before the reference — a whole worked extension of that shape | `samples/`: `k2hrc-hamqth` (lookup + credentials), `k2hrc-llota` (award program), `k2hrc-cqww` (contest + scoring), `k2hrc-radio` (HTML panel), `k2hrc-svg-scenes` (experimental interactive SVG) |
 | Any hook at all — what the category is, what it's handed, what it must return | `docs/hooks.md`, the section named for the category |
 | A pane in a view: `getPanels`, `render`, panel content kinds | `docs/hooks.md` §`panel` |
 | Callsign lookups, spot sources, exporters, reference types (POTA-style) | `docs/hooks.md` §`lookup`, §`spots`, §`export`, §`ref:<type>` |

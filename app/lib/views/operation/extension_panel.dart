@@ -22,6 +22,7 @@
 // must not put the others on the typing path with it.
 
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:halo_core/halo_core.dart';
@@ -31,6 +32,8 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/panel_service.dart';
 import 'panel_content_view.dart';
+import 'panel_environment.dart';
+import 'svg_scene/scene_model.dart';
 
 /// An operation as a hook sees it — what a panel's `render` and the
 /// `template` hook (a CW message about to be keyed) are handed, so
@@ -107,6 +110,8 @@ class ExtensionPanel extends StatefulWidget {
 
 class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObserver {
   PanelContent? _content;
+  int _sceneGeneration = 0;
+  int _sceneRevision = 0;
   String? _error;
 
   /// False while this panel sits behind another tab. It stays mounted (so
@@ -127,7 +132,9 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   bool _appVisible = true;
 
   /// Whether anyone can actually see this pane right now.
-  bool get _awake => _visible && _appVisible;
+  // Read the inherited flag at timer dispatch too: an offstage subtree can
+  // remain dirty until its next frame, leaving didChangeDependencies pending.
+  bool get _awake => _appVisible && DockPaneVisibility.readOf(context);
 
   /// Set while a render is in flight, so a burst of triggers coalesces into
   /// one follow-up call instead of stacking calls the bridge will run in
@@ -156,6 +163,37 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   /// mounted at once, and rendering them all at mount is exactly the cost
   /// the visibility gate exists to avoid.
   bool _rendered = false;
+  Map<String, dynamic>? _environment;
+  String? _environmentKey;
+  final _environmentReady = Completer<void>();
+  bool _environmentScheduled = false;
+
+  void _captureEnvironment(Map<String, dynamic> next) {
+    final key = jsonEncode(next);
+    if (key == _environmentKey) return;
+    final initial = _environment == null;
+    _environment = next;
+    _environmentKey = key;
+    if (initial) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!_environmentReady.isCompleted) _environmentReady.complete();
+      });
+    } else if (!_environmentScheduled) {
+      // Layout can run repeatedly during a dock resize. Only the newest
+      // environment crosses the bridge, within the normal render budget.
+      //
+      // And only for a scene, the one kind drawn AGAINST the environment.
+      // Markdown and HTML are themed and laid out by the host, so a splitter
+      // drag would otherwise re-render — and for HTML, reload — every pane
+      // for an answer that cannot differ. They still get the newest
+      // environment on their next render.
+      _environmentScheduled = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _environmentScheduled = false;
+        if (mounted && _rendered && _content?.kind == 'svgScene') _requestRender('environment');
+      });
+    }
+  }
 
   @override
   void didChangeDependencies() {
@@ -210,6 +248,9 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     // with drift apart, which is the whole reason it borrows their helper.
     AppClock.instance.addListener(_onClockTravel);
     widget.panels.addListener(_onCatalogChanged);
+    widget.panels.extensions.runtimeGeneration.addListener(
+      _onSceneRuntimeChanged,
+    );
     _startTicker();
   }
 
@@ -252,6 +293,14 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     _requestRender('config');
   }
 
+  void _onSceneRuntimeChanged() {
+    if (!mounted || _content?.kind != 'svgScene') return;
+    setState(() {
+      _sceneGeneration++;
+    });
+    _requestRender('runtime');
+  }
+
   int _configRevision = 0;
 
   @override
@@ -259,6 +308,13 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     super.didUpdateWidget(old);
     if (old.panels != widget.panels) {
       old.panels.removeListener(_onCatalogChanged);
+      old.panels.extensions.runtimeGeneration.removeListener(
+        _onSceneRuntimeChanged,
+      );
+      widget.panels.extensions.runtimeGeneration.addListener(
+        _onSceneRuntimeChanged,
+      );
+      _sceneGeneration++;
       widget.panels.addListener(_onCatalogChanged);
     }
     if (old.panel.id != widget.panel.id) {
@@ -394,6 +450,11 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   }
 
   Future<void> _render(String reason) async {
+    // A throttled refresh can become due after the panel was hidden.
+    if (reason != 'initial' && !_awake) {
+      _missedWhileHidden = true;
+      return;
+    }
     if (_rendering) {
       // Whatever the newest reason is, the next render reads the newest
       // context anyway — only that one call is owed.
@@ -405,7 +466,11 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     // different panel can't paint one panel's content under another's tab —
     // a plausible wrong answer is worse than an error.
     final panel = widget.panel;
+    final generation = _sceneGeneration;
+    final sceneRevision = _sceneRevision;
     try {
+      await _environmentReady.future;
+      if (!mounted) return;
       final ctx = widget.renderContext;
       // Read OUTSIDE the render's own try: a config read reaching the
       // keychain can fail for reasons that have nothing to do with this
@@ -432,6 +497,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         config = const {};
       }
       final operation = ctx.operation;
+      final renderedEnvironment = _environmentKey;
       final result = await widget.panels.render(panel, {
         // Absent, not empty, on a view with no operation open: an empty map
         // would answer a template's `op.call` with the empty string, which
@@ -442,9 +508,23 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         'qsoCount': ctx.qsoCount,
         'config': config,
         'reason': reason,
+        'environment': _environment,
+        'clock': {'nowMillis': nowMillis(), 'realNowMillis': realNowMillis()},
       });
-      if (!mounted || panel.id != widget.panel.id) return;
-      final content = PanelContent.fromJson(result);
+      if (!mounted ||
+          panel.id != widget.panel.id ||
+          generation != _sceneGeneration ||
+          sceneRevision != _sceneRevision) {
+        return;
+      }
+      final content = PanelContent.fromJson(result, previous: _content);
+      // A scene laid out for an environment that has since changed is not
+      // shown. Owed here rather than left to [_captureEnvironment], which
+      // cannot know a FIRST render is going to answer with a scene.
+      if (content?.kind == 'svgScene' && renderedEnvironment != _environmentKey) {
+        _pending = true;
+        return;
+      }
       // Before the content is shown, so the ticker a template just asked for
       // is running by the time anyone could look at what it rendered. A
       // render that fails leaves the previous declaration standing: a panel
@@ -489,7 +569,12 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       // likely to reach us any other way.
       ErrorReportingService.reportIfRepeated(
         'panel:render:${panel.id}', e, stack, context: 'panel:render:${panel.id}', threshold: 1);
-      if (!mounted || panel.id != widget.panel.id) return;
+      if (!mounted ||
+          panel.id != widget.panel.id ||
+          generation != _sceneGeneration ||
+          sceneRevision != _sceneRevision) {
+        return;
+      }
       setState(() => _error = context.t.operation.layout.panelRenderFailed(panel: panel.title));
     } finally {
       _rendering = false;
@@ -507,10 +592,14 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   @override
   void dispose() {
     widget.panels.removeListener(_onCatalogChanged);
+    widget.panels.extensions.runtimeGeneration.removeListener(
+      _onSceneRuntimeChanged,
+    );
     AppClock.instance.removeListener(_onClockTravel);
     WidgetsBinding.instance.removeObserver(this);
     _throttle?.cancel();
     _tick?.cancel();
+    if (!_environmentReady.isCompleted) _environmentReady.complete();
     super.dispose();
   }
 
@@ -533,7 +622,67 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     _requestRender('retry');
   }
 
+  Future<Map<String, double>> _sceneEvent(Map<String, dynamic> event) async {
+    _sceneRevision++;
+    final panel = widget.panel;
+    final generation = _sceneGeneration;
+    final ctx = widget.renderContext;
+    bool current() =>
+        mounted &&
+        generation == _sceneGeneration &&
+        panel.id == widget.panel.id;
+    try {
+      final config = await widget.panels
+          .configFor(panel)
+          .timeout(const Duration(seconds: 5));
+      if (!current()) throw StateError('Panel replaced');
+      final result = await widget.panels.event(panel, {
+        if (ctx.operation != null)
+          'operation': operationHookArgs(ctx.operation!),
+        if (ctx.qso != null) 'qso': ctx.qso,
+        'qsoCount': ctx.qsoCount,
+        'config': config,
+        'reason': 'event',
+        'environment': _environment,
+        'clock': {'nowMillis': nowMillis(), 'realNowMillis': realNowMillis()},
+        'event': event,
+      });
+      if (!current()) throw StateError('Panel replaced');
+      final values = parseValues(result?['values']);
+      ErrorReportingService.recordSuccess('panel:event:${panel.id}');
+      return values;
+    } catch (error, stack) {
+      if (current()) {
+        ErrorReportingService.reportIfRepeated(
+          'panel:event:${panel.id}',
+          error,
+          stack,
+          context: 'panel:event:${panel.id}',
+          threshold: 1,
+        );
+      }
+      rethrow;
+    } finally {
+      // A render started before/during this action cannot replace its result.
+      // Request authoritative state again even after a failed command.
+      if (current()) {
+        _sceneRevision++;
+        _requestRender('event');
+      }
+    }
+  }
+
   @override
-  Widget build(BuildContext context) =>
-      PanelContentView(content: _content, error: _error, onRetry: _error == null ? null : _retry);
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          _captureEnvironment(panelEnvironment(context, constraints.biggest));
+          return PanelContentView(
+            key: ValueKey('${widget.panel.id}:$_sceneGeneration'),
+            content: _content,
+            error: _error,
+            onRetry: _error == null ? null : _retry,
+            onSceneEvent: _sceneEvent,
+          );
+        },
+      );
 }

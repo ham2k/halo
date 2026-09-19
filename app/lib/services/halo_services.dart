@@ -36,6 +36,7 @@ import '../config/experiments.dart';
 import '../config/secrets.dart';
 
 import 'catalog_service.dart';
+import 'panel_radio_service.dart';
 import 'deep_link_service.dart';
 import 'export_service.dart';
 import 'connectivity_service.dart';
@@ -403,6 +404,8 @@ class HaLoServices {
   final CatService? _catOverride;
   late final CatService cat = _catOverride ??
       (CatService(settings, radio: radio, onTrack: track)..onRadioProven = reportWorkingRadio);
+  late final PanelRadioService panelRadio = PanelRadioService(cat, radio);
+
   /// Injectable like [_exportsOverride]: `permissionDenied` and `unavailable`
   /// are reachable only by denying an OS permission or losing a GPS fix, so a
   /// widget test of what those states put on screen has no other way in.
@@ -1020,6 +1023,7 @@ class HaLoServices {
     extensions.operations = operations;
     extensions.qsos = qsos;
     extensions.location = location;
+    extensions.radioCalls.radio = panelRadio;
     extensions.spots = spots;
     extensions.catalog = catalog;
     extensions.onOpenAccount = (key, {subkey}) => unawaited(showAccountDialogByKey(this, key, subkey: subkey));

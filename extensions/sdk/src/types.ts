@@ -1,6 +1,7 @@
 // Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
 // SPDX-License-Identifier: MIT
 
+import type { SvgScene, PanelSceneEvent, PanelSceneEventResult } from "./svgScene.ts"
 export type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue }
 
 export interface HookContext {
@@ -1841,6 +1842,15 @@ export interface ExtensionManifest {
   /// `domains`: the host refuses the call for any extension that doesn't
   /// set this.
   requiresLocation?: boolean
+  /// Declares this extension's bundle may read the operator's radios —
+  /// `host.listRadios()` and `host.readRadio()`. Off by default; the host
+  /// refuses the call for any extension that sets neither this nor
+  /// `requiresRadioWrite`.
+  requiresRadioRead?: boolean
+  /// Declares this extension's bundle may command the operator's radios —
+  /// `host.tuneRadio()` and `host.setRadioConnection()`. Implies
+  /// `requiresRadioRead`, since a command answers with the radio's state.
+  requiresRadioWrite?: boolean
   /// Experiment keys (app/experiments.yaml) gating this extension: unless
   /// EVERY listed experiment is enabled, the extension is hidden from the
   /// Extensions panel and its bundle never loads. The user's enable/disable
@@ -2447,11 +2457,76 @@ export interface PanelDescriptor {
   form?: SettingsField[]
 }
 
+/** Resolved host typography; sizes are logical pixels, not the app Font Scale. */
+export interface PanelTypography {
+  fontFamily: string | null
+  fontFamilyFallback: string[]
+  fontSize: number
+  /** OS text scaling at this exact role size (the scaler may be nonlinear). */
+  scaledFontSize: number
+  fontWeight: number
+  lineHeight: number
+  letterSpacing: number
+}
+
+/** Current placement environment. Never multiply coordinates by devicePixelRatio. */
+export interface PanelEnvironment {
+  version: 1
+  width: number
+  height: number
+  safeInsets: { left: number; top: number; right: number; bottom: number }
+  brightness: 'light' | 'dark'
+  colors: Record<'surface' | 'surfaceContainer' | 'onSurface' | 'onSurfaceVariant' |
+    'accent' | 'primary' | 'onPrimary' | 'secondary' | 'outline' | 'outlineVariant' |
+    'error' | 'onError', string>
+  typography: Record<'body' | 'label' | 'title' | 'display' | 'mono', PanelTypography>
+  locale: string
+  textDirection: 'ltr' | 'rtl'
+  devicePixelRatio: number
+  reducedMotion: boolean
+  highContrast: boolean
+}
+
+/** A local CAT radio. Values are reported readings, never manual VFO fallbacks. */
+export interface PanelRadioState {
+  id: string | null
+  name: string | null
+  status: 'disconnected' | 'connecting' | 'connected' | 'disconnecting' | 'error'
+  stale: boolean
+  problem: string | null
+  frequencyHz: number | null
+  mode: string | null
+  powerWatts: number | null
+  transmitting: boolean | null
+  meters: Partial<Record<'signalDbm' | 'powerOut' | 'swr' | 'alc' | 'supplyVolts', number>>
+  canTune: boolean
+}
+export interface PanelRadioTune {
+  /** Reject if this identity no longer matches the selected radio. */
+  id: string
+  /** Pin a local radio by ID; omitted means follow the designated radio. */
+  selection?: string
+  frequencyHz?: number
+  mode?: 'LSB' | 'USB' | 'CW' | 'AM' | 'FM'
+}
+export interface PanelRadioTuneResult {
+  /** Accepted by the host; confirmation still comes from reported state. */
+  accepted: boolean
+  reason?: 'changed' | 'disconnected' | 'transmitting' | 'invalid'
+  state: PanelRadioState | null
+}
+
 /// The context a panel renders against. Deliberately NOT the whole log: an
 /// operation's QSOs are fetched on demand through `ctx.getQsos`, which the
 /// panel is free to call — a render triggered by 'qsoLogged' is exactly the
 /// place for it, and a per-keystroke one is not.
 export interface PanelRenderArgs {
+  /** Present on environment-capable hosts. Changes automatically request a throttled render of an `svgScene` panel. */
+  environment?: PanelEnvironment
+  /** Display time follows developer time travel; real time is for network retry/cache budgets. */
+  clock?: { nowMillis: number; realNowMillis: number }
+  /** Stable placement identity, supplied by scene-capable hosts. */
+  instanceId?: string
   panelKey: string
   operation: Record<string, JSONValue>
   /// The QSO being entered right now, including `their.guess` from the
@@ -2498,6 +2573,7 @@ export interface PanelRenderArgs {
 /// render of a panel that asks for `qso` is answered without one; it is woken
 /// by the next change to the draft.
 export type PanelContent =
+  | { kind: 'svgScene'; scene: SvgScene; title?: string; triggers?: string[] }
   | { kind: 'markdown'; content: string; title?: string; triggers?: string[] }
   | { kind: 'svg'; content: string; title?: string; triggers?: string[] }
   | { kind: 'html'; content: string; title?: string; triggers?: string[] }
@@ -2507,4 +2583,5 @@ export type PanelContent =
 export interface PanelHook {
   getPanels(args: Record<string, never>, ctx: HookContext): Promise<PanelDescriptor[]>
   render(args: PanelRenderArgs, ctx: HookContext): Promise<PanelContent>
+  onEvent?(args: PanelRenderArgs & { event: PanelSceneEvent }, ctx: HookContext): Promise<PanelSceneEventResult>
 }

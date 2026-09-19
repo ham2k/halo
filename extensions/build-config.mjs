@@ -21,6 +21,10 @@ import { validateRelevance } from './tools/h2kext.mjs'
 
 export const root = dirname(fileURLToPath(import.meta.url))
 export const outDir = resolve(root, '../app/assets/extensions')
+// Where `kind: 'fixture'` bundles go. NOT under [outDir]: the app's pubspec
+// ships that directory wholesale, so anything written there is in every
+// release build whether or not index.json names it.
+export const fixturesDir = resolve(root, 'build/fixtures')
 
 export const sharedPackages = [
   "@ham2k/lib-callsigns",
@@ -84,6 +88,9 @@ export const builtInSharedDependencies = Object.fromEntries(sharedPackages.map((
 // it allows the bundle to call host.getLocation() (the device's raw GPS
 // fix, APP-34). Omit it (the default) — the host refuses the call for any
 // extension key that doesn't declare it.
+// `requiresRadioRead: true` and `requiresRadioWrite: true` likewise allow
+// host.listRadios()/readRadio() and host.tuneRadio()/setRadioConnection().
+// Write implies read: a command answers with the radio's state.
 // Each extension's USER-FACING metadata (name, category, icon, keywords,
 // translations, fetch-domain allowlist, …) lives in the package's own
 // manifest.json — the single source both this build and the bundle itself
@@ -150,6 +157,10 @@ export const bundles = [
   { key: 'cwt', entry: 'contests/cwt/src/index.ts', kind: 'extension' },
   { key: 'qp', entry: 'contests/qp/src/index.ts', kind: 'extension' },
   { key: 'parksnpeaks', entry: 'spots/parksnpeaks/src/index.ts', kind: 'extension' },
+  // Built for the host's bridge tests, into [fixturesDir]; never shipped. The
+  // dev server serves it when `--only` names it, which is how the preview
+  // entrypoint (app/tool/svg_scene_preview.dart) gets it.
+  { key: 'k2hrc-svg-scenes', entry: 'samples/k2hrc-svg-scenes/src/index.ts', kind: 'fixture' },
   { key: 'custom-text', entry: 'dashboard/custom-text/src/index.ts', kind: 'extension' },
   { key: 'ham2k-lofi', entry: 'sync/ham2k-lofi/src/index.ts', kind: 'extension' },
 ]
@@ -283,6 +294,8 @@ export function indexEntryFor({ key, manifest: m }) {
     domains: m.domains ?? [],
     ...(m.allowUserAgentOverride ? { allowUserAgentOverride: true } : {}),
     ...(m.requiresLocation ? { requiresLocation: true } : {}),
+    ...(m.requiresRadioRead ? { requiresRadioRead: true } : {}),
+    ...(m.requiresRadioWrite ? { requiresRadioWrite: true } : {}),
     ...(m.experiments?.length ? { experiments: m.experiments } : {}),
     ...(m.relevance ? { relevance: m.relevance } : {}),
     core: !m.category,

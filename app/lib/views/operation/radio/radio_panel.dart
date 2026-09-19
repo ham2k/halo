@@ -509,6 +509,7 @@ class RadioReadout extends StatelessWidget {
           fraction: ((value - 1) / (_swrFullScale - 1)).clamp(0.0, 1.0),
           alertFrom: (swrAlertThreshold - 1) / (_swrFullScale - 1),
         );
+      case RadioMeter.signalDbm:
       case RadioMeter.alc:
       case RadioMeter.supplyVolts:
         // A supply voltage has no scale worth drawing — it is 13.8 or it is
@@ -589,6 +590,7 @@ class RadioReadout extends StatelessWidget {
   String _meterLabel(RadioMeter meter) {
     final p = t.operation.layout.panels;
     return switch (meter) {
+      RadioMeter.signalDbm => 'dBm',
       RadioMeter.powerOut => p.radioWatts,
       RadioMeter.swr => p.radioSwr,
       RadioMeter.alc => p.radioAlc,
@@ -599,6 +601,7 @@ class RadioReadout extends StatelessWidget {
   String _meterText(RadioMeter meter, num value) {
     final p = t.operation.layout.panels;
     return switch (meter) {
+      RadioMeter.signalDbm => '${value.toStringAsFixed(1)} dBm',
       RadioMeter.powerOut => '${powerText(value)} ${p.radioWatts}',
       RadioMeter.swr => '${p.radioSwr} ${value.toStringAsFixed(1)}',
       RadioMeter.alc => '${p.radioAlc} ${(value * 100).round()}%',

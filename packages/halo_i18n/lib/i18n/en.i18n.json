@@ -71,6 +71,8 @@
     "installVersion": "Version ${version}",
     "canReach": "This extension can contact",
     "canUseLocation": "Your location",
+    "canReadRadio": "Your radio, to read its frequency and mode",
+    "canControlRadio": "Your radio, to tune it and to connect or disconnect it",
     "canSetUserAgent": "Identify itself to servers under its own name",
     "noCapabilities": "It asks for nothing outside the app.",
     "sandboxNote": "Extensions run sandboxed: no access to your files, and no network beyond what is listed here.",
@@ -326,6 +328,7 @@
       "layoutUnreadableAction": "Use this layout",
       "panelRenderFailed": "${panel} could not be displayed",
       "panelRenderRetry": "Try again",
+      "panelActionFailed": "That panel action failed. Try again.",
       "panels": {
         "loggingDescription": "The log and the entry fields",
         "infoDescription": "What we know about the station being worked",

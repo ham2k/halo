@@ -214,6 +214,22 @@ class ExtensionInfo with ExtensionSearchable {
   /// same allowlist shape as [domains].
   final bool requiresLocation;
 
+  /// Whether this extension may read the operator's radios (`listRadios`,
+  /// `readRadio`; the manifest's `requiresRadioRead`) and whether it may
+  /// command them (`tuneRadio`, `setRadioConnection`; `requiresRadioWrite`).
+  /// A command answers with the radio's state, so write implies read.
+  final bool requiresRadioRead;
+  final bool requiresRadioWrite;
+
+  /// Whether [other] declares the same capabilities the host resolves into
+  /// allowlists when the runtime STARTS. A dev reload that changes one cannot
+  /// be hot-swapped: the running host would keep enforcing the old answer.
+  bool sameStartTimeCapabilities(ExtensionInfo other) =>
+      requiresLocation == other.requiresLocation &&
+      requiresRadioRead == other.requiresRadioRead &&
+      requiresRadioWrite == other.requiresRadioWrite &&
+      allowUserAgentOverride == other.allowUserAgentOverride;
+
   final bool core;
   @override
   final String name;
@@ -276,6 +292,8 @@ class ExtensionInfo with ExtensionSearchable {
     this.domains = const [],
     this.allowUserAgentOverride = false,
     this.requiresLocation = false,
+    this.requiresRadioRead = false,
+    this.requiresRadioWrite = false,
     required this.core,
     required this.name,
     this.shortName,
@@ -306,6 +324,8 @@ class ExtensionInfo with ExtensionSearchable {
         domains: ((json['domains'] as List?) ?? const []).cast<String>(),
         allowUserAgentOverride: json['allowUserAgentOverride'] as bool? ?? false,
         requiresLocation: json['requiresLocation'] as bool? ?? false,
+        requiresRadioRead: json['requiresRadioRead'] as bool? ?? false,
+        requiresRadioWrite: json['requiresRadioWrite'] as bool? ?? false,
         // A stale index without metadata degrades to "everything core" —
         // the fail-safe: nothing gets silently disabled.
         core: json['core'] as bool? ?? true,

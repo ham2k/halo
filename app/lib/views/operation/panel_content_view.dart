@@ -11,6 +11,11 @@
 // web view. SVG is a vector image, drawn with the app's own painter. HTML is
 // the escape hatch, and it runs under the sandbox below.
 
+import 'dart:convert';
+
+import 'svg_scene/scene_model.dart';
+import 'svg_scene/scene_view.dart';
+
 import 'package:flutter/foundation.dart' show kIsWeb, listEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
@@ -30,6 +35,7 @@ class PanelContent {
   /// simply has nothing to say.
   final String kind;
   final String content;
+  final SvgScene? scene;
 
   /// A tab label for this rendering, overriding the descriptor's title.
   /// Optional, and the reason it exists is panels an operator may place more
@@ -50,12 +56,35 @@ class PanelContent {
   /// cannot invent a signal the host doesn't fire.
   final List<String> triggers;
 
-  const PanelContent({required this.kind, required this.content, this.title, this.triggers = const []});
+  const PanelContent({required this.kind, required this.content, this.title, this.triggers = const [], this.scene});
 
-  static PanelContent? fromJson(Object? json) {
+  /// THROWS for an `svgScene` whose document does not validate, rather than
+  /// answering null: the FormatException names the layer, tag or value at
+  /// fault, and the caller's render `catch` is what carries it to the console
+  /// and the dev client. Swallowed here, the author sees only "could not be
+  /// displayed".
+  ///
+  /// [previous] is what the pane is showing. A ticking scene panel returns the
+  /// same document most of the time, and validating it walks every layer's
+  /// artwork again — so an unchanged document keeps the scene it has.
+  static PanelContent? fromJson(Object? json, {PanelContent? previous}) {
     if (json is! Map) return null;
     final kind = json['kind'];
-    final content = json['content'];
+    final Object? content;
+    SvgScene? scene;
+    if (kind == 'svgScene') {
+      final document = json['scene'];
+      if (document is! Map) throw const FormatException('An svgScene render result needs a scene document');
+      try {
+        content = jsonEncode(document);
+      } on JsonUnsupportedObjectError catch (e) {
+        throw FormatException('The scene document is not JSON: ${e.cause ?? e.unsupportedObject}');
+      }
+      scene = previous?.kind == kind && previous?.content == content ? previous?.scene : null;
+      scene ??= SvgScene(document);
+    } else {
+      content = json['content'];
+    }
     if (kind is! String || content is! String) return null;
     final title = json['title'];
     // Blank is not a label — a panel that computes its title from empty
@@ -65,6 +94,7 @@ class PanelContent {
     return PanelContent(
       kind: kind,
       content: content,
+      scene: scene,
       title: trimmed.isEmpty ? null : trimmed,
       triggers: triggers is List ? triggers.whereType<String>().toList() : const [],
     );
@@ -97,8 +127,9 @@ class PanelContentView extends StatelessWidget {
   /// nothing that would ever ask on its own, and a failure during a runtime
   /// restart is exactly the case that would succeed a moment later.
   final VoidCallback? onRetry;
+  final SceneEventHandler? onSceneEvent;
 
-  const PanelContentView({super.key, required this.content, this.error, this.onRetry});
+  const PanelContentView({super.key, required this.content, this.error, this.onRetry, this.onSceneEvent});
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +137,8 @@ class PanelContentView extends StatelessWidget {
     final content = this.content;
     if (content == null) return const Center(child: CircularProgressIndicator());
     switch (content.kind) {
+      case 'svgScene' when content.scene != null:
+        return SvgSceneView(scene: content.scene!, onEvent: onSceneEvent);
       case 'markdown':
         return SingleChildScrollView(
           padding: const EdgeInsets.all(Space.lg),

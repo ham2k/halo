@@ -17,6 +17,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
+import 'package:halo_core/halo_core.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../discovery.dart';
 import '../driver.dart';
@@ -24,6 +25,8 @@ import '../equipment.dart';
 import '../transports/udp_broadcast.dart';
 import 'cw_send_queue.dart';
 import 'line_framer.dart';
+import 'flex_meter_codec.dart';
+import '../transports/flex_meter_socket.dart';
 
 /// Belt-and-suspenders against a subscription silently going stale — a
 /// dropped WiFi/NAT mapping or a radio-side hiccup produces no error to
@@ -92,7 +95,7 @@ class FlexRadioDriver extends EquipmentDriver {
 
   @override
   EquipmentSession createSession(EquipmentSink sink, Map<String, dynamic> config) =>
-      FlexRadioSession(sink, slice: sliceFromConfig(config));
+      FlexRadioSession(sink, slice: sliceFromConfig(config), meterHost: config['host'] as String?);
 
   @override
   List<Map<String, dynamic>> configElements({
@@ -264,13 +267,85 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   /// the operator never transmitted on.
   final int slice;
 
-  FlexRadioSession(this._sink, {this.slice = 0});
+  FlexRadioSession(this._sink, {this.slice = 0, this.meterHost});
+  final String? meterHost;
+  late final _meters = FlexMeterCodec(slice);
+  final _signalThrottle = FlexSignalThrottle();
+  FlexMeterSocket? _meterSocket;
+  bool _openingMeters = false;
+  int _meterGeneration = 0;
+
+  void _startMeters() {
+    if (meterHost == null || _openingMeters) return;
+    if (_meterSocket != null) {
+      _sendCommand('sub meter all');
+      _sendCommand('meter list');
+      return;
+    }
+    _openingMeters = true;
+    final generation = _meterGeneration;
+    void failed(Object error, StackTrace stack) {
+      if (generation == _meterGeneration && _wantUpdates) {
+        _sink.reportDiagnostic('Flex receive meter unavailable: $error');
+      }
+    }
+
+    unawaited(
+      FlexMeterSocket.open(meterHost!, (data) {
+        if (generation != _meterGeneration || !_wantUpdates) return;
+        final dbm = _meters.signal(data);
+        if (dbm == null) return;
+        // The real clock: a rate limit on wire data must not travel.
+        final value = _signalThrottle.accept(dbm, realNowMillis());
+        if (value != null) _sink.reportMeter(RadioMeter.signalDbm, value);
+      }, failed).then(
+        (socket) {
+          if (generation != _meterGeneration || !_wantUpdates) {
+            socket?.close();
+            return;
+          }
+          _openingMeters = false;
+          _meterSocket = socket;
+          if (socket != null) {
+            _sendCommand('client udpport ${socket.port}');
+            _sendCommand('sub meter all');
+            _sendCommand('meter list');
+          }
+        },
+        onError: (Object error, StackTrace stack) {
+          if (generation == _meterGeneration) _openingMeters = false;
+          failed(error, stack);
+        },
+      ),
+    );
+  }
+
+  void _stopMeters() {
+    _meterGeneration++;
+    _openingMeters = false;
+    if (_meterSocket != null && _handshakeDone) _sendCommand('unsub meter all');
+    _meterSocket?.close();
+    _meterSocket = null;
+  }
 
   int _seq = 1;
 
   /// What the radio last said about each slice, by index. Rebuilt from the
   /// status stream, never from configuration.
   final Map<int, _SliceStatus> _slices = {};
+  final Map<String, String> _clientIds = {};
+  String? _boundClientId;
+
+  // SmartSDR v3+ power belongs to a GUI client. Follow the owner of OUR
+  // slice, not the first client discovered (there may be several operators).
+  void _bindTrackedClient() {
+    final handle = _slices[slice]?.clientHandle?.toLowerCase();
+    final id = _clientIds[handle];
+    if (id == null || id == _boundClientId || !_handshakeDone || !_wantUpdates) return;
+    _boundClientId = id;
+    _sendCommand('client bind client_id=$id');
+    _sendCommand('sub tx all');
+  }
 
   /// `program`/`station` per client handle, from the `client` status object.
   /// A slice names its owner only by handle, so without this the answer to
@@ -286,6 +361,8 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   bool _wantUpdates = false;
   Timer? _resyncTimer;
   Timer? _pingTimer;
+  Timer? _tuneRefreshTimer;
+  Timer? _powerRefreshTimer;
 
   final _framer = LineFramer();
 
@@ -321,6 +398,8 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     // The keyer speed: `cwx wpm=` arrives on this subscription, with the
     // refresh, so the speed is known without asking for it.
     _sendCommand('sub cwx all');
+    _bindTrackedClient();
+    _startMeters();
   }
 
   void _unsubscribe() {
@@ -345,6 +424,11 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   }
 
   void _stopPeriodicTimers() {
+    _stopMeters();
+    _tuneRefreshTimer?.cancel();
+    _tuneRefreshTimer = null;
+    _powerRefreshTimer?.cancel();
+    _powerRefreshTimer = null;
     _resyncTimer?.cancel();
     _resyncTimer = null;
     _pingTimer?.cancel();
@@ -362,6 +446,10 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
 
   void _handleLine(String line) {
     if (line.isEmpty) return;
+    final metadata = RegExp(
+      r'^[SR][^|]+\|(?:0\|)?meter (.+)$',
+    ).firstMatch(line);
+    if (metadata != null) _meters.metadata(metadata[1]!);
     if (line.startsWith('H')) {
       _handleHandshakeLine(line);
     } else if (line.startsWith('S')) {
@@ -485,6 +573,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     _publishChannels();
 
     if (index != slice) return;
+    _bindTrackedClient();
     _checkTrackedSlice();
 
     final reading = VfoReading(freqKHz: freqKHz, mode: mode);
@@ -499,10 +588,15 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     final rest = match.group(2)!;
     if (rest.startsWith('disconnected')) {
       _clients.remove(handle);
+      final removedId = _clientIds.remove(handle);
+      if (removedId == _boundClientId) _boundClientId = null;
       _publishChannels();
       return;
     }
     final fields = _parseFields(rest);
+    final id = fields['client_id'];
+    if (id != null && RegExp(r'^[a-zA-Z0-9-]{1,128}$').hasMatch(id)) _clientIds[handle] = id;
+    _bindTrackedClient();
     final program = fields['program'];
     final station = fields['station'];
     // A client that names neither still gets an entry: an empty name is how
@@ -573,13 +667,11 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     ]);
   }
 
-  /// `rfpower` is 0-100 on SmartSDR's own status object — NOT captured
-  /// against the live FLEX-6600 the freq/mode path above was verified
-  /// against, but the whole line this driver targets (6300-6700) is
-  /// 100W-rated HF, which is why treating the value as watts directly is
-  /// less of a leap here than the same assumption in the Icom/Kenwood/
-  /// FT-891 drivers, where the rated maximum varies by model.
+  /// Current power from the bound client's transmit state. A subscription
+  /// also returns saved per-band settings; those are not current readings.
+  /// Verified against FLEX-6600: unbound returned 1 W, bound returned 60 W.
   void _handleTransmitLine(RegExpMatch match) {
+    if (match.group(1)!.startsWith('band ')) return;
     final fields = _parseFields(match.group(1)!);
     // The transmit object carries the keyer speed as `speed=` alongside
     // the CWX subscription's `wpm=`; either is the same knob.
@@ -602,14 +694,40 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   }
 
   @override
-  void setFrequency(double freqKHz) =>
-      _sendCommand('slice tune $slice ${(freqKHz / 1000).toStringAsFixed(6)}');
+  void setFrequency(double freqKHz) {
+    _sendCommand('slice tune $slice ${(freqKHz / 1000).toStringAsFixed(6)}');
+    _refreshAfterTune();
+  }
 
   @override
-  void setMode(String mode) => _sendCommand('slice set $slice mode=${mode.toUpperCase()}');
+  void setMode(String mode) {
+    _sendCommand('slice set $slice mode=${mode.toUpperCase()}');
+    _refreshAfterTune();
+  }
+
+  // Flex suppresses status echoes to the client issuing a command. A fresh
+  // subscription returns actual slice state, including any radio-side clamp
+  // or rejection. Coalesce a frequency/mode burst into one read-back without
+  // postponing it indefinitely during continuous tuning.
+  void _refreshAfterTune() {
+    if (!_wantUpdates || !_handshakeDone || _tuneRefreshTimer != null) return;
+    _tuneRefreshTimer = Timer(const Duration(milliseconds: 100), () {
+      _tuneRefreshTimer = null;
+      if (_wantUpdates && _handshakeDone) _sendCommand('sub slice all');
+    });
+  }
 
   @override
-  void setPower(num watts) => _sendCommand('transmit set rfpower=${watts.round().clamp(0, 100)}');
+  void setPower(num watts) {
+    _sendCommand('transmit set rfpower=${watts.round().clamp(0, 100)}');
+    // Like slice tuning, transmit changes need a read-back when the radio
+    // suppresses the originating client's status echo. Coalesce slider bursts.
+    if (!_wantUpdates || !_handshakeDone || _powerRefreshTimer != null) return;
+    _powerRefreshTimer = Timer(const Duration(milliseconds: 100), () {
+      _powerRefreshTimer = null;
+      if (_wantUpdates && _handshakeDone) _sendCommand('sub tx all');
+    });
+  }
 
   @override
   void sendCw(String text) => _cwQueue.enqueue(text);

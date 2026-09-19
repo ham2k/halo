@@ -16,6 +16,8 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
@@ -23,6 +25,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
 import 'package:ham2k_logger/views/operation/weather/weather_panel.dart';
+import 'package:ham2k_logger/views/operation/svg_scene/scene_view.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../support/fake_panel_extensions.dart';
@@ -124,6 +127,8 @@ void main() {
     required WeatherFetch fetch,
     bool dockVisible = true,
     Size size = const Size(440, 320),
+    double textScale = 1,
+    Brightness brightness = Brightness.light,
   }) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = size;
@@ -138,6 +143,11 @@ void main() {
 
     await tester.pumpWidget(TranslationProvider(
       child: MaterialApp(
+        theme: ThemeData(brightness: brightness),
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: TextScaler.linear(textScale)),
+          child: child!,
+        ),
         home: Scaffold(
           body: DockPaneVisibility(
             visible: dockVisible,
@@ -188,6 +198,53 @@ void main() {
       for (var i = 0; i < 8; i++) {
         final hour = data.firstHour.add(Duration(hours: i));
         expect(find.text(localHourLabel(hour)), findsOneWidget, reason: 'hour $i');
+      }
+    });
+
+    testWidgets('forecast inspection snaps to hours without refetching', (tester) async {
+      final data = forecast(nowUtc());
+      await pump(tester, fetch: answering(data.body));
+      expect(find.byType(SvgSceneView), findsOneWidget);
+      final box = tester.getRect(find.byKey(const ValueKey('forecast-hour')));
+      String caption(int i) => '${localHourLabel(data.firstHour.add(Duration(hours: i)))}:00 +0545 · ${70 + i}°F · ${24 + i}%';
+      expect(find.text(caption(0)), findsOneWidget);
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer(location: Offset.zero);
+      // Either side of a bucket's centre selects that same hourly column.
+      for (final fraction in [3.1, 3.9]) {
+        await mouse.moveTo(Offset(box.left + box.width * fraction / 8, box.center.dy));
+        await tester.pump();
+        expect(find.text(caption(3)), findsOneWidget);
+      }
+      await mouse.removePointer();
+      await tester.tapAt(Offset(box.left + box.width * 6.5 / 8, box.center.dy));
+      await tester.pump();
+      expect(find.text(caption(6)), findsOneWidget);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+      await tester.pump();
+      expect(find.text(caption(7)), findsOneWidget);
+      expect(requested, hasLength(1));
+      final semantics = tester.ensureSemantics();
+      final node = tester.getSemantics(find.byKey(const ValueKey('forecast-hour')));
+      expect(node.value, caption(7));
+      semantics.dispose();
+    });
+
+    testWidgets('inspection preserves missing values and survives large type in both themes', (tester) async {
+      final data = forecast(nowUtc());
+      final body = jsonDecode(data.body) as Map<String, dynamic>;
+      body['hourly']['temperature_2m'][27] = null;
+      body['hourly']['precipitation_probability'][27] = null;
+      for (final brightness in Brightness.values) {
+        await pump(tester, fetch: answering(jsonEncode(body)),
+          size: const Size(440, 400), textScale: 2, brightness: brightness);
+        final box = tester.getRect(find.byKey(const ValueKey('forecast-hour')));
+        await tester.tapAt(Offset(box.left + box.width * 3.5 / 8, box.center.dy));
+        await tester.pump();
+        expect(find.text('${localHourLabel(data.firstHour.add(const Duration(hours: 3)))}:00 +0545 · —°F · —%'), findsOneWidget);
+        expect(tester.takeException(), isNull);
+        // New service/fixture for the second theme.
+        await tester.pumpWidget(const SizedBox());
       }
     });
 

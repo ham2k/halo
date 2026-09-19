@@ -71,6 +71,8 @@
     "installVersion": "Versión ${version}",
     "canReach": "Esta extensión puede contactar",
     "canUseLocation": "Tu ubicación",
+    "canReadRadio": "Tu radio, para leer su frecuencia y modo",
+    "canControlRadio": "Tu radio, para sintonizarla y para conectarla o desconectarla",
     "canSetUserAgent": "Identificarse ante servidores con su propio nombre",
     "noCapabilities": "No pide nada fuera de la app.",
     "sandboxNote": "Las extensiones se ejecutan aisladas: sin acceso a tus archivos, y sin más red que la indicada aquí.",
@@ -325,6 +327,7 @@
       "layoutUnreadableAction": "Usar esta disposición",
       "panelRenderFailed": "No se pudo mostrar ${panel}",
       "panelRenderRetry": "Reintentar",
+      "panelActionFailed": "Esa acción del panel falló. Inténtalo de nuevo.",
       "panels": {
         "loggingDescription": "El registro y los campos de entrada",
         "infoDescription": "Lo que sabemos de la estación contactada",

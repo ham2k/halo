@@ -11,10 +11,8 @@
 // device's GPS: that is a permission prompt for a panel that only wants a
 // rough position.
 //
-// Native rather than an extension `panel` hook, for the reason
-// docs/design/layouts.md gives for the clock: an extension contributes a
-// DOCUMENT, and its SVG is compiled to a static instruction list, so a curve
-// fitted to eight fetched numbers is not something it can return.
+// The forecast is a public SVG scene. Native code retains the location,
+// fetching, stale-data handling and responsive header shared with older layouts.
 
 import 'dart:async';
 import 'dart:math' as math;
@@ -28,7 +26,8 @@ import '../../../config/user_agent.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../../services/panel_service.dart';
 import '../../../services/settings_service.dart';
-import 'weather_chart.dart';
+import '../svg_scene/scene_view.dart';
+import 'weather_scene.dart';
 import 'weather_codes.dart';
 import 'weather_reading.dart';
 
@@ -723,19 +722,23 @@ class _WeatherReadout extends StatelessWidget {
                     // laid out.
                     builder: (context, chartBox) => chartBox.maxHeight < _chartFloor
                         ? const SizedBox.shrink()
-                        : CustomPaint(
-                            painter: WeatherChartPainter(
-                              temperatures: [for (final h in hours) h.temperature],
-                              chances: [for (final h in hours) h.precipitationChance],
+                        : SvgSceneView(
+                            // A changed location/hour window must not retain an
+                            // inspection index that referred to another forecast.
+                            key: ValueKey('${hours.first.utc}:${reading.units.temperature}'),
+                            scene: weatherScene(
+                              size: Size(chartBox.maxWidth, chartBox.maxHeight),
+                              hours: hours,
+                              unit: reading.units.temperature,
+                              zone: reading.timezoneAbbreviation ?? '',
+                              label: context.t.operation.tabs.weather,
                               line: accent,
-                              fill: accent.withValues(alpha: 0.22),
-                              // `secondary`, not `primary`: primary carries
-                              // the same value in both brightnesses (it is a
-                              // FILL role), so a low-alpha wash of it is
-                              // invisible on the dark surface. Secondary has
-                              // a real tone for each.
-                              rain: scheme.secondary.withValues(alpha: 0.30),
+                              rain: scheme.secondary,
                               baseline: scheme.outlineVariant,
+                              surface: scheme.surface,
+                              foreground: scheme.onSurface,
+                              labelSize: theme.textTheme.labelSmall?.fontSize ?? 12,
+                              labelHeight: MediaQuery.textScalerOf(context).scale(theme.textTheme.labelSmall?.fontSize ?? 12) * 1.6,
                             ),
                           ),
                   ),

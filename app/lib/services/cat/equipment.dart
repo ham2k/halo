@@ -154,14 +154,12 @@ class VfoReading {
 /// One of the radio's meters — what it is DOING, as opposed to where
 /// [VfoReading] says it is tuned.
 ///
-/// Only readings that mean something DURING a transmission are here,
-/// because that is when they are asked for: the meter cycle runs while the
-/// radio is keyed and stops when it unkeys (docs/design/cat.md §
-/// Telemetry), so a receive-side meter would never be read at all.
-/// [supplyVolts] is the exception in one direction only — it is valid at
-/// rest too, and a driver already reading it on its ordinary cycle reports
-/// it whenever it likes.
+/// Polled meters are normally collected during transmission. Push-based
+/// receive meters (such as Flex slice LEVEL) arrive independently of that cycle.
 enum RadioMeter {
+  /// Receive signal power in dBm, measured in the selected receiver passband.
+  signalDbm,
+
   /// RF actually leaving the radio, in watts.
   ///
   /// NOT [EquipmentState.power], which is the level the radio is SET to.

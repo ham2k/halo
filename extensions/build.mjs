@@ -16,6 +16,7 @@ import { join } from 'node:path'
 import {
   bundles,
   buildOptionsFor,
+  fixturesDir,
   indexEntryFor,
   loadHostSharedVersions,
   loadManifests,
@@ -27,11 +28,14 @@ const hostSharedVersions = await loadHostSharedVersions()
 await loadManifests()
 
 await mkdir(outDir, { recursive: true })
+await mkdir(fixturesDir, { recursive: true })
+
+const dirFor = (bundle) => (bundle.kind === 'fixture' ? fixturesDir : outDir)
 
 for (const bundle of bundles) {
   const result = await build(buildOptionsFor(bundle, {
     hostSharedVersions,
-    outfile: join(outDir, `${bundle.key}.js`),
+    outfile: join(dirFor(bundle), `${bundle.key}.js`),
   }))
   const bytes = Object.values(result.metafile.outputs)[0].bytes
   console.log(`${bundle.key}.js — ${(bytes / 1024).toFixed(1)} KB`)
@@ -62,14 +66,20 @@ await writeFile(
 // off a file that no longer has any right to exist, while CI — which builds into
 // a clean tree — fails. That is how the sandbox clock test came to pass here and
 // fail there.
-const expected = new Set([...bundles.map((b) => `${b.key}.js`), 'index.json'])
-for (const name of await readdir(outDir)) {
-  if (expected.has(name)) continue
-  await unlink(join(outDir, name))
-  console.log(`removed orphan — ${name}`)
+//
+// A fixture in [outDir] is an orphan like any other — and the one that matters
+// most, since everything in that directory ships.
+for (const dir of [outDir, fixturesDir]) {
+  const expected = new Set(bundles.filter((b) => dirFor(b) === dir).map((b) => `${b.key}.js`))
+  if (dir === outDir) expected.add('index.json')
+  for (const name of await readdir(dir)) {
+    if (expected.has(name)) continue
+    await unlink(join(dir, name))
+    console.log(`removed orphan — ${name}`)
+  }
 }
 
-console.log(`index.json — ${bundles.length - 1} extensions`)
+console.log(`index.json — ${bundles.filter((b) => b.kind === 'extension').length} extensions`)
 
 // Last, because it evaluates what was just written: every manifest's `hooks`
 // must be what its code registers (hook-check.mjs).
