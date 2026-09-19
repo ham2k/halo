@@ -6,8 +6,11 @@ ergonomics are a contract rather than a nicety (see [DESIGN.md](../../DESIGN.md)
 §7). They have three parts: the main logging controls, the information area,
 and the secondary logging controls.
 
-Implemented in `packages/halo_widgets/lib/src/logging_controls.dart`, which owns a model per concern
-beside it: the Radio control (`logging_controls_radio.dart`), the callsign lookup and scoring
+Implemented in `packages/halo_widgets/lib/src/logging_controls.dart`. The app wires it up through
+the nine groups in `logging_controls_types.dart` — the log, the session, the radio, lookups,
+activities, commands, the strip, spotting, and the operator's preferences — which also holds its
+callback types. The panel owns a model per concern beside it: the Radio control
+(`logging_controls_radio.dart`), the callsign lookup and scoring
 (`logging_controls_lookup.dart`), the command being typed (`logging_controls_command.dart`), the Time
 and Spotting controls (`logging_controls_time.dart`, `logging_controls_spotting.dart`; Power's field sits
 beside the Radio control, whose VFO holds its value), the contest
@@ -725,7 +728,7 @@ Each rung hangs its handling off a `FocusNode`'s own `onKeyEvent`, never a
 panel-wide `Shortcuts` binding — a panel-wide arrow binding would swallow the
 arrow keys for every field underneath it, caret movement included. Crossing
 between the logging controls and the QSO list goes through
-`LoggingControls.onNavigateToQsoList` and `LoggingControlsController`: the two
+`LoggingSession.onNavigateToQsoList` and `LoggingControlsController`: the two
 are siblings, and the panel above them owns the selection.
 
 Whichever key moved the selection, the list scrolls to it — the row is placed

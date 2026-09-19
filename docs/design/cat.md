@@ -1122,7 +1122,7 @@ FTDX10's memory path have keyed on hardware; Icom's `0x17` and the WinKeyer have
   the queue cleared and a problem shown until the keyer speaks again.
 
 **What is going out is shown** in a strip between the logging panel's call-info area and its entry
-row — the keyer area (`KeyerArea`, through `LoggingControls.aboveEntryRow`): the message with its sent characters
+row — the keyer area (`KeyerArea`, through `ControlStripSettings.aboveEntryRow`): the message with its sent characters
 set apart, a bar pacing through it, and what waits behind it, behind a pill with the keyer speed
 that opens a quick speed dialog. The strip slides down with the first message; a message leaves it
 the moment it ends (or is stopped), and the strip itself STAYS — it goes away when the operator

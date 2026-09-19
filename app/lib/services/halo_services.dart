@@ -1768,6 +1768,12 @@ class HaLoServices {
         if (settingKey == null || settingKey.isEmpty) return null;
         final rejected = await applySettingCommand(this, key: settingKey, value: params?['value']);
         return rejected == null ? null : (text: rejected, failed: true);
+      case 'updateSettings':
+        // DEVMODE typed into the call field. The ⌘K dialog's engine writes the
+        // same key itself; the panel forwards it here, holding no settings
+        // engine of its own. Null: the command's own confirm is the feedback.
+        if (params?['developerMode'] case final bool on) await settings.setDeveloperMode(on);
+        return null;
       case 'updateOperation':
         return _updateOperation(params ?? const {});
       case 'markSegment':

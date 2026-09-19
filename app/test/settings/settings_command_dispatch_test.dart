@@ -165,4 +165,18 @@ void main() {
     expect(find.byType(CommandDialog), findsNothing,
         reason: 'the palette must still dismiss itself — closing the right route, not simply failing to close');
   });
+  testWidgets('DEVMODE from the logging panel reaches the settings engine through the named action', (tester) async {
+    // The trap: the panel forwards `updateSettings` like every other named
+    // action and holds no settings engine of its own, so a switch without this
+    // case would swallow it — the command's confirm text shows, and nothing
+    // changes.
+    final services = await buildServices();
+    expect(services.settings.developerMode, isFalse);
+    await services.handleCommandAction('updateSettings', {'developerMode': true});
+    expect(services.settings.developerMode, isTrue);
+    await services.handleCommandAction('updateSettings', {'developerMode': false});
+    expect(services.settings.developerMode, isFalse);
+    await services.handleCommandAction('updateSettings', {'somethingElse': 1});
+    expect(services.settings.developerMode, isFalse, reason: 'only the keys the action names are written');
+  });
 }

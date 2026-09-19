@@ -45,6 +45,10 @@ void main() {
   late _FakeVfoStore fakeRadio;
   late KeyboardAccessoryController keyboardAccessory;
   late _FakeVfoStore tunedRadio;
+  /// The two groups almost every construction below passes as-is: the log
+  /// under test, and a radio already tuned to a band.
+  late LogHooks log;
+  late RadioHookup radio;
 
   setUp(() async {
     db = HaLoDatabase(NativeDatabase.memory());
@@ -57,6 +61,8 @@ void main() {
     // unset mode is one of the things that pops the Radio control open on
     // mount (see `RadioControlModel.vfoIsUnset`), which would steal focus in every test here.
     tunedRadio = _FakeVfoStore()..setVfo('vfoA', freq: 14285, mode: 'SSB');
+    log = LogHooks(operation: operation, qsosRepository: qsos);
+    radio = RadioHookup(radioService: tunedRadio);
   });
 
   tearDown(() async {
@@ -132,69 +138,84 @@ void main() {
   }) {
     final resolvedRadio = radioService ?? tunedRadio;
     final controls = LoggingControls(
-      operation: operation,
-      qsosRepository: qsosRepository ?? qsos,
-      onWriteError: onWriteError,
-      keyboardAccessory: keyboardAccessory,
-      qsos: existing,
-      enqueueLookup: enqueueLookup,
-      enqueueAllLookups: enqueueAllLookups,
-      decorateQsoBeforeSave: decorateQsoBeforeSave,
-      interpretCommand: interpretCommand,
-      interpretationUpdates: interpretationUpdates,
-      onCommandMessageChanged: onCommandMessageChanged,
-      onCommandAction: onCommandAction,
-      onCallInfoChanged: onCallInfoChanged,
-      onQsoChanged: onQsoChanged,
-      onPeerDraftChanged: onPeerDraftChanged,
-      // Defaults to a radio already tuned to a band, because that is the
-      // ordinary state of a station on the air — and because logging refuses
-      // a contact carrying neither band nor frequency (HALO-24), so a test
-      // that logs anything needs one. Tests about the untuned, fresh-install
-      // state pass `fakeRadio` (or their own store) explicitly.
-      onCallInfoTap: onCallInfoTap,
-      radioService: resolvedRadio,
-      // The app passes the same object twice — RadioService is both the
-      // store and the Listenable. See LoggingControls.radioUpdates.
-      radioUpdates: resolvedRadio is Listenable ? resolvedRadio as Listenable : null,
-      editingQso: editingQso,
-      onEditCanceled: onEditCanceled,
-      onNavigateToQsoList: onNavigateToQsoList,
-      suggestedQso: suggestedQso,
-      suggestedQsoIsTentative: suggestedQsoIsTentative,
-      suggestionSettledSerial: suggestionSettledSerial,
-      onCallEdited: onCallEdited,
-      logRequest: logRequest,
-      confirmLogOverwrite: confirmLogOverwrite,
-      suggestSpotSources: suggestSpotSources,
-      sendSpot: sendSpot,
-      showStateField: showStateField,
-      showGridField: showGridField,
-      defaultOperatorCall: defaultOperatorCall,
-      defaultPosition: defaultPosition,
-      showPositionField: showPositionField,
-      defaultReportCW: defaultReportCW,
-      switchSentRcvd: switchSentRcvd,
-      jumpAfterRST: jumpAfterRST,
-      showNumbersRow: showNumbersRow,
-      showExtraInNumbersRow: showExtraInNumbersRow,
-      vibrateNumbersRow: vibrateNumbersRow,
-      leftieMode: leftieMode,
-      enabledBands: enabledBands,
-      enabledModes: enabledModes,
-      hasConfiguredRadio: hasConfiguredRadio,
-      radioConnected: radioConnected,
-      onOpenStationConfig: onOpenStationConfig,
-      radioName: radioName,
-      ourItuRegion: ourItuRegion,
-      ourCountryCode: ourCountryCode,
-      // The dupe warning now renders as a line-3 pill in the info area
-      // (issue #40); map its key to the same 'DUPE' text the old chip used so
-      // the dupe-detection tests can keep asserting on it.
-      scoreNoticeLabel: (key) => key == 'duplicate' ? 'DUPE' : key,
-      controlOrder: controlOrder,
-      hiddenControlKeys: hiddenControlKeys,
-      trackingPower: trackingPower,
+      log: LogHooks(
+        operation: operation,
+        qsosRepository: qsosRepository ?? qsos,
+        onWriteError: onWriteError,
+        qsos: existing,
+        decorateQsoBeforeSave: decorateQsoBeforeSave,
+      ),
+      session: LoggingSession(
+        onQsoChanged: onQsoChanged,
+        onPeerDraftChanged: onPeerDraftChanged,
+        editingQso: editingQso,
+        onEditCanceled: onEditCanceled,
+        onNavigateToQsoList: onNavigateToQsoList,
+        suggestedQso: suggestedQso,
+        suggestedQsoIsTentative: suggestedQsoIsTentative,
+        suggestionSettledSerial: suggestionSettledSerial,
+        onCallEdited: onCallEdited,
+        logRequest: logRequest,
+        confirmLogOverwrite: confirmLogOverwrite,
+      ),
+      radio: RadioHookup(
+        // Defaults to a radio already tuned to a band, because that is the
+        // ordinary state of a station on the air — and because logging refuses
+        // a contact carrying neither band nor frequency, so a test that logs
+        // anything needs one. Tests about the untuned, fresh-install state
+        // pass `fakeRadio` (or their own store) explicitly.
+        radioService: resolvedRadio,
+        // The app passes the same object twice — RadioService is both the
+        // store and the Listenable. See RadioHookup.radioUpdates.
+        radioUpdates: resolvedRadio is Listenable ? resolvedRadio as Listenable : null,
+        enabledBands: enabledBands,
+        enabledModes: enabledModes,
+        hasConfiguredRadio: hasConfiguredRadio,
+        radioConnected: radioConnected,
+        onOpenStationConfig: onOpenStationConfig,
+        radioName: radioName,
+        ourItuRegion: ourItuRegion,
+        ourCountryCode: ourCountryCode,
+        trackingPower: trackingPower,
+      ),
+      lookups: LookupHooks(
+        enqueueLookup: enqueueLookup,
+        enqueueAllLookups: enqueueAllLookups,
+        onCallInfoChanged: onCallInfoChanged,
+        onCallInfoTap: onCallInfoTap,
+        // The dupe notice is a pill in the info area keyed `duplicate`; map
+        // it to DUPE so the dupe-detection tests can assert on the text.
+        scoreNoticeLabel: (key) => key == 'duplicate' ? 'DUPE' : key,
+      ),
+      commands: CommandHooks(
+        interpretCommand: interpretCommand,
+        interpretationUpdates: interpretationUpdates,
+        onCommandMessageChanged: onCommandMessageChanged,
+        onCommandAction: onCommandAction,
+      ),
+      strip: ControlStripSettings(
+        controlOrder: controlOrder,
+        hiddenControlKeys: hiddenControlKeys,
+      ),
+      spotting: SpottingHooks(
+        suggestSpotSources: suggestSpotSources,
+        sendSpot: sendSpot,
+      ),
+      prefs: LoggingPreferences(
+        keyboardAccessory: keyboardAccessory,
+        showStateField: showStateField,
+        showGridField: showGridField,
+        defaultOperatorCall: defaultOperatorCall,
+        defaultPosition: defaultPosition,
+        showPositionField: showPositionField,
+        defaultReportCW: defaultReportCW,
+        switchSentRcvd: switchSentRcvd,
+        jumpAfterRST: jumpAfterRST,
+        showNumbersRow: showNumbersRow,
+        showExtraInNumbersRow: showExtraInNumbersRow,
+        vibrateNumbersRow: vibrateNumbersRow,
+        leftieMode: leftieMode,
+      ),
     );
     return MaterialApp(
       theme: appTheme,
@@ -1225,7 +1246,13 @@ void main() {
     }
 
     await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, lookup: lookup)),
+      home: Scaffold(body: LoggingControls(
+        log: log,
+        radio: radio,
+        lookups: LookupHooks(
+          lookup: lookup,
+        ),
+      )),
     ));
 
     // Cursor ends up at the end (last segment, "W1AW") after enterText.
@@ -1255,13 +1282,16 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              radioService: tunedRadio,
-              operation: operation,
-              qsosRepository: qsos,
-              editingQso: editingQso,
-              lookup: guessLookup({'name': 'Hiram'}),
-              workedBefore: workedBefore,
-              workedBeforeLabel: (times) => '${times.length} before',
+              log: log,
+              session: LoggingSession(
+                editingQso: editingQso,
+              ),
+              radio: radio,
+              lookups: LookupHooks(
+                lookup: guessLookup({'name': 'Hiram'}),
+                workedBefore: workedBefore,
+                workedBeforeLabel: (times) => '${times.length} before',
+              ),
             ),
           ),
         );
@@ -1343,10 +1373,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            operationStatsLines: (_) => ['12 QSOs in 1h 5m', '48 Q/h for last 10'],
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              operationStatsLines: (_) => ['12 QSOs in 1h 5m', '48 Q/h for last 10'],
+            ),
           ),
         ),
       ));
@@ -1360,12 +1391,13 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            lookup: guessLookup({'flag': '🇮🇹', 'name': 'Marco', 'entityPrefix': 'I', 'country': 'Italy'}),
-            callLocationLine: (guess) => '5,000 mi to • ${guess['country']}',
-            operationStatsLines: (_) => ['stats-line-should-be-hidden'],
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: guessLookup({'flag': '🇮🇹', 'name': 'Marco', 'entityPrefix': 'I', 'country': 'Italy'}),
+              callLocationLine: (guess) => '5,000 mi to • ${guess['country']}',
+              operationStatsLines: (_) => ['stats-line-should-be-hidden'],
+            ),
           ),
         ),
       ));
@@ -1391,12 +1423,15 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            showGridField: true,
-            callLocationLine: (guess) => '${guess['grid']} is 42 km away',
-            operationStatsLines: (_) => ['stats-line'],
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              callLocationLine: (guess) => '${guess['grid']} is 42 km away',
+              operationStatsLines: (_) => ['stats-line'],
+            ),
+            prefs: LoggingPreferences(
+              showGridField: true,
+            ),
           ),
         ),
       ));
@@ -1427,13 +1462,16 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            showGridField: true,
-            lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
-              'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278},
-            },
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
+                'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278},
+              },
+            ),
+            prefs: LoggingPreferences(
+              showGridField: true,
+            ),
           ),
         ),
       ));
@@ -1455,13 +1493,16 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            showGridField: true,
-            lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
-              'guess': {'grid': 'FN31pr'},
-            },
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
+                'guess': {'grid': 'FN31pr'},
+              },
+            ),
+            prefs: LoggingPreferences(
+              showGridField: true,
+            ),
           ),
         ),
       ));
@@ -1480,12 +1521,15 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            showGridField: true,
-            callLocationLine: (guess) => null,
-            operationStatsLines: (_) => ['stats-line'],
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              callLocationLine: (guess) => null,
+              operationStatsLines: (_) => ['stats-line'],
+            ),
+            prefs: LoggingPreferences(
+              showGridField: true,
+            ),
           ),
         ),
       ));
@@ -1503,18 +1547,24 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['arrl-vhf-tests']),
-            qsosRepository: qsos,
-            activityControls: const [
-              {
-                'key': 'arrl-vhf-tests/grid',
-                'label': 'Grid',
-                'input': {'kind': 'text', 'refType': 'arrl-vhf-tests', 'field': 'grid', 'maxLength': 6},
-              },
-            ],
-            callLocationLine: (guess) => '${guess['grid']} is 42 km away',
-            operationStatsLines: (_) => ['stats-line'],
+            log: LogHooks(
+              operation: running(['arrl-vhf-tests']),
+              qsosRepository: qsos,
+            ),
+            radio: radio,
+            lookups: LookupHooks(
+              callLocationLine: (guess) => '${guess['grid']} is 42 km away',
+              operationStatsLines: (_) => ['stats-line'],
+            ),
+            activities: ActivityHooks(
+              activityControls: const [
+                {
+                  'key': 'arrl-vhf-tests/grid',
+                  'label': 'Grid',
+                  'input': {'kind': 'text', 'refType': 'arrl-vhf-tests', 'field': 'grid', 'maxLength': 6},
+                },
+              ],
+            ),
           ),
         ),
       ));
@@ -1530,10 +1580,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            lookup: guessLookup({'name': 'Marco', 'note': 'Old friend, always on 20m'}),
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: guessLookup({'name': 'Marco', 'note': 'Old friend, always on 20m'}),
+            ),
           ),
         ),
       ));
@@ -1553,11 +1604,12 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            onOpenLink: opened.add,
-            lookup: guessLookup({'note': 'QSL via [the club](https://example.org/qsl)'}),
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              onOpenLink: opened.add,
+              lookup: guessLookup({'note': 'QSL via [the club](https://example.org/qsl)'}),
+            ),
           ),
         ),
       ));
@@ -1596,13 +1648,14 @@ void main() {
               // State, whose guess is already cached for this callsign, and
               // the note never changes.
               child: LoggingControls(
-                radioService: tunedRadio,
                 key: ValueKey(note),
-                operation: operation,
-                qsosRepository: qsos,
-                lookup: guessLookup({'note': note}),
-                scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
-                    {'notices': ['newDXCC'], 'alerts': <String>[]},
+                log: log,
+                radio: radio,
+                lookups: LookupHooks(
+                  lookup: guessLookup({'note': note}),
+                  scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
+                      {'notices': ['newDXCC'], 'alerts': <String>[]},
+                ),
               ),
             ),
           ),
@@ -1644,13 +1697,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
             key: const ValueKey('flag-note'),
-            operation: operation,
-            qsosRepository: qsos,
-            lookup: guessLookup({'note': 'from 🇺🇸 with **love**'}),
-            scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
-                {'notices': ['newDXCC'], 'alerts': <String>[]},
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: guessLookup({'note': 'from 🇺🇸 with **love**'}),
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
+                  {'notices': ['newDXCC'], 'alerts': <String>[]},
+            ),
           ),
         ),
       ));
@@ -1670,13 +1724,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            lookup: guessLookup({'name': 'Marco'}),
-            scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
-                {'notices': ['newDXCC', 'newBand'], 'alerts': <String>[]},
-            scoreNoticeLabel: (key) => const {'newDXCC': 'New DXCC', 'newBand': 'New Band'}[key] ?? key,
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: guessLookup({'name': 'Marco'}),
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
+                  {'notices': ['newDXCC', 'newBand'], 'alerts': <String>[]},
+              scoreNoticeLabel: (key) => const {'newDXCC': 'New DXCC', 'newBand': 'New Band'}[key] ?? key,
+            ),
           ),
         ),
       ));
@@ -1695,12 +1750,13 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
-                {'notices': <String>[], 'alerts': ['duplicate']},
-            scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
+                  {'notices': <String>[], 'alerts': ['duplicate']},
+              scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+            ),
           ),
         ),
       ));
@@ -1719,13 +1775,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-              scored.add(((qso['their'] as Map)['call']) as String);
-              return {'notices': <String>[], 'alerts': <String>[]};
-            },
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                scored.add(((qso['their'] as Map)['call']) as String);
+                return {'notices': <String>[], 'alerts': <String>[]};
+              },
+            ),
           ),
         ),
       ));
@@ -1751,15 +1808,16 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            lookup: guessLookup({'state': 'CT'}),
-            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-              final their = qso['their'] as Map;
-              scoredStates.add(((their['guess'] as Map?)?['state']) as String?);
-              return {'notices': <String>[], 'alerts': <String>[]};
-            },
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: guessLookup({'state': 'CT'}),
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                final their = qso['their'] as Map;
+                scoredStates.add(((their['guess'] as Map?)?['state']) as String?);
+                return {'notices': <String>[], 'alerts': <String>[]};
+              },
+            ),
           ),
         ),
       ));
@@ -1779,14 +1837,17 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            showStateField: true,
-            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-              scoredStates.add(((qso['their'] as Map)['state']) as String?);
-              return {'notices': <String>[], 'alerts': <String>[]};
-            },
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                scoredStates.add(((qso['their'] as Map)['state']) as String?);
+                return {'notices': <String>[], 'alerts': <String>[]};
+              },
+            ),
+            prefs: LoggingPreferences(
+              showStateField: true,
+            ),
           ),
         ),
       ));
@@ -1820,11 +1881,12 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          lookup: lookup,
-          enqueueLookup: enqueued.add,
+          log: log,
+          radio: radio,
+          lookups: LookupHooks(
+            lookup: lookup,
+            enqueueLookup: enqueued.add,
+          ),
         ),
       ),
     ));
@@ -1862,11 +1924,14 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          editingQso: existingQso,
-          enqueueLookup: enqueued.add,
+          log: log,
+          session: LoggingSession(
+            editingQso: existingQso,
+          ),
+          radio: radio,
+          lookups: LookupHooks(
+            enqueueLookup: enqueued.add,
+          ),
         ),
       ),
     ));
@@ -1945,11 +2010,12 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          lookup: lookup,
-          enqueueLookup: enqueued.add,
+          log: log,
+          radio: radio,
+          lookups: LookupHooks(
+            lookup: lookup,
+            enqueueLookup: enqueued.add,
+          ),
         ),
       ),
     ));
@@ -2064,10 +2130,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          editingQso: existingQso,
+          log: log,
+          session: LoggingSession(
+            editingQso: existingQso,
+          ),
+          radio: radio,
         ),
       ),
     ));
@@ -2335,10 +2402,12 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          onCallListLogged: () => callListLoggedCount++,
+          log: LogHooks(
+            operation: operation,
+            qsosRepository: qsos,
+            onCallListLogged: () => callListLoggedCount++,
+          ),
+          radio: radio,
         ),
       ),
     ));
@@ -2399,11 +2468,12 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          lookup: lookup,
-          enqueueLookup: enqueued.add,
+          log: log,
+          radio: radio,
+          lookups: LookupHooks(
+            lookup: lookup,
+            enqueueLookup: enqueued.add,
+          ),
         ),
       ),
     ));
@@ -2577,13 +2647,14 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          lookup: lookup,
-          // The location line is formatted by the app layer (issue #40);
-          // surface the guess's location so it can be asserted here.
-          callLocationLine: (guess) => guess['location'] as String?,
+          log: log,
+          radio: radio,
+          lookups: LookupHooks(
+            lookup: lookup,
+            // The location line is formatted by the app layer (issue #40);
+            // surface the guess's location so it can be asserted here.
+            callLocationLine: (guess) => guess['location'] as String?,
+          ),
         ),
       ),
     ));
@@ -2631,11 +2702,12 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          lookup: lookup,
-          callLocationLine: (guess) => guess['location'] as String?,
+          log: log,
+          radio: radio,
+          lookups: LookupHooks(
+            lookup: lookup,
+            callLocationLine: (guess) => guess['location'] as String?,
+          ),
         ),
       ),
     ));
@@ -2670,12 +2742,13 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
-              {'notices': <String>[], 'alerts': ['duplicate']},
-          scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+          log: log,
+          radio: radio,
+          lookups: LookupHooks(
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
+                {'notices': <String>[], 'alerts': ['duplicate']},
+            scoreNoticeLabel: (key) => key == 'duplicate' ? 'Dupe!' : key,
+          ),
         ),
       ),
     ));
@@ -2733,7 +2806,16 @@ void main() {
 
     Widget hostFor(Operation op, List<Map<String, dynamic>> controls, {QsosRepository? repo}) => MaterialApp(
           home: Scaffold(
-            body: LoggingControls(radioService: tunedRadio, operation: op, qsosRepository: repo ?? qsos, activityControls: controls),
+            body: LoggingControls(
+              log: LogHooks(
+                operation: op,
+                qsosRepository: repo ?? qsos,
+              ),
+              radio: radio,
+              activities: ActivityHooks(
+                activityControls: controls,
+              ),
+            ),
           ),
         );
 
@@ -2796,11 +2878,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [exchange],
-            editingQso: existing,
+            log: log,
+            session: LoggingSession(
+              editingQso: existing,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: const [exchange],
+            ),
           ),
         ),
       ));
@@ -2830,12 +2915,16 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              radioService: tunedRadio,
-              operation: operation,
-              qsos: log,
-              qsosRepository: qsos,
-              decorateQsoBeforeSave: decorate,
-              editingQso: editing,
+              log: LogHooks(
+                operation: operation,
+                qsos: log,
+                qsosRepository: qsos,
+                decorateQsoBeforeSave: decorate,
+              ),
+              session: LoggingSession(
+                editingQso: editing,
+              ),
+              radio: radio,
             ),
           ),
         );
@@ -2948,7 +3037,10 @@ void main() {
     testWidgets('a QSO still saves when no decorator is wired', (tester) async {
       // Every test and tooling path leaves it null; saving must not depend on it.
       await tester.pumpWidget(MaterialApp(
-        home: Scaffold(body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos)),
+        home: Scaffold(body: LoggingControls(
+          log: log,
+          radio: radio,
+        )),
       ));
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
@@ -2975,7 +3067,16 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(radioService: tunedRadio, operation: running(['simple-contest']), qsosRepository: qsos, activityControls: controls),
+        body: LoggingControls(
+          log: LogHooks(
+            operation: running(['simple-contest']),
+            qsosRepository: qsos,
+          ),
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
+        ),
       ),
     ));
 
@@ -3027,10 +3128,14 @@ void main() {
     Widget host({Map<String, dynamic> extra = const {}}) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              radioService: tunedRadio,
-              operation: running(['qp']),
-              qsosRepository: qsos,
-              activityControls: controlsWith(extra),
+              log: LogHooks(
+                operation: running(['qp']),
+                qsosRepository: qsos,
+              ),
+              radio: radio,
+              activities: ActivityHooks(
+                activityControls: controlsWith(extra),
+              ),
             ),
           ),
         );
@@ -3552,11 +3657,17 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['qp']),
-            qsosRepository: qsos,
-            activityControls: controlsWith(const {}),
-            editingQso: existing,
+            log: LogHooks(
+              operation: running(['qp']),
+              qsosRepository: qsos,
+            ),
+            session: LoggingSession(
+              editingQso: existing,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controlsWith(const {}),
+            ),
           ),
         ),
       ));
@@ -3640,22 +3751,26 @@ void main() {
         await tester.pumpWidget(MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              radioService: tunedRadio,
-              operation: running(['qp']),
-              qsosRepository: qsos,
-              activityControls: [
-                {
-                  'key': 'qp/county',
-                  'label': 'County',
-                  'input': {
-                    'kind': 'options',
-                    'refType': 'qp',
-                    'field': 'county',
-                    'options': jeffersons,
-                    'multiValue': {'separator': '/', 'inheritPrefix': 2},
+              log: LogHooks(
+                operation: running(['qp']),
+                qsosRepository: qsos,
+              ),
+              radio: radio,
+              activities: ActivityHooks(
+                activityControls: [
+                  {
+                    'key': 'qp/county',
+                    'label': 'County',
+                    'input': {
+                      'kind': 'options',
+                      'refType': 'qp',
+                      'field': 'county',
+                      'options': jeffersons,
+                      'multiValue': {'separator': '/', 'inheritPrefix': 2},
+                    },
                   },
-                },
-              ],
+                ],
+              ),
             ),
           ),
         ));
@@ -3712,13 +3827,19 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['c']),
-            qsosRepository: qsos,
-            activityControls: panelControls,
-            lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
-                {'guess': <String, dynamic>{}},
-            refreshActivityControls: refresh,
+            log: LogHooks(
+              operation: running(['c']),
+              qsosRepository: qsos,
+            ),
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
+                  {'guess': <String, dynamic>{}},
+            ),
+            activities: ActivityHooks(
+              activityControls: panelControls,
+              refreshActivityControls: refresh,
+            ),
           ),
         ),
       ));
@@ -3773,19 +3894,25 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['c']),
-            qsosRepository: qsos,
-            activityControls: const [exchange],
-            lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
-                {'guess': <String, dynamic>{}},
-            // A real per-QSO refresh reads the same operation data the
-            // operation-level one does, so it agrees once the ref exists —
-            // this isn't the fixed-forever-empty callback pumpTyping's other
-            // tests use, because a resolved lookup re-fires this on the ref
-            // add (see the test below), and that has to see the new field
-            // too rather than race the operation-level fetch to install it.
-            refreshActivityControls: (_) async => const [exchange],
+            log: LogHooks(
+              operation: running(['c']),
+              qsosRepository: qsos,
+            ),
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
+                  {'guess': <String, dynamic>{}},
+            ),
+            activities: ActivityHooks(
+              activityControls: const [exchange],
+              // A real per-QSO refresh reads the same operation data the
+              // operation-level one does, so it agrees once the ref exists —
+              // this isn't the fixed-forever-empty callback pumpTyping's other
+              // tests use, because a resolved lookup re-fires this on the ref
+              // add (see the test below), and that has to see the new field
+              // too rather than race the operation-level fetch to install it.
+              refreshActivityControls: (_) async => const [exchange],
+            ),
           ),
         ),
       ));
@@ -3820,17 +3947,23 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['c']),
-            qsosRepository: qsos,
-            activityControls: const [exchange],
-            lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
-                {'guess': <String, dynamic>{}},
-            refreshActivityControls: (_) {
-              final completer = Completer<List<Map<String, dynamic>>?>();
-              completers.add(completer);
-              return completer.future;
-            },
+            log: LogHooks(
+              operation: running(['c']),
+              qsosRepository: qsos,
+            ),
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
+                  {'guess': <String, dynamic>{}},
+            ),
+            activities: ActivityHooks(
+              activityControls: const [exchange],
+              refreshActivityControls: (_) {
+                final completer = Completer<List<Map<String, dynamic>>?>();
+                completers.add(completer);
+                return completer.future;
+              },
+            ),
           ),
         ),
       ));
@@ -3868,12 +4001,18 @@ void main() {
     Widget clearingHost({Qso? editing}) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              radioService: tunedRadio,
-              operation: running(['c']),
-              qsosRepository: qsos,
-              activityControls: clearingControls,
-              editingQso: editing,
-              qsos: editing == null ? const [] : [editing],
+              log: LogHooks(
+                operation: running(['c']),
+                qsosRepository: qsos,
+                qsos: editing == null ? const [] : [editing],
+              ),
+              session: LoggingSession(
+                editingQso: editing,
+              ),
+              radio: radio,
+              activities: ActivityHooks(
+                activityControls: clearingControls,
+              ),
             ),
           ),
         );
@@ -3949,7 +4088,16 @@ void main() {
 
     Widget hostWith(QsosRepository repo) => MaterialApp(
           home: Scaffold(
-            body: LoggingControls(radioService: tunedRadio, operation: running(['cqwpx']), qsosRepository: repo, activityControls: controls),
+            body: LoggingControls(
+              log: LogHooks(
+                operation: running(['cqwpx']),
+                qsosRepository: repo,
+              ),
+              radio: radio,
+              activities: ActivityHooks(
+                activityControls: controls,
+              ),
+            ),
           ),
         );
 
@@ -4012,11 +4160,15 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['cqwpx']),
-            qsosRepository: repo,
-            serialNumbers: source,
-            activityControls: controls,
+            log: LogHooks(
+              operation: running(['cqwpx']),
+              qsosRepository: repo,
+              serialNumbers: source,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controls,
+            ),
           ),
         ),
       ));
@@ -4039,11 +4191,15 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['cqwpx']),
-            qsosRepository: repo,
-            serialNumbers: source,
-            activityControls: controls,
+            log: LogHooks(
+              operation: running(['cqwpx']),
+              qsosRepository: repo,
+              serialNumbers: source,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controls,
+            ),
           ),
         ),
       ));
@@ -4074,11 +4230,15 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['cqwpx']),
-            qsosRepository: repo,
-            serialNumbers: source,
-            activityControls: controls,
+            log: LogHooks(
+              operation: running(['cqwpx']),
+              qsosRepository: repo,
+              serialNumbers: source,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controls,
+            ),
           ),
         ),
       ));
@@ -4098,11 +4258,15 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['cqwpx']),
-            qsosRepository: repo,
-            serialNumbers: source,
-            activityControls: controls,
+            log: LogHooks(
+              operation: running(['cqwpx']),
+              qsosRepository: repo,
+              serialNumbers: source,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controls,
+            ),
           ),
         ),
       ));
@@ -4120,11 +4284,15 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['cqwpx']),
-            qsosRepository: repo,
-            serialNumbers: source,
-            activityControls: controls,
+            log: LogHooks(
+              operation: running(['cqwpx']),
+              qsosRepository: repo,
+              serialNumbers: source,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controls,
+            ),
           ),
         ),
       ));
@@ -4250,11 +4418,17 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['cqwpx']),
-            qsosRepository: repo,
-            activityControls: controls,
-            editingQso: first,
+            log: LogHooks(
+              operation: running(['cqwpx']),
+              qsosRepository: repo,
+            ),
+            session: LoggingSession(
+              editingQso: first,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controls,
+            ),
           ),
         ),
       ));
@@ -4291,11 +4465,17 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['cqwpx']),
-            qsosRepository: repo,
-            activityControls: controls,
-            editingQso: plain,
+            log: LogHooks(
+              operation: running(['cqwpx']),
+              qsosRepository: repo,
+            ),
+            session: LoggingSession(
+              editingQso: plain,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controls,
+            ),
           ),
         ),
       ));
@@ -4354,11 +4534,17 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['cqwpx']),
-            qsosRepository: repo,
-            activityControls: both,
-            editingQso: qso,
+            log: LogHooks(
+              operation: running(['cqwpx']),
+              qsosRepository: repo,
+            ),
+            session: LoggingSession(
+              editingQso: qso,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: both,
+            ),
           ),
         ),
       ));
@@ -4386,7 +4572,16 @@ void main() {
       final repo = allocating();
       Widget hostControls(List<Map<String, dynamic>> active) => MaterialApp(
             home: Scaffold(
-              body: LoggingControls(radioService: tunedRadio, operation: running(['cqwpx']), qsosRepository: repo, activityControls: active),
+              body: LoggingControls(
+                log: LogHooks(
+                  operation: running(['cqwpx']),
+                  qsosRepository: repo,
+                ),
+                radio: radio,
+                activities: ActivityHooks(
+                  activityControls: active,
+                ),
+              ),
             ),
           );
 
@@ -4405,7 +4600,16 @@ void main() {
       // Showing "1" there would be a number that never reaches the log.
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(radioService: tunedRadio, operation: running(['cqwpx']), qsosRepository: qsos, activityControls: controls),
+          body: LoggingControls(
+            log: LogHooks(
+              operation: running(['cqwpx']),
+              qsosRepository: qsos,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controls,
+            ),
+          ),
         ),
       ));
       await tester.pump();
@@ -4433,7 +4637,16 @@ void main() {
     ];
 
     await tester.pumpWidget(MaterialApp(
-      home: Scaffold(body: LoggingControls(radioService: tunedRadio, operation: running(['c']), qsosRepository: qsos, activityControls: controls)),
+      home: Scaffold(body: LoggingControls(
+        log: LogHooks(
+          operation: running(['c']),
+          qsosRepository: qsos,
+        ),
+        radio: radio,
+        activities: ActivityHooks(
+          activityControls: controls,
+        ),
+      )),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'St'), 'ma');
@@ -4482,11 +4695,17 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: running(['c']),
-          qsosRepository: qsos,
-          activityControls: controls,
-          editingQso: existing,
+          log: LogHooks(
+            operation: running(['c']),
+            qsosRepository: qsos,
+          ),
+          session: LoggingSession(
+            editingQso: existing,
+          ),
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
         ),
       ),
     ));
@@ -4526,7 +4745,16 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(radioService: tunedRadio, operation: running(['simple-contest']), qsosRepository: qsos, activityControls: controls),
+        body: LoggingControls(
+          log: LogHooks(
+            operation: running(['simple-contest']),
+            qsosRepository: qsos,
+          ),
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
+        ),
       ),
     ));
 
@@ -4559,10 +4787,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          activityControls: controls,
+          log: log,
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
         ),
       ),
     ));
@@ -4605,10 +4834,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          activityControls: controls,
+          log: log,
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
         ),
       ),
     ));
@@ -4657,10 +4887,11 @@ void main() {
     Widget hostWithPota() => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              radioService: tunedRadio,
-              operation: operation,
-              qsosRepository: qsos,
-              activityControls: const [potaControl],
+              log: log,
+              radio: radio,
+              activities: ActivityHooks(
+                activityControls: const [potaControl],
+              ),
             ),
           ),
         );
@@ -4785,7 +5016,13 @@ void main() {
       ];
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, activityControls: controls),
+          body: LoggingControls(
+            log: log,
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controls,
+            ),
+          ),
         ),
       ));
 
@@ -4847,10 +5084,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          activityControls: controls,
+          log: log,
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
         ),
       ),
     ));
@@ -4897,10 +5135,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          activityControls: controls,
+          log: log,
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
         ),
       ),
     ));
@@ -4936,10 +5175,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          activityControls: controls,
+          log: log,
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
         ),
       ),
     ));
@@ -5017,10 +5257,14 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: running(['cqwpx']),
-          qsosRepository: qsos,
-          activityControls: controls,
+          log: LogHooks(
+            operation: running(['cqwpx']),
+            qsosRepository: qsos,
+          ),
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
         ),
       ),
     ));
@@ -5068,7 +5312,16 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(radioService: tunedRadio, operation: running(['c']), qsosRepository: qsos, activityControls: controls),
+        body: LoggingControls(
+          log: LogHooks(
+            operation: running(['c']),
+            qsosRepository: qsos,
+          ),
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
+        ),
       ),
     ));
     await tester.pump();
@@ -5124,10 +5377,14 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: running(['qp']),
-          qsosRepository: qsos,
-          activityControls: controls,
+          log: LogHooks(
+            operation: running(['qp']),
+            qsosRepository: qsos,
+          ),
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
         ),
       ),
     ));
@@ -5171,10 +5428,14 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: running(['cqwpx']),
-          qsosRepository: qsos,
-          activityControls: controls,
+          log: LogHooks(
+            operation: running(['cqwpx']),
+            qsosRepository: qsos,
+          ),
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
         ),
       ),
     ));
@@ -5385,7 +5646,13 @@ void main() {
       // — would take it and put its caret at 0 instead of the end of "14285".
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, showRSTFields: false),
+          body: LoggingControls(
+            log: log,
+            radio: radio,
+            prefs: LoggingPreferences(
+              showRSTFields: false,
+            ),
+          ),
         ),
       ));
       await tester.pump();
@@ -5648,7 +5915,16 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
-        body: LoggingControls(radioService: tunedRadio, operation: running(['c']), qsosRepository: qsos, activityControls: controls),
+        body: LoggingControls(
+          log: LogHooks(
+            operation: running(['c']),
+            qsosRepository: qsos,
+          ),
+          radio: radio,
+          activities: ActivityHooks(
+            activityControls: controls,
+          ),
+        ),
       ),
     ));
     await tester.pump();
@@ -6122,11 +6398,17 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['cqwpx']),
-            qsosRepository: qsos,
-            activityControls: const [theirSerial],
-            interpretCommand: fakeInterpretCommand,
+            log: LogHooks(
+              operation: running(['cqwpx']),
+              qsosRepository: qsos,
+            ),
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: const [theirSerial],
+            ),
+            commands: CommandHooks(
+              interpretCommand: fakeInterpretCommand,
+            ),
           ),
         ),
       ));
@@ -6773,6 +7055,45 @@ void main() {
     expect(dispatched, hasLength(1));
     expect(dispatched.single.key, 'reloadDataFiles');
     expect(dispatched.single.value, {'target': 'ALL'});
+  });
+
+  testWidgets('a settings write from a command is the app\'s to make, like every other named action', (tester) async {
+    // The trap: the panel holds no settings engine, so a command whose
+    // `updateSettings` it kept for itself would write nothing and say
+    // nothing — the host's own confirm text is the only feedback.
+    final dispatched = <MapEntry<String, Map<String, dynamic>?>>[];
+    Future<Map<String, dynamic>?> fakeDevmode(
+      String input, [
+      Map<String, dynamic>? operation,
+      Map<String, dynamic>? qso,
+      bool execute = false,
+    ]) async {
+      if (input.trim().toUpperCase() != 'DEVMODE') return null;
+      return {
+        'describe': 'Developer mode on',
+        'confirm': 'Developer mode on',
+        'commands': [
+          {
+            'updateSettings': {'developerMode': true},
+          },
+        ],
+      };
+    }
+
+    await tester.pumpWidget(host(
+      interpretCommand: fakeDevmode,
+      onCommandAction: (action, [params]) async {
+        dispatched.add(MapEntry(action, params));
+      },
+    ));
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVMODE');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(dispatched, hasLength(1));
+    expect(dispatched.single.key, 'updateSettings');
+    expect(dispatched.single.value, {'developerMode': true});
   });
 
   testWidgets('devHammer forwards to onCommandAction', (tester) async {
@@ -7743,11 +8064,12 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          lookup: lookup,
-          callLocationLine: (guess) => guess['location'] as String?,
+          log: log,
+          radio: radio,
+          lookups: LookupHooks(
+            lookup: lookup,
+            callLocationLine: (guess) => guess['location'] as String?,
+          ),
         ),
       ),
     ));
@@ -8346,15 +8668,18 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          operation: operation,
-          qsosRepository: qsos,
-          radioService: fakeRadio,
-          radioUpdates: fakeRadio,
-          scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-            scoredBands.add(qso['band'] as String?);
-            return {'notices': <String>[], 'alerts': <String>[]};
-          },
-          scoreNoticeLabel: (key) => key,
+          log: log,
+          radio: RadioHookup(
+            radioService: fakeRadio,
+            radioUpdates: fakeRadio,
+          ),
+          lookups: LookupHooks(
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+              scoredBands.add(qso['band'] as String?);
+              return {'notices': <String>[], 'alerts': <String>[]};
+            },
+            scoreNoticeLabel: (key) => key,
+          ),
         ),
       ),
     ));
@@ -8415,11 +8740,14 @@ void main() {
     Widget hostWith({required Listenable updates, Qso? editing}) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              operation: operation,
-              qsosRepository: qsos,
-              radioService: fakeRadio,
-              radioUpdates: updates,
-              editingQso: editing,
+              log: log,
+              session: LoggingSession(
+                editingQso: editing,
+              ),
+              radio: RadioHookup(
+                radioService: fakeRadio,
+                radioUpdates: updates,
+              ),
             ),
           ),
         );
@@ -8819,9 +9147,13 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          operation: freshOperation,
-          qsosRepository: qsos,
-          radioService: fakeRadio,
+          log: LogHooks(
+            operation: freshOperation,
+            qsosRepository: qsos,
+          ),
+          radio: RadioHookup(
+            radioService: fakeRadio,
+          ),
         ),
       ),
     ));
@@ -10112,11 +10444,14 @@ void main() {
               _VfoWatcher(store: fakeRadio),
               Expanded(
                 child: LoggingControls(
-                  operation: operation,
-                  qsosRepository: qsos,
-                  radioService: fakeRadio,
-                  radioUpdates: fakeRadio,
-                  suggestedQso: suggestion,
+                  log: log,
+                  session: LoggingSession(
+                    suggestedQso: suggestion,
+                  ),
+                  radio: RadioHookup(
+                    radioService: fakeRadio,
+                    radioUpdates: fakeRadio,
+                  ),
                 ),
               ),
             ]),
@@ -10231,12 +10566,15 @@ void main() {
     Widget build({Map<String, dynamic>? suggestedQso}) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              radioService: tunedRadio,
-              operation: operation,
-              qsosRepository: qsos,
-              lookup: lookup,
-              callLocationLine: (guess) => guess['location'] as String?,
-              suggestedQso: suggestedQso,
+              log: log,
+              session: LoggingSession(
+                suggestedQso: suggestedQso,
+              ),
+              radio: radio,
+              lookups: LookupHooks(
+                lookup: lookup,
+                callLocationLine: (guess) => guess['location'] as String?,
+              ),
             ),
           ),
         );
@@ -10413,11 +10751,14 @@ void main() {
         body: ValueListenableBuilder<Qso?>(
           valueListenable: editing,
           builder: (context, editingQso, _) => LoggingControls(
-            operation: operation,
-            qsosRepository: qsos,
-            radioService: fakeRadio,
-            editingQso: editingQso,
-            onEditCanceled: () => editing.value = null,
+            log: log,
+            session: LoggingSession(
+              editingQso: editingQso,
+              onEditCanceled: () => editing.value = null,
+            ),
+            radio: RadioHookup(
+              radioService: fakeRadio,
+            ),
           ),
         ),
       ),
@@ -10455,15 +10796,21 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          radioService: tunedRadio,
-          operation: operation,
-          qsosRepository: qsos,
-          qsos: [existingQso],
-          editingQso: existingQso,
-          scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-            excluded = excludeUuid;
-            return {'notices': <String>[], 'alerts': <String>[]};
-          },
+          log: LogHooks(
+            operation: operation,
+            qsosRepository: qsos,
+            qsos: [existingQso],
+          ),
+          session: LoggingSession(
+            editingQso: existingQso,
+          ),
+          radio: radio,
+          lookups: LookupHooks(
+            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+              excluded = excludeUuid;
+              return {'notices': <String>[], 'alerts': <String>[]};
+            },
+          ),
         ),
       ),
     ));
@@ -10516,16 +10863,22 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: running(['pota']),
-            qsosRepository: qsos,
-            qsos: log,
-            editingQso: editing,
-            scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
-              sentOperation = operation;
-              sentSegments = segments;
-              return {'notices': <String>[], 'alerts': <String>[]};
-            },
+            log: LogHooks(
+              operation: running(['pota']),
+              qsosRepository: qsos,
+              qsos: log,
+            ),
+            session: LoggingSession(
+              editingQso: editing,
+            ),
+            radio: radio,
+            lookups: LookupHooks(
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
+                sentOperation = operation;
+                sentSegments = segments;
+                return {'notices': <String>[], 'alerts': <String>[]};
+              },
+            ),
           ),
         ),
       ));
@@ -11056,11 +11409,12 @@ void main() {
     Widget hostWithGuess(Map<String, dynamic> guess) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              radioService: tunedRadio,
-              operation: operation,
-              qsosRepository: qsos,
-              lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
-                  call == 'W1AW' ? {'guess': guess} : null,
+              log: log,
+              radio: radio,
+              lookups: LookupHooks(
+                lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
+                    call == 'W1AW' ? {'guess': guess} : null,
+              ),
             ),
           ),
         );
@@ -11508,7 +11862,13 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, editingQso: existingQso),
+          body: LoggingControls(
+            log: log,
+            session: LoggingSession(
+              editingQso: existingQso,
+            ),
+            radio: radio,
+          ),
         ),
       ));
 
@@ -11541,7 +11901,13 @@ void main() {
       ];
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, activityControls: controls),
+          body: LoggingControls(
+            log: log,
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: controls,
+            ),
+          ),
         ),
       ));
 
@@ -11563,7 +11929,10 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         theme: buildHaLoTheme(Brightness.light),
         home: Scaffold(
-          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos),
+          body: LoggingControls(
+            log: log,
+            radio: radio,
+          ),
         ),
       ));
 
@@ -11595,7 +11964,12 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         theme: theme,
         home: Scaffold(
-          body: LoggingControls(radioService: untuned, operation: operation, qsosRepository: qsos),
+          body: LoggingControls(
+            log: log,
+            radio: RadioHookup(
+              radioService: untuned,
+            ),
+          ),
         ),
       ));
 
@@ -11617,7 +11991,12 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         theme: theme,
         home: Scaffold(
-          body: LoggingControls(radioService: offBand, operation: operation, qsosRepository: qsos),
+          body: LoggingControls(
+            log: log,
+            radio: RadioHookup(
+              radioService: offBand,
+            ),
+          ),
         ),
       ));
 
@@ -11638,10 +12017,11 @@ void main() {
             theme: theme,
             home: Scaffold(
               body: LoggingControls(
-                radioService: _FakeVfoStore()..setVfo('vfoA', freq: 7250, mode: 'SSB'),
-                operation: operation,
-                qsosRepository: qsos,
-                ourItuRegion: ituRegion,
+                log: log,
+                radio: RadioHookup(
+                  radioService: _FakeVfoStore()..setVfo('vfoA', freq: 7250, mode: 'SSB'),
+                  ourItuRegion: ituRegion,
+                ),
               ),
             ),
           );
@@ -11667,10 +12047,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: _FakeVfoStore()..setVfo('vfoA', freq: 14074, mode: 'SSB'),
-            operation: operation,
-            qsosRepository: qsos,
-            ourItuRegion: 1,
+            log: log,
+            radio: RadioHookup(
+              radioService: _FakeVfoStore()..setVfo('vfoA', freq: 14074, mode: 'SSB'),
+              ourItuRegion: 1,
+            ),
           ),
         ),
       ));
@@ -11789,7 +12170,13 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, editingQso: existingQso),
+          body: LoggingControls(
+            log: log,
+            session: LoggingSession(
+              editingQso: existingQso,
+            ),
+            radio: radio,
+          ),
         ),
       ));
 
@@ -11825,7 +12212,13 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, editingQso: existingQso),
+          body: LoggingControls(
+            log: log,
+            session: LoggingSession(
+              editingQso: existingQso,
+            ),
+            radio: radio,
+          ),
         ),
       ));
 
@@ -11855,7 +12248,13 @@ void main() {
 
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
-          body: LoggingControls(radioService: tunedRadio, operation: operation, qsosRepository: qsos, editingQso: existingQso),
+          body: LoggingControls(
+            log: log,
+            session: LoggingSession(
+              editingQso: existingQso,
+            ),
+            radio: radio,
+          ),
         ),
       ));
 
@@ -11887,11 +12286,12 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            editingQso: existingQso,
-            onEditCanceled: () => editCanceled = true,
+            log: log,
+            session: LoggingSession(
+              editingQso: existingQso,
+              onEditCanceled: () => editCanceled = true,
+            ),
+            radio: radio,
           ),
         ),
       ));
@@ -11927,11 +12327,12 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            editingQso: deletedQso,
-            onEditCanceled: () => editCanceled = true,
+            log: log,
+            session: LoggingSession(
+              editingQso: deletedQso,
+              onEditCanceled: () => editCanceled = true,
+            ),
+            radio: radio,
           ),
         ),
       ));
@@ -12243,11 +12644,12 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            editingQso: note,
-            controller: controller,
+            log: log,
+            session: LoggingSession(
+              editingQso: note,
+              controller: controller,
+            ),
+            radio: radio,
           ),
         ),
       ));
@@ -12757,10 +13159,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [potaControl],
+            log: log,
+            radio: radio,
+            activities: ActivityHooks(
+              activityControls: const [potaControl],
+            ),
           ),
         ),
       ));
@@ -12951,18 +13354,24 @@ void main() {
             body: Column(children: [
               const Expanded(child: SizedBox.shrink()),
               LoggingControls(
-                operation: running(['contest']),
-                qsosRepository: qsos,
-                activityControls: const [
-                  {
-                    'key': 'contest/exchange',
-                    'label': 'Exch',
-                    'icon': 'flag-checkered',
-                    'input': {'kind': 'text', 'refType': 'contest', 'field': 'exchange'},
-                  }
-                ],
-                showStateField: true,
-                showGridField: true,
+                log: LogHooks(
+                  operation: running(['contest']),
+                  qsosRepository: qsos,
+                ),
+                activities: ActivityHooks(
+                  activityControls: const [
+                    {
+                      'key': 'contest/exchange',
+                      'label': 'Exch',
+                      'icon': 'flag-checkered',
+                      'input': {'kind': 'text', 'refType': 'contest', 'field': 'exchange'},
+                    }
+                  ],
+                ),
+                prefs: LoggingPreferences(
+                  showStateField: true,
+                  showGridField: true,
+                ),
               ),
             ]),
           ),
@@ -13175,11 +13584,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [hunter],
-            lookup: lookup.fn,
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: lookup.fn,
+            ),
+            activities: ActivityHooks(
+              activityControls: const [hunter],
+            ),
           ),
         ),
       ));
@@ -13205,11 +13617,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [hunter],
-            lookup: composing.fn,
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: composing.fn,
+            ),
+            activities: ActivityHooks(
+              activityControls: const [hunter],
+            ),
           ),
         ),
       ));
@@ -13229,12 +13644,17 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [hunter],
-            lookup: editing.fn,
-            editingQso: existingQso,
+            log: log,
+            session: LoggingSession(
+              editingQso: existingQso,
+            ),
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: editing.fn,
+            ),
+            activities: ActivityHooks(
+              activityControls: const [hunter],
+            ),
           ),
         ),
       ));
@@ -13253,21 +13673,26 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [hunter],
-            lookup: lookup.fn,
-            // Shaped like a real spot tap — band and mode included, since a
-            // suggestedQso replaces the radio-seeded ones and a QSO carrying
-            // neither refuses to log (HALO-24).
-            suggestedQso: const {
-              'band': '20m',
-              'mode': 'SSB',
-              'refs': [
-                {'type': 'potaHunter', 'ref': 'US-0001'}
-              ],
-            },
+            log: log,
+            session: LoggingSession(
+              // Shaped like a real spot tap — band and mode included, since a
+              // suggestedQso replaces the radio-seeded ones and a QSO carrying
+              // neither refuses to log (HALO-24).
+              suggestedQso: const {
+                'band': '20m',
+                'mode': 'SSB',
+                'refs': [
+                  {'type': 'potaHunter', 'ref': 'US-0001'}
+                ],
+              },
+            ),
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: lookup.fn,
+            ),
+            activities: ActivityHooks(
+              activityControls: const [hunter],
+            ),
           ),
         ),
       ));
@@ -13294,11 +13719,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [hunter],
-            lookup: lookup.fn,
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: lookup.fn,
+            ),
+            activities: ActivityHooks(
+              activityControls: const [hunter],
+            ),
           ),
         ),
       ));
@@ -13335,18 +13763,23 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [hunter],
-            lookup: lookup.fn,
-            suggestedQso: const {
-              'band': '20m',
-              'mode': 'SSB',
-              'refs': [
-                {'type': 'potaHunter', 'ref': 'US-0001'}
-              ],
-            },
+            log: log,
+            session: LoggingSession(
+              suggestedQso: const {
+                'band': '20m',
+                'mode': 'SSB',
+                'refs': [
+                  {'type': 'potaHunter', 'ref': 'US-0001'}
+                ],
+              },
+            ),
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: lookup.fn,
+            ),
+            activities: ActivityHooks(
+              activityControls: const [hunter],
+            ),
           ),
         ),
       ));
@@ -13374,11 +13807,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [hunter],
-            lookup: lookup.fn,
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: lookup.fn,
+            ),
+            activities: ActivityHooks(
+              activityControls: const [hunter],
+            ),
           ),
         ),
       ));
@@ -13431,11 +13867,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [hunter],
-            lookup: lookup.fn,
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: lookup.fn,
+            ),
+            activities: ActivityHooks(
+              activityControls: const [hunter],
+            ),
           ),
         ),
       ));
@@ -13470,11 +13909,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [hunter],
-            lookup: lookup.fn,
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: lookup.fn,
+            ),
+            activities: ActivityHooks(
+              activityControls: const [hunter],
+            ),
           ),
         ),
       ));
@@ -13496,11 +13938,14 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            radioService: tunedRadio,
-            operation: operation,
-            qsosRepository: qsos,
-            activityControls: const [hunter],
-            lookup: lookup.fn,
+            log: log,
+            radio: radio,
+            lookups: LookupHooks(
+              lookup: lookup.fn,
+            ),
+            activities: ActivityHooks(
+              activityControls: const [hunter],
+            ),
           ),
         ),
       ));

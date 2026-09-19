@@ -84,7 +84,7 @@ void main() {
     // Null, not merely unused: LoggingControls builds the draft and
     // deep-compares it only when this is non-null, so the gate is what keeps
     // the whole path off the keystroke route rather than making it cheap.
-    expect(controls(tester).onQsoChanged, isNull);
+    expect(controls(tester).session.onQsoChanged, isNull);
 
     await unmount(tester);
   });
@@ -98,7 +98,7 @@ void main() {
     await pumpOperation(tester, services);
 
     expect(services.panels['ext:wx:forecast'], isNotNull, reason: 'the panel reached the catalog');
-    expect(controls(tester).onQsoChanged, isNotNull);
+    expect(controls(tester).session.onQsoChanged, isNotNull);
 
     await unmount(tester);
   });
@@ -115,7 +115,7 @@ void main() {
     await pumpOperation(tester, services);
 
     expect(services.panels['ext:wx:forecast'], isNotNull);
-    expect(controls(tester).onQsoChanged, isNull);
+    expect(controls(tester).session.onQsoChanged, isNull);
 
     await unmount(tester);
   });
@@ -133,7 +133,7 @@ void main() {
     // `qso` alone wakes a lookup-only panel with no callsign at all, forever,
     // while hooks.md steers authors toward exactly that declaration as the
     // cheap one. What it buys over `qso` is renders, not this.
-    expect(controls(tester).onQsoChanged, isNotNull);
+    expect(controls(tester).session.onQsoChanged, isNotNull);
 
     await unmount(tester);
   });
@@ -481,7 +481,7 @@ void main() {
     // why "one render came out" would not prove the debounce exists. What
     // the debounce alone buys is the setState, and a setState is observable
     // here as a scheduled frame.
-    final publish = controls(tester).onQsoChanged!;
+    final publish = controls(tester).session.onQsoChanged!;
     for (final call in ['K', 'KI', 'KI2', 'KI2D']) {
       publish({
         'their': {'call': call},

@@ -76,14 +76,14 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     LoggingControls controls() => tester.widget<LoggingControls>(find.byType(LoggingControls));
-    expect(controls().hasConfiguredRadio, isFalse);
+    expect(controls().radio.hasConfiguredRadio, isFalse);
 
     await services.settings.setExperimentEnabled('gato', true);
     await services.cat.addNode(typeKey: 'kenwood-serial', name: 'Test Radio');
     await tester.pump();
 
-    expect(controls().hasConfiguredRadio, isTrue);
-    expect(controls().radioName, 'Test Radio');
+    expect(controls().radio.hasConfiguredRadio, isTrue);
+    expect(controls().radio.radioName, 'Test Radio');
   });
 
   testWidgets("a peer's radio is a configured radio, though this device holds no session", (tester) async {
@@ -92,7 +92,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     LoggingControls controls() => tester.widget<LoggingControls>(find.byType(LoggingControls));
-    expect(controls().hasConfiguredRadio, isFalse);
+    expect(controls().radio.hasConfiguredRadio, isFalse);
 
     // The role, not locality: the operator picked a rig and the logging
     // panel follows its VFO. Asking `cat.radio1 != null` here answers "is it
@@ -106,19 +106,19 @@ void main() {
     )));
     await tester.pump();
 
-    expect(controls().hasConfiguredRadio, isTrue);
-    expect(controls().radioName, 'FTDX10', reason: 'the remembered name is the only one there is while the peer is away');
+    expect(controls().radio.hasConfiguredRadio, isTrue);
+    expect(controls().radio.radioName, 'FTDX10', reason: 'the remembered name is the only one there is while the peer is away');
     // The two are read as ONE by the chip: configured-but-not-connected is
     // its red state, so a peer that never reads connected would be a
     // permanent alarm about a radio that is working fine.
-    expect(controls().radioConnected, isFalse, reason: 'nobody is offering it yet');
+    expect(controls().radio.radioConnected, isFalse, reason: 'nobody is offering it yet');
 
     services.peerRemoteRadios.setOffers('device-a', "VE1SK's iPad", const [
       PeerRadioOffer(id: 'rig-1', name: 'FTDX10'),
     ]);
     await tester.pump();
 
-    expect(controls().radioConnected, isTrue);
+    expect(controls().radio.radioConnected, isTrue);
 
     // The peer walking away is this notifier's news alone — CatService hears
     // nothing about it, so a panel listening only to CAT would keep showing
@@ -126,7 +126,7 @@ void main() {
     services.peerRemoteRadios.setOffers('device-a', "VE1SK's iPad", const []);
     await tester.pump();
 
-    expect(controls().radioConnected, isFalse);
+    expect(controls().radio.radioConnected, isFalse);
   });
 
   testWidgets('turning the experiment on with no radio ever configured still reveals the button', (tester) async {
@@ -139,11 +139,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 100));
 
     LoggingControls controls() => tester.widget<LoggingControls>(find.byType(LoggingControls));
-    expect(controls().onOpenStationConfig, isNull);
+    expect(controls().radio.onOpenStationConfig, isNull);
 
     await services.settings.setExperimentEnabled('gato', true);
     await tester.pump();
 
-    expect(controls().onOpenStationConfig, isNotNull);
+    expect(controls().radio.onOpenStationConfig, isNotNull);
   });
 }

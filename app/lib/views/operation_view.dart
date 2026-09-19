@@ -515,7 +515,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   }
 
   /// Bumped when a slid row comes to rest open — see
-  /// `LoggingControls.suggestionSettledSerial`.
+  /// `LoggingSession.suggestionSettledSerial`.
   int _suggestionSettledSerial = 0;
 
   void _suggestionSettled() => setState(() => _suggestionSettledSerial++);
@@ -532,12 +532,12 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   }
 
   /// The spots list's slid-right action, carrying the QSO it means to log —
-  /// see `LoggingControls.logRequest`. The serial is what makes a repeat of
+  /// see `LoggingSession.logRequest`. The serial is what makes a repeat of
   /// the same spot a new request.
   ({int serial, Map<String, dynamic> qso})? _logRequest;
 
   /// Whether [_suggestedQso] came from a gesture the operator can still take
-  /// back — see `LoggingControls.suggestedQsoIsTentative`.
+  /// back — see `LoggingSession.suggestedQsoIsTentative`.
   bool _suggestedQsoIsTentative = false;
 
   /// Log a spot outright, without surfacing the logging panel: the operator
@@ -945,7 +945,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
       // Stops a message from wherever focus is. NOT what keeps the logging
       // fields from also acting on the same keystroke — a handler's answer
       // here never stops the focus tree's dispatch — that is
-      // LoggingControls.escapeClaimed, wired in logging_panel.dart. With
+      // LoggingSession.escapeClaimed, wired in logging_panel.dart. With
       // nothing to stop, Escape keeps its usual meaning. Ahead of the
       // capability gate below, and for either keyer whatever the mode: a CW
       // message keyed just before the draft went to SSB is still the one

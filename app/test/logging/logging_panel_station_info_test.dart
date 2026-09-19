@@ -49,7 +49,7 @@ void main() {
 
   Future<Map<String, dynamic>> decorate(WidgetTester tester, Map<String, dynamic> qso) {
     final controls = tester.widget<LoggingControls>(find.byType(LoggingControls));
-    return controls.decorateQsoBeforeSave!(qso, controls.operation.data);
+    return controls.log.decorateQsoBeforeSave!(qso, controls.log.operation.data);
   }
 
   testWidgets('captures only the tracked fields, leaving the rest of the QSO alone', (tester) async {
