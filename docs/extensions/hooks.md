@@ -1206,6 +1206,14 @@ permission (pending challenge code for an email, immediately-active for an
 already-permitted account, or a blank permission for QR-code linking) and
 returns server rejections as `{ error, error_status }` data.
 
+`linkClient` must NOT mail anything. The core shows the challenge code on
+screen and offers the email as a separate choice, so a transport that mails
+here sends a confirmation nobody asked for — and one more on every renewal,
+since an expiring code re-requests through this same call.
+`linkClientWithEmail` is the call the operator reaches by choosing the
+email over the code, and the only one in this seam that mails. A server
+that mails by default (LoFi does) has to be told not to.
+
 The account-management methods are all optional and all follow that same
 "a rejection is data, not a throw" convention, because every one of them
 reports to an operator in the middle of an action: `setAccountEmail` /

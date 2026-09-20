@@ -1591,8 +1591,15 @@ export interface SyncTransportHook {
   /// linking. Server rejections come back as `{ error, error_status }`
   /// data rather than a thrown error. Optional so transports written
   /// against the pre-linking contract keep compiling — the host degrades
-  /// gracefully when it's missing.
+  /// gracefully when it's missing. It must NOT mail anything: the core
+  /// shows the challenge code on screen and offers the email as a separate
+  /// choice, so a transport that mails here sends one nobody asked for —
+  /// and another on every renewal, since an expiring code re-requests
+  /// through this same call.
   linkClient?(args: { email?: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
+  /// The same request, made because the operator asked for the confirmation
+  /// by email instead of reading the code off this device. The only call in
+  /// this contract that mails.
   linkClientWithEmail(args: { email: string }, ctx: HookContext): Promise<Record<string, JSONValue>>
   /// Sets the account's email address — a change, or the first claim on an
   /// anonymous account. The address starts out pending and is confirmed by

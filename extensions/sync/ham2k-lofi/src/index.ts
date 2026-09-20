@@ -472,20 +472,34 @@ async function getAccountData(_args: Record<string, never>, _ctx: HookContext): 
 /// are part of the UI flow here (404 = "no account with that email"), so
 /// they come back as `{ error, error_status }` data instead of a thrown
 /// error — only genuine transport failures still throw.
+///
+/// `send_email: false` because the server mails a confirmation for every
+/// pending permission unless the caller opts out: this call shows the
+/// challenge code on screen instead, so without the opt-out the operator
+/// gets an email they never asked for, a second one the moment they press
+/// "send a confirmation email instead", and another every time the code is
+/// renewed on expiry. Mailing is [linkClientWithEmail]'s job alone.
 async function linkClient({ email }: { email?: string }, _ctx: HookContext): Promise<Record<string, JSONValue>> {
   try {
-    return await request('POST', 'v1/client/permissions', email ? { email } : {})
+    return await request('POST', 'v1/client/permissions', email ? { email, send_email: false } : {})
   } catch (e) {
     if (e instanceof LoFiRequestError) return { error: e.message, error_status: e.status }
     throw e
   }
 }
 
+/// The same request as [linkClient], made because the operator chose the
+/// confirmation by email over reading the code off this device — the only
+/// call here that asks the server to mail. Through [asData] for the same
+/// reason [linkClient] catches: a rejection the operator can act on (the
+/// account removed between the two calls, a rate limit) reported as a
+/// transport failure tells them the server could not be reached, about a
+/// server that answered and said why.
 async function linkClientWithEmail(
   { email }: { email: string },
   _ctx: HookContext,
 ): Promise<Record<string, JSONValue>> {
-  return request('POST', 'v1/client/permissions', { email, send_email: true })
+  return asData(() => request('POST', 'v1/client/permissions', { email, send_email: true }))
 }
 
 /// The uuid of the account this device belongs to. Every account-scoped
