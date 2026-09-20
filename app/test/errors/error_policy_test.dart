@@ -36,6 +36,9 @@ import 'package:halo_core/halo_core.dart'
 import 'package:ham2k_logger/services/extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
+import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed;
+import 'package:ham2k_logger/services/extension_catalog_migration.dart'
+    show CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
 
 ErrorDisposition dispositionFor(Object error, {FlutterErrorDetails? details}) =>
     ErrorPolicy.decide(error, details: details).disposition;
@@ -877,6 +880,46 @@ void main() {
     test('an unrelated StateError during the quit stays loud', () {
       ErrorPolicy.appIsExiting = true;
       expect(dispositionFor(StateError('boom')), ErrorDisposition.notify);
+    });
+  });
+
+  group('a data file clean-up hook', () {
+    test('that was never implemented is console-only', () {
+      // Most extensions implement no onRemoveRawData, and the kernel answers
+      // "no hook registered" for every one of them. Unclassified, the default
+      // tier would upload it AND put "Something went wrong" on screen for an
+      // extension that is behaving exactly as intended.
+      expect(
+        dispositionFor(DataFileRemoveHookFailed('parks', Exception('no hook registered for dataFile/parks'))),
+        ErrorDisposition.logOnly,
+      );
+    });
+
+    test('that exists and THREW is still loud', () {
+      // The hook ran and failed half way, so raw data it meant to delete is
+      // still on disk. Quietening the whole wrapper — rather than the one
+      // answer that means "absent" — would classify an unknown failure down
+      // to silence, which is what the default tier exists to prevent.
+      expect(
+        dispositionFor(DataFileRemoveHookFailed('parks', Exception('TypeError: rows is not iterable'))),
+        ErrorDisposition.notify,
+      );
+    });
+  });
+
+  group('the extension graph left unwired', () {
+    test('reports either half without a notice', () {
+      // Nothing the operator can act on, and the audience is whoever changes
+      // the service graph. Unclassified, both would wear a notice.
+      expect(dispositionFor(const CatalogNotWired()), ErrorDisposition.report);
+      expect(dispositionFor(const SettingsNotWired()), ErrorDisposition.report);
+    });
+
+    test('an upgrade that left no runtime at all reports too', () {
+      // The operator is already told in as many words; what the backend adds
+      // is the rate, which is how one corrupt download is told from a bundle
+      // the catalog ships broken to everybody.
+      expect(dispositionFor(const UpgradeLeftNoRuntime()), ErrorDisposition.report);
     });
   });
 

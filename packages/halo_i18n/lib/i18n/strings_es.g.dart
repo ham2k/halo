@@ -231,7 +231,15 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String upgradeDoneUnserved({required Object names}) => 'No se trasladaron: ${names}.';
 	@override String get upgradeDoneUnservedHint => 'El catálogo no tiene un reemplazo directo para estas, así que busca allí extensiones que cubran lo que usabas.';
 	@override String get upgradeFailedTitle => 'Tus extensiones no se actualizaron';
-	@override String get upgradeFailedBody => 'No pudimos terminar de actualizar tus extensiones, así que nada ha cambiado. Lo intentaremos más tarde.';
+	@override String get upgradeFailedBody => 'No pudimos terminar de actualizar tus extensiones, así que revertimos la actualización. Te la ofreceremos de nuevo la próxima vez que abras la aplicación.';
+	@override String get upgradeIncompleteBody => 'No pudimos descargar algunas extensiones, así que revertimos la actualización. Inténtalo de nuevo cuando tengas conexión.';
+	@override String get upgradeUnavailableBody => 'No pudimos actualizar tus extensiones. Te lo ofreceremos de nuevo la próxima vez que abras la aplicación.';
+	@override String get upgradeBusyTitle => 'Todavía preparando';
+	@override String get upgradeBusyBody => 'La aplicación todavía está preparando tus extensiones. Te ofreceremos la actualización de nuevo la próxima vez que abras la aplicación.';
+	@override String get upgradeRevertedTitle => 'Tus extensiones no pudieron iniciarse';
+	@override String get upgradeRevertedBody => 'Las extensiones actualizadas no pudieron iniciarse, así que las que tenías están de vuelta y funcionando. Te ofreceremos la actualización de nuevo la próxima vez que abras la aplicación.';
+	@override String get upgradeRuntimeDeadTitle => 'Tus extensiones no están funcionando';
+	@override String get upgradeRuntimeDeadBody => 'No pudimos iniciar tus extensiones, ni siquiera después de deshacer la actualización. Reiniciar la aplicación debería recuperarlas.';
 	@override String revokedTitle({required Object name}) => 'Se retiró ${name}';
 	@override String get revokedBody => 'El catálogo retiró esta versión, así que fue desactivada.';
 	@override String get downloadHashMismatch => 'Esa descarga no es la extensión que describe el catálogo.';
@@ -3217,7 +3225,15 @@ extension on TranslationsEs {
 			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'No se trasladaron: ${names}.',
 			'extensionsPanel.upgradeDoneUnservedHint' => 'El catálogo no tiene un reemplazo directo para estas, así que busca allí extensiones que cubran lo que usabas.',
 			'extensionsPanel.upgradeFailedTitle' => 'Tus extensiones no se actualizaron',
-			'extensionsPanel.upgradeFailedBody' => 'No pudimos terminar de actualizar tus extensiones, así que nada ha cambiado. Lo intentaremos más tarde.',
+			'extensionsPanel.upgradeFailedBody' => 'No pudimos terminar de actualizar tus extensiones, así que revertimos la actualización. Te la ofreceremos de nuevo la próxima vez que abras la aplicación.',
+			'extensionsPanel.upgradeIncompleteBody' => 'No pudimos descargar algunas extensiones, así que revertimos la actualización. Inténtalo de nuevo cuando tengas conexión.',
+			'extensionsPanel.upgradeUnavailableBody' => 'No pudimos actualizar tus extensiones. Te lo ofreceremos de nuevo la próxima vez que abras la aplicación.',
+			'extensionsPanel.upgradeBusyTitle' => 'Todavía preparando',
+			'extensionsPanel.upgradeBusyBody' => 'La aplicación todavía está preparando tus extensiones. Te ofreceremos la actualización de nuevo la próxima vez que abras la aplicación.',
+			'extensionsPanel.upgradeRevertedTitle' => 'Tus extensiones no pudieron iniciarse',
+			'extensionsPanel.upgradeRevertedBody' => 'Las extensiones actualizadas no pudieron iniciarse, así que las que tenías están de vuelta y funcionando. Te ofreceremos la actualización de nuevo la próxima vez que abras la aplicación.',
+			'extensionsPanel.upgradeRuntimeDeadTitle' => 'Tus extensiones no están funcionando',
+			'extensionsPanel.upgradeRuntimeDeadBody' => 'No pudimos iniciar tus extensiones, ni siquiera después de deshacer la actualización. Reiniciar la aplicación debería recuperarlas.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => 'Se retiró ${name}',
 			'extensionsPanel.revokedBody' => 'El catálogo retiró esta versión, así que fue desactivada.',
 			'extensionsPanel.downloadHashMismatch' => 'Esa descarga no es la extensión que describe el catálogo.',
@@ -3613,6 +3629,8 @@ extension on TranslationsEs {
 			'operation.import.protocolAddressLabel' => 'Dirección',
 			'operation.import.protocolPortLabel' => 'Puerto',
 			'operation.import.protocolPortInvalid' => 'Introduce un puerto entre 1 y 65535',
+			_ => null,
+		} ?? switch (path) {
 			'operation.import.protocolAddressInvalid' => 'Introduce una dirección IP válida (p. ej. 127.0.0.1 o 239.239.0.2)',
 			'operation.import.protocolStatusReceiving' => 'Recibiendo datos',
 			'operation.import.protocolStatusNoData' => 'No se han recibido datos recientemente',
@@ -3621,8 +3639,6 @@ extension on TranslationsEs {
 			'operation.import.n1mmProtocolName' => 'Difusión de contactos de N1MM+',
 			'operation.import.n1mmAddressValue' => 'Cualquiera (difusión)',
 			'operation.import.wsjtxProtocolName' => 'Servidor UDP de WSJT-X',
-			_ => null,
-		} ?? switch (path) {
 			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → pestaña Broadcast Data → marca «Enable Broadcasts» para la información de contactos. Pon la dirección IP en 127.0.0.1 si se ejecuta en esta misma computadora, o 255.255.255.255 para difundir en la red local actual.',
 			'operation.import.helpWsjtxSetup' => 'File → Settings → pestaña Reporting → sección UDP Server → marca «Accept UDP requests». Pon UDP Server en 127.0.0.1 si se ejecuta en esta misma computadora, o una dirección multicast como 239.239.0.2, y usa esa misma dirección en la configuración de arriba en esta aplicación.',
 			'operation.import.listenTitle' => 'Escuchar QSOs de otras aplicaciones',
@@ -4127,6 +4143,8 @@ extension on TranslationsEs {
 			'settings.developerMode' => 'Modo Desarrollador',
 			'settings.syncPanel.configuration' => 'Configuración de sincronización',
 			'settings.syncPanel.enableTitle' => 'Sincronizar con Ham2K Log Filer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.enabledDescription' => 'Respalda y sincroniza tu registro entre dispositivos',
 			'settings.syncPanel.disabledDescription' => 'Desactivado — tu registro se queda solo en este dispositivo',
 			'settings.syncPanel.syncing' => 'Sincronizando',
@@ -4135,8 +4153,6 @@ extension on TranslationsEs {
 			'settings.syncPanel.switchAccounts' => 'Cambiar de cuenta',
 			'settings.syncPanel.switchAccountsDescription' => 'Vincula este dispositivo a otra cuenta con un código QR o por email',
 			'settings.syncPanel.connectionRequests' => 'Solicitudes de conexión',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Un dispositivo espera unirse a esta cuenta', other: '${n} dispositivos esperan unirse a esta cuenta', ), 
 			'settings.syncPanel.accountEmailTitle' => 'Email de la cuenta',
 			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmación enviada a ${email}. Abre el enlace allí para completar el cambio.',
@@ -4641,6 +4657,8 @@ extension on TranslationsEs {
 			'staleness.ignoreForNow' => 'Ignorar por ahora',
 			'spotting.noQsoYet' => 'Aún no hay QSO registrado para spotear.',
 			'spotting.setFrequencyFirst' => 'Primero define una frecuencia.',
+			_ => null,
+		} ?? switch (path) {
 			'spotting.nothingToSpot' => 'Nada que spotear — ninguna extensión ofrece spotting aquí.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} falló: ${message}',
 			'spotting.unknownError' => 'error desconocido',
@@ -4649,8 +4667,6 @@ extension on TranslationsEs {
 			'dataFiles.downloading' => 'Descargando…',
 			'dataFiles.downloadFailedTitle' => ({required Object name}) => 'No se pudo descargar ${name}',
 			'dataFiles.downloadFailedWebHint' => 'Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.',
-			_ => null,
-		} ?? switch (path) {
 			'dataFiles.downloadTimedOut' => 'El servidor tardó demasiado en responder. Vuelve a intentarlo más tarde.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'No se pudo procesar ${name}',
 			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} registro de ${label}.', other: 'Se importaron ${count} registros de ${label}.', ), 

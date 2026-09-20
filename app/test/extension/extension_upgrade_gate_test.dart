@@ -12,6 +12,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/config/experiments.dart';
 import 'package:ham2k_logger/config/navigation.dart';
@@ -54,6 +55,51 @@ class _MigrationSucceeds extends ExtensionServiceWithFakeHost {
 
   @override
   Future<void> restartRuntime() async {}
+}
+
+/// A migration still running when the screen goes away.
+class _SlowMigration extends ExtensionServiceWithFakeHost {
+  _SlowMigration() : super(FakeExtensionHost({}));
+
+  final release = Completer<void>();
+
+  @override
+  Future<bool> preloadShippedExtensions() async {
+    await release.future;
+    return true;
+  }
+
+  @override
+  Future<({bool complete, bool landed})> adoptTwins() async => (landed: true, complete: true);
+
+  @override
+  Future<void> reloadAvailableExtensions() async {}
+
+  @override
+  Future<void> restartRuntime() async {}
+}
+
+/// Answers as if the runtime never came back: the twins are installed and
+/// nothing can run them.
+class _RuntimeDead extends ExtensionServiceWithFakeHost {
+  _RuntimeDead() : super(FakeExtensionHost({}));
+
+  int restarts = 0;
+
+  @override
+  ExtensionHost? get host => restarts > 1 ? fakeHost : null;
+
+  @override
+  Future<bool> preloadShippedExtensions() async => false;
+
+  @override
+  Future<({bool complete, bool landed})> adoptTwins() async => (landed: true, complete: true);
+
+  @override
+  Future<void> reloadAvailableExtensions() async {}
+
+  @override
+  Future<void> restartRuntime() async => restarts++;
 }
 
 /// Answers the upgrade as if the twins never arrived — the half of the
@@ -387,8 +433,69 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(t.extensionsPanel.upgradeFailedTitle), findsOneWidget);
+    // The downloads are what did not arrive here, so this is the one arm that
+    // may name the network. Told over a keychain refusal or a full disk it
+    // sends the operator to fix a connection that was never the problem.
+    expect(find.text(t.extensionsPanel.upgradeIncompleteBody), findsOneWidget);
     expect(find.text(t.extensionsPanel.upgradeDoneTitle), findsNothing);
     expect(h.settings.extensionsMigrated, isFalse, reason: 'a failed upgrade must leave the built-ins in use');
+  });
+
+  testWidgets('a runtime that would not start says so, and says the old extensions are back',
+      (tester) async {
+    // Told "your extensions are ready", the operator reads success over an
+    // install running nothing at all. The upgrade reverts itself first, so
+    // what this has to say is that the previous extensions are working.
+    final h = await makeHaLoServices(extensions: _RuntimeDead(), catalog: _ReachableCatalog());
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
+
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.extensionsPanel.upgradeAction));
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.extensionsPanel.upgradeRevertedTitle), findsOneWidget);
+    expect(find.text(t.extensionsPanel.upgradeRevertedBody), findsOneWidget);
+    expect(find.text(t.extensionsPanel.upgradeDoneTitle), findsNothing);
+    expect(h.settings.extensionsMigrated, isFalse);
+  });
+
+  testWidgets('an outcome with no screen left to show it becomes a notice', (tester) async {
+    // The operator agreed to an operation that withdraws their extensions,
+    // and the screen the dialog would have used is gone — a rebuild, a hot
+    // reload, navigation. Dropped here, nothing anywhere says what happened.
+    final extensions = _SlowMigration();
+    final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.extensionsPanel.upgradeAction));
+    await tester.pump();
+    // Torn down while the migration is still running, so it answers into a
+    // gate that is no longer on screen.
+    await tester.pumpWidget(const SizedBox());
+    extensions.release.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.extensionsPanel.upgradeDoneTitle), findsNothing);
+    final notice = h.services.statusBar.activeNotices.singleWhere((n) => n.key == 'extensions:upgradeResult');
+    expect(notice.title, t.extensionsPanel.upgradeDoneTitle);
   });
 
   testWidgets('web is never offered an upgrade it cannot take', (tester) async {

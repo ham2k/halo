@@ -70,6 +70,22 @@ class DataFileStatus {
       DataFileStatus(key: key, name: name, icon: icon, updatedAt: updatedAt);
 }
 
+/// An extension's `onRemoveRawData` did not run when its data file was
+/// removed.
+///
+/// Its own type so the disposition is a rule rather than a catch site (see
+/// `ErrorPolicy`): most of these are an extension that never implemented the
+/// hook, which is ordinary, and the rest are a clean-up that did not happen.
+class DataFileRemoveHookFailed implements Exception {
+  const DataFileRemoveHookFailed(this.key, this.cause);
+
+  final String key;
+  final Object cause;
+
+  @override
+  String toString() => 'onRemoveRawData for $key: $cause';
+}
+
 class DataFileManager {
   final LookupRepository lookups;
   final ExtensionService extensions;
@@ -1022,8 +1038,13 @@ class DataFileManager {
     if (host != null) {
       try {
         await host.invokeHook('dataFile', key: key, method: 'onRemoveRawData', args: const {});
-      } catch (e) {
-        // ignore if not present
+      } catch (e, stack) {
+        // Most of these are an extension that simply does not implement the
+        // hook, which is not a failure — but the disposition is ErrorPolicy's
+        // to decide (docs/design/error-reporting.md), not this catch site's,
+        // and swallowing it here hides the ones that ARE failures: a hook that
+        // threw half way leaves raw data the extension meant to clean up.
+        ErrorReportingService.report(DataFileRemoveHookFailed(key, e), stack, context: 'data-files:remove-raw');
       }
     }
 

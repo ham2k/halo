@@ -145,8 +145,8 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
         false;
     if (!accepted || !mounted) return;
 
-    final done = await migrateToCatalogExtensions(widget.services.extensions);
-    if (!mounted || !navigator.mounted) return;
+    final outcome = await migrateToCatalogExtensions(widget.services.extensions);
+    final done = outcome == UpgradeOutcome.done;
     // Said either way: the operator agreed to an operation that withdraws the
     // extensions they had, so leaving them to guess whether it happened is
     // the one thing this must not do. A built-in with no catalog twin finishes
@@ -166,11 +166,41 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
         TextSpan(text: ' ${t.upgradeDoneUnservedHint}'),
       ],
     ]);
+    final (title, body) = switch (outcome) {
+      UpgradeOutcome.done => (t.upgradeDoneTitle, doneBody.toPlainText()),
+      // Nothing failed and nothing changed: the boot's own catch-up held the
+      // flag, and the offer comes back on its own.
+      UpgradeOutcome.busy => (t.upgradeBusyTitle, t.upgradeBusyBody),
+      // The twins installed, the runtime would not come back with them, and
+      // the revert DID boot — so this reads as the reassurance it is.
+      UpgradeOutcome.runtimeReverted => (t.upgradeRevertedTitle, t.upgradeRevertedBody),
+      // Neither set would start. The one message here that must not promise
+      // working extensions, because there are none.
+      UpgradeOutcome.runtimeDead => (t.upgradeRuntimeDeadTitle, t.upgradeRuntimeDeadBody),
+      // Named causes only where the cause is known: a download that did not
+      // arrive is worth "try again when you are online", and everything else
+      // would be sending the operator to fix a connection that was never the
+      // problem.
+      UpgradeOutcome.incomplete => (t.upgradeFailedTitle, t.upgradeIncompleteBody),
+      UpgradeOutcome.failed => (t.upgradeFailedTitle, t.upgradeFailedBody),
+      // A wiring defect is reported, never explained — there is nothing the
+      // operator could do with the difference, and nothing of theirs moved.
+      UpgradeOutcome.notWired => (t.upgradeFailedTitle, t.upgradeUnavailableBody),
+    };
+    if (!mounted || !navigator.mounted) {
+      // The screen the dialog would have used is gone — a rebuild, a hot
+      // reload, the operator navigating — and they agreed to an operation
+      // that withdraws their extensions. The status bar outlives this widget,
+      // and a notice stays in Recent Notices, so what happened is still
+      // findable rather than dropped on the floor.
+      widget.services.statusBar.showNotice(key: 'extensions:upgradeResult', title: title, text: body);
+      return;
+    }
     await showDialog<void>(
       context: navigator,
       builder: (context) => HaloDialog(
-        title: Text(done ? t.upgradeDoneTitle : t.upgradeFailedTitle),
-        content: done ? Text.rich(doneBody) : Text(t.upgradeFailedBody),
+        title: Text(title),
+        content: done ? Text.rich(doneBody) : Text(body),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
       ),
     );

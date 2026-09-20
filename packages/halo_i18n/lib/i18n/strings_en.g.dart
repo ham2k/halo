@@ -450,8 +450,32 @@ class Translations$extensionsPanel$en {
 	/// en: 'Your extensions were not upgraded'
 	String get upgradeFailedTitle => 'Your extensions were not upgraded';
 
-	/// en: 'We couldn't finish upgrading your extensions, so nothing has changed. We will try again later.'
-	String get upgradeFailedBody => 'We couldn\'t finish upgrading your extensions, so nothing has changed. We will try again later.';
+	/// en: 'We couldn't finish upgrading your extensions, so we reverted the upgrade. We will offer it again next time you open the app.'
+	String get upgradeFailedBody => 'We couldn\'t finish upgrading your extensions, so we reverted the upgrade. We will offer it again next time you open the app.';
+
+	/// en: 'We could not download some extensions, so we reverted the upgrade. Try again when you are online.'
+	String get upgradeIncompleteBody => 'We could not download some extensions, so we reverted the upgrade. Try again when you are online.';
+
+	/// en: 'We couldn't upgrade your extensions. We will offer it again next time you open the app.'
+	String get upgradeUnavailableBody => 'We couldn\'t upgrade your extensions. We will offer it again next time you open the app.';
+
+	/// en: 'Still setting up'
+	String get upgradeBusyTitle => 'Still setting up';
+
+	/// en: 'The app is still setting your extensions up. We will offer the upgrade again next time you open the app.'
+	String get upgradeBusyBody => 'The app is still setting your extensions up. We will offer the upgrade again next time you open the app.';
+
+	/// en: 'Your extensions could not start'
+	String get upgradeRevertedTitle => 'Your extensions could not start';
+
+	/// en: 'The upgraded extensions would not start, so the ones you had are back and working. We will offer the upgrade again next time you open the app.'
+	String get upgradeRevertedBody => 'The upgraded extensions would not start, so the ones you had are back and working. We will offer the upgrade again next time you open the app.';
+
+	/// en: 'Your extensions are not running'
+	String get upgradeRuntimeDeadTitle => 'Your extensions are not running';
+
+	/// en: 'We could not start your extensions, even after undoing the upgrade. Restarting the app should bring them back.'
+	String get upgradeRuntimeDeadBody => 'We could not start your extensions, even after undoing the upgrade. Restarting the app should bring them back.';
 
 	/// en: '${name} was withdrawn'
 	String revokedTitle({required Object name}) => '${name} was withdrawn';
@@ -6760,7 +6784,15 @@ extension on Translations {
 			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Not carried over: ${names}.',
 			'extensionsPanel.upgradeDoneUnservedHint' => 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.',
 			'extensionsPanel.upgradeFailedTitle' => 'Your extensions were not upgraded',
-			'extensionsPanel.upgradeFailedBody' => 'We couldn\'t finish upgrading your extensions, so nothing has changed. We will try again later.',
+			'extensionsPanel.upgradeFailedBody' => 'We couldn\'t finish upgrading your extensions, so we reverted the upgrade. We will offer it again next time you open the app.',
+			'extensionsPanel.upgradeIncompleteBody' => 'We could not download some extensions, so we reverted the upgrade. Try again when you are online.',
+			'extensionsPanel.upgradeUnavailableBody' => 'We couldn\'t upgrade your extensions. We will offer it again next time you open the app.',
+			'extensionsPanel.upgradeBusyTitle' => 'Still setting up',
+			'extensionsPanel.upgradeBusyBody' => 'The app is still setting your extensions up. We will offer the upgrade again next time you open the app.',
+			'extensionsPanel.upgradeRevertedTitle' => 'Your extensions could not start',
+			'extensionsPanel.upgradeRevertedBody' => 'The upgraded extensions would not start, so the ones you had are back and working. We will offer the upgrade again next time you open the app.',
+			'extensionsPanel.upgradeRuntimeDeadTitle' => 'Your extensions are not running',
+			'extensionsPanel.upgradeRuntimeDeadBody' => 'We could not start your extensions, even after undoing the upgrade. Restarting the app should bring them back.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} was withdrawn',
 			'extensionsPanel.revokedBody' => 'The catalog withdrew this version, so it has been disabled.',
 			'extensionsPanel.downloadHashMismatch' => 'That download is not the extension the catalog described.',
@@ -7156,6 +7188,8 @@ extension on Translations {
 			'operation.import.protocolAddressLabel' => 'Address',
 			'operation.import.protocolPortLabel' => 'Port',
 			'operation.import.protocolPortInvalid' => 'Enter a port between 1 and 65535',
+			_ => null,
+		} ?? switch (path) {
 			'operation.import.protocolAddressInvalid' => 'Enter a valid IP address (e.g. 127.0.0.1 or 239.239.0.2)',
 			'operation.import.protocolStatusReceiving' => 'Receiving data',
 			'operation.import.protocolStatusNoData' => 'No data received recently',
@@ -7164,8 +7198,6 @@ extension on Translations {
 			'operation.import.n1mmProtocolName' => 'N1MM+ Contact Broadcast',
 			'operation.import.n1mmAddressValue' => 'Any (broadcast)',
 			'operation.import.wsjtxProtocolName' => 'WSJT-X UDP Server',
-			_ => null,
-		} ?? switch (path) {
 			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.',
 			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.',
 			'operation.import.listenTitle' => 'Listen for QSOs from other apps',
@@ -7670,6 +7702,8 @@ extension on Translations {
 			'settings.developerMode' => 'Developer Mode',
 			'settings.syncPanel.configuration' => 'Sync Configuration',
 			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
+			_ => null,
+		} ?? switch (path) {
 			'settings.syncPanel.enabledDescription' => 'Backs up and syncs your log across devices',
 			'settings.syncPanel.disabledDescription' => 'Off — your log stays on this device only',
 			'settings.syncPanel.syncing' => 'Syncing',
@@ -7678,8 +7712,6 @@ extension on Translations {
 			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			'settings.syncPanel.connectionRequests' => 'Connection Requests',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'A device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
 			'settings.syncPanel.accountEmailTitle' => 'Account email',
 			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmation sent to ${email}. Open the link there to finish the change.',
@@ -8184,6 +8216,8 @@ extension on Translations {
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',
 			'expiredBuild.dismiss' => 'Continue anyway',
+			_ => null,
+		} ?? switch (path) {
 			'staleness.codePushFloorTitle' => 'An important update is waiting',
 			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'Restart the app to apply it.',
@@ -8192,8 +8226,6 @@ extension on Translations {
 			'staleness.ignoreForNow' => 'Ignore for now',
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',

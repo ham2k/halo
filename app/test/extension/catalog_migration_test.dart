@@ -8,7 +8,10 @@
 // they had. A migration that withdrew first and downloaded second would look
 // identical on a good connection.
 
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:halo_extension_host/halo_extension_host.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/config/experiments.dart';
 import 'package:ham2k_logger/services/catalog_service.dart';
@@ -43,6 +46,54 @@ class _PartialAdoption extends ExtensionServiceWithFakeHost {
 
   @override
   Future<void> restartRuntime() async => restarts++;
+}
+
+/// Every twin lands and the first restart brings nothing back; [revives] says
+/// whether the revert's restart does, which is the difference between "the
+/// ones you had are back" and an install running nothing at all.
+class _RuntimeNeverComesBack extends ExtensionServiceWithFakeHost {
+  _RuntimeNeverComesBack({this.revives = false});
+
+  final bool revives;
+  int restarts = 0;
+
+  @override
+  ExtensionHost? get host => revives && restarts > 1 ? fakeHost : null;
+
+  @override
+  Future<bool> preloadShippedExtensions() async => false;
+
+  @override
+  Future<({bool complete, bool landed})> adoptTwins() async => (landed: true, complete: true);
+
+  @override
+  Future<void> reloadAvailableExtensions() async {}
+
+  @override
+  Future<void> restartRuntime() async => restarts++;
+}
+
+/// A migration that hangs where a real one does its downloading, so a second
+/// call arrives while the first still holds the flag.
+class _StillRunning extends ExtensionServiceWithFakeHost {
+  final started = Completer<void>();
+  final release = Completer<void>();
+
+  @override
+  Future<bool> preloadShippedExtensions() async {
+    if (!started.isCompleted) started.complete();
+    await release.future;
+    return false;
+  }
+
+  @override
+  Future<({bool complete, bool landed})> adoptTwins() async => (landed: false, complete: true);
+
+  @override
+  Future<void> reloadAvailableExtensions() async {}
+
+  @override
+  Future<void> restartRuntime() async {}
 }
 
 /// The pre-load is the first thing the migration does, and the flag is
@@ -143,7 +194,7 @@ void main() {
     final extensions = _PreloadThrows()..settings = settings;
 
     await withErrorHooks(() async {
-      expect(await migrateToCatalogExtensions(extensions), isFalse);
+      expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.failed);
     });
 
     expect(settings.extensionsMigrated, isFalse);
@@ -159,11 +210,77 @@ void main() {
     final settings = await _settings(experiment: true);
     final extensions = _PartialAdoption()..settings = settings;
 
-    expect(await migrateToCatalogExtensions(extensions), isFalse);
+    expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.incomplete);
 
     expect(settings.extensionsMigrated, isFalse);
     expect(extensions.reloads, greaterThan(1), reason: 'the list still predates the twins that landed');
     expect(extensions.restarts, 1);
+  });
+
+  group('a runtime that does not come back', () {
+    test('is not reported as a finished upgrade, and the built-ins are running again', () async {
+      // `restartRuntime` cannot throw — `_start` catches a boot failure into
+      // the crash backoff — so a migration that trusted it reported success
+      // over an install with NO extensions at all: one twin that will not
+      // evaluate takes the whole generation down with it.
+      final settings = await _settings(experiment: true);
+      final extensions = _RuntimeNeverComesBack(revives: true)..settings = settings;
+
+      expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.runtimeReverted);
+
+      expect(settings.extensionsMigrated, isFalse, reason: 'the twins stay out of the bundle set');
+      expect(extensions.isBuiltInOffered(_builtIn), isTrue);
+      // The flag alone only decides what a boot WOULD load. Without a second
+      // restart the operator reads "your extensions are back" while none run.
+      expect(extensions.restarts, 2, reason: 'nothing booted the reverted set');
+    });
+
+    test('and a revert that does not boot either is not called a recovery', () async {
+      // The message for the case above is "the ones you had are back and
+      // working". Said over an install running NO extensions — the second
+      // boot failing for a reason the twins never caused — it is the worst
+      // answer this can give, and the second restart cannot report its own
+      // failure any more than the first could.
+      final settings = await _settings(experiment: true);
+      final extensions = _RuntimeNeverComesBack()..settings = settings;
+
+      final reports = FakeErrorReportingBackend();
+      await withErrorHooks(() async {
+        expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.runtimeDead);
+      }, backend: reports);
+
+      expect(settings.extensionsMigrated, isFalse);
+      expect(reports.exceptions.map((e) => e.error).whereType<UpgradeLeftNoRuntime>(), isNotEmpty,
+          reason: 'the rate is the only way to tell one bad download from a broken release');
+    });
+  });
+
+  test('a pass already running is not reported as a failure', () async {
+    // The boot's own catch-up holds the flag. Nothing failed, nothing was
+    // withdrawn, and the same button works a moment later — telling the
+    // operator the upgrade failed sends them chasing a problem they do not
+    // have.
+    final settings = await _settings(experiment: true);
+    final extensions = _StillRunning()..settings = settings;
+
+    final first = migrateToCatalogExtensions(extensions);
+    await extensions.started.future;
+
+    expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.busy);
+
+    extensions.release.complete();
+    expect(await first, UpgradeOutcome.done, reason: 'the pass that held the flag still finishes');
+  });
+
+  test('a service with no settings is a wiring defect, and says so', () async {
+    // Answered false silently, it read as an ordinary failed upgrade — with
+    // nothing in the console or the crash backend to say the graph was wrong.
+    final backend = FakeErrorReportingBackend();
+    await withErrorHooks(() async {
+      expect(await migrateToCatalogExtensions(ExtensionServiceWithFakeHost()), UpgradeOutcome.notWired);
+    }, backend: backend);
+
+    expect(backend.exceptions.map((e) => e.error).whereType<SettingsNotWired>(), isNotEmpty);
   });
 
   test('a withdrawn built-in is named the way the panel names it', () async {

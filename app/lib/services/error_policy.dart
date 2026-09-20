@@ -39,7 +39,8 @@ import 'cat/transport.dart' show CatConnectFailure, CatUnreachable;
 import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'catalog_service.dart' show CatalogUnreachable;
-import 'extension_catalog_migration.dart' show CatalogNotWired;
+import 'data_file_manager.dart' show DataFileRemoveHookFailed;
+import 'extension_catalog_migration.dart' show CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
 import 'extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
@@ -165,14 +166,24 @@ class ErrorPolicy {
       matches: (error, _) => error is SyncRecordsRejected || error is SyncPayloadUnreadable,
     ),
     ErrorRule(
-      id: 'catalog-not-wired',
-      reason: 'the extension service was handed no catalog, so nothing can be fetched or adopted '
+      id: 'extensions-not-wired',
+      reason: 'the extension service was handed no catalog or no settings, so nothing can be fetched or adopted '
           'and the upgrade offer cannot be made. A wiring defect rather than a server that cannot '
           'be reached — which is what it looked like for as long as the two were folded together — '
           'so it is uploaded rather than noticed: the operator can do nothing about it, and the '
           'audience is whoever changes the service graph',
       disposition: ErrorDisposition.report,
-      matches: (error, _) => error is CatalogNotWired,
+      matches: (error, _) => error is CatalogNotWired || error is SettingsNotWired,
+    ),
+    ErrorRule(
+      id: 'upgrade-left-no-runtime',
+      reason: 'the catalog upgrade installed its twins, could not start them, reverted itself, and '
+          'the reverted set did not start either. The operator is already told in as many words, '
+          'so it is uploaded rather than noticed — what the backend adds is the RATE, which is the '
+          'only way to tell one corrupt download from a bundle the catalog is shipping broken to '
+          'everybody',
+      disposition: ErrorDisposition.report,
+      matches: (error, _) => error is UpgradeLeftNoRuntime,
     ),
     ErrorRule(
       id: 'web-focus-traversal-null',
@@ -225,6 +236,18 @@ class ErrorPolicy {
       reason: 'a focus node was asked for focus as it was being torn down; the framework recovers',
       disposition: ErrorDisposition.logOnly,
       matches: _isFocusNodeCanRequestFocusAssertion,
+    ),
+    ErrorRule(
+      id: 'data-file-remove-hook-absent',
+      reason: 'removing a data file offers its extension an onRemoveRawData hook, and most do not '
+          'implement one — the kernel answers "no hook registered", which is the ordinary case '
+          'rather than a fault, and nothing the operator can act on mid-removal. Matched on that '
+          'ONE answer and not on the wrapper: a hook that exists and threw left the extension\'s '
+          'raw data behind, and falls through to the default tier where an unclassified failure '
+          'belongs',
+      disposition: ErrorDisposition.logOnly,
+      matches: (error, _) =>
+          error is DataFileRemoveHookFailed && error.cause.toString().contains('no hook registered'),
     ),
     ErrorRule(
       id: 'extension-host-disposed',

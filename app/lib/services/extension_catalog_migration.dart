@@ -12,6 +12,8 @@
 
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import 'package:halo_i18n/halo_i18n.dart';
 
 import 'error_reporting_service.dart';
@@ -29,6 +31,70 @@ class CatalogNotWired implements Exception {
 
   @override
   String toString() => 'ExtensionService.catalog is null';
+}
+
+/// The graph handed the migration no settings — the same family of wiring
+/// defect as [CatalogNotWired], and told apart from it only so a reader of a
+/// report knows which end was unwired.
+class SettingsNotWired implements Exception {
+  const SettingsNotWired();
+
+  @override
+  String toString() => 'ExtensionService.settings is null';
+}
+
+/// How an upgrade ended, in the operator's terms rather than a bool's.
+///
+/// The four ways an upgrade ends short are not one message: one asks the
+/// operator to try again when they are online, one asks them to wait a
+/// moment, one tells them their own extensions are back, and one is a defect
+/// they can do nothing about. Folded into a bool they read alike, and two of
+/// them reach the operator without writing a line anywhere.
+enum UpgradeOutcome {
+  /// Every twin arrived and the runtime came back with them.
+  done,
+
+  /// The catalog could not be reached, or a download did not arrive. Nothing
+  /// was withdrawn; trying again when online is the whole remedy.
+  incomplete,
+
+  /// Something else went wrong on the way — a store write, a keychain that
+  /// refused, a disk with no room. Told apart from [incomplete] because a
+  /// message naming the network sends an operator to fix a connection that
+  /// was never the problem.
+  failed,
+
+  /// A pass was already running — the boot's own catch-up. Nothing failed,
+  /// and a moment later the same button works.
+  busy,
+
+  /// The twins installed, and the runtime did not come back with them: one
+  /// bundle that will not evaluate takes the whole generation down with it
+  /// (`EngineRuntime.load` throws if any bundle fails). The upgrade is
+  /// reverted and the built-ins ARE running again by the time this is read.
+  runtimeReverted,
+
+  /// Neither the upgraded set nor the reverted one would start, so the
+  /// install is running no extensions at all. Told apart from
+  /// [runtimeReverted] because that one's whole message is "the ones you had
+  /// are back and working", and here they are not.
+  runtimeDead,
+
+  /// A wiring defect — reported, and nothing the operator can act on.
+  notWired,
+}
+
+/// Neither the upgraded extensions nor the ones they replaced would start.
+///
+/// Its own type so the crash backend can answer "how often does an upgrade
+/// leave an install with no runtime at all?" — the boot failure itself
+/// reports under `extensions:restart`, where it cannot be told from any other
+/// crash.
+class UpgradeLeftNoRuntime implements Exception {
+  const UpgradeLeftNoRuntime();
+
+  @override
+  String toString() => 'the upgrade was reverted and the runtime still did not start';
 }
 
 /// True while a migration or catch-up is in flight.
@@ -65,16 +131,24 @@ Future<bool> canReachCatalog(ExtensionService service) async {
   return listing != null && listing.isNotEmpty;
 }
 
-/// Moves this install's extensions to the catalog, and answers whether it
-/// finished.
+/// Moves this install's extensions to the catalog, and answers how it ended.
 ///
 /// The downloads happen while the built-ins are still working, and the flag
 /// that withdraws them is reverted if anything did not arrive. An upgrade that
 /// fails half way leaves the operator exactly where they were, which is what
 /// lets it be offered again next launch.
-Future<bool> migrateToCatalogExtensions(ExtensionService service) async {
+Future<UpgradeOutcome> migrateToCatalogExtensions(ExtensionService service) async {
   final settings = service.settings;
-  if (settings == null || _inFlight) return false;
+  if (settings == null) {
+    ErrorReportingService.report(const SettingsNotWired(), StackTrace.current, context: 'extensions:migrate');
+    return UpgradeOutcome.notWired;
+  }
+  // The console is the only place that says why the button did nothing: the
+  // boot's own catch-up holds the flag, and nothing failed.
+  if (_inFlight) {
+    debugPrint('[extensions] upgrade declined: a catalog pass is already running');
+    return UpgradeOutcome.busy;
+  }
   _inFlight = true;
   try {
     return await _migrate(service, settings);
@@ -86,13 +160,13 @@ Future<bool> migrateToCatalogExtensions(ExtensionService service) async {
     // launch, which is what the whole shape of this is for.
     ErrorReportingService.report(e, stack, context: 'extensions:migrate');
     await settings.setExtensionsMigrated(false);
-    return false;
+    return UpgradeOutcome.failed;
   } finally {
     _inFlight = false;
   }
 }
 
-Future<bool> _migrate(ExtensionService service, SettingsService settings) async {
+Future<UpgradeOutcome> _migrate(ExtensionService service, SettingsService settings) async {
   await settings.setExtensionsMigrated(true);
   await service.preloadShippedExtensions();
   // BEFORE the adoption looks: it decides what to fetch from the installed
@@ -113,11 +187,34 @@ Future<bool> _migrate(ExtensionService service, SettingsService settings) async 
       await service.reloadAvailableExtensions();
       await service.restartRuntime();
     }
-    return false;
+    return UpgradeOutcome.incomplete;
   }
   await service.reloadAvailableExtensions();
   await service.restartRuntime();
-  return true;
+  // Asked directly, because a boot failure cannot be thrown at us: `_start`
+  // catches everything and schedules the crash backoff, so the upgrade would
+  // otherwise report success over an install running NO extensions at all —
+  // one twin that will not evaluate takes the whole generation with it.
+  // Non-null is the most this can ask: `_start` installs the host and then
+  // has awaits of its own, so a generation that threw past that point still
+  // counts as back. It is running, which is what the operator is told.
+  if (service.host != null) return UpgradeOutcome.done;
+  // Reverting the flag is what un-migrates the runtime: with it off the
+  // built-ins are offered again and every adopted twin is superseded, so the
+  // set that boots is exactly the pre-migration one, minus whatever would not
+  // load. The twins stay on disk for the next attempt. The restart is the
+  // point — the flag alone only decides what a boot WOULD load, and without
+  // one the operator reads "your extensions are back" while none are running.
+  await settings.setExtensionsMigrated(false);
+  await service.reloadAvailableExtensions();
+  await service.restartRuntime();
+  // Asked AGAIN, for the reason it was asked the first time: this restart
+  // cannot report its own failure either, and the difference is what the
+  // operator is told. "The ones you had are back and working" over an install
+  // running nothing at all is the worst answer this can give.
+  if (service.host != null) return UpgradeOutcome.runtimeReverted;
+  ErrorReportingService.report(const UpgradeLeftNoRuntime(), StackTrace.current, context: 'extensions:migrate');
+  return UpgradeOutcome.runtimeDead;
 }
 
 /// The names of the built-ins the operator has switched on that the catalog
