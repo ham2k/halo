@@ -70,8 +70,8 @@ app's floor only when the pod's target is below 10.15 (macOS) or 13 (iOS)
 **Carried for it:** the `post_install` hook in `app/macos/Podfile` and
 `app/ios/Podfile` raises any pod configuration below the Pods project's floor
 up to it. CocoaPods derives that floor from the Podfile's `platform` line, so
-it is declared once per platform — and must agree with the Runner project's
-deployment target, which nothing checks. The hook is raise-only by design: a
+it is declared once per platform — and the same hook refuses to run while the
+Runner project's deployment target says anything else. The hook is raise-only by design: a
 pod that needs *more* than the floor keeps its value, so that incompatibility
 still fails the build. Forcing every pod to the floor, or deleting the key so
 every pod inherits, would hide it.

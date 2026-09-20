@@ -41,6 +41,17 @@ post_install do |installer|
   floor = installer.pods_project.build_configurations.first.build_settings['IPHONEOS_DEPLOYMENT_TARGET']
   raise "The Pods project declares no IPHONEOS_DEPLOYMENT_TARGET; is `platform :ios` still in this Podfile?" if floor.nil?
 
+  # The app project declares the same floor for itself, and nothing but this
+  # compares the two: with the Podfile above the project, the pods target an OS
+  # the app does not require, and the app ships declaring the lower minimum.
+  installer.aggregate_targets.flat_map(&:user_targets).uniq.each do |user_target|
+    user_target.build_configurations.each do |config|
+      declared = config.resolve_build_setting('IPHONEOS_DEPLOYMENT_TARGET')
+      next if declared == floor
+      raise "#{user_target.name} (#{config.name}) has IPHONEOS_DEPLOYMENT_TARGET #{declared.inspect}, but the Podfile's `platform :ios` says #{floor}; they must agree."
+    end
+  end
+
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
 
