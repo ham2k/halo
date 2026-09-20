@@ -13,6 +13,11 @@ class TestRadioType extends Fake implements EquipmentType {
   String get category => kCategoryTransceiver;
 }
 
+class TestSwitchType extends Fake implements EquipmentType {
+  @override
+  String get category => kCategoryAntennaSwitch;
+}
+
 class TestCat extends Fake implements CatService {
   MainVfo? selected = const LocalRadio('a');
   EquipmentState state = const EquipmentState(
@@ -22,11 +27,12 @@ class TestCat extends Fake implements CatService {
   @override
   MainVfo? get radio1 => selected;
   @override
-  EquipmentNode? nodeFor(String uuid) => ['a', 'b'].contains(uuid) ? EquipmentNode(uuid: uuid, typeKey: 'test') : null;
+  EquipmentNode? nodeFor(String uuid) =>
+      ['a', 'b', 'switch'].contains(uuid) ? EquipmentNode(uuid: uuid, typeKey: 'test') : null;
   @override
-  List<EquipmentNode> get nodes => [nodeFor('a')!, nodeFor('b')!];
+  List<EquipmentNode> get nodes => [nodeFor('a')!, nodeFor('b')!, nodeFor('switch')!];
   @override
-  EquipmentType? typeFor(EquipmentNode node) => TestRadioType();
+  EquipmentType? typeFor(EquipmentNode node) => node.uuid == 'switch' ? TestSwitchType() : TestRadioType();
   @override
   bool isRadio1(String uuid) => selected == LocalRadio(uuid);
   final connections = <String>[];
@@ -136,5 +142,17 @@ void main() {
     final meters = PanelRadioService(cat, TestRadio()).read()['meters'] as Map;
     expect(meters.containsKey('powerOut'), false);
     expect(meters['supplyVolts'], 13.8);
+  });
+
+  // The capability reads RADIOS. Naming another device's uuid must not answer
+  // with that device's status, problem text or frequency under a blank id.
+  test('a selection naming equipment that is not a radio reads as no radio at all', () {
+    final cat = TestCat();
+    cat.state = cat.state.copyWith(problem: 'relay 3 stuck');
+    final read = PanelRadioService(cat, TestRadio()).read('switch');
+    expect(read['id'], isNull);
+    expect(read['status'], const EquipmentState().status.name);
+    expect(read['frequencyHz'], isNull);
+    expect(read.values, isNot(contains('relay 3 stuck')));
   });
 }

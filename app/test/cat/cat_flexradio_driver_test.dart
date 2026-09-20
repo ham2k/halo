@@ -20,6 +20,7 @@ import 'package:ham2k_logger/services/cat/driver.dart';
 import 'package:ham2k_logger/services/cat/drivers/cw_send_queue.dart';
 import 'package:ham2k_logger/services/cat/drivers/flexradio_driver.dart';
 import 'package:ham2k_logger/services/cat/equipment.dart';
+import 'package:ham2k_logger/services/cat/transports/flex_meter_socket.dart';
 
 const _handshakeLines = ['V1.4.0.0', 'H5AC2F980'];
 const _radioStatusLine = 'S5AC2F980|radio slices=3 panadapters=3 lineout_gain=60 nickname=RadioRoom callsign=N0CALL';
@@ -84,6 +85,26 @@ class _FakeSink implements EquipmentSink {
   void reportAlive() => alive++;
 
   EquipmentChannel channel(String key) => channels.firstWhere((c) => c.key == key);
+}
+
+class _FakeMeterSocket implements FlexMeterSocket {
+  @override
+  int get port => 4993;
+  @override
+  void close() {}
+}
+
+/// One VITA-49 meter packet carrying a single reading (SmartSDR metering
+/// protocol: extension data, Flex OUI, meter class, then id/value pairs).
+Uint8List _levelPacket({required int id, required double dbm}) {
+  final data = ByteData(20);
+  data.setUint32(0, 0x38000000 | (20 ~/ 4));
+  data.setUint32(4, 0x80000000);
+  data.setUint32(8, 0x001c2d);
+  data.setUint32(12, 0x534c8002);
+  data.setUint16(16, id);
+  data.setInt16(18, (dbm * 128).round());
+  return data.buffer.asUint8List();
 }
 
 extension on FlexRadioSession {
@@ -457,6 +478,105 @@ void main() {
       fakeAsync((async) {
         session.teardown();
         expect(sink.sent, isEmpty);
+        async.flushTimers();
+      });
+    });
+  });
+
+  group('the receive meter socket', () {
+    // Every 60 s resync re-enters the meter setup. A host that cannot be
+    // resolved would otherwise cost a 5 s lookup and a diagnostic per resync,
+    // for as long as the radio stays connected.
+    test('an open that fails is not retried on every resync, only by a new subscription', () {
+      fakeAsync((async) {
+        var opens = 0;
+        session = FlexRadioSession(
+          sink,
+          meterHost: 'flex.invalid',
+          openMeterSocket: (host, onData, onError) async {
+            opens++;
+            throw StateError('no such host');
+          },
+        );
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        async.flushMicrotasks();
+        async.elapse(const Duration(minutes: 3));
+        expect(opens, 1);
+        expect(sink.diagnostics.where((note) => note?.contains('receive meter') ?? false), hasLength(1));
+
+        session.teardown();
+        session.startUpdates();
+        async.flushMicrotasks();
+        expect(opens, 2);
+
+        session.teardown();
+        async.flushTimers();
+      });
+    });
+
+    // Both lines are as a FLEX-6600 on 4.2.20 sent them, shortened to the two
+    // meters that matter. Nothing else feeds a meter line through the session,
+    // and a pattern that misses either form learns no LEVEL meter: the signal
+    // then reads as absent for good, with no error anywhere.
+    const levelStatusLine =
+        'S3555AEC|meter 13.src=SLC#13.num=0#13.nam=LEVEL#13.low=-150.0#13.hi=20.0'
+        '#13.desc=Signal strength of signals in the filter passband#13.unit=dBm#13.fps=10#';
+    const meterListReply =
+        'R2|0|meter 1.src=COD-#1.num=1#1.nam=MICPEAK#1.low=-150.0#1.hi=20.0#1.unit=dBFS#1.fps=40'
+        '#13.src=SLC#13.num=0#13.nam=LEVEL#13.low=-150.0#13.hi=20.0#13.unit=dBm#13.fps=10#';
+
+    for (final (form, line) in [('pushed as status', levelStatusLine), ('the meter list reply', meterListReply)]) {
+      test('the slice LEVEL meter is learned from $form', () {
+        fakeAsync((async) {
+          void Function(Uint8List)? deliver;
+          session = FlexRadioSession(
+            sink,
+            meterHost: '10.0.0.5',
+            openMeterSocket: (host, onData, onError) async {
+              deliver = onData;
+              return _FakeMeterSocket();
+            },
+          );
+          session.feed('${_handshakeLines.join('\n')}\n');
+          session.startUpdates();
+          async.flushMicrotasks();
+          expect(sentAny('client udpport 4993'), isTrue);
+          expect(sentAny('meter list'), isTrue);
+
+          deliver!(_levelPacket(id: 13, dbm: -93.5));
+          expect(sink.meterReports, isEmpty, reason: 'meter 13 means nothing until the radio has described it');
+
+          session.feed('$line\n');
+          async.elapse(const Duration(seconds: 1));
+          deliver!(_levelPacket(id: 13, dbm: -93.5));
+          expect(sink.meterReports, [(RadioMeter.signalDbm, -94)]);
+
+          session.teardown();
+          async.flushTimers();
+        });
+      });
+    }
+
+    test('a platform with no socket to give is asked once', () {
+      fakeAsync((async) {
+        var opens = 0;
+        session = FlexRadioSession(
+          sink,
+          meterHost: '10.0.0.5',
+          openMeterSocket: (host, onData, onError) async {
+            opens++;
+            return null;
+          },
+        );
+        session.feed('${_handshakeLines.join('\n')}\n');
+        session.startUpdates();
+        async.flushMicrotasks();
+        async.elapse(const Duration(minutes: 3));
+        expect(opens, 1);
+        expect(sentAny('sub meter all'), isFalse);
+
+        session.teardown();
         async.flushTimers();
       });
     });

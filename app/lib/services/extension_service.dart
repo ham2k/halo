@@ -571,15 +571,9 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// HaLoServices wires it, which simply means nothing is adopted.
   CatalogService? catalog;
 
-  /// Extension keys allowed to call `getLocation` (manifest.json
-  /// `requiresLocation`) — same allowlist shape as [_fetchAllowlists]
-  /// below, resolved once at load time in [_start].
-  Set<String> _locationAllowlist = const {};
-
-  /// Whether [extensionKey] (or its bundle, for a sub-extension like
-  /// `pota-all-parks`) may call `getLocation` — mirrors the prefix rule
-  /// `ExtensionHost._fetchAllowlistFor` applies to `domains`.
-  bool _locationAllowed(String? extensionKey) => capabilityAllows(_locationAllowlist, extensionKey);
+  /// Who may call `getLocation` (manifest.json `requiresLocation`), resolved
+  /// once at load time in [_start].
+  CapabilityGrant _location = const CapabilityGrant();
 
   bool get ready => _host != null;
   ExtensionHost? get host => _host;
@@ -1681,7 +1675,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
       final fetchAllowlists = <String, List<String>>{};
       final extensionSecrets = <String, Map<String, String>>{};
       final userAgentOverrides = <String>{};
-      final locationAllowlist = <String>{};
       final loaded = <String>{};
       for (final info in available) {
         // Disabled (or experiment-gated) extensions are simply never
@@ -1694,9 +1687,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
         // `allowUserAgentOverride`; see extensions/build-config.mjs).
         fetchAllowlists[info.key] = info.domains;
         if (info.allowUserAgentOverride) userAgentOverrides.add(info.key);
-        // The manifest's declared `getLocation` capability
-        // (`requiresLocation`; see extensions/build-config.mjs).
-        if (info.requiresLocation) locationAllowlist.add(info.key);
         // Resolve what this extension is allowed to see, once, at load time —
         // the host then holds only that subset and needs no policy of its own.
         // A build without a value configured simply has none, and every
@@ -1714,8 +1704,11 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
         await updateExtensionDisabledSince(
           settings: settingsForStamps, available: availableExtensions, isActive: isExtensionActive);
       }
-      _locationAllowlist = locationAllowlist;
-      radioCalls.allow(available.where((info) => loaded.contains(info.key)));
+      // The manifest's declared host-call capabilities (`requiresLocation`,
+      // `requiresRadio*`; see extensions/build-config.mjs).
+      final loadedInfos = available.where((info) => loaded.contains(info.key)).toList();
+      _location = CapabilityGrant.among(loadedInfos, (info) => info.requiresLocation);
+      radioCalls.allow(loadedInfos);
       // Pessimistic from the moment a host exists until its activations have
       // genuinely settled below, so a consumer reading it the instant `host`
       // goes non-null is not told the hook set is authoritative while
@@ -2648,7 +2641,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
         // Gated by the manifest's `requiresLocation` capability,
         // same allowlist shape as host.fetch's `domains`.
         final extensionKey = params['extensionKey'] as String?;
-        if (!_locationAllowed(extensionKey)) {
+        if (!_location.allows(extensionKey)) {
           throw ExtensionHostException(
             "getLocation blocked: extension '${extensionKey ?? 'unknown'}' does not declare requiresLocation",
           );

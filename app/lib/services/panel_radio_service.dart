@@ -30,7 +30,10 @@ class PanelRadioService {
     final node = selection != null && candidate != null && cat.typeFor(candidate)?.category != kCategoryTransceiver
         ? null
         : candidate;
-    final state = id == null ? const EquipmentState() : cat.stateFor(id);
+    // From the NODE, not the id: a selection naming an antenna switch or a
+    // keyer has no node here, and must not answer with that device's status,
+    // problem text or frequency under a capability that reads radios.
+    final state = node == null ? const EquipmentState() : cat.stateFor(node.uuid);
     final live = node != null && state.status == EquipmentStatus.connected && !state.stale && state.problem == null;
     final telemetry = state.telemetry;
     return {

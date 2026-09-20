@@ -1256,7 +1256,7 @@ numeric value patches; local-only controls and animation frames make no bridge
 calls. Controls with `continuous: true` send `change` events during dragging and a
 final `commit` on release; pending movements are coalesced to the newest value.
 Numeric text supports `scale`, `truncate`, `modulo`, and `minIntegerDigits`
-for local numeric formatting. The Radio Panel Example uses these for its Modern
+for local numeric formatting. KI2D’s Radio Panel uses these for its Modern
 frequency groups; its settings offer Modern/LCD styles and radio selection. Local sliders may use `hover` and `discrete` hourly buckets. Text `samples`
 may hold numbers or preformatted strings; control `valueLabels` supplies accessible
 value descriptions. Transform/opacity bindings may also supply numeric `samples`,
@@ -1302,12 +1302,12 @@ Button controls can supply `menu: [{label, event}]` to open a native dropdown.
 Selecting an item emits its `event` as the action with the original control ID;
 dismissing the menu emits nothing.
 
-The `svg-weather`, `svg-solar`, and `svg-radio` reference panels live in
+The `ki2d-weather-panel`, `ki2d-solar-panel` and `ki2d-radio-panel` reference
+panels live in
 [ham2k/extensions](https://github.com/ham2k/extensions/tree/main/extensions/dashboard).
 They use public host APIs and ship as `.h2kext` packages, not app assets.
-Install the packages, then add their panels through Edit Layout. Their original
-extension and panel keys are retained so existing placements and settings survive.
-See that repository’s dashboard README for building against the unreleased SDK.
+Install the packages, then add their panels through Edit Layout. See that
+repository's dashboard README for building them.
 
 The radio host calls are manifest capabilities, refused unless declared — the
 same shape as `requiresLocation`, and shown to the operator at install:
@@ -1315,8 +1315,16 @@ same shape as `requiresLocation`, and shown to the operator at install:
 `"requiresRadioWrite": true` allows `host.tuneRadio()` and
 `host.setRadioConnection()`, and implies read, since a command answers with the
 radio's state. An undeclared call rejects rather than answering null.
+A capability belongs to the bundle that declared it, and to the sub-extensions
+that bundle defines under its own key. A separately installed bundle never
+inherits one through its name: `rigpanel-themes` gets nothing from `rigpanel`.
 
-**Radio Panel Example** is the CAT reference extension. `host.listRadios()` lists configured
+An `onEvent` that cannot read its panel's config is refused rather than run
+with an empty one, since a config is where a panel keeps which radio it
+commands. The host allows an event up to about ten seconds in all (config, then
+the hook); the control shows its pending value until the outcome is known.
+
+**KI2D’s Radio Panel** is the CAT reference extension. `host.listRadios()` lists configured
 local transceivers. `host.readRadio(id?)` returns
 a **local** radio's reported frequency (Hz), mode, connection state,
 power, TX state and fresh telemetry, or null on hosts without this API.

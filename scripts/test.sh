@@ -301,7 +301,13 @@ ensure_bundles() {
       oldest_bundle="$fpath"
     fi
   done < <(find "$ROOT_DIR/app/assets/extensions" "$ROOT_DIR/extensions/build/fixtures" -type f 2>/dev/null || true)
-  if [[ -z "$oldest_bundle" ]]; then
+  # Either output directory EMPTY is stale too, whatever the other holds:
+  # extensions/build is gitignored and an ordinary clean-up removes it, and the
+  # asset bundles alone would otherwise read as an up-to-date build that the
+  # bridge tests then cannot find their fixture in.
+  if [[ -z "$oldest_bundle" ]] ||
+    [[ -z "$(find "$ROOT_DIR/app/assets/extensions" -type f 2>/dev/null | head -1)" ]] ||
+    [[ -z "$(find "$ROOT_DIR/extensions/build/fixtures" -type f 2>/dev/null | head -1)" ]]; then
     stale=1
   else
     # extensions/build is OUTPUT (the test fixtures): unpruned, a bundle written

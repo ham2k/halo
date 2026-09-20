@@ -278,4 +278,20 @@ void main() {
     // ageing out while the radio is still transmitting.
     expect(cat.stateFor(station.radioNode.uuid).telemetry.meters[RadioMeter.swr]?.value, 2.4);
   });
+
+  test('the receive signal is stored for whoever polls it, and wakes no listener', () async {
+    // Unlike a transmit meter it never settles: band noise moves it a dB or
+    // more between samples, so it would notify for as long as the radio is
+    // connected — every CatService listener, for a number none of them show.
+    // An extension's `readRadio` reads the state; it does not listen for it.
+    final station = await connectedStation();
+    final sink = radioDriver.sessions.single.sink;
+    var notifications = 0;
+    cat.addListener(() => notifications++);
+
+    sink.reportMeter(RadioMeter.signalDbm, -93);
+    sink.reportMeter(RadioMeter.signalDbm, -88);
+    expect(notifications, 0);
+    expect(cat.stateFor(station.radioNode.uuid).telemetry.meters[RadioMeter.signalDbm]?.value, -88);
+  });
 }

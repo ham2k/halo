@@ -275,6 +275,24 @@ void main() {
     expect(find.text('Value: 74'), findsOneWidget);
   });
 
+  // The pane's handler may spend 5 s reading config and 5 s more in the hook.
+  // A shorter timer in the view cannot stop that action — it can only show it
+  // failing and snap the control back while the radio is still about to move.
+  testWidgets('a slow action is waited for, not reported as failed while it is still running', (tester) async {
+    final reply = Completer<Map<String, double>>();
+    await show(tester, document(value: 10), onEvent: (_) => reply.future);
+    await tester.tapAt(tester.getRect(find.bySemanticsLabel('Test slider')).center);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 8));
+    expect(find.text(t.operation.layout.panelActionFailed), findsNothing);
+    expect(find.text('Value: 50'), findsOneWidget);
+    reply.complete({'v': 49});
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('Value: 49'), findsOneWidget);
+    expect(find.text(t.operation.layout.panelActionFailed), findsNothing);
+  });
+
   // A knob accumulates its own drag value. Left unclamped, the overshoot past
   // an end stop is a dead zone: the way back moves nothing until it is repaid.
   testWidgets('a knob dragged past its end stop responds at once on the way back', (tester) async {

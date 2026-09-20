@@ -12,6 +12,12 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import 'scene_model.dart';
 
+/// Sends one control event and answers with the values to show.
+///
+/// MUST settle in bounded time, because the view puts no timeout of its own on
+/// it: a timer here can only abandon the wait, not the action. The handler
+/// would go on to command the radio after the operator had been shown the
+/// action failing and the control snapping back.
 typedef SceneEventHandler = Future<Map<String, double>> Function(Map<String, dynamic> event);
 
 /// The extension supplies state; this widget owns gestures and animation frames.
@@ -109,7 +115,7 @@ class _SvgSceneViewState extends State<SvgSceneView> with WidgetsBindingObserver
       final id = _queue.keys.first;
       final event = _queue.remove(id)!;
       try {
-        final patch = await widget.onEvent!(event).timeout(const Duration(seconds: 5));
+        final patch = await widget.onEvent!(event);
         if (!mounted) return;
         if (event['sequence'] == _sequence) {
           setState(() {

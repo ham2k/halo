@@ -267,16 +267,31 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   /// the operator never transmitted on.
   final int slice;
 
-  FlexRadioSession(this._sink, {this.slice = 0, this.meterHost});
+  FlexRadioSession(this._sink, {this.slice = 0, this.meterHost, this.openMeterSocket = FlexMeterSocket.open});
   final String? meterHost;
+
+  /// How the receive-meter UDP socket is opened. A parameter because the real
+  /// one binds a port and resolves a host, which no test of what the session
+  /// does WITH the socket — or without one — can do.
+  final Future<FlexMeterSocket?> Function(
+    String host,
+    void Function(Uint8List data) onData,
+    void Function(Object error, StackTrace stack) onError,
+  ) openMeterSocket;
   late final _meters = FlexMeterCodec(slice);
   final _signalThrottle = FlexSignalThrottle();
   FlexMeterSocket? _meterSocket;
   bool _openingMeters = false;
   int _meterGeneration = 0;
 
+  /// Set once an open has failed, or answered with no socket (the web). Every
+  /// resync comes back through [_startMeters]; without this latch a host that
+  /// cannot be resolved costs a 5 s lookup and a diagnostic per resync, for the
+  /// whole session. A fresh subscription ([_stopMeters]) tries again.
+  bool _metersUnavailable = false;
+
   void _startMeters() {
-    if (meterHost == null || _openingMeters) return;
+    if (meterHost == null || _openingMeters || _metersUnavailable) return;
     if (_meterSocket != null) {
       _sendCommand('sub meter all');
       _sendCommand('meter list');
@@ -291,7 +306,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
     }
 
     unawaited(
-      FlexMeterSocket.open(meterHost!, (data) {
+      openMeterSocket(meterHost!, (data) {
         if (generation != _meterGeneration || !_wantUpdates) return;
         final dbm = _meters.signal(data);
         if (dbm == null) return;
@@ -306,6 +321,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
           }
           _openingMeters = false;
           _meterSocket = socket;
+          _metersUnavailable = socket == null;
           if (socket != null) {
             _sendCommand('client udpport ${socket.port}');
             _sendCommand('sub meter all');
@@ -313,7 +329,10 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
           }
         },
         onError: (Object error, StackTrace stack) {
-          if (generation == _meterGeneration) _openingMeters = false;
+          if (generation == _meterGeneration) {
+            _openingMeters = false;
+            _metersUnavailable = true;
+          }
           failed(error, stack);
         },
       ),
@@ -323,6 +342,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   void _stopMeters() {
     _meterGeneration++;
     _openingMeters = false;
+    _metersUnavailable = false;
     if (_meterSocket != null && _handshakeDone) _sendCommand('unsub meter all');
     _meterSocket?.close();
     _meterSocket = null;
@@ -446,9 +466,7 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
 
   void _handleLine(String line) {
     if (line.isEmpty) return;
-    final metadata = RegExp(
-      r'^[SR][^|]+\|(?:0\|)?meter (.+)$',
-    ).firstMatch(line);
+    final metadata = _meterMetadataLine.firstMatch(line);
     if (metadata != null) _meters.metadata(metadata[1]!);
     if (line.startsWith('H')) {
       _handleHandshakeLine(line);
@@ -469,6 +487,11 @@ class FlexRadioSession implements TransceiverSession, CwKeyerSession {
   static final _replyPattern = RegExp(r'^R\d+\|');
   static final _slicePattern = RegExp(r'^S[0-9a-fA-F]+\|slice (\d+) (.+)$');
   static final _transmitPattern = RegExp(r'^S[0-9a-fA-F]+\|transmit (.+)$');
+
+  /// Meter metadata arrives two ways, and both carry the `meter ` token —
+  /// captured from a FLEX-6600 on 4.2.20: pushed as `S<handle>|meter 13.src=…`
+  /// after `sub meter all`, and as the `meter list` reply, `R<seq>|0|meter 1.src=…`.
+  static final _meterMetadataLine = RegExp(r'^[SR][^|]+\|(?:0\|)?meter (.+)$');
   static final _cwxPattern = RegExp(r'^S[0-9a-fA-F]+\|cwx (.+)$');
   static final _interlockPattern = RegExp(r'^S[0-9a-fA-F]+\|interlock (.+)$');
   static final _clientPattern = RegExp(r'^S[0-9a-fA-F]+\|client (0x[0-9a-fA-F]+) (.+)$');

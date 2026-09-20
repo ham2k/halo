@@ -345,3 +345,39 @@ class ExtensionInfo with ExtensionSearchable {
         },
       );
 }
+
+/// One manifest capability as the host enforces it: which of the LOADED
+/// bundles declared it. Resolved when the runtime starts, from the same list
+/// the runtime was started with — a grant and the bundle set it is read
+/// against must never be from different moments.
+///
+/// A bundle may define sub-extensions under its own key (`pota-all-parks` from
+/// `pota`), and those share its grant. But a bare prefix test hands the grant
+/// to anything NAMED like one: a separately installed `rigpanel-themes`, whose
+/// consent screen claimed nothing, would command the radio on `rigpanel`'s
+/// say-so. So a key that is itself a loaded bundle answers only for itself,
+/// and any other key belongs to the LONGEST loaded bundle key it extends.
+class CapabilityGrant {
+  final Set<String> bundles;
+  final Set<String> granted;
+  const CapabilityGrant({this.bundles = const {}, this.granted = const {}});
+
+  CapabilityGrant.among(Iterable<ExtensionInfo> loaded, bool Function(ExtensionInfo) declares)
+      : bundles = {for (final info in loaded) info.key},
+        granted = {
+          for (final info in loaded)
+            if (declares(info)) info.key,
+        };
+
+  /// [extensionKey] is the caller's identity as the KERNEL stamped it.
+  bool allows(String? extensionKey) {
+    if (extensionKey == null) return false;
+    if (bundles.contains(extensionKey)) return granted.contains(extensionKey);
+    String? owner;
+    for (final key in bundles) {
+      if (!extensionKey.startsWith('$key-') && !extensionKey.startsWith('${key}_')) continue;
+      if (owner == null || key.length > owner.length) owner = key;
+    }
+    return owner != null && granted.contains(owner);
+  }
+}

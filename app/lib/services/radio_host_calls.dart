@@ -25,26 +25,20 @@ class RadioHostCalls {
   /// commands are refused as `disconnected`.
   PanelRadioService? radio;
 
-  Set<String> _readAllowlist = const {};
-  Set<String> _writeAllowlist = const {};
+  CapabilityGrant _read = const CapabilityGrant();
+  CapabilityGrant _write = const CapabilityGrant();
 
   /// Resolved once per runtime start, like the location allowlist. A write
   /// key is in both sets: a command answers with the radio's state.
   void allow(Iterable<ExtensionInfo> loaded) {
-    _readAllowlist = {
-      for (final info in loaded)
-        if (info.requiresRadioRead || info.requiresRadioWrite) info.key,
-    };
-    _writeAllowlist = {
-      for (final info in loaded)
-        if (info.requiresRadioWrite) info.key,
-    };
+    _read = CapabilityGrant.among(loaded, (info) => info.requiresRadioRead || info.requiresRadioWrite);
+    _write = CapabilityGrant.among(loaded, (info) => info.requiresRadioWrite);
   }
 
   Future<dynamic> handle(String method, Map<String, dynamic> params) async {
     final write = _writes.contains(method);
     final extensionKey = params['extensionKey'] as String?;
-    if (!capabilityAllows(write ? _writeAllowlist : _readAllowlist, extensionKey)) {
+    if (!(write ? _write : _read).allows(extensionKey)) {
       throw ExtensionHostException(
         "$method blocked: extension '${extensionKey ?? 'unknown'}' does not declare "
         "${write ? 'requiresRadioWrite' : 'requiresRadioRead'}",
@@ -58,13 +52,4 @@ class RadioHostCalls {
       _ => await radio?.tune(params) ?? unavailable,
     };
   }
-}
-
-/// Whether [extensionKey] — or its bundle, for a sub-extension like
-/// `pota-all-parks` — is in a manifest-capability [allowlist]. The prefix rule
-/// mirrors the one `ExtensionHost` applies to `domains`.
-bool capabilityAllows(Set<String> allowlist, String? extensionKey) {
-  if (extensionKey == null) return false;
-  if (allowlist.contains(extensionKey)) return true;
-  return allowlist.any((key) => extensionKey.startsWith('$key-') || extensionKey.startsWith('${key}_'));
 }

@@ -1822,7 +1822,13 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
         // the reading from expiring under a steady transmission — but at
         // three meters on a 200 ms cycle, repainting every listener fifteen
         // times a second to redraw an unchanged 1.2 is work nobody sees.
-        _setState(uuid, state.copyWith(telemetry: telemetry), notify: previous?.value != value);
+        //
+        // The receive signal is never news to a listener: band noise moves it
+        // by a dB or more between samples, so it would notify for as long as
+        // the radio is connected — and what reads it, an extension's
+        // `readRadio`, polls the state rather than listening for it.
+        _setState(uuid, state.copyWith(telemetry: telemetry),
+            notify: meter != RadioMeter.signalDbm && previous?.value != value);
       },
       onCwProgress: (progress) {
         if (runtime.connection != connection) return;

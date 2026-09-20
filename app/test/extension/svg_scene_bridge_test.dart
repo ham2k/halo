@@ -7,10 +7,34 @@ import 'package:flutter/material.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/views/operation/extension_panel.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
+import 'package:ham2k_logger/services/extension_service.dart';
 import 'package:ham2k_logger/services/panel_service.dart';
 import 'package:ham2k_logger/views/operation/panel_content_view.dart';
 
-import '../../tool/svg_scene_preview.dart';
+/// The production service over a host started here, counting the events that
+/// cross the bridge — the point of these tests is that a gesture really does.
+class _SampleExtensionService extends ExtensionService {
+  final ExtensionHost sampleHost;
+  int events = 0;
+  _SampleExtensionService(this.sampleHost);
+  @override
+  ExtensionHost get host => sampleHost;
+  @override
+  Future<Map<String, dynamic>> readPanelConfig({
+    required String panelKey,
+    required List<Map<String, dynamic>> fields,
+  }) async => {};
+
+  @override
+  Future<Map<String, dynamic>?> panelEvent({
+    required String hookKey,
+    required String panelKey,
+    required Map<String, dynamic> args,
+  }) {
+    events++;
+    return super.panelEvent(hookKey: hookKey, panelKey: panelKey, args: args);
+  }
+}
 
 Future<ExtensionHost> startHost() => ExtensionHost.start(
   kernelSource: File('assets/extensions/kernel.js').readAsStringSync(),
@@ -30,7 +54,7 @@ void main() {
   test('real sample bundle discovers, renders, and handles events through the production service', () async {
     final host = await startHost();
     addTearDown(host.dispose);
-    final service = PrototypeExtensionService(host);
+    final service = _SampleExtensionService(host);
     final panels = PanelService(service);
     addTearDown(panels.dispose);
     await panels.refreshExtensionPanels();
@@ -62,7 +86,7 @@ void main() {
   });
   testWidgets('a gesture reaches the real extension and updates the rendered panel', (tester) async {
     final host = (await tester.runAsync(startHost))!;
-    final service = PrototypeExtensionService(host);
+    final service = _SampleExtensionService(host);
     final panels = PanelService(service);
     await tester.runAsync(panels.refreshExtensionPanels);
     await tester.pumpWidget(

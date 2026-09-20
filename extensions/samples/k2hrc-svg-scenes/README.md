@@ -19,6 +19,6 @@ node build.mjs
 node ../../tools/h2kext-pack.mjs build -o /tmp/k2hrc-svg-scenes.h2kext
 ```
 
-For the standalone Flutter preview and migration plan, see
-`docs/design/svg-scenes.md` in the logger repository. This is an API experiment,
+For the contract and migration plan, see `docs/design/svg-scenes.md` in the
+logger repository. This is an API experiment,
 not a replacement for the production weather/solar panels yet.

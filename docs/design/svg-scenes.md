@@ -4,12 +4,12 @@ Status: experimental contract with three independently packaged reference panels
 Their source and tests live in [ham2k/extensions](https://github.com/ham2k/extensions/tree/main/extensions/dashboard);
 the paths below are relative to that repository. HaLo retains the renderer, SDK,
 CAT adapter and the small SDK sample used by host-only bridge tests.
-`extensions/dashboard/svg-weather` fetches and caches real forecasts, resolves
+`extensions/dashboard/ki2d-weather-panel` fetches and caches real forecasts, resolves
 location/units, and builds its entire scene using the host's render environment.
 The native Weather and Solar panels remain available for comparison.
-`extensions/dashboard/svg-solar` supplies the second real extension reference:
+`extensions/dashboard/ki2d-solar-panel` supplies the second real extension reference:
 hamqsl indices and band conditions with NOAA flux, Kp and wind history.
-`extensions/dashboard/svg-radio` adds the Radio Panel Example reference through a
+`extensions/dashboard/ki2d-radio-panel` adds the radio reference through a
 narrow host adapter to the existing local CAT service. Frequency, mode, power and receive
 meter behavior have been exercised against a FLEX-6600 on macOS; other radios
 and cross-platform performance still need validation.
@@ -24,8 +24,9 @@ flutter run -d web-server --web-port 8767 --web-hostname 127.0.0.1 \
   --dart-define=POLO_OPEN_FIRST_OP=1
 ```
 
-Open `http://127.0.0.1:8767`, install the externally built `svg-weather` `.h2kext`
-package under Settings → Features & Extensions, then add **SVG Weather** through Edit Layout. A blank panel location
+Open `http://127.0.0.1:8767`, install the externally built `ki2d-weather-panel`
+`.h2kext` under Settings → Features & Extensions, then add **KI2D’s Weather Panel**
+through Edit Layout. A blank panel location
 follows the operation's exact coordinates (preferred) or grid; a configured grid
 or latitude/longitude overrides it. The extension requests Open-Meteo through
 `host.fetch`, caches per location/units for fifteen minutes, coalesces concurrent
@@ -38,7 +39,7 @@ scene panel's render environment. Use this full app build for iteration and acce
 The native **Weather** panel is separately available as a layout/data comparison;
 its earlier chart-only migration is not the extension reference implementation.
 
-Enable **SVG Solar Weather** in the same settings screen and add it through Edit
+Enable **KI2D’s Solar Panel** in the same settings screen and add it through Edit
 Layout. It shows SFI, sunspots, A/Kp, solar wind and day/night band conditions.
 Taller panes show NOAA history with local hover, drag and keyboard inspection.
 The three charts resolve the selected time to their nearest reading and label
@@ -49,46 +50,11 @@ every fifteen minutes, primary-source failures retry no faster than once per
 minute, and the larger wind history is requested at most every six hours after
 success (failed history requests are limited to once per fifteen minutes).
 
-### Isolated diagnostic harness
-
-The standalone preview below is only for repeatable renderer/bridge measurements;
-it is not the feature review build.
-
-From `extensions/`, run `npm ci`, then `npm run build`, then leave the sample
-being served:
-
-```sh
-npm run dev -- --only k2hrc-svg-scenes
-```
-
-From `app/`, run:
-
-```sh
-flutter run --profile -d macos -t tool/svg_scene_preview.dart
-```
-
-The sample is a test fixture: the build writes it to `extensions/build/fixtures/`
-rather than into the app's assets, which ship wholesale, so the preview takes it
-from the dev server (`--dart-define=SCENE_FIXTURE_URL=…` for another address).
-
-Chrome is also supported (`-d chrome`). For a static web build, add
-`--no-tree-shake-icons` because the logger resolves extension icons dynamically. The standalone preview loads the **real
-kernel and sample extension**, and uses `ExtensionService`, `PanelService`, and
-`ExtensionPanel`. It does not boot the logger or connect to hardware. The sample
-fixture is built with the other bundles but into `extensions/build/fixtures/`, so
-it is in neither the app's assets nor the installed-extension index. To install it manually in a development build of the logger, build and pack
-`extensions/samples/k2hrc-svg-scenes` like any other sample extension.
-
-The preview now opens with the production weather panel beside the simulated
-radio. Weather uses an injected, fixed forecast through the real parser/controller;
-no live weather or hardware is involved. “Sample weather” switches back to the
-extension-only comparison. Automatic benchmarks use the original extension samples.
-
-The preview offers two/eight panels, hide/show, reduced motion, and a ten-second
-measurement of p95 Flutter build/raster duration and bridge-call counts. Add
-`--dart-define=SVG_SCENE_BENCHMARK=true` to measure two, eight, then hidden panels
-automatically. Frame timing availability depends on the Flutter backend; `n/a`
-means it supplied no samples. Measure profile mode, not debug/widget-test timing.
+The `k2hrc-svg-scenes` SDK sample is a test fixture: the build writes it to
+`extensions/build/fixtures/`, outside the app's assets, which ship wholesale, and
+only the host's bridge tests load it. To try it in a development build, pack
+`extensions/samples/k2hrc-svg-scenes` like any other sample and install the
+`.h2kext`.
 
 ## What the prototype establishes
 
@@ -171,14 +137,14 @@ state machines. This is an authoring/API assessment, not a benchmark against Riv
    Extend command expiry, cancellation and per-control reconciliation; measure
    radio-specific command budgets and test concurrent telemetry.
 3. Weather reference implemented in two forms: the native panel uses the scene
-   renderer for its chart, and the optional **SVG Weather** extension owns fetching,
+   renderer for its chart, and the optional extension **KI2D’s Weather Panel** owns fetching,
    caching, units, responsive layout and scene generation in TypeScript. It uses
    the public render environment for theme and typography. Hover, tap, drag,
    keyboard and screen-reader adjustment inspect hourly columns locally.
 4. Solar reference implemented through the same API, including flux/Kp/wind
    charts, band conditions, responsive layouts, caching and partial-feed failures.
    Review both reference panels before extracting shared chart helpers.
-5. Radio Panel Example is connected to the designated local radio through the CAT
+5. KI2D’s Radio Panel is connected to the designated local radio through the CAT
    adapter, with requested/reported frequency separation, paced continuous tuning,
    a native mode menu, connection control and receive meter. Modern and LCD styles
    support a selected radio per placement. Extend the FLEX-6600 checks to other rigs.
@@ -188,7 +154,9 @@ state machines. This is an authoring/API assessment, not a benchmark against Riv
 ## Initial measurements and validation (2026-09-17)
 
 Chrome 152 on macOS 26.6.2 / Apple Silicon, Flutter 3.44.6 profile build,
-1280×900 CSS viewport, ten-second windows after a three-second warmup:
+1280×900 CSS viewport, ten-second windows after a three-second warmup, taken with
+a standalone preview harness that no longer exists. Measuring again means a
+profile build of the app with the panels placed in a layout:
 
 | Scene load | p95 build | p95 raster | Document renders | Interaction events |
 | --- | ---: | ---: | ---: | ---: |
@@ -220,7 +188,7 @@ curve geometry, scene gestures and bridge routing. Added coverage checks hourly
 bucket boundaries, hover/tap/keyboard selection, accessible value descriptions,
 missing readings, both themes and 2× text. The original small-pane, failed-fetch,
 location and hidden-panel regressions still pass. Flutter analysis and extension
-TypeScript checking pass. The updated Chrome profile preview builds and renders
+TypeScript checking pass. The Chrome profile build rendered the panels
 successfully; these checks do not constitute cross-platform performance profiling.
 
 ## Render environment
@@ -235,7 +203,7 @@ remains vector-only and cannot fetch fonts or other external resources.
 The extension, extensions and UI test groups passed (1,996 tests reported by the
 workflow runner). After adding an actual weather-bundle widget integration test,
 the extension group passed again (329 tests). Targeted Flutter analysis, TypeScript
-checking and SDK packaging passed. The real app was checked with SVG Weather
+checking and SDK packaging passed. The real app was checked with KI2D’s Weather Panel
 enabled in the operation dock in both light and dark themes; live Open-Meteo data
 rendered successfully. The full pre-merge gate and cross-platform profiling remain
 outstanding.
@@ -258,7 +226,7 @@ The extensions and extension-host test groups passed (1,410 tests reported by th
 workflow runner). Coverage includes paced tuning, designation changes while a
 command waits, stale/disconnected/transmitting states, expired telemetry and
 confirmed versus requested frequency. A widget gesture exercises the actual
-Radio Panel Example bundle through the production panel service and CAT host API.
+radio bundle through the production panel service and CAT host API.
 TypeScript checking, SDK packaging and targeted Flutter analysis passed. The
 extension is enabled and added to the real app layout; its disconnected state
 renders correctly without scene errors. Physical-radio validation, the full

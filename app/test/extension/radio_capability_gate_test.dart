@@ -78,6 +78,8 @@ void main() {
       'reader': bundle('reader', read: true),
       'writer': bundle('writer', write: true),
       'plain': bundle('plain'),
+      // A separately installed bundle NAMED like a sub-extension of `writer`.
+      'writer-themes': bundle('writer-themes'),
     });
   });
 
@@ -126,6 +128,19 @@ void main() {
       call('plain', 'tuneRadio', {'id': 'a', 'frequencyHz': 7000000, 'extensionKey': 'writer'}),
       blockedFor('requiresRadioWrite'),
     );
+    expect(commands, isEmpty);
+  }, timeout: const Timeout(Duration(seconds: 60)));
+
+  test('a bundle named like a capable one\'s sub-extension does not inherit its capability', () async {
+    // Sub-extensions share their bundle's grant (`pota-all-parks` from `pota`),
+    // and a bare prefix test is how: but `writer-themes` is a bundle of its
+    // own, whose consent screen claimed nothing. Matched by prefix it would
+    // retune the rig on `writer`'s say-so.
+    await expectLater(
+      call('writer-themes', 'tuneRadio', {'id': 'a', 'frequencyHz': 7000000}),
+      blockedFor('requiresRadioWrite'),
+    );
+    await expectLater(call('writer-themes', 'listRadios'), blockedFor('requiresRadioRead'));
     expect(commands, isEmpty);
   }, timeout: const Timeout(Duration(seconds: 60)));
 }

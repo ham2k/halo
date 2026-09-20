@@ -165,6 +165,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   bool _rendered = false;
   Map<String, dynamic>? _environment;
   String? _environmentKey;
+  Size _paneSize = Size.zero;
   final _environmentReady = Completer<void>();
   bool _environmentScheduled = false;
 
@@ -449,6 +450,34 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
     }
   }
 
+  /// The panel's stored config, or null when it cannot be read.
+  ///
+  /// Its own report, under `panel:config`: a config read reaching the keychain
+  /// can fail for reasons that have nothing to do with this extension, and
+  /// blaming its panel would point the investigation at the wrong component.
+  Future<Map<String, dynamic>?> _readConfig(PanelDefinition panel) async {
+    try {
+      // Bounded, unlike the hook leg which `invokeHook` already times out.
+      // A config with a secret field reaches the platform keychain, and a
+      // keychain call has no timeout of its own — if it never returns,
+      // `_rendering` never clears, and from then on every tick is DROPPED
+      // and every event coalesced into a render that will never run. The
+      // pane would sit on its last document, with no error and so no Retry,
+      // and nothing anywhere would say why.
+      final config = await widget.panels.configFor(panel).timeout(const Duration(seconds: 5));
+      ErrorReportingService.recordSuccess('panel:config:${panel.id}');
+      return config;
+    } catch (e, stack) {
+      // The console line is this catch's own: a failure the policy keeps
+      // quiet never reaches the streak's report, and nothing else prints
+      // for this leg.
+      debugPrint('[panels] config for ${panel.id} failed: $e');
+      ErrorReportingService.reportIfRepeated(
+        'panel:config:${panel.id}', e, stack, context: 'panel:config:${panel.id}', threshold: 1);
+      return null;
+    }
+  }
+
   Future<void> _render(String reason) async {
     // A throttled refresh can become due after the panel was hidden.
     if (reason != 'initial' && !_awake) {
@@ -472,30 +501,15 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       await _environmentReady.future;
       if (!mounted) return;
       final ctx = widget.renderContext;
-      // Read OUTSIDE the render's own try: a config read reaching the
-      // keychain can fail for reasons that have nothing to do with this
-      // extension, and blaming its panel would point the investigation at
-      // the wrong component. An unreadable config renders as an empty one.
-      Map<String, dynamic> config;
-      try {
-        // Bounded, unlike the render leg which `invokeHook` already times out.
-        // A config with a secret field reaches the platform keychain, and a
-        // keychain call has no timeout of its own — if it never returns,
-        // `_rendering` never clears, and from then on every tick is DROPPED
-        // and every event coalesced into a render that will never run. The
-        // pane would sit on its last document, with no error and so no Retry,
-        // and nothing anywhere would say why.
-        config = await widget.panels.configFor(panel).timeout(const Duration(seconds: 5));
-        ErrorReportingService.recordSuccess('panel:config:${panel.id}');
-      } catch (e, stack) {
-        // The console line is this catch's own: a failure the policy keeps
-        // quiet never reaches the streak's report, and nothing else prints
-        // for this leg.
-        debugPrint('[panels] config for ${panel.id} failed: $e');
-        ErrorReportingService.reportIfRepeated(
-          'panel:config:${panel.id}', e, stack, context: 'panel:config:${panel.id}', threshold: 1);
-        config = const {};
+      if (_content != null && _content!.kind != 'svgScene') {
+        // Not watched from `build`, so resolved here. The key is dropped with
+        // it: a pane that turns into a scene must see its first capture as a
+        // change rather than match a key from before it stopped watching.
+        _environment = panelEnvironment(context, _paneSize);
+        _environmentKey = null;
       }
+      // An unreadable config renders as an empty one ([_readConfig]).
+      final config = await _readConfig(panel) ?? const <String, dynamic>{};
       final operation = ctx.operation;
       final renderedEnvironment = _environmentKey;
       final result = await widget.panels.render(panel, {
@@ -631,10 +645,17 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
         mounted &&
         generation == _sceneGeneration &&
         panel.id == widget.panel.id;
+    // Refused, NOT run against an empty config the way a render is: a config
+    // is where a panel keeps which radio it commands, and an action aimed by
+    // defaults is a plausible wrong answer. The failure is the config read's
+    // and is already reported as one, so it is kept out of the panel's streak.
+    var configUnreadable = false;
     try {
-      final config = await widget.panels
-          .configFor(panel)
-          .timeout(const Duration(seconds: 5));
+      final config = await _readConfig(panel);
+      if (config == null) {
+        configUnreadable = true;
+        throw StateError('Panel config unavailable');
+      }
       if (!current()) throw StateError('Panel replaced');
       final result = await widget.panels.event(panel, {
         if (ctx.operation != null)
@@ -652,7 +673,7 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
       ErrorReportingService.recordSuccess('panel:event:${panel.id}');
       return values;
     } catch (error, stack) {
-      if (current()) {
+      if (current() && !configUnreadable) {
         ErrorReportingService.reportIfRepeated(
           'panel:event:${panel.id}',
           error,
@@ -675,7 +696,15 @@ class _ExtensionPanelState extends State<ExtensionPanel> with WidgetsBindingObse
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          _captureEnvironment(panelEnvironment(context, constraints.biggest));
+          _paneSize = constraints.biggest;
+          // Watched only for a scene, or for a pane that has not yet said what
+          // it is. Resolving the environment is a few dozen theme lookups and a
+          // `jsonEncode` to compare against, on every layout pass of a splitter
+          // drag — and markdown and HTML never act on a change. They are handed
+          // a fresh one when they render ([_render]).
+          if (_content == null || _content!.kind == 'svgScene') {
+            _captureEnvironment(panelEnvironment(context, _paneSize));
+          }
           return PanelContentView(
             key: ValueKey('${widget.panel.id}:$_sceneGeneration'),
             content: _content,
