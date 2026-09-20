@@ -46,9 +46,12 @@ void main() {
   late KeyboardAccessoryController keyboardAccessory;
   late _FakeVfoStore tunedRadio;
   /// The two groups almost every construction below passes as-is: the log
-  /// under test, and a radio already tuned to a band.
-  late LogHooks log;
-  late RadioHookup radio;
+  /// under test, and a radio already tuned to a band. Built on each call
+  /// rather than once in `setUp`, because a test may replace `operation` (or
+  /// the store) in its own body before building the panel, and a group held
+  /// from `setUp` would hand it the operation it replaced.
+  LogHooks baseLog() => LogHooks(operation: operation, qsosRepository: qsos);
+  RadioHookup baseRadio() => RadioHookup(radioService: tunedRadio);
 
   setUp(() async {
     db = HaLoDatabase(NativeDatabase.memory());
@@ -61,8 +64,6 @@ void main() {
     // unset mode is one of the things that pops the Radio control open on
     // mount (see `RadioControlModel.vfoIsUnset`), which would steal focus in every test here.
     tunedRadio = _FakeVfoStore()..setVfo('vfoA', freq: 14285, mode: 'SSB');
-    log = LogHooks(operation: operation, qsosRepository: qsos);
-    radio = RadioHookup(radioService: tunedRadio);
   });
 
   tearDown(() async {
@@ -83,139 +84,54 @@ void main() {
         },
       );
 
+  /// The panel under test, wired with the same nine groups the app wires it
+  /// with — a test names the group it varies and nothing else. [log] and
+  /// [radio] default to the fixtures every test shares; a radio passed
+  /// without its own [RadioHookup.radioUpdates] gets the store as its
+  /// listenable, the way the app passes one object as both.
   Widget host({
-    List<Qso> existing = const [],
-    CommandInterpreter? interpretCommand,
-    Future<Map<String, dynamic>> Function(Map<String, dynamic>, Map<String, dynamic>)? decorateQsoBeforeSave,
-    Stream<Map<String, dynamic>>? interpretationUpdates,
-    void Function(String? message)? onCommandMessageChanged,
-    CommandActionHandler? onCommandAction,
-    CallInfoChanged? onCallInfoChanged,
-    QsoDraftChanged? onQsoChanged,
-    PeerDraftChanged? onPeerDraftChanged,
-    VfoStore? radioService,
-    Qso? editingQso,
-    VoidCallback? onEditCanceled,
-    bool Function()? onNavigateToQsoList,
-    Map<String, dynamic>? suggestedQso,
-    bool suggestedQsoIsTentative = false,
-    int suggestionSettledSerial = 0,
-    VoidCallback? onCallEdited,
-    SuggestSpotSources? suggestSpotSources,
-    SendSpot? sendSpot,
-    bool showStateField = false,
-    bool showGridField = false,
-    String defaultOperatorCall = '',
-    String defaultPosition = '',
-    bool showPositionField = false,
-    bool showNumbersRow = false,
-    bool showExtraInNumbersRow = true,
-    bool vibrateNumbersRow = true,
-    bool leftieMode = false,
-    List<String>? enabledBands,
-    List<String>? enabledModes,
-    bool hasConfiguredRadio = false,
-    bool radioConnected = false,
-    VoidCallback? onOpenStationConfig,
-    String? radioName,
-    void Function(Qso qso)? enqueueLookup,
-    void Function(Iterable<Qso> qsos)? enqueueAllLookups,
+    LogHooks? log,
+    LoggingSession? session,
+    RadioHookup? radio,
+    LookupHooks? lookups,
+    ActivityHooks? activities,
+    CommandHooks? commands,
+    ControlStripSettings? strip,
+    SpottingHooks? spotting,
+    LoggingPreferences? prefs,
     Widget? trailing,
-    VoidCallback? onCallInfoTap,
-    QsosRepository? qsosRepository,
-    void Function(Object error, StackTrace stackTrace)? onWriteError,
-    int? ourItuRegion,
-    String? ourCountryCode,
-    String defaultReportCW = '',
-    bool switchSentRcvd = false,
-    bool jumpAfterRST = false,
     ThemeData? appTheme,
-    ({int serial, Map<String, dynamic> qso})? logRequest,
-    Future<bool> Function({required bool editing})? confirmLogOverwrite,
-    List<String> controlOrder = const [],
-    Set<String> hiddenControlKeys = const {},
-    bool trackingPower = false,
   }) {
-    final resolvedRadio = radioService ?? tunedRadio;
+    // A radio already tuned to a band, because that is the ordinary state of
+    // a station on the air — and because logging refuses a contact carrying
+    // neither band nor frequency, so a test that logs anything needs one. A
+    // [radio] that names no store of its own still gets this one, so a test
+    // varying the rig's status does not silently lose its VFO; tests about
+    // the untuned, fresh-install state pass `fakeRadio` (or their own store).
+    final resolvedRadio = radio ?? baseRadio();
+    final store = resolvedRadio.radioService ?? tunedRadio;
     final controls = LoggingControls(
-      log: LogHooks(
-        operation: operation,
-        qsosRepository: qsosRepository ?? qsos,
-        onWriteError: onWriteError,
-        qsos: existing,
-        decorateQsoBeforeSave: decorateQsoBeforeSave,
+      log: log ?? baseLog(),
+      session: session ?? const LoggingSession(),
+      // The app passes the same object twice — RadioService is both the store
+      // and the Listenable. See RadioHookup.radioUpdates.
+      radio: resolvedRadio.copyWith(
+        radioService: store,
+        radioUpdates: resolvedRadio.radioUpdates ?? (store is Listenable ? store as Listenable : null),
       ),
-      session: LoggingSession(
-        onQsoChanged: onQsoChanged,
-        onPeerDraftChanged: onPeerDraftChanged,
-        editingQso: editingQso,
-        onEditCanceled: onEditCanceled,
-        onNavigateToQsoList: onNavigateToQsoList,
-        suggestedQso: suggestedQso,
-        suggestedQsoIsTentative: suggestedQsoIsTentative,
-        suggestionSettledSerial: suggestionSettledSerial,
-        onCallEdited: onCallEdited,
-        logRequest: logRequest,
-        confirmLogOverwrite: confirmLogOverwrite,
+      // The dupe notice is a pill in the info area keyed `duplicate`; map it
+      // to DUPE so the dupe-detection tests can assert on the text. The
+      // caller's own label wins, and has to be checked for here: a copyWith
+      // keeps what it has only for an argument that is null, and this one
+      // never is.
+      lookups: (lookups ?? const LookupHooks()).copyWith(
+        scoreNoticeLabel: lookups?.scoreNoticeLabel ?? (key) => key == 'duplicate' ? 'DUPE' : key,
       ),
-      radio: RadioHookup(
-        // Defaults to a radio already tuned to a band, because that is the
-        // ordinary state of a station on the air — and because logging refuses
-        // a contact carrying neither band nor frequency, so a test that logs
-        // anything needs one. Tests about the untuned, fresh-install state
-        // pass `fakeRadio` (or their own store) explicitly.
-        radioService: resolvedRadio,
-        // The app passes the same object twice — RadioService is both the
-        // store and the Listenable. See RadioHookup.radioUpdates.
-        radioUpdates: resolvedRadio is Listenable ? resolvedRadio as Listenable : null,
-        enabledBands: enabledBands,
-        enabledModes: enabledModes,
-        hasConfiguredRadio: hasConfiguredRadio,
-        radioConnected: radioConnected,
-        onOpenStationConfig: onOpenStationConfig,
-        radioName: radioName,
-        ourItuRegion: ourItuRegion,
-        ourCountryCode: ourCountryCode,
-        trackingPower: trackingPower,
-      ),
-      lookups: LookupHooks(
-        enqueueLookup: enqueueLookup,
-        enqueueAllLookups: enqueueAllLookups,
-        onCallInfoChanged: onCallInfoChanged,
-        onCallInfoTap: onCallInfoTap,
-        // The dupe notice is a pill in the info area keyed `duplicate`; map
-        // it to DUPE so the dupe-detection tests can assert on the text.
-        scoreNoticeLabel: (key) => key == 'duplicate' ? 'DUPE' : key,
-      ),
-      commands: CommandHooks(
-        interpretCommand: interpretCommand,
-        interpretationUpdates: interpretationUpdates,
-        onCommandMessageChanged: onCommandMessageChanged,
-        onCommandAction: onCommandAction,
-      ),
-      strip: ControlStripSettings(
-        controlOrder: controlOrder,
-        hiddenControlKeys: hiddenControlKeys,
-      ),
-      spotting: SpottingHooks(
-        suggestSpotSources: suggestSpotSources,
-        sendSpot: sendSpot,
-      ),
-      prefs: LoggingPreferences(
-        keyboardAccessory: keyboardAccessory,
-        showStateField: showStateField,
-        showGridField: showGridField,
-        defaultOperatorCall: defaultOperatorCall,
-        defaultPosition: defaultPosition,
-        showPositionField: showPositionField,
-        defaultReportCW: defaultReportCW,
-        switchSentRcvd: switchSentRcvd,
-        jumpAfterRST: jumpAfterRST,
-        showNumbersRow: showNumbersRow,
-        showExtraInNumbersRow: showExtraInNumbersRow,
-        vibrateNumbersRow: vibrateNumbersRow,
-        leftieMode: leftieMode,
-      ),
+      activities: activities ?? const ActivityHooks(),
+      commands: commands ?? const CommandHooks(),
+      strip: strip ?? const ControlStripSettings(),
+      spotting: spotting ?? const SpottingHooks(),
+      prefs: (prefs ?? const LoggingPreferences()).copyWith(keyboardAccessory: keyboardAccessory),
     );
     return MaterialApp(
       theme: appTheme,
@@ -398,7 +314,7 @@ void main() {
   });
 
   testWidgets('leftieMode renders the submit button and wipe button on the left of the main logging fields', (tester) async {
-    await tester.pumpWidget(host(leftieMode: false));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(leftieMode: false)));
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
 
@@ -408,7 +324,7 @@ void main() {
     expect(logBtnXRight, greaterThan(callFieldXRight));
     expect(wipeBtnXRight, greaterThan(callFieldXRight));
 
-    await tester.pumpWidget(host(leftieMode: true));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(leftieMode: true)));
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
 
@@ -434,9 +350,11 @@ void main() {
 
     var opened = false;
     await tester.pumpWidget(host(
-      hasConfiguredRadio: true,
-      radioName: 'Icom IC-705',
-      onOpenStationConfig: () => opened = true,
+      radio: baseRadio(
+        ).copyWith(hasConfiguredRadio: true,
+        radioName: 'Icom IC-705',
+        onOpenStationConfig: () => opened = true,
+      ),
     ));
     expect(find.text('Icom IC-705'), findsOneWidget);
     await tester.tap(find.text('Icom IC-705'));
@@ -445,9 +363,11 @@ void main() {
 
   testWidgets('a long radio name is capped at 3x the icon width and ellipsized, not wrapped', (tester) async {
     await tester.pumpWidget(host(
-      hasConfiguredRadio: true,
-      radioName: 'A Radio With A Genuinely Absurd Amount Of Name',
-      onOpenStationConfig: () {},
+      radio: baseRadio(
+        ).copyWith(hasConfiguredRadio: true,
+        radioName: 'A Radio With A Genuinely Absurd Amount Of Name',
+        onOpenStationConfig: () {},
+      ),
     ));
     await openControl(tester, MdiIcons.cat);
 
@@ -478,7 +398,7 @@ void main() {
     // — and _stepSecondaryField's `next = -1 + 1 = 0` would jump BACKWARD
     // to Band instead of leaving the control the way Tab is meant to once
     // its own fields are exhausted.
-    await tester.pumpWidget(host(hasConfiguredRadio: true, onOpenStationConfig: () {}));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(hasConfiguredRadio: true, onOpenStationConfig: () {})));
     await openControl(tester, MdiIcons.cat);
 
     final inkWell = tester.widget<InkWell>(find.byKey(const ValueKey('stationConfigButton')));
@@ -500,7 +420,10 @@ void main() {
     // barely there. The button still opens the dialog (that's where an
     // operator with nothing configured yet would go to add one).
     var opened = false;
-    await tester.pumpWidget(host(appTheme: theme, onOpenStationConfig: () => opened = true));
+    await tester.pumpWidget(host(
+      appTheme: theme,
+      radio: baseRadio().copyWith(onOpenStationConfig: () => opened = true),
+    ));
     await openControl(tester, MdiIcons.radio);
     expect(stationConfigButtonColor(tester), Color.lerp(theme.colorScheme.tertiary, Colors.white, 0.4));
     await tester.tap(find.byKey(const ValueKey('stationConfigButton')));
@@ -510,12 +433,18 @@ void main() {
     // but not connected now reads red — lighter than the scheme's own error
     // color, which reads under 3:1 against this row's dark amber `tertiary`
     // fill (the accent color, not a pastel container).
-    await tester.pumpWidget(host(appTheme: theme, hasConfiguredRadio: true, onOpenStationConfig: () {}));
+    await tester.pumpWidget(host(
+      appTheme: theme,
+      radio: baseRadio().copyWith(hasConfiguredRadio: true, onOpenStationConfig: () {}),
+    ));
     expect(stationConfigButtonColor(tester), const Color(0xFFFF8A80));
 
     // Connected — a lighter green than _noticePill's, same contrast reasoning.
     await tester.pumpWidget(
-        host(appTheme: theme, hasConfiguredRadio: true, radioConnected: true, onOpenStationConfig: () {}));
+        host(
+          appTheme: theme,
+          radio: baseRadio().copyWith(hasConfiguredRadio: true, radioConnected: true, onOpenStationConfig: () {}),
+        ));
     expect(stationConfigButtonColor(tester), const Color(0xFF81C784));
   });
 
@@ -530,7 +459,10 @@ void main() {
 
   testWidgets('the Radio pill icon color flips between selected and unselected: light mode', (tester) async {
     final theme = ThemeData(useMaterial3: true);
-    await tester.pumpWidget(host(appTheme: theme, hasConfiguredRadio: true, onOpenStationConfig: () {}));
+    await tester.pumpWidget(host(
+      appTheme: theme,
+      radio: baseRadio().copyWith(hasConfiguredRadio: true, onOpenStationConfig: () {}),
+    ));
     expect(pillIconColor(tester), const Color(0xFFB71C1C)); // unselected: on the bright tan fill
     await openControl(tester, MdiIcons.cat);
     expect(pillIconColor(tester), const Color(0xFFFF8A80)); // selected: on the dark tertiary fill
@@ -538,7 +470,10 @@ void main() {
 
   testWidgets('the Radio pill icon color flips between selected and unselected: dark mode', (tester) async {
     final theme = ThemeData(useMaterial3: true, brightness: Brightness.dark);
-    await tester.pumpWidget(host(appTheme: theme, hasConfiguredRadio: true, onOpenStationConfig: () {}));
+    await tester.pumpWidget(host(
+      appTheme: theme,
+      radio: baseRadio().copyWith(hasConfiguredRadio: true, onOpenStationConfig: () {}),
+    ));
     expect(pillIconColor(tester), const Color(0xFFFF8A80)); // unselected: on the near-black fill
     await openControl(tester, MdiIcons.cat);
     // A LITERAL, deliberately, where the sibling states could each name a
@@ -552,7 +487,10 @@ void main() {
   testWidgets('a connected radio is its own color in dark mode, not the shared positiveGreen', (tester) async {
     final theme = ThemeData(useMaterial3: true, brightness: Brightness.dark);
     await tester.pumpWidget(
-        host(appTheme: theme, hasConfiguredRadio: true, radioConnected: true, onOpenStationConfig: () {}));
+        host(
+          appTheme: theme,
+          radio: baseRadio().copyWith(hasConfiguredRadio: true, radioConnected: true, onOpenStationConfig: () {}),
+        ));
     await openControl(tester, MdiIcons.cat);
     // The cell an operator actually sits in — rig connected, Radio control
     // open — and the one that reaches for a SHARED constant most naturally.
@@ -570,10 +508,8 @@ void main() {
           'mode': 'SSB',
         })))!;
     await tester.pumpWidget(host(
-      hasConfiguredRadio: true,
-      radioConnected: true,
-      onOpenStationConfig: () {},
-      editingQso: existingQso,
+      session: LoggingSession(editingQso: existingQso),
+      radio: baseRadio().copyWith(hasConfiguredRadio: true, radioConnected: true, onOpenStationConfig: () {}),
     ));
     await openControl(tester, MdiIcons.cat);
 
@@ -854,7 +790,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         raiseKeyboard(tester);
-        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: true)));
         // Focus is explicit: mobile without a hardware keyboard starts with
         // no field focused, and the row needs "a field has focus" to show.
         await tester.tap(find.widgetWithText(TextField, 'Their call'));
@@ -876,7 +812,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         raiseKeyboard(tester);
-        await tester.pumpWidget(host(showNumbersRow: false));
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: false)));
         await tester.pump();
         expect(find.byType(NumberKeys), findsNothing);
       } finally {
@@ -888,7 +824,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         // No raiseKeyboard — the keyboard is down.
-        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: true)));
         await tester.pump();
         expect(find.byType(NumberKeys), findsNothing);
       } finally {
@@ -903,7 +839,7 @@ void main() {
         // attached — that bumps viewInsets, but it isn't a virtual keyboard,
         // so the numbers row (redundant with physical number keys) stays away.
         raiseKeyboard(tester, logicalHeight: 50);
-        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: true)));
         await tester.pump();
         expect(find.byType(NumberKeys), findsNothing);
       } finally {
@@ -915,7 +851,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
       try {
         raiseKeyboard(tester);
-        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: true)));
         await tester.pump();
         expect(find.byType(NumberKeys), findsNothing);
       } finally {
@@ -927,7 +863,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         raiseKeyboard(tester);
-        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: true)));
         await tester.tap(find.widgetWithText(TextField, 'Their call')); // mobile starts unfocused
         await pumpRow(tester);
 
@@ -947,7 +883,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         raiseKeyboard(tester);
-        await tester.pumpWidget(host(showNumbersRow: true));
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: true)));
 
         // A partial callsign in the (focused) call field → "/".
         await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -975,7 +911,7 @@ void main() {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
         raiseKeyboard(tester);
-        await tester.pumpWidget(host(showNumbersRow: true, showExtraInNumbersRow: false));
+        await tester.pumpWidget(host(prefs: LoggingPreferences(showNumbersRow: true, showExtraInNumbersRow: false)));
         await tester.tap(find.widgetWithText(TextField, 'Their call')); // mobile starts unfocused
         await pumpRow(tester);
         expect(find.byType(NumberKeys), findsOneWidget);
@@ -1024,8 +960,7 @@ void main() {
   testWidgets('a failed insert keeps the typed call, says so in the panel, and reports the error', (tester) async {
     final errors = <Object>[];
     await tester.pumpWidget(host(
-      qsosRepository: _FailingQsosRepository(db),
-      onWriteError: (e, _) => errors.add(e),
+      log: baseLog().copyWith(qsosRepository: _FailingQsosRepository(db), onWriteError: (e, _) => errors.add(e)),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -1041,7 +976,9 @@ void main() {
   });
 
   testWidgets('a mid-list insert failure keeps only the unlogged calls, so a retry cannot duplicate', (tester) async {
-    await tester.pumpWidget(host(qsosRepository: _FailingQsosRepository(db, addsBeforeFailure: 1)));
+    await tester.pumpWidget(host(
+      log: baseLog().copyWith(qsosRepository: _FailingQsosRepository(db, addsBeforeFailure: 1)),
+    ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC,N2XYZ');
     await tester.pump();
@@ -1210,7 +1147,7 @@ void main() {
           'freq': 7100,
           'mode': 'SSB',
         })))!;
-    await tester.pumpWidget(host(editingQso: existingQso));
+    await tester.pumpWidget(host(session: LoggingSession(editingQso: existingQso)));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW, K1ABC');
     await tester.pump();
@@ -1247,8 +1184,8 @@ void main() {
 
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(body: LoggingControls(
-        log: log,
-        radio: radio,
+        log: baseLog(),
+        radio: baseRadio(),
         lookups: LookupHooks(
           lookup: lookup,
         ),
@@ -1282,11 +1219,11 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              log: log,
+              log: baseLog(),
               session: LoggingSession(
                 editingQso: editingQso,
               ),
-              radio: radio,
+              radio: baseRadio(),
               lookups: LookupHooks(
                 lookup: guessLookup({'name': 'Hiram'}),
                 workedBefore: workedBefore,
@@ -1373,8 +1310,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               operationStatsLines: (_) => ['12 QSOs in 1h 5m', '48 Q/h for last 10'],
             ),
@@ -1391,8 +1328,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: guessLookup({'flag': '🇮🇹', 'name': 'Marco', 'entityPrefix': 'I', 'country': 'Italy'}),
               callLocationLine: (guess) => '5,000 mi to • ${guess['country']}',
@@ -1423,8 +1360,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               callLocationLine: (guess) => '${guess['grid']} is 42 km away',
               operationStatsLines: (_) => ['stats-line'],
@@ -1462,8 +1399,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
                 'guess': {'grid': 'FN31pr', 'lat': 41.7135, 'lon': -72.7278},
@@ -1493,8 +1430,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: (call, {required qso, required operation, required online, recentContext = false}) async => {
                 'guess': {'grid': 'FN31pr'},
@@ -1521,8 +1458,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               callLocationLine: (guess) => null,
               operationStatsLines: (_) => ['stats-line'],
@@ -1551,7 +1488,7 @@ void main() {
               operation: running(['arrl-vhf-tests']),
               qsosRepository: qsos,
             ),
-            radio: radio,
+            radio: baseRadio(),
             lookups: LookupHooks(
               callLocationLine: (guess) => '${guess['grid']} is 42 km away',
               operationStatsLines: (_) => ['stats-line'],
@@ -1580,8 +1517,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: guessLookup({'name': 'Marco', 'note': 'Old friend, always on 20m'}),
             ),
@@ -1604,8 +1541,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               onOpenLink: opened.add,
               lookup: guessLookup({'note': 'QSL via [the club](https://example.org/qsl)'}),
@@ -1649,8 +1586,8 @@ void main() {
               // the note never changes.
               child: LoggingControls(
                 key: ValueKey(note),
-                log: log,
-                radio: radio,
+                log: baseLog(),
+                radio: baseRadio(),
                 lookups: LookupHooks(
                   lookup: guessLookup({'note': note}),
                   scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
@@ -1698,8 +1635,8 @@ void main() {
         home: Scaffold(
           body: LoggingControls(
             key: const ValueKey('flag-note'),
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: guessLookup({'note': 'from 🇺🇸 with **love**'}),
               scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
@@ -1724,8 +1661,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: guessLookup({'name': 'Marco'}),
               scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
@@ -1750,8 +1687,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
                   {'notices': <String>[], 'alerts': ['duplicate']},
@@ -1775,8 +1712,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
                 scored.add(((qso['their'] as Map)['call']) as String);
@@ -1808,8 +1745,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: guessLookup({'state': 'CT'}),
               scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
@@ -1837,8 +1774,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
                 scoredStates.add(((qso['their'] as Map)['state']) as String?);
@@ -1881,8 +1818,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           lookups: LookupHooks(
             lookup: lookup,
             enqueueLookup: enqueued.add,
@@ -1924,11 +1861,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
+          log: baseLog(),
           session: LoggingSession(
             editingQso: existingQso,
           ),
-          radio: radio,
+          radio: baseRadio(),
           lookups: LookupHooks(
             enqueueLookup: enqueued.add,
           ),
@@ -1968,7 +1905,10 @@ void main() {
         })))!;
 
     final enqueued = <Qso>[];
-    await tester.pumpWidget(host(editingQso: existingQso, enqueueLookup: enqueued.add));
+    await tester.pumpWidget(host(
+      session: LoggingSession(editingQso: existingQso),
+      lookups: LookupHooks(enqueueLookup: enqueued.add),
+    ));
 
     // enqueueLookup itself decides (via LookupQueueService, tested
     // separately) whether the record actually needs a fresh lookup —
@@ -1986,12 +1926,18 @@ void main() {
         })))!;
 
     final enqueued = <Qso>[];
-    await tester.pumpWidget(host(editingQso: first, enqueueLookup: enqueued.add));
+    await tester.pumpWidget(host(
+      session: LoggingSession(editingQso: first),
+      lookups: LookupHooks(enqueueLookup: enqueued.add),
+    ));
     expect(enqueued.map((q) => q.uuid).toList(), [first.uuid]);
 
     // Same widget, editingQso transitions via didUpdateWidget — not a fresh
     // construction, the other code path that also has to enqueue.
-    await tester.pumpWidget(host(editingQso: second, enqueueLookup: enqueued.add));
+    await tester.pumpWidget(host(
+      session: LoggingSession(editingQso: second),
+      lookups: LookupHooks(enqueueLookup: enqueued.add),
+    ));
     expect(enqueued.map((q) => q.uuid).toList(), [first.uuid, second.uuid]);
   });
 
@@ -2010,8 +1956,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           lookups: LookupHooks(
             lookup: lookup,
             enqueueLookup: enqueued.add,
@@ -2060,9 +2006,11 @@ void main() {
     final enqueuedSingly = <Qso>[];
     final enqueuedBatches = <List<Qso>>[];
     await tester.pumpWidget(host(
-      interpretCommand: interpret,
-      enqueueLookup: enqueuedSingly.add,
-      enqueueAllLookups: (qsos) => enqueuedBatches.add(qsos.toList()),
+      lookups: LookupHooks(
+        enqueueLookup: enqueuedSingly.add,
+        enqueueAllLookups: (qsos) => enqueuedBatches.add(qsos.toList()),
+      ),
+      commands: CommandHooks(interpretCommand: interpret),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'ADDCMD');
@@ -2103,9 +2051,11 @@ void main() {
     final enqueuedSingly = <Qso>[];
     final enqueuedBatches = <List<Qso>>[];
     await tester.pumpWidget(host(
-      interpretCommand: interpret,
-      enqueueLookup: enqueuedSingly.add,
-      enqueueAllLookups: (qsos) => enqueuedBatches.add(qsos.toList()),
+      lookups: LookupHooks(
+        enqueueLookup: enqueuedSingly.add,
+        enqueueAllLookups: (qsos) => enqueuedBatches.add(qsos.toList()),
+      ),
+      commands: CommandHooks(interpretCommand: interpret),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SEED');
@@ -2130,11 +2080,11 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
+          log: baseLog(),
           session: LoggingSession(
             editingQso: existingQso,
           ),
-          radio: radio,
+          radio: baseRadio(),
         ),
       ),
     ));
@@ -2202,7 +2152,7 @@ void main() {
   // who worked a guest at their station, or a record being corrected long
   // after the fact.
   testWidgets('an operator typed into the More pane is logged onto the contact', (tester) async {
-    await tester.pumpWidget(host(defaultOperatorCall: 'N0DEV'));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(defaultOperatorCall: 'N0DEV')));
 
     await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -2225,7 +2175,7 @@ void main() {
   // over). Writing the placeholder through as a value would freeze whoever
   // happened to be at the key onto every record anyone ever opens.
   testWidgets('the More pane records no operator when its field was not touched', (tester) async {
-    await tester.pumpWidget(host(defaultOperatorCall: 'N0DEV'));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(defaultOperatorCall: 'N0DEV')));
 
     await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -2244,7 +2194,7 @@ void main() {
   // same path that would otherwise drop a name set in the pane. Dropped here,
   // the restored contact silently goes back to taking the operation's stamp.
   testWidgets('an operator set in the More pane survives wipe-then-undo', (tester) async {
-    await tester.pumpWidget(host(defaultOperatorCall: 'N0DEV'));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(defaultOperatorCall: 'N0DEV')));
 
     await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -2272,7 +2222,7 @@ void main() {
   });
 
   testWidgets('a position typed into the More pane is logged in its canonical form', (tester) async {
-    await tester.pumpWidget(host(showPositionField: true, defaultPosition: '1'));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(showPositionField: true, defaultPosition: '1')));
 
     await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -2293,8 +2243,7 @@ void main() {
   testWidgets('onCommandMessageChanged does not fire on every keystroke when the message is unchanged', (tester) async {
     final messages = <String?>[];
     await tester.pumpWidget(host(
-      interpretCommand: fakeInterpretCommand,
-      onCommandMessageChanged: messages.add,
+      commands: CommandHooks(interpretCommand: fakeInterpretCommand, onCommandMessageChanged: messages.add),
     ));
 
     // Typing an ordinary callsign never produces a command message: the
@@ -2320,7 +2269,7 @@ void main() {
     }
 
     // Composing a new QSO → isEditing false.
-    await tester.pumpWidget(host(onCallInfoChanged: capture));
+    await tester.pumpWidget(host(lookups: LookupHooks(onCallInfoChanged: capture)));
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump(const Duration(milliseconds: 200));
     expect(infos, isNotEmpty, reason: 'a real callsign produces call-info');
@@ -2334,7 +2283,10 @@ void main() {
           'mode': 'SSB',
         })))!;
     infos.clear();
-    await tester.pumpWidget(host(editingQso: existingQso, onCallInfoChanged: capture));
+    await tester.pumpWidget(host(
+      session: LoggingSession(editingQso: existingQso),
+      lookups: LookupHooks(onCallInfoChanged: capture),
+    ));
     await tester.pump(const Duration(milliseconds: 200));
     expect(infos, isNotEmpty);
     expect(infos.last.isEditing, isTrue, reason: 'editing an existing QSO');
@@ -2346,7 +2298,7 @@ void main() {
     // call-info summary is that a panel can see what is about to be logged —
     // band and mode included.
     final drafts = <Map<String, dynamic>>[];
-    await tester.pumpWidget(host(onQsoChanged: drafts.add));
+    await tester.pumpWidget(host(session: LoggingSession(onQsoChanged: drafts.add)));
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -2364,12 +2316,12 @@ void main() {
     // of the operation view — a spot refresh, a clock tick — would look to
     // every `qso` panel exactly like the operator typing.
     final drafts = <Map<String, dynamic>>[];
-    await tester.pumpWidget(host(onQsoChanged: drafts.add));
+    await tester.pumpWidget(host(session: LoggingSession(onQsoChanged: drafts.add)));
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump(const Duration(milliseconds: 200));
     final settled = drafts.length;
 
-    await tester.pumpWidget(host(onQsoChanged: drafts.add));
+    await tester.pumpWidget(host(session: LoggingSession(onQsoChanged: drafts.add)));
     // Past a second, because the draft must not carry a live clock: an
     // auto-timestamped QSO takes its startAtMillis at save, and a "now" in
     // here would republish on every heartbeat and wake every `qso` panel
@@ -2385,7 +2337,7 @@ void main() {
     // every field beside it, and a panel would show a report the operator
     // has already changed.
     final drafts = <Map<String, dynamic>>[];
-    await tester.pumpWidget(host(onQsoChanged: drafts.add));
+    await tester.pumpWidget(host(session: LoggingSession(onQsoChanged: drafts.add)));
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump(const Duration(milliseconds: 200));
     final before = drafts.length;
@@ -2407,7 +2359,7 @@ void main() {
             qsosRepository: qsos,
             onCallListLogged: () => callListLoggedCount++,
           ),
-          radio: radio,
+          radio: baseRadio(),
         ),
       ),
     ));
@@ -2468,8 +2420,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           lookups: LookupHooks(
             lookup: lookup,
             enqueueLookup: enqueued.add,
@@ -2647,8 +2599,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           lookups: LookupHooks(
             lookup: lookup,
             // The location line is formatted by the app layer (issue #40);
@@ -2702,8 +2654,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           lookups: LookupHooks(
             lookup: lookup,
             callLocationLine: (guess) => guess['location'] as String?,
@@ -2742,8 +2694,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           lookups: LookupHooks(
             scoreQso: ({required operation, required qso, excludeUuid, segments}) async =>
                 {'notices': <String>[], 'alerts': ['duplicate']},
@@ -2811,7 +2763,7 @@ void main() {
                 operation: op,
                 qsosRepository: repo ?? qsos,
               ),
-              radio: radio,
+              radio: baseRadio(),
               activities: ActivityHooks(
                 activityControls: controls,
               ),
@@ -2878,11 +2830,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               editingQso: existing,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: const [exchange],
             ),
@@ -2924,7 +2876,7 @@ void main() {
               session: LoggingSession(
                 editingQso: editing,
               ),
-              radio: radio,
+              radio: baseRadio(),
             ),
           ),
         );
@@ -3038,8 +2990,8 @@ void main() {
       // Every test and tooling path leaves it null; saving must not depend on it.
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
         )),
       ));
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -3072,7 +3024,7 @@ void main() {
             operation: running(['simple-contest']),
             qsosRepository: qsos,
           ),
-          radio: radio,
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -3125,14 +3077,14 @@ void main() {
           },
         ];
 
-    Widget host({Map<String, dynamic> extra = const {}}) => MaterialApp(
+    Widget hostWithExtra({Map<String, dynamic> extra = const {}}) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
               log: LogHooks(
                 operation: running(['qp']),
                 qsosRepository: qsos,
               ),
-              radio: radio,
+              radio: baseRadio(),
               activities: ActivityHooks(
                 activityControls: controlsWith(extra),
               ),
@@ -3141,7 +3093,7 @@ void main() {
         );
 
     testWidgets('is a primary field, so it saves onto the ref like any exchange', (tester) async {
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'CUY');
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -3159,7 +3111,7 @@ void main() {
       // showing. The focus ladder's Arrow Up (main field → pill strip) has to
       // stand aside for it, or the menu becomes unusable from the keyboard on
       // exactly the fields that offer one.
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'AS');
@@ -3178,7 +3130,7 @@ void main() {
     });
 
     testWidgets('suggests matches for what is typed, best first', (tester) async {
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'AS');
@@ -3194,7 +3146,7 @@ void main() {
     testWidgets('Space accepts the top suggestion AND still advances', (tester) async {
       // The advance is what an operator's hands expect on every field; losing
       // it to a searchable one would be worse than never suggesting at all.
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'CU');
@@ -3216,7 +3168,7 @@ void main() {
     });
 
     testWidgets('Space with no match just advances, changing nothing', (tester) async {
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'ZZ');
@@ -3233,7 +3185,7 @@ void main() {
     });
 
     testWidgets('a value outside the set is flagged, because it is a lost multiplier', (tester) async {
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'ZZ');
       await tester.pump();
 
@@ -3258,7 +3210,7 @@ void main() {
     testWidgets('allowFreeform accepts a value the set does not know', (tester) async {
       // Some exchanges are genuinely open-ended; the set is then a shortcut,
       // not a constraint.
-      await tester.pumpWidget(host(extra: const {'allowFreeform': true}));
+      await tester.pumpWidget(hostWithExtra(extra: const {'allowFreeform': true}));
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'ZZ');
       await tester.pump();
 
@@ -3269,7 +3221,7 @@ void main() {
     });
 
     testWidgets('minCharsForSuggestions holds the line back until it is useful', (tester) async {
-      await tester.pumpWidget(host(extra: const {'minCharsForSuggestions': 2}));
+      await tester.pumpWidget(hostWithExtra(extra: const {'minCharsForSuggestions': 2}));
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
 
@@ -3286,7 +3238,7 @@ void main() {
       // An empty query's suggestion list is the whole SET, so accepting the top
       // hit logged whichever option happened to be declared first — for an
       // operator who simply hadn't been given the exchange yet and was moving on.
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
 
@@ -3304,7 +3256,7 @@ void main() {
       // A substring hit is worth SHOWING — it is how you find a county from the
       // middle of its name — but swapping it in replaces what the operator typed
       // with a code their own text isn't a prefix of.
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'SH');
@@ -3326,7 +3278,7 @@ void main() {
       // had focus. As a floating menu they cover that area instead: nothing in
       // the layout moves as the operator types, and the panel keeps saying what
       // it said.
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'County'));
@@ -3396,7 +3348,7 @@ void main() {
     });
 
     testWidgets('tapping a row takes that value, even one Space would not', (tester) async {
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'AS');
@@ -3432,7 +3384,7 @@ void main() {
       // means "not that" — and losing a half-typed contact to a keystroke aimed
       // at a dropdown is not a recoverable mistake. It takes the menu whether or
       // not the highlight was ever touched.
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'County'));
@@ -3466,7 +3418,7 @@ void main() {
     });
 
     testWidgets('Tab takes the offer on the way out, like Space — Shift+Tab does not', (tester) async {
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'CU');
@@ -3502,7 +3454,7 @@ void main() {
       // A highlight the operator walked to is a pending choice. Logging on that
       // Enter would commit a QSO whose exchange they were still picking, and
       // unlike a wrong exchange, a sent QSO can't be undone with another Enter.
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'County'));
@@ -3532,7 +3484,7 @@ void main() {
     });
 
     testWidgets('Enter with the highlight untouched logs, as it does everywhere else', (tester) async {
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'County'));
@@ -3555,7 +3507,7 @@ void main() {
     });
 
     testWidgets('the arrow keys walk the highlight, and Space takes what is highlighted', (tester) async {
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'AS');
@@ -3583,7 +3535,7 @@ void main() {
       // that pushed every primary control and the submit button down 5px. A
       // contest exchange is invalid for most of the keystrokes it takes to type,
       // so it happened on every QSO.
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
 
@@ -3612,7 +3564,7 @@ void main() {
       // prefix guard off the NEXT Space: `SH` matches Ashland and Washington by
       // name substring only, and Space turned the field into `ASD`, a county
       // nobody worked.
-      await tester.pumpWidget(host());
+      await tester.pumpWidget(hostWithExtra());
       await tester.tap(find.widgetWithText(TextField, 'County'));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'County'), 'SH');
@@ -3664,7 +3616,7 @@ void main() {
             session: LoggingSession(
               editingQso: existing,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controlsWith(const {}),
             ),
@@ -3689,7 +3641,7 @@ void main() {
       // one exchange. Every value is checked, and the suggestion line and Space
       // act on the one the cursor is in — accepting a suggestion for the second
       // county must never rewrite the first, which the operator typed.
-      Widget lineHost() => host(extra: const {'multiValue': {'separator': '/'}});
+      Widget lineHost() => hostWithExtra(extra: const {'multiValue': {'separator': '/'}});
 
       testWidgets('both values are checked, not just the last', (tester) async {
         await tester.pumpWidget(lineHost());
@@ -3755,7 +3707,7 @@ void main() {
                 operation: running(['qp']),
                 qsosRepository: qsos,
               ),
-              radio: radio,
+              radio: baseRadio(),
               activities: ActivityHooks(
                 activityControls: [
                   {
@@ -3831,7 +3783,7 @@ void main() {
               operation: running(['c']),
               qsosRepository: qsos,
             ),
-            radio: radio,
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
                   {'guess': <String, dynamic>{}},
@@ -3898,7 +3850,7 @@ void main() {
               operation: running(['c']),
               qsosRepository: qsos,
             ),
-            radio: radio,
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
                   {'guess': <String, dynamic>{}},
@@ -3951,7 +3903,7 @@ void main() {
               operation: running(['c']),
               qsosRepository: qsos,
             ),
-            radio: radio,
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
                   {'guess': <String, dynamic>{}},
@@ -4009,7 +3961,7 @@ void main() {
               session: LoggingSession(
                 editingQso: editing,
               ),
-              radio: radio,
+              radio: baseRadio(),
               activities: ActivityHooks(
                 activityControls: clearingControls,
               ),
@@ -4093,7 +4045,7 @@ void main() {
                 operation: running(['cqwpx']),
                 qsosRepository: repo,
               ),
-              radio: radio,
+              radio: baseRadio(),
               activities: ActivityHooks(
                 activityControls: controls,
               ),
@@ -4165,7 +4117,7 @@ void main() {
               qsosRepository: repo,
               serialNumbers: source,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controls,
             ),
@@ -4196,7 +4148,7 @@ void main() {
               qsosRepository: repo,
               serialNumbers: source,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controls,
             ),
@@ -4235,7 +4187,7 @@ void main() {
               qsosRepository: repo,
               serialNumbers: source,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controls,
             ),
@@ -4263,7 +4215,7 @@ void main() {
               qsosRepository: repo,
               serialNumbers: source,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controls,
             ),
@@ -4289,7 +4241,7 @@ void main() {
               qsosRepository: repo,
               serialNumbers: source,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controls,
             ),
@@ -4425,7 +4377,7 @@ void main() {
             session: LoggingSession(
               editingQso: first,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controls,
             ),
@@ -4472,7 +4424,7 @@ void main() {
             session: LoggingSession(
               editingQso: plain,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controls,
             ),
@@ -4541,7 +4493,7 @@ void main() {
             session: LoggingSession(
               editingQso: qso,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: both,
             ),
@@ -4577,7 +4529,7 @@ void main() {
                   operation: running(['cqwpx']),
                   qsosRepository: repo,
                 ),
-                radio: radio,
+                radio: baseRadio(),
                 activities: ActivityHooks(
                   activityControls: active,
                 ),
@@ -4605,7 +4557,7 @@ void main() {
               operation: running(['cqwpx']),
               qsosRepository: qsos,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controls,
             ),
@@ -4642,7 +4594,7 @@ void main() {
           operation: running(['c']),
           qsosRepository: qsos,
         ),
-        radio: radio,
+        radio: baseRadio(),
         activities: ActivityHooks(
           activityControls: controls,
         ),
@@ -4702,7 +4654,7 @@ void main() {
           session: LoggingSession(
             editingQso: existing,
           ),
-          radio: radio,
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -4750,7 +4702,7 @@ void main() {
             operation: running(['simple-contest']),
             qsosRepository: qsos,
           ),
-          radio: radio,
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -4787,8 +4739,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -4834,8 +4786,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -4887,8 +4839,8 @@ void main() {
     Widget hostWithPota() => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              log: log,
-              radio: radio,
+              log: baseLog(),
+              radio: baseRadio(),
               activities: ActivityHooks(
                 activityControls: const [potaControl],
               ),
@@ -5017,8 +4969,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controls,
             ),
@@ -5084,8 +5036,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -5135,8 +5087,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -5175,8 +5127,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -5261,7 +5213,7 @@ void main() {
             operation: running(['cqwpx']),
             qsosRepository: qsos,
           ),
-          radio: radio,
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -5317,7 +5269,7 @@ void main() {
             operation: running(['c']),
             qsosRepository: qsos,
           ),
-          radio: radio,
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -5381,7 +5333,7 @@ void main() {
             operation: running(['qp']),
             qsosRepository: qsos,
           ),
-          radio: radio,
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -5432,7 +5384,7 @@ void main() {
             operation: running(['cqwpx']),
             qsosRepository: qsos,
           ),
-          radio: radio,
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -5498,7 +5450,7 @@ void main() {
       return null;
     }
 
-    await tester.pumpWidget(host(interpretCommand: fakeReloadPrefix));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeReloadPrefix)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
@@ -5647,8 +5599,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             prefs: LoggingPreferences(
               showRSTFields: false,
             ),
@@ -5717,7 +5669,7 @@ void main() {
         tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     testWidgets('a second hardware space removes both and advances', (tester) async {
-      await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: reloadPrefix)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
       await tester.pump(const Duration(milliseconds: 200)); // debounced interpret() switches modes
@@ -5739,7 +5691,7 @@ void main() {
       // The path that actually matters on a phone: there IS no hardware Space
       // there, and the command modes used to drop the interceptor entirely, so
       // the field had no keyboard exit at all.
-      await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: reloadPrefix)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
       await tester.pump(const Duration(milliseconds: 200));
@@ -5768,7 +5720,7 @@ void main() {
       // tearDown.
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       try {
-        await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+        await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: reloadPrefix)));
 
         await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
         await tester.pump(const Duration(milliseconds: 200));
@@ -5811,7 +5763,7 @@ void main() {
       // The gate's reason for existing: the shape is generic enough that
       // another platform's IME could produce it, and there swallowing it would
       // silently eat a period the operator typed.
-      await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: reloadPrefix)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
       await tester.pump(const Duration(milliseconds: 200));
@@ -5847,7 +5799,7 @@ void main() {
         return null;
       }
 
-      await tester.pumpWidget(host(interpretCommand: completeAfterParam));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: completeAfterParam)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
       await tester.pump(const Duration(milliseconds: 200));
@@ -5871,7 +5823,7 @@ void main() {
       // claimed. A period typed by hand never follows a trailing space (it
       // lands after it, "RELOAD ." not "RELOAD. "), so it can't be mistaken
       // for the shortcut.
-      await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: reloadPrefix)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
       await tester.pump(const Duration(milliseconds: 200));
@@ -5885,7 +5837,7 @@ void main() {
     });
 
     testWidgets('a space in the MIDDLE of the parameter is still literal', (tester) async {
-      await tester.pumpWidget(host(interpretCommand: reloadPrefix));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: reloadPrefix)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
       await tester.pump(const Duration(milliseconds: 200));
@@ -5920,7 +5872,7 @@ void main() {
             operation: running(['c']),
             qsosRepository: qsos,
           ),
-          radio: radio,
+          radio: baseRadio(),
           activities: ActivityHooks(
             activityControls: controls,
           ),
@@ -5954,7 +5906,7 @@ void main() {
     // Freq is intentionally NOT covered here: it uses a numeric keyboard
     // (numberWithOptions), which has no space bar, so a soft-keyboard space
     // can't occur in it on a device — the interceptor there is only defensive.
-    await tester.pumpWidget(host(showStateField: true, showGridField: true));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(showStateField: true, showGridField: true)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -6009,7 +5961,7 @@ void main() {
     // Callsigns, RSTs, grids, states, frequencies are codes, not prose — the
     // soft keyboard must not autocorrect / spell-check / predict / smart-
     // punctuate them. (autocorrect:false also disables iOS spell check.)
-    await tester.pumpWidget(host(showStateField: true, showGridField: true));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(showStateField: true, showGridField: true)));
     await openControl(tester, MdiIcons.radio); // reveal the Frequency field
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
@@ -6070,7 +6022,7 @@ void main() {
   });
 
   testWidgets('call-field commands: frequency, band, and mode via space', (tester) async {
-    await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeInterpretCommand)));
     // Commands apply their changes without forcing the Radio control open
     // (see the dedicated test for that); open it manually here so the
     // assertions below can read its fields.
@@ -6198,7 +6150,7 @@ void main() {
       // opening the control and leaving it would swallow the reading and push
       // 60m back at the rig — no keystroke involved.
       final seeded = _FakeVfoStore()..setVfo('vfoA', freq: 60, mode: 'SSB');
-      await tester.pumpWidget(host(radioService: seeded));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: seeded)));
       await openControl(tester, MdiIcons.radio);
 
       expect(field(tester, 'Frequency').controller!.text, '60', reason: 'the seed must reach the field');
@@ -6228,7 +6180,7 @@ void main() {
 
   testWidgets('HALO-32: a frequency command with no mode of its own guesses one from the band plan',
       (tester) async {
-    await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeInterpretCommand)));
     await openControl(tester, MdiIcons.radio);
 
     // The fake frequency command mirrors the real radio-commands extension:
@@ -6280,7 +6232,7 @@ void main() {
         tester.widget<TextField>(field).focusNode!.hasFocus;
 
     testWidgets('after an everyday frequency command', (tester) async {
-      await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeInterpretCommand)));
       await submit(tester, callField(), '14285');
       expect(hasFocus(tester, callField()), isTrue);
       // …and the command really did run, so this isn't passing on a no-op.
@@ -6306,8 +6258,10 @@ void main() {
       }
 
       await tester.pumpWidget(host(
-        interpretCommand: interpretDevProgress,
-        onCommandAction: (a, [params]) async => dispatched.add(a),
+        commands: CommandHooks(
+          interpretCommand: interpretDevProgress,
+          onCommandAction: (a, [params]) async => dispatched.add(a),
+        ),
       ));
       await submit(tester, callField(), 'DEVPROGRESS');
       expect(hasFocus(tester, callField()), isTrue);
@@ -6315,7 +6269,7 @@ void main() {
     });
 
     testWidgets('and a plain QSO still does too, so the fix did not trade one for the other', (tester) async {
-      await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeInterpretCommand)));
       await submit(tester, callField(), 'W1AW');
       expect(hasFocus(tester, callField()), isTrue);
       // Anchored: this case passes under every mutation of the fix (by design —
@@ -6368,7 +6322,7 @@ void main() {
     // `Sent` is an RST field, built by `LoggingEntryRow`'s fixed-field builder — one of the three build
     // sites, and NOT the exchange-field builder, which the next test covers.
     testWidgets('a command submitted from an RST field leaves focus in that field', (tester) async {
-      await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeInterpretCommand)));
       final sent = find.widgetWithText(TextField, 'Sent');
 
       await tester.enterText(callField(), '14285');
@@ -6402,7 +6356,7 @@ void main() {
               operation: running(['cqwpx']),
               qsosRepository: qsos,
             ),
-            radio: radio,
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: const [theirSerial],
             ),
@@ -6440,7 +6394,9 @@ void main() {
             'mode': 'SSB',
           })))!;
       var canceled = false;
-      await tester.pumpWidget(host(editingQso: existingQso, onEditCanceled: () => canceled = true));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: existingQso, onEditCanceled: () => canceled = true),
+      ));
 
       await submit(tester, callField(), 'W1AWX');
       expect(canceled, isTrue, reason: 'the edit should have been saved, not ignored');
@@ -6468,7 +6424,9 @@ void main() {
         };
       }
 
-      await tester.pumpWidget(host(interpretCommand: slowCommand, onCommandAction: (a, [p]) async {}));
+      await tester.pumpWidget(host(
+        commands: CommandHooks(interpretCommand: slowCommand, onCommandAction: (a, [p]) async {}),
+      ));
       await tester.enterText(callField(), 'SLOW');
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -6512,11 +6470,11 @@ void main() {
       // resumes, so the `_call != call` staleness check catches the duplicate
       // by accident and the test passes against the bug.
       await tester.pumpWidget(host(
-        interpretCommand: slowNullInterpret,
-        decorateQsoBeforeSave: (data, _) async {
+        log: baseLog().copyWith(decorateQsoBeforeSave: (data, _) async {
           await Future<void>.delayed(const Duration(milliseconds: 60));
           return data;
-        },
+        }),
+        commands: CommandHooks(interpretCommand: slowNullInterpret),
       ));
       await tester.enterText(callField(), 'W1AW');
       await tester.pump(const Duration(milliseconds: 200));
@@ -6550,9 +6508,11 @@ void main() {
 
     String? lastMessage;
     await tester.pumpWidget(host(
-      interpretCommand: interpret,
-      interpretationUpdates: updates.stream,
-      onCommandMessageChanged: (message) => lastMessage = message,
+      commands: CommandHooks(
+        interpretCommand: interpret,
+        interpretationUpdates: updates.stream,
+        onCommandMessageChanged: (message) => lastMessage = message,
+      ),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SOLAR');
@@ -6586,9 +6546,11 @@ void main() {
 
     String? lastMessage;
     await tester.pumpWidget(host(
-      interpretCommand: interpret,
-      interpretationUpdates: updates.stream,
-      onCommandMessageChanged: (message) => lastMessage = message,
+      commands: CommandHooks(
+        interpretCommand: interpret,
+        interpretationUpdates: updates.stream,
+        onCommandMessageChanged: (message) => lastMessage = message,
+      ),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SOLAR');
@@ -6696,7 +6658,9 @@ void main() {
     // country code is discarded (see radio.dart's `_bestSegmentFor`), and
     // the panel is fed both from one DXCC entity anyway — operation_view's
     // `ourGuess` sets `_ourItuRegion` and `_ourCountryCode` together.
-    await tester.pumpWidget(host(ourItuRegion: 2, ourCountryCode: 'us')); // tunedRadio seeds Mode as SSB
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(ourItuRegion: 2, ourCountryCode: 'us'),
+    )); // tunedRadio seeds Mode as SSB
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
 
@@ -6745,7 +6709,7 @@ void main() {
       return null;
     }
 
-    await tester.pumpWidget(host(interpretCommand: fakeReloadPrefix));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeReloadPrefix)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
@@ -6796,7 +6760,7 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(interpretCommand: fakeNoteCommand));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeNoteCommand)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE');
@@ -6820,7 +6784,7 @@ void main() {
     // A formatter, not just TextCapitalization (a soft-keyboard hint that
     // does nothing for hardware keyboards): logging values are uppercase
     // unless explicitly mixed-case.
-    await tester.pumpWidget(host(showStateField: true, showGridField: true));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(showStateField: true, showGridField: true)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'State'), 'fl');
@@ -6871,7 +6835,7 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(interpretCommand: fakeNoteCommand));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeNoteCommand)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE');
@@ -6922,7 +6886,7 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(interpretCommand: fakeNoteCommand));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeNoteCommand)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE hi');
@@ -6930,10 +6894,10 @@ void main() {
 
     // Tap a spot: didUpdateWidget applies the suggestion.
     await tester.pumpWidget(host(
-      interpretCommand: fakeNoteCommand,
-      suggestedQso: {
+      session: LoggingSession(suggestedQso: {
         'their': {'call': 'W1AW'},
-      },
+      }),
+      commands: CommandHooks(interpretCommand: fakeNoteCommand),
     ));
     await tester.pump();
     expect(field('Their call').controller!.text, 'W1AW');
@@ -6966,7 +6930,7 @@ void main() {
       return null;
     }
 
-    await tester.pumpWidget(host(interpretCommand: fakeReloadPrefix));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeReloadPrefix)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOAD');
@@ -7001,7 +6965,7 @@ void main() {
       return null;
     }
 
-    await tester.pumpWidget(host(interpretCommand: fakeNotePrefix));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeNotePrefix)));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOTE');
     await tester.pump(const Duration(milliseconds: 200));
@@ -7039,10 +7003,9 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      interpretCommand: fakeReloadCommand,
-      onCommandAction: (action, [params]) async {
+      commands: CommandHooks(interpretCommand: fakeReloadCommand, onCommandAction: (action, [params]) async {
         dispatched.add(MapEntry(action, params));
-      },
+      }),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'RELOADALL');
@@ -7081,10 +7044,9 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      interpretCommand: fakeDevmode,
-      onCommandAction: (action, [params]) async {
+      commands: CommandHooks(interpretCommand: fakeDevmode, onCommandAction: (action, [params]) async {
         dispatched.add(MapEntry(action, params));
-      },
+      }),
     ));
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVMODE');
     await tester.pump();
@@ -7122,10 +7084,9 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      interpretCommand: fakeHammerCommand,
-      onCommandAction: (action, [params]) async {
+      commands: CommandHooks(interpretCommand: fakeHammerCommand, onCommandAction: (action, [params]) async {
         dispatched.add(MapEntry(action, params));
-      },
+      }),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVHAMMER');
@@ -7180,10 +7141,9 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      interpretCommand: fakeSettingsCommand,
-      onCommandAction: (action, [params]) async {
+      commands: CommandHooks(interpretCommand: fakeSettingsCommand, onCommandAction: (action, [params]) async {
         dispatched.add(MapEntry(action, params));
-      },
+      }),
     ));
 
     final field = find.widgetWithText(TextField, 'Their call');
@@ -7231,10 +7191,9 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      interpretCommand: fakePowerCommand,
-      onCommandAction: (action, [params]) async {
+      commands: CommandHooks(interpretCommand: fakePowerCommand, onCommandAction: (action, [params]) async {
         dispatched.add(MapEntry(action, params));
-      },
+      }),
     ));
 
     final field = find.widgetWithText(TextField, 'Their call');
@@ -7270,8 +7229,10 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      interpretCommand: fakeTesterCommand,
-      onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params)),
+      commands: CommandHooks(
+        interpretCommand: fakeTesterCommand,
+        onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params)),
+      ),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVTESTER');
@@ -7312,8 +7273,10 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      interpretCommand: fakeReloadCommand,
-      onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params)),
+      commands: CommandHooks(
+        interpretCommand: fakeReloadCommand,
+        onCommandAction: (action, [params]) async => dispatched.add(MapEntry(action, params)),
+      ),
     ));
 
     // A plain empty field: nothing to submit, button disabled.
@@ -7358,7 +7321,7 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(interpretCommand: fakeExpPrefix));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpPrefix)));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
     await tester.pump(const Duration(milliseconds: 200));
@@ -7399,7 +7362,7 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(interpretCommand: fakeExpCommand));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpCommand)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
@@ -7436,10 +7399,9 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      interpretCommand: fakeExpCommand,
-      onCommandAction: (action, [params]) async {
+      commands: CommandHooks(interpretCommand: fakeExpCommand, onCommandAction: (action, [params]) async {
         dispatched.add(MapEntry(action, params));
-      },
+      }),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'EXP');
@@ -7476,8 +7438,10 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      interpretCommand: fakeDevOnboardCommand,
-      onCommandAction: (action, [params]) async => dispatched.add(action),
+      commands: CommandHooks(
+        interpretCommand: fakeDevOnboardCommand,
+        onCommandAction: (action, [params]) async => dispatched.add(action),
+      ),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DEVONBOARD');
@@ -7526,11 +7490,10 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      existing: [firstQso, lastRealQso, trailingEventMarker],
-      interpretCommand: fakeSpotLastCommand,
-      onCommandAction: (action, [params]) async {
+      log: baseLog().copyWith(qsos: [firstQso, lastRealQso, trailingEventMarker]),
+      commands: CommandHooks(interpretCommand: fakeSpotLastCommand, onCommandAction: (action, [params]) async {
         dispatched.add(MapEntry(action, params));
-      },
+      }),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SPOTLAST');
@@ -7573,10 +7536,9 @@ void main() {
     }
 
     await tester.pumpWidget(host(
-      interpretCommand: fakeSpotCommand,
-      onCommandAction: (action, [params]) async {
+      commands: CommandHooks(interpretCommand: fakeSpotCommand, onCommandAction: (action, [params]) async {
         dispatched.add(MapEntry(action, params));
-      },
+      }),
     ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'SPOT');
@@ -7608,7 +7570,7 @@ void main() {
         {};
 
     testWidgets('shows "Self-spotting" with no frequency set', (tester) async {
-      await tester.pumpWidget(host(suggestSpotSources: noSources, sendSpot: noopSend));
+      await tester.pumpWidget(host(spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend)));
       await tester.pump();
       expect(find.text('Self-spotting'), findsOneWidget);
       expect(find.text('First set a frequency to spot'), findsNothing);
@@ -7616,7 +7578,10 @@ void main() {
 
     testWidgets('shows "Self-spotting" (not "Self-spot at ...") once a frequency is set', (tester) async {
       fakeRadio.setVfo('vfoA', freq: 14285);
-      await tester.pumpWidget(host(radioService: fakeRadio, suggestSpotSources: noSources, sendSpot: noopSend));
+      await tester.pumpWidget(host(
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+        spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend),
+      ));
       await tester.pump();
       expect(find.text('Self-spotting'), findsOneWidget);
       expect(find.textContaining('Self-spot at'), findsNothing);
@@ -7628,7 +7593,10 @@ void main() {
         operationUuid: operation.uuid,
         data: {'their': {'call': 'KN2X'}, 'freq': 14285, 'startAtMillis': DateTime.now().millisecondsSinceEpoch},
       );
-      await tester.pumpWidget(host(editingQso: recentQso, suggestSpotSources: noSources, sendSpot: noopSend));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: recentQso),
+        spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend),
+      ));
       await tester.pump();
       expect(find.text('Spotting'), findsOneWidget);
       expect(find.textContaining('Spot KN2X'), findsNothing);
@@ -7644,7 +7612,10 @@ void main() {
           'startAtMillis': DateTime.now().subtract(const Duration(minutes: 10)).millisecondsSinceEpoch,
         },
       );
-      await tester.pumpWidget(host(editingQso: staleQso, suggestSpotSources: noSources, sendSpot: noopSend));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: staleQso),
+        spotting: SpottingHooks(suggestSpotSources: noSources, sendSpot: noopSend),
+      ));
       await tester.pump();
       expect(find.text('Spotting'), findsOneWidget);
       expect(find.textContaining('Too late'), findsNothing);
@@ -7674,7 +7645,7 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpandCommand)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     // A leading "//" IS a stack (first segment empty), so the only thing
@@ -7722,7 +7693,7 @@ void main() {
         tester.widget<TextField>(find.widgetWithText(TextField, 'Their call'));
 
     testWidgets('Enter expands the segment under the cursor and logs nothing', (tester) async {
-      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpandCommand)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//DAN');
       await tester.pump();
@@ -7750,7 +7721,7 @@ void main() {
       // the same mid-stack path as any other. Disqualify a leading "//" from
       // stacking and this field is neither syntax — the whole-field key reads
       // as "DAN//W1AW" and matches nothing — so Enter does nothing at all.
-      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpandCommand)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//DAN//W1AW');
       // Cursor on the key, at the end of "//DAN".
@@ -7800,7 +7771,7 @@ void main() {
         };
       }
 
-      await tester.pumpWidget(host(interpretCommand: expandsW1AW));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: expandsW1AW)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//W1AW');
       await tester.pump();
@@ -7816,7 +7787,7 @@ void main() {
       // to expand — so unless the leading "//" is treated as a separator
       // rather than a segment, Enter here does nothing while the same Enter
       // one character right expands normally.
-      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpandCommand)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), '//DAN//W1AW');
       callField(tester).controller!.selection = const TextSelection.collapsed(offset: 0);
@@ -7832,7 +7803,7 @@ void main() {
       // The expansion probe runs on every stacked Enter; when the hook
       // declines, stacking has to proceed exactly as before rather than
       // swallowing the keypress.
-      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpandCommand)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//W1AW');
       await tester.pump();
@@ -7844,7 +7815,7 @@ void main() {
     });
 
     testWidgets('the expansion is previewed while typing, before Enter', (tester) async {
-      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpandCommand)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//DAN');
       await tester.pump(const Duration(milliseconds: 350));
@@ -7858,7 +7829,7 @@ void main() {
       // fallback is the last segment — in a three-segment stack that is a
       // different call than the one just expanded, so the second Enter would
       // log the wrong QSO entirely.
-      await tester.pumpWidget(host(interpretCommand: fakeExpandCommand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeExpandCommand)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//DAN//W1AW');
       // Put the cursor in the middle segment, the one holding the key.
@@ -7892,7 +7863,7 @@ void main() {
         return fakeExpandCommand(input, operation, qso, execute);
       }
 
-      await tester.pumpWidget(host(interpretCommand: recording));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: recording)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//W1AW');
       await tester.pump();
@@ -7926,7 +7897,7 @@ void main() {
         return fakeExpandCommand(input, operation, qso, execute);
       }
 
-      await tester.pumpWidget(host(interpretCommand: slowExpand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: slowExpand)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'DAN//W1AW');
       callField(tester).controller!.selection = const TextSelection.collapsed(offset: 3); // in "DAN"
@@ -7967,7 +7938,7 @@ void main() {
       }
 
       testWidgets('taking the expansion back and pressing Enter again logs the call itself', (tester) async {
-        await tester.pumpWidget(host(interpretCommand: expandsW1AW));
+        await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: expandsW1AW)));
 
         await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
         await tester.pump();
@@ -7994,7 +7965,7 @@ void main() {
       testWidgets('the hatch lasts only for the entry it was used on', (tester) async {
         // Spent state belongs to the draft, not the session — the next
         // contact typing the same key must get its expansion.
-        await tester.pumpWidget(host(interpretCommand: expandsW1AW));
+        await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: expandsW1AW)));
 
         await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC//W1AW');
         await tester.pump();
@@ -8029,7 +8000,7 @@ void main() {
         return null; // nothing expands — this Enter is an ordinary stacked log
       }
 
-      await tester.pumpWidget(host(interpretCommand: slowExpand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: slowExpand)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'KI2D//W1AW');
       await tester.pump();
@@ -8064,8 +8035,8 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
-          radio: radio,
+          log: baseLog(),
+          radio: baseRadio(),
           lookups: LookupHooks(
             lookup: lookup,
             callLocationLine: (guess) => guess['location'] as String?,
@@ -8088,7 +8059,7 @@ void main() {
 
   testWidgets('seeds the Radio control from radioService.vfoA for a new QSO', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
@@ -8140,7 +8111,7 @@ void main() {
     // The proactive half: the operator is shown the fields that need
     // answering, rather than finding out at log time.
     testWidgets('an unset VFO opens the Radio control on its own, without being asked', (tester) async {
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await tester.pump();
 
       expect(find.widgetWithText(TextField, 'Frequency'), findsOneWidget);
@@ -8148,7 +8119,7 @@ void main() {
 
     testWidgets('a VFO that already has a band and mode is left alone', (tester) async {
       fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await tester.pump();
 
       expect(find.widgetWithText(TextField, 'Frequency'), findsNothing,
@@ -8161,7 +8132,10 @@ void main() {
       // reading the strings package.
       await useSpanish(tester);
       final messages = <String?>[];
-      await tester.pumpWidget(host(radioService: fakeRadio, onCommandMessageChanged: messages.add));
+      await tester.pumpWidget(host(
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+        commands: CommandHooks(onCommandMessageChanged: messages.add),
+      ));
       await dismissRadioControl(tester);
       await tester.enterText(find.widgetWithText(TextField, t.loggingControls.theirCall), 'W1AW');
       await tester.pump();
@@ -8173,8 +8147,8 @@ void main() {
     testWidgets('refuses the contact, says so, and opens the Radio control to ask', (tester) async {
       final messages = <String?>[];
       await tester.pumpWidget(host(
-        radioService: fakeRadio,
-        onCommandMessageChanged: messages.add,
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+        commands: CommandHooks(onCommandMessageChanged: messages.add),
       ));
       await dismissRadioControl(tester);
 
@@ -8199,7 +8173,7 @@ void main() {
 
     testWidgets('a frequency lets the same contact through', (tester) async {
       fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
 
       await submit(tester, 'W1AW');
 
@@ -8213,7 +8187,7 @@ void main() {
     // "40M" command, which clears the frequency) is a complete answer.
     testWidgets('a band with no frequency lets it through too', (tester) async {
       fakeRadio.setVfo('vfoA', band: '40m', mode: 'SSB');
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
 
       await submit(tester, 'W1AW');
 
@@ -8226,7 +8200,7 @@ void main() {
     // The guard sits above the stacked-call branch, which commits a QSO of
     // its own without ever reaching the ordinary path below it.
     testWidgets('call stacking is covered too, not just the ordinary path', (tester) async {
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await dismissRadioControl(tester);
 
       await submit(tester, 'K1ABC//W1AW');
@@ -8237,7 +8211,7 @@ void main() {
 
     // …and a comma-separated list, which commits several at once.
     testWidgets('a comma-separated list is covered too', (tester) async {
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await dismissRadioControl(tester);
 
       await submit(tester, 'K1ABC, W1AW');
@@ -8250,7 +8224,10 @@ void main() {
             'their': {'call': 'W1AW'},
             'startAtMillis': 1000000,
           })))!;
-      await tester.pumpWidget(host(radioService: fakeRadio, editingQso: existingQso));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: existingQso),
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+      ));
       await tester.pump();
 
       await submit(tester, 'W1AWX');
@@ -8278,9 +8255,8 @@ void main() {
             'startAtMillis': 1000000,
           })))!;
       await tester.pumpWidget(host(
-        radioService: fakeRadio,
-        editingQso: existingQso,
-        onEditCanceled: () {},
+        session: LoggingSession(editingQso: existingQso, onEditCanceled: () {}),
+        radio: baseRadio().copyWith(radioService: fakeRadio),
       ));
       await tester.pump();
 
@@ -8309,7 +8285,7 @@ void main() {
   // contact rather than after it.
   group('the missing band/mode warning pill', () {
     testWidgets('stands in the information area before anything is typed', (tester) async {
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await tester.pump();
 
       expect(find.text('No Band'), findsOneWidget);
@@ -8319,7 +8295,7 @@ void main() {
     // field, so it must not wait for a callsign — nor vanish once there is
     // one, which is exactly when it matters most.
     testWidgets('stays up beside the call-info line once a call is typed', (tester) async {
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump(const Duration(milliseconds: 400));
@@ -8335,7 +8311,7 @@ void main() {
     // passes every assertion above.
     testWidgets('is absent once the radio has a frequency to derive a band from', (tester) async {
       fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await tester.pump();
 
       expect(find.text('No Band'), findsNothing);
@@ -8346,7 +8322,7 @@ void main() {
     // applies, and the two must not disagree about what counts.
     testWidgets('a band with no frequency answers it too', (tester) async {
       fakeRadio.setVfo('vfoA', band: '40m', mode: 'SSB');
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await tester.pump();
 
       expect(find.text('No Band'), findsNothing);
@@ -8360,7 +8336,7 @@ void main() {
     // tell the two conditions apart.
     testWidgets('a frequency outside every band is still an answer', (tester) async {
       fakeRadio.setVfo('vfoA', freq: 5000, mode: 'SSB');
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await tester.pump();
 
       expect(find.text('No Band'), findsNothing);
@@ -8388,7 +8364,7 @@ void main() {
                 }
               : null;
 
-      await tester.pumpWidget(host(interpretCommand: clearsTheMode));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: clearsTheMode)));
       expect(find.text('No Mode'), findsNothing, reason: 'the panel starts with a mode');
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'NOMODE');
@@ -8411,7 +8387,7 @@ void main() {
     // showed a Spanish operator "No Band" fails here and nowhere else.
     testWidgets('the pill speaks the operator\'s language', (tester) async {
       await useSpanish(tester);
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await tester.pump();
 
       expect(find.text('Sin Banda'), findsOneWidget);
@@ -8424,9 +8400,7 @@ void main() {
     // was doing what they were told, and the area would keep asserting a
     // refusal that no longer applies.
     testWidgets('answering the refusal clears the pill even while its message is still up', (tester) async {
-      await tester.pumpWidget(host(
-        radioService: fakeRadio,
-      ));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await tester.pump();
       // The unset VFO opens the Radio control on mount; collapse it, or Enter
       // closes it instead of reaching the log path.
@@ -8478,8 +8452,8 @@ void main() {
       // Spanish spells both pills long — the case the Wrap exists for.
       await useSpanish(tester);
       await tester.pumpWidget(host(
-        radioService: fakeRadio,
-        interpretCommand: clearsTheMode,
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+        commands: CommandHooks(interpretCommand: clearsTheMode),
       ));
       await tester.pump();
       // The unset VFO opens the Radio control on mount; Enter inside an open
@@ -8503,7 +8477,10 @@ void main() {
     // and the same pill offers no gesture at all in the stats state.
     testWidgets('tapping the pill does not open the other station\'s detail panel', (tester) async {
       var opened = 0;
-      await tester.pumpWidget(host(radioService: fakeRadio, onCallInfoTap: () => opened++));
+      await tester.pumpWidget(host(
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+        lookups: LookupHooks(onCallInfoTap: () => opened++),
+      ));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump(const Duration(milliseconds: 400));
@@ -8536,7 +8513,10 @@ void main() {
           'event': {'event': 'note', 'note': 'check later'},
         },
       );
-      await tester.pumpWidget(host(radioService: fakeRadio, editingQso: note, onEditCanceled: () {}));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: note, onEditCanceled: () {}),
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+      ));
       await tester.pump();
 
       expect(find.text('No Band'), findsNothing);
@@ -8550,7 +8530,7 @@ void main() {
 
   testWidgets('follows the VFO when a connected radio is tuned', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14285');
 
@@ -8564,7 +8544,7 @@ void main() {
 
   testWidgets('HALO-32: a radio-driven frequency change never runs the band-plan mode guess', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 7100, mode: 'CW');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
 
@@ -8589,7 +8569,7 @@ void main() {
     // never passes one), so that overwrite never fires — a stray guess, if
     // the guard were broken, would go unmasked. This is the actually
     // guard-sensitive version.
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
 
@@ -8605,7 +8585,7 @@ void main() {
   testWidgets('a radio update does not overwrite a frequency the operator is part-way through typing',
       (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     // Two digits: too short to arm the push debounce, so the debounce alone
@@ -8622,7 +8602,7 @@ void main() {
 
   testWidgets('following resumes once the operator edit has reached the VFO', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '7100');
@@ -8639,7 +8619,7 @@ void main() {
 
   testWidgets('a pending frequency edit holds off the frequency, not the mode', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     // Mid-entry: the operator's frequency is newer than the radio's.
@@ -8668,7 +8648,7 @@ void main() {
     await tester.pumpWidget(MaterialApp(
       home: Scaffold(
         body: LoggingControls(
-          log: log,
+          log: baseLog(),
           radio: RadioHookup(
             radioService: fakeRadio,
             radioUpdates: fakeRadio,
@@ -8699,7 +8679,7 @@ void main() {
 
   testWidgets('a partial frequency entry does not switch live follow off for good', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     // Three characters or fewer arms no debounce, so nothing ever cleared
@@ -8740,7 +8720,7 @@ void main() {
     Widget hostWith({required Listenable updates, Qso? editing}) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              log: log,
+              log: baseLog(),
               session: LoggingSession(
                 editingQso: editing,
               ),
@@ -8783,7 +8763,10 @@ void main() {
         'mode': 'CW',
       },
     );
-    await tester.pumpWidget(host(radioService: fakeRadio, editingQso: existingQso));
+    await tester.pumpWidget(host(
+      session: LoggingSession(editingQso: existingQso),
+      radio: baseRadio().copyWith(radioService: fakeRadio),
+    ));
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '7040');
 
@@ -8797,7 +8780,7 @@ void main() {
 
   testWidgets('a radio mode change refreshes the default RST placeholder', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Sent')).decoration!.hintText, '59');
 
@@ -8811,7 +8794,7 @@ void main() {
 
   testWidgets('a radio mode change leaves an RST the operator edited alone', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
@@ -8882,7 +8865,7 @@ void main() {
   });
 
   testWidgets('HALO-83: on CW a shorthand report gains its tone digit', (tester) async {
-    await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeInterpretCommand)));
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'CW');
     await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
@@ -8904,7 +8887,10 @@ void main() {
     // A CW operator sending "5NN" wants that in the log, not 599 — and the
     // placeholder has to show what will actually be stored, or the setting is
     // invisible until the QSO is already logged.
-    await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand, defaultReportCW: '5NN'));
+    await tester.pumpWidget(host(
+      commands: CommandHooks(interpretCommand: fakeInterpretCommand),
+      prefs: LoggingPreferences(defaultReportCW: '5NN'),
+    ));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     expect(field('Sent').decoration!.hintText, '59', reason: 'test setup: still on phone');
@@ -8935,7 +8921,7 @@ void main() {
           'freq': 7100,
           'mode': 'SSB',
         })))!;
-    await tester.pumpWidget(host(editingQso: existingQso));
+    await tester.pumpWidget(host(session: LoggingSession(editingQso: existingQso)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     expect(field('Sent').controller!.text, isEmpty);
@@ -8948,7 +8934,7 @@ void main() {
   });
 
   testWidgets('HALO-143: jumpAfterRST moves on once a report is complete, and stays put until then', (tester) async {
-    await tester.pumpWidget(host(jumpAfterRST: true));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(jumpAfterRST: true)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     field('Sent').focusNode!.requestFocus();
@@ -8974,7 +8960,10 @@ void main() {
     // The trap a two-character threshold would set: on CW a `44` still owes
     // its `A` (or its tone), so jumping at two makes `44A` and `5NN`
     // unreachable — the operator is thrown into the next field mid-report.
-    await tester.pumpWidget(host(jumpAfterRST: true, interpretCommand: fakeInterpretCommand));
+    await tester.pumpWidget(host(
+      commands: CommandHooks(interpretCommand: fakeInterpretCommand),
+      prefs: LoggingPreferences(jumpAfterRST: true),
+    ));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'CW');
@@ -8998,7 +8987,7 @@ void main() {
     // PoLo tests `length >= full` on every keystroke, so editing a field that
     // already holds a full report throws focus away on the first character.
     // Firing on the upward crossing only is what makes a correction possible.
-    await tester.pumpWidget(host(jumpAfterRST: true));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(jumpAfterRST: true)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     field('Sent').focusNode!.requestFocus();
@@ -9034,7 +9023,10 @@ void main() {
       (tester) async {
     // -9, +05 and -12 are all real SNR reports, so no length means "done".
     // Any threshold here is wrong for some of them; the setting sits out.
-    await tester.pumpWidget(host(jumpAfterRST: true, interpretCommand: fakeInterpretCommand));
+    await tester.pumpWidget(host(
+      commands: CommandHooks(interpretCommand: fakeInterpretCommand),
+      prefs: LoggingPreferences(jumpAfterRST: true),
+    ));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'FT8');
@@ -9053,7 +9045,7 @@ void main() {
     // The pair that must not drift: the row's own order and the Space cycle's.
     // A swap applied to only one of them leaves Space skipping backwards
     // through fields the operator sees left to right.
-    await tester.pumpWidget(host(switchSentRcvd: true));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(switchSentRcvd: true)));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     double left(String label) => tester.getTopLeft(find.widgetWithText(TextField, label)).dx;
@@ -9089,7 +9081,10 @@ void main() {
           'freq': 7020,
           'mode': 'CW',
         })))!;
-    await tester.pumpWidget(host(editingQso: existingQso, jumpAfterRST: true));
+    await tester.pumpWidget(host(
+      session: LoggingSession(editingQso: existingQso),
+      prefs: LoggingPreferences(jumpAfterRST: true),
+    ));
     TextField field(String label) => tester.widget<TextField>(find.widgetWithText(TextField, label));
 
     expect(field('Sent').controller!.text, '599', reason: 'test setup');
@@ -9109,7 +9104,7 @@ void main() {
     // controllers the row shares, so its order is written out a second time —
     // and a second expression is a second chance to get the ternary backwards.
     // A pane contradicting the row that opened it is the whole failure.
-    await tester.pumpWidget(host(switchSentRcvd: true));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(switchSentRcvd: true)));
     await openControl(tester, MdiIcons.pencil);
     await tester.pumpAndSettle();
 
@@ -9127,7 +9122,7 @@ void main() {
   testWidgets('HALO-143: switchSentRcvd keeps each value on its own field, it only moves them', (tester) async {
     // The failure a pure-display swap invites: reversing the widgets without
     // reversing what they are bound to silently logs the reports backwards.
-    await tester.pumpWidget(host(switchSentRcvd: true));
+    await tester.pumpWidget(host(prefs: LoggingPreferences(switchSentRcvd: true)));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
@@ -9174,7 +9169,10 @@ void main() {
         'mode': 'SSB',
       },
     );
-    await tester.pumpWidget(host(radioService: fakeRadio, editingQso: existingQso));
+    await tester.pumpWidget(host(
+      session: LoggingSession(editingQso: existingQso),
+      radio: baseRadio().copyWith(radioService: fakeRadio),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
@@ -9182,7 +9180,9 @@ void main() {
   });
 
   testWidgets('Radio dropdowns offer the settings-enabled bands/modes, uncolored, plus the current value', (tester) async {
-    await tester.pumpWidget(host(enabledBands: ['40m', '20m'], enabledModes: ['CW', 'FT8']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(enabledBands: ['40m', '20m'], enabledModes: ['CW', 'FT8']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     // Band menu: only the enabled bands — no colored entries (issue: band
@@ -9214,7 +9214,7 @@ void main() {
 
   testWidgets('empty enabled lists fall back to the common tier — deselecting every band must not empty the dropdown',
       (tester) async {
-    await tester.pumpWidget(host(enabledBands: [], enabledModes: []));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(enabledBands: [], enabledModes: [])));
     await openControl(tester, MdiIcons.radio);
 
     // popularBands, not the full catalog: 160m is common, 630m is not.
@@ -9306,7 +9306,9 @@ void main() {
   });
 
   testWidgets('typing in the Band dropdown filters the menu; focus-away selects the first match', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m', '17m']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m', '17m']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Band'));
@@ -9332,7 +9334,9 @@ void main() {
 
   testWidgets('arrow keys step the Band selection while the menu is closed', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285);
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     // Band is deliberately out of the panel's own Tab/cursor-key cycle (it's
@@ -9358,7 +9362,9 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('arrow keys walk the open Mode menu and blur commits the highlighted entry', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Mode'));
@@ -9382,7 +9388,9 @@ void main() {
     // Regression: the filter used to switch OFF the moment the typed text
     // equalled a full option, so completing "2m" re-expanded the menu to
     // the whole catalog on the last keystroke.
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m', '2m']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m', '2m']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Band'));
@@ -9397,7 +9405,9 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('Enter from a focused Band dropdown commits the band and closes the control (APP-19)', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']),
+    ));
     await openControl(tester, MdiIcons.radio);
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
     await tester.pump();
@@ -9429,7 +9439,9 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('arrow keys keep a typed filter while walking the open menu', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Mode'));
@@ -9457,7 +9469,9 @@ void main() {
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
   testWidgets('Enter commits the first matching mode; garbage text reverts', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Mode'));
@@ -9489,7 +9503,9 @@ void main() {
     // plan's next guess never reaches the field, and the commit on the way
     // out pushes the stale mode back over it.
     fakeRadio.setVfo('vfoA', freq: 7200, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '7050');
@@ -9521,7 +9537,9 @@ void main() {
   testWidgets('a band picked from the menu is a selection, not a filter', (tester) async {
     // Same trap as the Mode dropdown above, on the sibling that shares the
     // filter machinery.
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledBands: ['80m', '40m', '20m']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Band'));
@@ -9550,7 +9568,9 @@ void main() {
     // paper over a stray filter on desktop — ever runs. A filter left by the
     // pick would pin the menu to that one entry for the rest of the session.
     fakeRadio.setVfo('vfoA', freq: 7200, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Mode'));
@@ -9574,7 +9594,9 @@ void main() {
     // that had just reported CW on the strength of a keystroke older than the
     // report.
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Mode'));
@@ -9601,7 +9623,7 @@ void main() {
     // dropdown is the one field that could hold the operator's own unfinished
     // text at that moment, and it must not survive to commit over the mode
     // the spot brought.
-    await tester.pumpWidget(host(enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM'])));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Mode'));
@@ -9610,8 +9632,8 @@ void main() {
     await tester.pump();
 
     await tester.pumpWidget(host(
-      enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM'],
-      suggestedQso: const {'their': {'call': 'W1AW'}, 'freq': 14074.0, 'mode': 'FT8'},
+      session: LoggingSession(suggestedQso: const {'their': {'call': 'W1AW'}, 'freq': 14074.0, 'mode': 'FT8'}),
+      radio: baseRadio().copyWith(enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']),
     ));
     await tester.pump();
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
@@ -9623,7 +9645,9 @@ void main() {
     // may take the field back — a VFO update that changes nothing else must
     // not wipe a filter mid-word.
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8', 'FT4', 'FM']),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Mode'));
@@ -9644,7 +9668,7 @@ void main() {
     // the field text matches an entry. Null enabled lists → the full
     // 19-band catalog, taller than the 10.5-entry menu cap, so it scrolls.
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
     await tester.tap(find.widgetWithText(TextField, 'Band'));
     await tester.pump();
@@ -9667,11 +9691,13 @@ void main() {
   });
 
   testWidgets('a suggestedQso populates call/freq/band/mode for a new QSO', (tester) async {
-    await tester.pumpWidget(host(suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'W1AW'},
       'freq': 14074.0,
       'mode': 'FT8',
-    }));
+    }),
+    ));
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
 
@@ -9686,12 +9712,14 @@ void main() {
     // it minutes late. The suggestion's time has to become the manual time,
     // exactly as if the operator had typed it.
     const madeAt = 1750000000000;
-    await tester.pumpWidget(host(suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'W1AW'},
       'freq': 14074.0,
       'mode': 'FT8',
       'startAtMillis': madeAt,
-    }));
+    }),
+    ));
     await tester.pump();
     // The suggestion fills the field without focusing it, and Enter is
     // delivered to whatever has focus.
@@ -9707,18 +9735,22 @@ void main() {
     // A spot says nothing about when a contact happens. Without the explicit
     // clear, a spot tapped after a deep link would log at the LINK's time.
     const madeAt = 1750000000000;
-    await tester.pumpWidget(host(suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'W1AW'},
       'freq': 14074.0,
       'mode': 'FT8',
       'startAtMillis': madeAt,
-    }));
+    }),
+    ));
     await tester.pump();
-    await tester.pumpWidget(host(suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'K1ABC'},
       'freq': 14074.0,
       'mode': 'FT8',
-    }));
+    }),
+    ));
     await tester.pump();
     await tester.tap(find.widgetWithText(TextField, 'Their call'));
     await tester.pump();
@@ -9739,10 +9771,12 @@ void main() {
     // even attached — so on its own this only proves the guess doesn't fire
     // when it structurally can't. The next test below covers the path where
     // it structurally could.
-    await tester.pumpWidget(host(suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'W1AW'},
       'freq': 14074.0,
-    }));
+    }),
+    ));
     await tester.pump();
 
     await openControl(tester, MdiIcons.radio);
@@ -9764,10 +9798,12 @@ void main() {
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'SSB');
 
-    await tester.pumpWidget(host(suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'W1AW'},
       'freq': 14074.0, // FT8 territory per the band plan
-    }));
+    }),
+    ));
     await tester.pump();
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14074');
@@ -9776,11 +9812,14 @@ void main() {
 
   testWidgets('a suggestedQso moves the VFO, so a connected radio follows the spot', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 7200, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'W1AW'},
       'freq': 14074.0,
       'mode': 'FT8',
-    }));
+    }),
+      radio: baseRadio().copyWith(radioService: fakeRadio),
+    ));
     await tester.pump();
 
     // Tapping a spot is specific intent — "work THIS station" — so it takes
@@ -9791,19 +9830,25 @@ void main() {
   });
 
   testWidgets('tapping a second spot moves the VFO again', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'W1AW'},
       'freq': 14074.0,
       'mode': 'FT8',
-    }));
+    }),
+      radio: baseRadio().copyWith(radioService: fakeRadio),
+    ));
     await tester.pump();
     expect(fakeRadio.vfoA.freq, 14074.0);
 
-    await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'K1ABC'},
       'freq': 7035.0,
       'mode': 'CW',
-    }));
+    }),
+      radio: baseRadio().copyWith(radioService: fakeRadio),
+    ));
     await tester.pump();
 
     expect(fakeRadio.vfoA.freq, 7035.0);
@@ -9820,11 +9865,13 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
 
-      await tester.pumpWidget(host(suggestedQso: {
+      await tester.pumpWidget(host(
+        session: LoggingSession(suggestedQso: {
         'their': {'call': 'W1AW'},
         'freq': 14074.0,
         'mode': 'FT8',
-      }));
+      }),
+      ));
       await tester.pump();
 
       final callField = find.widgetWithText(TextField, 'Their call');
@@ -9850,11 +9897,13 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
 
-      await tester.pumpWidget(host(suggestedQso: {
+      await tester.pumpWidget(host(
+        session: LoggingSession(suggestedQso: {
         'their': {'call': 'W1AW'},
         'freq': 14074.0,
         'mode': 'FT8',
-      }));
+      }),
+      ));
       await tester.pump();
 
       // The suggestion still filled the field — it just didn't grab focus,
@@ -9904,11 +9953,13 @@ void main() {
       FocusManager.instance.primaryFocus?.unfocus();
       await tester.pump();
 
-      await tester.pumpWidget(host(suggestedQso: {
+      await tester.pumpWidget(host(
+        session: LoggingSession(suggestedQso: {
         'their': {'call': 'W1AW'},
         'freq': 14074.0,
         'mode': 'FT8',
-      }));
+      }),
+      ));
       await tester.pump();
 
       // The keyboard clause, not the platform clause: dropping
@@ -9976,7 +10027,9 @@ void main() {
         // Web hands a clicked button its focus, and a dialog closing over it
         // hands the focus straight back to the button — so "any leaf is a
         // claim" leaves the operator typing into a button after every dialog.
-        await tester.pumpWidget(host(trailing: TextButton(focusNode: button, onPressed: () {}, child: const Text('b'))));
+        await tester.pumpWidget(host(
+          trailing: TextButton(focusNode: button, onPressed: () {}, child: const Text('b')),
+        ));
         await tester.pump();
         button.requestFocus();
         await tester.pump();
@@ -10168,7 +10221,7 @@ void main() {
         },
       );
       try {
-        await tester.pumpWidget(host(editingQso: event, onEditCanceled: () {}));
+        await tester.pumpWidget(host(session: LoggingSession(editingQso: event, onEditCanceled: () {})));
         await tester.pump();
         expect(find.widgetWithText(TextField, 'Their call'), findsNothing, reason: 'test setup: no callsign field');
         final text = find.byWidgetPredicate((w) => w is TextField && w.controller?.text == 'lunch');
@@ -10411,11 +10464,14 @@ void main() {
   });
 
   testWidgets('clicking into the frequency field after a spot does not switch live follow off', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'W1AW'},
       'freq': 14074.0,
       'mode': 'FT8',
-    }));
+    }),
+      radio: baseRadio().copyWith(radioService: fakeRadio),
+    ));
     await tester.pump();
     await openControl(tester, MdiIcons.radio);
 
@@ -10444,7 +10500,7 @@ void main() {
               _VfoWatcher(store: fakeRadio),
               Expanded(
                 child: LoggingControls(
-                  log: log,
+                  log: baseLog(),
                   session: LoggingSession(
                     suggestedQso: suggestion,
                   ),
@@ -10479,9 +10535,12 @@ void main() {
 
   testWidgets('a suggestion carrying no radio state leaves the VFO alone', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio, suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'W1AW'},
-    }));
+    }),
+      radio: baseRadio().copyWith(radioService: fakeRadio),
+    ));
     await tester.pump();
 
     // A bare callsign — a deeplink, say — says nothing about where to tune,
@@ -10501,11 +10560,14 @@ void main() {
       },
     );
 
-    await tester.pumpWidget(host(radioService: fakeRadio, editingQso: existingQso, suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(editingQso: existingQso, suggestedQso: {
       'their': {'call': 'K1ABC'},
       'freq': 21000.0,
       'mode': 'CW',
-    }));
+    }),
+      radio: baseRadio().copyWith(radioService: fakeRadio),
+    ));
     await tester.pump();
 
     expect(fakeRadio.vfoA.freq, 14285, reason: 'the suggestion was ignored, so the VFO is too');
@@ -10521,25 +10583,31 @@ void main() {
       },
     );
 
-    await tester.pumpWidget(host(editingQso: existingQso, suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(editingQso: existingQso, suggestedQso: {
       'their': {'call': 'K1ABC'},
       'freq': 14074.0,
-    }));
+    }),
+    ));
 
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
   });
 
   testWidgets('a new suggestedQso (different Map instance) re-applies over the previous one', (tester) async {
-    await tester.pumpWidget(host(suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'W1AW'},
       'freq': 14074.0,
-    }));
+    }),
+    ));
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
 
-    await tester.pumpWidget(host(suggestedQso: {
+    await tester.pumpWidget(host(
+      session: LoggingSession(suggestedQso: {
       'their': {'call': 'K1ABC'},
       'freq': 7100.0,
-    }));
+    }),
+    ));
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'K1ABC');
   });
 
@@ -10566,11 +10634,11 @@ void main() {
     Widget build({Map<String, dynamic>? suggestedQso}) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              log: log,
+              log: baseLog(),
               session: LoggingSession(
                 suggestedQso: suggestedQso,
               ),
-              radio: radio,
+              radio: baseRadio(),
               lookups: LookupHooks(
                 lookup: lookup,
                 callLocationLine: (guess) => guess['location'] as String?,
@@ -10611,7 +10679,10 @@ void main() {
         'mode': 'SSB',
       },
     );
-    await tester.pumpWidget(host(radioService: fakeRadio, editingQso: existingQso));
+    await tester.pumpWidget(host(
+      session: LoggingSession(editingQso: existingQso),
+      radio: baseRadio().copyWith(radioService: fakeRadio),
+    ));
     await openControl(tester, MdiIcons.radio);
 
     // Typing a frequency, past both the debounce and the blur flush...
@@ -10639,7 +10710,10 @@ void main() {
   });
 
   testWidgets('a command setVfo pushes to radioService immediately', (tester) async {
-    await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand, radioService: fakeRadio));
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio),
+      commands: CommandHooks(interpretCommand: fakeInterpretCommand),
+    ));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), '14285');
     await tester.pump();
@@ -10651,7 +10725,7 @@ void main() {
   });
 
   testWidgets('manually typing a frequency pushes to radioService debounced, and flushes on blur', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '14285');
@@ -10668,7 +10742,7 @@ void main() {
   });
 
   testWidgets('a 3-digit or shorter frequency is not pushed to radioService', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '145');
@@ -10680,7 +10754,7 @@ void main() {
   });
 
   testWidgets('picking a band from the dropdown pushes to radioService immediately', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Band').first);
@@ -10693,7 +10767,7 @@ void main() {
   });
 
   testWidgets('picking a mode from the dropdown pushes to radioService immediately', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     await tester.tap(find.widgetWithText(TextField, 'Mode').first);
@@ -10705,7 +10779,7 @@ void main() {
   });
 
   testWidgets('a stale-but-unflushed typed frequency still lands on the logged QSO', (tester) async {
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
 
     // Typed, but Enter fires well within the 5s debounce window and
@@ -10722,7 +10796,7 @@ void main() {
 
   testWidgets('clearing the frequency field pushes the clear to radioService immediately, not debounced', (tester) async {
     fakeRadio.setVfo('vfoA', freq: 14285, mode: 'SSB');
-    await tester.pumpWidget(host(radioService: fakeRadio));
+    await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
     await openControl(tester, MdiIcons.radio);
     expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency')).controller!.text, '14285');
 
@@ -10751,7 +10825,7 @@ void main() {
         body: ValueListenableBuilder<Qso?>(
           valueListenable: editing,
           builder: (context, editingQso, _) => LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               editingQso: editingQso,
               onEditCanceled: () => editing.value = null,
@@ -10804,7 +10878,7 @@ void main() {
           session: LoggingSession(
             editingQso: existingQso,
           ),
-          radio: radio,
+          radio: baseRadio(),
           lookups: LookupHooks(
             scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
               excluded = excludeUuid;
@@ -10871,7 +10945,7 @@ void main() {
             session: LoggingSession(
               editingQso: editing,
             ),
-            radio: radio,
+            radio: baseRadio(),
             lookups: LookupHooks(
               scoreQso: ({required operation, required qso, excludeUuid, segments}) async {
                 sentOperation = operation;
@@ -10921,7 +10995,7 @@ void main() {
     // dialog always writes every key it offered — so a control named there
     // and absent from the hidden set is one they kept.
     testWidgets('appears once the saved order names it', (tester) async {
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'power']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'power'])));
       await tester.pump();
 
       expect(find.byIcon(MdiIcons.flash), findsOneWidget);
@@ -10931,8 +11005,7 @@ void main() {
       // Named in the order (so the decision was made) AND hidden — the
       // "decided against" state, which must not read as "never asked".
       await tester.pumpWidget(host(
-        controlOrder: const ['time', 'radio', 'power'],
-        hiddenControlKeys: const {'power'},
+        strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'power'], hiddenControlKeys: const {'power'}),
       ));
       await tester.pump();
 
@@ -10940,7 +11013,7 @@ void main() {
     });
 
     testWidgets('a typed power reaches the VFO when the field loses focus', (tester) async {
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'power']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'power'])));
       await tester.pump();
       await openControl(tester, MdiIcons.flash);
 
@@ -10959,7 +11032,10 @@ void main() {
       final radio = _FakeVfoStore()
         ..setVfo('vfoA', freq: 14285, mode: 'SSB')
         ..setVfo('vfoA', power: 100);
-      await tester.pumpWidget(host(radioService: radio, controlOrder: const ['time', 'radio', 'power']));
+      await tester.pumpWidget(host(
+        radio: baseRadio().copyWith(radioService: radio),
+        strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'power']),
+      ));
       await tester.pump();
       await openControl(tester, MdiIcons.flash);
 
@@ -10967,7 +11043,7 @@ void main() {
     });
 
     testWidgets('a logged QSO carries the power while the control is shown', (tester) async {
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'power']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'power'])));
       await tester.pump();
       await openControl(tester, MdiIcons.flash);
       await tester.enterText(find.widgetWithText(TextField, 'Power'), '5');
@@ -10989,7 +11065,7 @@ void main() {
       final radio = _FakeVfoStore()
         ..setVfo('vfoA', freq: 14285, mode: 'SSB')
         ..setVfo('vfoA', power: 100);
-      await tester.pumpWidget(host(radioService: radio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: radio)));
       await tester.pump();
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
@@ -11001,7 +11077,7 @@ void main() {
     });
 
     testWidgets('the More pane offers a Power field, after Mode', (tester) async {
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'power']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'power'])));
       await tester.pump();
       await openControl(tester, MdiIcons.pencil);
       await tester.pumpAndSettle();
@@ -11020,7 +11096,7 @@ void main() {
       // Station Configuration's "Track Station Info" stamps the power on
       // every QSO. A value being logged that the entry cannot show is a value
       // nothing can correct.
-      await tester.pumpWidget(host(trackingPower: true));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(trackingPower: true)));
       await tester.pump();
       expect(find.byIcon(MdiIcons.flash), findsNothing, reason: 'tracking is not the control');
 
@@ -11036,7 +11112,7 @@ void main() {
         'mode': 'SSB',
         'power': 5,
       });
-      await tester.pumpWidget(host(editingQso: existing));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: existing)));
       await tester.pump();
       await openControl(tester, MdiIcons.pencil);
       await tester.pumpAndSettle();
@@ -11054,7 +11130,7 @@ void main() {
     });
 
     testWidgets('a power typed into the pane reaches the logged QSO and the VFO', (tester) async {
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'power']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'power'])));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
@@ -11083,7 +11159,7 @@ void main() {
         'mode': 'SSB',
         'power': 5,
       });
-      await tester.pumpWidget(host(editingQso: existing));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: existing)));
       await tester.pump();
 
       await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '59');
@@ -11106,7 +11182,7 @@ void main() {
         'power': 5,
       });
       final key = GlobalKey();
-      Widget at({Qso? editing}) => KeyedSubtree(key: key, child: host(editingQso: editing));
+      Widget at({Qso? editing}) => KeyedSubtree(key: key, child: host(session: LoggingSession(editingQso: editing)));
 
       await tester.pumpWidget(at(editing: existing));
       await tester.pump();
@@ -11131,7 +11207,7 @@ void main() {
         'mode': 'SSB',
         'power': 100,
       });
-      await tester.pumpWidget(host(editingQso: existing));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: existing)));
       await tester.pump();
       await openControl(tester, MdiIcons.pencil);
       await tester.pumpAndSettle();
@@ -11158,7 +11234,10 @@ void main() {
         ..setVfo('vfoA', freq: 14285, mode: 'SSB')
         ..setVfo('vfoA', power: 100);
       final key = GlobalKey();
-      Widget at(List<String> order) => KeyedSubtree(key: key, child: host(radioService: radio, controlOrder: order));
+      Widget at(List<String> order) => KeyedSubtree(key: key, child: host(
+        radio: baseRadio().copyWith(radioService: radio),
+        strip: ControlStripSettings(controlOrder: order),
+      ));
 
       await tester.pumpWidget(at(const []));
       await tester.pump();
@@ -11175,7 +11254,7 @@ void main() {
       // control that ships off would arrive at the very end of the row, past
       // More, however deliberately the descriptor list placed it. The dialog
       // is where it's first seen, and where saving records the placement.
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'more']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'more'])));
       await tester.pump();
       await tester.tap(find.byIcon(MdiIcons.cog));
       await tester.pumpAndSettle();
@@ -11199,9 +11278,9 @@ void main() {
         'power': 5,
       });
       await tester.pumpWidget(host(
-        radioService: radio,
-        controlOrder: const ['time', 'radio', 'power'],
-        editingQso: existing,
+        session: LoggingSession(editingQso: existing),
+        radio: baseRadio().copyWith(radioService: radio),
+        strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'power']),
       ));
       await tester.pump();
       await openControl(tester, MdiIcons.flash);
@@ -11227,13 +11306,13 @@ void main() {
       await tester.pump();
       expect(find.byIcon(MdiIcons.noteOutline), findsNothing);
 
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes'])));
       await tester.pump();
       expect(find.byIcon(MdiIcons.noteOutline), findsOneWidget);
     });
 
     testWidgets('a note typed into the control reaches the logged QSO', (tester) async {
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes'])));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
@@ -11255,7 +11334,7 @@ void main() {
       // The panel binds Space panel-wide to advance the main fields. A note
       // is a sentence, so without an branch of its own here every word break
       // is swallowed and the operator types "Ran5Wtoawire".
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes'])));
       await tester.pump();
       await openControl(tester, MdiIcons.noteOutline);
 
@@ -11276,7 +11355,7 @@ void main() {
       // textCapitalization is only a hint to an on-screen keyboard — nothing
       // on a desktop or in a browser reads it — so a formatter is what
       // actually delivers the capital. Both views of the note apply it.
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes'])));
       await tester.pump();
       await openControl(tester, MdiIcons.noteOutline);
       await tester.enterText(find.widgetWithText(TextField, 'Notes'), 'ran 5W to a wire');
@@ -11295,7 +11374,7 @@ void main() {
       // The chip is the only thing on screen while the control is closed, so
       // without this an operator has no way to tell a contact with a note
       // from one without opening every control in turn.
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes'])));
       await tester.pump();
       expect(find.text('Notes'), findsOneWidget);
       expect(find.text('✓ Notes'), findsNothing);
@@ -11313,13 +11392,16 @@ void main() {
         'mode': 'SSB',
         'notes': 'Second time this week',
       });
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes'], editingQso: existing));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: existing),
+        strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes']),
+      ));
       await tester.pump();
       await openControl(tester, MdiIcons.noteOutline);
 
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text, 'Second time this week');
 
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes'])));
       await tester.pump();
       await openControl(tester, MdiIcons.noteOutline);
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Notes')).controller!.text, isEmpty,
@@ -11338,7 +11420,10 @@ void main() {
         'mode': 'SSB',
         'notes': 'Ran 5W to a wire',
       });
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes'], editingQso: existing));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: existing),
+        strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes']),
+      ));
       await tester.pump();
       await openControl(tester, MdiIcons.noteOutline);
 
@@ -11366,7 +11451,10 @@ void main() {
         'band': '20m',
         'mode': 'SSB',
       });
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes'], editingQso: existing));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: existing),
+        strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes']),
+      ));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '57');
       await tester.pump();
@@ -11385,7 +11473,7 @@ void main() {
       // They write the same key. Without the pane pushing back into the
       // control, the chip would go on showing the old note — and the next
       // keystroke in the control would put it back on the contact.
-      await tester.pumpWidget(host(controlOrder: const ['time', 'radio', 'notes']));
+      await tester.pumpWidget(host(strip: ControlStripSettings(controlOrder: const ['time', 'radio', 'notes'])));
       await tester.pump();
       await openControl(tester, MdiIcons.noteOutline);
       await tester.enterText(find.widgetWithText(TextField, 'Notes'), 'First');
@@ -11409,8 +11497,8 @@ void main() {
     Widget hostWithGuess(Map<String, dynamic> guess) => MaterialApp(
           home: Scaffold(
             body: LoggingControls(
-              log: log,
-              radio: radio,
+              log: baseLog(),
+              radio: baseRadio(),
               lookups: LookupHooks(
                 lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
                     call == 'W1AW' ? {'guess': guess} : null,
@@ -11489,7 +11577,7 @@ void main() {
         'band': '20m',
         'mode': 'SSB',
       });
-      await tester.pumpWidget(host(editingQso: existing));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: existing)));
       await tester.pump();
       await openPane(tester);
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Latitude')).controller!.text, '41.71');
@@ -11610,7 +11698,7 @@ void main() {
         'band': '20m',
         'mode': 'SSB',
       });
-      await tester.pumpWidget(host(editingQso: existing));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: existing)));
       await tester.pump();
       await openPane(tester);
       await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'fn20aa');
@@ -11705,7 +11793,7 @@ void main() {
     });
 
     testWidgets('a successful command applies the change without opening the Radio control', (tester) async {
-      await tester.pumpWidget(host(interpretCommand: fakeInterpretCommand));
+      await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: fakeInterpretCommand)));
       expect(find.widgetWithText(TextField, 'Frequency'), findsNothing);
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), '14285');
@@ -11863,11 +11951,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               editingQso: existingQso,
             ),
-            radio: radio,
+            radio: baseRadio(),
           ),
         ),
       ));
@@ -11902,8 +11990,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: controls,
             ),
@@ -11930,8 +12018,8 @@ void main() {
         theme: buildHaLoTheme(Brightness.light),
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
           ),
         ),
       ));
@@ -11965,7 +12053,7 @@ void main() {
         theme: theme,
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             radio: RadioHookup(
               radioService: untuned,
             ),
@@ -11992,7 +12080,7 @@ void main() {
         theme: theme,
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             radio: RadioHookup(
               radioService: offBand,
             ),
@@ -12017,7 +12105,7 @@ void main() {
             theme: theme,
             home: Scaffold(
               body: LoggingControls(
-                log: log,
+                log: baseLog(),
                 radio: RadioHookup(
                   radioService: _FakeVfoStore()..setVfo('vfoA', freq: 7250, mode: 'SSB'),
                   ourItuRegion: ituRegion,
@@ -12047,7 +12135,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             radio: RadioHookup(
               radioService: _FakeVfoStore()..setVfo('vfoA', freq: 14074, mode: 'SSB'),
               ourItuRegion: 1,
@@ -12109,7 +12197,7 @@ void main() {
       // The record writes a grid only once the field was touched; the wipe
       // clears that with the rest of the draft. An undo that restored the
       // text without the flag would show the grid and log a QSO without it.
-      await tester.pumpWidget(host(showGridField: true));
+      await tester.pumpWidget(host(prefs: LoggingPreferences(showGridField: true)));
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN31PR');
       await tester.pump();
@@ -12127,7 +12215,7 @@ void main() {
     testWidgets('wipe stays disabled for a fresh new QSO even though the Radio control shows the VFO frequency',
         (tester) async {
       fakeRadio.setVfo('vfoA', freq: 14285, mode: 'CW');
-      await tester.pumpWidget(host(radioService: fakeRadio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: fakeRadio)));
       await openControl(tester, MdiIcons.radio);
 
       final freqField = tester.widget<TextField>(find.widgetWithText(TextField, 'Frequency'));
@@ -12171,11 +12259,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               editingQso: existingQso,
             ),
-            radio: radio,
+            radio: baseRadio(),
           ),
         ),
       ));
@@ -12213,11 +12301,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               editingQso: existingQso,
             ),
-            radio: radio,
+            radio: baseRadio(),
           ),
         ),
       ));
@@ -12249,11 +12337,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               editingQso: existingQso,
             ),
-            radio: radio,
+            radio: baseRadio(),
           ),
         ),
       ));
@@ -12286,12 +12374,12 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               editingQso: existingQso,
               onEditCanceled: () => editCanceled = true,
             ),
-            radio: radio,
+            radio: baseRadio(),
           ),
         ),
       ));
@@ -12327,12 +12415,12 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               editingQso: deletedQso,
               onEditCanceled: () => editCanceled = true,
             ),
-            radio: radio,
+            radio: baseRadio(),
           ),
         ),
       ));
@@ -12387,7 +12475,7 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(host(editingQso: note));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: note)));
 
       // No callsign field — this isn't a contact — and the kind is plain
       // text, not a field: only NOTE/TODO's actual value is editable.
@@ -12417,7 +12505,10 @@ void main() {
         data: {'band': 'event', 'freq': 0, 'mode': 'break', 'event': {'event': 'break'}},
       );
 
-      await tester.pumpWidget(host(radioService: fakeRadio, editingQso: marker));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: marker),
+        radio: baseRadio().copyWith(radioService: fakeRadio),
+      ));
 
       expect(find.text('14,285 • CW'), findsOneWidget);
 
@@ -12447,10 +12538,10 @@ void main() {
         data: {'band': 'event', 'freq': 0, 'mode': 'break', 'event': {'event': 'break'}},
       );
 
-      await tester.pumpWidget(host(editingQso: note));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: note)));
       final noteButtonHeight = tester.getSize(find.byType(FilledButton)).height;
 
-      await tester.pumpWidget(host(editingQso: marker));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: marker)));
       await tester.pump();
       final markerButtonHeight = tester.getSize(find.byType(FilledButton)).height;
 
@@ -12487,10 +12578,10 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(host(editingQso: note));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: note)));
       final noteButtonHeight = tester.getSize(find.byType(FilledButton)).height;
 
-      await tester.pumpWidget(host(editingQso: solar));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: solar)));
       await tester.pump();
       final solarButtonHeight = tester.getSize(find.byType(FilledButton)).height;
 
@@ -12509,7 +12600,7 @@ void main() {
             'event': {'event': 'break'},
           })))!;
 
-      await tester.pumpWidget(host(editingQso: marker));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: marker)));
       await tester.tap(find.byIcon(MdiIcons.trashCanOutline));
       await tester.pump();
 
@@ -12528,7 +12619,7 @@ void main() {
           })))!;
 
       var canceled = false;
-      await tester.pumpWidget(host(editingQso: note, onEditCanceled: () => canceled = true));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: note, onEditCanceled: () => canceled = true)));
 
       await tester.enterText(find.widgetWithText(TextField, 'Note'), 'call back tomorrow');
       await tester.pump();
@@ -12557,7 +12648,7 @@ void main() {
           })))!;
 
       var canceled = false;
-      await tester.pumpWidget(host(editingQso: todo, onEditCanceled: () => canceled = true));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: todo, onEditCanceled: () => canceled = true)));
 
       expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isFalse);
       await tester.tap(find.byType(Checkbox));
@@ -12584,7 +12675,7 @@ void main() {
             'event': {'event': 'todo', 'note': 'check later', 'done': true},
           })))!;
 
-      await tester.pumpWidget(host(editingQso: legacyTodo));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: legacyTodo)));
       expect(tester.widget<Checkbox>(find.byType(Checkbox)).value, isTrue);
 
       await tester.tap(find.byType(Checkbox));
@@ -12611,7 +12702,7 @@ void main() {
             'event': {'event': 'note', 'description': 'check later'},
           })))!;
 
-      await tester.pumpWidget(host(editingQso: synced));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: synced)));
       final noteField = tester.widget<TextField>(find.widgetWithText(TextField, 'Note'));
       expect(noteField.controller!.text, 'check later');
 
@@ -12644,12 +12735,12 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               editingQso: note,
               controller: controller,
             ),
-            radio: radio,
+            radio: baseRadio(),
           ),
         ),
       ));
@@ -12679,7 +12770,7 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(host(editingQso: untrimmed));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: untrimmed)));
 
       // Nothing was typed — the second button must still read Delete, not
       // Revert (which comparing an untrimmed load against a trimmed save
@@ -12703,7 +12794,7 @@ void main() {
         },
       );
 
-      await tester.pumpWidget(host(editingQso: malformed));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: malformed)));
       await tester.pump();
 
       expect(tester.takeException(), isNull);
@@ -12724,7 +12815,7 @@ void main() {
           })))!;
 
       var deleted = false;
-      await tester.pumpWidget(host(editingQso: note, onEditCanceled: () => deleted = true));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: note, onEditCanceled: () => deleted = true)));
 
       // Nothing was touched, so the second button reads Delete, exactly as
       // it would for an unmodified QSO — not Revert, which comparing against
@@ -12760,13 +12851,15 @@ void main() {
           })))!;
 
       var editCanceled = false;
-      await tester.pumpWidget(host(onEditCanceled: () => editCanceled = true));
+      await tester.pumpWidget(host(session: LoggingSession(onEditCanceled: () => editCanceled = true)));
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'N0CALL');
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Sent'), '57');
       await tester.pump();
 
-      await tester.pumpWidget(host(editingQso: existingQso, onEditCanceled: () => editCanceled = true));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: existingQso, onEditCanceled: () => editCanceled = true),
+      ));
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'W1AW');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
@@ -12775,7 +12868,7 @@ void main() {
 
       // The parent responds to onEditCanceled by clearing editingQso — same
       // as LoggingPanel's own wiring.
-      await tester.pumpWidget(host(onEditCanceled: () => editCanceled = true));
+      await tester.pumpWidget(host(session: LoggingSession(onEditCanceled: () => editCanceled = true)));
 
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'N0CALL',
           reason: 'the draft the operator was composing comes back, not a blank form');
@@ -12793,7 +12886,7 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'N0CALL');
       await tester.pump();
 
-      await tester.pumpWidget(host(editingQso: existingQso));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: existingQso)));
       // 'Rcvd' (their.sent), not 'Sent' (our.sent) — matches the assertion
       // below on data['their']['sent'].
       await tester.enterText(find.widgetWithText(TextField, 'Rcvd'), '57');
@@ -12832,20 +12925,24 @@ void main() {
           })))!;
 
       var editCanceled = false;
-      await tester.pumpWidget(host(onEditCanceled: () => editCanceled = true));
+      await tester.pumpWidget(host(session: LoggingSession(onEditCanceled: () => editCanceled = true)));
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'N0CALL');
       await tester.pump();
 
       // Into the first, then straight across to the second — the way arrow
       // keys walk the list without ever passing back through null.
-      await tester.pumpWidget(host(editingQso: first, onEditCanceled: () => editCanceled = true));
-      await tester.pumpWidget(host(editingQso: second, onEditCanceled: () => editCanceled = true));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: first, onEditCanceled: () => editCanceled = true),
+      ));
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: second, onEditCanceled: () => editCanceled = true),
+      ));
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'K1ABC');
 
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pump();
       expect(editCanceled, isTrue);
-      await tester.pumpWidget(host(onEditCanceled: () => editCanceled = true));
+      await tester.pumpWidget(host(session: LoggingSession(onEditCanceled: () => editCanceled = true)));
 
       expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Their call')).controller!.text, 'N0CALL',
           reason: 'the snapshot taken on the way into "first" must survive the trip through "second" too');
@@ -13026,10 +13123,12 @@ void main() {
       // Up used to stop at the main field, same as Down/Enter/Escape — now it
       // keeps going, the same direction Up already takes from a bare pill.
       var handedOver = 0;
-      await tester.pumpWidget(host(onNavigateToQsoList: () {
+      await tester.pumpWidget(host(
+        session: LoggingSession(onNavigateToQsoList: () {
         handedOver++;
         return true;
-      }));
+      }),
+      ));
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'Their call'));
       await tester.pump();
@@ -13050,7 +13149,7 @@ void main() {
       // A brand-new operation, or a host with no list at all: the callback
       // reports it couldn't hand off, so this control's own field (which
       // just closed) doesn't leave the keyboard stranded on nothing.
-      await tester.pumpWidget(host(onNavigateToQsoList: () => false));
+      await tester.pumpWidget(host(session: LoggingSession(onNavigateToQsoList: () => false)));
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'Their call'));
       await tester.pump();
@@ -13159,8 +13258,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             activities: ActivityHooks(
               activityControls: const [potaControl],
             ),
@@ -13255,10 +13354,12 @@ void main() {
       // one place Up still means "leave the strip upward" in a single step,
       // the way it already did before any control could auto-open.
       var handedOver = 0;
-      await tester.pumpWidget(host(onNavigateToQsoList: () {
+      await tester.pumpWidget(host(
+        session: LoggingSession(onNavigateToQsoList: () {
         handedOver++;
         return true;
-      }));
+      }),
+      ));
       await tester.pump();
       await tester.tap(find.widgetWithText(TextField, 'Their call'));
       await tester.pump();
@@ -13584,8 +13685,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: lookup.fn,
             ),
@@ -13617,8 +13718,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: composing.fn,
             ),
@@ -13644,11 +13745,11 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               editingQso: existingQso,
             ),
-            radio: radio,
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: editing.fn,
             ),
@@ -13673,7 +13774,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               // Shaped like a real spot tap — band and mode included, since a
               // suggestedQso replaces the radio-seeded ones and a QSO carrying
@@ -13686,7 +13787,7 @@ void main() {
                 ],
               },
             ),
-            radio: radio,
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: lookup.fn,
             ),
@@ -13719,8 +13820,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: lookup.fn,
             ),
@@ -13763,7 +13864,7 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
+            log: baseLog(),
             session: LoggingSession(
               suggestedQso: const {
                 'band': '20m',
@@ -13773,7 +13874,7 @@ void main() {
                 ],
               },
             ),
-            radio: radio,
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: lookup.fn,
             ),
@@ -13807,8 +13908,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: lookup.fn,
             ),
@@ -13867,8 +13968,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: lookup.fn,
             ),
@@ -13909,8 +14010,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: lookup.fn,
             ),
@@ -13938,8 +14039,8 @@ void main() {
       await tester.pumpWidget(MaterialApp(
         home: Scaffold(
           body: LoggingControls(
-            log: log,
-            radio: radio,
+            log: baseLog(),
+            radio: baseRadio(),
             lookups: LookupHooks(
               lookup: lookup.fn,
             ),
@@ -14051,7 +14152,7 @@ void main() {
     testWidgets('fills the fields, and withdrawing it empties them again', (tester) async {
       await tester.pumpWidget(host());
       await tester.pump();
-      await tester.pumpWidget(host(suggestedQso: spotA, suggestedQsoIsTentative: true));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true)));
       await tester.pump();
       expect(callIn(tester), 'K1ABC');
 
@@ -14069,19 +14170,21 @@ void main() {
 
       await tester.pumpWidget(host());
       await tester.pump();
-      await tester.pumpWidget(host(suggestedQso: spotA, suggestedQsoIsTentative: true));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true)));
       await tester.pump();
       // Sliding the next row: its withdrawal and its suggestion land in the
       // same widget update, so the panel never sees the fields empty. The
       // mutation this catches is counting the last peek's own fill as work —
       // which makes every spot after the first raise a prompt.
       await tester.pumpWidget(host(
-        suggestedQso: spotB,
-        suggestedQsoIsTentative: true,
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          suggestedQso: spotB,
+          suggestedQsoIsTentative: true,
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           return false;
         },
+        ),
       ));
       await tester.pump();
 
@@ -14096,12 +14199,10 @@ void main() {
       // that filled them — and take its own fill back out on the way.
       var edited = 0;
 
-      await tester.pumpWidget(host(onCallEdited: () => edited++));
+      await tester.pumpWidget(host(session: LoggingSession(onCallEdited: () => edited++)));
       await tester.pump();
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        onCallEdited: () => edited++,
+        session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true, onCallEdited: () => edited++),
       ));
       await tester.pumpAndSettle();
       expect(callIn(tester), 'K1ABC');
@@ -14113,7 +14214,7 @@ void main() {
 
       // And the wipe button, which is the other way the operator empties it.
       final before = edited;
-      await tester.pumpWidget(host(suggestedQso: spotA, onCallEdited: () => edited++));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA, onCallEdited: () => edited++)));
       await tester.pumpAndSettle();
       expect(edited, before, reason: 'the suggestion that replaced it is still not an edit');
     });
@@ -14126,17 +14227,19 @@ void main() {
       // A tap: a station chosen outright, not a peek. The operator picked it,
       // but they did not COMPOSE an entry — so the next spot replaces it the
       // same way, without a prompt standing between the slide and the fields.
-      await tester.pumpWidget(host(suggestedQso: spotA));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA)));
       await tester.pumpAndSettle();
       expect(callIn(tester), 'K1ABC');
 
       await tester.pumpWidget(host(
-        suggestedQso: spotB,
-        suggestedQsoIsTentative: true,
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          suggestedQso: spotB,
+          suggestedQsoIsTentative: true,
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           return false;
         },
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -14154,7 +14257,7 @@ void main() {
       var asked = 0;
       const slashed = {'their': {'call': 'EA3/KI2D'}, 'band': '20m', 'mode': 'SSB'};
 
-      await tester.pumpWidget(host(suggestedQso: slashed, suggestedQsoIsTentative: true));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: slashed, suggestedQsoIsTentative: true)));
       await tester.pumpAndSettle();
       expect(callIn(tester), 'EA3/KI2D');
 
@@ -14170,12 +14273,14 @@ void main() {
       await tester.pumpAndSettle();
 
       await tester.pumpWidget(host(
-        suggestedQso: spotB,
-        suggestedQsoIsTentative: true,
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          suggestedQso: spotB,
+          suggestedQsoIsTentative: true,
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           return false;
         },
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -14187,7 +14292,7 @@ void main() {
         (tester) async {
       await tester.pumpWidget(host());
       await tester.pump();
-      await tester.pumpWidget(host(suggestedQso: spotA, suggestedQsoIsTentative: true));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true)));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K1ABC/P');
       await tester.pump();
@@ -14208,12 +14313,14 @@ void main() {
       await tester.pump();
 
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           return false;
         },
+        ),
       ));
       await tester.pump();
 
@@ -14223,13 +14330,15 @@ void main() {
       expect(callIn(tester), 'W9XYZ', reason: 'and the fields are still the operator\'s');
 
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        suggestionSettledSerial: 1,
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          suggestionSettledSerial: 1,
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           return false;
         },
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -14263,13 +14372,17 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W9XYZ');
       await tester.pump();
 
-      await tester.pumpWidget(host(suggestedQso: spotA, suggestedQsoIsTentative: true, confirmLogOverwrite: ask));
+      await tester.pumpWidget(host(
+        session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true, confirmLogOverwrite: ask),
+      ));
       await tester.pump();
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        suggestionSettledSerial: 1,
-        confirmLogOverwrite: ask,
+        session: LoggingSession(
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          suggestionSettledSerial: 1,
+          confirmLogOverwrite: ask,
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -14285,13 +14398,15 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W9XYZ');
       await tester.pump();
 
-      await tester.pumpWidget(host(suggestedQso: spotA, suggestedQsoIsTentative: true));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true)));
       await tester.pump();
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        suggestionSettledSerial: 1,
-        confirmLogOverwrite: ({required bool editing}) async => true,
+        session: LoggingSession(
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          suggestionSettledSerial: 1,
+          confirmLogOverwrite: ({required bool editing}) async => true,
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -14313,31 +14428,33 @@ void main() {
 
       // Slide row A: peek (held, a call is in progress)...
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        confirmLogOverwrite: ({required bool editing}) async => true,
+        session: LoggingSession(
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          confirmLogOverwrite: ({required bool editing}) async => true,
+        ),
       ));
       await tester.pump();
       // ...then the same drag carried through to the commit, which arrives
       // with a fresh suggestion of its own alongside the request.
       await tester.pumpWidget(host(
-        suggestedQso: Map<String, dynamic>.from(spotA),
-        suggestedQsoIsTentative: true,
-        logRequest: (serial: 1, qso: spotA),
-        confirmLogOverwrite: ({required bool editing}) async => true,
+        session: LoggingSession(
+          suggestedQso: Map<String, dynamic>.from(spotA),
+          suggestedQsoIsTentative: true,
+          logRequest: (serial: 1, qso: spotA),
+          confirmLogOverwrite: ({required bool editing}) async => true,
+        ),
       ));
       await waitForQsos(tester, 1);
 
       // Slide row B: its peek lands in an empty panel, so it simply applies.
-      await tester.pumpWidget(host(suggestedQso: spotB, suggestedQsoIsTentative: true));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotB, suggestedQsoIsTentative: true)));
       await tester.pumpAndSettle();
       expect(callIn(tester), 'W2DEF');
 
       // B's row comes to rest.
       await tester.pumpWidget(host(
-        suggestedQso: spotB,
-        suggestedQsoIsTentative: true,
-        suggestionSettledSerial: 1,
+        session: LoggingSession(suggestedQso: spotB, suggestedQsoIsTentative: true, suggestionSettledSerial: 1),
       ));
       await tester.pumpAndSettle();
 
@@ -14357,22 +14474,28 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        confirmLogOverwrite: ({required bool editing}) => completer.future,
+        session: LoggingSession(
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          confirmLogOverwrite: ({required bool editing}) => completer.future,
+        ),
       ));
       await tester.pump();
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        suggestionSettledSerial: 1,
-        confirmLogOverwrite: ({required bool editing}) => completer.future,
+        session: LoggingSession(
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          suggestionSettledSerial: 1,
+          confirmLogOverwrite: ({required bool editing}) => completer.future,
+        ),
       ));
       await tester.pump();
       await tester.pump();
 
       // The row goes away while the operator is still looking at the dialog.
-      await tester.pumpWidget(host(confirmLogOverwrite: ({required bool editing}) => completer.future));
+      await tester.pumpWidget(host(
+        session: LoggingSession(confirmLogOverwrite: ({required bool editing}) => completer.future),
+      ));
       await tester.pump();
 
       // ...and only then do they answer it.
@@ -14392,15 +14515,17 @@ void main() {
       final edited = Qso(uuid: 'q1', operationUuid: operation.uuid, data: const {'their': {'call': 'W1AW'}});
       var cancels = 0;
 
-      await tester.pumpWidget(host(editingQso: edited));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: edited)));
       await tester.pump();
       await tester.pumpWidget(host(
-        editingQso: edited,
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        suggestionSettledSerial: 1,
-        onEditCanceled: () => cancels++,
-        confirmLogOverwrite: ({required bool editing}) async => true,
+        session: LoggingSession(
+          editingQso: edited,
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          suggestionSettledSerial: 1,
+          onEditCanceled: () => cancels++,
+          confirmLogOverwrite: ({required bool editing}) async => true,
+        ),
       ));
       await tester.pumpAndSettle();
       expect(cancels, 1, reason: 'the operator cleared the way');
@@ -14408,11 +14533,13 @@ void main() {
       // The edit going away IS the update that must apply it. Nothing else is
       // pumped here — no poll, no later rebuild to be rescued by.
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        suggestionSettledSerial: 1,
-        onEditCanceled: () => cancels++,
-        confirmLogOverwrite: ({required bool editing}) async => true,
+        session: LoggingSession(
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          suggestionSettledSerial: 1,
+          onEditCanceled: () => cancels++,
+          confirmLogOverwrite: ({required bool editing}) async => true,
+        ),
       ));
       await tester.pump();
 
@@ -14430,19 +14557,21 @@ void main() {
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump();
-      await tester.pumpWidget(host(suggestedQso: spotA, suggestedQsoIsTentative: true));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true)));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), '');
       await tester.pump();
 
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        suggestionSettledSerial: 1,
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          suggestionSettledSerial: 1,
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           return true;
         },
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -14456,7 +14585,7 @@ void main() {
 
       await tester.pumpWidget(host());
       await tester.pump();
-      await tester.pumpWidget(host(suggestedQso: spotA, suggestedQsoIsTentative: true));
+      await tester.pumpWidget(host(session: LoggingSession(suggestedQso: spotA, suggestedQsoIsTentative: true)));
       await tester.pump();
       expect(callIn(tester), 'K1ABC');
 
@@ -14464,13 +14593,15 @@ void main() {
       // spot's callsign, put there by this very gesture. Treating that as work
       // at risk puts a prompt in front of every slide-to-log there is.
       await tester.pumpWidget(host(
-        suggestedQso: spotA,
-        suggestedQsoIsTentative: true,
-        logRequest: (serial: 1, qso: spotA),
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          suggestedQso: spotA,
+          suggestedQsoIsTentative: true,
+          logRequest: (serial: 1, qso: spotA),
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           return false;
         },
+        ),
       ));
 
       final logged = await waitForQsos(tester, 1);
@@ -14494,16 +14625,18 @@ void main() {
       bool? askedAboutEditing;
       final edited = Qso(uuid: 'q1', operationUuid: operation.uuid, data: const {'their': {'call': 'W1AW'}});
 
-      await tester.pumpWidget(host(editingQso: edited));
+      await tester.pumpWidget(host(session: LoggingSession(editingQso: edited)));
       await tester.pump();
       await tester.pumpWidget(host(
-        editingQso: edited,
-        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          editingQso: edited,
+          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           askedAboutEditing = editing;
           return false;
         },
+        ),
       ));
       await tester.pump();
 
@@ -14521,12 +14654,14 @@ void main() {
       await tester.pump();
 
       await tester.pumpWidget(host(
-        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           askedAboutEditing = editing;
           return false;
         },
+        ),
       ));
       await tester.pump();
 
@@ -14541,18 +14676,20 @@ void main() {
       // is widening the guard back to every composed field.
       var asked = 0;
 
-      await tester.pumpWidget(host(showGridField: true));
+      await tester.pumpWidget(host(prefs: LoggingPreferences(showGridField: true)));
       await tester.pump();
       await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN31pr');
       await tester.pump();
 
       await tester.pumpWidget(host(
-        showGridField: true,
-        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           return true;
         },
+        ),
+        prefs: LoggingPreferences(showGridField: true),
       ));
 
       final logged = await waitForQsos(tester, 1);
@@ -14589,8 +14726,10 @@ void main() {
       await tester.pump();
 
       await tester.pumpWidget(host(
-        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-        confirmLogOverwrite: ask,
+        session: LoggingSession(
+          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+          confirmLogOverwrite: ask,
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -14610,7 +14749,9 @@ void main() {
       await tester.pumpWidget(host());
       await tester.pump();
       await tester.pumpWidget(host(
-        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+        session: LoggingSession(
+          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+        ),
       ));
       await waitForQsos(tester, 1);
       await tester.pump();
@@ -14636,8 +14777,10 @@ void main() {
 
       // Clear-and-log: the wipe that makes room for the spot.
       await tester.pumpWidget(host(
-        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-        confirmLogOverwrite: ({required bool editing}) async => true,
+        session: LoggingSession(
+          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+          confirmLogOverwrite: ({required bool editing}) async => true,
+        ),
       ));
       await waitForQsos(tester, 1);
       await tester.pump();
@@ -14648,7 +14791,9 @@ void main() {
       // that would have to be fixed — which on a phone is a keyboard over the
       // list, for a station the operator can do nothing about from there.
       await tester.pumpWidget(host(
-        logRequest: (serial: 2, qso: const {'their': {'call': ''}, 'band': '20m', 'mode': 'SSB'}),
+        session: LoggingSession(
+          logRequest: (serial: 2, qso: const {'their': {'call': ''}, 'band': '20m', 'mode': 'SSB'}),
+        ),
       ));
       await tester.pumpAndSettle();
 
@@ -14661,11 +14806,13 @@ void main() {
       await tester.pumpWidget(host());
       await tester.pump();
       await tester.pumpWidget(host(
-        logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
-        confirmLogOverwrite: ({required bool editing}) async {
+        session: LoggingSession(
+          logRequest: (serial: 1, qso: const {'their': {'call': 'K1ABC'}, 'band': '20m', 'mode': 'SSB'}),
+          confirmLogOverwrite: ({required bool editing}) async {
           asked++;
           return true;
         },
+        ),
       ));
 
       final logged = await waitForQsos(tester, 1);
@@ -14683,7 +14830,7 @@ void main() {
 
     testWidgets('a report the operator never touched travels as a hint, not a value', (tester) async {
       final rows = <List<PeerDraftField>>[];
-      await tester.pumpWidget(host(onPeerDraftChanged: (_, fields) => rows.add(fields)));
+      await tester.pumpWidget(host(session: LoggingSession(onPeerDraftChanged: (_, fields) => rows.add(fields))));
       await tester.enterText(find.byType(TextField).first, 'KN2X');
       await tester.pump();
 
@@ -14699,7 +14846,7 @@ void main() {
 
     testWidgets('a report typed over its own placeholder becomes the operator\'s answer', (tester) async {
       final rows = <List<PeerDraftField>>[];
-      await tester.pumpWidget(host(onPeerDraftChanged: (_, fields) => rows.add(fields)));
+      await tester.pumpWidget(host(session: LoggingSession(onPeerDraftChanged: (_, fields) => rows.add(fields))));
       await tester.enterText(find.byType(TextField).first, 'KN2X');
       await tester.pump();
       final before = rows.last.firstWhere((f) => f.key == 'sent');
@@ -14715,7 +14862,10 @@ void main() {
 
     testWidgets('the row is the operator\'s own order, so switchSentRcvd travels', (tester) async {
       final rows = <List<PeerDraftField>>[];
-      await tester.pumpWidget(host(switchSentRcvd: true, onPeerDraftChanged: (_, fields) => rows.add(fields)));
+      await tester.pumpWidget(host(
+        session: LoggingSession(onPeerDraftChanged: (_, fields) => rows.add(fields)),
+        prefs: LoggingPreferences(switchSentRcvd: true),
+      ));
       await tester.enterText(find.byType(TextField).first, 'KN2X');
       await tester.pump();
 
@@ -14725,7 +14875,10 @@ void main() {
     testWidgets('a field the operator switched on joins the row', (tester) async {
       final rows = <List<PeerDraftField>>[];
       await tester.pumpWidget(
-          host(showStateField: true, onPeerDraftChanged: (_, fields) => rows.add(fields)));
+          host(
+            session: LoggingSession(onPeerDraftChanged: (_, fields) => rows.add(fields)),
+            prefs: LoggingPreferences(showStateField: true),
+          ));
       await tester.enterText(find.byType(TextField).first, 'KN2X');
       await tester.pump();
 
@@ -14735,7 +14888,7 @@ void main() {
     testWidgets('a host with nothing to tell is never asked', (tester) async {
       // The null gate is what keeps the whole path off the keystroke route.
       var built = 0;
-      await tester.pumpWidget(host(onQsoChanged: (_) => built++));
+      await tester.pumpWidget(host(session: LoggingSession(onQsoChanged: (_) => built++)));
       await tester.enterText(find.byType(TextField).first, 'KN2X');
       await tester.pump();
       expect(built, greaterThan(0), reason: 'the draft path itself still works');
@@ -14755,7 +14908,7 @@ void main() {
           'freq': 7185,
           'mode': 'LSB',
         })))!;
-    await tester.pumpWidget(host(editingQso: existingQso));
+    await tester.pumpWidget(host(session: LoggingSession(editingQso: existingQso)));
 
     await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -14783,7 +14936,7 @@ void main() {
           'freq': 7185,
           'mode': 'USB',
         })))!;
-    await tester.pumpWidget(host(editingQso: existingQso));
+    await tester.pumpWidget(host(session: LoggingSession(editingQso: existingQso)));
 
     await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
     await tester.pumpAndSettle();
@@ -14816,7 +14969,7 @@ void main() {
     // and transmitted on the wrong sideband.
     testWidgets('the rig is told the same sideband the panel holds', (tester) async {
       final radio = _FakeVfoStore()..setVfo('vfoA', freq: 14285, mode: 'SSB');
-      await tester.pumpWidget(host(radioService: radio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: radio)));
       await openControl(tester, MdiIcons.radio);
 
       await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '40m');
@@ -14835,7 +14988,7 @@ void main() {
     // `RadioControlModel.commitBandTypedIntoFreqField` re-picks unconditionally, by design.
     testWidgets('re-picking the band already selected keeps a deliberate far sideband', (tester) async {
       final radio = _FakeVfoStore()..setVfo('vfoA', freq: 7185, mode: 'USB');
-      await tester.pumpWidget(host(radioService: radio));
+      await tester.pumpWidget(host(radio: baseRadio().copyWith(radioService: radio)));
       await openControl(tester, MdiIcons.radio);
 
       await tester.enterText(find.widgetWithText(TextField, 'Frequency'), '40m');
@@ -14867,7 +15020,7 @@ void main() {
       };
     }
 
-    await tester.pumpWidget(host(interpretCommand: interpret));
+    await tester.pumpWidget(host(commands: CommandHooks(interpretCommand: interpret)));
 
     await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'FORTY');
     await tester.pump();
@@ -14895,7 +15048,7 @@ void main() {
           'startAtMillis': 1000000,
           'mode': 'LSB',
         })))!;
-    await tester.pumpWidget(host(editingQso: existingQso));
+    await tester.pumpWidget(host(session: LoggingSession(editingQso: existingQso)));
 
     await tester.tap(find.byIcon(MdiIcons.pencil), warnIfMissed: false);
     await tester.pumpAndSettle();

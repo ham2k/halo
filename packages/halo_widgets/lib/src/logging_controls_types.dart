@@ -206,6 +206,37 @@ class LogHooks {
   /// so a host that leaves this unwired records nothing.
   final void Function(Object error, StackTrace stackTrace)? onWriteError;
 
+  /// The log with some of it replaced — what a caller holding one of these
+  /// writes to vary a field instead of restating the rest. A null argument
+  /// keeps what is here, so nothing can be cleared through it. Offered for
+  /// the panel's own test helper, which merges its defaults into whatever
+  /// groups a test hands it; the app builds each group outright. Construct a
+  /// fresh [LogHooks] for that.
+  @visibleForTesting
+  LogHooks copyWith({
+    Operation? operation,
+    QsosRepository? qsosRepository,
+    SerialNumberSource? serialNumbers,
+    List<Qso>? qsos,
+    void Function(Qso qso)? onLogged,
+    void Function(Qso qso)? onQsoDeleted,
+    void Function(Qso qso)? onQsoUndeleted,
+    VoidCallback? onCallListLogged,
+    Future<Map<String, dynamic>> Function(Map<String, dynamic> qso, Map<String, dynamic> operation)? decorateQsoBeforeSave,
+    void Function(Object error, StackTrace stackTrace)? onWriteError,
+  }) =>
+      LogHooks(
+        operation: operation ?? this.operation,
+        qsosRepository: qsosRepository ?? this.qsosRepository,
+        serialNumbers: serialNumbers ?? this.serialNumbers,
+        qsos: qsos ?? this.qsos,
+        onLogged: onLogged ?? this.onLogged,
+        onQsoDeleted: onQsoDeleted ?? this.onQsoDeleted,
+        onQsoUndeleted: onQsoUndeleted ?? this.onQsoUndeleted,
+        onCallListLogged: onCallListLogged ?? this.onCallListLogged,
+        decorateQsoBeforeSave: decorateQsoBeforeSave ?? this.decorateQsoBeforeSave,
+        onWriteError: onWriteError ?? this.onWriteError,
+      );
 }
 
 /// What the app is doing with the panel right now: the QSO it is editing, a
@@ -445,6 +476,40 @@ class RadioHookup {
   /// save — but it has to know, because a power that is being logged has to
   /// be visible and editable whether or not the Power control is in the row.
   final bool trackingPower;
+
+  /// The rig with some of it replaced — what a caller holding one of these
+  /// writes to vary a field instead of restating the rest. A null argument
+  /// keeps what is here, so nothing can be cleared through it. Offered for
+  /// the panel's own test helper, which merges its defaults into whatever
+  /// groups a test hands it; the app builds each group outright. Construct a
+  /// fresh [RadioHookup] for that.
+  @visibleForTesting
+  RadioHookup copyWith({
+    VfoStore? radioService,
+    Listenable? radioUpdates,
+    bool? hasConfiguredRadio,
+    bool? radioConnected,
+    VoidCallback? onOpenStationConfig,
+    String? radioName,
+    int? ourItuRegion,
+    String? ourCountryCode,
+    List<String>? enabledBands,
+    List<String>? enabledModes,
+    bool? trackingPower,
+  }) =>
+      RadioHookup(
+        radioService: radioService ?? this.radioService,
+        radioUpdates: radioUpdates ?? this.radioUpdates,
+        hasConfiguredRadio: hasConfiguredRadio ?? this.hasConfiguredRadio,
+        radioConnected: radioConnected ?? this.radioConnected,
+        onOpenStationConfig: onOpenStationConfig ?? this.onOpenStationConfig,
+        radioName: radioName ?? this.radioName,
+        ourItuRegion: ourItuRegion ?? this.ourItuRegion,
+        ourCountryCode: ourCountryCode ?? this.ourCountryCode,
+        enabledBands: enabledBands ?? this.enabledBands,
+        enabledModes: enabledModes ?? this.enabledModes,
+        trackingPower: trackingPower ?? this.trackingPower,
+      );
 }
 
 /// Where the panel learns about a callsign and what it shows about one: the
@@ -530,6 +595,42 @@ class LookupHooks {
   /// but inert; the controls stay free of any url_launcher dependency either
   /// way — the app decides how links open.
   final InlineMarkdownOpenLink? onOpenLink;
+
+  /// The lookups with some of it replaced — what a caller holding one of these
+  /// writes to vary a field instead of restating the rest. A null argument
+  /// keeps what is here, so nothing can be cleared through it. Offered for
+  /// the panel's own test helper, which merges its defaults into whatever
+  /// groups a test hands it; the app builds each group outright. Construct a
+  /// fresh [LookupHooks] for that.
+  @visibleForTesting
+  LookupHooks copyWith({
+    CallLookup? lookup,
+    void Function(Qso qso)? enqueueLookup,
+    void Function(Iterable<Qso> qsos)? enqueueAllLookups,
+    OperationStatsLines? operationStatsLines,
+    CallLocationLine? callLocationLine,
+    ScoreQso? scoreQso,
+    String Function(String noticeKey)? scoreNoticeLabel,
+    WorkedBefore? workedBefore,
+    String? Function(List<int> startTimes)? workedBeforeLabel,
+    CallInfoChanged? onCallInfoChanged,
+    VoidCallback? onCallInfoTap,
+    InlineMarkdownOpenLink? onOpenLink,
+  }) =>
+      LookupHooks(
+        lookup: lookup ?? this.lookup,
+        enqueueLookup: enqueueLookup ?? this.enqueueLookup,
+        enqueueAllLookups: enqueueAllLookups ?? this.enqueueAllLookups,
+        operationStatsLines: operationStatsLines ?? this.operationStatsLines,
+        callLocationLine: callLocationLine ?? this.callLocationLine,
+        scoreQso: scoreQso ?? this.scoreQso,
+        scoreNoticeLabel: scoreNoticeLabel ?? this.scoreNoticeLabel,
+        workedBefore: workedBefore ?? this.workedBefore,
+        workedBeforeLabel: workedBeforeLabel ?? this.workedBeforeLabel,
+        onCallInfoChanged: onCallInfoChanged ?? this.onCallInfoChanged,
+        onCallInfoTap: onCallInfoTap ?? this.onCallInfoTap,
+        onOpenLink: onOpenLink ?? this.onOpenLink,
+      );
 }
 
 /// The activities' contribution to the panel: their declarative controls, a
@@ -739,4 +840,48 @@ class LoggingPreferences {
   /// up from here — see [KeyboardAccessoryController]. Null (tests, and any
   /// host that doesn't draw one) simply means no row appears.
   final KeyboardAccessoryController? keyboardAccessory;
+
+  /// The preferences with some of it replaced — what a caller holding one of these
+  /// writes to vary a field instead of restating the rest. A null argument
+  /// keeps what is here, so nothing can be cleared through it. Offered for
+  /// the panel's own test helper, which merges its defaults into whatever
+  /// groups a test hands it; the app builds each group outright. Construct a
+  /// fresh [LoggingPreferences] for that.
+  @visibleForTesting
+  LoggingPreferences copyWith({
+    String? defaultOperatorCall,
+    String? defaultPosition,
+    bool? showPositionField,
+    bool? showRSTFields,
+    bool? showStateField,
+    bool? showGridField,
+    String? defaultReport,
+    String? defaultReportCW,
+    String? defaultReportFT8,
+    bool? switchSentRcvd,
+    bool? jumpAfterRST,
+    bool? showNumbersRow,
+    bool? showExtraInNumbersRow,
+    bool? vibrateNumbersRow,
+    bool? leftieMode,
+    KeyboardAccessoryController? keyboardAccessory,
+  }) =>
+      LoggingPreferences(
+        defaultOperatorCall: defaultOperatorCall ?? this.defaultOperatorCall,
+        defaultPosition: defaultPosition ?? this.defaultPosition,
+        showPositionField: showPositionField ?? this.showPositionField,
+        showRSTFields: showRSTFields ?? this.showRSTFields,
+        showStateField: showStateField ?? this.showStateField,
+        showGridField: showGridField ?? this.showGridField,
+        defaultReport: defaultReport ?? this.defaultReport,
+        defaultReportCW: defaultReportCW ?? this.defaultReportCW,
+        defaultReportFT8: defaultReportFT8 ?? this.defaultReportFT8,
+        switchSentRcvd: switchSentRcvd ?? this.switchSentRcvd,
+        jumpAfterRST: jumpAfterRST ?? this.jumpAfterRST,
+        showNumbersRow: showNumbersRow ?? this.showNumbersRow,
+        showExtraInNumbersRow: showExtraInNumbersRow ?? this.showExtraInNumbersRow,
+        vibrateNumbersRow: vibrateNumbersRow ?? this.vibrateNumbersRow,
+        leftieMode: leftieMode ?? this.leftieMode,
+        keyboardAccessory: keyboardAccessory ?? this.keyboardAccessory,
+      );
 }
