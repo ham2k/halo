@@ -186,8 +186,8 @@ void main() {
       // from — rows drawn from a dozen groups need saying where they belong.
       expect(shown('User Interface'), findsWidgets, reason: 'the heading over the rows it contributed');
       expect(shown('Theme Mode'), findsOneWidget);
-      expect(shown('Bands'), findsOneWidget);
-      expect(shown('Modes'), findsOneWidget);
+      expect(shown('Preferred Bands'), findsOneWidget);
+      expect(shown('Preferred Modes'), findsOneWidget);
 
       // Not whitelisted: these reach the operator only through their own
       // group's category, which is collapsed. Privacy's consent toggles and

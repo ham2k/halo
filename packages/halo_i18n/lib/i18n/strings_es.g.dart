@@ -648,6 +648,8 @@ class _Translations$settings$es extends Translations$settings$en {
 	@override String get showMoreSettings => 'Mostrar más ajustes';
 	@override String get numberFormat => 'Formato de números';
 	@override late final _Translations$settings$numberFormatOpts$es numberFormatOpts = _Translations$settings$numberFormatOpts$es._(_root);
+	@override late final _Translations$settings$numberFormatDescription$es numberFormatDescription = _Translations$settings$numberFormatDescription$es._(_root);
+	@override late final _Translations$settings$numberFormatSeparators$es numberFormatSeparators = _Translations$settings$numberFormatSeparators$es._(_root);
 	@override String get gridPrecision => 'Precisión del localizador';
 	@override late final _Translations$settings$gridPrecisionOpts$es gridPrecisionOpts = _Translations$settings$gridPrecisionOpts$es._(_root);
 	@override late final _Translations$settings$gridPrecisionDescription$es gridPrecisionDescription = _Translations$settings$gridPrecisionDescription$es._(_root);
@@ -1118,10 +1120,10 @@ class _Translations$exportSettings$es extends Translations$exportSettings$en {
 	@override String get retry => 'Reintentar';
 	@override String get compactFileNamesDescriptionOn => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.';
 	@override String get compactFileNamesDescriptionOff => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.';
-	@override String get includePrivateDataDescriptionOn => 'Se incluyen nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.';
-	@override String get includePrivateDataDescriptionOff => 'Se omiten nombres, ciudades y notas; las ubicaciones se limitan a cuadrículas de seis caracteres.';
-	@override String get includeLookupDataDescriptionOn => 'Se incluye la información de los servicios de consulta de indicativos.';
-	@override String get includeLookupDataDescriptionOff => 'Se omite la información de los servicios de consulta de indicativos; se conservan los valores introducidos manualmente.';
+	@override String get includePrivateDataDescriptionOn => 'Incluyendo nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.';
+	@override String get includePrivateDataDescriptionOff => 'Omitiendo nombres, ciudades y notas; limitando las ubicaciones a cuadrículas de seis caracteres.';
+	@override String get includeLookupDataDescriptionOn => 'Incluyendo la información de los servicios de consulta de indicativos.';
+	@override String get includeLookupDataDescriptionOff => 'Omitiendo la información de los servicios de consulta de indicativos; conservando los valores introducidos manualmente.';
 	@override String get customTemplatesDescriptionOn => 'Tus plantillas personalizadas están activas y se pueden editar a continuación.';
 	@override String get customTemplatesDescriptionOff => 'Se usan las plantillas predeterminadas. Tus plantillas personalizadas se conservan para más adelante.';
 	@override String get type => 'Tipo de exportación';
@@ -1562,7 +1564,7 @@ class _Translations$settings$theme$es extends Translations$settings$theme$en {
 
 	// Translations
 	@override String get title => 'Modo de Tema';
-	@override String get system => 'Sistema';
+	@override String get system => 'Seguir la configuración del sistema';
 	@override String get light => 'Claro';
 	@override String get dark => 'Oscuro';
 }
@@ -1574,7 +1576,7 @@ class _Translations$settings$themeDescription$es extends Translations$settings$t
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get system => 'Sigue la configuración del sistema';
+	@override String get system => 'Siguiendo la configuración del sistema';
 	@override String get light => 'Siempre en Modo Claro';
 	@override String get dark => 'Siempre en Modo Oscuro';
 }
@@ -1605,8 +1607,8 @@ class _Translations$settings$keepDeviceAwake$es extends Translations$settings$ke
 
 	// Translations
 	@override String get title => 'Mantener el Dispositivo Despierto';
-	@override String get descriptionOn => 'El dispositivo no se duerme mientras estás en la vista de registro o una sincronización está en curso, y puede dormirse tras 15 minutos sin ninguna de las dos';
-	@override String get descriptionOff => 'El dispositivo se duerme como de costumbre';
+	@override String get descriptionOn => 'Sin dormirse mientras estás en la vista de registro o una sincronización está en curso';
+	@override String get descriptionOff => 'Durmiéndose como de costumbre';
 }
 
 // Path: settings.layoutDensityOpts
@@ -1644,8 +1646,8 @@ class _Translations$settings$logging$es extends Translations$settings$logging$en
 	// Translations
 	@override String get title => 'Registro';
 	@override late final _Translations$settings$logging$leftieMode$es leftieMode = _Translations$settings$logging$leftieMode$es._(_root);
-	@override late final _Translations$settings$logging$fieldsOnTop$es fieldsOnTop = _Translations$settings$logging$fieldsOnTop$es._(_root);
 	@override late final _Translations$settings$logging$countryFlags$es countryFlags = _Translations$settings$logging$countryFlags$es._(_root);
+	@override late final _Translations$settings$logging$countryFlagsDescription$es countryFlagsDescription = _Translations$settings$logging$countryFlagsDescription$es._(_root);
 	@override late final _Translations$settings$logging$suggestDefaultOperator$es suggestDefaultOperator = _Translations$settings$logging$suggestDefaultOperator$es._(_root);
 	@override late final _Translations$settings$logging$showBearing$es showBearing = _Translations$settings$logging$showBearing$es._(_root);
 	@override late final _Translations$settings$logging$showReverseBearing$es showReverseBearing = _Translations$settings$logging$showReverseBearing$es._(_root);
@@ -1657,8 +1659,8 @@ class _Translations$settings$logging$es extends Translations$settings$logging$en
 	@override late final _Translations$settings$logging$numbersRow$es numbersRow = _Translations$settings$logging$numbersRow$es._(_root);
 	@override late final _Translations$settings$logging$numbersRowExtra$es numbersRowExtra = _Translations$settings$logging$numbersRowExtra$es._(_root);
 	@override late final _Translations$settings$logging$numbersRowVibrate$es numbersRowVibrate = _Translations$settings$logging$numbersRowVibrate$es._(_root);
-	@override String get bands => 'Bandas';
-	@override String get modes => 'Modos';
+	@override String get bands => 'Bandas Preferidas';
+	@override String get modes => 'Modos Preferidos';
 }
 
 // Path: settings.radio
@@ -1831,8 +1833,8 @@ class _Translations$settings$syncPanel$es extends Translations$settings$syncPane
 	// Translations
 	@override String get configuration => 'Configuración de sincronización';
 	@override String get enableTitle => 'Sincronizar con Ham2K Log Filer';
-	@override String get enabledDescription => 'Respalda y sincroniza tu registro entre dispositivos';
-	@override String get disabledDescription => 'Desactivado — tu registro se queda solo en este dispositivo';
+	@override String get enabledDescription => 'Respaldando y sincronizando tu registro entre dispositivos';
+	@override String get disabledDescription => 'Desactivado — quedándose solo en este dispositivo';
 	@override String get syncing => 'Sincronizando';
 	@override String get account => 'Cuenta';
 	@override String get refresh => 'Actualizar';
@@ -2317,9 +2319,32 @@ class _Translations$settings$numberFormatOpts$es extends Translations$settings$n
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get locale => 'Usar la configuración del dispositivo';
+	@override String get locale => 'Seguir la configuración del sistema';
 	@override String get period => 'Usar siempre punto para decimales';
 	@override String get comma => 'Usar siempre coma para decimales';
+}
+
+// Path: settings.numberFormatDescription
+class _Translations$settings$numberFormatDescription$es extends Translations$settings$numberFormatDescription$en {
+	_Translations$settings$numberFormatDescription$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String locale({required Object separator}) => 'Configuración del sistema (usando ${separator} para decimales)';
+	@override String get period => 'Usando siempre punto para decimales';
+	@override String get comma => 'Usando siempre coma para decimales';
+}
+
+// Path: settings.numberFormatSeparators
+class _Translations$settings$numberFormatSeparators$es extends Translations$settings$numberFormatSeparators$en {
+	_Translations$settings$numberFormatSeparators$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get comma => 'coma';
+	@override String get period => 'punto';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -2340,8 +2365,8 @@ class _Translations$settings$gridPrecisionDescription$es extends Translations$se
 	final TranslationsEs _root; // ignore: unused_field
 
 	// Translations
-	@override String get six => 'Unos 9 × 5 km — lo que la mayoría de los operadores dice en el aire';
-	@override String get eight => 'Unos 700 × 460 m — solo donde la ubicación se conoce con esa precisión';
+	@override String get six => '6 dígitos';
+	@override String get eight => '8 dígitos';
 }
 
 // Path: home.logs.panels
@@ -2589,20 +2614,8 @@ class _Translations$settings$logging$leftieMode$es extends Translations$settings
 
 	// Translations
 	@override String get title => 'Modo Zurdo';
-	@override String get descriptionOn => 'Usar diseño para zurdos';
-	@override String get descriptionOff => 'Usar diseño para diestros';
-}
-
-// Path: settings.logging.fieldsOnTop
-class _Translations$settings$logging$fieldsOnTop$es extends Translations$settings$logging$fieldsOnTop$en {
-	_Translations$settings$logging$fieldsOnTop$es._(TranslationsEs root) : this._root = root, super.internal(root);
-
-	final TranslationsEs _root; // ignore: unused_field
-
-	// Translations
-	@override String get title => 'Campos arriba';
-	@override String get descriptionOn => 'Campos de registro encima de la lista de QSOs, más recientes primero';
-	@override String get descriptionOff => 'Campos de registro debajo de la lista de QSOs';
+	@override String get descriptionOn => 'Usando diseño para zurdos';
+	@override String get descriptionOff => 'Usando diseño para diestros';
 }
 
 // Path: settings.logging.countryFlags
@@ -2618,6 +2631,18 @@ class _Translations$settings$logging$countryFlags$es extends Translations$settin
 	@override String get none => 'No mostrar banderas';
 }
 
+// Path: settings.logging.countryFlagsDescription
+class _Translations$settings$logging$countryFlagsDescription$es extends Translations$settings$logging$countryFlagsDescription$en {
+	_Translations$settings$logging$countryFlagsDescription$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get dx => 'Mostrando banderas solo para contactos DX';
+	@override String get all => 'Mostrando banderas para todos los contactos';
+	@override String get none => 'Sin mostrar banderas';
+}
+
 // Path: settings.logging.suggestDefaultOperator
 class _Translations$settings$logging$suggestDefaultOperator$es extends Translations$settings$logging$suggestDefaultOperator$en {
 	_Translations$settings$logging$suggestDefaultOperator$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -2626,8 +2651,8 @@ class _Translations$settings$logging$suggestDefaultOperator$es extends Translati
 
 	// Translations
 	@override String get title => 'Sugerir Operador';
-	@override String get descriptionOn => 'Ofrecer tu propio indicativo como operador cuando la operación usa otro indicativo de estación';
-	@override String get descriptionOff => 'Dejar el operador en blanco salvo que lo completes';
+	@override String get descriptionOn => 'Ofreciendo tu propio indicativo como operador cuando la operación usa otro indicativo de estación';
+	@override String get descriptionOff => 'Dejando el operador en blanco salvo que lo completes';
 }
 
 // Path: settings.logging.showBearing
@@ -2638,8 +2663,8 @@ class _Translations$settings$logging$showBearing$es extends Translations$setting
 
 	// Translations
 	@override String get title => 'Mostrar Rumbo';
-	@override String get descriptionOn => 'Mostrar rumbo estimado a la estación';
-	@override String get descriptionOff => 'No mostrar información de rumbo';
+	@override String get descriptionOn => 'Mostrando rumbo estimado a la estación';
+	@override String get descriptionOff => 'Sin mostrar información de rumbo';
 }
 
 // Path: settings.logging.showReverseBearing
@@ -2650,8 +2675,8 @@ class _Translations$settings$logging$showReverseBearing$es extends Translations$
 
 	// Translations
 	@override String get title => 'Mostrar también el rumbo inverso';
-	@override String get descriptionOn => 'Mostrar también el rumbo desde la estación, como "45° / 225°"';
-	@override String get descriptionOff => 'Mostrar solo el rumbo hacia la estación';
+	@override String get descriptionOn => 'Mostrando también el rumbo desde la estación, como "45° / 225°"';
+	@override String get descriptionOff => 'Mostrando solo el rumbo hacia la estación';
 }
 
 // Path: settings.logging.switchSentRcvd
@@ -2674,8 +2699,8 @@ class _Translations$settings$logging$jumpAfterRST$es extends Translations$settin
 
 	// Translations
 	@override String get title => 'Saltar al siguiente campo al ingresar RST';
-	@override String get descriptionOn => 'Saltar después de ingresar el RST';
-	@override String get descriptionOff => 'No saltar automáticamente';
+	@override String get descriptionOn => 'Saltando después de ingresar el RST';
+	@override String get descriptionOff => 'Sin saltar automáticamente';
 }
 
 // Path: settings.logging.defaultReport
@@ -2765,8 +2790,8 @@ class _Translations$settings$radio$smartVfoSnap$es extends Translations$settings
 
 	// Translations
 	@override String get title => 'Ajuste inteligente del VFO';
-	@override String get descriptionOn => 'Al dejar de girar el dial, redondea la frecuencia a un paso razonable. Solo en modos de voz.';
-	@override String get descriptionOff => 'La radio se queda exactamente donde la sintonizaste.';
+	@override String get descriptionOn => 'Al dejar de girar el dial, redondeando la frecuencia a un paso razonable. Solo en modos de voz.';
+	@override String get descriptionOff => 'Quedándose exactamente donde la sintonizaste.';
 }
 
 // Path: settings.radio.snapDebounce
@@ -2918,8 +2943,8 @@ class _Translations$settings$radio$avoidZeroBeat$es extends Translations$setting
 
 	// Translations
 	@override String get title => 'Evitar batido cero en los spots';
-	@override String get descriptionOn => 'Con una radio conectada, sintoniza unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.';
-	@override String get descriptionOff => 'Sintoniza exactamente la frecuencia del spot.';
+	@override String get descriptionOn => 'Con una radio conectada, sintonizando unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.';
+	@override String get descriptionOff => 'Sintonizando exactamente la frecuencia del spot.';
 }
 
 // Path: settings.radio.zeroBeatRange
@@ -2966,8 +2991,8 @@ class _Translations$settings$privacy$shareAppData$es extends Translations$settin
 
 	// Translations
 	@override String get title => 'Compartir datos de uso';
-	@override String get descriptionOn => 'Ayúdanos a mejorar la app compartiendo datos de uso, configuración, fallos y rendimiento';
-	@override String get descriptionOff => 'Mantener privados los datos de uso.\nEl equipo de Ham2K no podrá detectar fallos u otros problemas.';
+	@override String get descriptionOn => 'Ayudándonos a mejorar la app compartiendo datos de uso, configuración, fallos y rendimiento';
+	@override String get descriptionOff => 'Manteniendo privados los datos de uso.\nEl equipo de Ham2K no podrá detectar fallos u otros problemas.';
 }
 
 // Path: settings.privacy.shareOpData
@@ -2978,8 +3003,8 @@ class _Translations$settings$privacy$shareOpData$es extends Translations$setting
 
 	// Translations
 	@override String get title => 'Compartir datos de operaciones';
-	@override String get descriptionOn => 'Compartir algunos datos de operaciones públicamente y con otros usuarios';
-	@override String get descriptionOff => 'Mantener privados los datos de operaciones';
+	@override String get descriptionOn => 'Compartiendo algunos datos de operaciones públicamente y con otros usuarios';
+	@override String get descriptionOff => 'Manteniendo privados los datos de operaciones';
 }
 
 // Path: settings.station.models
@@ -3881,10 +3906,10 @@ extension on TranslationsEs {
 			'settings.title' => 'Configuración',
 			'settings.language' => 'Idioma',
 			'settings.theme.title' => 'Modo de Tema',
-			'settings.theme.system' => 'Sistema',
+			'settings.theme.system' => 'Seguir la configuración del sistema',
 			'settings.theme.light' => 'Claro',
 			'settings.theme.dark' => 'Oscuro',
-			'settings.themeDescription.system' => 'Sigue la configuración del sistema',
+			'settings.themeDescription.system' => 'Siguiendo la configuración del sistema',
 			'settings.themeDescription.light' => 'Siempre en Modo Claro',
 			'settings.themeDescription.dark' => 'Siempre en Modo Oscuro',
 			'settings.fontScale' => 'Tamaño de Letra',
@@ -3898,8 +3923,8 @@ extension on TranslationsEs {
 			'settings.fontScaleOpts.largestPlus' => 'Más grande+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Más grande++',
 			'settings.keepDeviceAwake.title' => 'Mantener el Dispositivo Despierto',
-			'settings.keepDeviceAwake.descriptionOn' => 'El dispositivo no se duerme mientras estás en la vista de registro o una sincronización está en curso, y puede dormirse tras 15 minutos sin ninguna de las dos',
-			'settings.keepDeviceAwake.descriptionOff' => 'El dispositivo se duerme como de costumbre',
+			'settings.keepDeviceAwake.descriptionOn' => 'Sin dormirse mientras estás en la vista de registro o una sincronización está en curso',
+			'settings.keepDeviceAwake.descriptionOff' => 'Durmiéndose como de costumbre',
 			'settings.layoutDensity' => 'Densidad del Diseño',
 			'settings.layoutDensityOpts.auto' => 'Automática',
 			'settings.layoutDensityOpts.densest' => 'Muy compacta',
@@ -3915,30 +3940,30 @@ extension on TranslationsEs {
 			'settings.userInterface' => 'Interfaz de Usuario',
 			'settings.logging.title' => 'Registro',
 			'settings.logging.leftieMode.title' => 'Modo Zurdo',
-			'settings.logging.leftieMode.descriptionOn' => 'Usar diseño para zurdos',
-			'settings.logging.leftieMode.descriptionOff' => 'Usar diseño para diestros',
-			'settings.logging.fieldsOnTop.title' => 'Campos arriba',
-			'settings.logging.fieldsOnTop.descriptionOn' => 'Campos de registro encima de la lista de QSOs, más recientes primero',
-			'settings.logging.fieldsOnTop.descriptionOff' => 'Campos de registro debajo de la lista de QSOs',
+			'settings.logging.leftieMode.descriptionOn' => 'Usando diseño para zurdos',
+			'settings.logging.leftieMode.descriptionOff' => 'Usando diseño para diestros',
 			'settings.logging.countryFlags.title' => 'Banderas de País',
 			'settings.logging.countryFlags.dx' => 'Mostrar solo para contactos DX',
 			'settings.logging.countryFlags.all' => 'Mostrar banderas para todos los contactos',
 			'settings.logging.countryFlags.none' => 'No mostrar banderas',
+			'settings.logging.countryFlagsDescription.dx' => 'Mostrando banderas solo para contactos DX',
+			'settings.logging.countryFlagsDescription.all' => 'Mostrando banderas para todos los contactos',
+			'settings.logging.countryFlagsDescription.none' => 'Sin mostrar banderas',
 			'settings.logging.suggestDefaultOperator.title' => 'Sugerir Operador',
-			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Ofrecer tu propio indicativo como operador cuando la operación usa otro indicativo de estación',
-			'settings.logging.suggestDefaultOperator.descriptionOff' => 'Dejar el operador en blanco salvo que lo completes',
+			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Ofreciendo tu propio indicativo como operador cuando la operación usa otro indicativo de estación',
+			'settings.logging.suggestDefaultOperator.descriptionOff' => 'Dejando el operador en blanco salvo que lo completes',
 			'settings.logging.showBearing.title' => 'Mostrar Rumbo',
-			'settings.logging.showBearing.descriptionOn' => 'Mostrar rumbo estimado a la estación',
-			'settings.logging.showBearing.descriptionOff' => 'No mostrar información de rumbo',
+			'settings.logging.showBearing.descriptionOn' => 'Mostrando rumbo estimado a la estación',
+			'settings.logging.showBearing.descriptionOff' => 'Sin mostrar información de rumbo',
 			'settings.logging.showReverseBearing.title' => 'Mostrar también el rumbo inverso',
-			'settings.logging.showReverseBearing.descriptionOn' => 'Mostrar también el rumbo desde la estación, como "45° / 225°"',
-			'settings.logging.showReverseBearing.descriptionOff' => 'Mostrar solo el rumbo hacia la estación',
+			'settings.logging.showReverseBearing.descriptionOn' => 'Mostrando también el rumbo desde la estación, como "45° / 225°"',
+			'settings.logging.showReverseBearing.descriptionOff' => 'Mostrando solo el rumbo hacia la estación',
 			'settings.logging.switchSentRcvd.title' => 'Cambiar orden de reportes de señal',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Enviado primero, Recibido después',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Recibido primero, Enviado después',
 			'settings.logging.jumpAfterRST.title' => 'Saltar al siguiente campo al ingresar RST',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'Saltar después de ingresar el RST',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'No saltar automáticamente',
+			'settings.logging.jumpAfterRST.descriptionOn' => 'Saltando después de ingresar el RST',
+			'settings.logging.jumpAfterRST.descriptionOff' => 'Sin saltar automáticamente',
 			'settings.logging.defaultReport.title' => 'Reporte por defecto — Fonía',
 			'settings.logging.defaultReport.description' => 'Se usa cuando Enviado o Recibido quedan vacíos en SSB, FM o AM',
 			'settings.logging.defaultReportCW.title' => 'Reporte por defecto — CW y datos',
@@ -3951,8 +3976,8 @@ extension on TranslationsEs {
 			'settings.logging.numbersRowExtra.description' => 'Añade una tecla contextual: «/» para indicativos, «.» para números',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrar al pulsar',
 			'settings.logging.numbersRowVibrate.description' => 'Respuesta háptica al pulsar una tecla numérica',
-			'settings.logging.bands' => 'Bandas',
-			'settings.logging.modes' => 'Modos',
+			'settings.logging.bands' => 'Bandas Preferidas',
+			'settings.logging.modes' => 'Modos Preferidos',
 			'settings.radio.title' => 'Radio',
 			'settings.radio.moreSettings' => 'Más ajustes de configuración de la estación',
 			'settings.radio.units.ms' => 'ms',
@@ -3960,8 +3985,8 @@ extension on TranslationsEs {
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
 			'settings.radio.smartVfoSnap.title' => 'Ajuste inteligente del VFO',
-			'settings.radio.smartVfoSnap.descriptionOn' => 'Al dejar de girar el dial, redondea la frecuencia a un paso razonable. Solo en modos de voz.',
-			'settings.radio.smartVfoSnap.descriptionOff' => 'La radio se queda exactamente donde la sintonizaste.',
+			'settings.radio.smartVfoSnap.descriptionOn' => 'Al dejar de girar el dial, redondeando la frecuencia a un paso razonable. Solo en modos de voz.',
+			'settings.radio.smartVfoSnap.descriptionOff' => 'Quedándose exactamente donde la sintonizaste.',
 			'settings.radio.snapDebounce.title' => 'Ajuste inteligente: retardo de reposo',
 			'settings.radio.snapDebounce.description' => 'Cuánto debe detenerse el dial antes de redondear la frecuencia. Menos se siente inmediato; más deja margen para un giro lento.',
 			'settings.radio.snapLongMove.title' => 'Ajuste inteligente: giro largo',
@@ -4042,8 +4067,8 @@ extension on TranslationsEs {
 			'settings.radio.voiceMessages.notAvailable' => 'Conecta una radio con manipulador de voz para reproducir o grabar desde aquí.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'Tienes que grabar las memorias en la propia radio.',
 			'settings.radio.avoidZeroBeat.title' => 'Evitar batido cero en los spots',
-			'settings.radio.avoidZeroBeat.descriptionOn' => 'Con una radio conectada, sintoniza unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.',
-			'settings.radio.avoidZeroBeat.descriptionOff' => 'Sintoniza exactamente la frecuencia del spot.',
+			'settings.radio.avoidZeroBeat.descriptionOn' => 'Con una radio conectada, sintonizando unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.',
+			'settings.radio.avoidZeroBeat.descriptionOff' => 'Sintonizando exactamente la frecuencia del spot.',
 			'settings.radio.zeroBeatRange.title' => 'Batido cero: margen de separación',
 			'settings.radio.zeroBeatRange.description' => 'A qué distancia de la frecuencia del spot situarse, a cada lado. El desplazamiento nunca es cercano a cero — eso sería un batido cero otra vez.',
 			'settings.help.title' => 'Ayuda y Recursos',
@@ -4071,11 +4096,11 @@ extension on TranslationsEs {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacidad',
 			'settings.privacy.shareAppData.title' => 'Compartir datos de uso',
-			'settings.privacy.shareAppData.descriptionOn' => 'Ayúdanos a mejorar la app compartiendo datos de uso, configuración, fallos y rendimiento',
-			'settings.privacy.shareAppData.descriptionOff' => 'Mantener privados los datos de uso.\nEl equipo de Ham2K no podrá detectar fallos u otros problemas.',
+			'settings.privacy.shareAppData.descriptionOn' => 'Ayudándonos a mejorar la app compartiendo datos de uso, configuración, fallos y rendimiento',
+			'settings.privacy.shareAppData.descriptionOff' => 'Manteniendo privados los datos de uso.\nEl equipo de Ham2K no podrá detectar fallos u otros problemas.',
 			'settings.privacy.shareOpData.title' => 'Compartir datos de operaciones',
-			'settings.privacy.shareOpData.descriptionOn' => 'Compartir algunos datos de operaciones públicamente y con otros usuarios',
-			'settings.privacy.shareOpData.descriptionOff' => 'Mantener privados los datos de operaciones',
+			'settings.privacy.shareOpData.descriptionOn' => 'Compartiendo algunos datos de operaciones públicamente y con otros usuarios',
+			'settings.privacy.shareOpData.descriptionOff' => 'Manteniendo privados los datos de operaciones',
 			'settings.privacy.privacyPolicy' => 'Política de Privacidad',
 			'settings.privacy.termsOfService' => 'Términos de Servicio',
 			'settings.operatorCall' => 'Indicativo del Operador',
@@ -4145,8 +4170,8 @@ extension on TranslationsEs {
 			'settings.syncPanel.enableTitle' => 'Sincronizar con Ham2K Log Filer',
 			_ => null,
 		} ?? switch (path) {
-			'settings.syncPanel.enabledDescription' => 'Respalda y sincroniza tu registro entre dispositivos',
-			'settings.syncPanel.disabledDescription' => 'Desactivado — tu registro se queda solo en este dispositivo',
+			'settings.syncPanel.enabledDescription' => 'Respaldando y sincronizando tu registro entre dispositivos',
+			'settings.syncPanel.disabledDescription' => 'Desactivado — quedándose solo en este dispositivo',
 			'settings.syncPanel.syncing' => 'Sincronizando',
 			'settings.syncPanel.account' => 'Cuenta',
 			'settings.syncPanel.refresh' => 'Actualizar',
@@ -4581,14 +4606,19 @@ extension on TranslationsEs {
 			'settings.panels.peersDescription' => 'Conéctate con otros dispositivos cercanos',
 			'settings.showMoreSettings' => 'Mostrar más ajustes',
 			'settings.numberFormat' => 'Formato de números',
-			'settings.numberFormatOpts.locale' => 'Usar la configuración del dispositivo',
+			'settings.numberFormatOpts.locale' => 'Seguir la configuración del sistema',
 			'settings.numberFormatOpts.period' => 'Usar siempre punto para decimales',
 			'settings.numberFormatOpts.comma' => 'Usar siempre coma para decimales',
+			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'Configuración del sistema (usando ${separator} para decimales)',
+			'settings.numberFormatDescription.period' => 'Usando siempre punto para decimales',
+			'settings.numberFormatDescription.comma' => 'Usando siempre coma para decimales',
+			'settings.numberFormatSeparators.comma' => 'coma',
+			'settings.numberFormatSeparators.period' => 'punto',
 			'settings.gridPrecision' => 'Precisión del localizador',
 			'settings.gridPrecisionOpts.six' => '6 dígitos (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 dígitos (FN31pr55)',
-			'settings.gridPrecisionDescription.six' => 'Unos 9 × 5 km — lo que la mayoría de los operadores dice en el aire',
-			'settings.gridPrecisionDescription.eight' => 'Unos 700 × 460 m — solo donde la ubicación se conoce con esa precisión',
+			'settings.gridPrecisionDescription.six' => '6 dígitos',
+			'settings.gridPrecisionDescription.eight' => '8 dígitos',
 			'commands.enableSyncFirst' => 'Primero habilita la sincronización en la Configuración.',
 			'commands.fullResyncStarted' => 'Resincronización completa iniciada — los datos locales se respaldaron primero.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'Ningún archivo de datos coincide con «${target}».',
@@ -4652,13 +4682,13 @@ extension on TranslationsEs {
 			'staleness.codePushFloorTitle' => 'Hay una actualización importante',
 			'staleness.codePushFloorBody' => 'Esta versión tiene una corrección que todavía no tienes.',
 			'staleness.restartToApply' => 'Reinicia la aplicación para aplicarla.',
+			_ => null,
+		} ?? switch (path) {
 			'staleness.quitAndReopen' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
 			'staleness.reopenToApply' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
 			'staleness.ignoreForNow' => 'Ignorar por ahora',
 			'spotting.noQsoYet' => 'Aún no hay QSO registrado para spotear.',
 			'spotting.setFrequencyFirst' => 'Primero define una frecuencia.',
-			_ => null,
-		} ?? switch (path) {
 			'spotting.nothingToSpot' => 'Nada que spotear — ninguna extensión ofrece spotting aquí.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} falló: ${message}',
 			'spotting.unknownError' => 'error desconocido',
@@ -4842,10 +4872,10 @@ extension on TranslationsEs {
 			'exportSettings.retry' => 'Reintentar',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Nombres compactos, como N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.',
-			'exportSettings.includePrivateDataDescriptionOn' => 'Se incluyen nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.',
-			'exportSettings.includePrivateDataDescriptionOff' => 'Se omiten nombres, ciudades y notas; las ubicaciones se limitan a cuadrículas de seis caracteres.',
-			'exportSettings.includeLookupDataDescriptionOn' => 'Se incluye la información de los servicios de consulta de indicativos.',
-			'exportSettings.includeLookupDataDescriptionOff' => 'Se omite la información de los servicios de consulta de indicativos; se conservan los valores introducidos manualmente.',
+			'exportSettings.includePrivateDataDescriptionOn' => 'Incluyendo nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.',
+			'exportSettings.includePrivateDataDescriptionOff' => 'Omitiendo nombres, ciudades y notas; limitando las ubicaciones a cuadrículas de seis caracteres.',
+			'exportSettings.includeLookupDataDescriptionOn' => 'Incluyendo la información de los servicios de consulta de indicativos.',
+			'exportSettings.includeLookupDataDescriptionOff' => 'Omitiendo la información de los servicios de consulta de indicativos; conservando los valores introducidos manualmente.',
 			'exportSettings.customTemplatesDescriptionOn' => 'Tus plantillas personalizadas están activas y se pueden editar a continuación.',
 			'exportSettings.customTemplatesDescriptionOff' => 'Se usan las plantillas predeterminadas. Tus plantillas personalizadas se conservan para más adelante.',
 			'exportSettings.type' => 'Tipo de exportación',

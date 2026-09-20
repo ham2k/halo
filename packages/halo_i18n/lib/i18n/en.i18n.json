@@ -910,12 +910,12 @@
     "language": "Language",
     "theme": {
       "title": "Theme Mode",
-      "system": "System",
+      "system": "Follow system settings",
       "light": "Light",
       "dark": "Dark"
     },
     "themeDescription": {
-      "system": "Follows system setting",
+      "system": "Following system settings",
       "light": "Always in Light Mode",
       "dark": "Always in Dark Mode"
     },
@@ -933,8 +933,8 @@
     },
     "keepDeviceAwake": {
       "title": "Keep Device Awake",
-      "descriptionOn": "The device stays awake while you are on the logging view or a sync is in progress, and may sleep after 15 minutes without either",
-      "descriptionOff": "The device sleeps as usual"
+      "descriptionOn": "Staying awake while you are on the logging view or a sync is in progress",
+      "descriptionOff": "Sleeping as usual"
     },
     "layoutDensity": "Layout Density",
     "layoutDensityOpts": {
@@ -957,13 +957,8 @@
       "title": "Logging",
       "leftieMode": {
         "title": "Leftie Mode",
-        "descriptionOn": "Use layout for left-handed users",
-        "descriptionOff": "Use layout for right-handed users"
-      },
-      "fieldsOnTop": {
-        "title": "Fields on top",
-        "descriptionOn": "Logging fields above the QSO list, most recent first",
-        "descriptionOff": "Logging fields below the QSO list"
+        "descriptionOn": "Using layout for left-handed users",
+        "descriptionOff": "Using layout for right-handed users"
       },
       "countryFlags": {
         "title": "Country Flags",
@@ -971,20 +966,25 @@
         "all": "Show flags for all contacts",
         "none": "Don't show any flags"
       },
+      "countryFlagsDescription": {
+        "dx": "Showing flags only for DX contacts",
+        "all": "Showing flags for all contacts",
+        "none": "Not showing any flags"
+      },
       "suggestDefaultOperator": {
         "title": "Suggest Operator",
-        "descriptionOn": "Offer your own callsign as the operator when an operation runs under a different station callsign",
-        "descriptionOff": "Leave the operator blank unless you fill it in"
+        "descriptionOn": "Offering your own callsign as the operator when an operation runs under a different station callsign",
+        "descriptionOff": "Leaving the operator blank unless you fill it in"
       },
       "showBearing": {
         "title": "Show Bearing",
-        "descriptionOn": "Show estimated bearing to station",
-        "descriptionOff": "Don't show bearing information"
+        "descriptionOn": "Showing estimated bearing to station",
+        "descriptionOff": "Not showing bearing information"
       },
       "showReverseBearing": {
         "title": "Also show reverse bearing",
-        "descriptionOn": "Show the bearing from the station too, as \"45° / 225°\"",
-        "descriptionOff": "Only show the bearing to the station"
+        "descriptionOn": "Showing the bearing from the station too, as \"45° / 225°\"",
+        "descriptionOff": "Only showing the bearing to the station"
       },
       "switchSentRcvd": {
         "title": "Switch signal report order",
@@ -993,8 +993,8 @@
       },
       "jumpAfterRST": {
         "title": "Jump to next field on RST entry",
-        "descriptionOn": "Jump after RST is entered",
-        "descriptionOff": "Don't jump automatically"
+        "descriptionOn": "Jumping after RST is entered",
+        "descriptionOff": "Not jumping automatically"
       },
       "defaultReport": {
         "title": "Default report — Phone",
@@ -1020,8 +1020,8 @@
         "title": "Vibrate on key press",
         "description": "Haptic feedback when you tap a number key"
       },
-      "bands": "Bands",
-      "modes": "Modes"
+      "bands": "Preferred Bands",
+      "modes": "Preferred Modes"
     },
     "radio": {
       "title": "Radio",
@@ -1034,8 +1034,8 @@
       },
       "smartVfoSnap": {
         "title": "Smart VFO Snap",
-        "descriptionOn": "After you stop turning the dial, round the frequency to a sensible step. Voice modes only.",
-        "descriptionOff": "The radio stays exactly where you tuned it."
+        "descriptionOn": "After you stop turning the dial, rounding the frequency to a sensible step. Voice modes only.",
+        "descriptionOff": "Staying exactly where you tuned it."
       },
       "snapDebounce": {
         "title": "Smart Snap: Settle delay",
@@ -1132,8 +1132,8 @@
       },
       "avoidZeroBeat": {
         "title": "Avoid Zero-Beating on Spots",
-        "descriptionOn": "With a radio connected, tune a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.",
-        "descriptionOff": "Tune exactly to the spotted frequency."
+        "descriptionOn": "With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.",
+        "descriptionOff": "Tuning exactly to the spotted frequency."
       },
       "zeroBeatRange": {
         "title": "Zero-Beat: Avoidance range",
@@ -1177,13 +1177,13 @@
       "title": "Privacy",
       "shareAppData": {
         "title": "Share app usage data",
-        "descriptionOn": "Help us improve the app by sharing usage, configuration, crash and performance data",
-        "descriptionOff": "Keep app usage data private.\nThe Ham2K team won't be able to detect crashes or other issues."
+        "descriptionOn": "Helping us improve the app by sharing usage, configuration, crash and performance data",
+        "descriptionOff": "Keeping app usage data private.\nThe Ham2K team won't be able to detect crashes or other issues."
       },
       "shareOpData": {
         "title": "Share operation data",
-        "descriptionOn": "Share some operation data publicly and with other users",
-        "descriptionOff": "Keep operation data private"
+        "descriptionOn": "Sharing some operation data publicly and with other users",
+        "descriptionOff": "Keeping operation data private"
       },
       "privacyPolicy": "Privacy Policy",
       "termsOfService": "Terms of Service"
@@ -1258,8 +1258,8 @@
     "syncPanel": {
       "configuration": "Sync Configuration",
       "enableTitle": "Sync with Ham2K Log Filer",
-      "enabledDescription": "Backs up and syncs your log across devices",
-      "disabledDescription": "Off — your log stays on this device only",
+      "enabledDescription": "Backing up and syncing your log across devices",
+      "disabledDescription": "Off — staying on this device only",
       "syncing": "Syncing",
       "account": "Account",
       "refresh": "Refresh",
@@ -1746,9 +1746,18 @@
     "showMoreSettings": "Show more settings",
     "numberFormat": "Number Formatting",
     "numberFormatOpts": {
-      "locale": "Use device settings",
+      "locale": "Follow system settings",
       "period": "Always use period for decimals",
       "comma": "Always use comma for decimals"
+    },
+    "numberFormatDescription": {
+      "locale": "System settings (using ${separator} for decimals)",
+      "period": "Always using period for decimals",
+      "comma": "Always using comma for decimals"
+    },
+    "numberFormatSeparators": {
+      "comma": "comma",
+      "period": "period"
     },
     "gridPrecision": "Grid Precision",
     "gridPrecisionOpts": {
@@ -1756,8 +1765,8 @@
       "eight": "8 digits (FN31pr55)"
     },
     "gridPrecisionDescription": {
-      "six": "About 9 × 5 km — what most operators put on the air",
-      "eight": "About 700 × 460 m — only where the location is known that well"
+      "six": "6 digits",
+      "eight": "8 digits"
     }
   },
   "commands": {
@@ -2103,10 +2112,10 @@
     "retry": "Retry",
     "compactFileNamesDescriptionOn": "Compact filenames, such as N0CALL@US-1234-20260715.adi.",
     "compactFileNamesDescriptionOff": "Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.",
-    "includePrivateDataDescriptionOn": "Names, towns, notes, and precise locations are included in ADIF files.",
-    "includePrivateDataDescriptionOff": "Names, towns, and notes are omitted; locations are limited to six-character grids.",
-    "includeLookupDataDescriptionOn": "Information from callsign lookup services is included.",
-    "includeLookupDataDescriptionOff": "Information from callsign lookup services is omitted; manually entered values are kept.",
+    "includePrivateDataDescriptionOn": "Including names, towns, notes and precise locations in ADIF files.",
+    "includePrivateDataDescriptionOff": "Omitting names, towns and notes; limiting locations to six-character grids.",
+    "includeLookupDataDescriptionOn": "Including information from callsign lookup services.",
+    "includeLookupDataDescriptionOff": "Omitting information from callsign lookup services; keeping manually entered values.",
     "customTemplatesDescriptionOn": "Your custom templates are active and can be edited below.",
     "customTemplatesDescriptionOff": "Default templates are active. Your custom templates are kept for later.",
     "type": "Export type",

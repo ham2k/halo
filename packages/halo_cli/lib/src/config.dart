@@ -33,7 +33,6 @@ const defaultSettings = <String, Object?>{
   'syncEnabled': false,
   'operatorCall': '',
   'leftieMode': false,
-  'fieldsOnTop': false,
   'dxFlags': 'dx',
   'showBearing': false,
   'switchSentRcvd': false,

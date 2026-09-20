@@ -2493,7 +2493,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
           'operatorClub': settings?.activeProfile.operatorClub ?? '',
           'operatorSection': settings?.activeProfile.operatorSection ?? '',
           'leftieMode': settings?.leftieMode ?? false,
-          'fieldsOnTop': settings?.fieldsOnTop ?? false,
           'dxFlags': settings?.dxFlags.name ?? 'dx',
           'showBearing': settings?.showBearing ?? false,
           'switchSentRcvd': settings?.switchSentRcvd ?? false,

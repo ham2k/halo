@@ -27,6 +27,18 @@ export 'export_settings_group.dart';
 const privacyPolicyUrl = 'https://ham2k.com/legal/privacy/';
 const termsOfServiceUrl = 'https://ham2k.com/legal/terms-of-service/';
 
+// The resolved decimal separator as a word, for the Number Formatting row.
+// A locale whose separator is neither of the two the setting offers (Arabic
+// writes ٫) shows the character itself rather than a wrong word.
+String _decimalSeparatorName() {
+  final separator = NumberFormatting.instance.decimalSeparator;
+  return switch (separator) {
+    ',' => t.settings.numberFormatSeparators.comma,
+    '.' => t.settings.numberFormatSeparators.period,
+    _ => separator,
+  };
+}
+
 // The theme field's own icon switches with its current value so the row
 // reflects what's actually selected, not just that it's a theme setting.
 const _themeIcons = {
@@ -183,8 +195,14 @@ class GeneralSettingsGroup extends SettingsGroup {
         aliases: const ['decimals', 'decimalSeparator'],
         label: t.settings.numberFormat,
         icon: 'numeric',
-        // Just the current choice's name, matching distanceUnits above.
-        description: t['settings.numberFormatOpts.${settings.numberFormatStyle.name}'] as String,
+        // The explicit choices name themselves, matching distanceUnits above;
+        // "follow system settings" does not say what the system settled on,
+        // which is the only part an operator can't see from the row.
+        description: switch (settings.numberFormatStyle) {
+          NumberFormatStyle.locale => t.settings.numberFormatDescription.locale(separator: _decimalSeparatorName()),
+          NumberFormatStyle.period => t.settings.numberFormatDescription.period,
+          NumberFormatStyle.comma => t.settings.numberFormatDescription.comma,
+        },
         value: settings.numberFormatStyle.name,
         options: [
           for (final style in NumberFormatStyle.values)
@@ -196,9 +214,8 @@ class GeneralSettingsGroup extends SettingsGroup {
         aliases: const ['grid', 'gridDigits', 'locator'],
         label: t.settings.gridPrecision,
         icon: 'grid',
-        // What the choice MEANS on the ground, not just its own name: the
-        // two options already read as "6 digits"/"8 digits", and a square's
-        // size is the part an operator is actually choosing between.
+        // Just the digit count: its own key rather than the option label,
+        // which carries an example grid the row has no room for.
         description: t['settings.gridPrecisionDescription.${settings.gridPrecision.name}'] as String,
         value: settings.gridPrecision.name,
         options: [
@@ -352,19 +369,13 @@ class LoggingSettingsGroup extends SettingsGroup {
         environment: 'ios,android',
         target: 'logging-extended',
       ),
-      _toggle(
-        key: 'fieldsOnTop',
-        label: s.fieldsOnTop.title,
-        icon: 'page-layout-header',
-        description: settings.fieldsOnTop ? s.fieldsOnTop.descriptionOn : s.fieldsOnTop.descriptionOff,
-        value: settings.fieldsOnTop,
-        target: 'logging-extended',
-      ),
       _select(
         key: 'dxFlags',
         label: s.countryFlags.title,
         icon: 'flag',
-        description: t['settings.logging.countryFlags.${settings.dxFlags.name}'] as String,
+        // Its own key, not the option label: the row says what is happening
+        // now, the dialog says what each choice would do.
+        description: t['settings.logging.countryFlagsDescription.${settings.dxFlags.name}'] as String,
         value: settings.dxFlags.name,
         options: [
           for (final option in DxFlags.values)

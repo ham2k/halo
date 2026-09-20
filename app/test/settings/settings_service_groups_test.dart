@@ -54,7 +54,6 @@ void main() {
       expect(settings.showRSTFields, isTrue);
       expect(settings.showQsoNumbers, isTrue);
       expect(settings.leftieMode, isFalse);
-      expect(settings.fieldsOnTop, isFalse);
       expect(settings.dxFlags, DxFlags.dx);
       expect(settings.showBearing, isFalse);
       expect(settings.switchSentRcvd, isFalse);

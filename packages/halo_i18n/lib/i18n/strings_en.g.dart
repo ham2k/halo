@@ -1401,6 +1401,8 @@ class Translations$settings$en {
 	String get numberFormat => 'Number Formatting';
 
 	late final Translations$settings$numberFormatOpts$en numberFormatOpts = Translations$settings$numberFormatOpts$en.internal(_root);
+	late final Translations$settings$numberFormatDescription$en numberFormatDescription = Translations$settings$numberFormatDescription$en.internal(_root);
+	late final Translations$settings$numberFormatSeparators$en numberFormatSeparators = Translations$settings$numberFormatSeparators$en.internal(_root);
 
 	/// en: 'Grid Precision'
 	String get gridPrecision => 'Grid Precision';
@@ -2386,17 +2388,17 @@ class Translations$exportSettings$en {
 	/// en: 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.'
 	String get compactFileNamesDescriptionOff => 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.';
 
-	/// en: 'Names, towns, notes, and precise locations are included in ADIF files.'
-	String get includePrivateDataDescriptionOn => 'Names, towns, notes, and precise locations are included in ADIF files.';
+	/// en: 'Including names, towns, notes and precise locations in ADIF files.'
+	String get includePrivateDataDescriptionOn => 'Including names, towns, notes and precise locations in ADIF files.';
 
-	/// en: 'Names, towns, and notes are omitted; locations are limited to six-character grids.'
-	String get includePrivateDataDescriptionOff => 'Names, towns, and notes are omitted; locations are limited to six-character grids.';
+	/// en: 'Omitting names, towns and notes; limiting locations to six-character grids.'
+	String get includePrivateDataDescriptionOff => 'Omitting names, towns and notes; limiting locations to six-character grids.';
 
-	/// en: 'Information from callsign lookup services is included.'
-	String get includeLookupDataDescriptionOn => 'Information from callsign lookup services is included.';
+	/// en: 'Including information from callsign lookup services.'
+	String get includeLookupDataDescriptionOn => 'Including information from callsign lookup services.';
 
-	/// en: 'Information from callsign lookup services is omitted; manually entered values are kept.'
-	String get includeLookupDataDescriptionOff => 'Information from callsign lookup services is omitted; manually entered values are kept.';
+	/// en: 'Omitting information from callsign lookup services; keeping manually entered values.'
+	String get includeLookupDataDescriptionOff => 'Omitting information from callsign lookup services; keeping manually entered values.';
 
 	/// en: 'Your custom templates are active and can be edited below.'
 	String get customTemplatesDescriptionOn => 'Your custom templates are active and can be edited below.';
@@ -3339,8 +3341,8 @@ class Translations$settings$theme$en {
 	/// en: 'Theme Mode'
 	String get title => 'Theme Mode';
 
-	/// en: 'System'
-	String get system => 'System';
+	/// en: 'Follow system settings'
+	String get system => 'Follow system settings';
 
 	/// en: 'Light'
 	String get light => 'Light';
@@ -3357,8 +3359,8 @@ class Translations$settings$themeDescription$en {
 
 	// Translations
 
-	/// en: 'Follows system setting'
-	String get system => 'Follows system setting';
+	/// en: 'Following system settings'
+	String get system => 'Following system settings';
 
 	/// en: 'Always in Light Mode'
 	String get light => 'Always in Light Mode';
@@ -3414,11 +3416,11 @@ class Translations$settings$keepDeviceAwake$en {
 	/// en: 'Keep Device Awake'
 	String get title => 'Keep Device Awake';
 
-	/// en: 'The device stays awake while you are on the logging view or a sync is in progress, and may sleep after 15 minutes without either'
-	String get descriptionOn => 'The device stays awake while you are on the logging view or a sync is in progress, and may sleep after 15 minutes without either';
+	/// en: 'Staying awake while you are on the logging view or a sync is in progress'
+	String get descriptionOn => 'Staying awake while you are on the logging view or a sync is in progress';
 
-	/// en: 'The device sleeps as usual'
-	String get descriptionOff => 'The device sleeps as usual';
+	/// en: 'Sleeping as usual'
+	String get descriptionOff => 'Sleeping as usual';
 }
 
 // Path: settings.layoutDensityOpts
@@ -3475,8 +3477,8 @@ class Translations$settings$logging$en {
 	String get title => 'Logging';
 
 	late final Translations$settings$logging$leftieMode$en leftieMode = Translations$settings$logging$leftieMode$en.internal(_root);
-	late final Translations$settings$logging$fieldsOnTop$en fieldsOnTop = Translations$settings$logging$fieldsOnTop$en.internal(_root);
 	late final Translations$settings$logging$countryFlags$en countryFlags = Translations$settings$logging$countryFlags$en.internal(_root);
+	late final Translations$settings$logging$countryFlagsDescription$en countryFlagsDescription = Translations$settings$logging$countryFlagsDescription$en.internal(_root);
 	late final Translations$settings$logging$suggestDefaultOperator$en suggestDefaultOperator = Translations$settings$logging$suggestDefaultOperator$en.internal(_root);
 	late final Translations$settings$logging$showBearing$en showBearing = Translations$settings$logging$showBearing$en.internal(_root);
 	late final Translations$settings$logging$showReverseBearing$en showReverseBearing = Translations$settings$logging$showReverseBearing$en.internal(_root);
@@ -3489,11 +3491,11 @@ class Translations$settings$logging$en {
 	late final Translations$settings$logging$numbersRowExtra$en numbersRowExtra = Translations$settings$logging$numbersRowExtra$en.internal(_root);
 	late final Translations$settings$logging$numbersRowVibrate$en numbersRowVibrate = Translations$settings$logging$numbersRowVibrate$en.internal(_root);
 
-	/// en: 'Bands'
-	String get bands => 'Bands';
+	/// en: 'Preferred Bands'
+	String get bands => 'Preferred Bands';
 
-	/// en: 'Modes'
-	String get modes => 'Modes';
+	/// en: 'Preferred Modes'
+	String get modes => 'Preferred Modes';
 }
 
 // Path: settings.radio
@@ -3841,11 +3843,11 @@ class Translations$settings$syncPanel$en {
 	/// en: 'Sync with Ham2K Log Filer'
 	String get enableTitle => 'Sync with Ham2K Log Filer';
 
-	/// en: 'Backs up and syncs your log across devices'
-	String get enabledDescription => 'Backs up and syncs your log across devices';
+	/// en: 'Backing up and syncing your log across devices'
+	String get enabledDescription => 'Backing up and syncing your log across devices';
 
-	/// en: 'Off — your log stays on this device only'
-	String get disabledDescription => 'Off — your log stays on this device only';
+	/// en: 'Off — staying on this device only'
+	String get disabledDescription => 'Off — staying on this device only';
 
 	/// en: 'Syncing'
 	String get syncing => 'Syncing';
@@ -5117,14 +5119,47 @@ class Translations$settings$numberFormatOpts$en {
 
 	// Translations
 
-	/// en: 'Use device settings'
-	String get locale => 'Use device settings';
+	/// en: 'Follow system settings'
+	String get locale => 'Follow system settings';
 
 	/// en: 'Always use period for decimals'
 	String get period => 'Always use period for decimals';
 
 	/// en: 'Always use comma for decimals'
 	String get comma => 'Always use comma for decimals';
+}
+
+// Path: settings.numberFormatDescription
+class Translations$settings$numberFormatDescription$en {
+	Translations$settings$numberFormatDescription$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'System settings (using ${separator} for decimals)'
+	String locale({required Object separator}) => 'System settings (using ${separator} for decimals)';
+
+	/// en: 'Always using period for decimals'
+	String get period => 'Always using period for decimals';
+
+	/// en: 'Always using comma for decimals'
+	String get comma => 'Always using comma for decimals';
+}
+
+// Path: settings.numberFormatSeparators
+class Translations$settings$numberFormatSeparators$en {
+	Translations$settings$numberFormatSeparators$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'comma'
+	String get comma => 'comma';
+
+	/// en: 'period'
+	String get period => 'period';
 }
 
 // Path: settings.gridPrecisionOpts
@@ -5150,11 +5185,11 @@ class Translations$settings$gridPrecisionDescription$en {
 
 	// Translations
 
-	/// en: 'About 9 × 5 km — what most operators put on the air'
-	String get six => 'About 9 × 5 km — what most operators put on the air';
+	/// en: '6 digits'
+	String get six => '6 digits';
 
-	/// en: 'About 700 × 460 m — only where the location is known that well'
-	String get eight => 'About 700 × 460 m — only where the location is known that well';
+	/// en: '8 digits'
+	String get eight => '8 digits';
 }
 
 // Path: home.logs.columns
@@ -5704,29 +5739,11 @@ class Translations$settings$logging$leftieMode$en {
 	/// en: 'Leftie Mode'
 	String get title => 'Leftie Mode';
 
-	/// en: 'Use layout for left-handed users'
-	String get descriptionOn => 'Use layout for left-handed users';
+	/// en: 'Using layout for left-handed users'
+	String get descriptionOn => 'Using layout for left-handed users';
 
-	/// en: 'Use layout for right-handed users'
-	String get descriptionOff => 'Use layout for right-handed users';
-}
-
-// Path: settings.logging.fieldsOnTop
-class Translations$settings$logging$fieldsOnTop$en {
-	Translations$settings$logging$fieldsOnTop$en.internal(this._root);
-
-	final Translations _root; // ignore: unused_field
-
-	// Translations
-
-	/// en: 'Fields on top'
-	String get title => 'Fields on top';
-
-	/// en: 'Logging fields above the QSO list, most recent first'
-	String get descriptionOn => 'Logging fields above the QSO list, most recent first';
-
-	/// en: 'Logging fields below the QSO list'
-	String get descriptionOff => 'Logging fields below the QSO list';
+	/// en: 'Using layout for right-handed users'
+	String get descriptionOff => 'Using layout for right-handed users';
 }
 
 // Path: settings.logging.countryFlags
@@ -5750,6 +5767,24 @@ class Translations$settings$logging$countryFlags$en {
 	String get none => 'Don\'t show any flags';
 }
 
+// Path: settings.logging.countryFlagsDescription
+class Translations$settings$logging$countryFlagsDescription$en {
+	Translations$settings$logging$countryFlagsDescription$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Showing flags only for DX contacts'
+	String get dx => 'Showing flags only for DX contacts';
+
+	/// en: 'Showing flags for all contacts'
+	String get all => 'Showing flags for all contacts';
+
+	/// en: 'Not showing any flags'
+	String get none => 'Not showing any flags';
+}
+
 // Path: settings.logging.suggestDefaultOperator
 class Translations$settings$logging$suggestDefaultOperator$en {
 	Translations$settings$logging$suggestDefaultOperator$en.internal(this._root);
@@ -5761,11 +5796,11 @@ class Translations$settings$logging$suggestDefaultOperator$en {
 	/// en: 'Suggest Operator'
 	String get title => 'Suggest Operator';
 
-	/// en: 'Offer your own callsign as the operator when an operation runs under a different station callsign'
-	String get descriptionOn => 'Offer your own callsign as the operator when an operation runs under a different station callsign';
+	/// en: 'Offering your own callsign as the operator when an operation runs under a different station callsign'
+	String get descriptionOn => 'Offering your own callsign as the operator when an operation runs under a different station callsign';
 
-	/// en: 'Leave the operator blank unless you fill it in'
-	String get descriptionOff => 'Leave the operator blank unless you fill it in';
+	/// en: 'Leaving the operator blank unless you fill it in'
+	String get descriptionOff => 'Leaving the operator blank unless you fill it in';
 }
 
 // Path: settings.logging.showBearing
@@ -5779,11 +5814,11 @@ class Translations$settings$logging$showBearing$en {
 	/// en: 'Show Bearing'
 	String get title => 'Show Bearing';
 
-	/// en: 'Show estimated bearing to station'
-	String get descriptionOn => 'Show estimated bearing to station';
+	/// en: 'Showing estimated bearing to station'
+	String get descriptionOn => 'Showing estimated bearing to station';
 
-	/// en: 'Don't show bearing information'
-	String get descriptionOff => 'Don\'t show bearing information';
+	/// en: 'Not showing bearing information'
+	String get descriptionOff => 'Not showing bearing information';
 }
 
 // Path: settings.logging.showReverseBearing
@@ -5797,11 +5832,11 @@ class Translations$settings$logging$showReverseBearing$en {
 	/// en: 'Also show reverse bearing'
 	String get title => 'Also show reverse bearing';
 
-	/// en: 'Show the bearing from the station too, as "45° / 225°"'
-	String get descriptionOn => 'Show the bearing from the station too, as "45° / 225°"';
+	/// en: 'Showing the bearing from the station too, as "45° / 225°"'
+	String get descriptionOn => 'Showing the bearing from the station too, as "45° / 225°"';
 
-	/// en: 'Only show the bearing to the station'
-	String get descriptionOff => 'Only show the bearing to the station';
+	/// en: 'Only showing the bearing to the station'
+	String get descriptionOff => 'Only showing the bearing to the station';
 }
 
 // Path: settings.logging.switchSentRcvd
@@ -5833,11 +5868,11 @@ class Translations$settings$logging$jumpAfterRST$en {
 	/// en: 'Jump to next field on RST entry'
 	String get title => 'Jump to next field on RST entry';
 
-	/// en: 'Jump after RST is entered'
-	String get descriptionOn => 'Jump after RST is entered';
+	/// en: 'Jumping after RST is entered'
+	String get descriptionOn => 'Jumping after RST is entered';
 
-	/// en: 'Don't jump automatically'
-	String get descriptionOff => 'Don\'t jump automatically';
+	/// en: 'Not jumping automatically'
+	String get descriptionOff => 'Not jumping automatically';
 }
 
 // Path: settings.logging.defaultReport
@@ -5962,11 +5997,11 @@ class Translations$settings$radio$smartVfoSnap$en {
 	/// en: 'Smart VFO Snap'
 	String get title => 'Smart VFO Snap';
 
-	/// en: 'After you stop turning the dial, round the frequency to a sensible step. Voice modes only.'
-	String get descriptionOn => 'After you stop turning the dial, round the frequency to a sensible step. Voice modes only.';
+	/// en: 'After you stop turning the dial, rounding the frequency to a sensible step. Voice modes only.'
+	String get descriptionOn => 'After you stop turning the dial, rounding the frequency to a sensible step. Voice modes only.';
 
-	/// en: 'The radio stays exactly where you tuned it.'
-	String get descriptionOff => 'The radio stays exactly where you tuned it.';
+	/// en: 'Staying exactly where you tuned it.'
+	String get descriptionOff => 'Staying exactly where you tuned it.';
 }
 
 // Path: settings.radio.snapDebounce
@@ -6277,11 +6312,11 @@ class Translations$settings$radio$avoidZeroBeat$en {
 	/// en: 'Avoid Zero-Beating on Spots'
 	String get title => 'Avoid Zero-Beating on Spots';
 
-	/// en: 'With a radio connected, tune a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.'
-	String get descriptionOn => 'With a radio connected, tune a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.';
+	/// en: 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.'
+	String get descriptionOn => 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.';
 
-	/// en: 'Tune exactly to the spotted frequency.'
-	String get descriptionOff => 'Tune exactly to the spotted frequency.';
+	/// en: 'Tuning exactly to the spotted frequency.'
+	String get descriptionOff => 'Tuning exactly to the spotted frequency.';
 }
 
 // Path: settings.radio.zeroBeatRange
@@ -6349,11 +6384,11 @@ class Translations$settings$privacy$shareAppData$en {
 	/// en: 'Share app usage data'
 	String get title => 'Share app usage data';
 
-	/// en: 'Help us improve the app by sharing usage, configuration, crash and performance data'
-	String get descriptionOn => 'Help us improve the app by sharing usage, configuration, crash and performance data';
+	/// en: 'Helping us improve the app by sharing usage, configuration, crash and performance data'
+	String get descriptionOn => 'Helping us improve the app by sharing usage, configuration, crash and performance data';
 
-	/// en: 'Keep app usage data private. The Ham2K team won't be able to detect crashes or other issues.'
-	String get descriptionOff => 'Keep app usage data private.\nThe Ham2K team won\'t be able to detect crashes or other issues.';
+	/// en: 'Keeping app usage data private. The Ham2K team won't be able to detect crashes or other issues.'
+	String get descriptionOff => 'Keeping app usage data private.\nThe Ham2K team won\'t be able to detect crashes or other issues.';
 }
 
 // Path: settings.privacy.shareOpData
@@ -6367,11 +6402,11 @@ class Translations$settings$privacy$shareOpData$en {
 	/// en: 'Share operation data'
 	String get title => 'Share operation data';
 
-	/// en: 'Share some operation data publicly and with other users'
-	String get descriptionOn => 'Share some operation data publicly and with other users';
+	/// en: 'Sharing some operation data publicly and with other users'
+	String get descriptionOn => 'Sharing some operation data publicly and with other users';
 
-	/// en: 'Keep operation data private'
-	String get descriptionOff => 'Keep operation data private';
+	/// en: 'Keeping operation data private'
+	String get descriptionOff => 'Keeping operation data private';
 }
 
 // Path: settings.station.models
@@ -7440,10 +7475,10 @@ extension on Translations {
 			'settings.title' => 'Settings',
 			'settings.language' => 'Language',
 			'settings.theme.title' => 'Theme Mode',
-			'settings.theme.system' => 'System',
+			'settings.theme.system' => 'Follow system settings',
 			'settings.theme.light' => 'Light',
 			'settings.theme.dark' => 'Dark',
-			'settings.themeDescription.system' => 'Follows system setting',
+			'settings.themeDescription.system' => 'Following system settings',
 			'settings.themeDescription.light' => 'Always in Light Mode',
 			'settings.themeDescription.dark' => 'Always in Dark Mode',
 			'settings.fontScale' => 'Font Scale',
@@ -7457,8 +7492,8 @@ extension on Translations {
 			'settings.fontScaleOpts.largestPlus' => 'Largest+',
 			'settings.fontScaleOpts.largestPlusPlus' => 'Largest++',
 			'settings.keepDeviceAwake.title' => 'Keep Device Awake',
-			'settings.keepDeviceAwake.descriptionOn' => 'The device stays awake while you are on the logging view or a sync is in progress, and may sleep after 15 minutes without either',
-			'settings.keepDeviceAwake.descriptionOff' => 'The device sleeps as usual',
+			'settings.keepDeviceAwake.descriptionOn' => 'Staying awake while you are on the logging view or a sync is in progress',
+			'settings.keepDeviceAwake.descriptionOff' => 'Sleeping as usual',
 			'settings.layoutDensity' => 'Layout Density',
 			'settings.layoutDensityOpts.auto' => 'Automatic',
 			'settings.layoutDensityOpts.densest' => 'Densest',
@@ -7474,30 +7509,30 @@ extension on Translations {
 			'settings.userInterface' => 'User Interface',
 			'settings.logging.title' => 'Logging',
 			'settings.logging.leftieMode.title' => 'Leftie Mode',
-			'settings.logging.leftieMode.descriptionOn' => 'Use layout for left-handed users',
-			'settings.logging.leftieMode.descriptionOff' => 'Use layout for right-handed users',
-			'settings.logging.fieldsOnTop.title' => 'Fields on top',
-			'settings.logging.fieldsOnTop.descriptionOn' => 'Logging fields above the QSO list, most recent first',
-			'settings.logging.fieldsOnTop.descriptionOff' => 'Logging fields below the QSO list',
+			'settings.logging.leftieMode.descriptionOn' => 'Using layout for left-handed users',
+			'settings.logging.leftieMode.descriptionOff' => 'Using layout for right-handed users',
 			'settings.logging.countryFlags.title' => 'Country Flags',
 			'settings.logging.countryFlags.dx' => 'Show only for DX contacts',
 			'settings.logging.countryFlags.all' => 'Show flags for all contacts',
 			'settings.logging.countryFlags.none' => 'Don\'t show any flags',
+			'settings.logging.countryFlagsDescription.dx' => 'Showing flags only for DX contacts',
+			'settings.logging.countryFlagsDescription.all' => 'Showing flags for all contacts',
+			'settings.logging.countryFlagsDescription.none' => 'Not showing any flags',
 			'settings.logging.suggestDefaultOperator.title' => 'Suggest Operator',
-			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Offer your own callsign as the operator when an operation runs under a different station callsign',
-			'settings.logging.suggestDefaultOperator.descriptionOff' => 'Leave the operator blank unless you fill it in',
+			'settings.logging.suggestDefaultOperator.descriptionOn' => 'Offering your own callsign as the operator when an operation runs under a different station callsign',
+			'settings.logging.suggestDefaultOperator.descriptionOff' => 'Leaving the operator blank unless you fill it in',
 			'settings.logging.showBearing.title' => 'Show Bearing',
-			'settings.logging.showBearing.descriptionOn' => 'Show estimated bearing to station',
-			'settings.logging.showBearing.descriptionOff' => 'Don\'t show bearing information',
+			'settings.logging.showBearing.descriptionOn' => 'Showing estimated bearing to station',
+			'settings.logging.showBearing.descriptionOff' => 'Not showing bearing information',
 			'settings.logging.showReverseBearing.title' => 'Also show reverse bearing',
-			'settings.logging.showReverseBearing.descriptionOn' => 'Show the bearing from the station too, as "45° / 225°"',
-			'settings.logging.showReverseBearing.descriptionOff' => 'Only show the bearing to the station',
+			'settings.logging.showReverseBearing.descriptionOn' => 'Showing the bearing from the station too, as "45° / 225°"',
+			'settings.logging.showReverseBearing.descriptionOff' => 'Only showing the bearing to the station',
 			'settings.logging.switchSentRcvd.title' => 'Switch signal report order',
 			'settings.logging.switchSentRcvd.sentFirst' => 'Sent first, Rcvd second',
 			'settings.logging.switchSentRcvd.rcvdFirst' => 'Rcvd first, Sent second',
 			'settings.logging.jumpAfterRST.title' => 'Jump to next field on RST entry',
-			'settings.logging.jumpAfterRST.descriptionOn' => 'Jump after RST is entered',
-			'settings.logging.jumpAfterRST.descriptionOff' => 'Don\'t jump automatically',
+			'settings.logging.jumpAfterRST.descriptionOn' => 'Jumping after RST is entered',
+			'settings.logging.jumpAfterRST.descriptionOff' => 'Not jumping automatically',
 			'settings.logging.defaultReport.title' => 'Default report — Phone',
 			'settings.logging.defaultReport.description' => 'Used when Sent or Rcvd is left empty on SSB, FM or AM',
 			'settings.logging.defaultReportCW.title' => 'Default report — CW and data',
@@ -7510,8 +7545,8 @@ extension on Translations {
 			'settings.logging.numbersRowExtra.description' => 'Adds a contextual key: “/” for callsigns, “.” for numbers',
 			'settings.logging.numbersRowVibrate.title' => 'Vibrate on key press',
 			'settings.logging.numbersRowVibrate.description' => 'Haptic feedback when you tap a number key',
-			'settings.logging.bands' => 'Bands',
-			'settings.logging.modes' => 'Modes',
+			'settings.logging.bands' => 'Preferred Bands',
+			'settings.logging.modes' => 'Preferred Modes',
 			'settings.radio.title' => 'Radio',
 			'settings.radio.moreSettings' => 'More station configuration settings',
 			'settings.radio.units.ms' => 'ms',
@@ -7519,8 +7554,8 @@ extension on Translations {
 			'settings.radio.units.kHzPerSecond' => 'kHz/s',
 			'settings.radio.units.hz' => 'Hz',
 			'settings.radio.smartVfoSnap.title' => 'Smart VFO Snap',
-			'settings.radio.smartVfoSnap.descriptionOn' => 'After you stop turning the dial, round the frequency to a sensible step. Voice modes only.',
-			'settings.radio.smartVfoSnap.descriptionOff' => 'The radio stays exactly where you tuned it.',
+			'settings.radio.smartVfoSnap.descriptionOn' => 'After you stop turning the dial, rounding the frequency to a sensible step. Voice modes only.',
+			'settings.radio.smartVfoSnap.descriptionOff' => 'Staying exactly where you tuned it.',
 			'settings.radio.snapDebounce.title' => 'Smart Snap: Settle delay',
 			'settings.radio.snapDebounce.description' => 'How long the dial has to stop before the frequency is rounded. Shorter feels immediate; longer leaves room for a slow move.',
 			'settings.radio.snapLongMove.title' => 'Smart Snap: Long move',
@@ -7601,8 +7636,8 @@ extension on Translations {
 			'settings.radio.voiceMessages.notAvailable' => 'Connect a radio with a voice keyer to play or record from here.',
 			'settings.radio.voiceMessages.recordOnRadio' => 'You have to record the memories on the radio itself.',
 			'settings.radio.avoidZeroBeat.title' => 'Avoid Zero-Beating on Spots',
-			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tune a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
-			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tune exactly to the spotted frequency.',
+			'settings.radio.avoidZeroBeat.descriptionOn' => 'With a radio connected, tuning a few Hz off a CW spot, so everyone answering it isn’t calling on the same note.',
+			'settings.radio.avoidZeroBeat.descriptionOff' => 'Tuning exactly to the spotted frequency.',
 			'settings.radio.zeroBeatRange.title' => 'Zero-Beat: Avoidance range',
 			'settings.radio.zeroBeatRange.description' => 'How far off the spotted frequency to land, either side. The offset is never near zero — that would be a zero beat again.',
 			'settings.help.title' => 'Help & Resources',
@@ -7630,11 +7665,11 @@ extension on Translations {
 			'settings.map.styleOpts.darkMatter' => 'Dark Matter',
 			'settings.privacy.title' => 'Privacy',
 			'settings.privacy.shareAppData.title' => 'Share app usage data',
-			'settings.privacy.shareAppData.descriptionOn' => 'Help us improve the app by sharing usage, configuration, crash and performance data',
-			'settings.privacy.shareAppData.descriptionOff' => 'Keep app usage data private.\nThe Ham2K team won\'t be able to detect crashes or other issues.',
+			'settings.privacy.shareAppData.descriptionOn' => 'Helping us improve the app by sharing usage, configuration, crash and performance data',
+			'settings.privacy.shareAppData.descriptionOff' => 'Keeping app usage data private.\nThe Ham2K team won\'t be able to detect crashes or other issues.',
 			'settings.privacy.shareOpData.title' => 'Share operation data',
-			'settings.privacy.shareOpData.descriptionOn' => 'Share some operation data publicly and with other users',
-			'settings.privacy.shareOpData.descriptionOff' => 'Keep operation data private',
+			'settings.privacy.shareOpData.descriptionOn' => 'Sharing some operation data publicly and with other users',
+			'settings.privacy.shareOpData.descriptionOff' => 'Keeping operation data private',
 			'settings.privacy.privacyPolicy' => 'Privacy Policy',
 			'settings.privacy.termsOfService' => 'Terms of Service',
 			'settings.operatorCall' => 'Operator Callsign',
@@ -7704,8 +7739,8 @@ extension on Translations {
 			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
 			_ => null,
 		} ?? switch (path) {
-			'settings.syncPanel.enabledDescription' => 'Backs up and syncs your log across devices',
-			'settings.syncPanel.disabledDescription' => 'Off — your log stays on this device only',
+			'settings.syncPanel.enabledDescription' => 'Backing up and syncing your log across devices',
+			'settings.syncPanel.disabledDescription' => 'Off — staying on this device only',
 			'settings.syncPanel.syncing' => 'Syncing',
 			'settings.syncPanel.account' => 'Account',
 			'settings.syncPanel.refresh' => 'Refresh',
@@ -8148,14 +8183,19 @@ extension on Translations {
 			'settings.panels.peersDescription' => 'Connect to other devices nearby',
 			'settings.showMoreSettings' => 'Show more settings',
 			'settings.numberFormat' => 'Number Formatting',
-			'settings.numberFormatOpts.locale' => 'Use device settings',
+			'settings.numberFormatOpts.locale' => 'Follow system settings',
 			'settings.numberFormatOpts.period' => 'Always use period for decimals',
 			'settings.numberFormatOpts.comma' => 'Always use comma for decimals',
+			'settings.numberFormatDescription.locale' => ({required Object separator}) => 'System settings (using ${separator} for decimals)',
+			'settings.numberFormatDescription.period' => 'Always using period for decimals',
+			'settings.numberFormatDescription.comma' => 'Always using comma for decimals',
+			'settings.numberFormatSeparators.comma' => 'comma',
+			'settings.numberFormatSeparators.period' => 'period',
 			'settings.gridPrecision' => 'Grid Precision',
 			'settings.gridPrecisionOpts.six' => '6 digits (FN31pr)',
 			'settings.gridPrecisionOpts.eight' => '8 digits (FN31pr55)',
-			'settings.gridPrecisionDescription.six' => 'About 9 × 5 km — what most operators put on the air',
-			'settings.gridPrecisionDescription.eight' => 'About 700 × 460 m — only where the location is known that well',
+			'settings.gridPrecisionDescription.six' => '6 digits',
+			'settings.gridPrecisionDescription.eight' => '8 digits',
 			'commands.enableSyncFirst' => 'Enable sync in Settings first.',
 			'commands.fullResyncStarted' => 'Full resync started — local data was backed up first.',
 			'commands.noDataFilesMatched' => ({required Object target}) => 'No data files matched "${target}".',
@@ -8211,13 +8251,13 @@ extension on Translations {
 			'commandDialog.goNewOperation' => 'New operation',
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
 			'commandDialog.sectionSuggestions' => 'Try',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.lookingUp' => 'Looking up callsign…',
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',
 			'expiredBuild.visit' => 'Visit ham2k.com',
 			'expiredBuild.dismiss' => 'Continue anyway',
-			_ => null,
-		} ?? switch (path) {
 			'staleness.codePushFloorTitle' => 'An important update is waiting',
 			'staleness.codePushFloorBody' => 'This version has a fix you don\'t have yet.',
 			'staleness.restartToApply' => 'Restart the app to apply it.',
@@ -8412,10 +8452,10 @@ extension on Translations {
 			'exportSettings.retry' => 'Retry',
 			'exportSettings.compactFileNamesDescriptionOn' => 'Compact filenames, such as N0CALL@US-1234-20260715.adi.',
 			'exportSettings.compactFileNamesDescriptionOff' => 'Descriptive filenames, such as 2026-07-15 N0CALL at US-1234.adi.',
-			'exportSettings.includePrivateDataDescriptionOn' => 'Names, towns, notes, and precise locations are included in ADIF files.',
-			'exportSettings.includePrivateDataDescriptionOff' => 'Names, towns, and notes are omitted; locations are limited to six-character grids.',
-			'exportSettings.includeLookupDataDescriptionOn' => 'Information from callsign lookup services is included.',
-			'exportSettings.includeLookupDataDescriptionOff' => 'Information from callsign lookup services is omitted; manually entered values are kept.',
+			'exportSettings.includePrivateDataDescriptionOn' => 'Including names, towns, notes and precise locations in ADIF files.',
+			'exportSettings.includePrivateDataDescriptionOff' => 'Omitting names, towns and notes; limiting locations to six-character grids.',
+			'exportSettings.includeLookupDataDescriptionOn' => 'Including information from callsign lookup services.',
+			'exportSettings.includeLookupDataDescriptionOff' => 'Omitting information from callsign lookup services; keeping manually entered values.',
 			'exportSettings.customTemplatesDescriptionOn' => 'Your custom templates are active and can be edited below.',
 			'exportSettings.customTemplatesDescriptionOff' => 'Default templates are active. Your custom templates are kept for later.',
 			'exportSettings.type' => 'Export type',

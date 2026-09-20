@@ -910,12 +910,12 @@
     "language": "Idioma",
     "theme": {
       "title": "Modo de Tema",
-      "system": "Sistema",
+      "system": "Seguir la configuración del sistema",
       "light": "Claro",
       "dark": "Oscuro"
     },
     "themeDescription": {
-      "system": "Sigue la configuración del sistema",
+      "system": "Siguiendo la configuración del sistema",
       "light": "Siempre en Modo Claro",
       "dark": "Siempre en Modo Oscuro"
     },
@@ -933,8 +933,8 @@
     },
     "keepDeviceAwake": {
       "title": "Mantener el Dispositivo Despierto",
-      "descriptionOn": "El dispositivo no se duerme mientras estás en la vista de registro o una sincronización está en curso, y puede dormirse tras 15 minutos sin ninguna de las dos",
-      "descriptionOff": "El dispositivo se duerme como de costumbre"
+      "descriptionOn": "Sin dormirse mientras estás en la vista de registro o una sincronización está en curso",
+      "descriptionOff": "Durmiéndose como de costumbre"
     },
     "layoutDensity": "Densidad del Diseño",
     "layoutDensityOpts": {
@@ -957,13 +957,8 @@
       "title": "Registro",
       "leftieMode": {
         "title": "Modo Zurdo",
-        "descriptionOn": "Usar diseño para zurdos",
-        "descriptionOff": "Usar diseño para diestros"
-      },
-      "fieldsOnTop": {
-        "title": "Campos arriba",
-        "descriptionOn": "Campos de registro encima de la lista de QSOs, más recientes primero",
-        "descriptionOff": "Campos de registro debajo de la lista de QSOs"
+        "descriptionOn": "Usando diseño para zurdos",
+        "descriptionOff": "Usando diseño para diestros"
       },
       "countryFlags": {
         "title": "Banderas de País",
@@ -971,20 +966,25 @@
         "all": "Mostrar banderas para todos los contactos",
         "none": "No mostrar banderas"
       },
+      "countryFlagsDescription": {
+        "dx": "Mostrando banderas solo para contactos DX",
+        "all": "Mostrando banderas para todos los contactos",
+        "none": "Sin mostrar banderas"
+      },
       "suggestDefaultOperator": {
         "title": "Sugerir Operador",
-        "descriptionOn": "Ofrecer tu propio indicativo como operador cuando la operación usa otro indicativo de estación",
-        "descriptionOff": "Dejar el operador en blanco salvo que lo completes"
+        "descriptionOn": "Ofreciendo tu propio indicativo como operador cuando la operación usa otro indicativo de estación",
+        "descriptionOff": "Dejando el operador en blanco salvo que lo completes"
       },
       "showBearing": {
         "title": "Mostrar Rumbo",
-        "descriptionOn": "Mostrar rumbo estimado a la estación",
-        "descriptionOff": "No mostrar información de rumbo"
+        "descriptionOn": "Mostrando rumbo estimado a la estación",
+        "descriptionOff": "Sin mostrar información de rumbo"
       },
       "showReverseBearing": {
         "title": "Mostrar también el rumbo inverso",
-        "descriptionOn": "Mostrar también el rumbo desde la estación, como \"45° / 225°\"",
-        "descriptionOff": "Mostrar solo el rumbo hacia la estación"
+        "descriptionOn": "Mostrando también el rumbo desde la estación, como \"45° / 225°\"",
+        "descriptionOff": "Mostrando solo el rumbo hacia la estación"
       },
       "switchSentRcvd": {
         "title": "Cambiar orden de reportes de señal",
@@ -993,8 +993,8 @@
       },
       "jumpAfterRST": {
         "title": "Saltar al siguiente campo al ingresar RST",
-        "descriptionOn": "Saltar después de ingresar el RST",
-        "descriptionOff": "No saltar automáticamente"
+        "descriptionOn": "Saltando después de ingresar el RST",
+        "descriptionOff": "Sin saltar automáticamente"
       },
       "defaultReport": {
         "title": "Reporte por defecto — Fonía",
@@ -1020,8 +1020,8 @@
         "title": "Vibrar al pulsar",
         "description": "Respuesta háptica al pulsar una tecla numérica"
       },
-      "bands": "Bandas",
-      "modes": "Modos"
+      "bands": "Bandas Preferidas",
+      "modes": "Modos Preferidos"
     },
     "radio": {
       "title": "Radio",
@@ -1034,8 +1034,8 @@
       },
       "smartVfoSnap": {
         "title": "Ajuste inteligente del VFO",
-        "descriptionOn": "Al dejar de girar el dial, redondea la frecuencia a un paso razonable. Solo en modos de voz.",
-        "descriptionOff": "La radio se queda exactamente donde la sintonizaste."
+        "descriptionOn": "Al dejar de girar el dial, redondeando la frecuencia a un paso razonable. Solo en modos de voz.",
+        "descriptionOff": "Quedándose exactamente donde la sintonizaste."
       },
       "snapDebounce": {
         "title": "Ajuste inteligente: retardo de reposo",
@@ -1132,8 +1132,8 @@
       },
       "avoidZeroBeat": {
         "title": "Evitar batido cero en los spots",
-        "descriptionOn": "Con una radio conectada, sintoniza unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.",
-        "descriptionOff": "Sintoniza exactamente la frecuencia del spot."
+        "descriptionOn": "Con una radio conectada, sintonizando unos pocos Hz fuera de un spot de CW, para que no todos los que respondan llamen en la misma nota.",
+        "descriptionOff": "Sintonizando exactamente la frecuencia del spot."
       },
       "zeroBeatRange": {
         "title": "Batido cero: margen de separación",
@@ -1177,13 +1177,13 @@
       "title": "Privacidad",
       "shareAppData": {
         "title": "Compartir datos de uso",
-        "descriptionOn": "Ayúdanos a mejorar la app compartiendo datos de uso, configuración, fallos y rendimiento",
-        "descriptionOff": "Mantener privados los datos de uso.\nEl equipo de Ham2K no podrá detectar fallos u otros problemas."
+        "descriptionOn": "Ayudándonos a mejorar la app compartiendo datos de uso, configuración, fallos y rendimiento",
+        "descriptionOff": "Manteniendo privados los datos de uso.\nEl equipo de Ham2K no podrá detectar fallos u otros problemas."
       },
       "shareOpData": {
         "title": "Compartir datos de operaciones",
-        "descriptionOn": "Compartir algunos datos de operaciones públicamente y con otros usuarios",
-        "descriptionOff": "Mantener privados los datos de operaciones"
+        "descriptionOn": "Compartiendo algunos datos de operaciones públicamente y con otros usuarios",
+        "descriptionOff": "Manteniendo privados los datos de operaciones"
       },
       "privacyPolicy": "Política de Privacidad",
       "termsOfService": "Términos de Servicio"
@@ -1258,8 +1258,8 @@
     "syncPanel": {
       "configuration": "Configuración de sincronización",
       "enableTitle": "Sincronizar con Ham2K Log Filer",
-      "enabledDescription": "Respalda y sincroniza tu registro entre dispositivos",
-      "disabledDescription": "Desactivado — tu registro se queda solo en este dispositivo",
+      "enabledDescription": "Respaldando y sincronizando tu registro entre dispositivos",
+      "disabledDescription": "Desactivado — quedándose solo en este dispositivo",
       "syncing": "Sincronizando",
       "account": "Cuenta",
       "refresh": "Actualizar",
@@ -1738,9 +1738,18 @@
     "showMoreSettings": "Mostrar más ajustes",
     "numberFormat": "Formato de números",
     "numberFormatOpts": {
-      "locale": "Usar la configuración del dispositivo",
+      "locale": "Seguir la configuración del sistema",
       "period": "Usar siempre punto para decimales",
       "comma": "Usar siempre coma para decimales"
+    },
+    "numberFormatDescription": {
+      "locale": "Configuración del sistema (usando ${separator} para decimales)",
+      "period": "Usando siempre punto para decimales",
+      "comma": "Usando siempre coma para decimales"
+    },
+    "numberFormatSeparators": {
+      "comma": "coma",
+      "period": "punto"
     },
     "gridPrecision": "Precisión del localizador",
     "gridPrecisionOpts": {
@@ -1748,8 +1757,8 @@
       "eight": "8 dígitos (FN31pr55)"
     },
     "gridPrecisionDescription": {
-      "six": "Unos 9 × 5 km — lo que la mayoría de los operadores dice en el aire",
-      "eight": "Unos 700 × 460 m — solo donde la ubicación se conoce con esa precisión"
+      "six": "6 dígitos",
+      "eight": "8 dígitos"
     }
   },
   "commands": {
@@ -2092,10 +2101,10 @@
     "retry": "Reintentar",
     "compactFileNamesDescriptionOn": "Nombres compactos, como N0CALL@US-1234-20260715.adi.",
     "compactFileNamesDescriptionOff": "Nombres descriptivos, como 2026-07-15 N0CALL at US-1234.adi.",
-    "includePrivateDataDescriptionOn": "Se incluyen nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.",
-    "includePrivateDataDescriptionOff": "Se omiten nombres, ciudades y notas; las ubicaciones se limitan a cuadrículas de seis caracteres.",
-    "includeLookupDataDescriptionOn": "Se incluye la información de los servicios de consulta de indicativos.",
-    "includeLookupDataDescriptionOff": "Se omite la información de los servicios de consulta de indicativos; se conservan los valores introducidos manualmente.",
+    "includePrivateDataDescriptionOn": "Incluyendo nombres, ciudades, notas y ubicaciones precisas en los archivos ADIF.",
+    "includePrivateDataDescriptionOff": "Omitiendo nombres, ciudades y notas; limitando las ubicaciones a cuadrículas de seis caracteres.",
+    "includeLookupDataDescriptionOn": "Incluyendo la información de los servicios de consulta de indicativos.",
+    "includeLookupDataDescriptionOff": "Omitiendo la información de los servicios de consulta de indicativos; conservando los valores introducidos manualmente.",
     "customTemplatesDescriptionOn": "Tus plantillas personalizadas están activas y se pueden editar a continuación.",
     "customTemplatesDescriptionOff": "Se usan las plantillas predeterminadas. Tus plantillas personalizadas se conservan para más adelante.",
     "type": "Tipo de exportación",
