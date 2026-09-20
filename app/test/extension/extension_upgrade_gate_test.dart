@@ -8,6 +8,8 @@
 // the throw reaches nobody and the operator simply never sees the dialog.
 // This test mounts the gate where the app does, not under `home:`.
 
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -72,6 +74,28 @@ class _MigrationFails extends ExtensionServiceWithFakeHost {
   Future<void> restartRuntime() async {}
 }
 
+/// Reachable, but not before [arrived] completes — a slow link, where the
+/// screen stays live and the operator can change their mind.
+class _SlowCatalog extends CatalogService {
+  _SlowCatalog(this.arrived);
+
+  final Future<void> arrived;
+
+  @override
+  Future<List<CatalogEntry>?> fetchCatalog({OperatorGeo? geo, bool force = false}) async {
+    await arrived;
+    return [
+      CatalogEntry(
+        key: 'wca',
+        name: 'WCA',
+        version: '1.0.0',
+        sha256: 'a' * 64,
+        bundleUrl: Uri.parse('https://catalog.example/api/v1/extensions/wca/versions/1.0.0/bundle'),
+      ),
+    ];
+  }
+}
+
 /// Reachable, and publishing nothing — what a channel looks like before its
 /// first release.
 class _EmptyCatalog extends CatalogService {
@@ -103,6 +127,141 @@ void main() {
     await tester.tapAt(const Offset(2, 2));
     await tester.pumpAndSettle();
     expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget, reason: 'a barrier tap dismissed the offer');
+  });
+
+  testWidgets('switching the experiment on offers the upgrade there and then', (tester) async {
+    // The flag withdraws every non-core built-in the moment it flips, so an
+    // offer that waits for the next launch leaves the operator a whole
+    // session with the fewest extensions they will ever have, unasked.
+    final h = await makeHaLoServices(catalog: _ReachableCatalog());
+    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
+
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing, reason: 'the experiment is still off');
+
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget);
+  });
+
+  testWidgets('an unrelated setting does not ask again once Later was answered', (tester) async {
+    // Every settings write notifies, and this offer asks the catalog whether
+    // it can be reached. A gate that answers the notification rather than the
+    // transition re-asks a question already answered — and puts a request on
+    // the wire for each theme change.
+    final h = await makeHaLoServices(catalog: _ReachableCatalog());
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
+
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.extensionsPanel.upgradeLater));
+    await tester.pumpAndSettle();
+    expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing);
+
+    await h.settings.setThemeMode(ThemeMode.dark);
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing, reason: 'the offer came back unasked');
+  });
+
+  testWidgets('the experiment switched off and on again does not stack a second offer', (tester) async {
+    // The offer is up and the operator goes back to the Experiments pane.
+    // Each transition to on is a fresh reason to ask, and the one already on
+    // screen is the answer to it.
+    final h = await makeHaLoServices(catalog: _ReachableCatalog());
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
+
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget);
+
+    await h.settings.setExperimentEnabled(kCatalogExperiment, false);
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.extensionsPanel.upgradeTitle), findsOneWidget, reason: 'a second offer stacked on the first');
+  });
+
+  testWidgets('the experiment switched back off during the catalog check cancels the offer', (tester) async {
+    // That check is a forced fetch — seconds of it on a slow link — and the
+    // screen is live throughout. Asked anyway, an operator who changed their
+    // mind would migrate under a flag that is off, and `extensionsMigrated`
+    // then reports the upgrade done forever: the offer never comes back when
+    // they turn the experiment on for real.
+    final reply = Completer<void>();
+    final h = await makeHaLoServices(catalog: _SlowCatalog(reply.future));
+    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
+
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await tester.pump();
+    await h.settings.setExperimentEnabled(kCatalogExperiment, false);
+    reply.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing);
+    expect(h.settings.extensionsMigrated, isFalse);
+  });
+
+  testWidgets('an unreachable catalog is said when the operator asked, not at boot', (tester) async {
+    // "I turned it on and nothing happened" is the complaint the listener
+    // exists to answer, and an offline operator hits exactly that: the offer
+    // returns silently, having asked a catalog that did not reply. At boot
+    // nobody is watching and silence is right; here they are looking at it.
+    final h = await makeHaLoServices(catalog: _EmptyCatalog());
+    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
+
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(h.services.statusBar.itemForKey('extensions:upgradeOffer'), isNull, reason: 'boot says nothing');
+
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.extensionsPanel.upgradeTitle), findsNothing);
+    expect(h.services.statusBar.itemForKey('extensions:upgradeOffer')?.text,
+        t.extensionsPanel.upgradeUnreachable);
   });
 
   testWidgets('a finished upgrade says so', (tester) async {
@@ -162,7 +321,19 @@ void main() {
 
     expect(find.text(t.extensionsPanel.upgradeDoneTitle), findsOneWidget);
     // WCA is not on the no-twin list, so it is not named whatever else is true.
-    expect(find.textContaining(t.extensionsPanel.upgradeDoneUnserved(names: 'QSO Parties')), findsOneWidget);
+    final lost = t.extensionsPanel.upgradeDoneUnserved(names: 'QSO Parties');
+    expect(find.textContaining(lost), findsOneWidget);
+    expect(find.textContaining(t.extensionsPanel.upgradeDoneUnservedHint), findsOneWidget);
+
+    // Bold, because it is the one line the operator has to carry out of a
+    // dialog that otherwise reads as reassurance.
+    final spans = <InlineSpan>[];
+    tester.widget<Text>(find.textContaining(lost)).textSpan!.visitChildren((span) {
+      spans.add(span);
+      return true;
+    });
+    final lostSpan = spans.whereType<TextSpan>().singleWhere((span) => span.text == lost);
+    expect(lostSpan.style?.fontWeight, FontWeight.bold);
   });
 
   testWidgets('a built-in the operator had switched off is not named as lost', (tester) async {

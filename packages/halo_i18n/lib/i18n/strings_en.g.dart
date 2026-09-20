@@ -432,14 +432,20 @@ class Translations$extensionsPanel$en {
 	/// en: 'Later'
 	String get upgradeLater => 'Later';
 
+	/// en: 'The extension catalog could not be reached, so your extensions were not upgraded. We will try again later.'
+	String get upgradeUnreachable => 'The extension catalog could not be reached, so your extensions were not upgraded. We will try again later.';
+
 	/// en: 'Your extensions are ready'
 	String get upgradeDoneTitle => 'Your extensions are ready';
 
 	/// en: 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.'
 	String get upgradeDoneBody => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.';
 
-	/// en: 'Not carried over: ${names}. The catalog has no direct replacement for these, so look there for extensions that cover what you used.'
-	String upgradeDoneUnserved({required Object names}) => 'Not carried over: ${names}. The catalog has no direct replacement for these, so look there for extensions that cover what you used.';
+	/// en: 'Not carried over: ${names}.'
+	String upgradeDoneUnserved({required Object names}) => 'Not carried over: ${names}.';
+
+	/// en: 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.'
+	String get upgradeDoneUnservedHint => 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.';
 
 	/// en: 'Your extensions were not upgraded'
 	String get upgradeFailedTitle => 'Your extensions were not upgraded';
@@ -6748,9 +6754,11 @@ extension on Translations {
 			'extensionsPanel.upgradeBody' => 'This is a one-time operation that requires an Internet connection and takes less than a minute. If now is not a good time, we can do this later.',
 			'extensionsPanel.upgradeAction' => 'Upgrade now',
 			'extensionsPanel.upgradeLater' => 'Later',
+			'extensionsPanel.upgradeUnreachable' => 'The extension catalog could not be reached, so your extensions were not upgraded. We will try again later.',
 			'extensionsPanel.upgradeDoneTitle' => 'Your extensions are ready',
 			'extensionsPanel.upgradeDoneBody' => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.',
-			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Not carried over: ${names}. The catalog has no direct replacement for these, so look there for extensions that cover what you used.',
+			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Not carried over: ${names}.',
+			'extensionsPanel.upgradeDoneUnservedHint' => 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.',
 			'extensionsPanel.upgradeFailedTitle' => 'Your extensions were not upgraded',
 			'extensionsPanel.upgradeFailedBody' => 'We couldn\'t finish upgrading your extensions, so nothing has changed. We will try again later.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} was withdrawn',
@@ -7156,10 +7164,10 @@ extension on Translations {
 			'operation.import.n1mmProtocolName' => 'N1MM+ Contact Broadcast',
 			'operation.import.n1mmAddressValue' => 'Any (broadcast)',
 			'operation.import.wsjtxProtocolName' => 'WSJT-X UDP Server',
-			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.',
-			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.',
 			_ => null,
 		} ?? switch (path) {
+			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.',
+			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.',
 			'operation.import.listenTitle' => 'Listen for QSOs from other apps',
 			'operation.import.listenDescriptionOnN1mm' => 'Listening for N1MM+',
 			'operation.import.listenDescriptionOnWsjtx' => 'Listening for WSJT-X',
@@ -7670,10 +7678,10 @@ extension on Translations {
 			'settings.syncPanel.switchAccounts' => 'Switch Accounts',
 			'settings.syncPanel.switchAccountsDescription' => 'Link this device to another account with a QR code or email',
 			'settings.syncPanel.connectionRequests' => 'Connection Requests',
-			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'A device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
-			'settings.syncPanel.accountEmailTitle' => 'Account email',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'A device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
+			'settings.syncPanel.accountEmailTitle' => 'Account email',
 			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmation sent to ${email}. Open the link there to finish the change.',
 			'settings.syncPanel.resendConfirmation' => 'Resend Confirmation Email',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Waiting on ${email}',
@@ -8184,10 +8192,10 @@ extension on Translations {
 			'staleness.ignoreForNow' => 'Ignore for now',
 			'spotting.noQsoYet' => 'No QSO logged yet to spot.',
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
-			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
-			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			_ => null,
 		} ?? switch (path) {
+			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
+			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
 			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
 			'spotting.notRefreshedOffline' => 'No connection — spots were not refreshed',

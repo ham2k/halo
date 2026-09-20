@@ -13,7 +13,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:halo_extension_host/halo_extension_host.dart';
 // Prefixed alias of the same public library, so the forwarders below can
@@ -27,6 +26,7 @@ import 'export_type_registry.dart';
 import 'extension_account_cache.dart';
 import 'extension_info.dart';
 import 'extension_keychain.dart';
+import 'extension_messages.dart';
 import 'extension_ref_results.dart';
 import 'extension_catalog_migration.dart';
 import 'extension_disabled_since.dart';
@@ -50,7 +50,6 @@ import '../config/version.dart';
 
 import 'package:halo_i18n/halo_i18n.dart';
 import '../config/navigation.dart';
-import 'link_opener.dart';
 import '../tools/backoff.dart';
 import '../tools/activity_suggestions.dart';
 import '../tools/qso_patch.dart';
@@ -2018,6 +2017,12 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   @visibleForTesting
   void debugSetAvailableExtensions(List<ExtensionInfo> extensions) => _availableExtensions = extensions;
 
+  /// Stands in for what a real [_start] records, which a test's fake host
+  /// never runs — so the generation's own keys can be exercised without
+  /// booting a runtime.
+  @visibleForTesting
+  set debugLoadedExtensionKeys(Set<String> keys) => _loadedExtensionKeys = keys;
+
   /// Which extension keys the CURRENT runtime was started with — compared
   /// against the desired set to decide whether a toggle needs a restart.
   Set<String> _loadedExtensionKeys = const {};
@@ -2351,7 +2356,18 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
       // path an enable/disable toggle takes), so their advertised commands
       // have to be re-read rather than served from the old set's cache.
       _commandCatalog = null;
+      final dying = _loadedExtensionKeys;
       await old?.dispose();
+      // AFTER the dispose, not before: the old host is alive across that
+      // await, and a fetch finishing inside that window posts its progress
+      // through a host call that would land after the sweep, re-creating the
+      // orphan. What "returning" means is decided here, where the next
+      // generation's set is known.
+      clearGenerationStatus(
+        statusBar: statusBar,
+        dying: dying,
+        returning: {for (final info in availableExtensions) if (isExtensionActive(info)) info.key},
+      );
       await start();
       if (_host != null) {
         // The fresh runtime lost all seeded KV state (it's in-memory).
@@ -2768,7 +2784,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
           icon: params['icon'] as String?,
           title: params['title'] as String?,
           text: params['text'] as String? ?? '',
-          actions: _noticeActionsFromJson(params['actions'], _namespacedKey(params)),
+          actions: noticeActionsFromJson(params['actions'], onOpenAccount: onOpenAccount),
         );
         return null;
       case 'statusBarDismissNotice':
@@ -2791,7 +2807,12 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// Set by the app shell: opens an account's standalone dialog (Settings →
   /// Accounts) from anywhere — the handler behind declarative `account`
   /// actions (an extension's "reconnect your account" button).
-  void Function(String accountKey, {String? subkey})? onOpenAccount;
+  OpenAccount? onOpenAccount;
+
+  /// See [presentExtensionResultMessage] — wired to this service's status bar
+  /// and account opener, which its two callers here already have.
+  void presentResultMessage(Map<String, dynamic> message, {String ns = 'extensions'}) =>
+      presentExtensionResultMessage(message, statusBar: statusBar, onOpenAccount: onOpenAccount, ns: ns);
 
   /// Set by the app shell: backs the `searchSettings` host call, resolving a
   /// SET/SHOW/HIDE query against the settings catalog
@@ -2800,90 +2821,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// the settings registry, the system lists, and this service itself.
   /// Unset in harnesses, which then report no match rather than failing.
   Future<Map<String, dynamic>> Function(String args, String? kind)? onSearchSettings;
-
-  /// Notice actions from extensions are declarative JSON, not callbacks back
-  /// into the extension (matches the `activity` hook's "describe UI as data"
-  /// convention) — `link` opens a URL, `dialog` shows a markdown dialog.
-  List<StatusBarAction> _noticeActionsFromJson(dynamic raw, String noticeKey) {
-    if (raw is! List) return const [];
-    final actions = <StatusBarAction>[];
-    for (final entry in raw) {
-      if (entry is! Map) continue;
-      final map = entry.cast<String, dynamic>();
-      final label = map['label'] as String?;
-      final handler = _declarativeActionHandler(map);
-      if (label == null || handler == null) continue;
-      actions.add(StatusBarAction(label: label, onTap: handler));
-    }
-    return actions;
-  }
-
-  /// The tap handler for one declarative action (the SDK's NoticeAction):
-  /// `link` opens a URL, `dialog` shows a markdown dialog, `account` opens
-  /// that account's standalone dialog via [onOpenAccount]. Returns null for
-  /// malformed or unknown actions, which the caller drops.
-  VoidCallback? _declarativeActionHandler(Map<String, dynamic> map) {
-    switch (map['type'] as String?) {
-      case 'link':
-        final url = map['url'] as String?;
-        if (url == null) return null;
-        return () => openExternalUrl(url);
-      case 'dialog':
-        final text = map['text'] as String? ?? '';
-        final title = map['title'] as String?;
-        return () => _showMarkdownDialog(title: title, text: text);
-      case 'account':
-        final key = map['key'] as String?;
-        if (key == null) return null;
-        return () => onOpenAccount?.call(key, subkey: map['subkey'] as String?);
-    }
-    return null;
-  }
-
-  void _showMarkdownDialog({String? title, required String text, List<Map<String, dynamic>> actions = const []}) {
-    final context = navigatorKey.currentContext;
-    if (context == null) return;
-    showHaloDialog<void>(
-      context: context,
-      builder: (dialogContext) => HaloDialog(
-        wide: true,
-        title: title != null ? Text(title) : null,
-        content: MarkdownBody(
-          data: text,
-          styleSheet: withEmojiFallback(MarkdownStyleSheet.fromTheme(Theme.of(dialogContext))),
-        ),
-        cancel: TextButton(onPressed: () => Navigator.of(dialogContext).pop(), child: Text(t.common.done)),
-        actions: [
-          for (final action in actions)
-            if (action['label'] is String && _declarativeActionHandler(action) != null)
-              TextButton(
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                  _declarativeActionHandler(action)!();
-                },
-                child: Text(action['label'] as String),
-              ),
-        ],
-      ),
-    );
-  }
-
-  /// Presents a ResultMessage (the SDK type of the same name): `status` is
-  /// a transient status-bar message, `dialog` a modal markdown dialog whose
-  /// buttons are declarative NoticeActions. Reached from a hook result's
-  /// `userMessage` (see [sendSpot]) or the imperative `showMessage` host
-  /// call (hooks whose results can't carry one, e.g. lookups).
-  void presentResultMessage(Map<String, dynamic> message, {String ns = 'extensions'}) {
-    final title = message['title'] as String?;
-    final text = message['text'] as String? ?? '';
-    if (message['presentation'] == 'dialog') {
-      final actions =
-          ((message['actions'] as List?) ?? const []).whereType<Map<dynamic, dynamic>>().map((a) => a.cast<String, dynamic>()).toList();
-      _showMarkdownDialog(title: title, text: text, actions: actions);
-    } else {
-      statusBar?.setMessage(key: '$ns:resultMessage', icon: message['icon'] as String?, title: title, text: text);
-    }
-  }
 
   /// Deterministic offline lookups: with `--dart-define=HALO_STUB_LOOKUPS=1`
   /// in a dev build, [lookupCall] returns a fixed canned result instead of

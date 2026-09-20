@@ -751,7 +751,13 @@ class DataFileManager {
 
   Future<void> _processRaw(String key, Map<String, dynamic> def, String body, {required bool showProgress}) async {
     final host = extensions.host;
-    if (host == null) return;
+    // Thrown, not returned: the runtime went away between the download and
+    // the import (a restart — an extension toggled, the catalog upgrade).
+    // Returning quietly reads as success to processDataFile, which stamps the
+    // file fresh for maxAgeInDays with NOTHING imported and leaves its
+    // progress bar in the footer with nobody left to clear it. The throw runs
+    // the same catch a mid-loop disposal already runs.
+    if (host == null) throw ExtensionHostException('dataFile $key: no runtime to import into');
 
     // 1. Pass down to JS converter rawToJSONData
     final dynamic processedJson = await host.invokeHook(
@@ -1051,7 +1057,13 @@ class DataFileManager {
     required bool showProgress,
   }) async {
     final host = extensions.host;
-    if (host == null) return;
+    // Thrown, not returned: the runtime went away between the download and
+    // the import (a restart — an extension toggled, the catalog upgrade).
+    // Returning quietly reads as success to processDataFile, which stamps the
+    // file fresh for maxAgeInDays with NOTHING imported and leaves its
+    // progress bar in the footer with nobody left to clear it. The throw runs
+    // the same catch a mid-loop disposal already runs.
+    if (host == null) throw ExtensionHostException('dataFile $key: no runtime to import into');
 
     final updatedFlag = nowMillis();
     final chunkSize = 5000;

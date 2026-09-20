@@ -417,6 +417,38 @@ REF-002,Summit Two,45.56,-122.78
     expect(statusBar.itemForKey('dataFile:my-custom-file'), isNull, reason: 'the transient progress line is cleared, not left spinning');
   });
 
+  test('DataFileManager: a runtime that went away mid-import fails the file instead of stamping it fresh', () async {
+    // A restart (an extension toggled, the catalog upgrade) nulls the host
+    // between the download and the import. Returning quietly there reads as
+    // success to the sync loop, which then stamps the file fresh for
+    // maxAgeInDays with NOTHING imported — parks look present for a fortnight
+    // while every lookup misses — and leaves the progress bar in the footer
+    // with nobody left to clear it.
+    final statusBar = StatusBarService(prefs);
+    final managerWithMock = TestDataFileManager(
+      lookups: lookups,
+      extensions: _HostlessExtensionService(),
+      prefs: prefs,
+      statusBar: statusBar,
+    )..mockDownloadBody = 'anything at all';
+
+    final def = {
+      'key': 'parks',
+      'name': 'All Parks',
+      'url': 'https://example.com/parks.txt',
+      'fetchType': 'raw',
+      'category': 'parks',
+    };
+
+    await expectLater(
+      managerWithMock.processDataFile('parks', def, showProgress: true),
+      throwsA(isA<ExtensionHostException>()),
+      reason: 'the sync loop stamps the file fresh unless this throws',
+    );
+
+    expect(statusBar.itemForKey('dataFile:parks'), isNull, reason: 'the progress line is left spinning forever');
+  });
+
   test(
       'DataFileManager: a malformed definition (missing url/fetchType) still raises a notice, not a silent throw', () async {
     // _fetchDefinitions only checks that `value` is a Map — an extension's
@@ -1336,6 +1368,13 @@ class _BlockingDownloadManager extends DataFileManager {
     return null;
   }
 
+}
+
+/// A service whose runtime is gone — what every caller sees between a
+/// dispose and the next generation's start.
+class _HostlessExtensionService extends ExtensionServiceWithFakeHost {
+  @override
+  ExtensionHost? get host => null;
 }
 
 class MockExtensionService extends ExtensionServiceWithFakeHost {

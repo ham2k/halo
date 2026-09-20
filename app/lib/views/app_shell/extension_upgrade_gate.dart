@@ -31,13 +31,63 @@ class ExtensionUpgradeGate extends StatefulWidget {
 }
 
 class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
+  /// Whether the experiment was on the last time settings changed, so the
+  /// offer follows the moment it is switched ON rather than every write.
+  late bool _experimentWasOn;
+
+  /// An offer already on screen, or its catalog check in flight.
+  bool _offering = false;
+
   @override
   void initState() {
     super.initState();
-    unawaited(_offerUpgrade());
+    final settings = widget.services.settings;
+    _experimentWasOn = settings.experimentEnabled(kCatalogExperiment);
+    settings.addListener(_settingsChanged);
+    unawaited(_offerUpgrade(operatorAsked: false));
   }
 
-  Future<void> _offerUpgrade() async {
+  @override
+  void dispose() {
+    widget.services.settings.removeListener(_settingsChanged);
+    super.dispose();
+  }
+
+  /// Switching the experiment on is the operator asking for catalog
+  /// extensions, and the offer is how they get them. Made from `initState`
+  /// alone it arrived a whole session late: they turned the experiment on,
+  /// nothing happened, and the app had to be relaunched to ask.
+  ///
+  /// Nothing is withdrawn by that switch — `isBuiltInOffered` needs the
+  /// migration too, deliberately — so this is a convenience, not a repair.
+  void _settingsChanged() {
+    final isOn = widget.services.settings.experimentEnabled(kCatalogExperiment);
+    final switchedOn = isOn && !_experimentWasOn;
+    _experimentWasOn = isOn;
+    // The transition only. Settings notify on every write, and this offer
+    // asks the catalog whether it can be reached.
+    if (switchedOn) unawaited(_offerUpgrade(operatorAsked: true));
+  }
+
+  Future<void> _offerUpgrade({required bool operatorAsked}) async {
+    // A second pass cannot run beside the first: they would ask the same
+    // question twice, and the second dialog would stand over a migration the
+    // first is already running.
+    if (_offering) return;
+    _offering = true;
+    try {
+      await _offer(operatorAsked: operatorAsked);
+    } finally {
+      _offering = false;
+    }
+  }
+
+  /// Its own method so the global translations are in scope: `_offer` binds a
+  /// local `t` to the panel's strings, which shadows them for the whole body.
+  void _sayCatalogUnreachable() => widget.services.statusBar
+      .setMessage(key: 'extensions:upgradeOffer', text: t.extensionsPanel.upgradeUnreachable);
+
+  Future<void> _offer({required bool operatorAsked}) async {
     final settings = widget.services.settings;
     // Behind the experiment until this goes to everybody, at which point this
     // one condition is what changes.
@@ -52,9 +102,23 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     // question asks for a decision about something they have not met.
     if (!settings.defaultProfileCallsignDefined) return;
     // Asked BEFORE the dialog, so nobody is shown a button that cannot work.
-    // An unreachable catalog says nothing at all and tries again next launch.
-    if (!await canReachCatalog(widget.services.extensions)) return;
+    if (!await canReachCatalog(widget.services.extensions)) {
+      // Silence is right at a boot nobody was watching, and wrong when the
+      // operator has just switched the experiment on and is looking at the
+      // screen: "nothing happened" is exactly the complaint this gate's own
+      // listener exists to answer. Offline, unwired, empty channel — the
+      // operator can act on none of them, so they read the one sentence that
+      // matters and it is retried next launch.
+      if (operatorAsked) _sayCatalogUnreachable();
+      return;
+    }
     if (!mounted) return;
+    // Re-read after that round trip: it is a forced fetch, seconds of it on a
+    // slow link, and the screen is live throughout. An operator who switched
+    // the experiment back off in the meantime would otherwise be asked
+    // anyway — and accepting would migrate under a flag that is now off,
+    // which `extensionsMigrated` then reports as done forever.
+    if (!settings.experimentEnabled(kCatalogExperiment)) return;
 
     // This gate sits in MaterialApp.builder, ABOVE the Navigator, so its own
     // context cannot push a dialog: showDialog would throw into this
@@ -89,15 +153,24 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     // the upgrade rather than failing it, so this is also where its withdrawal
     // is said.
     final unserved = done ? unservedBuiltInNames(widget.services.extensions) : const <String>[];
-    final doneBody = [
-      t.upgradeDoneBody,
-      if (unserved.isNotEmpty) t.upgradeDoneUnserved(names: unserved.join(', ')),
-    ].join('\n\n');
+    // What they lost is the one line they have to carry out of this dialog —
+    // everything around it is reassurance — so it is the one line in bold.
+    final doneBody = TextSpan(children: [
+      TextSpan(text: t.upgradeDoneBody),
+      if (unserved.isNotEmpty) ...[
+        const TextSpan(text: '\n\n'),
+        TextSpan(
+          text: t.upgradeDoneUnserved(names: unserved.join(', ')),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        TextSpan(text: ' ${t.upgradeDoneUnservedHint}'),
+      ],
+    ]);
     await showDialog<void>(
       context: navigator,
       builder: (context) => HaloDialog(
         title: Text(done ? t.upgradeDoneTitle : t.upgradeFailedTitle),
-        content: Text(done ? doneBody : t.upgradeFailedBody),
+        content: done ? Text.rich(doneBody) : Text(t.upgradeFailedBody),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
       ),
     );

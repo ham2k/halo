@@ -396,16 +396,30 @@ sees no build secret, whatever key it claims and wherever it came from.
 ### The upgrade to catalog extensions
 
 An install that has been running the app's own extensions is offered the move
-once at start, and may defer it. Accepting installs the pre-loads, then
-fetches the catalog's twin of every other built-in the operator had switched
-on — `wca` becomes `ham2k-wca` — carrying its settings and credentials the
-same way. Nothing is withdrawn until that finishes; a download that fails puts
-the app's own extensions back in use and the offer returns next launch. Twins
-that did arrive stay on disk, unused until an upgrade completes — the built-in
-each one supersedes is what runs meanwhile.
+at start, and again the moment the catalog experiment is switched on: that
+switch is the operator asking for catalog extensions, and being made to
+relaunch before anything is offered reads as nothing having happened. The
+switch withdraws nothing by itself; only a taken upgrade does, and the offer
+may be deferred either way. A catalog that cannot be reached says so in the
+footer when the operator asked, and says nothing at a launch nobody was
+watching.
 
-A few built-ins have no twin on purpose — `qp`, which the catalog carries as one
-extension per party instead — and the app names them itself
+Accepting installs the pre-loads, then fetches the catalog's twin of every
+other built-in the operator had switched on — `wca` becomes `ham2k-wca` —
+carrying its settings and credentials the same way. Nothing is withdrawn until
+that finishes; a download that fails puts the app's own extensions back in use
+and the offer returns next launch. Twins that did arrive stay on disk, unused
+until an upgrade completes — the built-in each one supersedes is what runs
+meanwhile.
+
+The upgrade restarts the extension runtime, which takes the footer items of
+the generation going down with it: a data file's import raises an error rather
+than returning into a torn-down runtime, so its progress line is cleared and
+the file is left unstamped for the next sweep instead of recorded as fresh
+with nothing imported.
+
+A few built-ins have no twin on purpose — `qp`, which the catalog carries as
+one extension per party instead — and the app names them itself
 (`kBuiltInsWithoutTwin`). Those are withdrawn without asking the catalog, and
 the dialog that reports the upgrade finished names each one the operator had
 switched on, since it is where they learn it is gone. Any other twin missing
