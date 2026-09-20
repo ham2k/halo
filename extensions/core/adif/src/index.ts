@@ -135,10 +135,13 @@ function formatAdifFreq(freqKHz: number): string {
 ///
 /// NOTES and COMMENT are app-polo's defaults verbatim (`basePartialTemplates`:
 /// `ADIFNotes`, `ADIFComment`). QSLMSG writes the same field from the same
-/// source and deliberately not the same text: polo joins each ref's decorated
-/// `shortLabel`/`label`, and a ref crosses into this runtime as the raw QSON
-/// `{type, ref}` it is stored as, with no label on it. The reference itself is
-/// what a card needs to name anyway.
+/// source and deliberately not the same text: polo joins each ref's
+/// `shortLabel`/`label`, which `{{ op.refs | refLabels | sentence }}` would
+/// say here too, and this names the bare reference instead. A label is a
+/// snapshot — whatever the activity's `decorateRef` wrote when the ref was
+/// saved, which for an unconfigured contest is a localized placeholder — while
+/// the reference is the identifier the receiving operator looks the contact up
+/// by, and is what a card needs to name.
 ///
 /// `multiline` is ADIF's own type split: NOTES is a MultilineString and keeps
 /// the operator's line breaks; COMMENT and QSLMSG are Strings, which exclude
