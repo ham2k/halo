@@ -7,6 +7,7 @@
 upcoming:
   changes:
     - "Hover or drag across the Weather chart to inspect each hour’s forecast"
+    - "A full ADIF export's QSL Message now names the programs, as \"POTA US-0001 & WWFF KFF-0002\""
 
 "169":
   changes:

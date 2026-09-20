@@ -133,15 +133,17 @@ function formatAdifFreq(freqKHz: number): string {
 /// app-polo templates exactly these three (`ADIFNotesTemplate`,
 /// `ADIFCommentTemplate`, `ADIFQslMsgTemplate`).
 ///
-/// NOTES and COMMENT are app-polo's defaults verbatim (`basePartialTemplates`:
-/// `ADIFNotes`, `ADIFComment`). QSLMSG writes the same field from the same
-/// source and deliberately not the same text: polo joins each ref's
-/// `shortLabel`/`label`, which `{{ op.refs | refLabels | sentence }}` would
-/// say here too, and this names the bare reference instead. A label is a
-/// snapshot — whatever the activity's `decorateRef` wrote when the ref was
-/// saved, which for an unconfigured contest is a localized placeholder — while
-/// the reference is the identifier the receiving operator looks the contact up
-/// by, and is what a card needs to name.
+/// All three are app-polo's defaults (`basePartialTemplates`: `ADIFNotes`,
+/// `ADIFComment`, `ADIFQslMsg`) — NOTES and COMMENT verbatim, QSLMSG in this
+/// engine's spelling, where polo's `{{#join}}` over each ref's
+/// `shortLabel`/`label` is `refLabels | sentence`. What the reader gets is a
+/// sentence naming the programs ("POTA US-0001 & WWFF KFF-0002"), not a list
+/// of codes that says nothing to anyone who doesn't already know the program.
+///
+/// A label is whatever the activity's `decorateRef` stored when the reference
+/// was saved, so `refLabels` falls back to the bare reference for one that
+/// resolved to nothing — never dropping it, since the reference is what a card
+/// is looked up by.
 ///
 /// `multiline` is ADIF's own type split: NOTES is a MultilineString and keeps
 /// the operator's line breaks; COMMENT and QSLMSG are Strings, which exclude
@@ -158,8 +160,9 @@ function formatAdifFreq(freqKHz: number): string {
 /// blanking `qso.notes` in the template context.
 ///
 /// QSLMSG is the operation's references — what goes on the card, and public
-/// by construction: `op.refs` is the operation's own claim, `compact` drops
-/// the entries that carry no reference (a contest's, say).
+/// by construction: `op.refs` is the operation's own claim. `refLabels` drops
+/// the entries with nothing to name, and a contest the operation declared is
+/// named like any other program, because that is what the card says too.
 ///
 /// `wholeLogOnly` is the other axis, and QSLMSG is the only field on it:
 /// `op.refs` is EVERY program the operation claimed, so a file submitted to
@@ -198,7 +201,7 @@ const TEXT_FIELD_TEMPLATES: {
   },
   {
     name: 'QSLMSG',
-    template: '{{ op.refs | map: "ref" | compact | join: ", " }}',
+    template: '{{ op.refs | refLabels | sentence }}',
     private: false,
     wholeLogOnly: true,
     multiline: false,
@@ -618,7 +621,7 @@ const ExportHandler = {
   async getExportTypes() {
     return [{ exportType: 'adif', format: 'adif', label: 'Full ADIF Export', defaults: {
       includePrivateData: true,
-      adifQslMessageTemplate: '{{ op.refs | map: "ref" | compact | join: ", " }}',
+      adifQslMessageTemplate: '{{ op.refs | refLabels | sentence }}',
     } }]
   },
   async suggestExportOptions(

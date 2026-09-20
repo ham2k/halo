@@ -227,8 +227,9 @@ will jump rather than count. Show HH:MM.
 | CW messages | Radio settings `cwMessage1..8`, keyed on F1-F8 through the radio (docs/design/cat.md § CW keying) — rendered by the `template` hook (hooks.md) | by the operator, in the Station dialog's Messages… dialog |
 
 NOTES and COMMENT default to QSO notes and are withheld when private data
-is off. QSLMSG defaults to empty for program exports, and to the operation’s
-references for the whole-log ADIF. Custom QSL messages may use contact values.
+is off. QSLMSG defaults to empty for program exports, and for the whole-log
+ADIF to the operation’s references as `refLabels | sentence` names them —
+“POTA US-0001 & WWFF KFF-0002”. Custom QSL messages may use contact values.
 Templates receive no withheld private or lookup values. File titles obey the
 private-data choice; filename templates are labels for the operator’s files.
 

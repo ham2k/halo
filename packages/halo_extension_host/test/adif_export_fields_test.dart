@@ -30,8 +30,12 @@ void main() {
         'state': 'CA',
         'county': 'Marin',
         'grid': 'CM87ss',
+        // Decorated, the way `decorateRef` leaves a reference the operator
+        // added — QSLMSG names the programs, and a fixture of bare codes would
+        // pass whether it did or not. The WWFF ref stays undecorated: a
+        // reference that resolved to nothing must still reach the card.
         'refs': [
-          {'type': 'potaActivation', 'ref': 'US-0001'},
+          {'type': 'potaActivation', 'ref': 'US-0001', 'shortLabel': 'POTA US-0001', 'label': 'POTA US-0001: Some Park'},
           {'type': 'wwffActivation', 'ref': 'KFF-0002'},
         ],
       };
@@ -327,7 +331,7 @@ void main() {
 
     expect(content, contains('<NOTES:20>first QSO of the day'));
     expect(content, contains('<COMMENT:20>first QSO of the day'));
-    expect(content, contains('<QSLMSG:17>US-0001, KFF-0002'));
+    expect(content, contains('<QSLMSG:23>POTA US-0001 & KFF-0002'));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   // The switch a file uploaded to a program's servers is written under. Every
@@ -350,7 +354,7 @@ void main() {
     // file that withheld it would claim nothing the event scores on.
     expect(content, contains('<CNTY:11>CT,Hartford'));
     expect(content, contains('<MY_CNTY:8>CA,Marin'));
-    expect(content, contains('<QSLMSG:17>US-0001, KFF-0002'));
+    expect(content, contains('<QSLMSG:23>POTA US-0001 & KFF-0002'));
   }, timeout: const Timeout(Duration(seconds: 60)));
 
   test('a sideband the band runs is exported as plain SSB, with no SUBMODE', () async {
