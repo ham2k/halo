@@ -16,6 +16,7 @@ import 'package:halo_widgets/src/logging_controls_exchange.dart';
 import 'package:halo_widgets/src/logging_controls_lookup.dart';
 import 'package:halo_widgets/src/logging_controls_radio.dart';
 import 'package:halo_widgets/src/logging_controls_refs.dart';
+import 'package:halo_widgets/src/logging_controls_types.dart';
 import 'package:halo_widgets/src/logging_controls_time.dart';
 
 class _FakeVfoStore implements VfoStore {
@@ -47,17 +48,9 @@ class _Harness {
 
   late final RadioControlModel radio = RadioControlModel(
     config: () => (
-      radioService: store,
-      hasConfiguredRadio: false,
-      radioConnected: false,
-      radioName: null,
-      onOpenStationConfig: null,
+      radio: RadioHookup(radioService: store, ourItuRegion: 2, ourCountryCode: 'US'),
       powerInPlay: () => powerInPlay,
       editingQso: editingQso,
-      ituRegion: 2,
-      countryCode: 'US',
-      enabledBands: null,
-      enabledModes: null,
     ),
     draft: draft,
     onRescore: () {},

@@ -31,6 +31,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'density.dart';
 import 'logging_controls_draft.dart';
 import 'logging_controls_metrics.dart';
+import 'logging_controls_types.dart';
 import 'mdi_icons.g.dart';
 import 'panel_model.dart';
 import 'secondary_control_row.dart' show SecondaryControlSpec, SummaryPart;
@@ -42,21 +43,16 @@ import 'theme.dart';
 /// mounted panel (`didUpdateWidget`), and a copy would go stale with nothing
 /// to refresh it.
 typedef RadioControlConfig = ({
-  VfoStore? radioService,
-
-  /// The rig as the app resolved it — configured at all, connected right
-  /// now, and its name — and the way to its configuration. The model derives
-  /// the chip's glyph and colour from these ([RadioControlModel.chipIcon],
-  /// [RadioControlModel.statusColor]), and the expanded row's Station
-  /// Configuration button reads them here, so nothing can disagree with the
-  /// model about the radio. The rule for what goes where: anything about the
-  /// RIG is on this record; anything about the widgets' own plumbing
-  /// (formatters, keyboard, callbacks) is a parameter of the chip and row
-  /// builders.
-  bool hasConfiguredRadio,
-  bool radioConnected,
-  String? radioName,
-  VoidCallback? onOpenStationConfig,
+  /// The rig as the app wired the panel up with — taken whole rather than
+  /// restated field by field, so a new rig input reaches the model by being
+  /// added to [RadioHookup] and nowhere else. Anything about the RIG belongs
+  /// there; anything about the widgets' own plumbing (formatters, keyboard,
+  /// callbacks) is a parameter of the chip and row builders, and what is
+  /// neither is a field of this record.
+  ///
+  /// The chip and the expanded row read the rig from here rather than taking
+  /// it themselves, so nothing can disagree with the model about the radio.
+  RadioHookup radio,
 
   /// Whether power is part of the entry by the panel's own rule — the Power
   /// control is in the row, or the app is tracking it with the rest of the
@@ -66,10 +62,6 @@ typedef RadioControlConfig = ({
   /// configuration never ask.
   bool Function() powerInPlay,
   Qso? editingQso,
-  int? ituRegion,
-  String? countryCode,
-  List<String>? enabledBands,
-  List<String>? enabledModes,
 });
 
 /// The Radio control's state: frequency, band and mode, the two dropdowns,
@@ -207,7 +199,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     final freq = this.freq;
     final cfg = config();
     return freq != null &&
-        isOutOfBandFrequency(freq, ituRegion: cfg.ituRegion, countryCode: cfg.countryCode);
+        isOutOfBandFrequency(freq, ituRegion: cfg.radio.ourItuRegion, countryCode: cfg.radio.ourCountryCode);
   }
 
   /// `mode` as the Mode dropdown and the Radio chip show it, per
@@ -238,7 +230,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// to a hardcoded 'SSB' the operator never chose, and `vfoA.mode` being null
   /// is what distinguishes "defaulted" from "confirmed".
   bool get vfoIsUnset {
-    final vfo = config().radioService?.vfoA;
+    final vfo = config().radio.radioService?.vfoA;
     if (vfo == null) return false; // no radio state at all to be missing
     return (vfo.freq == null && vfo.band == null) || vfo.mode == null;
   }
@@ -302,7 +294,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
 
   /// The chip's glyph — a transceiver should look like one thing throughout
   /// the row, so the settings dialog's entry reads this too.
-  IconData get chipIcon => config().hasConfiguredRadio ? MdiIcons.cat : MdiIcons.radio;
+  IconData get chipIcon => config().radio.hasConfiguredRadio ? MdiIcons.cat : MdiIcons.radio;
 
   /// The chip's icon colour for the rig's state — null when there is no
   /// radio to report on. [selected] is the pill's own; see [radioStatusColor].
@@ -310,8 +302,8 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     final config = this.config();
     return radioStatusColor(
       theme,
-      hasConfiguredRadio: config.hasConfiguredRadio,
-      connected: config.radioConnected,
+      hasConfiguredRadio: config.radio.hasConfiguredRadio,
+      connected: config.radio.radioConnected,
       selected: selected,
     );
   }
@@ -414,7 +406,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     mode = resolveMode(picked);
     notify();
     final cfg = config();
-    if (cfg.editingQso == null) cfg.radioService?.setVfo('vfoA', mode: mode);
+    if (cfg.editingQso == null) cfg.radio.radioService?.setVfo('vfoA', mode: mode);
     // New Mode / New Band notices depend on the mode — rescore the candidate.
     onRescore();
   }
@@ -431,7 +423,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// The Power field is seeded with it, under its own rule
   /// ([seedPowerFromVfo]).
   void seedFromVfo({bool skipFrequency = false}) {
-    final vfo = config().radioService?.vfoA;
+    final vfo = config().radio.radioService?.vfoA;
     if (vfo == null) return;
     if (!skipFrequency) {
       final freq = vfo.freq;
@@ -473,7 +465,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   void seedPowerFromVfo() {
     final config = this.config();
     if (!config.powerInPlay() || config.editingQso != null || powerFocus.hasFocus) return;
-    final power = config.radioService?.vfoA.power;
+    final power = config.radio.radioService?.vfoA.power;
     final text = power == null ? '' : '$power';
     if (powerController.text != text) powerController.text = text;
   }
@@ -488,7 +480,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     final config = this.config();
     if (config.editingQso != null) return;
     final watts = powerWatts;
-    config.radioService?.setVfo('vfoA', power: watts, clearPower: watts == null);
+    config.radio.radioService?.setVfo('vfoA', power: watts, clearPower: watts == null);
   }
 
   /// Committed on blur rather than on every keystroke: typing "100" passes
@@ -551,7 +543,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
 
   /// Pushes the current freq/band/mode to the VFO as `vfoA`.
   void pushVfo() {
-    config().radioService?.setVfo('vfoA', freq: freq, band: band, mode: mode);
+    config().radio.radioService?.setVfo('vfoA', freq: freq, band: band, mode: mode);
     // The field and the VFO agree again: not a pending edit, and the
     // baseline moves with it.
     _freqTouched = false;
@@ -640,8 +632,8 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     // match before landing on a final value that doesn't (e.g. "1800", a
     // real match, mid-typing "18001", a real gap between 160m and 17m).
     if (freq != null) {
-      final guess =
-          modeForFrequency(freq, ituRegion: cfg.ituRegion, countryCode: cfg.countryCode) ?? _modeBeforeFreqEdit;
+      final guess = modeForFrequency(freq, ituRegion: cfg.radio.ourItuRegion, countryCode: cfg.radio.ourCountryCode) ??
+          _modeBeforeFreqEdit;
       // Compared RESOLVED: a generic `SSB` guess against a generic `SSB` mode
       // is not a no-op once there is a frequency to resolve against, so the
       // raw comparison blocked it — and dropping the comparison altogether
@@ -662,7 +654,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
       // Clearing the field is unambiguous — push it immediately rather than
       // debouncing, so dependents reading radioService.vfoA (e.g. the
       // Spotting control) drop the stale frequency right away.
-      cfg.radioService?.setVfo('vfoA', clearFreq: true, band: manualBand, mode: mode);
+      cfg.radio.radioService?.setVfo('vfoA', clearFreq: true, band: manualBand, mode: mode);
       _freqTouched = false;
     }
   }
@@ -703,7 +695,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   /// current value appended when it's not in the list (see the panel field's
   /// doc for why each fallback exists).
   List<String> bandOptions() {
-    final enabled = config().enabledBands;
+    final enabled = config().radio.enabledBands;
     final options = enabled == null
         ? [for (final b in bands) b.name]
         : enabled.isEmpty
@@ -714,7 +706,7 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   }
 
   List<String> modeOptions() {
-    final enabled = config().enabledModes;
+    final enabled = config().radio.enabledModes;
     final options = enabled == null
         ? modes
         : enabled.isEmpty
@@ -927,14 +919,14 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     // VFO stating the mode — pinning the old band's sideband onto the new band
     // at the rig while the panel holds the new one, until the next wipe
     // reseeds the panel from the rig.
-    final leavingBand = cfg.editingQso == null ? (cfg.radioService?.vfoA.band ?? band) : band;
+    final leavingBand = cfg.editingQso == null ? (cfg.radio.radioService?.vfoA.band ?? band) : band;
     final resolved =
         (value != leavingBand && isSidebandMode(mode)) ? (resolveSideband('SSB', null, band: value) ?? mode) : mode;
     mode = resolved;
     manualBand = value;
     freqController.clear();
     notify();
-    if (cfg.editingQso == null) cfg.radioService?.setVfo('vfoA', band: value);
+    if (cfg.editingQso == null) cfg.radio.radioService?.setVfo('vfoA', band: value);
   }
 
   /// A pick from the Band menu. A pick is a selection, never a filter.
@@ -1249,7 +1241,7 @@ class RadioControlFields extends StatelessWidget {
             },
           ),
         ),
-        if (config.onOpenStationConfig case final onOpenStationConfig?) ...[
+        if (config.radio.onOpenStationConfig case final onOpenStationConfig?) ...[
           const SizedBox(width: Space.sm),
           Semantics(
             identifier: 'action.stationConfig',
@@ -1282,7 +1274,7 @@ class RadioControlFields extends StatelessWidget {
                       color: _stationConfigIconColor(editing: editing),
                     ),
                   ),
-                  if (config.radioName case final radioName?)
+                  if (config.radio.radioName case final radioName?)
                     ExcludeSemantics(
                       child: ConstrainedBox(
                         constraints: const BoxConstraints(maxWidth: stationConfigIconSize * 3),

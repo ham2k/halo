@@ -133,17 +133,9 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// is when it moves and what moves with it.
   late final RadioControlModel _radio = RadioControlModel(
     config: () => (
-      radioService: widget.radio.radioService,
-      hasConfiguredRadio: widget.radio.hasConfiguredRadio,
-      radioConnected: widget.radio.radioConnected,
-      radioName: widget.radio.radioName,
-      onOpenStationConfig: widget.radio.onOpenStationConfig,
+      radio: widget.radio,
       powerInPlay: () => _powerInPlay,
       editingQso: widget.session.editingQso,
-      ituRegion: widget.radio.ourItuRegion,
-      countryCode: widget.radio.ourCountryCode,
-      enabledBands: widget.radio.enabledBands,
-      enabledModes: widget.radio.enabledModes,
     ),
     draft: _draft,
     onRescore: _lookup.scheduleScore,

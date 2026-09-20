@@ -11,6 +11,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/src/logging_controls_draft.dart';
 import 'package:halo_widgets/src/logging_controls_radio.dart';
+import 'package:halo_widgets/src/logging_controls_types.dart';
 import 'package:halo_widgets/src/mdi_icons.g.dart';
 
 class _FakeVfoStore implements VfoStore {
@@ -50,17 +51,15 @@ class _Harness {
   int notifications = 0;
   late final model = RadioControlModel(
     config: () => (
-      radioService: store,
-      hasConfiguredRadio: hasConfiguredRadio,
-      radioConnected: radioConnected,
-      radioName: null,
-      onOpenStationConfig: null,
+      radio: RadioHookup(
+        radioService: store,
+        hasConfiguredRadio: hasConfiguredRadio,
+        radioConnected: radioConnected,
+        ourItuRegion: 2,
+        ourCountryCode: 'US',
+      ),
       powerInPlay: () => powerInPlay,
       editingQso: editingQso,
-      ituRegion: 2,
-      countryCode: 'US',
-      enabledBands: null,
-      enabledModes: null,
     ),
     draft: draft,
     onRescore: () => rescores++,
