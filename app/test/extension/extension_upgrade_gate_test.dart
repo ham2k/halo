@@ -14,6 +14,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import 'package:ham2k_logger/config/experiments.dart';
 import 'package:ham2k_logger/config/navigation.dart';
 import 'package:ham2k_logger/services/catalog_service.dart';
+import 'package:ham2k_logger/services/extension_info.dart';
 import 'package:ham2k_logger/services/extension_relevance.dart';
 import 'package:ham2k_logger/services/installed_extensions.dart';
 import 'package:ham2k_logger/services/settings_service.dart';
@@ -127,7 +128,69 @@ void main() {
 
     expect(find.text(t.extensionsPanel.upgradeDoneTitle), findsOneWidget);
     expect(find.text(t.extensionsPanel.upgradeFailedTitle), findsNothing);
+    // Exactly the body: nothing was lost, so nothing is listed as lost.
+    expect(find.text(t.extensionsPanel.upgradeDoneBody), findsOneWidget);
     expect(h.settings.extensionsMigrated, isTrue);
+  });
+
+  testWidgets('a finished upgrade names what the catalog had no replacement for', (tester) async {
+    // A built-in the catalog does not serve completes the upgrade instead of
+    // failing it, so this dialog is the only moment the operator can learn
+    // that something they had running is gone. Said by NAME: the key is
+    // nothing they ever saw.
+    final extensions = _MigrationSucceeds()
+      ..debugSetAvailableExtensions(const [
+        ExtensionInfo(key: 'qp', file: 'qp.js', core: false, name: 'QSO Parties'),
+        ExtensionInfo(key: 'wca', file: 'wca.js', core: false, name: 'WCA'),
+      ]);
+    final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
+
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(t.extensionsPanel.upgradeAction));
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.extensionsPanel.upgradeDoneTitle), findsOneWidget);
+    // WCA is not on the no-twin list, so it is not named whatever else is true.
+    expect(find.textContaining(t.extensionsPanel.upgradeDoneUnserved(names: 'QSO Parties')), findsOneWidget);
+  });
+
+  testWidgets('a built-in the operator had switched off is not named as lost', (tester) async {
+    // The upgrade withdraws nothing the operator was running there, so naming
+    // it would report a loss that was their own choice.
+    final extensions = _MigrationSucceeds()
+      ..debugSetAvailableExtensions(const [
+        ExtensionInfo(key: 'qp', file: 'qp.js', core: false, name: 'QSO Parties'),
+      ]);
+    final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
+    await h.settings.setExtensionOverrides({'qp': false});
+
+    addTearDown(() => tester.pumpWidget(const SizedBox()));
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text(t.extensionsPanel.upgradeAction));
+    await tester.pumpAndSettle();
+
+    expect(find.text(t.extensionsPanel.upgradeDoneBody), findsOneWidget);
   });
 
   testWidgets('an upgrade that did not finish says THAT, and withdraws nothing', (tester) async {

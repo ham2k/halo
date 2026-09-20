@@ -85,12 +85,19 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     if (!mounted || !navigator.mounted) return;
     // Said either way: the operator agreed to an operation that withdraws the
     // extensions they had, so leaving them to guess whether it happened is
-    // the one thing this must not do.
+    // the one thing this must not do. A built-in with no catalog twin finishes
+    // the upgrade rather than failing it, so this is also where its withdrawal
+    // is said.
+    final unserved = done ? unservedBuiltInNames(widget.services.extensions) : const <String>[];
+    final doneBody = [
+      t.upgradeDoneBody,
+      if (unserved.isNotEmpty) t.upgradeDoneUnserved(names: unserved.join(', ')),
+    ].join('\n\n');
     await showDialog<void>(
       context: navigator,
       builder: (context) => HaloDialog(
         title: Text(done ? t.upgradeDoneTitle : t.upgradeFailedTitle),
-        content: Text(done ? t.upgradeDoneBody : t.upgradeFailedBody),
+        content: Text(done ? doneBody : t.upgradeFailedBody),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
       ),
     );

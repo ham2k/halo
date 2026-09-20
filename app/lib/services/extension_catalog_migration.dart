@@ -12,8 +12,11 @@
 
 import 'dart:async';
 
+import 'package:halo_i18n/halo_i18n.dart';
+
 import 'error_reporting_service.dart';
 import 'extension_service.dart';
+import 'preloaded_extensions.dart';
 import 'settings_service.dart';
 
 /// The graph handed the extension service no catalog — a wiring defect, and
@@ -98,13 +101,44 @@ Future<bool> _migrate(ExtensionService service, SettingsService settings) async 
   // disk — and one of those downloads failing would roll the whole upgrade
   // back over bundles that had shipped inside the app.
   await service.reloadAvailableExtensions();
-  if (!(await service.adoptTwins()).complete) {
+  final adoption = await service.adoptTwins();
+  if (!adoption.complete) {
     await settings.setExtensionsMigrated(false);
+    // Whatever DID arrive is installed and recorded, and the memoized list
+    // predates it. Left stale, the rest of the session decides what to load
+    // from a list missing bundles that are on disk — and the built-ins those
+    // twins supersede are back, so the runtime has to be told which of the two
+    // it is running.
+    if (adoption.landed) {
+      await service.reloadAvailableExtensions();
+      await service.restartRuntime();
+    }
     return false;
   }
   await service.reloadAvailableExtensions();
   await service.restartRuntime();
   return true;
+}
+
+/// The names of the built-ins the operator has switched on that the catalog
+/// serves no twin of — what the upgrade withdrew with nothing to put in its
+/// place.
+///
+/// Switched on NOW, not whenever the adoption last recorded them: one
+/// switched off since was the operator's own choice, and naming it as lost
+/// tells them something the upgrade did not do.
+List<String> unservedBuiltInNames(ExtensionService service) {
+  // The name the Extensions panel gave it. A dialog that is otherwise in the
+  // operator's language naming an extension in English names something they
+  // have never seen under that name.
+  final locale = LocaleSettings.currentLocale.languageCode;
+  return [
+    for (final info in service.availableExtensions)
+      if (info.source == ExtensionSource.asset &&
+          kBuiltInsWithoutTwin.contains(info.key) &&
+          service.isExtensionEnabled(info))
+        info.nameFor(locale),
+  ];
 }
 
 /// The boot-time half: whatever is still owed from an upgrade already taken.

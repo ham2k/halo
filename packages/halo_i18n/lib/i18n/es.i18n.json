@@ -115,6 +115,7 @@
     "upgradeLater": "Más tarde",
     "upgradeDoneTitle": "Tus extensiones están listas",
     "upgradeDoneBody": "Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.",
+    "upgradeDoneUnserved": "No se trasladaron: ${names}. El catálogo no tiene un reemplazo directo para estas, así que busca allí extensiones que cubran lo que usabas.",
     "upgradeFailedTitle": "Tus extensiones no se actualizaron",
     "upgradeFailedBody": "No pudimos terminar de actualizar tus extensiones, así que nada ha cambiado. Lo intentaremos más tarde.",
     "revokedTitle": "Se retiró ${name}",

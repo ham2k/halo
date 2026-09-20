@@ -13,7 +13,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter/foundation.dart' show mapEquals;
+import 'package:flutter/foundation.dart' show debugPrint, mapEquals;
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:pub_semver/pub_semver.dart';
 
@@ -48,6 +48,17 @@ const kPreloadReplaces = <String, String>{
   'ham2k-spot-history': 'spot-history',
   'ham2k-call-history': 'call-history',
 };
+
+/// Built-ins the catalog deliberately serves no twin of, so the upgrade
+/// withdraws them with nothing to replace them.
+///
+/// Named here rather than inferred from a listing that lacks the twin: that
+/// absence reads the same whether the catalog will never serve a key or has
+/// not published it yet, and only the first may end the upgrade. A key
+/// retired from the catalog on purpose is added here in the same change.
+///
+/// `qp` is served as one extension per party (docs/design/contests.md §5.6).
+const kBuiltInsWithoutTwin = {'qp'};
 
 /// The built-in whose stored state [key] inherits, or null.
 ///
@@ -283,9 +294,9 @@ Future<bool> carryPredecessorRecords({
 /// same bundle, from the publisher whose copy they were already running.
 /// Nothing here reaches a key the app does not itself ship.
 ///
-/// Recorded per key whatever happens, so a bundle the catalog will not serve
-/// is not re-attempted on every launch. An unreachable catalog records nothing
-/// and is retried next time.
+/// A built-in in [kBuiltInsWithoutTwin] is recorded as answered without
+/// asking the catalog. Any other twin the listing lacks is NOT an answer: it
+/// leaves the job incomplete and is asked for again next launch.
 /// `landed` is whether anything was installed — what tells the caller to
 /// restart the runtime. `complete` is whether the job finished: false when the
 /// catalog could not be reached or a download failed, which is what stops the
@@ -321,6 +332,10 @@ Future<({bool landed, bool complete})> adoptCatalogTwins({
     if (info.key.startsWith(kReservedKeyPrefix)) continue;
     final twin = '$kReservedKeyPrefix${info.key}';
     if (shipped.contains(twin) || installed.contains(twin) || adopted.containsKey(twin)) continue;
+    // Not recorded: the record would be read as "already answered" on every
+    // later launch, so the day the catalog serves this key and it leaves the
+    // list, no install that ever ran this code would fetch it.
+    if (kBuiltInsWithoutTwin.contains(info.key)) continue;
     wanted.add(twin);
   }
   if (wanted.isEmpty) return (landed: false, complete: true);
@@ -331,22 +346,23 @@ Future<({bool landed, bool complete})> adoptCatalogTwins({
   if (listing == null) return (landed: false, complete: false);
   final offered = {for (final entry in listing) entry.key: entry};
 
-  // A listing that carries NONE of them is not a catalog saying no to each —
-  // it is a listing that arrived empty or partial, which is what an
-  // unpublished channel looks like, and `canReachCatalog` cannot tell the
-  // difference because an empty catalog answers `[]` rather than null.
-  // Recording a permanent "not served" for every twin on that evidence
-  // retires the operator's whole extension set on one bad reply.
-  if (!wanted.any(offered.containsKey)) return (landed: false, complete: false);
+  // Said, because it is the one reason the upgrade fails that reports nothing
+  // else: the operator only sees "we couldn't finish", launch after launch,
+  // until the catalog publishes the key.
+  final missing = [for (final twin in wanted) if (!offered.containsKey(twin)) twin];
+  if (missing.isNotEmpty) debugPrint('[extensions] catalog listing lacks ${missing.join(', ')}; adoption incomplete');
 
   var landed = false;
   var complete = true;
   for (final twin in wanted) {
     final entry = offered[twin];
     if (entry == null) {
-      // A built-in the catalog does not serve is a permanent answer, and
-      // asking again every launch is a request that will never succeed.
-      adopted[twin] = '';
+      // Absence is not an answer: a listing cannot tell "never served" from
+      // "not published on this channel yet", nor from an entry dropped as
+      // unparseable or filtered out by the `api` parameter. Recording it would
+      // retire a twin the catalog may well carry — which is why the built-ins
+      // that truly have none are named in [kBuiltInsWithoutTwin] instead.
+      complete = false;
       continue;
     }
     try {

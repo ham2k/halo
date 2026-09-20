@@ -115,6 +115,7 @@
     "upgradeLater": "Later",
     "upgradeDoneTitle": "Your extensions are ready",
     "upgradeDoneBody": "They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.",
+    "upgradeDoneUnserved": "Not carried over: ${names}. The catalog has no direct replacement for these, so look there for extensions that cover what you used.",
     "upgradeFailedTitle": "Your extensions were not upgraded",
     "upgradeFailedBody": "We couldn't finish upgrading your extensions, so nothing has changed. We will try again later.",
     "revokedTitle": "${name} was withdrawn",

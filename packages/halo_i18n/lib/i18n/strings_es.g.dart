@@ -227,6 +227,7 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get upgradeLater => 'Más tarde';
 	@override String get upgradeDoneTitle => 'Tus extensiones están listas';
 	@override String get upgradeDoneBody => 'Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.';
+	@override String upgradeDoneUnserved({required Object names}) => 'No se trasladaron: ${names}. El catálogo no tiene un reemplazo directo para estas, así que busca allí extensiones que cubran lo que usabas.';
 	@override String get upgradeFailedTitle => 'Tus extensiones no se actualizaron';
 	@override String get upgradeFailedBody => 'No pudimos terminar de actualizar tus extensiones, así que nada ha cambiado. Lo intentaremos más tarde.';
 	@override String revokedTitle({required Object name}) => 'Se retiró ${name}';
@@ -3210,6 +3211,7 @@ extension on TranslationsEs {
 			'extensionsPanel.upgradeLater' => 'Más tarde',
 			'extensionsPanel.upgradeDoneTitle' => 'Tus extensiones están listas',
 			'extensionsPanel.upgradeDoneBody' => 'Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.',
+			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'No se trasladaron: ${names}. El catálogo no tiene un reemplazo directo para estas, así que busca allí extensiones que cubran lo que usabas.',
 			'extensionsPanel.upgradeFailedTitle' => 'Tus extensiones no se actualizaron',
 			'extensionsPanel.upgradeFailedBody' => 'No pudimos terminar de actualizar tus extensiones, así que nada ha cambiado. Lo intentaremos más tarde.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => 'Se retiró ${name}',
@@ -3617,9 +3619,9 @@ extension on TranslationsEs {
 			'operation.import.wsjtxProtocolName' => 'Servidor UDP de WSJT-X',
 			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → pestaña Broadcast Data → marca «Enable Broadcasts» para la información de contactos. Pon la dirección IP en 127.0.0.1 si se ejecuta en esta misma computadora, o 255.255.255.255 para difundir en la red local actual.',
 			'operation.import.helpWsjtxSetup' => 'File → Settings → pestaña Reporting → sección UDP Server → marca «Accept UDP requests». Pon UDP Server en 127.0.0.1 si se ejecuta en esta misma computadora, o una dirección multicast como 239.239.0.2, y usa esa misma dirección en la configuración de arriba en esta aplicación.',
-			'operation.import.listenTitle' => 'Escuchar QSOs de otras aplicaciones',
 			_ => null,
 		} ?? switch (path) {
+			'operation.import.listenTitle' => 'Escuchar QSOs de otras aplicaciones',
 			'operation.import.listenDescriptionOnN1mm' => 'Escuchando a N1MM+',
 			'operation.import.listenDescriptionOnWsjtx' => 'Escuchando a WSJT-X',
 			'operation.import.listenDescriptionOnBoth' => 'Escuchando a N1MM+ y WSJT-X',
@@ -4131,9 +4133,9 @@ extension on TranslationsEs {
 			'settings.syncPanel.connectionRequests' => 'Solicitudes de conexión',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Un dispositivo espera unirse a esta cuenta', other: '${n} dispositivos esperan unirse a esta cuenta', ), 
 			'settings.syncPanel.accountEmailTitle' => 'Email de la cuenta',
-			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmación enviada a ${email}. Abre el enlace allí para completar el cambio.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmación enviada a ${email}. Abre el enlace allí para completar el cambio.',
 			'settings.syncPanel.resendConfirmation' => 'Reenviar email de confirmación',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Esperando a ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Enviado de nuevo a ${email}.',
@@ -4645,9 +4647,9 @@ extension on TranslationsEs {
 			'dataFiles.downloadFailedWebHint' => 'Esto podría ser un problema de red, o puede que el sitio de este enlace no permita descargas directas desde un navegador web. Prueba la app de escritorio o móvil, o un lugar de alojamiento diferente.',
 			'dataFiles.downloadTimedOut' => 'El servidor tardó demasiado en responder. Vuelve a intentarlo más tarde.',
 			'dataFiles.processingFailedTitle' => ({required Object name}) => 'No se pudo procesar ${name}',
-			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} registro de ${label}.', other: 'Se importaron ${count} registros de ${label}.', ), 
 			_ => null,
 		} ?? switch (path) {
+			'dataFiles.importedRecords' => ({required num count, required Object label}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se importó ${count} registro de ${label}.', other: 'Se importaron ${count} registros de ${label}.', ), 
 			'dataFiles.importedData' => ({required Object label}) => 'Se importaron datos de ${label}.',
 			'dataFiles.cleanedUpTitle' => 'Datos de extensiones limpiados',
 			'dataFiles.removedData' => ({required num count}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('es'))(count, one: 'Se eliminaron los datos de ${count} archivo de datos de extensiones deshabilitadas.', other: 'Se eliminaron los datos de ${count} archivos de datos de extensiones deshabilitadas.', ), 

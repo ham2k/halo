@@ -438,6 +438,9 @@ class Translations$extensionsPanel$en {
 	/// en: 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.'
 	String get upgradeDoneBody => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.';
 
+	/// en: 'Not carried over: ${names}. The catalog has no direct replacement for these, so look there for extensions that cover what you used.'
+	String upgradeDoneUnserved({required Object names}) => 'Not carried over: ${names}. The catalog has no direct replacement for these, so look there for extensions that cover what you used.';
+
 	/// en: 'Your extensions were not upgraded'
 	String get upgradeFailedTitle => 'Your extensions were not upgraded';
 
@@ -6747,6 +6750,7 @@ extension on Translations {
 			'extensionsPanel.upgradeLater' => 'Later',
 			'extensionsPanel.upgradeDoneTitle' => 'Your extensions are ready',
 			'extensionsPanel.upgradeDoneBody' => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.',
+			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Not carried over: ${names}. The catalog has no direct replacement for these, so look there for extensions that cover what you used.',
 			'extensionsPanel.upgradeFailedTitle' => 'Your extensions were not upgraded',
 			'extensionsPanel.upgradeFailedBody' => 'We couldn\'t finish upgrading your extensions, so nothing has changed. We will try again later.',
 			'extensionsPanel.revokedTitle' => ({required Object name}) => '${name} was withdrawn',
@@ -7154,9 +7158,9 @@ extension on Translations {
 			'operation.import.wsjtxProtocolName' => 'WSJT-X UDP Server',
 			'operation.import.helpN1mmSetup' => 'Config → Configure Ports, Mode Control… → Broadcast Data tab → check "Enable Broadcasts" for contact info. Set IP address to 127.0.0.1 if running on this same computer, or 255.255.255.255 to broadcast on the current local network.',
 			'operation.import.helpWsjtxSetup' => 'File → Settings → Reporting tab → UDP Server section → check "Accept UDP requests". Set UDP Server to 127.0.0.1 if running on this same computer, or a multicast address such as 239.239.0.2, and use the same address in the configuration above in this app.',
-			'operation.import.listenTitle' => 'Listen for QSOs from other apps',
 			_ => null,
 		} ?? switch (path) {
+			'operation.import.listenTitle' => 'Listen for QSOs from other apps',
 			'operation.import.listenDescriptionOnN1mm' => 'Listening for N1MM+',
 			'operation.import.listenDescriptionOnWsjtx' => 'Listening for WSJT-X',
 			'operation.import.listenDescriptionOnBoth' => 'Listening for N1MM+ and WSJT-X',
@@ -7668,9 +7672,9 @@ extension on Translations {
 			'settings.syncPanel.connectionRequests' => 'Connection Requests',
 			'settings.syncPanel.connectionRequestsDescription' => ({required num count, required Object n}) => (_root.$meta.cardinalResolver ?? PluralResolvers.cardinal('en'))(count, one: 'A device is waiting to join this account', other: '${n} devices are waiting to join this account', ), 
 			'settings.syncPanel.accountEmailTitle' => 'Account email',
-			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmation sent to ${email}. Open the link there to finish the change.',
 			_ => null,
 		} ?? switch (path) {
+			'settings.syncPanel.accountEmailSent' => ({required Object email}) => 'Confirmation sent to ${email}. Open the link there to finish the change.',
 			'settings.syncPanel.resendConfirmation' => 'Resend Confirmation Email',
 			'settings.syncPanel.resendConfirmationDescription' => ({required Object email}) => 'Waiting on ${email}',
 			'settings.syncPanel.accountEmailResent' => ({required Object email}) => 'Sent again to ${email}.',
@@ -8182,9 +8186,9 @@ extension on Translations {
 			'spotting.setFrequencyFirst' => 'Set a frequency first.',
 			'spotting.nothingToSpot' => 'Nothing to spot — no extension offers spotting here.',
 			'spotting.spotFailed' => ({required Object source, required Object message}) => '${source} failed: ${message}',
-			'spotting.unknownError' => 'unknown error',
 			_ => null,
 		} ?? switch (path) {
+			'spotting.unknownError' => 'unknown error',
 			'spotting.notSent' => 'Spot not sent.',
 			'spotting.notRefreshedOffline' => 'No connection — spots were not refreshed',
 			'dataFiles.downloading' => 'Downloading…',
