@@ -1346,8 +1346,9 @@ and a second radio's are that radio's. A driver shared across a line (Kenwood CA
 that implement it for rigs that have no voice keyer at all, which is what a `voiceMemoryCount` of
 zero is for — a QMX on the Kenwood driver is not a voice keyer, and the catalogue entry, not the
 driver, says so (`voiceDialect`/`voiceMemories` overrides, the way `ifModeOffset` is pinned). The
-Icom and Yaesu drivers honour `voiceMemories` the same way (the IC-706 and X6100 pin zero), and the
-generic entries prefill zero and ask under developer mode — see § CW keying on why a generic asks.
+Icom and Yaesu drivers honour `voiceMemories` the same way (the IC-706, IC-7100 and X6100 pin
+zero), and the generic entries prefill zero and ask under developer mode — see § CW keying on why
+a generic asks.
 
 **The radio says when it is done, or the ceiling does.** No protocol here reports a memory's
 progress, and only some answer "still playing?", so a session reports `VoiceActivity` (memory,
@@ -1388,8 +1389,8 @@ most of what it says; every other dialect is still from the manuals and hamlib:
   a second later, and NOT on the NAK: CI-V's ACK/NAK names no command and sends are not awaited, so
   a NAK in flight from a meter read would end a memory that is on the air. Nothing in CI-V records
   a memory: `canRecordVoice` is false, and the dialog says to use the front panel. Every named entry
-  pins its `voiceMemories` (eight on the modern line, zero on the IC-706 and the X6100); an absent
-  key is a generic entry's node and means none.
+  pins its `voiceMemories` (eight on the modern line, zero on the IC-706, the IC-7100 and the
+  X6100); an absent key is a generic entry's node and means none.
 - **Yaesu** (FT-891, FT-710, FT-991A, FTDX10/101 — hamlib lists both commands valid on all of them):
   `PB0n;` plays, `PB00;` stops — but `PB` only starts the DVS, it does NOT key the transmitter, so
   a play is `TX1;` first (an unkeyed radio plays the memory into the monitor and nothing reaches

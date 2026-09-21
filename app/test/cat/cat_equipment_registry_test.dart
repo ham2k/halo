@@ -201,6 +201,7 @@ void main() {
         'ic7300-serial',
         'ic7300mk2-serial',
         'ic706mkiig-serial',
+        'ic7100-serial',
         'ic7610-serial',
         'ic7760-serial',
         'x6100-serial',
@@ -232,6 +233,7 @@ void main() {
       // prefill it with the 7300's '94' and the model has no reason to be.
       'ic7300mk2-serial': ('icom-civ', {'civAddress': 'B6', 'baudRate': 19200}),
       'ic706mkiig-serial': ('icom-civ', {'civAddress': '58', 'baudRate': 19200}),
+      'ic7100-serial': ('icom-civ', {'civAddress': '88', 'baudRate': 19200}),
       // 9600, not the CI-V family's 19200: the 7610 ships slow, and a speed
       // mismatch is answered with silence rather than an error.
       'ic7610-serial': ('icom-civ', {'civAddress': '98', 'baudRate': 9600}),

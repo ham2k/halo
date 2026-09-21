@@ -6477,6 +6477,9 @@ class Translations$settings$station$models$en {
 	/// en: 'Icom IC-706MKIIG'
 	String get ic706mkiig => 'Icom IC-706MKIIG';
 
+	/// en: 'Icom IC-7100'
+	String get ic7100 => 'Icom IC-7100';
+
 	/// en: 'Icom IC-7610'
 	String get ic7610 => 'Icom IC-7610';
 
@@ -7917,6 +7920,7 @@ extension on Translations {
 			'settings.station.models.ic7300' => 'Icom IC-7300',
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
+			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
 			'settings.station.models.x6100' => 'Xiegu X6100',
@@ -8250,9 +8254,9 @@ extension on Translations {
 			'commandDialog.goSettings' => 'Settings',
 			'commandDialog.goNewOperation' => 'New operation',
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
-			'commandDialog.sectionSuggestions' => 'Try',
 			_ => null,
 		} ?? switch (path) {
+			'commandDialog.sectionSuggestions' => 'Try',
 			'commandDialog.lookingUp' => 'Looking up callsign…',
 			'expiredBuild.title' => 'This build has expired',
 			'expiredBuild.body' => 'Please visit ham2k.com and get a newer version.',

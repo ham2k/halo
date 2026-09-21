@@ -432,6 +432,7 @@ const _kx3SerialKey = 'kx3-serial';
 const _ic7300SerialKey = 'ic7300-serial';
 const _ic7300mk2SerialKey = 'ic7300mk2-serial';
 const _ic706mkiigSerialKey = 'ic706mkiig-serial';
+const _ic7100SerialKey = 'ic7100-serial';
 const _ic7610SerialKey = 'ic7610-serial';
 const _ic7760SerialKey = 'ic7760-serial';
 const _x6100SerialKey = 'x6100-serial';
@@ -1168,6 +1169,32 @@ const ic706mkiigModel = EquipmentModel(
 
 String _ic706mkiigName() => t.settings.station.models.ic706mkiig;
 
+List<Map<String, dynamic>> _ic7100SerialNotes() => _civSerialNotes();
+
+/// Icom IC-7100 over its built-in USB CI-V port.
+///
+/// Keys through 0x17 like the rest of the line; its voice memories are not
+/// known to be reachable over CI-V, so none are offered — a play would show
+/// as going out while the radio ignored it.
+const ic7100Model = EquipmentModel(
+  key: 'ic7100',
+  manufacturer: icomBrand,
+  category: kCategoryTransceiver,
+  name: _ic7100Name,
+  variants: [
+    EquipmentVariant(
+      key: _ic7100SerialKey,
+      driver: IcomCivDriver(),
+      transport: SerialTransport(),
+      defaultConfig: {'civAddress': '88', 'baudRate': 19200},
+      overrides: {cwKeyerConfigKey: true, voiceMemoriesConfigKey: 0},
+      notes: _ic7100SerialNotes,
+    ),
+  ],
+);
+
+String _ic7100Name() => t.settings.station.models.ic7100;
+
 /// The address note plus the family's two-port one: this radio presents both
 /// ports and now has one of them marked, so the operator gets the reason for
 /// the marker and the escape hatch if it points the wrong way.
@@ -1535,6 +1562,7 @@ const _defaultModels = [
   ic7300Model,
   ic7300mk2Model,
   ic706mkiigModel,
+  ic7100Model,
   ic7610Model,
   ic7760Model,
   x6100Model,

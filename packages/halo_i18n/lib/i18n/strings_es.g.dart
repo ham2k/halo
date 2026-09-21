@@ -3034,6 +3034,7 @@ class _Translations$settings$station$models$es extends Translations$settings$sta
 	@override String get ic7300 => 'Icom IC-7300';
 	@override String get ic7300mk2 => 'Icom IC-7300 MK2';
 	@override String get ic706mkiig => 'Icom IC-706MKIIG';
+	@override String get ic7100 => 'Icom IC-7100';
 	@override String get ic7610 => 'Icom IC-7610';
 	@override String get ic7760 => 'Icom IC-7760';
 	@override String get x6100 => 'Xiegu X6100';
@@ -4348,6 +4349,7 @@ extension on TranslationsEs {
 			'settings.station.models.ic7300' => 'Icom IC-7300',
 			'settings.station.models.ic7300mk2' => 'Icom IC-7300 MK2',
 			'settings.station.models.ic706mkiig' => 'Icom IC-706MKIIG',
+			'settings.station.models.ic7100' => 'Icom IC-7100',
 			'settings.station.models.ic7610' => 'Icom IC-7610',
 			'settings.station.models.ic7760' => 'Icom IC-7760',
 			'settings.station.models.x6100' => 'Xiegu X6100',
@@ -4681,9 +4683,9 @@ extension on TranslationsEs {
 			'expiredBuild.dismiss' => 'Continuar de todos modos',
 			'staleness.codePushFloorTitle' => 'Hay una actualización importante',
 			'staleness.codePushFloorBody' => 'Esta versión tiene una corrección que todavía no tienes.',
-			'staleness.restartToApply' => 'Reinicia la aplicación para aplicarla.',
 			_ => null,
 		} ?? switch (path) {
+			'staleness.restartToApply' => 'Reinicia la aplicación para aplicarla.',
 			'staleness.quitAndReopen' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
 			'staleness.reopenToApply' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
 			'staleness.ignoreForNow' => 'Ignorar por ahora',
