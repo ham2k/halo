@@ -64,7 +64,10 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   `options` (`HistoryForCallOptions` in `types.ts`) narrow the history
   before it is ordered and limited, so `{ refType: 'cwt' }` finds last
   month's CWT exchange behind a week of POTA contacts. The filters are
-  `refType` (a ref in the QSO's own `refs`), `operation`/`excludeOperation`,
+  `refType` (a ref in the QSO's own `refs`), `refPrefix` (a ref whose `ref`
+  starts with it, ignoring ASCII case; with `refType`, the same ref must pass
+  both, so `{ refType: 'potaActivation', refPrefix: 'FR-' }` finds French
+  parks), `operation`/`excludeOperation`,
   `band`/`excludeBand`, `mode`/`excludeMode` (`SSB` also matches its
   sidebands, and `CW`/`PHONE`/`DATA` match their whole family), whole UTC
   days through `fromDate`/`toDate` or `fromDateMillis`/`toDateMillis`, and

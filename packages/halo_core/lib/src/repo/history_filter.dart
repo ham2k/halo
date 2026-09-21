@@ -72,10 +72,18 @@ class HistoryFilter {
 
   static const none = HistoryFilter();
 
-  /// A QSO matches when it carries a ref of ANY of these types. Matching the
-  /// QSO's own refs, not the operation's, means the contact carries the
-  /// activity's data whatever the operation is configured for today.
+  /// A QSO matches when ONE of its refs is of any of [refTypes] and its
+  /// `ref` starts with any of [refPrefixes], each checked only when given.
+  /// The same ref must pass both: a POTA ref in the US and a SOTA ref in
+  /// France do not make a French POTA contact. Matching the QSO's own refs,
+  /// not the operation's, means the contact carries the activity's data
+  /// whatever the operation is configured for today.
   final Set<String> refTypes;
+
+  /// Folded by [_asciiUpper]; `ref` is compared ignoring ASCII case only,
+  /// because SQLite's `upper()` folds nothing else and the app and the CLI
+  /// must give one answer.
+  final Set<String> refPrefixes;
   final Set<String> operations;
   final Set<String> excludeOperations;
 
@@ -94,6 +102,7 @@ class HistoryFilter {
 
   const HistoryFilter({
     this.refTypes = const {},
+    this.refPrefixes = const {},
     this.operations = const {},
     this.excludeOperations = const {},
     this.bands = const {},
@@ -116,7 +125,7 @@ class HistoryFilter {
   ///
   /// An unknown key throws too — a misspelled `refTypes` would otherwise
   /// answer unfiltered — and so does an include option (`refType`,
-  /// `operation`, `band`, `mode`) given with no values: `operation: []`
+  /// `refPrefix`, `operation`, `band`, `mode`) given with no values: `operation: []`
   /// built from an empty list asks for "none of these", which no answer
   /// here expresses. An empty `exclude…` option excludes nothing.
   factory HistoryFilter.fromParams(Map<String, dynamic> params) {
@@ -140,6 +149,7 @@ class HistoryFilter {
     final excludeMode = _strings(params, 'excludeMode');
     return HistoryFilter(
       refTypes: _strings(params, 'refType', include: true),
+      refPrefixes: {for (final prefix in _strings(params, 'refPrefix', include: true)) _asciiUpper(prefix)},
       operations: _strings(params, 'operation', include: true),
       excludeOperations: _strings(params, 'excludeOperation'),
       bands: {for (final band in _strings(params, 'band', include: true)) band.toLowerCase()},
@@ -158,9 +168,9 @@ class HistoryFilter {
   /// Does not cover the call, deletion or event-marker rules: those are the
   /// caller's, as they are for an unfiltered history.
   bool matches(Map<String, Object?> qso, {String? operationUuid}) {
-    if (refTypes.isNotEmpty) {
+    if (refTypes.isNotEmpty || refPrefixes.isNotEmpty) {
       final refs = qso['refs'];
-      if (refs is! List || !refs.any((ref) => ref is Map && refTypes.contains(ref['type']))) return false;
+      if (refs is! List || !refs.any((ref) => ref is Map && _refMatches(ref))) return false;
     }
     final operation = (qso['operation'] as String?) ?? operationUuid;
     if (operations.isNotEmpty && !operations.contains(operation)) return false;
@@ -180,6 +190,16 @@ class HistoryFilter {
     return true;
   }
 
+  bool _refMatches(Map<Object?, Object?> ref) {
+    if (refTypes.isNotEmpty && !refTypes.contains(ref['type'])) return false;
+    if (refPrefixes.isEmpty) return true;
+    final value = ref['ref'];
+    return value is String && refPrefixes.any(_asciiUpper(value).startsWith);
+  }
+
+  static String _asciiUpper(String value) =>
+      String.fromCharCodes(value.codeUnits.map((c) => c >= 0x61 && c <= 0x7a ? c - 0x20 : c));
+
   /// [matches], in SQL over [q]. Each clause is written never to be NULL — a
   /// NULL band or mode would otherwise turn an `exclude…` clause's NOT into
   /// NULL and drop the QSO it should keep.
@@ -194,7 +214,7 @@ class HistoryFilter {
     }
 
     Expression<bool> all = const Constant(true);
-    if (refTypes.isNotEmpty) all = all & _hasRefOfType(q);
+    if (refTypes.isNotEmpty || refPrefixes.isNotEmpty) all = all & _hasMatchingRef(q);
     if (operations.isNotEmpty) all = all & q.operation.isIn(operations);
     if (excludeOperations.isNotEmpty) all = all & q.operation.isNotIn(excludeOperations);
     if (bands.isNotEmpty) all = all & bandIn(bands);
@@ -206,25 +226,36 @@ class HistoryFilter {
     return all;
   }
 
-  /// Whether the QSO's own `refs` hold one of [refTypes]. `json_each` throws
-  /// on malformed JSON and `json_extract` on a non-object element, and SQLite
-  /// does not promise to short-circuit AND — so the guards are CASEs, which
-  /// it does evaluate lazily. Without them one bad row fails every filtered
-  /// history lookup, not just its own.
-  Expression<bool> _hasRefOfType($QsosTable q) {
+  /// [_refMatches] over the QSO's own `refs`, in SQL: both tests sit on one
+  /// `json_each` row, so one ref has to pass them together. `json_each`
+  /// throws on malformed JSON and `json_extract` on a non-object element,
+  /// and SQLite does not promise to short-circuit AND — so the guards are
+  /// CASEs, which it does evaluate lazily. Without them one bad row fails
+  /// every filtered history lookup, not just its own. A non-text `ref` never
+  /// matches a prefix, as it does not in [matches].
+  Expression<bool> _hasMatchingRef($QsosTable q) {
     final data = '"${q.aliasedName}"."${q.data.name}"';
-    final list = refTypes.map((type) => "'${type.replaceAll("'", "''")}'").join(', ');
+    String quoted(String value) => "'${value.replaceAll("'", "''")}'";
+    final tests = [
+      if (refTypes.isNotEmpty) "json_extract(r.value, '\$.type') IN (${refTypes.map(quoted).join(', ')})",
+      if (refPrefixes.isNotEmpty)
+        "json_type(r.value, '\$.ref') = 'text' AND (${[
+          for (final prefix in refPrefixes)
+            // substr counts characters, not UTF-16 code units.
+            "upper(substr(json_extract(r.value, '\$.ref'), 1, ${prefix.runes.length})) = ${quoted(prefix)}",
+        ].join(' OR ')})",
+    ];
     return CustomExpression<bool>(
       'CASE WHEN json_valid($data) THEN EXISTS ('
       'SELECT 1 FROM json_each($data, \'\$.refs\') AS r '
-      'WHERE CASE WHEN r.type = \'object\' THEN json_extract(r.value, \'\$.type\') IN ($list) ELSE 0 END'
+      'WHERE CASE WHEN r.type = \'object\' THEN (${tests.join(' AND ')}) ELSE 0 END'
       ') ELSE 0 END',
     );
   }
 
   static const _knownParams = {
     'call',
-    'refType', 'operation', 'excludeOperation', 'band', 'excludeBand', 'mode', 'excludeMode',
+    'refType', 'refPrefix', 'operation', 'excludeOperation', 'band', 'excludeBand', 'mode', 'excludeMode',
     'fromDate', 'toDate', 'fromDateMillis', 'toDateMillis',
     'fromTime', 'toTime', 'fromTimeMillis', 'toTimeMillis',
     'limit',

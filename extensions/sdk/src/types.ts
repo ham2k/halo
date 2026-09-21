@@ -110,6 +110,10 @@ export interface HistoryForCallOptions {
   /// `refs` — whatever the operation is configured for, so contacts logged
   /// by any extension implementing the activity match.
   refType?: string | string[]
+  /// Contacts carrying a ref whose `ref` starts with this, ignoring ASCII
+  /// case (`'fr-'` matches `FR-0001`). With `refType`, the same ref must pass both:
+  /// `{ refType: 'potaActivation', refPrefix: 'FR-' }` is a French park.
+  refPrefix?: string | string[]
   /// Contacts in these operations (by uuid), or outside them.
   operation?: string | string[]
   excludeOperation?: string | string[]

@@ -96,6 +96,58 @@ void main() {
     }
   });
 
+  group('refPrefix, in SQL and in the CLI predicate', () {
+    late String op;
+    final log = <String, Map<String, Object?>>{
+      'pota-fr': {'refs': [{'type': 'potaActivation', 'ref': 'FR-0123'}]},
+      'pota-fr-lower': {'refs': [{'type': 'potaActivation', 'ref': 'fr-0456'}]},
+      'pota-us': {'refs': [{'type': 'potaActivation', 'ref': 'US-0001'}]},
+      // A US park and a French summit: FR- is on one ref, POTA on the other.
+      'pota-us-sota-fr': {'refs': [{'type': 'potaActivation', 'ref': 'US-0002'}, {'type': 'sota', 'ref': 'FR/AB-001'}]},
+      'numeric-ref': {'refs': [{'type': 'potaActivation', 'ref': 123}]},
+      'accented': {'refs': [{'type': 'other', 'ref': 'éte-1'}]},
+      'emoji': {'refs': [{'type': 'other', 'ref': '🦆-1'}]},
+    };
+
+    setUp(() async {
+      op = (await operations.create(stationCall: 'N0DEV')).uuid;
+      for (final entry in log.entries) {
+        await qsos.add(op, {'their': {'call': 'KI2D'}, 'tag': entry.key, ...entry.value});
+      }
+    });
+
+    final cases = <String, (Map<String, dynamic>, Set<String>)>{
+      'a prefix alone matches any ref type': ({'refPrefix': 'FR'}, {'pota-fr', 'pota-fr-lower', 'pota-us-sota-fr'}),
+      'case does not matter': ({'refPrefix': 'fr-'}, {'pota-fr', 'pota-fr-lower'}),
+      'type and prefix must hold for the same ref': (
+        {'refType': 'potaActivation', 'refPrefix': 'FR'},
+        {'pota-fr', 'pota-fr-lower'},
+      ),
+      'a list of prefixes matches any of them': ({'refPrefix': ['US-', 'FR-']}, {'pota-fr', 'pota-fr-lower', 'pota-us', 'pota-us-sota-fr'}),
+      'a numeric ref never matches a prefix': ({'refPrefix': '12'}, <String>{}),
+      // SQLite's upper() folds ASCII only; folding more in Dart would have the
+      // CLI match what the app does not.
+      'non-ASCII letters match their own case only': ({'refPrefix': 'É'}, <String>{}),
+      'ASCII letters beside them still fold': ({'refPrefix': 'éTE'}, {'accented'}),
+      'a prefix outside the BMP is measured in characters': ({'refPrefix': '🦆-'}, {'emoji'}),
+    };
+
+    for (final MapEntry(key: name, value: (params, expected)) in cases.entries) {
+      test(name, () async {
+        final filter = HistoryFilter.fromParams(params);
+
+        final fromSql = await qsos.historyForCall('KI2D', limit: 50, filter: filter);
+        expect({for (final qso in fromSql) qso.data['tag']}, expected, reason: 'SQL (app host)');
+
+        final fromPredicate = {
+          for (final entry in log.entries)
+            if (filter.matches(entry.value, operationUuid: op)) entry.key,
+        };
+        expect(fromPredicate, expected, reason: 'HistoryFilter.matches (CLI host)');
+      });
+    }
+  });
+
   test('in the CLI, a QSO with no start time never falls inside a bound', () {
     // Treating it as 0 would put it inside every `toTime` and hand back a
     // contact nobody can say was made in the window.
@@ -182,6 +234,7 @@ void main() {
       // dropping it would answer with everything.
       {'operation': []},
       {'refType': ''},
+      {'refPrefix': []},
       {'band': ['  ']},
       // A misspelled option must not quietly answer unfiltered.
       {'refTypes': 'cwt'},
