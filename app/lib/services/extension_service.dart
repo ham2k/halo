@@ -392,11 +392,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
 
   static const _keychainAccountName = 'Ham2K Logger';
 
-  /// Rows fetched for `getHistoryForCall` — the `call-history` lookup source
-  /// only ever reads the single most recent match, so a small cap with room
-  /// to skip past the QSO being re-enriched is plenty.
-  static const _historyForCallLimit = 5;
-
 
   final _secureStorage = const FlutterSecureStorage(
     mOptions: MacOsOptions(
@@ -2617,13 +2612,13 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
         // `getSpotsForCall`'s empty-cache answer: there's no "unknown call"
         // this call needs to distinguish from "no history".
         //
-        // Capped at [_historyForCallLimit] — the extension only ever reads
-        // the single most recent match (a couple more give it room to skip
-        // past the QSO it's re-enriching); a call worked hundreds of times
-        // must not ship its whole history for that.
+        // The options and their limit are `HistoryFilter`'s, shared with the
+        // CLI host; a malformed one throws, rejecting the call — parsed first,
+        // so it rejects even where there is no log to answer from.
+        final filter = HistoryFilter.fromParams(params);
         final historyCall = params['call'] as String?;
         if (historyCall == null || qsos == null) return const <Map<String, dynamic>>[];
-        final history = await qsos!.historyForCall(historyCall, limit: _historyForCallLimit);
+        final history = await qsos!.historyForCall(historyCall, limit: filter.limit, filter: filter);
         return [for (final qso in history) qso.data];
       case 'dbLookupSelectOne':
         final category = params['category'] as String;

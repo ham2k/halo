@@ -84,13 +84,58 @@ export interface HookContext {
   /// `[]` (not null) whenever the cache is cold or the host keeps no spots.
   /// Age is the spot's own `spot.timeInMillis`, not when it was fetched.
   getSpotsForCall?(call: string, maxAgeMinutes?: number): Promise<Spot[]>
-  /// Every non-deleted QSO ever logged with [call] (case-insensitive), across
-  /// every operation, most recent first — the raw QSON `data` for each, same
-  /// shape `getQsos` returns per-QSO. For a source that answers "who is this
-  /// station" from the log itself (`call-history`) rather than a network
-  /// call. Always `[]` when there is no match or the host keeps no log
-  /// access — there is no "unknown call" to distinguish from "no history".
-  getHistoryForCall?(call: string): Promise<Record<string, JSONValue>[]>
+  /// The most recent non-deleted contacts logged with [call]
+  /// (case-insensitive), across every operation, newest first — the raw QSON
+  /// `data` for each, same shape `getQsos` returns per-QSO, never event
+  /// markers. For a source that answers "who is this station" from the log
+  /// itself (`call-history`) rather than a network call. Always `[]` when
+  /// there is no match or the host keeps no log access — there is no
+  /// "unknown call" to distinguish from "no history".
+  ///
+  /// [options] narrow the history BEFORE it is ordered and limited, so an
+  /// older matching contact still comes back behind newer ones that don't
+  /// match. A malformed option rejects the promise, and so does an unknown
+  /// one or an include option given no values (`operation: []`). Hosts older
+  /// than these options ignore them and answer the unfiltered five, so
+  /// re-check on the results whatever the caller relies on — and read an
+  /// empty answer there as "none among the latest five", not "none at all".
+  getHistoryForCall?(call: string, options?: HistoryForCallOptions): Promise<Record<string, JSONValue>[]>
+}
+
+/// Filters for `HookContext.getHistoryForCall`. Every one is optional, and a
+/// contact must pass all of those given. A `string | string[]` option matches
+/// any of the values listed.
+export interface HistoryForCallOptions {
+  /// Contacts carrying a ref of this type (`'cwt'`, `'pota'`) in their own
+  /// `refs` — whatever the operation is configured for, so contacts logged
+  /// by any extension implementing the activity match.
+  refType?: string | string[]
+  /// Contacts in these operations (by uuid), or outside them.
+  operation?: string | string[]
+  excludeOperation?: string | string[]
+  /// Whole UTC days, both ends inclusive: an ISO date (`'2026-09-01'`) or
+  /// any instant within the day, as an ISO timestamp or epoch millis.
+  fromDate?: string
+  toDate?: string
+  fromDateMillis?: number
+  toDateMillis?: number
+  /// Exact instants, both ends inclusive: an ISO timestamp (UTC unless it
+  /// carries an offset) or epoch millis. Where several bounds are given for
+  /// one side, the tightest wins.
+  fromTime?: string
+  toTime?: string
+  fromTimeMillis?: number
+  toTimeMillis?: number
+  /// Bands as QSON spells them (`'20m'`), case-insensitive.
+  band?: string | string[]
+  excludeBand?: string | string[]
+  /// Modes, case-insensitive. `'SSB'` also matches `USB` and `LSB`;
+  /// `'CW'`, `'PHONE'` and `'DATA'` match their whole family; any other
+  /// mode matches only itself.
+  mode?: string | string[]
+  excludeMode?: string | string[]
+  /// How many contacts to return: 5 when omitted, never more than 50.
+  limit?: number
 }
 
 export type { CallInfo, CallInfoLookup, AnnotatedCallInfo, RefInfo } from "@ham2k/lib-qson-tools"

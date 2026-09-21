@@ -12,6 +12,7 @@ import 'package:drift/drift.dart';
 
 import '../app_clock.dart';
 import '../db/database.dart';
+import 'history_filter.dart';
 import 'sequences.dart';
 import '../dev_log.dart';
 import '../models/models.dart';
@@ -932,10 +933,14 @@ class QsosRepository {
   /// truncation) — for a caller like `call-history`'s lookup source that
   /// only ever reads the most recent match or two: without it, a station
   /// worked hundreds of times ships its entire history across the extension
-  /// bridge for an answer that only ever uses the first row. Applied before
-  /// the event-marker filter below, so it is a headroom bound, not an exact
-  /// result count.
-  Future<List<Qso>> historyForCall(String call, {int? limit}) async {
+  /// bridge for an answer that only ever uses the first row. Applied after
+  /// every exclusion, event markers included, so it is an exact result count.
+  ///
+  /// [filter] narrows the history in the same query, before the ordering and
+  /// the limit — see [HistoryFilter]. Filtering the limited rows afterwards
+  /// would lose an older match behind newer non-matching contacts. Its own
+  /// `limit` is the host call's; this method applies only [limit].
+  Future<List<Qso>> historyForCall(String call, {int? limit, HistoryFilter filter = HistoryFilter.none}) async {
     final normalized = call.trim().toUpperCase();
     if (normalized.isEmpty) return const [];
     final query = db.select(db.qsos).join([
@@ -943,14 +948,13 @@ class QsosRepository {
     ])
       ..where(db.qsos.theirCall.equals(normalized) &
           db.qsos.deleted.equals(false) &
-          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()))
+          _isContact &
+          (db.operations.deleted.equals(false) | db.operations.uuid.isNull()) &
+          filter.toSql(db.qsos))
       ..orderBy([OrderingTerm(expression: db.qsos.startAtMillis, mode: OrderingMode.desc)]);
     if (limit != null) query.limit(limit);
     final rows = await query.get();
-    return [
-      for (final row in rows.map((r) => qsoFromRow(r.readTable(db.qsos))))
-        if (!row.isEvent) row,
-    ];
+    return [for (final row in rows) qsoFromRow(row.readTable(db.qsos))];
   }
 
   /// When each contact [historyForCall] would list started, most recent

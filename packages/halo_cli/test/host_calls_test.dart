@@ -117,6 +117,20 @@ void main() {
       expect(await calls.call('getOperation', {'uuid': 'op-2'}), isNull);
       expect(await calls.call('getOperation', {'uuid': 'op-1'}), containsPair('uuid', 'op-1'));
     });
+
+    test('getQsos leaves out soft-deleted QSOs, in any client\'s spelling of deleted', () async {
+      // The app never hands a hook a deleted QSO; a CLI replay of an
+      // exported log that did would score or export contacts the operator
+      // removed.
+      final calls = host(log: const LogContext(operation: {'uuid': 'op-1'}, qsos: [
+        {'their': {'call': 'KI2D'}},
+        {'their': {'call': 'W1AW'}, 'deleted': true},
+        {'their': {'call': 'N0CALL'}, 'deleted': 1},
+        {'band': 'event', 'eventKind': 'break'},
+      ]));
+      final result = await calls.call('getQsos', {'operationUuid': 'op-1'}) as List;
+      expect(result.map((qso) => ((qso as Map)['their'] as Map?)?['call']), ['KI2D', null]);
+    });
   });
 
   group('getSpotsForCall', () {
@@ -191,6 +205,29 @@ void main() {
       expect((result.single as Map)['startAtMillis'], 1000);
     });
 
+    test('a deleted QSO is not history, in any client\'s spelling of deleted', () async {
+      final calls = host(
+        log: const LogContext(operation: {'uuid': 'op-1'}, qsos: [
+          {
+            'their': {'call': 'KI2D'},
+            'startAtMillis': 1000,
+          },
+          {
+            'their': {'call': 'KI2D'},
+            'deleted': true,
+            'startAtMillis': 2000,
+          },
+          {
+            'their': {'call': 'KI2D'},
+            'deleted': 1,
+            'startAtMillis': 3000,
+          },
+        ]),
+      );
+      final result = await calls.call('getHistoryForCall', {'call': 'KI2D'}) as List;
+      expect(result.map((qso) => (qso as Map)['startAtMillis']), [1000]);
+    });
+
     test('caps at 5, same headroom as the app answers with', () async {
       final calls = host(
         log: LogContext(
@@ -206,6 +243,45 @@ void main() {
       );
       final result = await calls.call('getHistoryForCall', {'call': 'KI2D'}) as List;
       expect(result, hasLength(5));
+    });
+
+    // The rules are halo_core's history_filter_test.dart, which runs the
+    // same cases through the app's SQL; these prove the CLI applies them.
+    test('options narrow the log before the cap, and --op names the operation', () async {
+      final calls = host(
+        log: LogContext(
+          operation: const {'uuid': 'op-1'},
+          qsos: [
+            {
+              'their': {'call': 'KI2D'},
+              'startAtMillis': 0,
+              'refs': [
+                {'type': 'cwt'}
+              ],
+            },
+            for (var i = 1; i <= 6; i++)
+              {
+                'their': {'call': 'KI2D'},
+                'startAtMillis': i,
+              },
+          ],
+        ),
+      );
+      final cwt = await calls.call('getHistoryForCall', {'call': 'KI2D', 'refType': 'cwt'}) as List;
+      expect(cwt.map((qso) => (qso as Map)['startAtMillis']), [0]);
+      expect(await calls.call('getHistoryForCall', {'call': 'KI2D', 'excludeOperation': 'op-1'}), isEmpty);
+      expect(await calls.call('getHistoryForCall', {'call': 'KI2D', 'limit': 50}), hasLength(7));
+    });
+
+    test('a malformed option throws rather than answering unfiltered', () async {
+      final calls = host(log: const LogContext(operation: {'uuid': 'op-1'}, qsos: []));
+      await expectLater(calls.call('getHistoryForCall', {'call': 'KI2D', 'band': 20}), throwsFormatException);
+    });
+
+    test('a malformed option throws even when the invocation was given no log', () async {
+      // An extension author testing without --qsos would otherwise never
+      // learn the option is bad.
+      await expectLater(host().call('getHistoryForCall', {'call': 'KI2D', 'band': 20}), throwsFormatException);
     });
   });
 

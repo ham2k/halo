@@ -582,7 +582,7 @@ bool _isDigit(String s) => s.codeUnitAt(0) >= 0x30 && s.codeUnitAt(0) <= 0x39;
 /// Voice modes for [superModeForMode] — mirrors @ham2k/lib-operation-data's
 /// PHONE_MODES. Broader than [_phoneModes] (which is only the RST-default set),
 /// since super-mode grouping also treats the digital-voice modes as phone.
-const Set<String> _superPhoneModes = {
+const Set<String> superPhoneModes = {
   'SSB', 'USB', 'LSB', 'FM', 'AM', 'DIGITALVOICE', 'C4FM', 'DMR', 'DSTAR', 'FREEDV', 'M17',
 };
 
@@ -595,7 +595,7 @@ String? superModeForMode(String? mode) {
   if (mode == null) return null;
   final m = mode.toUpperCase();
   if (m == 'CW') return 'CW';
-  if (_superPhoneModes.contains(m)) return 'Phone';
+  if (superPhoneModes.contains(m)) return 'Phone';
   return 'Digital';
 }
 

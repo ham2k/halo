@@ -51,14 +51,31 @@ hook method receives `(args, ctx)` where `ctx: HookContext` is:
   reads above it is cheap enough for the lookup path; it resolves `[]`
   whenever the cache is cold or the host keeps no spots. Used by
   `spot-history` to pull a hunted park or summit into the QSO being logged.
-* `getHistoryForCall?(call)` — every non-deleted QSO ever logged with `call`,
-  across every operation, most recent first, as raw QSON — the one log read
+* `getHistoryForCall?(call, options?)` — the most recent non-deleted contacts
+  logged with `call` (five unless `limit` says otherwise, never more than
+  50), across every operation, newest first, as raw QSON — the one log read
   that is cross-operation rather than scoped to a single one, since it
   answers "who is this station" from the whole log rather than "what's in
   this operation". Resolves `[]` for no match or no log access; unlike
   `getQsos` there is no "unknown call" to distinguish from "no history".
   Used by `call-history` to fold the most recent past QSO's fields into a
   lookup result.
+
+  `options` (`HistoryForCallOptions` in `types.ts`) narrow the history
+  before it is ordered and limited, so `{ refType: 'cwt' }` finds last
+  month's CWT exchange behind a week of POTA contacts. The filters are
+  `refType` (a ref in the QSO's own `refs`), `operation`/`excludeOperation`,
+  `band`/`excludeBand`, `mode`/`excludeMode` (`SSB` also matches its
+  sidebands, and `CW`/`PHONE`/`DATA` match their whole family), whole UTC
+  days through `fromDate`/`toDate` or `fromDateMillis`/`toDateMillis`, and
+  exact instants through `fromTime`/`toTime` or
+  `fromTimeMillis`/`toTimeMillis`. All the bounds are inclusive. A malformed
+  option, an unknown one, or an include option given no values
+  (`operation: []`) rejects the call instead of answering an unfiltered
+  history. Hosts older than these options ignore them and answer the latest
+  five contacts unfiltered, so a caller re-checks on the results whatever it
+  relies on — and an empty answer there means "none among the latest five",
+  not "none at all".
 
 Status legend: ✅ implemented · 🔜 planned (design in DESIGN.md §4).
 

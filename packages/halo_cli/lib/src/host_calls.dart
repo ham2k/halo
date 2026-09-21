@@ -193,7 +193,12 @@ class CliHostCalls {
         // Same uuid rule as getOperation above.
         final ours = log.operation?['uuid'];
         if (ours != null && ours != operationUuid) return null;
-        return log.qsos;
+        // Soft-deleted QSOs are not in the log the app hands over, and
+        // `asQsonBool` reads `deleted` the way the app does.
+        return [
+          for (final qso in log.qsos!)
+            if (!asQsonBool(qso['deleted'])) qso,
+        ];
 
       case 'getSpotsForCall':
         final call = (params['call'] as String?)?.toUpperCase();
@@ -211,26 +216,31 @@ class CliHostCalls {
         // across every operation; the CLI only ever has the one log handed
         // to it via `--qson`/`--qsos`, so that's what this filters — same
         // "no log access" vs "no match" distinction as `getQsos` above.
+        // Parsed before any early return, so a malformed option rejects
+        // even when the invocation was given no log.
+        final filter = HistoryFilter.fromParams(params);
         if (log.qsos == null) return const <Map<String, Object?>>[];
         // trim(), not just toUpperCase() — matches historyForCall's own
         // normalization (qsos_repository.dart); the sole caller today already
         // trims first, but this shouldn't depend on that.
         final historyCall = (params['call'] as String?)?.trim().toUpperCase();
         if (historyCall == null) return const <Map<String, Object?>>[];
+        final operationUuid = log.operation?['uuid'] as String?;
         final matches = [
           for (final qso in log.qsos!)
             // `band != 'event'` mirrors `Qso.isEvent`/`historyForCall`'s own
             // exclusion — an event marker is a timeline annotation, not a
             // contact, and must not stand in as someone's "most recent QSO".
+            // `asQsonBool` is the app's reading of `deleted`, so every client's
+            // spelling of it drops the QSO here as it does there.
             if (qso['band'] != 'event' &&
-                ((qso['their'] as Map?)?['call'] as String?)?.toUpperCase() == historyCall)
+                !asQsonBool(qso['deleted']) &&
+                ((qso['their'] as Map?)?['call'] as String?)?.toUpperCase() == historyCall &&
+                filter.matches(qso, operationUuid: operationUuid))
               qso,
         ];
         matches.sort((a, b) => _startAtMillis(b).compareTo(_startAtMillis(a)));
-        // Same headroom cap as the app's answer (extension_service.dart's
-        // `_historyForCallLimit`) — the extension only ever reads the most
-        // recent match or two.
-        return matches.take(_historyForCallLimit).toList();
+        return matches.take(filter.limit).toList();
 
       case 'dbLookupSelectOne':
         return await lookups?.selectOne(params['category'] as String, params['key'] as String);
@@ -310,13 +320,6 @@ class CliHostCalls {
     final value = qso['startAtMillis'];
     return value is num ? value.toInt() : 0;
   }
-
-  /// Mirrors `ExtensionService._historyForCallLimit` (app/lib/services/
-  /// extension_service.dart) — a bare duplicated literal, not shared code,
-  /// since the two are independent host implementations of the same
-  /// `getHistoryForCall` contract; keep them in sync by hand if either
-  /// changes.
-  static const _historyForCallLimit = 5;
 
   static String _briefly(Map<String, dynamic> params) {
     final text = jsonEncode(params);

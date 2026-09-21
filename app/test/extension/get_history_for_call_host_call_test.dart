@@ -83,4 +83,47 @@ void main() {
 
     expect(result, hasLength(5));
   });
+
+  // The rules themselves are halo_core's history_filter_test.dart; these
+  // prove the host hands the params to them rather than dropping them.
+  test('options narrow the history before the cap', () async {
+    final op = await operations.create(stationCall: 'N0DEV');
+    await qsos.add(op.uuid, {'their': {'call': 'KI2D'}, 'startAtMillis': 0, 'refs': [{'type': 'cwt'}]});
+    for (var i = 1; i <= 6; i++) {
+      await qsos.add(op.uuid, {'their': {'call': 'KI2D'}, 'startAtMillis': i});
+    }
+
+    final result =
+        await extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'refType': 'cwt'}) as List;
+
+    expect(result.map((qso) => (qso as Map)['startAtMillis']), [0]);
+  });
+
+  test('limit raises the cap, up to 50', () async {
+    final op = await operations.create(stationCall: 'N0DEV');
+    for (var i = 0; i < 60; i++) {
+      await qsos.add(op.uuid, {'their': {'call': 'KI2D'}, 'startAtMillis': i});
+    }
+
+    Future<int> count(int limit) async =>
+        (await extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'limit': limit}) as List).length;
+    expect(await count(12), 12);
+    expect(await count(500), 50);
+  });
+
+  test('a malformed option throws, so the extension\'s promise rejects', () async {
+    await expectLater(
+      extensions.debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'fromDate': 'last tuesday'}),
+      throwsFormatException,
+    );
+  });
+
+  test('a malformed option throws even with no log to answer from', () async {
+    // Resolving [] there would hide the bad option until the one host that
+    // has a log rejects it.
+    await expectLater(
+      ExtensionService().debugHandleHostCall('getHistoryForCall', {'call': 'KI2D', 'fromDate': 'last tuesday'}),
+      throwsFormatException,
+    );
+  });
 }

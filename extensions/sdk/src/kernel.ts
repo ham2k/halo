@@ -28,7 +28,7 @@
 import { installNumberFormatPolyfill } from "./number-format.ts"
 installNumberFormatPolyfill()
 
-import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor, Spot } from "./types.ts"
+import type { ExtensionDefinition, RegisterHookParams, FormDefinition, FormField, SettingsPanelDescriptor, Spot, HistoryForCallOptions } from "./types.ts"
 import { isValidHookKey, tier1FormDefinition, settingsPanelEntriesFor } from "./settingsPanels.ts"
 import { installAppClock } from "./appClock.ts"
 
@@ -386,8 +386,8 @@ async function callHookMethod(record: HookRecord, method: string, args: unknown,
       ((await dispatchHostCall('getSpotsForCall', { call, maxAgeMinutes })) as Spot[] | null) ?? [],
     // Cross-operation log read, backing `call-history` — see
     // HookContext.getHistoryForCall.
-    getHistoryForCall: async (call: string) =>
-      ((await dispatchHostCall('getHistoryForCall', { call })) as Record<string, unknown>[] | null) ?? [],
+    getHistoryForCall: async (call: string, options?: HistoryForCallOptions) =>
+      ((await dispatchHostCall('getHistoryForCall', { ...options, call })) as Record<string, unknown>[] | null) ?? [],
   }
   return await member.call(record.hook, args, ctx)
 }

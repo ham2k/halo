@@ -33,6 +33,7 @@ export 'src/peer/peer_session.dart';
 export 'src/peer/peer_trust.dart';
 export 'src/repo/operations_repository.dart';
 export 'src/repo/operation_undelete.dart';
+export 'src/repo/history_filter.dart';
 export 'src/repo/qsos_repository.dart';
 export 'src/repo/lookup_repository.dart';
 export 'src/repo/inbound_capture_repository.dart';
