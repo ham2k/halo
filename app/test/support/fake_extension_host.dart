@@ -72,11 +72,14 @@ class FakeExtensionHost implements ExtensionHost {
 /// An [ExtensionService] whose public [host] is a [FakeExtensionHost] and
 /// that never starts a runtime.
 ///
-/// The fake is only visible through the PUBLIC `host` getter. The service's
-/// own hook-calling methods (`operationControls`, `suggestActivities`, …)
-/// read the private `_host`, which stays null here, so they answer empty
-/// results whatever the stubs say — a test of one of those paths overrides
-/// the method on a subclass instead. Services that reach hooks through
+/// The fake is only visible through the PUBLIC `host` getter. Most of the
+/// service's own hook-calling methods (`operationControls`,
+/// `suggestActivities`, …) read the private `_host`, which stays null here,
+/// so they answer empty results whatever the stubs say — a test of one of
+/// those paths overrides the method on a subclass instead. **`sendSpot` is
+/// the exception**: it reads the getter, so it honours the stubs and a test
+/// can assert the payload it builds. Putting it back on `_host` "for
+/// consistency" would silently un-test that payload. Services that reach hooks through
 /// `extensions.host` (data files, export, ADIF import, operation titles) do
 /// see the stubs; scoring passes the null check on the getter and then
 /// calls the service's own methods, so it does not.

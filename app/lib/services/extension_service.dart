@@ -858,6 +858,17 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// the caller can color each source's status icon. `freq`/`mode` are only
   /// used for a self-spot (`qso == null`); spotting an existing QSO derives
   /// them from the QSO itself, JS-side.
+  ///
+  /// The mode that goes out is [displayMode]'s, not the stored sideband: a
+  /// spot is read by other operators, so it is a display, and the sideband a
+  /// band runs is what the frequency beside it already says. The one that
+  /// contradicts the band is spelled out, because that is the fact a reader
+  /// cannot derive. Both paths are normalized here rather than in every
+  /// poster — the other-spot path never carries a `mode` argument at all, so
+  /// it is the QSO copy sent JS-side that has to be corrected.
+  ///
+  /// Reads the public [host] rather than `_host` so a test can stand a fake
+  /// behind it and assert the payload this builds.
   Future<Map<String, Map<String, dynamic>>> sendSpot({
     required List<Map<String, dynamic>> sources,
     required Map<String, dynamic> operation,
@@ -867,17 +878,37 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     String? comment,
     String? spotterCall,
   }) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return const {};
     final method = qso == null ? 'postSelfSpot' : 'postOtherSpot';
     var spotOperation = operation;
+    var spotQso = qso;
     if (qso == null) {
       final spotCall = spotCallForSelfSpot(operation);
       if (spotCall != operation['stationCall']) spotOperation = {...operation, 'stationCall': spotCall};
+    } else {
+      // Probed, not cast, like [spotCallForSelfSpot] above: this QSO blob
+      // crossed the extension bridge, and a cast that throws here is outside
+      // the per-source guard below, so it takes every source's spot with it.
+      final spotMode = displayMode(
+        asQsonString(qso['mode']),
+        freqKHz: asQsonNum(qso['freq'])?.toDouble(),
+        band: asQsonString(qso['band']),
+      );
+      if (spotMode != qso['mode']) spotQso = {...qso, 'mode': spotMode};
     }
     final args = qso == null
-        ? {'operation': spotOperation, 'freq': freq, 'mode': mode, 'comment': comment}
-        : {'qso': qso, 'comment': comment, 'spotterCall': spotterCall};
+        ? {
+            'operation': spotOperation,
+            // No band to fall back on, and none needed: both entry points
+            // refuse a self-spot with no frequency, and every poster requires
+            // one. Were that to loosen, a picked band with a deliberate far
+            // sideband would fold to `SSB` — the one case that must not.
+            'freq': freq,
+            'mode': displayMode(mode, freqKHz: freq),
+            'comment': comment,
+          }
+        : {'qso': spotQso, 'comment': comment, 'spotterCall': spotterCall};
     final entries = await Future.wait(sources.map((source) async {
       final hookKey = source['hookKey'] as String?;
       try {

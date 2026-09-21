@@ -686,6 +686,14 @@ text a backend renders, so there the odd sideband is spelled out uncoloured). It
 where the point is what the radio is actually doing: the radio front panel shows the driver's own
 `USB`/`LSB`, and so does any other view of exact rig state.
 
+A spot this app **posts** is a display too — read by other operators on someone else's board, next to
+the frequency that already says which sideband that place runs — so it carries the same collapsed
+mode. `ExtensionService.sendSpot` is the one seam, and it has to correct **both** spot paths: a
+self-spot carries `mode` as an argument, while spotting someone else's QSO carries no mode at all and
+each poster reads `qso.mode` JS-side, so the QSO copy sent out is what gets normalized. SOTA narrows
+it further on its own (`extensions/activities/sota/src/spotMode.ts`), because SOTAwatch accepts only
+`AM/CW/Data/DV/FM/SSB` — a deliberately odd sideband folds to `SSB` there rather than being rejected.
+
 What is **stored** is untouched — the sideband, always. The collapse is a rendering rule, and every
 scorer, dupe check and exporter still sees what the operator worked.
 

@@ -8,6 +8,7 @@ upcoming:
   changes:
     - "Hover or drag across the Weather chart to inspect each hour’s forecast"
     - "A full ADIF export's QSL Message now names the programs, as \"POTA US-0001 & WWFF KFF-0002\""
+    - "Spots you post now say SSB, not USB or LSB — unless you're on the band's other sideband"
 
 "169":
   changes:
