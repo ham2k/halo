@@ -511,6 +511,63 @@ Seeding a default band at onboarding was considered and rejected — a guessed
 band means contacts logged on the *wrong* band, which is worse than being
 asked once.
 
+## Enter Sends Messages
+
+**With ESM on, Enter keys the exchange as well as logging it** — N1MM's
+Enter Sends Messages, so a contest can be run from the call field without
+reaching for a function key. It is an operator's switch (the keyer area's
+`ESM` pill, the `ESM`/`ESM OFF` commands) and a side of the pileup (the same
+pill, `RUN` and `SP`), device-wide like the keyer area, and exists only
+behind its own `esm` experiment (`EXP ESM`), on top of `keyer` — gated
+apart from keying because it changes what Enter does. The panel asks for it at every Enter
+(`LoggingSession.enterSends`) and gets nothing back while no key could send
+for the draft's mode — an unplugged rig makes Enter log again, rather than
+swallow calls it neither keys nor logs.
+
+This is the one place Enter does not always log. **What an Enter does
+depends on where the contact stands**, decided by `esmStep`:
+
+| | Call empty | Call, first Enter | Second Enter |
+|---|---|---|---|
+| **Run**, reports only | CQ (F1) | their call, exchange, thanks (F5 F2 F3) — and logs | — |
+| **Run**, exchange fields | CQ (F1) | their call, exchange (F5 F2); focus to their exchange | anything copied: thanks (F3), logs · nothing: again (F8) |
+| **S&P** | plain Enter | my call (F4); focus to their exchange | anything copied: exchange (F2), logs · nothing: nothing |
+
+- **"Exchange fields" means the contest's own received fields** — the
+  `text` and `options` controls a running activity puts on the row. The
+  reports carry defaults and our serial is allocated, so neither is anything
+  to wait for; the State and Grid fields are the operator's layout, not the
+  contest's exchange.
+- **Copied means anything, not everything.** An exchange can legitimately
+  come back short — a DX station's NAQP location, an optional pick — and
+  asking again for a part that will never come would leave the contact
+  unloggable from the keyboard. What to ask again for is the operator's
+  judgement; ESM only asks when nothing was copied at all.
+- **Run with reports only is one Enter** because nothing is left to receive
+  once the caller has their report — waiting for a second Enter would only
+  delay the thanks and the log. **S&P is always two**: before the station
+  has been called there is no report of theirs to log.
+- **The first step is remembered against the CALL, not the focus.** A
+  second Enter from the call field — no exchange field to go to, or the
+  operator went back — still completes the contact; a call corrected after
+  the first step is a different station, and starts over. The wipe after a
+  log forgets it, so the same call worked again starts over too.
+- **It runs last in the ladder** — after commands, note expansion and
+  stacking, and after the band-or-frequency refusal — so a thanks is never
+  keyed for a contact that then refuses to log. Editing a logged contact is
+  never ESM's: an edit is a correction, not an exchange.
+- **The keyboard's Enter only.** The submit button logs, whatever ESM says:
+  it is a deliberate "log this", not the rhythm of an exchange.
+- **The messages are the active set's F-keys by position**
+  (`OperationView.esmMessageKeys`) — N1MM's, which the **ESM Messages** set
+  added with the experiment follows ([cat.md](cat.md) § CW keying); an
+  empty one is skipped, so a set with no thanks still completes the
+  contact. In CW the step's messages are
+  rendered against the draft *as it was at the Enter* — the log that
+  follows wipes it — and keyed as ONE message. In a Phone mode they are the
+  radio's voice memories, played one after another, minus their call: no
+  memory can hold it, so the operator says it.
+
 ## More than one call in the field
 
 The callsign field takes three multi-call syntaxes. They are separate

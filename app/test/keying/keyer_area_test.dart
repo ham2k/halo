@@ -76,7 +76,8 @@ void main() {
   }
 
   final sent = <int>[];
-  Widget host({bool suppressed = false, PanelRenderContext? templateContext, bool phone = false}) => TranslationProvider(
+  Widget host({bool suppressed = false, PanelRenderContext? templateContext, bool phone = false, bool enterSends = false}) =>
+      TranslationProvider(
         child: MaterialApp(
           home: Scaffold(
             body: Column(children: [
@@ -87,6 +88,7 @@ void main() {
                 suppressed: suppressed,
                 templateContext: templateContext,
                 phone: phone,
+                enterSends: enterSends,
               ),
             ]),
           ),
@@ -103,6 +105,27 @@ void main() {
   }
 
   double stripHeight(WidgetTester tester) => tester.getSize(find.byType(KeyerArea)).height;
+
+  testWidgets('the ESM pill is there only with its experiment, and steps Off, Run, S&P', (tester) async {
+    await connectPlaceholder(tester);
+    await tester.pumpWidget(host());
+    services.cat.showKeyerArea();
+    await tester.pump(const Duration(seconds: 1));
+    expect(find.text('ESM Off'), findsNothing, reason: 'Enter is not the keyer\'s without EXP ESM');
+
+    await tester.pumpWidget(host(enterSends: true));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.text('ESM Off'));
+    await tester.pump();
+    expect(services.cat.enterSends.value, (on: true, running: true));
+    await tester.tap(find.text('ESM Run'));
+    await tester.pump();
+    expect(services.cat.enterSends.value, (on: true, running: false));
+    await tester.tap(find.text('ESM S&P'));
+    await tester.pump();
+    // Off comes back as Run, so the next tap starts where a contest does.
+    expect(services.cat.enterSends.value, (on: false, running: true));
+  });
 
   testWidgets('takes no room while nothing has been keyed', (tester) async {
     await connectPlaceholder(tester);

@@ -17,6 +17,7 @@ import 'call_info_summary.dart';
 import 'inline_markdown.dart';
 import 'keyboard_accessory.dart';
 import 'logging_controls_controller.dart';
+import 'logging_controls_esm.dart';
 import 'ref_text_input.dart';
 
 /// Async callsign enrichment (name, location, grid…) from lookup sources —
@@ -254,6 +255,7 @@ class LoggingSession {
     this.onEditCanceled,
     this.onNavigateToQsoList,
     this.escapeClaimed,
+    this.enterSends,
     this.onQsoChanged,
     this.onPeerDraftChanged,
     this.controller,
@@ -350,6 +352,16 @@ class LoggingSession {
   /// dispatched to regardless, so the app's Escape and the panel's would
   /// otherwise both fire on one keystroke.
   final bool Function()? escapeClaimed;
+
+  /// Asked at each keyboard Enter composing a new contact: Enter Sends
+  /// Messages as it stands right now, or null when it is off. While on, the
+  /// Enter keys the messages [esmStep] picks and may stop short of logging
+  /// (docs/design/logging-fields.md § Enter Sends Messages). Asked rather
+  /// than passed, like [escapeClaimed]: whether anything can key changes
+  /// with the radio, which rebuilds nothing here. The submit button never
+  /// asks — it is a deliberate "log this", not the keyboard's rhythm through
+  /// an exchange.
+  final EnterSends? Function()? enterSends;
 
   /// Notifies the host that the QSO being composed changed — every field,
   /// not just the callsign, and no more than once per distinct draft.

@@ -694,6 +694,7 @@ class _Translations$commands$es extends Translations$commands$en {
 	@override String get noKeyer => 'Ninguna radio conectada puede manipular CW ni reproducir memorias de voz';
 	@override String get keyerNeedsOperation => 'Abre una operación para usar el manipulador de CW';
 	@override String get keyerExperimentOff => 'La manipulación de CW está apagada — enciéndela con EXP KEYER';
+	@override String get esmExperimentOff => 'Enter envía mensajes está apagado — enciéndelo con EXP ESM';
 	@override String cwSending({required Object text}) => 'Enviando CW: ${text}';
 	@override String cwMessageError({required Object n, required Object error}) => 'Mensaje de CW F${n}: ${error}';
 	@override String cwMessageNotRendered({required Object n}) => 'El mensaje de CW F${n} no se envió: las extensiones no están listas';
@@ -1682,6 +1683,7 @@ class _Translations$settings$radio$es extends Translations$settings$radio$en {
 	@override late final _Translations$settings$radio$snapMinMove$es snapMinMove = _Translations$settings$radio$snapMinMove$es._(_root);
 	@override late final _Translations$settings$radio$snapMinSpeed$es snapMinSpeed = _Translations$settings$radio$snapMinSpeed$es._(_root);
 	@override String get cwKeying => 'Manipulación de CW';
+	@override late final _Translations$settings$radio$enterSends$es enterSends = _Translations$settings$radio$enterSends$es._(_root);
 	@override late final _Translations$settings$radio$keyerSpeed$es keyerSpeed = _Translations$settings$radio$keyerSpeed$es._(_root);
 	@override late final _Translations$settings$radio$cwMessages$es cwMessages = _Translations$settings$radio$cwMessages$es._(_root);
 	@override late final _Translations$settings$radio$voiceMessages$es voiceMessages = _Translations$settings$radio$voiceMessages$es._(_root);
@@ -2841,6 +2843,19 @@ class _Translations$settings$radio$snapMinSpeed$es extends Translations$settings
 	@override String get description => 'Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo.';
 }
 
+// Path: settings.radio.enterSends
+class _Translations$settings$radio$enterSends$es extends Translations$settings$radio$enterSends$en {
+	_Translations$settings$radio$enterSends$es._(TranslationsEs root) : this._root = root, super.internal(root);
+
+	final TranslationsEs _root; // ignore: unused_field
+
+	// Translations
+	@override String get pillOff => 'ESM apagado';
+	@override String get pillRun => 'ESM Run';
+	@override String get pillSp => 'ESM S&P';
+	@override String semantics({required Object state}) => 'Enter envía mensajes: ${state}. Toca para cambiar.';
+}
+
 // Path: settings.radio.keyerSpeed
 class _Translations$settings$radio$keyerSpeed$es extends Translations$settings$radio$keyerSpeed$en {
 	_Translations$settings$radio$keyerSpeed$es._(TranslationsEs root) : this._root = root, super.internal(root);
@@ -2877,6 +2892,7 @@ class _Translations$settings$radio$cwMessages$es extends Translations$settings$r
 	@override String get newSetName => 'Nombre';
 	@override String get setDefault => 'Predeterminado';
 	@override String get setPota => 'POTA';
+	@override String get setEsm => 'Mensajes ESM';
 	@override String get setSaved => 'Mis mensajes';
 	@override String get repeat => 'Repetir mensaje ❶';
 	@override String get repeatOff => 'No';
@@ -4003,6 +4019,10 @@ extension on TranslationsEs {
 			'settings.radio.snapMinSpeed.title' => 'Ajuste inteligente: velocidad mínima',
 			'settings.radio.snapMinSpeed.description' => 'Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo.',
 			'settings.radio.cwKeying' => 'Manipulación de CW',
+			'settings.radio.enterSends.pillOff' => 'ESM apagado',
+			'settings.radio.enterSends.pillRun' => 'ESM Run',
+			'settings.radio.enterSends.pillSp' => 'ESM S&P',
+			'settings.radio.enterSends.semantics' => ({required Object state}) => 'Enter envía mensajes: ${state}. Toca para cambiar.',
 			'settings.radio.keyerSpeed.title' => 'Velocidad del manipulador',
 			'settings.radio.keyerSpeed.unit' => 'PPM',
 			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} ppm',
@@ -4023,6 +4043,7 @@ extension on TranslationsEs {
 			'settings.radio.cwMessages.newSetName' => 'Nombre',
 			'settings.radio.cwMessages.setDefault' => 'Predeterminado',
 			'settings.radio.cwMessages.setPota' => 'POTA',
+			'settings.radio.cwMessages.setEsm' => 'Mensajes ESM',
 			'settings.radio.cwMessages.setSaved' => 'Mis mensajes',
 			'settings.radio.cwMessages.repeat' => 'Repetir mensaje ❶',
 			'settings.radio.cwMessages.repeatOff' => 'No',
@@ -4167,13 +4188,13 @@ extension on TranslationsEs {
 			'settings.peers.screenTabApps' => 'Apps',
 			'settings.peers.screenTabWindows' => 'Ventanas',
 			'settings.peers.screenTabEmpty' => 'No se encontró nada de este tipo.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.screenSharedSummaryNone' => 'No has elegido nada todavía.',
 			'settings.peers.screenThisDevice' => 'Este dispositivo',
 			'settings.peers.screenSharedTo' => ({required Object devices}) => 'Se muestra en ${devices}',
 			'settings.peers.screenSharedToNobody' => 'No se está mostrando',
 			'settings.peers.screenStopSharing' => ({required Object name}) => 'Dejar de compartir ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developerMode' => 'Modo Desarrollador',
 			'settings.syncPanel.configuration' => 'Configuración de sincronización',
 			'settings.syncPanel.enableTitle' => 'Sincronizar con Ham2K Log Filer',
@@ -4656,6 +4677,7 @@ extension on TranslationsEs {
 			'commands.noKeyer' => 'Ninguna radio conectada puede manipular CW ni reproducir memorias de voz',
 			'commands.keyerNeedsOperation' => 'Abre una operación para usar el manipulador de CW',
 			'commands.keyerExperimentOff' => 'La manipulación de CW está apagada — enciéndela con EXP KEYER',
+			'commands.esmExperimentOff' => 'Enter envía mensajes está apagado — enciéndelo con EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Enviando CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'Mensaje de CW F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'El mensaje de CW F${n} no se envió: las extensiones no están listas',
@@ -4680,14 +4702,14 @@ extension on TranslationsEs {
 			'commandDialog.goHome' => 'Inicio',
 			'commandDialog.goSettings' => 'Ajustes',
 			'commandDialog.goNewOperation' => 'Nueva operación',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.runTyped' => ({required Object text}) => 'Ejecutar «${text}»',
 			'commandDialog.sectionSuggestions' => 'Prueba',
 			'commandDialog.lookingUp' => 'Buscando indicativo…',
 			'expiredBuild.title' => 'Esta versión ha expirado',
 			'expiredBuild.body' => 'Por favor visita ham2k.com para obtener una versión más reciente.',
 			'expiredBuild.visit' => 'Visitar ham2k.com',
-			_ => null,
-		} ?? switch (path) {
 			'expiredBuild.dismiss' => 'Continuar de todos modos',
 			'staleness.codePushFloorTitle' => 'Hay una actualización importante',
 			'staleness.codePushFloorBody' => 'Esta versión tiene una corrección que todavía no tienes.',

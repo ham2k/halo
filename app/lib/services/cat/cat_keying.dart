@@ -80,7 +80,9 @@ class CatKeying {
     required this.settings,
     required this.chain,
     required this.peer,
-  });
+  }) {
+    voiceActivity.addListener(_onVoiceActivityForSequence);
+  }
 
   final KeyingStation station;
   final SettingsService settings;
@@ -245,6 +247,19 @@ class CatKeying {
     if (!keyerAreaShown.value) return;
     keyerAreaShown.value = false;
     unawaited(settings.setKeyerAreaShown(false));
+  }
+
+  /// Enter Sends Messages, and Run versus S&P — the keyer area's pill and the
+  /// ESM/RUN/SP commands set it, the logging panel reads it.
+  late final enterSends = ValueNotifier<({bool on, bool running})>(
+    (on: settings.enterSendsMessages, running: settings.enterSendsRunning),
+  );
+
+  void setEnterSends({bool? on, bool? running}) {
+    final next = (on: on ?? enterSends.value.on, running: running ?? enterSends.value.running);
+    if (next == enterSends.value) return;
+    enterSends.value = next;
+    unawaited(settings.setEnterSends(on: next.on, running: next.running));
   }
 
   /// Keys [text] on the key in use — a no-op, not an error, when nothing can key:
@@ -613,6 +628,7 @@ class CatKeying {
     // repeat delay.
     chain.cancel();
     if (uuid == station.localRadio1) {
+      cancelVoiceSequence();
       // What a stop cut short is not a measurement, the same rule
       // [stopVoice] applies to this operator's own.
       _playMemory = null;
@@ -675,9 +691,66 @@ class CatKeying {
   }
 
   /// Stops whatever radio1's voice keyer is playing or recording.
+  /// Memories an Enter Sends Messages step still has to play, after the one
+  /// on the air (docs/design/logging-fields.md § Enter Sends Messages). A
+  /// radio plays one memory at a time, so each waits for the last to END —
+  /// [voiceActivity] going quiet after it was seen playing, since over a peer
+  /// the start arrives later than the ask. Every stop clears it: a sequence
+  /// cut short by the operator must not put its thanks on the air anyway.
+  final List<int> _voiceSequence = [];
+  bool _sequenceStarted = false;
+
+  /// How long a queued memory waits to be heard starting before the
+  /// sequence is given up: a play refused or lost on the way would otherwise
+  /// leave the rest queued behind the next memory the operator plays by
+  /// hand. Real time, never the app clock — it becomes a [Timer].
+  static const voiceSequenceStartGrace = Duration(seconds: 3);
+  Timer? _sequenceStartTimer;
+
+  /// Plays [memories] one after another. Only a single memory repeats, as
+  /// [playVoiceMemory] would: a CQ, never an exchange.
+  void playVoiceSequence(List<int> memories) {
+    cancelVoiceSequence();
+    if (memories.isEmpty) return;
+    _voiceSequence.addAll(memories.skip(1));
+    _awaitSequenceStart();
+    playVoiceMemory(memories.first, repeat: memories.length == 1);
+  }
+
+  void cancelVoiceSequence() {
+    _voiceSequence.clear();
+    _sequenceStarted = false;
+    _sequenceStartTimer?.cancel();
+    _sequenceStartTimer = null;
+  }
+
+  void _awaitSequenceStart() {
+    if (_voiceSequence.isEmpty) return;
+    _sequenceStarted = false;
+    _sequenceStartTimer?.cancel();
+    _sequenceStartTimer = Timer(voiceSequenceStartGrace, cancelVoiceSequence);
+  }
+
+  void _onVoiceActivityForSequence() {
+    if (_voiceSequence.isEmpty) return;
+    final activity = voiceActivity.value;
+    if (activity != null) {
+      // A recording is nobody's sequence; the operator is at the editor.
+      if (activity.recording) return cancelVoiceSequence();
+      _sequenceStarted = true;
+      _sequenceStartTimer?.cancel();
+      return;
+    }
+    if (!_sequenceStarted) return;
+    final next = _voiceSequence.removeAt(0);
+    _awaitSequenceStart();
+    playVoiceMemory(next, repeat: false);
+  }
+
   void stopVoice() {
     // A stop is a stop, the same as [stopCw]'s.
     chain.cancel();
+    cancelVoiceSequence();
     // And what it stopped is NOT a measurement: the memory did not play to
     // its end, so timing it would store a length shorter than the audio and
     // pace every later bar to finish early.
@@ -867,7 +940,11 @@ class CatKeying {
     if (!peer.clear()) return false;
     if (chain.running && endedByPeer) chain.cancel();
     if (_cwFromPeer) _writePeerProgress(null);
-    if (_voiceFromPeer) _writePeerActivity(null);
+    // The silence below is the link going, not a memory ending.
+    if (_voiceFromPeer) {
+      cancelVoiceSequence();
+      _writePeerActivity(null);
+    }
     return true;
   }
 
@@ -917,7 +994,11 @@ class CatKeying {
   /// keying is not keying now.
   void forgetNode(String uuid, {required bool wasKeyInUse, required bool wasRadio1}) {
     if (wasKeyInUse) cwProgress.value = null;
-    if (wasRadio1) voiceActivity.value = null;
+    if (wasRadio1) {
+      // The silence is the radio going, not a memory ending.
+      cancelVoiceSequence();
+      voiceActivity.value = null;
+    }
     // A radio that is gone is playing nothing. Left behind, its last
     // activity would be reported to a peer forever — the radio is no longer
     // offered, but the memory of it playing would outlive the offer.
@@ -945,10 +1026,12 @@ class CatKeying {
   }
 
   void dispose() {
+    cancelVoiceSequence();
     _keyingRevision.dispose();
     cwProgress.dispose();
     voiceActivity.dispose();
     keyerAreaShown.dispose();
+    enterSends.dispose();
     keyerShowRequests.dispose();
   }
 }

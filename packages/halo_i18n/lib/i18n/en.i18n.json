@@ -1057,6 +1057,12 @@
         "description": "Turn the dial slower than this and nothing is rounded, unless it was a long move."
       },
       "cwKeying": "CW Keying",
+      "enterSends": {
+        "pillOff": "ESM Off",
+        "pillRun": "ESM Run",
+        "pillSp": "ESM S&P",
+        "semantics": "Enter Sends Messages: $state. Tap to change."
+      },
       "keyerSpeed": {
         "title": "Keyer speed",
         "unit": "WPM",
@@ -1080,6 +1086,7 @@
         "newSetName": "Name",
         "setDefault": "Default",
         "setPota": "POTA",
+        "setEsm": "ESM Messages",
         "setSaved": "My Messages",
         "repeat": "Repeat Message ❶",
         "repeatOff": "No",
@@ -1824,6 +1831,7 @@
     "noKeyer": "No connected radio can key CW or play voice memories",
     "keyerNeedsOperation": "Open an operation to use the CW keyer",
     "keyerExperimentOff": "CW keying is off — turn it on with EXP KEYER",
+    "esmExperimentOff": "Enter Sends Messages is off — turn it on with EXP ESM",
     "cwSending": "Sending CW: $text",
     "cwMessageError": "CW message F$n: $error",
     "cwMessageNotRendered": "CW message F$n was not sent: the extensions are not ready",

@@ -18,5 +18,16 @@
   "catalogCategory": "Radio",
   "keyerDescribe": "¿Mostrar el manipulador de CW?",
   "keyerConfirm": "Manipulador de CW mostrado",
-  "catalogKeyer": "Mostrar el manipulador de CW y sus mensajes"
+  "catalogKeyer": "Mostrar el manipulador de CW y sus mensajes",
+  "esmOnDescribe": "¿Encender **Enter envía mensajes**?",
+  "esmOnConfirm": "Enter envía mensajes encendido",
+  "esmOffDescribe": "¿Apagar **Enter envía mensajes**?",
+  "esmOffConfirm": "Enter envía mensajes apagado",
+  "esmRunDescribe": "¿Enter envía mensajes, **llamando CQ**?",
+  "esmRunConfirm": "Enter envía mensajes: Run",
+  "esmSpDescribe": "¿Enter envía mensajes, **buscando estaciones**?",
+  "esmSpConfirm": "Enter envía mensajes: S&P",
+  "catalogEsm": "Encender o apagar Enter envía mensajes",
+  "catalogRun": "Enter envía mensajes, llamando CQ",
+  "catalogSp": "Enter envía mensajes, buscando estaciones"
 }

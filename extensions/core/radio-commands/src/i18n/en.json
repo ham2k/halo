@@ -18,5 +18,16 @@
   "catalogCategory": "Radio",
   "keyerDescribe": "Show the CW keyer?",
   "keyerConfirm": "CW keyer shown",
-  "catalogKeyer": "Show the CW keyer and its messages"
+  "catalogKeyer": "Show the CW keyer and its messages",
+  "esmOnDescribe": "Turn on **Enter Sends Messages**?",
+  "esmOnConfirm": "Enter Sends Messages on",
+  "esmOffDescribe": "Turn off **Enter Sends Messages**?",
+  "esmOffConfirm": "Enter Sends Messages off",
+  "esmRunDescribe": "Enter Sends Messages, **running**?",
+  "esmRunConfirm": "Enter Sends Messages: Run",
+  "esmSpDescribe": "Enter Sends Messages, **search & pounce**?",
+  "esmSpConfirm": "Enter Sends Messages: S&P",
+  "catalogEsm": "Enter Sends Messages on or off",
+  "catalogRun": "Enter Sends Messages, running",
+  "catalogSp": "Enter Sends Messages, search & pounce"
 }

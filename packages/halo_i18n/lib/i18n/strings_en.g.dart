@@ -1560,6 +1560,9 @@ class Translations$commands$en {
 	/// en: 'CW keying is off — turn it on with EXP KEYER'
 	String get keyerExperimentOff => 'CW keying is off — turn it on with EXP KEYER';
 
+	/// en: 'Enter Sends Messages is off — turn it on with EXP ESM'
+	String get esmExperimentOff => 'Enter Sends Messages is off — turn it on with EXP ESM';
+
 	/// en: 'Sending CW: $text'
 	String cwSending({required Object text}) => 'Sending CW: ${text}';
 
@@ -3531,6 +3534,7 @@ class Translations$settings$radio$en {
 	/// en: 'CW Keying'
 	String get cwKeying => 'CW Keying';
 
+	late final Translations$settings$radio$enterSends$en enterSends = Translations$settings$radio$enterSends$en.internal(_root);
 	late final Translations$settings$radio$keyerSpeed$en keyerSpeed = Translations$settings$radio$keyerSpeed$en.internal(_root);
 	late final Translations$settings$radio$cwMessages$en cwMessages = Translations$settings$radio$cwMessages$en.internal(_root);
 	late final Translations$settings$radio$voiceMessages$en voiceMessages = Translations$settings$radio$voiceMessages$en.internal(_root);
@@ -6073,6 +6077,27 @@ class Translations$settings$radio$snapMinSpeed$en {
 	String get description => 'Turn the dial slower than this and nothing is rounded, unless it was a long move.';
 }
 
+// Path: settings.radio.enterSends
+class Translations$settings$radio$enterSends$en {
+	Translations$settings$radio$enterSends$en.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'ESM Off'
+	String get pillOff => 'ESM Off';
+
+	/// en: 'ESM Run'
+	String get pillRun => 'ESM Run';
+
+	/// en: 'ESM S&P'
+	String get pillSp => 'ESM S&P';
+
+	/// en: 'Enter Sends Messages: $state. Tap to change.'
+	String semantics({required Object state}) => 'Enter Sends Messages: ${state}. Tap to change.';
+}
+
 // Path: settings.radio.keyerSpeed
 class Translations$settings$radio$keyerSpeed$en {
 	Translations$settings$radio$keyerSpeed$en.internal(this._root);
@@ -6149,6 +6174,9 @@ class Translations$settings$radio$cwMessages$en {
 
 	/// en: 'POTA'
 	String get setPota => 'POTA';
+
+	/// en: 'ESM Messages'
+	String get setEsm => 'ESM Messages';
 
 	/// en: 'My Messages'
 	String get setSaved => 'My Messages';
@@ -7580,6 +7608,10 @@ extension on Translations {
 			'settings.radio.snapMinSpeed.title' => 'Smart Snap: Slowest move',
 			'settings.radio.snapMinSpeed.description' => 'Turn the dial slower than this and nothing is rounded, unless it was a long move.',
 			'settings.radio.cwKeying' => 'CW Keying',
+			'settings.radio.enterSends.pillOff' => 'ESM Off',
+			'settings.radio.enterSends.pillRun' => 'ESM Run',
+			'settings.radio.enterSends.pillSp' => 'ESM S&P',
+			'settings.radio.enterSends.semantics' => ({required Object state}) => 'Enter Sends Messages: ${state}. Tap to change.',
 			'settings.radio.keyerSpeed.title' => 'Keyer speed',
 			'settings.radio.keyerSpeed.unit' => 'WPM',
 			'settings.radio.keyerSpeed.pill' => ({required Object wpm}) => '${wpm} wpm',
@@ -7600,6 +7632,7 @@ extension on Translations {
 			'settings.radio.cwMessages.newSetName' => 'Name',
 			'settings.radio.cwMessages.setDefault' => 'Default',
 			'settings.radio.cwMessages.setPota' => 'POTA',
+			'settings.radio.cwMessages.setEsm' => 'ESM Messages',
 			'settings.radio.cwMessages.setSaved' => 'My Messages',
 			'settings.radio.cwMessages.repeat' => 'Repeat Message ❶',
 			'settings.radio.cwMessages.repeatOff' => 'No',
@@ -7744,13 +7777,13 @@ extension on Translations {
 			'settings.peers.screenTabApps' => 'Apps',
 			'settings.peers.screenTabWindows' => 'Windows',
 			'settings.peers.screenTabEmpty' => 'Nothing of this kind was found.',
+			_ => null,
+		} ?? switch (path) {
 			'settings.peers.screenSharedSummaryNone' => 'Nothing chosen yet.',
 			'settings.peers.screenThisDevice' => 'This device',
 			'settings.peers.screenSharedTo' => ({required Object devices}) => 'Shown on ${devices}',
 			'settings.peers.screenSharedToNobody' => 'Not being shown',
 			'settings.peers.screenStopSharing' => ({required Object name}) => 'Stop sharing ${name}',
-			_ => null,
-		} ?? switch (path) {
 			'settings.developerMode' => 'Developer Mode',
 			'settings.syncPanel.configuration' => 'Sync Configuration',
 			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
@@ -8253,18 +8286,19 @@ extension on Translations {
 			'commands.noKeyer' => 'No connected radio can key CW or play voice memories',
 			'commands.keyerNeedsOperation' => 'Open an operation to use the CW keyer',
 			'commands.keyerExperimentOff' => 'CW keying is off — turn it on with EXP KEYER',
+			'commands.esmExperimentOff' => 'Enter Sends Messages is off — turn it on with EXP ESM',
 			'commands.cwSending' => ({required Object text}) => 'Sending CW: ${text}',
 			'commands.cwMessageError' => ({required Object n, required Object error}) => 'CW message F${n}: ${error}',
 			'commands.cwMessageNotRendered' => ({required Object n}) => 'CW message F${n} was not sent: the extensions are not ready',
 			'commands.settingNotStored' => ({required Object label}) => '“${label}” did not accept that value',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.hint' => 'Search callsigns or type a command',
 			'commandDialog.noResults' => ({required Object text}) => 'Nothing matches “${text}”',
 			'commandDialog.sectionCommands' => 'Commands',
 			'commandDialog.sectionGoTo' => 'Go to',
 			'commandDialog.sectionOperations' => 'Operations',
 			'commandDialog.goHome' => 'Home',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.goSettings' => 'Settings',
 			'commandDialog.goNewOperation' => 'New operation',
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',

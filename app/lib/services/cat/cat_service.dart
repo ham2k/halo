@@ -952,6 +952,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   ValueNotifier<int> get keyerShowRequests => _keying.keyerShowRequests;
   void showKeyerArea() => _keying.showKeyerArea();
   void hideKeyerArea() => _keying.hideKeyerArea();
+  ValueNotifier<({bool on, bool running})> get enterSends => _keying.enterSends;
+  void setEnterSends({bool? on, bool? running}) => _keying.setEnterSends(on: on, running: running);
   void sendCw(String text) => _keying.sendCw(text);
   void stopCw() => _keying.stopCw();
   void dropQueuedCw(int id) => _keying.dropQueuedCw(id);
@@ -970,6 +972,8 @@ class CatService extends ChangeNotifier implements PeerStationRadios, KeyingStat
   void playVoiceMemory(int n, {bool repeat = true}) => _keying.playVoiceMemory(n, repeat: repeat);
   void recordVoiceMemory(int n) => _keying.recordVoiceMemory(n);
   void stopVoice() => _keying.stopVoice();
+  void playVoiceSequence(List<int> memories) => _keying.playVoiceSequence(memories);
+  void cancelVoiceSequence() => _keying.cancelVoiceSequence();
 
   // --------------------------------------- what keying asks of the station
 

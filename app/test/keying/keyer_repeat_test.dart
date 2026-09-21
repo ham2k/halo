@@ -116,6 +116,34 @@ void main() {
     });
   });
 
+  group('voice sequence', () {
+    // Enter Sends Messages' voice steps (docs/design/logging-fields.md § Enter
+    // Sends Messages): one memory after another, and a stop is the end of
+    // all of them. The placeholder radio plays each for four real seconds.
+    test('the next memory plays when the one on the air ends', () async {
+      await connectPlaceholder();
+      cat.playVoiceSequence([2, 3]);
+      await pumpEventQueue();
+      expect(cat.voiceActivity.value?.memory, 2);
+      await Future<void>.delayed(placeholderVoicePlayDuration + const Duration(milliseconds: 300));
+      expect(cat.voiceActivity.value?.memory, 3);
+      cat.stopVoice();
+    });
+
+    test('a stop partway through keeps the rest off the air', () async {
+      // Cutting the exchange short must not leave the thanks queued behind
+      // it — the stop here is the keyer area's, which no keypress passes.
+      await connectPlaceholder();
+      cat.playVoiceSequence([2, 3]);
+      await pumpEventQueue();
+      cat.stopVoice();
+      // Well inside the next memory's length: waiting past it would find a
+      // wrongly played thanks already over.
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+      expect(cat.voiceActivity.value, isNull);
+    });
+  });
+
   group('voice', () {
     test('memory 1 repeats when the setting says so; the rest end a chain', () async {
       await connectPlaceholder();

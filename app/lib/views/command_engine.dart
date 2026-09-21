@@ -918,6 +918,8 @@ class CommandEngine extends ChangeNotifier {
         await runAction('setKeyerSpeed', (map['setKeyerSpeed'] as Map).cast<String, dynamic>());
       } else if (map['showKeyer'] is Map) {
         await runAction('showKeyer', null);
+      } else if (map['setEnterSends'] is Map) {
+        await runAction('setEnterSends', (map['setEnterSends'] as Map).cast<String, dynamic>());
       } else {
         // Nothing above recognized this action's key(s) — most likely a
         // command that's scoped to the logging panel (addQso, updateQso,

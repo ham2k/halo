@@ -79,6 +79,9 @@ class KeyerArea extends StatefulWidget {
   /// being corrected.
   final bool suppressed;
 
+  /// Whether the Enter Sends Messages pill is offered — its experiment.
+  final bool enterSends;
+
   const KeyerArea({
     super.key,
     required this.cat,
@@ -87,6 +90,7 @@ class KeyerArea extends StatefulWidget {
     this.templateContext,
     this.phone = false,
     this.suppressed = false,
+    this.enterSends = false,
   });
 
   @override
@@ -229,6 +233,10 @@ class _KeyerAreaState extends State<KeyerArea> with SingleTickerProviderStateMix
                 _VoicePill(cat: widget.cat, services: widget.services)
               else
                 _KeyerSpeedPill(cat: widget.cat, services: widget.services),
+              if (widget.enterSends) ...[
+                const SizedBox(width: Space.sm),
+                _EnterSendsPill(cat: widget.cat),
+              ],
               const SizedBox(width: Space.md),
               Expanded(
                 child: ListenableBuilder(
@@ -852,6 +860,77 @@ class _KeyerSpeedPill extends StatelessWidget {
                     ),
                   ),
                 ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Enter Sends Messages, and which side of the exchange it plays: a tap
+/// steps Off → Run → S&P → Off, the three states an operator moves between
+/// mid-contest without looking away from the call field for long. Shown for
+/// either keyer — ESM plays voice memories in Phone the way it keys messages
+/// in CW (docs/design/logging-fields.md § Enter Sends Messages).
+class _EnterSendsPill extends StatelessWidget {
+  final CatService cat;
+
+  const _EnterSendsPill({required this.cat});
+
+  void _step() {
+    final esm = cat.enterSends.value;
+    if (!esm.on) {
+      cat.setEnterSends(on: true, running: true);
+    } else if (esm.running) {
+      cat.setEnterSends(running: false);
+    } else {
+      cat.setEnterSends(on: false, running: true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final poloColors = HaLoColors.of(context);
+    final borderRadius = BorderRadius.circular(8);
+    final strings = context.t.settings.radio.enterSends;
+    return ValueListenableBuilder<({bool on, bool running})>(
+      valueListenable: cat.enterSends,
+      builder: (context, esm, _) {
+        final label = !esm.on
+            ? strings.pillOff
+            : esm.running
+                ? strings.pillRun
+                : strings.pillSp;
+        var foreground = theme.colorScheme.onTertiaryContainer;
+        var background = poloColors.tertiaryLight;
+        if (!esm.on) {
+          foreground = foreground.withValues(alpha: 0.5);
+          background = background.withValues(alpha: 0.5);
+        }
+        return Semantics(
+          button: true,
+          label: strings.semantics(state: label),
+          excludeSemantics: true,
+          child: Material(
+            color: background,
+            borderRadius: borderRadius,
+            child: InkWell(
+              borderRadius: borderRadius,
+              onTap: _step,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: Space.md, vertical: Space.xs),
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    fontFamily: 'RobotoCondensed',
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: foreground,
+                  ),
+                ),
               ),
             ),
           ),

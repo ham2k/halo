@@ -280,7 +280,9 @@ HaLo has, PoLo lacks: `DEVSTATUS`/`DEVPROGRESS` (status-bar exercisers),
   Positions panel and remote screen sharing. PoLo syncs only through LoFi.
 - **CW keying from CAT** — F1–F8 messages, a keyer area, `WPM`/`KEYER`
   (behind `EXP KEYER`) — and **voice keying** on the same keys in a Phone
-  mode, playing and recording the radio's own voice memories (HALO-503).
+  mode, playing and recording the radio's own voice memories (HALO-503) —
+  with N1MM-style **Enter Sends Messages** (`ESM`, `RUN`, `SP`; behind
+  `EXP ESM`; HALO-662).
 - **Inbound QSO capture** from N1MM+ and WSJT-X broadcasts (HALO-306).
 - **CWops CWT** contest, offered only around a session — PoLo has no CWT.
 - **Extension distribution**: `.h2kext` bundles installed from a file, a

@@ -1057,6 +1057,12 @@
         "description": "Si giras el dial más despacio que esto no se redondea nada, salvo que haya sido un giro largo."
       },
       "cwKeying": "Manipulación de CW",
+      "enterSends": {
+        "pillOff": "ESM apagado",
+        "pillRun": "ESM Run",
+        "pillSp": "ESM S&P",
+        "semantics": "Enter envía mensajes: $state. Toca para cambiar."
+      },
       "keyerSpeed": {
         "title": "Velocidad del manipulador",
         "unit": "PPM",
@@ -1080,6 +1086,7 @@
         "newSetName": "Nombre",
         "setDefault": "Predeterminado",
         "setPota": "POTA",
+        "setEsm": "Mensajes ESM",
         "setSaved": "Mis mensajes",
         "repeat": "Repetir mensaje ❶",
         "repeatOff": "No",
@@ -1795,6 +1802,7 @@
     "noKeyer": "Ninguna radio conectada puede manipular CW ni reproducir memorias de voz",
     "keyerNeedsOperation": "Abre una operación para usar el manipulador de CW",
     "keyerExperimentOff": "La manipulación de CW está apagada — enciéndela con EXP KEYER",
+    "esmExperimentOff": "Enter envía mensajes está apagado — enciéndelo con EXP ESM",
     "cwSending": "Enviando CW: $text",
     "cwMessageError": "Mensaje de CW F$n: $error",
     "cwMessageNotRendered": "El mensaje de CW F$n no se envió: las extensiones no están listas",

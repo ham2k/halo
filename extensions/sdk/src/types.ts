@@ -1275,6 +1275,10 @@ export interface CommandAction {
   /// buttons, speed pill and queue). Dispatched like `setPower`; the app
   /// answers with an error when no connected radio can key CW.
   showKeyer?: Record<string, never>
+  /// ESM / RUN / SP: Enter Sends Messages on or off, and Run versus Search &
+  /// Pounce — an absent field is left as it is. Dispatched like `setPower`;
+  /// the app answers with an error when no connected radio can key.
+  setEnterSends?: { on?: boolean; running?: boolean }
   updateQso?: Record<string, JSONValue>
   addQso?: Record<string, JSONValue>
   /// `target` picks what gets spotted: `'self'` (default) spots the

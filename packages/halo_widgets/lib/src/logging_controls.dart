@@ -53,6 +53,7 @@ import 'logging_controls_focus.dart';
 import 'logging_controls_lookup.dart';
 import 'logging_controls_radio.dart';
 import 'logging_controls_refs.dart';
+import 'logging_controls_esm.dart';
 import 'logging_controls_metrics.dart';
 import 'logging_controls_spotting.dart';
 import 'logging_controls_time.dart';
@@ -368,7 +369,64 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// which is the sequence the operator's hands were making anyway: pick, send.
   void _handleEnter() {
     if (_exchange.acceptPendingChoice()) return;
-    _log();
+    _log(fromEnter: true);
+  }
+
+  /// The call for which ESM's first step has gone out — the station called,
+  /// or the caller given their exchange — so the next Enter completes the
+  /// contact. Compared against the call in the field rather than cleared on
+  /// each keystroke: a corrected call is a new contact to ESM, and one Enter
+  /// away from its own first step.
+  String? _esmAnsweredCall;
+
+  /// The exchange fields ESM waits on: the contest's own, not the reports
+  /// (which carry defaults) nor the serial we send (which is allocated).
+  List<PrimaryField> get _esmExchangeFields {
+    final keys = {
+      for (final control in _textControls)
+        if ((control['input'] as Map?)?['kind'] != 'serial') control['key'] as String,
+    };
+    return [for (final field in _primaryFields) if (keys.contains(field.key)) field];
+  }
+
+  /// Enter Sends Messages: keys what [esmStep] picks and answers whether this
+  /// Enter ends here. False means go on and log.
+  bool _enterSendsMessages(EnterSends esm) {
+    final exchange = _esmExchangeFields;
+    final call = _call;
+    final step = esmStep(
+      running: esm.running,
+      callEmpty: _callController.text.trim().isEmpty,
+      canLog: _canLog,
+      answered: call.isNotEmpty && _esmAnsweredCall == call,
+      hasExchange: exchange.isNotEmpty,
+      exchangeCopied: exchange.any((field) => _exchange.valueOf(field.key).trim().isNotEmpty),
+    );
+    if (step == null) return false;
+    if (step.send.isNotEmpty) esm.send(step.send, _draft.toData());
+    switch (step.then) {
+      case EsmThen.stay:
+        return true;
+      case EsmThen.toExchange:
+        _esmAnsweredCall = call;
+        final empty = exchange.where((field) => _exchange.valueOf(field.key).trim().isEmpty);
+        final fields = _primaryFields;
+        // No exchange at all (S&P with reports only): the field after the
+        // call, where the report they give us goes; nothing after it, and the
+        // call field keeps focus — [_esmAnsweredCall] still makes the next
+        // Enter the second step.
+        final target = empty.isNotEmpty
+            ? empty.first
+            : exchange.isNotEmpty
+                ? exchange.first
+                : fields.length > 1
+                    ? fields[1]
+                    : null;
+        target?.focus.requestFocus();
+        return true;
+      case EsmThen.log:
+        return false;
+    }
   }
 
   /// Runs `widget.log.decorateQsoBeforeSave` if wired, so an activity can project
@@ -2302,6 +2360,8 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         await widget.commands.onCommandAction?.call('setKeyerSpeed', (map['setKeyerSpeed'] as Map).cast<String, dynamic>());
       } else if (map['showKeyer'] is Map) {
         await widget.commands.onCommandAction?.call('showKeyer', null);
+      } else if (map['setEnterSends'] is Map) {
+        await widget.commands.onCommandAction?.call('setEnterSends', (map['setEnterSends'] as Map).cast<String, dynamic>());
       } else {
         // Nothing above recognized this action's key(s) — most likely a new
         // CommandAction field was added to the SDK (extensions/sdk/src/types.ts)
@@ -2709,6 +2769,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     widget.log.serialNumbers?.release(widget.log.operation.uuid);
     _suggestedCall = null;
     _suggestionWasTentative = false;
+    _esmAnsweredCall = null;
     _radio.settlePendingFreqEdit();
     _callController.clear();
     _clearRSTs();
@@ -2928,7 +2989,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// logging — for a contact logged by a gesture made somewhere else (a spot
   /// row slid past the commit point). The operator is working the spots list,
   /// and taking focus here pops the on-screen keyboard up over it.
-  Future<void> _log({bool focusCall = true}) async {
+  ///
+  /// [fromEnter] marks the keyboard's Enter, the only submit Enter Sends
+  /// Messages speaks for.
+  Future<void> _log({bool focusCall = true, bool fromEnter = false}) async {
     if (_isLogging) return; // already logging this entry; ignore the repeat
     // The write policy specifically, NOT `_fieldsLocked`: this method is also
     // how a staged delete is committed and a deleted QSO saved, both of which
@@ -3044,6 +3108,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       _command.showError(t.loggingControls.bandOrFreqRequired);
       _onSelectControl('radio');
       return;
+    }
+
+    // Enter Sends Messages, after every gate a plain Enter would stop at —
+    // so a thanks is never keyed for a contact the band check then refuses —
+    // and only while composing: an edit is a correction, not an exchange.
+    if (fromEnter && editingQso == null) {
+      if (widget.session.enterSends?.call() case final esm? when _enterSendsMessages(esm)) return;
     }
 
     if (!_canLog) {
@@ -3468,7 +3539,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                                 onSubmitted: _log,
                               )
                             : null,
-                        onSubmitted: _log,
+                        onSubmitted: () => _log(fromEnter: true),
                         onExchangeSubmitted: _handleEnter,
                       ),
                           if (exchangeMenu != null)

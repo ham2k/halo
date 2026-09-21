@@ -116,6 +116,11 @@ class LoggingPanel extends StatefulWidget {
   /// draft contact, which only it holds).
   final void Function(int n)? onSendCwMessage;
 
+  /// Keys what an Enter Sends Messages step picked, rendered against the
+  /// draft handed over — see [LoggingSession.enterSends]. Null leaves ESM
+  /// off whatever its switch says.
+  final void Function(List<EsmMessage> messages, Map<String, dynamic> qso)? onEnterSends;
+
   /// What the keyer area's button labels render against — the operation
   /// and the draft contact, the same context the messages themselves get.
   /// A new one arrives with each draft change (debounced upstream).
@@ -164,6 +169,7 @@ class LoggingPanel extends StatefulWidget {
     this.onPeerDraftChanged,
     this.onCallInfoTap,
     this.onSendCwMessage,
+    this.onEnterSends,
     this.cwTemplateContext,
     this.keyingPhone = false,
     this.onOperationInfoTap,
@@ -248,6 +254,10 @@ class _LoggingPanelState extends State<LoggingPanel> {
   /// The CW keying surfaces (keyer area, Escape-stops-a-message) need this on
   /// top of CAT. Kept in sync by _onSettingsChanged like _gatoEnabled.
   late bool _keyerEnabled = widget.services.settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */;
+
+  /// Enter Sends Messages, on top of the keyer. Kept in sync by
+  /// _onSettingsChanged like _keyerEnabled.
+  late bool _esmEnabled = widget.services.settings.experimentEnabled('esm') /* stored key, see experiments.yaml */;
 
   // Whether the Radio control's icon should read as CAT-configured — mirrors
   // zeroBeatSuggestionFor's gate (operation_view.dart): the experiment check
@@ -615,6 +625,8 @@ class _LoggingPanelState extends State<LoggingPanel> {
       if (!keyer && widget.services.cat.cwSending) widget.services.cat.stopCw();
       setState(() => _keyerEnabled = keyer);
     }
+    final esm = s.experimentEnabled('esm') /* stored key, see experiments.yaml */;
+    if (esm != _esmEnabled) setState(() => _esmEnabled = esm);
     final gato = s.experimentEnabled('gato') /* stored key, see experiments.yaml */;
     if (gato != _gatoEnabled) {
       if (gato) {
@@ -655,6 +667,18 @@ class _LoggingPanelState extends State<LoggingPanel> {
     if (needs != _needsBandOrMode) {
       setState(() => _needsBandOrMode = needs);
     }
+  }
+
+  /// Enter Sends Messages as it stands at this Enter: on, and the key the
+  /// draft's mode picks able to send — otherwise off, and Enter logs.
+  EnterSends? _enterSends() {
+    final send = widget.onEnterSends;
+    if (send == null || !_gatoEnabled || !_keyerEnabled || !_esmEnabled) return null;
+    final cat = widget.services.cat;
+    final esm = cat.enterSends.value;
+    if (!esm.on) return null;
+    if (widget.keyingPhone ? !cat.canPlayVoice : !cat.canKeyCw) return null;
+    return EnterSends(running: esm.running, send: send);
   }
 
   /// Rebuilds the Radio control's icon when CAT equipment is added, removed,
@@ -816,6 +840,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                       return true;
                     }
                   : null,
+              enterSends: _enterSends,
               editingQso: _selectedQso,
               suggestedQso: widget.suggestedQso,
               logRequest: widget.logRequest,
@@ -908,6 +933,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
                       onSendMessage: widget.onSendCwMessage,
                       templateContext: widget.cwTemplateContext,
                       phone: widget.keyingPhone,
+                      enterSends: _esmEnabled,
                       suppressed: _selectedQso != null,
                     )
                   : null,

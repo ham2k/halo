@@ -22,6 +22,7 @@ import { tFor } from "./i18n.ts"
 import { parsePowerCommand } from "./parsePowerCommand.ts"
 import { parseWpmCommand } from "./parseWpmCommand.ts"
 import { parseKeyerCommand } from "./parseKeyerCommand.ts"
+import { parseEnterSendsCommand } from "./parseEnterSendsCommand.ts"
 import { parseGigBandCommand } from "./parseGigBandCommand.ts"
 import { parseBandCommand } from "./parseBandCommand.ts"
 
@@ -38,6 +39,10 @@ const GATO_EXPERIMENT = 'gato'
 const KEYER_EXPERIMENT = 'keyer'
 const keyerEnabled = (ctx: HookContext) =>
   !!ctx.enabledExperiments?.includes(GATO_EXPERIMENT) && !!ctx.enabledExperiments?.includes(KEYER_EXPERIMENT)
+
+// Enter Sends Messages, on top of keying (app/experiments.yaml).
+const ESM_EXPERIMENT = 'esm'
+const esmEnabled = (ctx: HookContext) => keyerEnabled(ctx) && !!ctx.enabledExperiments?.includes(ESM_EXPERIMENT)
 
 const MODE_MATCH = /^(CW|SSB|USB|LSB|FM|AM|FT8|FT4|FT2|RTTY)$/i
 const FREQUENCY_MATCH = /^[\d.,]+$/
@@ -275,6 +280,34 @@ const KeyerCommand = {
   },
 }
 
+// ESM / ESM OFF / RUN / SP: Enter Sends Messages and which side of the
+// exchange it plays. Gated on its own experiment on top of KEYER's; the app
+// says when nothing can key.
+const EnterSendsCommand = {
+  async interpret({ input }: { input: string }, ctx: HookContext): Promise<CommandInterpretation | null> {
+    if (!esmEnabled(ctx)) return null
+    const ask = parseEnterSendsCommand(input)
+    if (!ask) return null
+    const t = tFor(ctx)
+    const which = !ask.on ? 'esmOff' : ask.running === true ? 'esmRun' : ask.running === false ? 'esmSp' : 'esmOn'
+    return {
+      describe: t(`${which}Describe`),
+      confirm: t(`${which}Confirm`),
+      commands: [{ setEnterSends: ask }],
+    }
+  },
+
+  async catalog(ctx: HookContext): Promise<CommandCatalogEntry[]> {
+    if (!esmEnabled(ctx)) return []
+    const t = tFor(ctx)
+    return [
+      { command: 'ESM', params: '(OFF)', describe: t('catalogEsm'), category: t('catalogCategory'), suggest: true },
+      { command: 'RUN', describe: t('catalogRun'), category: t('catalogCategory'), suggest: true },
+      { command: 'SP', params: '(S&P)', describe: t('catalogSp'), category: t('catalogCategory'), suggest: true },
+    ]
+  },
+}
+
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
@@ -285,5 +318,6 @@ defineExtension({
     registerHook('command', { key: 'radio-commands-power', hook: PowerCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-wpm', hook: WpmCommand, priority: 100 })
     registerHook('command', { key: 'radio-commands-keyer', hook: KeyerCommand, priority: 100 })
+    registerHook('command', { key: 'radio-commands-enter-sends', hook: EnterSendsCommand, priority: 100 })
   },
 })

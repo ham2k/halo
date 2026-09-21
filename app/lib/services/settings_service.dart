@@ -25,11 +25,13 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../config/user_agent.dart';
 import 'error_reporting_service.dart';
 import 'extension_store_settings.dart';
+import 'cw_message_set.dart';
 import 'onboarding_flows.dart';
 
 // Importers of this file name a flow in the same breath as the calls that
 // take one.
 export 'onboarding_flows.dart';
+export 'cw_message_set.dart';
 
 const _uuidGenerator = Uuid();
 
@@ -40,86 +42,6 @@ ThemeMode toggledThemeMode(ThemeMode current, Brightness platformBrightness) {
   final showingDark =
       current == ThemeMode.dark || (current == ThemeMode.system && platformBrightness == Brightness.dark);
   return showingDark ? ThemeMode.light : ThemeMode.dark;
-}
-
-/// One named set of CW messages: eight templates and eight labels, the same
-/// eight function keys under a name the operator picked. Sets are the
-/// STORAGE — `SettingsService.cwMessage` reads the active one, so every
-/// surface that names a message by its key (Settings, SET) moves with
-/// the set in use rather than addressing a ninth, hidden copy.
-///
-/// Immutable: the messages dialog edits a draft list and writes it whole on
-/// Save, and a set that could be mutated in place would let a Cancel leave
-/// half its edits behind.
-class CwMessageSet {
-  final String name;
-
-  /// Always [SettingsService.cwMessageCount] long — [fromJson] pads a short
-  /// list rather than leaving a key with nothing to read.
-  final List<String> messages;
-  final List<String> labels;
-
-  const CwMessageSet({required this.name, required this.messages, required this.labels});
-
-  static List<String> _padded(dynamic value) {
-    final list = value is List ? [for (final entry in value) entry is String ? entry : ''] : <String>[];
-    return [
-      for (var i = 0; i < SettingsService.cwMessageCount; i++) i < list.length ? list[i] : '',
-    ];
-  }
-
-  factory CwMessageSet.fromJson(Map<String, dynamic> json) => CwMessageSet(
-        name: (json['name'] as String?)?.trim().isNotEmpty == true ? json['name'] as String : '?',
-        messages: _padded(json['messages']),
-        labels: _padded(json['labels']),
-      );
-
-  Map<String, dynamic> toJson() => {'name': name, 'messages': messages, 'labels': labels};
-
-  String message(int n) => n >= 1 && n <= messages.length ? messages[n - 1] : '';
-
-  String label(int n) => n >= 1 && n <= labels.length ? labels[n - 1] : '';
-
-  CwMessageSet withMessage(int n, String value) => CwMessageSet(
-        name: name,
-        messages: [for (var i = 0; i < messages.length; i++) i == n - 1 ? value : messages[i]],
-        labels: labels,
-      );
-
-  CwMessageSet withLabel(int n, String value) => CwMessageSet(
-        name: name,
-        messages: messages,
-        labels: [for (var i = 0; i < labels.length; i++) i == n - 1 ? value : labels[i]],
-      );
-
-  CwMessageSet renamed(String value) => CwMessageSet(name: value, messages: messages, labels: labels);
-
-  /// What an install with nothing stored is offered: a Default worth keying
-  /// as it stands, and a POTA that differs from it only in the CQ — which is
-  /// what duplicating a set produces, and the shape the operator will make
-  /// the next one in. [saved] is the pre-sets F1-F8 where there were any; it
-  /// goes FIRST and is therefore the active one, so an upgrade changes
-  /// nothing about what the function keys send.
-  static List<CwMessageSet> seeded(CwMessageSet? saved) {
-    final m = t.settings.radio.cwMessages;
-    List<String> pad(Map<int, String> entries) => [
-          for (var n = 1; n <= SettingsService.cwMessageCount; n++) entries[n] ?? '',
-        ];
-    final defaults = CwMessageSet(
-      name: m.setDefault,
-      messages: pad({1: 'CQ DE {{op.call}} K', 2: '{{qso.call}} UR 5NN TU', 4: '{{op.call}}'}),
-      labels: pad({1: 'CQ', 2: '5NN', 4: '{{op.call}}'}),
-    );
-    return [
-      ?saved,
-      defaults,
-      CwMessageSet(
-        name: m.setPota,
-        messages: defaults.withMessage(1, 'CQ POTA DE {{op.call}} K').messages,
-        labels: defaults.labels,
-      ),
-    ];
-  }
 }
 
 class SettingsService extends ChangeNotifier with ExtensionStoreSettings implements SyncSettings {
@@ -887,6 +809,25 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
     }
     await _prefs.setString(_experimentsKey, jsonEncode({...states, key: entry}));
     notifyListeners();
+    if (key == 'esm' /* stored key, see experiments.yaml */ && enabled) await _offerEsmMessageSet();
+  }
+
+  /// Adds [CwMessageSet.esm] and makes it the one in use, the first time
+  /// Enter Sends Messages is turned on — ever, not each time: a set the
+  /// operator renamed, edited or deleted is theirs, and re-enabling the
+  /// experiment must not put a second copy beside it or undo the deletion.
+  /// In use because ESM keys by position, and the set in use before it was
+  /// laid out for keying by hand.
+  Future<void> _offerEsmMessageSet() async {
+    if (settingValue(radioGroup, 'esmMessageSetOffered') == true) return;
+    final sets = cwMessageSets;
+    final esm = CwMessageSet.esm();
+    final taken = sets.any((set) => set.name == esm.name);
+    await updateSettingsGroup(radioGroup, {
+      'esmMessageSetOffered': true,
+      if (!taken) cwMessageSetsKey: [for (final set in [...sets, esm]) set.toJson()],
+      if (!taken) cwMessageSetKey: esm.name,
+    });
   }
 
   /// Per-flow onboarding state, keyed by flow id ([OnboardingFlows]):
@@ -1293,6 +1234,17 @@ class SettingsService extends ChangeNotifier with ExtensionStoreSettings impleme
   bool get keyerAreaShown => settingValue(radioGroup, 'keyerAreaShown') == true;
 
   Future<void> setKeyerAreaShown(bool value) => setSettingValue(radioGroup, 'keyerAreaShown', value);
+
+  /// Enter Sends Messages (docs/design/logging-fields.md § Enter Sends
+  /// Messages): whether Enter keys the exchange's messages, and whether the
+  /// operator is running (the default — ESM's home ground) or searching and
+  /// pouncing. Device-wide like the keyer area: they describe how this
+  /// operator works the radio, not one operation.
+  bool get enterSendsMessages => settingValue(radioGroup, 'enterSendsMessages') == true;
+  bool get enterSendsRunning => settingValue(radioGroup, 'enterSendsRunning') != false;
+
+  Future<void> setEnterSends({required bool on, required bool running}) =>
+      updateSettingsGroup(radioGroup, {'enterSendsMessages': on, 'enterSendsRunning': running});
 
   /// The voice counterpart of [cwRepeatDelay], and the same rule: only
   /// memory 1 repeats, because it is the CQ.

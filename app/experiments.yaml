@@ -41,6 +41,14 @@ experiments:
     name: Keying
     description: Key CW messages, or play the radio's voice memories, on F1-F8 through a CAT-controlled radio.
     aliases: [cw, macros, voice]
+  # Enter Sends Messages (docs/design/logging-fields.md § Enter Sends
+  # Messages): Enter keys the exchange as well as logging it, N1MM-style,
+  # with the keyer area's ESM pill and ESM/RUN/SP. On top of Keying, and
+  # gated on its own because it changes what Enter does — the one key every
+  # operator relies on to log.
+  - key: esm
+    name: Enter Sends Messages
+    description: Enter keys the exchange's CW messages or voice memories as it moves through a contact.
   # A home-rail destination listing every station callsign ever logged, with
   # a virtualized table of that callsign's QSOs across all operations —
   # independent of the Operations list, which is per-operation.

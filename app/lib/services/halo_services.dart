@@ -49,6 +49,7 @@ import 'opened_files_service.dart';
 import 'geoshape_service.dart';
 import 'cat/equipment.dart' show EquipmentNode, EquipmentStatus, kCategoryTransceiver;
 import 'cat/cat_service.dart';
+import 'cat/keyer_commands.dart';
 import 'cat/equipment_details.dart';
 import 'cat/radio_proof.dart';
 import 'peer/ble/peer_ble.dart';
@@ -1789,33 +1790,8 @@ class HaLoServices {
         if (watts == null) return null;
         radio.setVfo('vfoA', power: watts);
         return null;
-      case 'setKeyerSpeed':
-        // WPM command ("20WPM"): straight to radio1's keyer. Unlike power
-        // there is no app-side value to fall back on — the speed is the
-        // radio's — so with nothing connected that can key, the command
-        // fails out loud rather than confirming a change nothing heard.
-        final wpm = params?['wpm'];
-        if (wpm is! num) return null;
-        // The hooks decline while the experiment is off, but an action can
-        // still arrive — an interpretation computed before the flip, or an
-        // extension of its own — and must not reach the radio quietly.
-        if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) {
-          return (text: t.commands.keyerExperimentOff, failed: true);
-        }
-        return cat.setKeyerSpeed(wpm.round()) ? null : (text: t.commands.noCwKeyer, failed: true);
-      case 'showKeyer':
-        // KEYER / MACROS: the keyer area listens for this. With the
-        // experiment off no area is mounted to hear it; with nothing that can
-        // key there is nothing for it to do — say so rather than confirm.
-        if (!settings.experimentEnabled('keyer') /* stored key, see experiments.yaml */) {
-          return (text: t.commands.keyerExperimentOff, failed: true);
-        }
-        if (!cat.canKeyCw && !cat.canPlayVoice) return (text: t.commands.noKeyer, failed: true);
-        // The area lives in an operation's logging panel; from Home there is
-        // nothing to show, and confirming would be a lie.
-        if (currentOperationContext == null) return (text: t.commands.keyerNeedsOperation, failed: true);
-        cat.showKeyerArea();
-        return null;
+      case 'setKeyerSpeed' || 'showKeyer' || 'setEnterSends':
+        return keyerCommandAction(this, action, params);
       case 'openSettings':
         // The setting can't be typed on one line (multiselect, account,
         // secret), the operator named it without a value, or the query

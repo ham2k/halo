@@ -1,0 +1,88 @@
+// Copyright ©️ 2026 Sebastian Delmont <sd@ham2k.com>
+// SPDX-License-Identifier: MPL-2.0
+//
+// Enter Sends Messages: which messages an Enter keys, and what it does to the
+// entry afterwards, for where the contact stands. The panel supplies the
+// facts and carries out the answer; the app decides whether ESM is on, which
+// side of the pileup the operator is on, and what each message says
+// (docs/design/logging-fields.md § Enter Sends Messages).
+
+/// What a message IS in an exchange, independent of which key holds it — the
+/// app maps each to its function key.
+enum EsmMessage { cq, exchange, thanks, myCall, hisCall, again }
+
+/// What the entry does once the messages are handed over.
+enum EsmThen {
+  /// Nothing — the call field keeps focus and nothing is logged.
+  stay,
+
+  /// Focus moves to the first exchange field still empty, or the first one
+  /// after the call when none is.
+  toExchange,
+
+  /// The contact is logged, as a plain Enter would.
+  log,
+}
+
+typedef EsmStep = ({List<EsmMessage> send, EsmThen then});
+
+/// Whether ESM is on, and which side of the exchange the operator is on.
+/// [LoggingSession.enterSends] answering null means off — Enter logs, as always.
+class EnterSends {
+  const EnterSends({required this.running, required this.send});
+
+  /// Run (calling CQ, answering callers) rather than Search & Pounce.
+  final bool running;
+
+  /// Keys [messages], in order, rendered against [qso] — the draft as it is at
+  /// the keypress, since a log that follows wipes it before any render would
+  /// finish.
+  final void Function(List<EsmMessage> messages, Map<String, dynamic> qso) send;
+}
+
+/// The step an Enter takes, or null when ESM has nothing to say and Enter
+/// means what it always does.
+///
+/// [answered] is the contact's own progress: the first step (calling the
+/// station, or giving a caller their exchange) has already gone out for the
+/// call now in the field. It is what separates the two Enters of an exchange,
+/// rather than which field has focus, so a second Enter from the call field —
+/// no exchange field to move to, or the operator went back to it — still
+/// completes the contact.
+///
+/// [exchangeCopied] is whether ANY exchange field holds something, not
+/// whether all do: an exchange with a part the other station legitimately
+/// omits (a DX station's NAQP location, an optional pick) would otherwise ask
+/// again forever and never log. Asking again is for having copied nothing.
+///
+/// [hasExchange] is whether the contact has fields to copy beyond the reports.
+/// Run with none is one Enter: the caller gets their exchange and a thanks,
+/// and the contact is logged, since nothing is left to receive. S&P is always
+/// two: the station has to be called before there is anything to log.
+EsmStep? esmStep({
+  required bool running,
+  required bool callEmpty,
+  required bool canLog,
+  required bool answered,
+  required bool hasExchange,
+  required bool exchangeCopied,
+}) {
+  if (callEmpty) {
+    return running ? (send: const [EsmMessage.cq], then: EsmThen.stay) : null;
+  }
+  // Not a callsign — the refusal a plain Enter gives is the right answer.
+  if (!canLog) return null;
+  if (running) {
+    if (!hasExchange) {
+      return (send: const [EsmMessage.hisCall, EsmMessage.exchange, EsmMessage.thanks], then: EsmThen.log);
+    }
+    if (!answered) return (send: const [EsmMessage.hisCall, EsmMessage.exchange], then: EsmThen.toExchange);
+    if (!exchangeCopied) return (send: const [EsmMessage.again], then: EsmThen.toExchange);
+    return (send: const [EsmMessage.thanks], then: EsmThen.log);
+  }
+  if (!answered) return (send: const [EsmMessage.myCall], then: EsmThen.toExchange);
+  // Nothing to ask again for in S&P: the station is the one running, and
+  // the operator's missing copy is theirs to ask for by hand.
+  if (hasExchange && !exchangeCopied) return (send: const [], then: EsmThen.toExchange);
+  return (send: const [EsmMessage.exchange], then: EsmThen.log);
+}

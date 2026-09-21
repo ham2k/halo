@@ -1157,6 +1157,11 @@ so an upgrade never changes what the keys send. The editor is a DRAFT of every s
 header picks one, its rows hand their edits up rather than storing them, and Save writes the sets
 and the pick together — so Cancel abandons work in a set the operator has already left, which a
 dialog that stored as it went could not do. New Set duplicates what is on screen, edits included.
+Turning Enter Sends Messages on (`EXP ESM`) adds one more, **ESM Messages**, and puts it in use: ESM
+reads messages by position, N1MM's — F1 CQ, F2 exchange, F3 thanks, F4 my call, F5 their call, F8
+again ([logging-fields.md](logging-fields.md) § Enter Sends Messages) — which the Default, whose F2
+answers a caller in one key, is not laid out for. It is added once, ever: a set the operator
+renamed or deleted stays that way when the experiment comes back.
 
 **Message 1 can repeat**, and only message 1: it is the CQ, and a repeating exchange would key over
 the contact it is answering. `cwRepeatDelay` (and `voiceRepeatDelay` for the memories) is the wait

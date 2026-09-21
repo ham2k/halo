@@ -922,6 +922,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // thing a repeating CQ must never do. Pressing F1 itself lands here
     // first and then arms a fresh chain below.
     services.cat.cancelKeyerRepeat();
+    // An ESM voice sequence is a chain too, and ends the same way.
+    services.cat.cancelVoiceSequence();
     // And the memory on the air goes with it. Typing is the operator working
     // the contact, which a CQ still playing over the top of is worse than a
     // message cut short — so the play is stopped without CLAIMING the key,
@@ -983,6 +985,46 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     return true;
   }
 
+  /// The function key each Enter Sends Messages message lives on — N1MM's
+  /// layout, which the ESM message set follows (`CwMessageSet.esm`).
+  static const esmMessageKeys = {
+    EsmMessage.cq: 1,
+    EsmMessage.exchange: 2,
+    EsmMessage.thanks: 3,
+    EsmMessage.myCall: 4,
+    EsmMessage.hisCall: 5,
+    EsmMessage.again: 8,
+  };
+
+  /// Keys what an Enter picked (logging-fields.md § Enter Sends Messages),
+  /// through the keyer the draft's mode picks, as the function keys would.
+  /// A slot with nothing in it is skipped rather than refused: a set with no
+  /// TU still completes the contact.
+  void _sendEsmMessages(List<EsmMessage> messages, Map<String, dynamic> qso) {
+    final services = widget.services;
+    final keys = [for (final message in messages) esmMessageKeys[message]!];
+    // What a key does before it sends, for an Enter that never passed
+    // through [_onCwKeyEvent] — an on-screen keyboard's.
+    services.cat.cancelKeyerRepeat();
+    services.cat.cancelVoiceSequence();
+    if (superModeForMode(qso['mode'] as String?) == 'Phone') {
+      // The operator says the other station's call: no memory can hold it.
+      final memories = [
+        for (final n in keys)
+          if (n != esmMessageKeys[EsmMessage.hisCall] && n <= services.cat.voiceMemoryCount) n,
+      ];
+      if (memories.isEmpty || (services.cat.voiceActivity.value?.recording ?? false)) return;
+      services.cat.playVoiceSequence(memories);
+      return;
+    }
+    final templates = [
+      for (final n in keys)
+        if (services.settings.cwMessage(n).trim().isNotEmpty) (n: n, template: services.settings.cwMessage(n)),
+    ];
+    if (templates.isEmpty) return;
+    unawaited(_sendCwMessages(templates, qso: qso));
+  }
+
   /// The keyer area's message buttons: the same send the function keys make.
   void _sendCwMessageNumber(int n) {
     final template = widget.services.settings.cwMessage(n);
@@ -1004,55 +1046,69 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// then hands the text to the radio. A template that does not parse is
   /// the operator's own typo, shown where they will see it rather than sent
   /// as-is with the braces keyed out in Morse.
-  Future<void> _sendCwMessage(int n, String template) async {
+  Future<void> _sendCwMessage(int n, String template) => _sendCwMessages([(n: n, template: template)]);
+
+  /// [_sendCwMessage] for several messages keyed as ONE — Enter Sends
+  /// Messages' "his call, then the exchange" — so they go out back to back
+  /// as a single entry in the queue and the keyer area, not as a message and
+  /// a second one waiting behind it. [qso] is the draft to render against
+  /// when the caller holds a newer one than [_latestDraftQso] (ESM's, taken
+  /// at the Enter that may log and wipe it). Any template failing keys
+  /// nothing at all: half an exchange is not an exchange.
+  Future<void> _sendCwMessages(List<({int n, String template})> messages, {Map<String, dynamic>? qso}) async {
     final services = widget.services;
     final ctx = panelRenderContext;
-    String? text;
-    String? failure;
-    try {
-      text = await services.extensions.renderTemplate(
-        template,
-        operation: ctx.operation == null ? null : operationHookArgs(ctx.operation!),
-        qso: _latestDraftQso ?? ctx.qso,
-        qsoCount: ctx.qsoCount,
-      );
-    } on TemplateError catch (e) {
-      failure = e.message;
-    } catch (e, st) {
-      // A hook timeout or a dead runtime — reported, and ALSO said here:
-      // the operator pressed a key and nothing keyed, which the console
-      // alone would leave them to discover on the air.
-      ErrorReportingService.report(e, st, context: 'cw:render-message');
-      failure = '$e';
+    final parts = <String>[];
+    for (final (:n, :template) in messages) {
+      String? text;
+      String? failure;
+      try {
+        text = await services.extensions.renderTemplate(
+          template,
+          operation: ctx.operation == null ? null : operationHookArgs(ctx.operation!),
+          qso: qso ?? _latestDraftQso ?? ctx.qso,
+          qsoCount: ctx.qsoCount,
+        );
+      } on TemplateError catch (e) {
+        failure = e.message;
+      } catch (e, st) {
+        // A hook timeout or a dead runtime — reported, and ALSO said here:
+        // the operator pressed a key and nothing keyed, which the console
+        // alone would leave them to discover on the air.
+        ErrorReportingService.report(e, st, context: 'cw:render-message');
+        failure = '$e';
+      }
+      // Leaving the operation while the render was in flight is leaving the
+      // message behind too — nothing goes on the air from a view that is gone.
+      if (!mounted) {
+        services.cat.cancelKeyerRepeat();
+        return;
+      }
+      if (failure != null) {
+        services.statusBar.showNotice(
+          key: 'cw-message-$n',
+          icon: 'alert-circle-outline',
+          text: context.t.commands.cwMessageError(n: n, error: failure),
+          persist: false,
+        );
+        services.cat.cancelKeyerRepeat();
+        return;
+      }
+      if (text == null) {
+        // No runtime to render with (restarting, or failed to load): a key
+        // that keys nothing must not look like a key that worked.
+        services.statusBar.showNotice(
+          key: 'cw-message-$n',
+          icon: 'alert-circle-outline',
+          text: context.t.commands.cwMessageNotRendered(n: n),
+          persist: false,
+        );
+        services.cat.cancelKeyerRepeat();
+        return;
+      }
+      if (text.trim().isNotEmpty) parts.add(text.trim());
     }
-    // Leaving the operation while the render was in flight is leaving the
-    // message behind too — nothing goes on the air from a view that is gone.
-    if (!mounted) {
-      services.cat.cancelKeyerRepeat();
-      return;
-    }
-    if (failure != null) {
-      services.statusBar.showNotice(
-        key: 'cw-message-$n',
-        icon: 'alert-circle-outline',
-        text: context.t.commands.cwMessageError(n: n, error: failure),
-        persist: false,
-      );
-      services.cat.cancelKeyerRepeat();
-      return;
-    }
-    if (text == null) {
-      // No runtime to render with (restarting, or failed to load): a key
-      // that keys nothing must not look like a key that worked.
-      services.statusBar.showNotice(
-        key: 'cw-message-$n',
-        icon: 'alert-circle-outline',
-        text: context.t.commands.cwMessageNotRendered(n: n),
-        persist: false,
-      );
-      services.cat.cancelKeyerRepeat();
-      return;
-    }
+    final text = parts.join(' ');
     // A chain waits for the message to STOP keying before its next send, so
     // a send that keys nothing — a failed render, a dead runtime, a message
     // that sanitizes away, a radio gone between repeats — would leave it
@@ -1074,7 +1130,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     // send, so the wait starts from the message ENDING rather than from the
     // keypress.
     final delay = services.settings.cwRepeatDelay;
-    if (n == 1 && delay > Duration.zero) {
+    if (messages.length == 1 && messages.single.n == 1 && delay > Duration.zero) {
       services.cat.armKeyerRepeat(delay: delay, text: text, send: () => _sendCwMessageNumber(1));
     }
   }
@@ -2674,6 +2730,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
             operation: operation,
             services: widget.services,
             onSendCwMessage: _sendCwMessageFromArea,
+            onEnterSends: _sendEsmMessages,
             cwTemplateContext: panelRenderContext,
             keyingPhone: _keyingPhone,
             qsos: qsos,

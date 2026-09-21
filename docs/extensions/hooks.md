@@ -847,7 +847,7 @@ interface CommandHook {
 // CommandInterpretation: {expectsParams?, mixedCase?, error?, describe?, confirm?, commands?: CommandAction[]}
 // CommandCatalogEntry: {command, describe, params?, category?, needsOperation?, expectsParams?, suggest?}
 // CommandAction (closed set): {setVfo?, setPower?, updateQso?, addQso?,
-//   setKeyerSpeed?, showKeyer?, sendSpots?, syncAll?, updateSettings?, updateSetting?, openSettings?,
+//   setKeyerSpeed?, showKeyer?, setEnterSends?, sendSpots?, syncAll?, updateSettings?, updateSetting?, openSettings?,
 //   updateOperation?, markSegment?, setCallField?, reloadDataFiles?, devNotice?, devStatus?,
 //   devProgress?, devHammer?, devSplash?, devOnboard?, devTester?, devPopup?,
 //   devTimeTravel?, toggleExperiment?}
