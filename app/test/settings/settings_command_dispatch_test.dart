@@ -5,7 +5,7 @@
 //
 // Everything up to `handleCommandAction` is covered elsewhere: the hook
 // resolves the setting (settings_command_test), the actions reach dispatch
-// (logging_controls_test), and the dialog renders and commits
+// (logging_controls_command_test), and the dialog renders and commits
 // (settings_target_dialog_test). This is the seam between them, where a
 // command can interpret perfectly, describe perfectly, clear the field, print
 // its confirmation — and do nothing at all.

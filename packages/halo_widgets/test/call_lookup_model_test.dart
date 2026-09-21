@@ -3,7 +3,7 @@
 //
 // CallLookupModel on its own — which call an answer is for, and what happens
 // to an answer for a call the operator has moved past. The widget suite in
-// logging_controls_test.dart exercises the same rules through the fields;
+// logging_controls_lookup_test.dart exercises the same rules through the fields;
 // these pin the model's contract where a panel would hide which side moved.
 
 import 'package:flutter_test/flutter_test.dart';

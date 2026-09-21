@@ -7,7 +7,7 @@
 // replaced the field and types into something the operator cannot see.
 //
 // These pin the protocol itself. The rows-in-context behaviour lives in
-// logging_controls_test.dart and home_quick_lookup_test.dart.
+// logging_controls_focus_test.dart and home_quick_lookup_test.dart.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';

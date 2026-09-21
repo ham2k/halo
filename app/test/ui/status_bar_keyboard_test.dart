@@ -53,8 +53,8 @@ void main() {
   /// `debugDefaultTargetPlatformOverride` must be back to null before the test
   /// body returns — the framework's invariant check runs right after, ahead of
   /// any tearDown/addTearDown callback — hence try/finally rather than a shared
-  /// setUp/tearDown (same reasoning as logging_controls_test.dart's mobile
-  /// autocorrect group).
+  /// setUp/tearDown (same reasoning as the mobile autocorrect group in
+  /// logging_controls_focus_test.dart).
   Future<void> on(TargetPlatform platform, Future<void> Function() body) async {
     debugDefaultTargetPlatformOverride = platform;
     try {

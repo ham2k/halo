@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // LoggingEntryRow on its own — the row's placement and sizing contract, with
-// no panel around it. The widget suite in logging_controls_test.dart walks
-// the same row through the panel; these pin what the row itself promises
+// no panel around it. The widget suite walks the same row through the panel
+// (logging_controls_focus_test.dart); these pin what the row itself promises
 // where a panel would hide which side moved.
 
 import 'package:flutter/material.dart';

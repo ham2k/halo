@@ -3,7 +3,7 @@
 //
 // RadioControlModel on its own — the frequency/band/mode rules and the VFO
 // mirror, with no panel around them. The widget suite in
-// logging_controls_test.dart exercises the same rules through the fields;
+// logging_controls_radio_test.dart exercises the same rules through the fields;
 // these pin the model's contract where a panel would hide which side moved.
 
 import 'package:flutter/material.dart';
