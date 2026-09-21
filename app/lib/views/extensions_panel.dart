@@ -702,6 +702,12 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
               // the way out.
               final isRevoked = extensionService.isExtensionRevoked(info);
               final revokedNote = isRevoked ? (revoked[info.key]?['note'] ?? '') : '';
+              // A bundle the engine refused. Said on the row because the
+              // extension is installed, switched on, and doing nothing — and
+              // the one dialog that names it passes by once. It keeps its
+              // switch, unlike a revoked release: the operator turning it off
+              // is a choice that still means something once a later version
+              // lifts the refusal.
               rows.add(ListTile(
                 key: rowKey,
                 leading: icon,
@@ -719,6 +725,7 @@ class ExtensionsPanelState extends State<ExtensionsPanel> {
                 subtitle: _DescriptionLine(
                   description: [
                     if (isRevoked) t.extensionsPanel.revokedBadge,
+                    if (extensionService.isExtensionRefused(info)) t.extensionsPanel.refusedBadge,
                     if (hasUpdate(info.key)) t.extensionsPanel.updateAvailableBadge,
                     if (revokedNote.isNotEmpty) revokedNote,
                     ?description,

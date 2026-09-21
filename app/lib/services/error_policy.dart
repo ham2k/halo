@@ -40,7 +40,8 @@ import 'connectivity_service.dart' show ConnectivityService;
 import 'peer/peer_link_types.dart' show PeerMediaDialFailure;
 import 'catalog_service.dart' show CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileRemoveHookFailed;
-import 'extension_catalog_migration.dart' show CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
+import 'extension_catalog_migration.dart'
+    show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
 import 'extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
@@ -174,6 +175,17 @@ class ErrorPolicy {
           'audience is whoever changes the service graph',
       disposition: ErrorDisposition.report,
       matches: (error, _) => error is CatalogNotWired || error is SettingsNotWired,
+    ),
+    ErrorRule(
+      id: 'bundle-would-not-evaluate',
+      reason: 'a downloaded extension the JS engine refused, now kept out of the runtime so the '
+          'other thirty can load. The operator is told in the dialog and on the panel row, so it '
+          'uploads without a notice — and it has to upload, because a refused bundle never loads '
+          'again and its boot failure stops arriving under extensions:restart: the rate here is '
+          'the only thing that tells one bad download from a release the catalog is serving '
+          'broken to everybody',
+      disposition: ErrorDisposition.report,
+      matches: (error, _) => error is BundleWouldNotEvaluate,
     ),
     ErrorRule(
       id: 'upgrade-left-no-runtime',

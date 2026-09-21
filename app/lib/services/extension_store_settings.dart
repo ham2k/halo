@@ -110,6 +110,24 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     notifyListeners();
   }
 
+  /// The installed extensions that would not evaluate, and the version of
+  /// each that failed ({key: version}).
+  ///
+  /// Keyed by VERSION rather than by key alone: one bundle that will not load
+  /// takes the whole runtime down with it, so it has to be kept out of the
+  /// set — but the next release of the same extension is a different bundle
+  /// and deserves its chance. A catalog that fixes the fault is then picked up
+  /// by an ordinary update, with nobody having to notice anything.
+  static const _extensionRefusedKey = 'extensionRefused';
+
+  Map<String, String> get extensionRefused =>
+      {for (final e in jsonMapPref(_extensionRefusedKey).entries) if (e.value is String) e.key: e.value as String};
+
+  Future<void> setExtensionRefused(Map<String, String> refused) async {
+    await prefs.setString(_extensionRefusedKey, jsonEncode(refused));
+    notifyListeners();
+  }
+
   /// When each currently-disabled extension was disabled ({key: epochMillis}).
   /// A disabled extension's downloaded data (data files) is KEPT so a
   /// re-enable is instant; only after it's been disabled for the grace
@@ -212,6 +230,13 @@ mixin ExtensionStoreSettings on ChangeNotifier {
     final disabledSince = extensionDisabledSince;
     if (disabledSince.remove(key) != null) {
       await prefs.setString(_extensionDisabledSinceKey, jsonEncode(disabledSince));
+    }
+    // Otherwise a reinstall of the same version lands inert, and
+    // uninstall-and-reinstall is the operator's only repair for the corrupt
+    // download the attempt limit exists to absorb.
+    final refused = extensionRefused;
+    if (refused.remove(key) != null) {
+      await prefs.setString(_extensionRefusedKey, jsonEncode(refused));
     }
     // Left behind, the record would waive the `ham2k-` refusal for whatever
     // bundle next claims this key from a file.

@@ -33,6 +33,48 @@ void main() {
     return (extensions, statusBar);
   }
 
+  test('a queued backoff restart does not make a running generation unhealthy', () async {
+    // `_start` installs the host and keeps going — the activation wait, the
+    // account-flag refresh that reaches the keychain. A throw there queues a
+    // backoff restart over a generation that is loaded and serving hooks,
+    // and the upgrade reads this to decide whether what it installed is
+    // running. Counting a queued restart as unhealthy makes one keychain
+    // prompt revert a perfectly good upgrade.
+    final (extensions, _) = await serviceWithStatusBar();
+
+    await withErrorHooks(() async {
+      extensions.debugScheduleRestart('start failed: keychain refused');
+    });
+
+    expect(extensions.runtimeIsHealthy, isTrue);
+    // Cancels the timer the backoff armed, so nothing fires past the test.
+    await extensions.restartRuntime();
+  });
+
+  test('a restart forgets the boot failure the last generation recorded', () async {
+    // The name outliving its generation is how an innocent extension gets
+    // refused for good: a crash later in the session also schedules a
+    // restart, and the upgrade would read whatever name was lying around as
+    // the bundle that just killed the runtime.
+    final (extensions, _) = await serviceWithStatusBar();
+    extensions.debugSetAvailableExtensions(const [
+      ExtensionInfo(
+        key: 'ham2k-qrz',
+        file: 'ham2k-qrz.js',
+        source: ExtensionSource.installed,
+        core: false,
+        name: 'QRZ',
+        version: '0.2.0',
+      ),
+    ]);
+    extensions.debugLastStartFailure = 'evaluating ham2k-qrz: TypeError';
+    expect(extensions.lastStartFailureKey, 'ham2k-qrz');
+
+    await extensions.restartRuntime();
+
+    expect(extensions.lastStartFailureKey, isNull);
+  });
+
   test('a restart takes the old generation\'s progress bar with it', () async {
     final (extensions, statusBar) = await serviceWithStatusBar();
     statusBar.setProgress(key: 'ham2k-pota:all-parks', text: 'Downloading parks');

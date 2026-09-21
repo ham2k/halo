@@ -444,6 +444,12 @@ class Translations$extensionsPanel$en {
 	/// en: 'Not carried over: ${names}.'
 	String upgradeDoneUnserved({required Object names}) => 'Not carried over: ${names}.';
 
+	/// en: 'Would not run: ${names}.'
+	String upgradeDoneRefused({required Object names}) => 'Would not run: ${names}.';
+
+	/// en: 'They are still installed and marked in Settings › Extensions — updating them there will bring them back.'
+	String get upgradeDoneRefusedHint => 'They are still installed and marked in Settings › Extensions — updating them there will bring them back.';
+
 	/// en: 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.'
 	String get upgradeDoneUnservedHint => 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.';
 
@@ -494,6 +500,9 @@ class Translations$extensionsPanel$en {
 
 	/// en: 'Revoked'
 	String get revokedBadge => 'Revoked';
+
+	/// en: 'Did not load'
+	String get refusedBadge => 'Did not load';
 
 	/// en: 'That download is not over a secure connection.'
 	String get downloadNotHttps => 'That download is not over a secure connection.';
@@ -6820,6 +6829,8 @@ extension on Translations {
 			'extensionsPanel.upgradeDoneTitle' => 'Your extensions are ready',
 			'extensionsPanel.upgradeDoneBody' => 'They now come from the Ham2K extension catalog, so they can be updated without waiting for a new version of the app.',
 			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'Not carried over: ${names}.',
+			'extensionsPanel.upgradeDoneRefused' => ({required Object names}) => 'Would not run: ${names}.',
+			'extensionsPanel.upgradeDoneRefusedHint' => 'They are still installed and marked in Settings › Extensions — updating them there will bring them back.',
 			'extensionsPanel.upgradeDoneUnservedHint' => 'The catalog has no direct replacement for these, so look there for extensions that cover what you used.',
 			'extensionsPanel.upgradeFailedTitle' => 'Your extensions were not upgraded',
 			'extensionsPanel.upgradeFailedBody' => 'We couldn\'t finish upgrading your extensions, so we reverted the upgrade. We will offer it again next time you open the app.',
@@ -6837,6 +6848,7 @@ extension on Translations {
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'The catalog has no version ${version} of ${key}.',
 			'extensionsPanel.catalogLinkUnknown' => 'That catalog link does not name an extension version.',
 			'extensionsPanel.revokedBadge' => 'Revoked',
+			'extensionsPanel.refusedBadge' => 'Did not load',
 			'extensionsPanel.downloadNotHttps' => 'That download is not over a secure connection.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => '${source} could not be reached for that extension.',
 			'extensionsPanel.detailsAction' => 'Details',
@@ -7223,11 +7235,11 @@ extension on Translations {
 			'operation.import.importAdifAction' => 'Import QSOs from ADIF',
 			'operation.import.settingsButton' => 'Listen settings',
 			'operation.import.settingsTitle' => 'Listen for Other Apps',
+			_ => null,
+		} ?? switch (path) {
 			'operation.import.protocolAddressLabel' => 'Address',
 			'operation.import.protocolPortLabel' => 'Port',
 			'operation.import.protocolPortInvalid' => 'Enter a port between 1 and 65535',
-			_ => null,
-		} ?? switch (path) {
 			'operation.import.protocolAddressInvalid' => 'Enter a valid IP address (e.g. 127.0.0.1 or 239.239.0.2)',
 			'operation.import.protocolStatusReceiving' => 'Receiving data',
 			'operation.import.protocolStatusNoData' => 'No data received recently',
@@ -7737,11 +7749,11 @@ extension on Translations {
 			'settings.peers.screenSharedTo' => ({required Object devices}) => 'Shown on ${devices}',
 			'settings.peers.screenSharedToNobody' => 'Not being shown',
 			'settings.peers.screenStopSharing' => ({required Object name}) => 'Stop sharing ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developerMode' => 'Developer Mode',
 			'settings.syncPanel.configuration' => 'Sync Configuration',
 			'settings.syncPanel.enableTitle' => 'Sync with Ham2K Log Filer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.enabledDescription' => 'Backing up and syncing your log across devices',
 			'settings.syncPanel.disabledDescription' => 'Off — staying on this device only',
 			'settings.syncPanel.syncing' => 'Syncing',
@@ -8251,11 +8263,11 @@ extension on Translations {
 			'commandDialog.sectionGoTo' => 'Go to',
 			'commandDialog.sectionOperations' => 'Operations',
 			'commandDialog.goHome' => 'Home',
+			_ => null,
+		} ?? switch (path) {
 			'commandDialog.goSettings' => 'Settings',
 			'commandDialog.goNewOperation' => 'New operation',
 			'commandDialog.runTyped' => ({required Object text}) => 'Run “${text}”',
-			_ => null,
-		} ?? switch (path) {
 			'commandDialog.sectionSuggestions' => 'Try',
 			'commandDialog.lookingUp' => 'Looking up callsign…',
 			'expiredBuild.title' => 'This build has expired',

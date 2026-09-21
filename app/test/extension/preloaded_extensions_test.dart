@@ -262,6 +262,63 @@ void main() {
       expect(extensions.isExtensionAvailable(infoFor(extensions, 'ham2k-lofi')), isTrue);
     });
 
+    test('a refusal never reaches the built-in that shares its key', () async {
+      // `ham2k-lookup` is both a bundle the app ships and one the catalog
+      // serves. A record written for the downloaded copy must not take the
+      // app's own out of the set — the two differ in version today, and
+      // nothing enforces that they always will.
+      final (extensions, settings) = await harness();
+      const asset = ExtensionInfo(
+          key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup', version: '0.0.1');
+      const installed = ExtensionInfo(
+        key: 'ham2k-lookup',
+        file: 'ham2k-lookup.js',
+        source: ExtensionSource.installed,
+        core: false,
+        name: 'Lookup',
+        version: '0.0.1',
+      );
+      await settings.setExtensionRefused({'ham2k-lookup': '0.0.1'});
+
+      expect(extensions.isExtensionRefused(asset), isFalse, reason: 'the app would ship missing part of itself');
+      expect(extensions.isExtensionRefused(installed), isTrue);
+    });
+
+    test('a refusal is judged against the version that failed, not against its absence', () async {
+      // `extensionRefused[key]` is null for an extension nobody refused, and
+      // a built-in's version is null too. Compared directly, those two nulls
+      // are equal — which withdraws every extension the app ships, from an
+      // empty refusal map.
+      final (extensions, _) = await harness();
+      expect(extensions.isExtensionActive(infoFor(extensions, 'pota')), isTrue);
+    });
+
+    test('a bundle the engine refused is kept out of the runtime but stays listed', () async {
+      // One bundle that will not evaluate takes the whole runtime with it,
+      // so it must not reach the load set. It must still reach the PANEL:
+      // unavailable hides the row, and an extension that stopped working is
+      // the one the operator comes to the panel to ask about — and updating
+      // it there is how the refusal is lifted.
+      final (extensions, settings) = await harness();
+      await moveToCatalog(settings);
+      final twin = infoFor(extensions, 'ham2k-pota');
+      await settings.setExtensionRefused({twin.key: twin.version ?? ''});
+
+      expect(extensions.isExtensionActive(twin), isFalse, reason: 'it would take the runtime down');
+      expect(extensions.isExtensionAvailable(twin), isTrue, reason: 'the panel row is how it gets fixed');
+    });
+
+    test('and is offered again once the catalog serves a different version', () async {
+      // Keyed by version so a fixed release recovers by itself: an ordinary
+      // update installs it and the refusal no longer matches.
+      final (extensions, settings) = await harness();
+      await moveToCatalog(settings);
+      final twin = infoFor(extensions, 'ham2k-pota');
+      await settings.setExtensionRefused({twin.key: 'the-version-that-failed'});
+
+      expect(extensions.isExtensionActive(twin), isTrue);
+    });
+
     test('an installed extension is never withdrawn while the experiment is on', () async {
       // The whole point: the catalog's copies replace the built-ins, so
       // withdrawing them too would leave the app with nothing at all.

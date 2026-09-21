@@ -153,8 +153,26 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
     // the upgrade rather than failing it, so this is also where its withdrawal
     // is said.
     final unserved = done ? unservedBuiltInNames(widget.services.extensions) : const <String>[];
+    // Whatever the outcome: a bundle put aside stays out of the runtime even
+    // when the upgrade reverted around it, so the operator is told which
+    // extension that was on the dialog they are actually reading.
+    final refused = refusedExtensionNames(widget.services.extensions);
     // What they lost is the one line they have to carry out of this dialog —
     // everything around it is reassurance — so it is the one line in bold.
+    // The two losses get their own sentences: nothing replaces a built-in the
+    // catalog does not serve, while a refused one is installed and an update
+    // away, and telling them to go looking for a substitute sends them
+    // nowhere.
+    final refusedSpans = <InlineSpan>[
+      if (refused.isNotEmpty) ...[
+        const TextSpan(text: '\n\n'),
+        TextSpan(
+          text: t.upgradeDoneRefused(names: refused.join(', ')),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        TextSpan(text: ' ${t.upgradeDoneRefusedHint}'),
+      ],
+    ];
     final doneBody = TextSpan(children: [
       TextSpan(text: t.upgradeDoneBody),
       if (unserved.isNotEmpty) ...[
@@ -165,6 +183,7 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
         ),
         TextSpan(text: ' ${t.upgradeDoneUnservedHint}'),
       ],
+      ...refusedSpans,
     ]);
     final (title, body) = switch (outcome) {
       UpgradeOutcome.done => (t.upgradeDoneTitle, doneBody.toPlainText()),
@@ -187,20 +206,24 @@ class _ExtensionUpgradeGateState extends State<ExtensionUpgradeGate> {
       // operator could do with the difference, and nothing of theirs moved.
       UpgradeOutcome.notWired => (t.upgradeFailedTitle, t.upgradeUnavailableBody),
     };
+    // One text for both places it can be shown, so a notice never says less
+    // than the dialog it stands in for — the names of what stayed out are
+    // the one line the operator has to carry away.
+    final shown = done ? doneBody : TextSpan(children: [TextSpan(text: body), ...refusedSpans]);
     if (!mounted || !navigator.mounted) {
       // The screen the dialog would have used is gone — a rebuild, a hot
       // reload, the operator navigating — and they agreed to an operation
       // that withdraws their extensions. The status bar outlives this widget,
       // and a notice stays in Recent Notices, so what happened is still
       // findable rather than dropped on the floor.
-      widget.services.statusBar.showNotice(key: 'extensions:upgradeResult', title: title, text: body);
+      widget.services.statusBar.showNotice(key: 'extensions:upgradeResult', title: title, text: shown.toPlainText());
       return;
     }
     await showDialog<void>(
       context: navigator,
       builder: (context) => HaloDialog(
         title: Text(title),
-        content: done ? Text.rich(doneBody) : Text(body),
+        content: Text.rich(shown),
         cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.done)),
       ),
     );

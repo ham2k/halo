@@ -45,7 +45,7 @@ class _PartialAdoption extends ExtensionServiceWithFakeHost {
   Future<void> reloadAvailableExtensions() async => reloads++;
 
   @override
-  Future<void> restartRuntime() async => restarts++;
+  Future<void> restartRuntime({bool fresh = false}) async => restarts++;
 }
 
 /// Every twin lands and the first restart brings nothing back; [revives] says
@@ -55,6 +55,7 @@ class _RuntimeNeverComesBack extends ExtensionServiceWithFakeHost {
   _RuntimeNeverComesBack({this.revives = false});
 
   final bool revives;
+
   int restarts = 0;
 
   @override
@@ -70,7 +71,62 @@ class _RuntimeNeverComesBack extends ExtensionServiceWithFakeHost {
   Future<void> reloadAvailableExtensions() async {}
 
   @override
-  Future<void> restartRuntime() async => restarts++;
+  Future<void> restartRuntime({bool fresh = false}) async => restarts++;
+}
+
+/// The runtime comes back, and something after the host was installed threw:
+/// the host is in place and a backoff restart is queued behind it.
+class _BootsThenSchedulesRestart extends ExtensionServiceWithFakeHost {
+  _BootsThenSchedulesRestart() : super(FakeExtensionHost({}));
+
+  @override
+  Future<bool> preloadShippedExtensions() async => false;
+
+  @override
+  Future<({bool complete, bool landed})> adoptTwins() async => (landed: true, complete: true);
+
+  @override
+  Future<void> reloadAvailableExtensions() async {}
+
+  @override
+  Future<void> restartRuntime({bool fresh = false}) async {}
+
+  @override
+  String? get lastStartFailureKey => null;
+}
+
+/// One twin will not evaluate. The runtime comes back only once that bundle
+/// has been put aside, which is what a quarantine has to be worth.
+class _OneBadBundle extends ExtensionServiceWithFakeHost {
+  _OneBadBundle(this.culprit, {this.staysBroken = false}) : super(FakeExtensionHost({}));
+
+  final String culprit;
+
+  /// Nothing this migration does brings the runtime back — a second bundle
+  /// is broken, or the fault was never the one the boot named.
+  final bool staysBroken;
+
+  int restarts = 0;
+
+  bool get _quarantined => settings?.extensionRefused.containsKey(culprit) ?? false;
+
+  @override
+  ExtensionHost? get host => !staysBroken && _quarantined ? fakeHost : null;
+
+  @override
+  String? get lastStartFailureKey => staysBroken || !_quarantined ? culprit : null;
+
+  @override
+  Future<bool> preloadShippedExtensions() async => false;
+
+  @override
+  Future<({bool complete, bool landed})> adoptTwins() async => (landed: true, complete: true);
+
+  @override
+  Future<void> reloadAvailableExtensions() async {}
+
+  @override
+  Future<void> restartRuntime({bool fresh = false}) async => restarts++;
 }
 
 /// A migration that hangs where a real one does its downloading, so a second
@@ -93,7 +149,7 @@ class _StillRunning extends ExtensionServiceWithFakeHost {
   Future<void> reloadAvailableExtensions() async {}
 
   @override
-  Future<void> restartRuntime() async {}
+  Future<void> restartRuntime({bool fresh = false}) async {}
 }
 
 /// The pre-load is the first thing the migration does, and the flag is
@@ -255,6 +311,162 @@ void main() {
     });
   });
 
+  test('a runtime that boots and then schedules a restart is still a finished upgrade', () async {
+    // `_start` installs the host and keeps going — the activation wait, the
+    // account-flag refresh that reaches the keychain and is refused on a
+    // locked macOS. A throw there schedules a backoff restart over a
+    // generation that is loaded and serving hooks. Read as a failure, one
+    // keychain prompt reverts a perfectly good upgrade.
+    final settings = await _settings(experiment: true);
+    final extensions = _BootsThenSchedulesRestart()..settings = settings;
+
+    expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.done);
+
+    expect(settings.extensionsMigrated, isTrue);
+    expect(settings.extensionRefused, isEmpty);
+  });
+
+  group('one twin that will not evaluate', () {
+    test('is put aside so the other thirty still arrive', () async {
+      // `EngineRuntime.load` throws if ANY bundle fails, so one bad download
+      // takes the whole generation with it. Reverting the whole upgrade over
+      // it costs the operator every extension they were promised, and the
+      // boot names the culprit — so the rest do not have to go down with it.
+      final settings = await _settings(experiment: true);
+      final extensions = _OneBadBundle('ham2k-wca')
+        ..settings = settings
+        ..debugSetAvailableExtensions(const [
+          ExtensionInfo(
+            key: 'ham2k-wca',
+            file: 'ham2k-wca.js',
+            source: ExtensionSource.installed,
+            core: false,
+            name: 'WCA',
+            version: '0.2.1',
+          ),
+        ]);
+
+      expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.done);
+
+      expect(settings.extensionsMigrated, isTrue, reason: 'the upgrade finished, minus one extension');
+      expect(settings.extensionRefused, {'ham2k-wca': '0.2.1'});
+      expect(extensions.restarts, 2);
+      // Recorded against the VERSION, so the next release of the same
+      // extension is given its chance by an ordinary update.
+      // Its OWN sentence, not the no-twin one: this extension is installed
+      // and served, and telling the operator the catalog has no replacement
+      // would send them looking for a substitute that already exists.
+      expect(refusedExtensionNames(extensions), ['WCA']);
+      expect(unservedBuiltInNames(extensions), isEmpty);
+    });
+
+    test('is recorded against the INSTALLED copy when the key is also an asset', () async {
+      // `ham2k-lookup` ships as an asset AND is pre-loaded from the catalog,
+      // and the available list puts the asset first. Recording that one's
+      // version refuses the app's own built-in for good, while the installed
+      // bundle that actually failed stays in the set and fails again.
+      final settings = await _settings(experiment: true);
+      final extensions = _OneBadBundle('ham2k-lookup')
+        ..settings = settings
+        ..debugSetAvailableExtensions(const [
+          ExtensionInfo(key: 'ham2k-lookup', file: 'ham2k-lookup.js', core: false, name: 'Lookup', version: '0.0.1'),
+          ExtensionInfo(
+            key: 'ham2k-lookup',
+            file: 'ham2k-lookup.js',
+            source: ExtensionSource.installed,
+            core: false,
+            name: 'Lookup',
+            version: '0.2.1',
+          ),
+        ]);
+
+      expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.done);
+
+      expect(settings.extensionRefused, {'ham2k-lookup': '0.2.1'});
+      // Named once, though the key is in the list twice.
+      expect(refusedExtensionNames(extensions), ['Lookup']);
+    });
+
+    test('stays out even when putting it aside did not get a runtime back', () async {
+      // Dropping the record here re-admits the bundle to the REVERTED set,
+      // where an extension with no built-in behind it — a sideloaded one, or
+      // a catalog-only one installed earlier — kills the boot that was about
+      // to give the operator everything back. It still will not evaluate;
+      // what that costs is a name, which every dialog carries.
+      final settings = await _settings(experiment: true);
+      final extensions = _OneBadBundle('ham2k-wca', staysBroken: true)
+        ..settings = settings
+        ..debugSetAvailableExtensions(const [
+          ExtensionInfo(
+            key: 'ham2k-wca',
+            file: 'ham2k-wca.js',
+            source: ExtensionSource.installed,
+            core: false,
+            name: 'WCA',
+            version: '0.2.1',
+          ),
+        ]);
+
+      await withErrorHooks(() async {
+        expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.runtimeDead);
+      });
+
+      expect(settings.extensionRefused, {'ham2k-wca': '0.2.1'});
+      expect(refusedExtensionNames(extensions), ['WCA'], reason: 'the dialog has to name what stayed out');
+    });
+
+    test('is not named once the revert has put its built-in back', () async {
+      // After a revert the downloaded copy is superseded: its panel row is
+      // gone, there is nothing to update, and the POTA the operator knows is
+      // running. "Would not run: POTA" over a working POTA tells them
+      // something false twice over.
+      final settings = await _settings(experiment: true);
+      await settings.setExtensionRefused({'ham2k-pota': '0.2.1'});
+      final extensions = ExtensionServiceWithFakeHost()
+        ..settings = settings
+        ..debugSetAvailableExtensions(const [
+          ExtensionInfo(key: 'pota', file: 'pota.js', core: false, name: 'POTA'),
+          ExtensionInfo(
+            key: 'ham2k-pota',
+            file: 'ham2k-pota.js',
+            source: ExtensionSource.installed,
+            core: false,
+            name: 'POTA',
+            version: '0.2.1',
+          ),
+        ]);
+
+      expect(refusedExtensionNames(extensions), isEmpty);
+    });
+
+    test('is not put aside twice when it was already out of the set', () async {
+      // The boot names the same key that is already refused at this version,
+      // so putting it aside changes nothing. Unguarded, the upgrade restarts
+      // the runtime for a set that cannot differ — a third boot on a path
+      // that has already failed twice.
+      final settings = await _settings(experiment: true);
+      await settings.setExtensionRefused({'ham2k-wca': '0.2.1'});
+      final extensions = _OneBadBundle('ham2k-wca', staysBroken: true)
+        ..settings = settings
+        ..debugSetAvailableExtensions(const [
+          ExtensionInfo(
+            key: 'ham2k-wca',
+            file: 'ham2k-wca.js',
+            source: ExtensionSource.installed,
+            core: false,
+            name: 'WCA',
+            version: '0.2.1',
+          ),
+        ]);
+
+      await withErrorHooks(() async {
+        expect(await migrateToCatalogExtensions(extensions), UpgradeOutcome.runtimeDead);
+      });
+
+      expect(extensions.restarts, 2, reason: 'the upgrade boot and the revert boot, and no third');
+    });
+  });
+
   test('a pass already running is not reported as a failure', () async {
     // The boot's own catch-up holds the flag. Nothing failed, nothing was
     // withdrawn, and the same button works a moment later — telling the
@@ -412,5 +624,6 @@ void main() {
           settings: settings, available: const [asset, installed], isActive: (_) => false);
       expect(settings.extensionDisabledSince.keys, ['ham2k-lookup']);
     });
+
   });
 }

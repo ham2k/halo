@@ -26,6 +26,7 @@ import 'export_type_registry.dart';
 import 'extension_account_cache.dart';
 import 'extension_info.dart';
 import 'extension_keychain.dart';
+import 'extension_refusals.dart';
 import 'extension_messages.dart';
 import 'extension_ref_results.dart';
 import 'extension_catalog_migration.dart';
@@ -1828,6 +1829,11 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
       await _refreshAccountSynchronizable();
     } catch (e) {
       debugPrint('[extensions] failed to start extension runtime: $e');
+      // Kept, not just reported: `EngineRuntime.load` evaluates each bundle
+      // under its own key, so this message names the one that took the
+      // generation down — which is the only way an upgrade can put it aside
+      // and try the rest.
+      _lastStartFailure = '$e';
       // A transient boot failure (asset hiccup, engine init) must not leave
       // extensions off for the rest of the session ("_starting" memoizes),
       // so retry with backoff.
@@ -1923,11 +1929,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
       records[bundle.key] = provenance.toJson();
       await currentSettings.setExtensionInstalledFrom(records);
     }
-    final revoked = currentSettings.extensionRevoked;
-    if (revoked[bundle.key] != null && revoked[bundle.key]!['version'] != bundle.version) {
-      revoked.remove(bundle.key);
-      await currentSettings.setExtensionRevoked(revoked);
-    }
+    await liftInstallRecordsForNewVersion(currentSettings, bundle.key, bundle.version);
     if (provenance == null || !fresh) return;
     final overrides = currentSettings.extensionOverrides;
     if (overrides.remove(bundle.key) != null) await currentSettings.setExtensionOverrides(overrides);
@@ -2046,9 +2048,41 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   @visibleForTesting
   set debugLoadedExtensionKeys(Set<String> keys) => _loadedExtensionKeys = keys;
 
+  /// Stands in for what a failed boot records, which a test's fake host never
+  /// runs.
+  @visibleForTesting
+  set debugLastStartFailure(String? failure) => _lastStartFailure = failure;
+
+  /// Arms the crash backoff the way a boot failure or a dying runtime does,
+  /// so a test can ask what a queued restart means for a live generation.
+  @visibleForTesting
+  void debugScheduleRestart(String reason) => _scheduleRestart(reason);
+
   /// Which extension keys the CURRENT runtime was started with — compared
   /// against the desired set to decide whether a toggle needs a restart.
   Set<String> _loadedExtensionKeys = const {};
+
+  String? _lastStartFailure;
+
+  /// The installed extension whose bundle took the last boot down, or null.
+  ///
+  /// `EngineRuntimeIo.load` evaluates every bundle as `evaluating <key>: …`,
+  /// so the failure names its own culprit. Answered only for a key this app
+  /// currently offers as an INSTALLED extension: a built-in that will not
+  /// evaluate is a defect in the app itself, and putting it aside would
+  /// quietly ship an install that is missing part of the app.
+  String? get lastStartFailureKey => bundleKeyFromStartFailure(_lastStartFailure, availableExtensions);
+
+  /// Whether a runtime is up, which is the most a caller can ask and the
+  /// only thing the operator is told.
+  ///
+  /// Deliberately NOT "and no restart is queued". `_start` installs the host
+  /// and then has awaits of its own — the activation wait, the account-flag
+  /// refresh that reaches the keychain and is refused on a locked macOS — and
+  /// a throw in any of them schedules a backoff restart over a generation
+  /// that is loaded and serving hooks. Reading that as unhealthy makes a
+  /// keychain prompt revert a perfectly good upgrade.
+  bool get runtimeIsHealthy => host != null;
 
   /// Installed `.h2kext` extensions (HALO-422). Null until the index has been
   /// read, since it needs the built-in keys and the host's shared-module
@@ -2150,15 +2184,23 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// intent only — whether the extension actually loads also requires
   /// [isExtensionAvailable].
   bool isExtensionEnabled(ExtensionInfo info) =>
-      info.core || (!isExtensionRevoked(info) && (settings?.extensionOverrides[info.key] ?? info.enabledByDefault));
+      info.core ||
+      (!isExtensionRevoked(info) &&
+          !isExtensionRefused(info) &&
+          (settings?.extensionOverrides[info.key] ?? info.enabledByDefault));
 
-  /// Whether the INSTALLED version of [info] is one the catalog revoked
-  /// (`SettingsService.extensionRevoked`). Judged by version, so the record
-  /// stops mattering the moment another version is installed.
-  bool isExtensionRevoked(ExtensionInfo info) {
-    final version = info.version;
-    return version != null && settings?.extensionRevoked[info.key]?['version'] == version;
-  }
+  /// Whether the INSTALLED version of [info] is one the engine would not
+  /// evaluate (`SettingsService.extensionRefused`).
+  ///
+  /// Here rather than in [isExtensionAvailable], for the reason revocation is:
+  /// unavailable hides the row, and an extension that stopped working is
+  /// exactly the one the operator comes to the panel to ask about. This keeps
+  /// it listed, badged, and updatable — which is how the refusal is lifted,
+  /// since it is judged by version.
+  bool isExtensionRefused(ExtensionInfo info) => isBundleRefused(settings, info);
+
+  /// See [isBundleRevoked].
+  bool isExtensionRevoked(ExtensionInfo info) => isBundleRevoked(settings, info);
 
   /// Whether an extension the app SHIPS is one it currently offers.
   ///
@@ -2341,10 +2383,20 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// Restarts a LIVE runtime deliberately — extension enable/disable
   /// toggles use this to apply the new bundle set. Any pending crash-backoff
   /// timer is superseded (the replacement it wanted is happening now).
-  Future<void> restartRuntime() {
+  Future<void> restartRuntime({bool fresh = false}) async {
     _restartTimer?.cancel();
     _restartTimer = null;
-    return _replaceRuntime(onlyIfDead: false);
+    // [fresh] for a caller whose verdict is about the generation IT asked
+    // for: `_replaceRuntime` hands back a replacement already in flight, and
+    // that one began before this caller's own changes to the set — so it
+    // would judge a generation that never saw them.
+    //
+    // Its error is not ours: a replacement that threw belongs to whoever
+    // started it, and rethrowing here would abandon the restart this caller
+    // came for — leaving the bundles it just installed unloaded, which is
+    // what waiting was supposed to prevent.
+    if (fresh) await _restartFuture?.catchError((_) {});
+    await _replaceRuntime(onlyIfDead: false);
   }
 
   /// The one runtime-replacement path: dispose + fresh [start] + re-seed of
@@ -2378,6 +2430,12 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
       // have to be re-read rather than served from the old set's cache.
       _commandCatalog = null;
       final dying = _loadedExtensionKeys;
+      // A new generation starts with no failure recorded. A crash LATER in
+      // the session schedules a restart too, and a name left from an earlier
+      // boot would be read as the culprit for a failure it had nothing to do
+      // with — which, for the upgrade, means refusing an innocent extension
+      // permanently.
+      _lastStartFailure = null;
       await old?.dispose();
       // AFTER the dispose, not before: the old host is alive across that
       // await, and a fetch finishing inside that window posts its progress

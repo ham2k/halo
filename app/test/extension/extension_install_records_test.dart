@@ -155,4 +155,54 @@ void main() {
       expect(settings.extensionRevoked, isEmpty);
     });
   });
+
+  group('a bundle the engine refused', () {
+    const refused = {
+      'extensionRefused': {'ki2d-my-clock': '1.2.3'},
+    };
+    const info = ExtensionInfo(
+        key: 'ki2d-my-clock', file: 'index.js', core: false, name: 'Clock', source: ExtensionSource.installed, version: '1.2.3');
+
+    test('stays listed, and stays out of the runtime', () async {
+      // Unavailable would hide the row, and the row is the one place an
+      // operator can see that an extension they installed is doing nothing —
+      // and update it, which is what lifts the refusal.
+      final (extensions, _, _) = await setup({
+        ...refused,
+        'extensionOverrides': {'ki2d-my-clock': true},
+      });
+      expect(extensions.isExtensionRefused(info), isTrue);
+      expect(extensions.isExtensionAvailable(info), isTrue);
+      expect(extensions.isExtensionActive(info), isFalse);
+    });
+
+    test('is forgotten by an install of another version', () async {
+      // The whole recovery the refusal is keyed by version for: a fixed
+      // release arrives as an ordinary update and loads, with nobody having
+      // to notice anything.
+      final (extensions, settings, store) = await setup(refused);
+
+      final newer = rebuilt((m) => {...m, 'version': '1.3.0'});
+      await extensions.installBundle(await fromCatalog(store, newer, '1.3.0'));
+
+      expect(settings.extensionRefused, isEmpty);
+    });
+
+    test('is forgotten by an uninstall, so a reinstall of the same bytes gets its chance', () async {
+      // Uninstall-and-reinstall is the operator's own repair for a download
+      // that arrived corrupt. Kept, the
+      // reinstalled extension lands inert with nothing saying why — and a
+      // sideloaded bundle has no catalog offer to lift it either.
+      final (_, settings, _) = await setup(refused);
+      await settings.forgetExtension('ki2d-my-clock');
+      expect(settings.extensionRefused, isEmpty);
+    });
+
+    test('and not by an install of the same version', () async {
+      // The same bytes will not evaluate this time either.
+      final (extensions, settings, store) = await setup(refused);
+      await extensions.installBundle(await store.inspect(fixture));
+      expect(settings.extensionRefused.keys, ['ki2d-my-clock']);
+    });
+  });
 }

@@ -398,7 +398,7 @@ class _RestartTrackingExtensionService extends MockExtensionService {
   int restartCount = 0;
 
   @override
-  Future<void> restartRuntime() async {
+  Future<void> restartRuntime({bool fresh = false}) async {
     restartCount++;
   }
 }

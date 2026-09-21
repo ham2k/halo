@@ -84,6 +84,17 @@ enum UpgradeOutcome {
   notWired,
 }
 
+/// A bundle the engine would not evaluate, now kept out of the runtime.
+class BundleWouldNotEvaluate implements Exception {
+  const BundleWouldNotEvaluate(this.key, this.version);
+
+  final String key;
+  final String version;
+
+  @override
+  String toString() => '$key $version would not evaluate; keeping it out of the runtime';
+}
+
 /// Neither the upgraded extensions nor the ones they replaced would start.
 ///
 /// Its own type so the crash backend can answer "how often does an upgrade
@@ -190,31 +201,75 @@ Future<UpgradeOutcome> _migrate(ExtensionService service, SettingsService settin
     return UpgradeOutcome.incomplete;
   }
   await service.reloadAvailableExtensions();
-  await service.restartRuntime();
+  // Fresh, because the verdict below is about THIS generation: a replacement
+  // already in flight began before the twins were installed, and reading the
+  // host after it would judge a runtime that never saw them.
+  await service.restartRuntime(fresh: true);
   // Asked directly, because a boot failure cannot be thrown at us: `_start`
   // catches everything and schedules the crash backoff, so the upgrade would
   // otherwise report success over an install running NO extensions at all —
   // one twin that will not evaluate takes the whole generation with it.
-  // Non-null is the most this can ask: `_start` installs the host and then
-  // has awaits of its own, so a generation that threw past that point still
-  // counts as back. It is running, which is what the operator is told.
-  if (service.host != null) return UpgradeOutcome.done;
-  // Reverting the flag is what un-migrates the runtime: with it off the
-  // built-ins are offered again and every adopted twin is superseded, so the
-  // set that boots is exactly the pre-migration one, minus whatever would not
-  // load. The twins stay on disk for the next attempt. The restart is the
-  // point — the flag alone only decides what a boot WOULD load, and without
-  // one the operator reads "your extensions are back" while none are running.
+  if (service.runtimeIsHealthy) return UpgradeOutcome.done;
+
+  // The boot names the bundle it died on, so the rest of the operator's
+  // extensions do not have to go down with it: put that one aside and try
+  // once more. Recorded against the version that failed, so the next release
+  // of the same extension is given its chance by an ordinary update.
+  final culprit = service.lastStartFailureKey;
+  if (culprit != null && await _refuse(service, settings, culprit)) {
+    await service.reloadAvailableExtensions();
+    await service.restartRuntime(fresh: true);
+    if (service.runtimeIsHealthy) return UpgradeOutcome.done;
+  }
+
+  // The record STAYS, even though putting it aside did not get a runtime
+  // back: the bundle still will not evaluate, and an extension with no
+  // built-in behind it — a sideloaded one, or a catalog-only one installed
+  // before the upgrade — is in the reverted set too. Re-admitting it there
+  // kills the boot that was about to give the operator everything back. What
+  // it costs is a name, and every dialog below carries it.
   await settings.setExtensionsMigrated(false);
   await service.reloadAvailableExtensions();
-  await service.restartRuntime();
+  await service.restartRuntime(fresh: true);
   // Asked AGAIN, for the reason it was asked the first time: this restart
   // cannot report its own failure either, and the difference is what the
   // operator is told. "The ones you had are back and working" over an install
   // running nothing at all is the worst answer this can give.
-  if (service.host != null) return UpgradeOutcome.runtimeReverted;
+  if (service.runtimeIsHealthy) return UpgradeOutcome.runtimeReverted;
   ErrorReportingService.report(const UpgradeLeftNoRuntime(), StackTrace.current, context: 'extensions:migrate');
   return UpgradeOutcome.runtimeDead;
+}
+
+/// Records [key] as a bundle that will not evaluate, and answers whether that
+/// is news — a key already refused at this version was tried before, and
+/// refusing it again would restart the runtime for nothing.
+Future<bool> _refuse(ExtensionService service, SettingsService settings, String key) async {
+  // The INSTALLED entry: a key can appear twice — `ham2k-lookup` ships as an
+  // asset and is pre-loaded from the catalog — and the list puts the asset
+  // first. Taking that one records the app's own version, which refuses the
+  // built-in for good and leaves the bundle that actually failed in the set.
+  final version = service.availableExtensions
+      .where((info) => info.key == key && info.isInstalled)
+      .map((info) => info.version)
+      .firstOrNull;
+  // Nothing to key the refusal to, so nothing that a later version could
+  // lift: reverting the whole upgrade is the safer answer.
+  if (version == null) {
+    debugPrint('[extensions] $key would not evaluate, and has no version to record it against');
+    return false;
+  }
+  final refused = {...settings.extensionRefused};
+  if (refused[key] == version) return false;
+  // Reported, not just printed: once a bundle is refused it never loads
+  // again, so the boot failure stops arriving under `extensions:restart`
+  // after at most two attempts per install. The rate here is what says
+  // whether one download went bad or the catalog is serving something this
+  // app cannot run to everybody.
+  ErrorReportingService.report(
+      BundleWouldNotEvaluate(key, version), StackTrace.current, context: 'extensions:refuse');
+  refused[key] = version;
+  await settings.setExtensionRefused(refused);
+  return true;
 }
 
 /// The names of the built-ins the operator has switched on that the catalog
@@ -224,18 +279,43 @@ Future<UpgradeOutcome> _migrate(ExtensionService service, SettingsService settin
 /// Switched on NOW, not whenever the adoption last recorded them: one
 /// switched off since was the operator's own choice, and naming it as lost
 /// tells them something the upgrade did not do.
-List<String> unservedBuiltInNames(ExtensionService service) {
+List<String> unservedBuiltInNames(ExtensionService service) => _names(service, (info) =>
+    info.source == ExtensionSource.asset &&
+    kBuiltInsWithoutTwin.contains(info.key) &&
+    service.isExtensionEnabled(info));
+
+/// The names of the extensions that arrived and would not run.
+///
+/// Told apart from [unservedBuiltInNames] because the remedy is the opposite:
+/// nothing replaces a built-in the catalog does not serve, while one of these
+/// is installed, served, and one update away from working — so a sentence
+/// sending the operator to look for a substitute would send them nowhere.
+///
+/// `isExtensionEnabled` is false for a refused extension, so the operator's
+/// own choice is read from the override: one they switched off is no loss.
+///
+/// And AVAILABLE: after a revert, a downloaded copy is superseded by the
+/// built-in it replaced — its panel row is gone, there is nothing to update,
+/// and the extension the operator knows by that name is running. Naming it
+/// as one that "would not run" tells them something false twice over.
+List<String> refusedExtensionNames(ExtensionService service) => _names(
+    service,
+    (info) =>
+        service.isExtensionRefused(info) &&
+        service.isExtensionAvailable(info) &&
+        (service.settings?.extensionOverrides[info.key] ?? info.enabledByDefault));
+
+/// A set, because a key can appear twice — `ham2k-lookup` ships as an asset
+/// and is pre-loaded — and naming it twice reads as two extensions lost.
+List<String> _names(ExtensionService service, bool Function(ExtensionInfo) include) {
   // The name the Extensions panel gave it. A dialog that is otherwise in the
   // operator's language naming an extension in English names something they
   // have never seen under that name.
   final locale = LocaleSettings.currentLocale.languageCode;
-  return [
+  return {
     for (final info in service.availableExtensions)
-      if (info.source == ExtensionSource.asset &&
-          kBuiltInsWithoutTwin.contains(info.key) &&
-          service.isExtensionEnabled(info))
-        info.nameFor(locale),
-  ];
+      if (include(info)) info.nameFor(locale),
+  }.toList();
 }
 
 /// The boot-time half: whatever is still owed from an upgrade already taken.
@@ -255,7 +335,10 @@ Future<void> catchUpOnCatalogExtensions(ExtensionService service) async {
     landed = (await service.adoptTwins()).landed || landed;
     if (landed) {
       await service.reloadAvailableExtensions();
-      await service.restartRuntime();
+      // Fresh: this runs unawaited from inside `_start`, so the replacement
+      // that boot came through is still in flight and would be handed back —
+      // leaving what was just installed unloaded until the next launch.
+      await service.restartRuntime(fresh: true);
     }
   } catch (e, stack) {
     ErrorReportingService.report(e, stack, context: 'extensions:preload');

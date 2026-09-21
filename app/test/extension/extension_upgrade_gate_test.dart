@@ -54,12 +54,16 @@ class _MigrationSucceeds extends ExtensionServiceWithFakeHost {
   Future<void> reloadAvailableExtensions() async {}
 
   @override
-  Future<void> restartRuntime() async {}
+  Future<void> restartRuntime({bool fresh = false}) async {}
 }
 
 /// A migration still running when the screen goes away.
 class _SlowMigration extends ExtensionServiceWithFakeHost {
-  _SlowMigration() : super(FakeExtensionHost({}));
+  _SlowMigration({this.adoptionCompletes = true}) : super(FakeExtensionHost({}));
+
+  /// False to end the upgrade short, which is when the body is plain text
+  /// rather than the done message that already carried every name.
+  final bool adoptionCompletes;
 
   final release = Completer<void>();
 
@@ -70,13 +74,13 @@ class _SlowMigration extends ExtensionServiceWithFakeHost {
   }
 
   @override
-  Future<({bool complete, bool landed})> adoptTwins() async => (landed: true, complete: true);
+  Future<({bool complete, bool landed})> adoptTwins() async => (landed: true, complete: adoptionCompletes);
 
   @override
   Future<void> reloadAvailableExtensions() async {}
 
   @override
-  Future<void> restartRuntime() async {}
+  Future<void> restartRuntime({bool fresh = false}) async {}
 }
 
 /// Answers as if the runtime never came back: the twins are installed and
@@ -99,7 +103,7 @@ class _RuntimeDead extends ExtensionServiceWithFakeHost {
   Future<void> reloadAvailableExtensions() async {}
 
   @override
-  Future<void> restartRuntime() async => restarts++;
+  Future<void> restartRuntime({bool fresh = false}) async => restarts++;
 }
 
 /// Answers the upgrade as if the twins never arrived — the half of the
@@ -117,7 +121,7 @@ class _MigrationFails extends ExtensionServiceWithFakeHost {
   Future<void> reloadAvailableExtensions() async {}
 
   @override
-  Future<void> restartRuntime() async {}
+  Future<void> restartRuntime({bool fresh = false}) async {}
 }
 
 /// Reachable, but not before [arrived] completes — a slow link, where the
@@ -472,8 +476,19 @@ void main() {
     // The operator agreed to an operation that withdraws their extensions,
     // and the screen the dialog would have used is gone — a rebuild, a hot
     // reload, navigation. Dropped here, nothing anywhere says what happened.
-    final extensions = _SlowMigration();
+    final extensions = _SlowMigration()
+      ..debugSetAvailableExtensions(const [
+        ExtensionInfo(
+          key: 'ki2d-my-clock',
+          file: 'index.js',
+          source: ExtensionSource.installed,
+          core: false,
+          name: 'Clock',
+          version: '1.2.3',
+        ),
+      ]);
     final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
+    await h.settings.setExtensionRefused({'ki2d-my-clock': '1.2.3'});
     await h.settings.setExperimentEnabled(kCatalogExperiment, true);
     await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
 
@@ -496,6 +511,49 @@ void main() {
     expect(find.text(t.extensionsPanel.upgradeDoneTitle), findsNothing);
     final notice = h.services.statusBar.activeNotices.singleWhere((n) => n.key == 'extensions:upgradeResult');
     expect(notice.title, t.extensionsPanel.upgradeDoneTitle);
+    // The notice stands in for the dialog, so it must not say less: what
+    // stayed out of the runtime is the one line the operator has to carry
+    // away, and a notice that dropped it would bury the loss in history.
+    expect(notice.text, contains(t.extensionsPanel.upgradeDoneRefused(names: 'Clock')));
+  });
+
+  testWidgets('a notice for an upgrade that fell short still names what stayed out', (tester) async {
+    // Only the done message was built with the names in it; every other
+    // outcome is a plain sentence, and a notice that used that alone would
+    // report the failure and bury the loss the operator most needs to know.
+    final extensions = _SlowMigration(adoptionCompletes: false)
+      ..debugSetAvailableExtensions(const [
+        ExtensionInfo(
+          key: 'ki2d-my-clock',
+          file: 'index.js',
+          source: ExtensionSource.installed,
+          core: false,
+          name: 'Clock',
+          version: '1.2.3',
+        ),
+      ]);
+    final h = await makeHaLoServices(extensions: extensions, catalog: _ReachableCatalog());
+    await h.settings.setExtensionRefused({'ki2d-my-clock': '1.2.3'});
+    await h.settings.setExperimentEnabled(kCatalogExperiment, true);
+    await h.settings.setProfileOperatorCall(SettingsService.defaultProfileId, 'N0CALL');
+
+    await tester.pumpWidget(TranslationProvider(
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        builder: (context, child) => ExtensionUpgradeGate(services: h.services, child: child!),
+        home: const Scaffold(body: SizedBox()),
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(t.extensionsPanel.upgradeAction));
+    await tester.pump();
+    await tester.pumpWidget(const SizedBox());
+    extensions.release.complete();
+    await tester.pumpAndSettle();
+
+    final notice = h.services.statusBar.activeNotices.singleWhere((n) => n.key == 'extensions:upgradeResult');
+    expect(notice.title, t.extensionsPanel.upgradeFailedTitle);
+    expect(notice.text, contains(t.extensionsPanel.upgradeDoneRefused(names: 'Clock')));
   });
 
   testWidgets('web is never offered an upgrade it cannot take', (tester) async {

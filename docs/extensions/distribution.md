@@ -412,6 +412,36 @@ and the offer returns next launch. Twins that did arrive stay on disk, unused
 until an upgrade completes — the built-in each one supersedes is what runs
 meanwhile.
 
+A bundle the engine will not evaluate takes the whole runtime with it, so the
+upgrade puts that one aside — the boot names the bundle it died on — and
+restarts once more. What boots then is the upgrade minus that extension, named
+in the dialog in a sentence of its own. Refused rather than
+withdrawn: the panel still lists it, badged, because the row is where an
+operator sees that something they installed is doing nothing, and updating it
+there is what lifts the refusal. Keyed by the VERSION that failed, so a fixed
+release arrives as an ordinary update and clears it. Only an INSTALLED
+extension is ever put aside; a built-in that
+will not evaluate is a defect in the app, and skipping it would ship an
+install quietly missing part of itself.
+
+A refusal is kept even when putting the bundle aside did not get a runtime
+back: it still will not evaluate, and an extension with no built-in behind it
+is in the reverted set too, so re-admitting it there would kill the boot that
+was about to give the operator everything back. Every dialog, and the notice
+that stands in for one, names what stayed out — except a downloaded copy the
+revert superseded, whose built-in is running again. Uninstalling clears the
+record, so a reinstall of the same bytes gets its chance.
+
+A refused extension is treated like a revoked one in everything else: it
+keeps its switch, and its downloaded data expires on the same clock as any
+extension the app is not loading.
+
+What this does NOT cover is a failure that names no bundle. Only a bundle
+that fails while it is being EVALUATED names itself: a kernel that will not
+load, or an extension that throws while ACTIVATING, takes the generation down
+under a name that is not a key. Those revert the whole upgrade as before, and
+it is offered again at the next launch.
+
 The upgrade restarts the extension runtime, which takes the footer items of
 the generation going down with it: a data file's import raises an error rather
 than returning into a torn-down runtime, so its progress line is cleared and

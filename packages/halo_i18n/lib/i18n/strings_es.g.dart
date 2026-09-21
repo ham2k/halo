@@ -229,6 +229,8 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String get upgradeDoneTitle => 'Tus extensiones están listas';
 	@override String get upgradeDoneBody => 'Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.';
 	@override String upgradeDoneUnserved({required Object names}) => 'No se trasladaron: ${names}.';
+	@override String upgradeDoneRefused({required Object names}) => 'No pudieron ejecutarse: ${names}.';
+	@override String get upgradeDoneRefusedHint => 'Siguen instaladas y marcadas en Ajustes › Extensiones — actualizarlas allí las recuperará.';
 	@override String get upgradeDoneUnservedHint => 'El catálogo no tiene un reemplazo directo para estas, así que busca allí extensiones que cubran lo que usabas.';
 	@override String get upgradeFailedTitle => 'Tus extensiones no se actualizaron';
 	@override String get upgradeFailedBody => 'No pudimos terminar de actualizar tus extensiones, así que revertimos la actualización. Te la ofreceremos de nuevo la próxima vez que abras la aplicación.';
@@ -246,6 +248,7 @@ class _Translations$extensionsPanel$es extends Translations$extensionsPanel$en {
 	@override String catalogVersionUnknown({required Object version, required Object key}) => 'El catálogo no tiene la versión ${version} de ${key}.';
 	@override String get catalogLinkUnknown => 'Ese enlace del catálogo no indica una versión de extensión.';
 	@override String get revokedBadge => 'Retirada';
+	@override String get refusedBadge => 'No se pudo cargar';
 	@override String get downloadNotHttps => 'Esa descarga no usa una conexión segura.';
 	@override String downloadUnreachable({required Object source}) => 'No se pudo contactar a ${source} para esa extensión.';
 	@override String get detailsAction => 'Detalles';
@@ -3249,6 +3252,8 @@ extension on TranslationsEs {
 			'extensionsPanel.upgradeDoneTitle' => 'Tus extensiones están listas',
 			'extensionsPanel.upgradeDoneBody' => 'Ahora vienen del catálogo de extensiones de Ham2K, así que pueden actualizarse sin esperar una nueva versión de la aplicación.',
 			'extensionsPanel.upgradeDoneUnserved' => ({required Object names}) => 'No se trasladaron: ${names}.',
+			'extensionsPanel.upgradeDoneRefused' => ({required Object names}) => 'No pudieron ejecutarse: ${names}.',
+			'extensionsPanel.upgradeDoneRefusedHint' => 'Siguen instaladas y marcadas en Ajustes › Extensiones — actualizarlas allí las recuperará.',
 			'extensionsPanel.upgradeDoneUnservedHint' => 'El catálogo no tiene un reemplazo directo para estas, así que busca allí extensiones que cubran lo que usabas.',
 			'extensionsPanel.upgradeFailedTitle' => 'Tus extensiones no se actualizaron',
 			'extensionsPanel.upgradeFailedBody' => 'No pudimos terminar de actualizar tus extensiones, así que revertimos la actualización. Te la ofreceremos de nuevo la próxima vez que abras la aplicación.',
@@ -3266,6 +3271,7 @@ extension on TranslationsEs {
 			'extensionsPanel.catalogVersionUnknown' => ({required Object version, required Object key}) => 'El catálogo no tiene la versión ${version} de ${key}.',
 			'extensionsPanel.catalogLinkUnknown' => 'Ese enlace del catálogo no indica una versión de extensión.',
 			'extensionsPanel.revokedBadge' => 'Retirada',
+			'extensionsPanel.refusedBadge' => 'No se pudo cargar',
 			'extensionsPanel.downloadNotHttps' => 'Esa descarga no usa una conexión segura.',
 			'extensionsPanel.downloadUnreachable' => ({required Object source}) => 'No se pudo contactar a ${source} para esa extensión.',
 			'extensionsPanel.detailsAction' => 'Detalles',
@@ -3652,11 +3658,11 @@ extension on TranslationsEs {
 			'operation.import.importAdifAction' => 'Importar QSOs desde ADIF',
 			'operation.import.settingsButton' => 'Ajustes de escucha',
 			'operation.import.settingsTitle' => 'Escuchar otras aplicaciones',
+			_ => null,
+		} ?? switch (path) {
 			'operation.import.protocolAddressLabel' => 'Dirección',
 			'operation.import.protocolPortLabel' => 'Puerto',
 			'operation.import.protocolPortInvalid' => 'Introduce un puerto entre 1 y 65535',
-			_ => null,
-		} ?? switch (path) {
 			'operation.import.protocolAddressInvalid' => 'Introduce una dirección IP válida (p. ej. 127.0.0.1 o 239.239.0.2)',
 			'operation.import.protocolStatusReceiving' => 'Recibiendo datos',
 			'operation.import.protocolStatusNoData' => 'No se han recibido datos recientemente',
@@ -4166,11 +4172,11 @@ extension on TranslationsEs {
 			'settings.peers.screenSharedTo' => ({required Object devices}) => 'Se muestra en ${devices}',
 			'settings.peers.screenSharedToNobody' => 'No se está mostrando',
 			'settings.peers.screenStopSharing' => ({required Object name}) => 'Dejar de compartir ${name}',
+			_ => null,
+		} ?? switch (path) {
 			'settings.developerMode' => 'Modo Desarrollador',
 			'settings.syncPanel.configuration' => 'Configuración de sincronización',
 			'settings.syncPanel.enableTitle' => 'Sincronizar con Ham2K Log Filer',
-			_ => null,
-		} ?? switch (path) {
 			'settings.syncPanel.enabledDescription' => 'Respaldando y sincronizando tu registro entre dispositivos',
 			'settings.syncPanel.disabledDescription' => 'Desactivado — quedándose solo en este dispositivo',
 			'settings.syncPanel.syncing' => 'Sincronizando',
@@ -4680,11 +4686,11 @@ extension on TranslationsEs {
 			'expiredBuild.title' => 'Esta versión ha expirado',
 			'expiredBuild.body' => 'Por favor visita ham2k.com para obtener una versión más reciente.',
 			'expiredBuild.visit' => 'Visitar ham2k.com',
+			_ => null,
+		} ?? switch (path) {
 			'expiredBuild.dismiss' => 'Continuar de todos modos',
 			'staleness.codePushFloorTitle' => 'Hay una actualización importante',
 			'staleness.codePushFloorBody' => 'Esta versión tiene una corrección que todavía no tienes.',
-			_ => null,
-		} ?? switch (path) {
 			'staleness.restartToApply' => 'Reinicia la aplicación para aplicarla.',
 			'staleness.quitAndReopen' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
 			'staleness.reopenToApply' => 'Cierra la aplicación y vuelve a abrirla para aplicarla.',
