@@ -324,6 +324,41 @@ bool isGridCenter(GridLocation location, String? grid) {
       (location.longitude - cell.center.longitude).abs() <= cell.lonSize * _gridCenterTolerance;
 }
 
+/// How far outside a cell a coordinate may sit and still be read as being in
+/// it — a hundredth of the cell's own size past the edge, the same fraction
+/// [_gridCenterTolerance] allows around the center and for the same reason: a
+/// station standing on a cell boundary must not read as contradicting the
+/// locator it is stored with.
+const _gridEdgeTolerance = 0.01;
+
+/// A thousandth of a minute, which is all the precision ADIF stores a
+/// coordinate to — so a pair that has been through a file can sit this far
+/// from where it was written, whatever the cell it is being judged against.
+///
+/// A floor under [_gridEdgeTolerance], because that fraction shrinks with the
+/// cell while this does not: a hundredth of a ten-character cell is under a
+/// metre, so without this the rounding alone could put a coordinate outside
+/// the very square it was derived from.
+const _adifCoordinateStep = 1 / 60000;
+
+/// Whether [location] sits inside [cell] — the question a record carrying
+/// both halves answers about itself.
+///
+/// A coordinate inside the square says MORE than the square (it is where the
+/// grid came from, or a finer fix within it). One outside CONTRADICTS it, and
+/// since this app never writes the two in disagreement (docs/design/locations.md),
+/// such a record can only have come from a writer that edited one half and
+/// left the other — see `repairStatedLocation`.
+bool gridCellContains(GridCell cell, GridLocation location) {
+  double reach(double size) {
+    final margin = size * _gridEdgeTolerance;
+    return size / 2 + (margin > _adifCoordinateStep ? margin : _adifCoordinateStep);
+  }
+
+  return (location.latitude - cell.center.latitude).abs() <= reach(cell.latSize) &&
+      (location.longitude - cell.center.longitude).abs() <= reach(cell.lonSize);
+}
+
 /// The coordinate to store beside a locator the operator has just STATED —
 /// the center of the square, or null when there is nothing to place.
 ///

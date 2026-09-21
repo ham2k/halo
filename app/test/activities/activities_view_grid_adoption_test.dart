@@ -14,11 +14,11 @@ import 'package:ham2k_logger/views/operation/activities_view.dart';
 void main() {
   const gps = GridLocation(41.69, -74.54);
 
-  group('operation already has a grid', () {
+  group('operation already has a location', () {
     test('never overrides it, even for a very close ref with no GPS fix', () {
       expect(
         locationToAdoptAfterAddingRef(
-          operationGrid: 'FN21rq',
+          operationLocation: gridToLocation('FN21rq'),
           gpsPosition: gps,
           distanceKm: 1,
           refsAfterAdd: [
@@ -28,12 +28,31 @@ void main() {
         isNull,
       );
     });
+
+    // The trap this asks about: an operation from a peer that stores a
+    // locator and nothing else carries `grid: ''` for a location never set
+    // (docs/design/locations.md), and `''` is not null. Deciding on the raw
+    // grid reads that operation as located and leaves it with nothing to
+    // measure from for the rest of its life — no map QTH, no nearby search,
+    // and no second chance, because adding another ref asks this again.
+    test('offers one to an operation whose stored grid names no place', () {
+      for (final unplaceable in ['', 'IL2']) {
+        final operation = Operation(uuid: 'op', data: {'grid': unplaceable});
+        final adopted = locationToAdoptAfterAddingRef(
+          operationLocation: operation.location,
+          gpsPosition: gps,
+          distanceKm: 1,
+          refsAfterAdd: const [],
+        );
+        expect(adopted?.location, gps, reason: 'grid "$unplaceable" is not a location');
+      }
+    });
   });
 
   group('GPS available', () {
     test('adopts the fix itself when the added ref is within 15km', () {
       final adopted = locationToAdoptAfterAddingRef(
-        operationGrid: null,
+        operationLocation: null,
         gpsPosition: gps,
         distanceKm: 5,
         refsAfterAdd: const [],
@@ -49,7 +68,7 @@ void main() {
       GridPrecision.configure(GridPrecision.eight);
       addTearDown(GridPrecision.reset);
       expect(
-        locationToAdoptAfterAddingRef(operationGrid: null, gpsPosition: gps, distanceKm: 5, refsAfterAdd: const [])!.grid,
+        locationToAdoptAfterAddingRef(operationLocation: null, gpsPosition: gps, distanceKm: 5, refsAfterAdd: const [])!.grid,
         hasLength(8),
       );
     });
@@ -57,7 +76,7 @@ void main() {
     test('does nothing when the added ref is farther than 15km', () {
       expect(
         locationToAdoptAfterAddingRef(
-          operationGrid: null,
+          operationLocation: null,
           gpsPosition: gps,
           distanceKm: 15.1,
           refsAfterAdd: const [],
@@ -69,7 +88,7 @@ void main() {
     test('does nothing when the ref has no known distance (e.g. manually typed)', () {
       expect(
         locationToAdoptAfterAddingRef(
-          operationGrid: null,
+          operationLocation: null,
           gpsPosition: gps,
           distanceKm: null,
           refsAfterAdd: const [],
@@ -82,7 +101,7 @@ void main() {
   group('no GPS fix', () {
     test("adopts the first ref's published coordinate when it has one", () {
       final adopted = locationToAdoptAfterAddingRef(
-        operationGrid: null,
+        operationLocation: null,
         gpsPosition: null,
         distanceKm: null,
         refsAfterAdd: [
@@ -98,7 +117,7 @@ void main() {
 
     test("falls back to the first ref's own grid for a program that publishes no coordinates", () {
       final adopted = locationToAdoptAfterAddingRef(
-        operationGrid: null,
+        operationLocation: null,
         gpsPosition: null,
         distanceKm: null,
         refsAfterAdd: [
@@ -119,7 +138,7 @@ void main() {
       // stand the operation off Antarctica.
       expect(
         locationToAdoptAfterAddingRef(
-          operationGrid: null,
+          operationLocation: null,
           gpsPosition: null,
           distanceKm: null,
           refsAfterAdd: [
@@ -133,7 +152,7 @@ void main() {
     test('does nothing when the first ref has no location of its own', () {
       expect(
         locationToAdoptAfterAddingRef(
-          operationGrid: null,
+          operationLocation: null,
           gpsPosition: null,
           distanceKm: null,
           refsAfterAdd: [
@@ -147,7 +166,7 @@ void main() {
     test('does nothing with no refs at all', () {
       expect(
         locationToAdoptAfterAddingRef(
-          operationGrid: null,
+          operationLocation: null,
           gpsPosition: null,
           distanceKm: null,
           refsAfterAdd: const [],

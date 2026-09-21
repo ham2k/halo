@@ -75,6 +75,81 @@ and would otherwise plant a station off Antarctica, outranking every coarser
 source that could have answered honestly. And it must not lengthen the
 locator on screen — see Display.
 
+### Records from another writer
+
+The invariant holds for everything this app writes. It cannot hold for what
+arrives from a device running something else, and app-polo is exactly that
+case: its operation location screen (`OperationLocationScreen.jsx`) stores
+`grid`, `gridSource`, `state` and `county`, and has no concept of the pair. So
+an operation relocated there comes back with a new locator and the old
+coordinate — which then outranks it at every reader, answering for a place the
+operator has moved away from while the location screen shows the locator they
+typed. The same screen writes `''` for a field never filled in, and `''` is not
+null: every reader asking whether the record has a grid is told yes, while
+`gridToLocation` gets nothing out of it. That operation is unplaceable and
+claims to be located — no QTH on the map, no lines, no nearby suggestions, and
+`ActivitiesView._maybeAdoptLocationFromNewRef` will not offer it a location
+either, because it already has a grid.
+
+`repairStatedLocation` reconciles the two halves as such a record enters, in
+`OperationsRepository.mergeFromSync`. Two rules, and only those two:
+
+- **A coordinate outside the square its locator names is dropped.** Inside is
+  no contradiction: a pair within the cell is what the grid was derived from,
+  or a finer fix inside it. Outside, one of the halves was edited without the
+  other, and it is the grid that was edited — every writer of an operation's
+  location states both together, so a coordinate cannot be the newer half.
+  The edge is a tolerance (`gridCellContains`), a hundredth of the cell past
+  its own boundary and never less than ADIF's own thousandth of a minute,
+  which is all the precision a coordinate keeps through a file.
+- **A locator that names no place is dropped**, with the `gridSource` that
+  describes it. `''` and a fragment (`IL2`) alike: this app's own editor
+  refuses to store either (`isWellFormedGrid`), so nothing is lost that a
+  local edit could have made. An explicit `grid: null` is a record with no
+  locator rather than a broken one, and is left as it is.
+
+The coordinate is read with `asQsonCoordinate`, not as a bare number: polo's
+ADIF import copies `MY_LAT`/`LAT` verbatim, so a well-formed coordinate
+arrives as `N041 41.250` and the QSON normalizer converts it *after* this
+runs. A reader that only knew numbers would find nothing to judge on exactly
+the records this exists for.
+
+A placeholder (`AA00`) is left alone on both counts. It decodes like any other
+square, so judging a coordinate against it would drop a real fix in favour of a
+corner of the Atlantic that names nothing.
+
+**An operation's record, and nothing else.** The first rule rests entirely on
+both halves being written together, and that holds for an operation's location
+and for no other record: the QSO edit pane's Latitude and Longitude fields are
+the operator stating where a station is, to the precision they have, and they
+deliberately survive an edit to the grid beside them
+(`logging_controls_draft.dart`). A contact whose two halves name different
+squares is making that statement, not carrying a stale half, and repairing one
+would delete what the operator typed.
+
+**The sync path, and not the peer one.** A record that arrives over the peer
+channel is stored dirty and pushed onward, so a repair applied there would
+send this device's deletion out under the *sender's* revision stamp — which
+`inboundIsStale` drops at every other device, leaving the server stripped and
+the fleet disagreeing about one record. A peer's operation reaches the server
+on its own and comes back through the sync merge, where the repair belongs.
+
+The repair is silent: the row is stored clean and stays `synced`, rather than
+going back out as this device's own newer revision. A grid-only peer cannot
+represent the pair in the first place, so pushing the repair would state a
+revision it would only strip again. Each device heals its own copy on receipt,
+deterministically, and everything read locally — the map, the distances, an
+export — reads the healed row.
+
+Operations that arrived before any of this are repaired once, by storage
+version 14 (`HaLoDatabase._repairStatedLocations`) — nothing re-delivers a
+synced record just because this build knows more about it, so without that
+step an operation relocated years ago would measure from the coordinate it
+left behind until someone opened its location screen. The migration leaves the
+revision stamps alone for the same reason the merge does, which also means
+what it drops is not recoverable from the record it dropped it from: it logs a
+count of the rows it changed, and changes nothing else.
+
 ### One pair is not a coordinate
 
 A pair tagged `locSource: 'prefix'` is lib-country-files' DXCC entity centroid,

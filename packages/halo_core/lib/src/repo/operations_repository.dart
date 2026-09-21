@@ -11,6 +11,7 @@ import 'package:drift/drift.dart';
 
 import '../app_clock.dart';
 import '../db/database.dart';
+import '../models/location_repair.dart';
 import '../models/models.dart';
 import '../models/operation_operator.dart';
 import '../models/qson_values.dart';
@@ -545,6 +546,19 @@ class OperationsRepository {
         // no second dialect for it to arrive in.
         final purged = data.remove('purged') == true;
         normalizeLegacyStamps(data);
+        // A peer that stores a locator and no coordinate edits only half of
+        // a location, and the half it leaves outranks the half it wrote (see
+        // [repairStatedLocation]). Reconciled here, where an incoming record
+        // is brought into this app's shape, rather than at each of the
+        // readers that would otherwise have to distrust what they read.
+        //
+        // This path only, not [mergeFromPeer]: a row that arrives over the
+        // peer channel is stored dirty and pushed on, so repairing one there
+        // would send this device's deletion out under the SENDER's revision
+        // stamp — which `inboundIsStale` drops at every other device, leaving
+        // the server stripped and the fleet disagreeing. A record that came
+        // by peer reaches the server on its own and comes back through here.
+        repairStatedLocation(data);
         watermark.include(asQsonNum(data['syncedAtMillis'])?.toInt());
 
         final existing = existingByUuid[uuid];

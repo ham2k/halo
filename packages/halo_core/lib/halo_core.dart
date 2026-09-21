@@ -17,6 +17,7 @@ export 'src/ham/radio.dart';
 export 'src/number_formatting.dart';
 export 'src/models/models.dart';
 export 'src/models/call_change.dart';
+export 'src/models/location_repair.dart';
 export 'src/models/operation_operator.dart';
 export 'src/models/operation_title.dart';
 export 'src/models/qso_merge.dart';

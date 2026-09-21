@@ -157,7 +157,7 @@ const _currentActivitiesMapMaxHeight = _twoLineRowHeight * 2.5;
 const _accordionHeaderHeight = 48.0 + Space.sm * 2;
 
 /// Decides which location (if any) an operation should adopt right after a new
-/// activity ref is added, given it doesn't already have one:
+/// activity ref is added, given it has no resolved location of its own:
 ///  - if live GPS is available, adopt it — but only when the just-added ref
 ///    is within [_nearbyGridAdoptionKm] of it (a far-away ref added while
 ///    away from the shack shouldn't imply "this is where I am").
@@ -173,12 +173,12 @@ const _accordionHeaderHeight = 48.0 + Space.sm * 2;
 /// A pure function (no Flutter/service dependencies) so this decision is
 /// unit-testable without exercising the whole ActivitiesView widget tree.
 ({String grid, GridLocation location, String source})? locationToAdoptAfterAddingRef({
-  required String? operationGrid,
+  required GridLocation? operationLocation,
   required GridLocation? gpsPosition,
   required num? distanceKm,
   required List<Map<String, dynamic>> refsAfterAdd,
 }) {
-  if (operationGrid != null) return null;
+  if (operationLocation != null) return null;
 
   if (gpsPosition != null) {
     if (distanceKm == null || distanceKm > _nearbyGridAdoptionKm) return null;
@@ -934,7 +934,7 @@ class OperationSheetState extends State<OperationSheet> {
   /// wherever the source knew one; see [locationToAdoptAfterAddingRef].
   void _maybeAdoptLocationFromNewRef({num? distanceKm}) {
     final adopted = locationToAdoptAfterAddingRef(
-      operationGrid: _operation.grid,
+      operationLocation: _operation.location,
       gpsPosition: widget.services.location.location,
       distanceKm: distanceKm,
       refsAfterAdd: _operation.refs,

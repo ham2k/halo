@@ -45,6 +45,9 @@ import 'package:test/test.dart';
 /// `createTable` is `CREATE TABLE IF NOT EXISTS`, so that step would silently
 /// no-op instead of being exercised.
 const _undoToGetPreviousVersion = <int, List<String>>{
+  // v14 changed no schema entities either — it reconciles the two halves of
+  // the locations already stored (`_repairStatedLocations`).
+  14: [],
   // Undoing a WIDENED index means putting the narrow one back, not dropping
   // it: v12 had an index of this name, just with two fewer columns. A bare
   // drop here would leave the fixture without it and the upgrade would then
@@ -85,7 +88,7 @@ const _undoToGetPreviousVersion = <int, List<String>>{
 /// builds its tests while the file is being declared — before `setUpAll` has
 /// read `schemaVersion` into `currentVersion`. `the upgrade-path loop reaches
 /// the newest version` is what keeps the two in step.
-const _highestUpgradeFrom = 12;
+const _highestUpgradeFrom = 13;
 
 /// The schema every fresh install must produce. Regenerate with
 /// `dart run tool/dump_schema.dart` after a deliberate schema change — and ask
@@ -545,6 +548,123 @@ void main() {
       addTearDown(db.close);
       expect(await userVersionOf(db), currentVersion);
       expect(await db.customSelect('SELECT * FROM operations').get(), hasLength(1));
+    });
+  });
+
+  group('the locations already stored', () {
+    // The repair that runs where a record ENTERS cannot reach a row that
+    // entered before it, and nothing re-delivers a synced record just because
+    // this build knows more about it. Every operation relocated from a
+    // grid-only peer would keep measuring from the coordinate it left behind,
+    // and every one carrying `''` for a location never set would keep drawing
+    // no QTH while claiming to have a grid.
+    Future<Map<String, dynamic>> dataOf(HaLoDatabase db, String table, String uuid) async => jsonDecode(
+          (await db.customSelect(
+            'SELECT data FROM $table WHERE uuid = ?',
+            variables: [Variable<String>(uuid)],
+          ).getSingle())
+              .read<String>('data'),
+        ) as Map<String, dynamic>;
+
+    test('a coordinate left behind by a grid-only edit is dropped', () async {
+      final file = dbFile();
+      await createAtVersion(file, 13, whileAtOldVersion: (db) async {
+        await db.customStatement(
+          'INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)',
+          [
+            'op-moved',
+            // FN31pr's coordinate under DM33xk's locator: the pair outranks
+            // the grid, so the map and every distance answer from Connecticut
+            // for an operation the operator says is in Arizona.
+            jsonEncode({
+              'stationCall': 'KI2D',
+              'grid': 'DM33xk',
+              'lat': 41.7292,
+              'lon': -72.7292,
+              'updatedAtMillis': 1779000000000,
+            }),
+          ],
+        );
+        await db.customStatement(
+          'INSERT INTO qsos (uuid, operation, data, deleted, synced) VALUES (?, ?, ?, 0, 1)',
+          [
+            'qso-stated',
+            'op-moved',
+            // The same disagreement on a CONTACT, which the step must leave
+            // alone: the QSO edit pane's Latitude and Longitude are the
+            // operator stating where a station is, and they outlive an edit
+            // to the grid beside them. Repairing one here would delete what
+            // they typed, on their own device, at first launch.
+            jsonEncode({
+              'their': {'call': 'W1AW', 'grid': 'DM33xk', 'lat': 41.7292, 'lon': -72.7292},
+              'updatedAtMillis': 1779000000000,
+            }),
+          ],
+        );
+      });
+
+      final db = HaLoDatabase(NativeDatabase(file));
+      addTearDown(db.close);
+
+      final operation = (await OperationsRepository(db).get('op-moved'))!;
+      expect(operation.exactLocation, isNull);
+      expect(operation.location, gridToLocation('DM33xk'));
+      expect((await QsosRepository(db).get('qso-stated'))!.theirExactLocation, const GridLocation(41.7292, -72.7292),
+          reason: 'a contact states its own position; the step must not touch it');
+      // The revision is the record's own, untouched: a repair that bumped it
+      // would push the whole repaired log back to a peer that cannot store
+      // the half being dropped anyway.
+      expect(operation.updatedAtMillis, 1779000000000);
+      expect(
+        (await db.customSelect("SELECT synced FROM operations WHERE uuid = 'op-moved'").getSingle())
+            .read<bool>('synced'),
+        isTrue,
+      );
+    });
+
+    test('a locator that names no place stops claiming to be one', () async {
+      final file = dbFile();
+      await createAtVersion(file, 13, whileAtOldVersion: (db) async {
+        await db.customStatement(
+          'INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)',
+          ['op-blank', jsonEncode({'stationCall': 'KI2D', 'grid': '', 'gridSource': 'gps'})],
+        );
+      });
+
+      final db = HaLoDatabase(NativeDatabase(file));
+      addTearDown(db.close);
+
+      final stored = await dataOf(db, 'operations', 'op-blank');
+      expect(stored.containsKey('grid'), isFalse);
+      expect(stored.containsKey('gridSource'), isFalse);
+      expect(stored['stationCall'], 'KI2D', reason: 'the rest of the record is untouched');
+    });
+
+    test('an agreeing location is left exactly as it was', () async {
+      // The filter this leans on is a pre-filter, not a decision: a row whose
+      // coordinate sits inside its own square must come out byte for byte,
+      // or every log in the field is rewritten for nothing.
+      final file = dbFile();
+      final intact = jsonEncode({
+        'stationCall': 'KI2D',
+        'grid': 'FN31pr',
+        'lat': 41.7292,
+        'lon': -72.7292,
+      });
+      await createAtVersion(file, 13, whileAtOldVersion: (db) async {
+        await db.customStatement(
+          'INSERT INTO operations (uuid, data, qso_count, deleted, synced) VALUES (?, ?, 0, 0, 1)',
+          ['op-agreeing', intact],
+        );
+      });
+
+      final db = HaLoDatabase(NativeDatabase(file));
+      addTearDown(db.close);
+      expect(
+        (await db.customSelect("SELECT data FROM operations WHERE uuid = 'op-agreeing'").getSingle())
+            .read<String>('data'),
+        intact,
+      );
     });
   });
 

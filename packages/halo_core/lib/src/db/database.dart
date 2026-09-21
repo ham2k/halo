@@ -7,10 +7,15 @@
 // sync. The `data` column always holds the full QSON record; indexed columns
 // are derived from it on every write.
 
+import 'dart:convert';
+
 import 'package:drift/drift.dart';
 // The wrapper drift reports a background-isolate failure through; see
 // LogFromNewerBuild.within, which exists entirely because of it.
 import 'package:drift/isolate.dart' show DriftRemoteException;
+
+import '../dev_log.dart';
+import '../models/location_repair.dart';
 
 part 'database.g.dart';
 
@@ -315,7 +320,7 @@ class HaLoDatabase extends _$HaLoDatabase {
   HaLoDatabase(super.executor);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -392,9 +397,84 @@ class HaLoDatabase extends _$HaLoDatabase {
               await m.createIndex(peerEventsOperationSeq);
               await m.createIndex(peerEventsOperationRecord);
             }
+            if (from < 14) {
+              await _repairStatedLocations(m);
+            }
           });
         },
       );
+
+  /// Reconciles the two halves of every operation's location already stored
+  /// — the same repair an incoming record now gets (`repairStatedLocation`,
+  /// docs/design/locations.md), applied once to what arrived before it.
+  ///
+  /// The repair runs where a record ENTERS, so an operation that landed from
+  /// a grid-only peer earlier is otherwise fixed only by that record being
+  /// delivered again, which a normal sync round has no reason to do. It keeps
+  /// answering distances and map positions from a coordinate the operator
+  /// moved away from, or claims a locator that places nowhere and so draws no
+  /// QTH at all.
+  ///
+  /// Operations only, like the merge it mirrors — a contact's own two halves
+  /// disagreeing is the operator stating a position, not a stale half (see
+  /// [repairStatedLocation]).
+  ///
+  /// The stamps are deliberately untouched. This states nothing new about the
+  /// record — it drops a half that was already being ignored or was never a
+  /// location — and bumping the revision would push every repaired row back
+  /// out, which for a long log means re-uploading it to say what the other
+  /// end cannot store anyway.
+  ///
+  /// The SQL narrows to candidates and decides nothing: a row qualifies when
+  /// it carries a coordinate (which a locator may contradict) or a grid whose
+  /// first four characters are not a field pair followed by square digits
+  /// (which nothing can place). That GLOB is `gridCell`'s own entry test —
+  /// field letters A–R, then two digits — so no row the repair would change
+  /// is filtered out. It admits a little more than that: whitespace around a
+  /// locator, and a `grid` of the wrong type entirely, both fail the GLOB and
+  /// are read for real in Dart.
+  ///
+  /// A row whose halves agree is read and left exactly as it was — the
+  /// operator's log is not rewritten to say nothing.
+  static Future<void> _repairStatedLocations(Migrator m) async {
+    var repaired = 0;
+    var after = 0;
+    while (true) {
+      final rows = await m.database
+          .customSelect(
+            "SELECT rowid AS row_id, data FROM operations WHERE rowid > ? AND json_valid(data) AND ("
+            r"json_extract(data, '$.lat') IS NOT NULL OR "
+            r"(json_extract(data, '$.grid') IS NOT NULL AND "
+            r"json_extract(data, '$.grid') NOT GLOB '[A-Ra-r][A-Ra-r][0-9][0-9]*')"
+            ") ORDER BY rowid LIMIT 500",
+            variables: [Variable<int>(after)],
+          )
+          .get();
+      if (rows.isEmpty) break;
+      for (final row in rows) {
+        after = row.read<int>('row_id');
+        final decoded = jsonDecode(row.read<String>('data'));
+        // Unreachable for a row that passed `json_valid` and holds an object,
+        // which every operation record is — logged rather than skipped in
+        // silence because the one way to reach it is a blob no writer of ours
+        // produced, and this is the only pass that will ever look at it.
+        if (decoded is! Map<String, dynamic>) {
+          DevLog.instance.log('migration', {'step': 'repairStatedLocations', 'skipped': after});
+          continue;
+        }
+        if (!repairStatedLocation(decoded)) continue;
+        repaired++;
+        await m.database.customStatement(
+          'UPDATE operations SET data = ? WHERE rowid = ?',
+          [jsonEncode(decoded), after],
+        );
+      }
+    }
+    // The count is the only trace this pass leaves: the rows it changes keep
+    // their revision stamps, so nothing else afterwards can say it ran, and
+    // what it dropped is not recoverable from the record it dropped it from.
+    if (repaired > 0) DevLog.instance.log('migration', {'step': 'repairStatedLocations', 'repaired': repaired});
+  }
 
   /// Copies the revision stamp out of each row's `data` blob into the mirrored
   /// column, wherever the column is null and the blob has one.

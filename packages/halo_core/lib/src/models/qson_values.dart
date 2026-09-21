@@ -267,15 +267,23 @@ const _operationFields = <String, QsonFieldType>{
 Object? _coerce(Object? value, QsonFieldType type) => switch (type) {
       QsonFieldType.string => asQsonString(value),
       QsonFieldType.number => asQsonNum(value),
-      QsonFieldType.latitude => _coerceCoordinate(value, latitude: true),
-      QsonFieldType.longitude => _coerceCoordinate(value, latitude: false),
+      QsonFieldType.latitude => asQsonCoordinate(value, latitude: true),
+      QsonFieldType.longitude => asQsonCoordinate(value, latitude: false),
       QsonFieldType.map => asQsonMap(value),
       QsonFieldType.list => asQsonList(value),
     };
 
+/// One axis of a coordinate as this app stores it, from whatever a writer
+/// put in the field — a number, a numeric string, or ADIF's `N041 41.250`.
+///
 /// [asQsonNum] first, so a numeric string keeps its exact value; only what
 /// that refuses is read as ADIF, whose hemisphere letter is what marks it.
-num? _coerceCoordinate(Object? value, {required bool latitude}) =>
+///
+/// Public because normalization is not the only reader that has to see a
+/// coordinate the way storage will: anything judging a record BEFORE it is
+/// normalized (`repairStatedLocation`) would otherwise find no coordinate on
+/// exactly the records that arrive in the ADIF form.
+num? asQsonCoordinate(Object? value, {required bool latitude}) =>
     asQsonNum(value) ?? (value is String ? parseAdifCoordinate(value, latitude: latitude) : null);
 
 /// True when [value] already satisfies [type] with nothing to rewrite, so a
