@@ -35,22 +35,17 @@ const _parkSuggestion = {
 };
 
 class _MapToggleExtensions extends ExtensionServiceWithFakeHost {
-  _MapToggleExtensions() : super(FakeExtensionHost({}));
+  _MapToggleExtensions()
+      : super(FakeExtensionHost({
+          'activity:*:suggest': [
+            {'key': 'pota', 'ok': true, 'value': [_parkSuggestion]},
+          ],
+        }));
 
   @override
   Future<ControlsResult> operationControls(Map<String, dynamic> operationData, {Map<String, dynamic>? qso}) async =>
       (controls: const [_parkControl], loadFailed: false);
 
-  @override
-  Future<ActivitySuggestionResult> suggestActivities(
-    Map<String, dynamic> operationData, {
-    String? searchTerm,
-    GridLocation? fallbackLocation,
-    List<String>? activityKeys,
-    List<String>? preferredKeys,
-    String? preferredSearchTerm,
-  }) async =>
-      (suggestions: const [_parkSuggestion], allSourcesFailed: false);
 }
 
 void main() {

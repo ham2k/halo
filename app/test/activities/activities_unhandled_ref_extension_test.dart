@@ -90,17 +90,6 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
     await settings!.setExtensionOverrides({...settings!.extensionOverrides, key: enabled});
     if (key == 'sota' && enabled) controls = const [_sotaControl];
   }
-
-  @override
-  Future<ActivitySuggestionResult> suggestActivities(
-    Map<String, dynamic> operationData, {
-    String? searchTerm,
-    GridLocation? fallbackLocation,
-    List<String>? activityKeys,
-    List<String>? preferredKeys,
-    String? preferredSearchTerm,
-  }) async =>
-      (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
 }
 
 Future<(HaLoServices, Operation)> _harness({

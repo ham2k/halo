@@ -39,12 +39,20 @@ const _setupControl = {
   },
 };
 
-/// The shared FakeExtensionHost only overrides the public `host` getter, while
-/// control collection reads the private field — so controls would come back
-/// empty. Overriding the two methods this view actually calls is both simpler
-/// and a tighter statement of what the test depends on.
+/// The contest, as this view reaches it: the setup control it offers — which
+/// grows a field once the operation carries the contest's ref — and the label
+/// its decorateRef hook gives that ref.
 class _ContestExtensions extends ExtensionServiceWithFakeHost {
-  _ContestExtensions() : super(FakeExtensionHost({}));
+  _ContestExtensions()
+      : super(FakeExtensionHost({
+          // Stands in for simple-contest's own decorateRef: label the ref with
+          // the contest identifier so the Activities row has something to show.
+          'ref:simple-contest:null:decorateRef': (Object? args) {
+            final ref = ((args as Map)['ref'] as Map).cast<String, dynamic>();
+            final id = ref['contestIdentifier'] as String?;
+            return {...ref, if (id != null && id.isNotEmpty) 'shortLabel': id};
+          },
+        }));
 
   /// A field the control only offers once the operation carries the ref. Stands
   /// in for the State Parks setup, which asks Ohio for the park it is in, a
@@ -67,14 +75,6 @@ class _ContestExtensions extends ExtensionServiceWithFakeHost {
       control['input'] = input;
     }
     return (controls: [control], loadFailed: false);
-  }
-
-  /// Stands in for simple-contest's own decorateRef: label the ref with the
-  /// contest identifier so the Activities row has something to show.
-  @override
-  Future<Map<String, dynamic>> decorateRef(Map<String, dynamic> ref) async {
-    final id = ref['contestIdentifier'] as String?;
-    return {...ref, if (id != null && id.isNotEmpty) 'shortLabel': id};
   }
 }
 

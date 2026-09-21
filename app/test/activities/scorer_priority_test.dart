@@ -111,10 +111,10 @@ const _vhfParkOperationData = {
   ],
 };
 
-/// Answers the two hook calls `ScoringService` makes — which scorers exist,
-/// and what each one says — without a runtime. The methods are overridden
-/// rather than a host installed: `scoreQsos` reads the private `_host`, so a
-/// host stand-in alone would leave it answering null for every scorer.
+/// Answers the two calls `ScoringService` makes — which scorers exist, and
+/// what each one says — at the service's own methods, in the shape they
+/// return. What is under test is the priority merge downstream of them, not
+/// how a hook's payload becomes that shape.
 class _FakeExtensions extends ExtensionService {
   final Map<String, dynamic> scopes;
   final Map<String, Map<String, dynamic>?> answers;

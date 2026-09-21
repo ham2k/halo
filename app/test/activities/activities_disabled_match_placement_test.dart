@@ -43,6 +43,9 @@ List<ExtensionInfo> _manyParks(int count) => [
     ];
 
 class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
+  // No `activity:*:suggest` stub, deliberately: no suggestion can come back
+  // for a disabled extension, because its hooks aren't loaded. That is exactly
+  // the case under test — the enable row is the only answer there is.
   _NoActivityExtensions() : super(FakeExtensionHost({}));
 
   @override
@@ -51,20 +54,6 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
     Map<String, dynamic>? qso,
   }) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
-
-  // No suggestion can come back for a disabled extension: its hooks aren't
-  // loaded. That is exactly the case under test — the enable row is the only
-  // answer there is.
-  @override
-  Future<ActivitySuggestionResult> suggestActivities(
-    Map<String, dynamic> operationData, {
-    String? searchTerm,
-    GridLocation? fallbackLocation,
-    List<String>? activityKeys,
-    List<String>? preferredKeys,
-    String? preferredSearchTerm,
-  }) async =>
-      (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
 }
 
 Future<(HaLoServices, Operation)> _harness({

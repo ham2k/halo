@@ -648,7 +648,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     bool partialOnTimeout = false,
     int failureThreshold = ErrorReportingService.repeatedFailureThreshold,
   }) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) {
       return (
         items: const <Map<String, dynamic>>[],
@@ -768,7 +768,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     required Map<String, dynamic> operation,
     Map<String, dynamic>? qso,
   }) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return const [];
     final method = qso == null ? 'isSelfSpotEnabled' : 'isOtherSpotEnabled';
     final args = qso == null ? {'operation': operation} : {'qso': qso};
@@ -833,7 +833,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// it directly without an args/ctx round-trip, same as any other field
   /// access through the hook-call bridge.
   Future<Map<String, String>> getSpotSourceNames() async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return const {};
     try {
       final entries = await host.invokeHookAll('spots', method: 'sourceName', timeout: const Duration(seconds: 5));
@@ -861,9 +861,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// cannot derive. Both paths are normalized here rather than in every
   /// poster — the other-spot path never carries a `mode` argument at all, so
   /// it is the QSO copy sent JS-side that has to be corrected.
-  ///
-  /// Reads the public [host] rather than `_host` so a test can stand a fake
-  /// behind it and assert the payload this builds.
   Future<Map<String, Map<String, dynamic>>> sendSpot({
     required List<Map<String, dynamic>> sources,
     required Map<String, dynamic> operation,
@@ -930,7 +927,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   }
 
   Future<String> testCredentials(String accountKey, Map<String, String> credentials) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return t.extensionService.runtimeNotReady;
     try {
       final dynamic res = await host.invokeHook(
@@ -2280,8 +2277,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// by the kernel's own `kernel-info` extension (the one place versions
   /// exist). Empty when the runtime is down.
   Future<List<Map<String, dynamic>>> listActiveExtensions() async {
-    // `this.host`, not the field: mock-host test subclasses override the
-    // getter.
     final host = this.host;
     if (host == null) return const [];
     try {
@@ -2722,7 +2717,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
           initialState: state,
           validator: (fieldKey, value, currentState) async {
             try {
-              final res = await _host?.invokeHook(
+              final res = await host?.invokeHook(
                 'form',
                 key: formId,
                 method: 'validateField',
@@ -2740,7 +2735,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
           },
           transformer: (fieldKey, value, currentState) async {
             try {
-              final res = await _host?.invokeHook(
+              final res = await host?.invokeHook(
                 'form',
                 key: formId,
                 method: 'transformField',
@@ -2758,7 +2753,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
           },
           onChange: (fieldKey, value, currentState) async {
             try {
-              final res = await _host?.invokeHook(
+              final res = await host?.invokeHook(
                 'form',
                 key: formId,
                 method: 'onChangeField',
@@ -2880,7 +2875,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     bool recentContext = false,
   }) async {
     if (stubLookups) return call.length < 3 ? null : stubbedLookupResult(call);
-    final host = _host;
+    final host = this.host;
     if (host == null || call.length < 3) return null;
     // One key for the whole pipeline, unlike _syncTransportCall's per-method
     // one: `lookupCallInfo` is a single coarse hook, so there is no
@@ -2936,7 +2931,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// dozens of extensions enabled while an operation references a handful
   /// (docs/design/contests.md §5.1).
   Future<Map<String, dynamic>> getScoringScopes() async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return const {};
     try {
       final entries = await host.invokeHookAll('scoring', method: 'scope', timeout: const Duration(seconds: 5));
@@ -3035,7 +3030,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     required String scorerKey,
     required Map<String, dynamic> args,
   }) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return null;
     try {
       final result = await host.invokeHook(
@@ -3086,10 +3081,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     List<Map<String, dynamic>>? segments,
     Set<String> huntedRefTypes = const {},
   }) async {
-    // The public accessor rather than `_host`, as in [scoreCandidates]: the
-    // priority merge below is the thing worth a test, and a private field
-    // can't be stood in for. Identical in production — the getter returns
-    // `_host`.
     final host = this.host;
     if (host == null) return null;
 
@@ -3191,9 +3182,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     Map<String, dynamic>? scoresheets,
     Set<String> huntedRefTypes = const {},
   }) async {
-    // The public accessor rather than `_host` directly: what this method sends
-    // over the bridge is the thing worth a test, and a private field can't be
-    // stood in for. Identical in production — the getter returns `_host`.
     final host = this.host;
     if (host == null || candidates.isEmpty) return null;
 
@@ -3322,7 +3310,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     Map<String, dynamic>? qso,
     bool execute = false,
   ]) async {
-    final host = _host;
+    final host = this.host;
     if (host == null || input.isEmpty) return null;
     try {
       final entries = await host.invokeHookAll(
@@ -3506,7 +3494,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     Map<String, dynamic> qsoData,
     Map<String, dynamic> operationData,
   ) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return qsoData;
     final refs = operationData['refs'];
     if (refs is! List || refs.isEmpty) return qsoData;
@@ -3545,9 +3533,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     Map<String, dynamic> operationData, {
     Map<String, dynamic>? qso,
   }) async {
-    // Through the getter, not `_host`: a test subclass overrides `host`, and
-    // reading the field behind it routes every such test down the no-host
-    // path below without ever invoking a hook.
     final host = this.host;
     // No host is a failure, not an empty answer: the runtime is dead or
     // still starting (see ErrorPolicy's `extension-runtime-dead`), and the
@@ -3658,7 +3643,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     List<String>? preferredKeys,
     String? preferredSearchTerm,
   }) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
 
     // The operation's own coordinate first, then the centre of its grid: a
@@ -3784,7 +3769,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// needs a network round-trip. Only this method (called from the Sync
   /// panel's refreshes and post-link flows) updates it.
   Future<Map<String, dynamic>?> syncAccountData() async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return null;
     try {
       final result = await host.invokeHook('syncTransport', method: 'getAccountData', args: const {});
@@ -3812,7 +3797,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// come back as `{'error': ..., 'error_status': ...}` in the map; null
   /// means the server couldn't be reached at all.
   Future<Map<String, dynamic>?> syncLinkClient(String? email) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return null;
     try {
       final result = await host.invokeHook(
@@ -3830,7 +3815,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// Requests a link-by-email challenge from the sync server. Returns null
   /// on failure; callers should surface that as "couldn't reach the server".
   Future<Map<String, dynamic>?> syncLinkClientWithEmail(String email) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return null;
     try {
       final result = await host.invokeHook('syncTransport', method: 'linkClientWithEmail', args: {'email': email});
@@ -3888,7 +3873,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// including the `error`/`error_status` maps those endpoints return for
   /// rejections that belong to the UI flow rather than to error reporting.
   Future<Map<String, dynamic>?> _syncTransportCall(String method, Map<String, dynamic> args) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return null;
     final streakKey = 'syncTransport:$method';
     try {
@@ -3922,10 +3907,6 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// operator-callsign changes come here for — never expires, and they must
   /// keep working offline.
   Future<LofiClientRegistration?> ensureLofiClientRegistered({bool refreshWebhookToken = false}) async {
-    // Through the getter, not the `_host` field the neighbours read: the
-    // getter is the seam a test can substitute, and what crosses it here —
-    // the args map, matched by string on the JavaScript side — has no other
-    // way to be checked.
     final host = this.host;
     if (host == null) return null;
     try {
@@ -3948,7 +3929,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// [HaLoServices.webhookEvents] Pusher ping (which intentionally carries
   /// only an id, never the sensitive payload).
   Future<List<Map<String, dynamic>>> fetchLofiWebhookEvents() async {
-    final host = _host;
+    final host = this.host;
     if (host == null) return const [];
     try {
       final result = await host.invokeHook('syncTransport', method: 'fetchWebhookEvents', args: const {});
@@ -3979,7 +3960,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
     required String body,
     required String kind,
   }) async {
-    final host = _host;
+    final host = this.host;
     if (host == null) {
       debugPrint('[extensions] submitReport: no runtime');
       return (ref: null, error: t.extensionService.reportUnavailable);
@@ -4017,7 +3998,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// Decorates a ref (park name, location…) via its `ref:<type>` handler.
   /// Returns the input unchanged if no handler answers.
   Future<Map<String, dynamic>> decorateRef(Map<String, dynamic> ref) async {
-    final host = _host;
+    final host = this.host;
     final type = ref['type'] as String?;
     if (host == null || type == null) return ref;
     try {
@@ -4036,7 +4017,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// onto the operation's ref, so a program that changes its URLs takes effect
   /// with the extension rather than needing every saved operation rewritten.
   Future<RefLink?> linkForRef(Map<String, dynamic> ref) async {
-    final host = _host;
+    final host = this.host;
     final type = ref['type'] as String?;
     if (host == null || type == null) return null;
     try {
@@ -4056,7 +4037,7 @@ class ExtensionService implements PanelExtensionSource, PanelEventSource {
   /// written back onto the ref, so a program that moves its files takes effect
   /// with the extension.
   Future<RefGeojson?> geojsonUrlForRef(Map<String, dynamic> ref) async {
-    final host = _host;
+    final host = this.host;
     final type = ref['type'] as String?;
     if (host == null || type == null) return null;
     try {

@@ -68,17 +68,6 @@ class _Extensions extends ExtensionServiceWithFakeHost {
     await settings!.setExtensionOverrides({...settings!.extensionOverrides, key: enabled});
     if (enabled) controls = const [_nyqpControl];
   }
-
-  @override
-  Future<ActivitySuggestionResult> suggestActivities(
-    Map<String, dynamic> operationData, {
-    String? searchTerm,
-    GridLocation? fallbackLocation,
-    List<String>? activityKeys,
-    List<String>? preferredKeys,
-    String? preferredSearchTerm,
-  }) async =>
-      (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
 }
 
 void main() {

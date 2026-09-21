@@ -23,9 +23,10 @@ import 'package:ham2k_logger/views/settings_view.dart';
 
 import '../support/halo_test_support.dart';
 
-/// [ExtensionServiceWithFakeHost] only overrides the `host` getter, while
-/// `syncAccountData` reads the private field behind it — so the payload has to
-/// be stubbed at the method, not at the mock host's hook table.
+/// Answers `syncAccountData` from [fetch], which a test can hold open or
+/// fail, to reach the panel's in-flight and error states. Overridden rather
+/// than stubbed at the hook because the real method also persists what it
+/// fetched into `settings.syncState`, a write these tests are not about.
 class _ExtensionsWithAccountData extends ExtensionServiceWithFakeHost {
   final Future<Map<String, dynamic>?> Function() fetch;
   _ExtensionsWithAccountData(this.fetch) : super(FakeExtensionHost({}));

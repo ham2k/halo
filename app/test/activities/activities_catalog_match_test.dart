@@ -76,17 +76,6 @@ class _NoActivityExtensions extends ExtensionServiceWithFakeHost {
     Map<String, dynamic>? qso,
   }) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
-
-  @override
-  Future<ActivitySuggestionResult> suggestActivities(
-    Map<String, dynamic> operationData, {
-    String? searchTerm,
-    GridLocation? fallbackLocation,
-    List<String>? activityKeys,
-    List<String>? preferredKeys,
-    String? preferredSearchTerm,
-  }) async =>
-      (suggestions: const <Map<String, dynamic>>[], allSourcesFailed: false);
 }
 
 Future<(HaLoServices, Operation, _CountingCatalog)> _harness({

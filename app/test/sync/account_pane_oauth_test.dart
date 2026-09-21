@@ -187,8 +187,6 @@ class _AccountExtensionService extends ExtensionServiceWithFakeHost {
   Future<void> setAccountCredentials(String kvKey, Map<String, String> credentials) async {
     store[kvKey] = credentials;
   }
-  @override
-  Future<String> testCredentials(String accountKey, Map<String, String> credentials) async => 'ok';
 
   /// Every `refreshWebhookToken` this pane asked for, in order.
   final registrationRefreshes = <bool>[];

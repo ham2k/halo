@@ -17,10 +17,9 @@ const _url = 'https://az.sotl.as/W2/GC/116.geojson';
 const _summit = {'type': 'sotaActivation', 'ref': 'W2/GC-116'};
 const _shape = '{"type":"FeatureCollection","features":[]}';
 
-/// Answers `geojsonUrlForRef` from one fixed value. The real
-/// [ExtensionService.geojsonUrlForRef] reads the private `_host` field, which
-/// a host mock cannot reach — overriding the method itself is what keeps this
-/// about GeoshapeService rather than about a seam that isn't there.
+/// Answers `geojsonUrlForRef` from one fixed value, already parsed —
+/// overriding the method rather than stubbing the hook keeps this about
+/// GeoshapeService, not about how a hook's answer becomes a [RefGeojson].
 class _FakeExtensions extends ExtensionService {
   _FakeExtensions(this.answer);
   final RefGeojson? answer;

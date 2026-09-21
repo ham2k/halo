@@ -187,11 +187,10 @@ void main() {
     }
 
     test('a run that cannot start still removes its operation', () async {
-      // The refusal here comes from there being NO host at all:
-      // `getScoringScopes` reads the private `_host`, which
-      // ExtensionServiceWithFakeHost never sets — it overrides the `host`
-      // getter only. So this covers the refusal path and the cleanup that
-      // follows it, and NOT the measurement loop, which needs a real engine.
+      // The refusal here is "no contest scorer": the fake host has no
+      // `scoring` hooks stubbed, so no scorer is selected. So this covers the
+      // refusal path and the cleanup that follows it, and NOT the measurement
+      // loop, which needs a real engine.
       // Without the `finally` a refused run leaves an empty Test Operation in
       // the log every time it is tried.
       final (qsos, operations, scoring, db) = await stack();
@@ -207,7 +206,7 @@ void main() {
           qsoCount: 10,
           purge: (uuid) async => purged.add(uuid),
         ),
-        throwsA(isA<BenchNotConfigured>()),
+        throwsA(isA<BenchNotConfigured>().having((e) => e.message, 'message', contains('No contest scorer'))),
       );
 
       expect(purged, hasLength(1), reason: 'the operation must be removed even when nothing ran');
@@ -219,7 +218,7 @@ void main() {
       // run's own — the dirty log is what the operator must act on — so the
       // displaced error has to travel inside it rather than be lost.
       //
-      // The displaced error is the no-host refusal (see above); what is pinned
+      // The displaced error is the no-scorer refusal (see above); what is pinned
       // is that SOMETHING was carried, not which failure it happened to be.
       final (qsos, operations, scoring, db) = await stack();
       addTearDown(db.close);

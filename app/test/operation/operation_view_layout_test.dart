@@ -852,12 +852,29 @@ void main() {
   });
 }
 
-/// The shared fake host only reaches the public `host` getter while
-/// the sheet's own calls read the private field, so suggestions would come
-/// back empty and there would be no activity to add. Overrides the two
-/// methods this test depends on instead.
+/// One park to add, offered the way the activity hooks offer it, and no
+/// operation controls.
 class _SuggestingExtensions extends ExtensionServiceWithFakeHost {
-  _SuggestingExtensions();
+  _SuggestingExtensions()
+      : super(FakeExtensionHost({
+          'activity:*:suggest': [
+            {
+              'key': 'pota',
+              'ok': true,
+              'value': [
+                {
+                  'type': 'pota',
+                  'ref': 'US-0001',
+                  'label': 'POTA US-0001',
+                  // Long on purpose: the header's ref line has to outgrow its
+                  // title line for the title control to get any wider at all.
+                  'shortLabel': 'POTA US-0001 A Very Long Park Name',
+                  'name': 'Some Park',
+                }
+              ],
+            },
+          ],
+        }));
 
   @override
   Future<ControlsResult> operationControls(
@@ -866,27 +883,4 @@ class _SuggestingExtensions extends ExtensionServiceWithFakeHost {
   }) async =>
       (controls: const <Map<String, dynamic>>[], loadFailed: false);
 
-  @override
-  Future<ActivitySuggestionResult> suggestActivities(
-    Map<String, dynamic> operationData, {
-    String? searchTerm,
-    GridLocation? fallbackLocation,
-    List<String>? activityKeys,
-    List<String>? preferredKeys,
-    String? preferredSearchTerm,
-  }) async =>
-      (
-        suggestions: const [
-          {
-            'type': 'pota',
-            'ref': 'US-0001',
-            'label': 'POTA US-0001',
-            // Long on purpose: the header's ref line has to outgrow its
-            // title line for the title control to get any wider at all.
-            'shortLabel': 'POTA US-0001 A Very Long Park Name',
-            'name': 'Some Park',
-          }
-        ],
-        allSourcesFailed: false
-      );
 }

@@ -72,17 +72,23 @@ class FakeExtensionHost implements ExtensionHost {
 /// An [ExtensionService] whose public [host] is a [FakeExtensionHost] and
 /// that never starts a runtime.
 ///
-/// The fake is only visible through the PUBLIC `host` getter. Most of the
-/// service's own hook-calling methods (`operationControls`,
-/// `suggestActivities`, …) read the private `_host`, which stays null here,
-/// so they answer empty results whatever the stubs say — a test of one of
-/// those paths overrides the method on a subclass instead. **`sendSpot` is
-/// the exception**: it reads the getter, so it honours the stubs and a test
-/// can assert the payload it builds. Putting it back on `_host` "for
-/// consistency" would silently un-test that payload. Services that reach hooks through
-/// `extensions.host` (data files, export, ADIF import, operation titles) do
-/// see the stubs; scoring passes the null check on the getter and then
-/// calls the service's own methods, so it does not.
+/// The fake is visible only through the PUBLIC `host` getter; the private
+/// `_host` field behind it stays null. Every hook call the service makes goes
+/// through the getter — `extension_hook_calls_through_getter_test.dart`
+/// enforces it — so the service's own methods and every other service that
+/// reaches hooks honour the stubs. Runtime management (the clock push, bundle
+/// reloads, KV writes, lifecycle) stays on the field and never reaches the
+/// fake, which would refuse it anyway.
+///
+/// **`ready` is still false** here: it reads the field, because it answers
+/// whether a runtime is up, not whether a hook can be called. A caller that
+/// checks it behaves as if the runtime were down, stubs or no stubs — the
+/// command interpreter and the lookup queue stand down, and Settings loads its
+/// panels but still raises its "extensions unavailable" notice.
+///
+/// To stand in for a hook that fails, stub an [ExtensionHostException]: that
+/// is what the service's methods catch. A plain [Exception] escapes them, and
+/// tests a failure the runtime never produces.
 class ExtensionServiceWithFakeHost extends ExtensionService {
   /// Usually a [FakeExtensionHost]; a test with its own stand-in for the
   /// host passes that instead.

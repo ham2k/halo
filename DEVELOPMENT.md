@@ -187,8 +187,12 @@ services), size: …)` mounts a widget inside the `TranslationProvider` +
 `MaterialApp` pair the app's widgets expect. `stubs` is a
 `{'category:key:method': result}` map answered by one `FakeExtensionHost` —
 a `Function` value is called with the hook's args, an `Exception` value is
-thrown. Prefer `settleFrames` to `pumpAndSettle` wherever a `WallClock`
-ticks in the tree: the settle loop never finds a quiet frame and runs into
+thrown — stub an `ExtensionHostException` to stand in for a failing hook,
+since that is what the service catches. A hook called with no key is stubbed as
+`'category:null:method'` (`'ref:pota:null:decorateRef'`), and
+`extensions.ready` stays false under the fake, so a path that checks it
+behaves as if the runtime were down. Prefer `settleFrames` to `pumpAndSettle`
+wherever a `WallClock` ticks in the tree: the settle loop never finds a quiet frame and runs into
 its ten-minute timeout. The same directory holds the larger fakes (secure
 storage, panel extensions, the peer transports, a connected CAT radio) and
 `app/test/flutter_test_config.dart` gives every file an empty prefs store —

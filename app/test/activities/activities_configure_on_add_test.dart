@@ -62,16 +62,19 @@ const _parkSuggestion = {
   'name': 'Some Park',
 };
 
-/// The shared FakeExtensionHost only overrides the public `host` getter, while
-/// control collection and `suggestActivities` read the private field — so both
-/// would come back empty and every row this file looks for would be missing.
-/// Overriding the three methods the sheet actually calls says exactly what
-/// these tests depend on.
+/// The add flow's extensions. The activity hooks offer [suggestions] through
+/// the fake host; the controls fetch and `decorateRef` are overridden because
+/// each carries behaviour a test drives — a fetch it can make fail, and a
+/// decoration with a callback that runs while the hook is in flight.
 class _AddFlowExtensions extends ExtensionServiceWithFakeHost {
-  _AddFlowExtensions({required this.controls, required this.suggestions}) : super(FakeExtensionHost({}));
+  _AddFlowExtensions({required this.controls, required List<Map<String, dynamic>> suggestions})
+      : super(FakeExtensionHost({
+          'activity:*:suggest': [
+            {'key': 'fd', 'ok': true, 'value': suggestions},
+          ],
+        }));
 
   final List<Map<String, dynamic>> controls;
-  final List<Map<String, dynamic>> suggestions;
 
   /// Set to fail the controls fetch the way a timed-out hook does: no
   /// descriptors, and the fan-out saying so.
@@ -84,16 +87,6 @@ class _AddFlowExtensions extends ExtensionServiceWithFakeHost {
   }) async =>
       controlsFail ? (controls: const <Map<String, dynamic>>[], loadFailed: true) : (controls: controls, loadFailed: false);
 
-  @override
-  Future<ActivitySuggestionResult> suggestActivities(
-    Map<String, dynamic> operationData, {
-    String? searchTerm,
-    GridLocation? fallbackLocation,
-    List<String>? activityKeys,
-    List<String>? preferredKeys,
-    String? preferredSearchTerm,
-  }) async =>
-      (suggestions: suggestions, allSourcesFailed: false);
 
   /// Stands in for the contest's own decorateRef. The identity keys have to
   /// survive or the saved row can't be found again to replace.

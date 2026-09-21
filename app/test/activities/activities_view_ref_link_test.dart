@@ -24,11 +24,14 @@ import '../support/halo_test_support.dart';
 /// Answers `linkForRef` from a table, and nothing else — the real dispatch is
 /// exercised against the real bundles in halo_extension_host's `ref_link_test`.
 class _LinkingExtensionService extends ExtensionServiceWithFakeHost {
-  _LinkingExtensionService(this.links, {this.suggestions = const [], this.throwsFor})
-      : super(FakeExtensionHost({}));
+  _LinkingExtensionService(this.links, {List<Map<String, dynamic>> suggestions = const [], this.throwsFor})
+      : super(FakeExtensionHost({
+          'activity:*:suggest': [
+            {'key': 'pota', 'ok': true, 'value': suggestions},
+          ],
+        }));
 
   final Map<String, RefLink> links;
-  final List<Map<String, dynamic>> suggestions;
 
   /// [throwsFor] stands in for a bug on our side of the hook — a wrong-typed
   /// field on the ref, say — which `linkForRef` does not swallow.
@@ -40,18 +43,6 @@ class _LinkingExtensionService extends ExtensionServiceWithFakeHost {
     return links[ref['ref']];
   }
 
-  // The mock host answers no hooks, so the real one would search forever
-  // against an empty world.
-  @override
-  Future<ActivitySuggestionResult> suggestActivities(
-    Map<String, dynamic> operationData, {
-    String? searchTerm,
-    GridLocation? fallbackLocation,
-    List<String>? activityKeys,
-    List<String>? preferredKeys,
-    String? preferredSearchTerm,
-  }) async =>
-      (suggestions: suggestions, allSourcesFailed: false);
 }
 
 void main() {
