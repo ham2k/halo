@@ -1,0 +1,6 @@
+# Commits that only reformat code, skipped by `git blame` (see DEVELOPMENT.md)
+# and by GitHub's blame view. Git skips a hash it cannot find, so a commit may
+# be listed once per repository it has a different hash in.
+
+# Dart code is formatted at 160 columns
+b3d7a6cc62eafb3ddf8797fe18c472dfcea336db

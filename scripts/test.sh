@@ -276,6 +276,47 @@ check_clock_discipline() {
 }
 
 # ---------------------------------------------------------------------------
+# Dart formatting
+#
+# Every first-party package's analysis_options.yaml sets `formatter:
+# page_width: 160`, so a plain `dart format` (and an editor's format-on-save)
+# already formats at the project's width. This check keeps the tree at the
+# state that makes that safe: an unformatted file means the next person to
+# format it on save carries an unrelated reflow into their diff.
+#
+# Must run AFTER `flutter pub get` in each package: the formatter reads
+# page_width through the analysis_options `include:` chain, and with an
+# unresolvable `package:` include it silently falls back to 80 and reports
+# nearly every file as unformatted.
+#
+# Generated `.g.dart` files are exempt — they are as their generator writes
+# them. Takes the package directories as arguments; the vendored copies are
+# never in that list.
+# ---------------------------------------------------------------------------
+
+dart_format_files() {
+  local pkg
+  for pkg in "$@"; do
+    git -C "$ROOT_DIR" ls-files --cached --others --exclude-standard -- "$pkg/*.dart" \
+      | grep -v '\.g\.dart$' || true
+  done | sort -u
+}
+
+check_dart_format() {
+  echo "▶ dart format: first-party code is formatted at page_width 160"
+  local files out
+  files=$(dart_format_files "$@")
+  # shellcheck disable=SC2086
+  if ! out=$(cd "$ROOT_DIR" && dart format --output=none --set-exit-if-changed $files 2>&1); then
+    echo "$out" | grep -v '^Formatted '
+    echo
+    echo "❌ the files above are not formatted. Run \`dart format <file>\` on them" >&2
+    echo "   (the width comes from analysis_options.yaml — do not pass --line-length)." >&2
+    exit 1
+  fi
+}
+
+# ---------------------------------------------------------------------------
 # Incremental prerequisites for subset runs
 # ---------------------------------------------------------------------------
 
@@ -888,6 +929,8 @@ for pkg in "${PACKAGES[@]}"; do
     flutter test
   fi
 done
+
+check_dart_format "${PACKAGES[@]}"
 
 if [[ "$QUICK" -eq 0 ]]; then
   run_browser_tests

@@ -13,3 +13,6 @@ linter:
   rules:
     - avoid_dynamic_calls
     - unawaited_futures
+
+formatter:
+  page_width: 160

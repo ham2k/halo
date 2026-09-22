@@ -155,6 +155,18 @@ quick mode runs them so a broken convention on `main` reddens something.
 `BROWSER_REQUIRED=1`. A new rule of that shape belongs in one of them, not
 in a hand-written workflow step.
 
+Dart code is formatted at **160 columns**. Every first-party package's
+`analysis_options.yaml` sets `formatter: page_width: 160`, so a plain
+`dart format <file>` and an editor's format-on-save use it — never pass
+`--line-length`. The full gate and `--quick` both fail on an unformatted file
+(generated `.g.dart` files are exempt). The width is read through the
+`include:` chain, so a package without `pub get` formats at the default 80.
+A commit that only reformats goes in `.git-blame-ignore-revs`; run
+`git config blame.ignoreRevsFile .git-blame-ignore-revs` once per clone so
+`git blame` looks past it (GitHub's blame view already does). Git refuses to
+blame at all in a checkout that lacks the file, so a worktree cut before it
+existed needs a rebase first.
+
 For the inner loop, the same script runs **subsets** — it handles the
 stale-bundle problem itself (rebuilding only when `extensions/` is newer than
 the built bundles) and skips `npm ci` / `pub get` / `analyze`:
