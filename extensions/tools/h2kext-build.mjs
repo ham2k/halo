@@ -34,12 +34,12 @@ import { H2KEXT_API_VERSION, MANIFEST_ENTRY, sharedModulesFor } from "./h2kext.m
 /// copy is exercised by this repo's own build — the extensions here are built
 /// through `build-config.mjs`, which takes a different path into the same
 /// preset.
-export const EXAMPLE_BUILD_SCRIPT = `import { build } from 'esbuild'
-import { buildExtension } from '@ham2k/extension-tools'
+export const EXAMPLE_BUILD_SCRIPT = `import { build } from "esbuild"
+import { buildExtension } from "@ham2k/extension-tools"
 
 await buildExtension(build, { dir: import.meta.dirname })
 
-console.log('built build/index.js')
+console.log("built build/index.js")
 `
 
 export class BuildError extends Error {}

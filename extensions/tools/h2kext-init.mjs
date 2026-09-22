@@ -35,10 +35,11 @@ The key is '<yourcallsign>-<name>' — e.g. ki2d-my-clock. The callsign is a
 namespace you already have, globally unique, so two authors who never met
 cannot collide. It also namespaces your extension's storage.
 
-Writes manifest.json, src/index.ts, build.mjs, tsconfig.json, AGENTS.md and
-.gitignore into <path> (default: the working directory), refusing rather than
-overwrite anything already there. An existing package.json is added to — the
-scripts and dependencies this needs, nothing of yours replaced.`)
+Writes manifest.json, src/index.ts, build.mjs, tsconfig.json, AGENTS.md,
+.prettierrc.json and .gitignore into <path> (default: the working directory),
+refusing rather than overwrite anything already there. An existing
+package.json is added to — the scripts and dependencies this needs, nothing of
+yours replaced.`)
   process.exit(args.length === 0 ? 1 : 0)
 }
 
@@ -110,6 +111,16 @@ function sdkRange(projectDir) {
   return "latest"
 }
 
+/// One object of a JSON file, indented as Prettier indents it. Prettier keeps
+/// an object expanded when it was written expanded, so nesting one of these
+/// inside a template is stable at any width; an ARRAY it re-decides by width,
+/// which is why every array below is written inline by hand rather than
+/// stringified. Held by a test that formats everything the scaffold writes
+/// and compares it with what Prettier would have produced.
+function nestedJson(value, indent) {
+  return JSON.stringify(value, null, 2).replaceAll("\n", `\n${indent}`)
+}
+
 /// What the project's package.json has to say for the build, the packer and
 /// the typecheck to run.
 const projectPackage = {
@@ -121,6 +132,8 @@ const projectPackage = {
     build: "node build.mjs",
     pack: "h2kext-pack build",
     typecheck: "tsc --noEmit",
+    format: "prettier --write .",
+    "format:check": "prettier --check .",
   },
   dependencies: {
     "@ham2k/extension-sdk": sdkRange(dir),
@@ -128,29 +141,31 @@ const projectPackage = {
   devDependencies: {
     "@ham2k/extension-tools": `^${toolsVersion}`,
     esbuild: "^0.25.0",
+    // A patch range, not a caret: Prettier changes its output in a MINOR, and
+    // the templates below are checked against one version here. A caret would
+    // let an author install a 3.x that formats differently and fail the first
+    // `format:check` on files they never touched.
+    prettier: "~3.9.0",
     typescript: "^5.6.0",
   },
 }
 
 const files = {
-  "manifest.json": `${JSON.stringify(
-    {
-      key,
-      name,
-      version: "0.1.0",
-      description: `${name}, an extension for the Ham2K Logger`,
-      category: "dashboard",
-      api: H2KEXT_API_VERSION,
-      icon: "hand-wave-outline",
-      // The Extensions list reads this without evaluating any bundle, and the
-      // Add-Panel route shows only what declares `panel`. Undeclared, a panel
-      // extension installs and then cannot be found or switched on.
-      hooks: ["panel"],
-      sharedDependencies: SCAFFOLD_SHARED_DEPENDENCIES,
-    },
-    null,
-    2,
-  )}\n`,
+  // `hooks` is what the Extensions list reads without evaluating any bundle,
+  // and the Add-Panel route shows only what declares `panel`. Undeclared, a
+  // panel extension installs and then cannot be found or switched on.
+  "manifest.json": `{
+  "key": ${JSON.stringify(key)},
+  "name": ${JSON.stringify(name)},
+  "version": "0.1.0",
+  "description": ${JSON.stringify(`${name}, an extension for the Ham2K Logger`)},
+  "category": "dashboard",
+  "api": ${JSON.stringify(H2KEXT_API_VERSION)},
+  "icon": "hand-wave-outline",
+  "hooks": ["panel"],
+  "sharedDependencies": ${nestedJson(SCAFFOLD_SHARED_DEPENDENCIES, "  ")}
+}
+`,
 
   "build.mjs": EXAMPLE_BUILD_SCRIPT,
 
@@ -159,15 +174,25 @@ const files = {
 // Everything here is the minimum: one hook, one descriptor, one render. See
 // node_modules/@ham2k/extension-sdk/AGENTS.md for what to read next.
 
-import { defineExtension } from '@ham2k/extension-sdk'
-import type { HookContext, PanelContent, PanelDescriptor, PanelHook, PanelRenderArgs } from '@ham2k/extension-sdk'
+import { defineExtension } from "@ham2k/extension-sdk"
+import type { HookContext, PanelContent, PanelDescriptor, PanelHook, PanelRenderArgs } from "@ham2k/extension-sdk"
 
-import manifest from '../manifest.json'
+import manifest from "../manifest.json"
 
 const HelloPanel: PanelHook = {
   /// What the operator sees when choosing a panel to place.
   async getPanels(_args: Record<string, never>, _ctx: HookContext): Promise<PanelDescriptor[]> {
-    return [{ key: 'hello', title: ${JSON.stringify(name)}, description: 'A panel that says hello', icon: 'hand-wave-outline' }]
+    // Written a field per line, and left that way by the formatter: on one
+    // line a long enough --name would push it past the width and the
+    // scaffold's own \`format:check\` would fail on untouched code.
+    return [
+      {
+        key: "hello",
+        title: ${JSON.stringify(name)},
+        description: "A panel that says hello",
+        icon: "hand-wave-outline",
+      },
+    ]
   },
 
   /// What the pane shows. A panel returns CONTENT, never widgets — which is
@@ -177,35 +202,32 @@ const HelloPanel: PanelHook = {
   /// its registered key and then calls this by name, so a near-miss is a panel
   /// that installs, activates, and then renders nothing.
   async render(_args: PanelRenderArgs, _ctx: HookContext): Promise<PanelContent> {
-    return { kind: 'markdown', content: '# Hello, World!' }
+    return { kind: "markdown", content: "# Hello, World!" }
   },
 }
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('panel', { key: '${key}', hook: HelloPanel })
+    registerHook("panel", { key: "${key}", hook: HelloPanel })
   },
 })
 `,
 
-  "tsconfig.json": `${JSON.stringify(
-    {
-      compilerOptions: {
-        target: "ES2020",
-        module: "ESNext",
-        moduleResolution: "bundler",
-        lib: ["ES2020"],
-        strict: true,
-        noEmit: true,
-        skipLibCheck: true,
-        resolveJsonModule: true,
-      },
-      include: ["src/**/*.ts"],
-    },
-    null,
-    2,
-  )}\n`,
+  "tsconfig.json": `{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2020"],
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true
+  },
+  "include": ["src/**/*.ts"]
+}
+`,
 
   // The whole point of the file. Claude Code and its siblings read a project's
   // AGENTS.md before they touch anything, so this is what carries the hook
@@ -217,6 +239,16 @@ An extension for the Ham2K Logger. How to write one, what the hooks are, and
 what the sandbox will and will not let you do:
 
 @node_modules/@ham2k/extension-sdk/AGENTS.md
+`,
+
+  // The style the scaffolded files are already in, so `npm run format:check`
+  // passes on an untouched project. Prettier reads the project's .gitignore
+  // from its working directory, so build/ and the packed .h2kext are already
+  // out of its way and no .prettierignore is needed.
+  ".prettierrc.json": `{
+  "printWidth": 160,
+  "semi": false
+}
 `,
 
   ".gitignore": "node_modules/\nbuild/\n*.h2kext\n",
@@ -247,6 +279,42 @@ if (currentPackage === null || typeof currentPackage !== "object" || Array.isArr
   console.error(`h2kext-init: ${packagePath} is not a package description — nothing written`)
   process.exit(1)
 }
+
+// Prettier reads the FIRST config it finds, and a `prettier` key in the
+// package.json already here outranks a `.prettierrc.json` sitting beside it —
+// so writing ours would leave a file that is never read, under templates
+// formatted to a style the author's own config contradicts. Their config
+// wins; this one is dropped, and said out loud, because the alternative is a
+// project whose first `npm run format` rewrites every scaffolded file.
+const PRETTIER_CONFIG_FILES = [
+  ".prettierrc",
+  ".prettierrc.json",
+  ".prettierrc.json5",
+  ".prettierrc.yaml",
+  ".prettierrc.yml",
+  ".prettierrc.js",
+  ".prettierrc.mjs",
+  ".prettierrc.cjs",
+  ".prettierrc.toml",
+  "prettier.config.js",
+  "prettier.config.mjs",
+  "prettier.config.cjs",
+]
+const foundAt = async (path) =>
+  await access(join(dir, path)).then(
+    () => true,
+    () => false,
+  )
+let foreignPrettierConfig
+if (currentPackage.prettier !== undefined) foreignPrettierConfig = "the `prettier` key in package.json"
+else
+  for (const path of PRETTIER_CONFIG_FILES) {
+    if (path !== ".prettierrc.json" && (await foundAt(path))) {
+      foreignPrettierConfig = path
+      break
+    }
+  }
+if (foreignPrettierConfig) delete files[".prettierrc.json"]
 
 // `access`, not a read: a directory where a file should go, or one this
 // process cannot read, is something in the way — treated as absent, it becomes
@@ -291,7 +359,16 @@ await writeFile(packagePath, `${JSON.stringify(currentPackage, null, 2)}\n`)
 console.log(`${key} — ${name}
 
   ${[...Object.keys(files), "package.json"].join("\n  ")}
-
+${
+  foreignPrettierConfig
+    ? `
+No .prettierrc.json written — ${foreignPrettierConfig} already configures
+Prettier here, and it is the one Prettier reads. The scaffolded files are in
+the style this command's own config describes (print width 160, no
+semicolons); \`npm run format\` will restyle them to yours.
+`
+    : ""
+}
 Next:
   npm install
   npm run build && npm run pack`)

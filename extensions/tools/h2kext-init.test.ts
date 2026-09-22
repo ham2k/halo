@@ -8,12 +8,13 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 import { execFile } from "node:child_process"
-import { mkdir, mkdtemp, readFile, writeFile } from "node:fs/promises"
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises"
 import { build } from "esbuild"
 import { tmpdir } from "node:os"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { promisify } from "node:util"
+import { format, getFileInfo, version as prettierVersion } from "prettier"
 
 // @ts-ignore — deliberately plain JS, like the modules it tests.
 import { loadHostSharedVersions } from "../build-config.mjs"
@@ -66,7 +67,7 @@ test("the extension key reaches the source, not just the manifest", async () => 
   const source = await readFile(join(dir, "src/index.ts"), "utf8")
   // A hook registered under a key the manifest doesn't carry is an extension
   // that loads and then never answers for anything.
-  assert.match(source, /registerHook\('panel', \{ key: 'w7abc-notes'/)
+  assert.match(source, /registerHook\("panel", \{ key: "w7abc-notes"/)
 })
 
 test("AGENTS.md points at the reference in the installed SDK", async () => {
@@ -121,6 +122,78 @@ test("adds to an existing package.json without replacing what is declared", asyn
   assert.equal(pkg.devDependencies.esbuild, "^0.24.0")
   assert.equal(pkg.scripts.build, "node build.mjs")
   assert.ok(pkg.dependencies["@ham2k/extension-sdk"])
+})
+
+/// Everything the scaffold wrote, as paths relative to the project, so a
+/// template added later is covered without anyone remembering to list it.
+async function scaffolded(dir: string, prefix = ""): Promise<string[]> {
+  const found: string[] = []
+  for (const entry of await readdir(join(dir, prefix), { withFileTypes: true })) {
+    const path = prefix ? `${prefix}/${entry.name}` : entry.name
+    if (entry.isDirectory()) found.push(...(await scaffolded(dir, path)))
+    else found.push(path)
+  }
+  return found
+}
+
+test("what it scaffolds already satisfies the .prettierrc.json it scaffolds", async () => {
+  // A long display name, because the scaffolded source carries it: on one
+  // line the panel descriptor passes the width at around 54 characters of
+  // name, and the short name every other test uses would never show it.
+  const dir = await emptyDir()
+  await init_(["w7abc-notes", "--name", "Station Notes And Logs For The Whole Weekend Contest Thing"], dir)
+
+  // The author's first `npm run format:check` runs on files nobody has
+  // touched. A template written in another style fails it there, and the
+  // reflex fix is to delete the config — so the scaffold's own output is what
+  // pins the style, not the config file alone.
+  const options = JSON.parse(await readFile(join(dir, ".prettierrc.json"), "utf8"))
+  const files = await scaffolded(dir)
+  // Derived, never listed — but a derivation that silently found nothing
+  // would assert nothing at all.
+  assert.ok(files.includes("src/index.ts") && files.includes(".prettierrc.json"), files.join(", "))
+
+  let checked = 0
+  for (const name of files) {
+    // .gitignore has no parser, and Prettier skips it rather than failing.
+    const { inferredParser } = await getFileInfo(join(dir, name))
+    if (!inferredParser) continue
+    const source = await readFile(join(dir, name), "utf8")
+    assert.equal(source, await format(source, { ...options, filepath: join(dir, name) }), `${name} is not in the style the scaffold asks for`)
+    checked++
+  }
+  assert.ok(checked >= files.length - 1, `only ${checked} of ${files.length} scaffolded files had a parser`)
+})
+
+test("the Prettier it scaffolds is the one the templates are checked against", async () => {
+  const dir = await emptyDir()
+  await init_(["w7abc-notes"], dir)
+
+  // The test above proves the templates against the Prettier installed HERE.
+  // A scaffolded range that admits some other version moves the formatting
+  // the author gets away from the formatting this suite checked, and the
+  // failure lands on them, on untouched files.
+  // A tilde range and nothing else, compared by its minor: the point is that
+  // the author cannot be moved onto a Prettier this suite never formatted
+  // with, and Prettier restyles code in a minor.
+  const range: string = (await readJson(dir, "package.json")).devDependencies.prettier
+  assert.match(range, /^~\d+\.\d+\.\d+$/, "a range wider than a patch line puts the author on an unchecked Prettier")
+  const minor = (v: string) => v.replace(/^[~^]/, "").split(".").slice(0, 2).join(".")
+  assert.equal(minor(range), minor(prettierVersion), `the suite formats with Prettier ${prettierVersion}, the scaffold asks for ${range}`)
+})
+
+test("an existing Prettier config is left in charge, and said so", async () => {
+  const dir = await emptyDir()
+  // Prettier reads the first config it finds and a package.json `prettier`
+  // key outranks a .prettierrc.json beside it — so writing one would leave a
+  // file nothing reads, and an author whose own style is silently ignored.
+  await writeFile(join(dir, "package.json"), JSON.stringify({ name: "mine", prettier: { semi: true } }))
+
+  const { stdout } = await init_(["w7abc-notes"], dir)
+
+  await assert.rejects(readFile(join(dir, ".prettierrc.json"), "utf8"))
+  assert.match(stdout, /No \.prettierrc\.json written/)
+  assert.deepEqual((await readJson(dir, "package.json")).prettier, { semi: true })
 })
 
 test("the scaffolded sharedDependencies are ones this host carries, at versions it satisfies", async () => {

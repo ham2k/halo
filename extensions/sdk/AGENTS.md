@@ -34,24 +34,24 @@ build/             generated: index.js + manifest.json
 ## The smallest whole extension
 
 ```ts
-import { defineExtension } from '@ham2k/extension-sdk'
-import type { PanelHook } from '@ham2k/extension-sdk'
+import { defineExtension } from "@ham2k/extension-sdk"
+import type { PanelHook } from "@ham2k/extension-sdk"
 
-import manifest from '../manifest.json'
+import manifest from "../manifest.json"
 
 const HelloPanel: PanelHook = {
   async getPanels() {
-    return [{ key: 'hello', title: 'Hello World', icon: 'hand-wave-outline' }]
+    return [{ key: "hello", title: "Hello World", icon: "hand-wave-outline" }]
   },
   async render() {
-    return { kind: 'markdown', content: '# Hello, World!' }
+    return { kind: "markdown", content: "# Hello, World!" }
   },
 }
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('panel', { key: manifest.key, hook: HelloPanel })
+    registerHook("panel", { key: manifest.key, hook: HelloPanel })
   },
 })
 ```
@@ -100,7 +100,7 @@ No Node, no DOM, no `fetch`, no `window`, no filesystem. One ES2020 engine
 evaluating one script. Reach the outside world through `host`:
 
 ```ts
-import { host } from '@ham2k/extension-sdk'
+import { host } from "@ham2k/extension-sdk"
 
 await host.fetch(url)          // https only, and only domains your manifest lists
 await host.kvGet('key')        // storage, namespaced to your extension
@@ -114,7 +114,7 @@ host.log('…')                  // the app's console
 
 ## Traps worth knowing before you write anything
 
-- **A panel returns content, not widgets.** `{ kind: 'markdown', content }` and
+- **A panel returns content, not widgets.** `{ kind: "markdown", content }` and
   its siblings. There is no way to reach the app's UI toolkit, by design.
 - **`host.fetch` only reaches domains your manifest's `domains` lists**, over
   https. An undeclared host is refused at the call, not at build.
@@ -122,7 +122,7 @@ host.log('…')                  // the app's console
   carries `@ham2k/lib-*`, `i18next` and `liquidjs`; naming one in
   `sharedDependencies` rewrites your imports into lookups on the app's single
   copy, which is worth roughly thirty times the bundle size. Don't install them.
-  `inline: ['liquidjs']` in your build ships your own copy, for when you need a
+  `inline: ["liquidjs"]` in your build ships your own copy, for when you need a
   version the app does not carry. A scaffolded manifest already declares the
   eight this SDK's own modules reach — importing anything from it pulls them
   in — so deleting one from the manifest breaks a build that was working.

@@ -17,6 +17,12 @@ script, a tsconfig — into the working directory, and refuses rather than
 overwrite anything already there. An existing `package.json` is added to, never
 replaced.
 
+It also writes a `.prettierrc.json` and the `format` / `format:check` scripts,
+and what it scaffolds is already in that style — so `npm run format:check`
+passes on an untouched project, and the code an agent adds to it lands
+formatted the same way. Configure Prettier already, anywhere it looks, and
+yours is left in charge: no config is written, and the command says so.
+
 It takes the key rather than defaulting one: a placeholder like
 `n0call-my-extension` validates, so it would ship, which is the one outcome the
 naming convention exists to stop.

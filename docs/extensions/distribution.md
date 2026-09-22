@@ -198,8 +198,8 @@ below — manifest, source, build script — so the rest of this section is what
 change rather than what to type.
 
 ```js
-import { build } from 'esbuild'
-import { buildExtension } from '@ham2k/extension-tools'
+import { build } from "esbuild"
+import { buildExtension } from "@ham2k/extension-tools"
 
 await buildExtension(build, { dir: import.meta.dirname })
 ```
@@ -224,7 +224,7 @@ own module state — and nothing anywhere that says so. If the second copy is
 what you want, which is how you use a version the host does not carry, say so:
 
 ```js
-await buildExtension(build, { dir: import.meta.dirname, inline: ['liquidjs'] })
+await buildExtension(build, { dir: import.meta.dirname, inline: ["liquidjs"] })
 ```
 
 `extensions/samples/hello-world` is the shortest complete example. Declaring

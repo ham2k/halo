@@ -9,24 +9,24 @@ npm install --save-dev @ham2k/extension-tools esbuild
 ```
 
 ```ts
-import { defineExtension } from '@ham2k/extension-sdk'
-import type { PanelHook } from '@ham2k/extension-sdk'
+import { defineExtension } from "@ham2k/extension-sdk"
+import type { PanelHook } from "@ham2k/extension-sdk"
 
-import manifest from '../manifest.json'
+import manifest from "../manifest.json"
 
 const HelloPanel: PanelHook = {
   async getPanels() {
-    return [{ key: 'hello', title: 'Hello World', icon: 'hand-wave-outline' }]
+    return [{ key: "hello", title: "Hello World", icon: "hand-wave-outline" }]
   },
   async render() {
-    return { kind: 'markdown', content: '# Hello, World!' }
+    return { kind: "markdown", content: "# Hello, World!" }
   },
 }
 
 defineExtension({
   ...manifest,
   onActivation({ registerHook }) {
-    registerHook('panel', { key: manifest.key, hook: HelloPanel })
+    registerHook("panel", { key: manifest.key, hook: HelloPanel })
   },
 })
 ```
