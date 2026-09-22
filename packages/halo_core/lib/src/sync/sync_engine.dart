@@ -431,43 +431,26 @@ class SyncEngine {
   }
 
   /// Whether a new or changed account can be adopted without asking the
-  /// user, because one of the two logs about to meet is empty: this device
-  /// has no QSOs, or the account has neither operations nor QSOs. Combine
-  /// and replace then have the same outcome, so the Settings banner would
-  /// be a question with only one answer — and it would greet every new
-  /// install, which starts with sync on and an empty log.
+  /// user, because this device has no QSOs: combine and replace then have
+  /// the same outcome, so the Settings banner would be a question with only
+  /// one answer — and it would greet every new install, which starts with
+  /// sync on and an empty log.
+  ///
+  /// An empty ACCOUNT still asks. The log at stake is this device's, and
+  /// whether it goes into that account or gets set aside for it is the
+  /// operator's call — the account being empty doesn't make that choice.
   ///
   /// Operations alone don't count as local data worth asking about: an
   /// operation with no QSOs in it is a container, not a log, and combining
   /// merges it in rather than losing it.
   ///
-  /// app-polo's `askAboutMergingAccounts` tests the same two sides but
-  /// additionally requires an operation to exist before it will skip on an
-  /// empty local log. We deliberately don't: there, the rule only runs on a
-  /// *changed* account, where a device with nothing at all is a strange
-  /// state; here the same gate also covers a first link, which is exactly
-  /// the moment a device legitimately has neither operations nor QSOs.
-  ///
-  /// [accountData] is a `getAccountData` payload when the caller already has
-  /// one; null makes this fetch its own — only reached when the local side
-  /// didn't already answer yes. Both totals must be present and zero: a
-  /// payload that reports neither says nothing about the account, and
-  /// reading that silence as "empty" would adopt an account whose history
-  /// this device is about to be merged into unasked.
-  Future<bool> _canAdoptAccountSilently(Map<String, dynamic>? accountData) async {
-    if ((await qsos.syncCounts()).total == 0) return true;
-    final data = accountData ?? await _callTransport('getAccountData', const {});
-    return _accountTotal(data, 'operations') == 0 && _accountTotal(data, 'qsos') == 0;
-  }
-
-  /// One side's record count out of a `getAccountData` payload, or null when
-  /// the payload doesn't carry it. Deliberately shape-tolerant: `qsos` is a
-  /// counts map there but a LIST of records in a `sync` response, and the
-  /// two payloads meet in [_canAdoptAccountSilently].
-  static int? _accountTotal(Map<String, dynamic> data, String side) {
-    final counts = data[side];
-    return counts is Map ? (counts['total'] as num?)?.toInt() : null;
-  }
+  /// app-polo's `askAboutMergingAccounts` additionally requires an operation
+  /// to exist before it will skip on an empty local log. We deliberately
+  /// don't: there, the rule only runs on a *changed* account, where a device
+  /// with nothing at all is a strange state; here the same gate also covers
+  /// a first link, which is exactly the moment a device legitimately has
+  /// neither operations nor QSOs.
+  Future<bool> _canAdoptAccountSilently() async => (await qsos.syncCounts()).total == 0;
 
   /// The `SYNCALL` debug command: back up and wipe local data, then run a
   /// fresh backfill under whatever account is already linked. Reuses
@@ -671,7 +654,7 @@ class SyncEngine {
           // The banner went live the moment that state was written, so the
           // user may have answered it while this check was awaiting —
           // adopting now would overwrite their answer with a guess.
-          if (await _canAdoptAccountSilently(response)) {
+          if (await _canAdoptAccountSilently()) {
             if (generation != _generation) return _abandonRound();
             // A silent adoption that gets REFUSED (travel started while this
             // round was on the network) must not leave `pendingAccountUUID`
@@ -759,12 +742,8 @@ class SyncEngine {
         // treatment as a fresh link. (Fresh state read: the snapshot above
         // predates the network call.)
         await settings.setState({...settings.state, 'pendingAccountUUID': responseAccountUuid});
-        // A `sync` response carries the bare account, no totals, so the
-        // server side of this test costs its own fetch — which is why it
-        // only happens when the local side didn't already settle it.
-        if (await _canAdoptAccountSilently(null)) {
-          // Same race as the never-linked branch above, and a wider window:
-          // this check makes its own network call.
+        if (await _canAdoptAccountSilently()) {
+          // Same race as the never-linked branch above.
           if (generation != _generation) return _abandonRound();
           // Refused (see the never-linked branch above): don't leave a pending
           // account behind, or the operator is asked to combine-or-wipe for an

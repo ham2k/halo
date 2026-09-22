@@ -1221,7 +1221,9 @@ void main() {
       expect(settings.state['pendingAccountUUID'], isNull);
     });
 
-    test('an empty account is adopted without asking even when this device has a log', () async {
+    test('an empty account is still asked about when this device has a log', () async {
+      // Combine and Replace differ here — one uploads this log, the other
+      // sets it aside — so an empty account settles nothing on its own.
       final op = await operations.create(stationCall: 'KI2D');
       await qsos.add(op.uuid, {
         'their': {'call': 'W1AW'},
@@ -1236,12 +1238,9 @@ void main() {
 
       await engine.runOneRound();
 
-      expect(settings.state['lastSyncAccountUUID'], 'acct-new');
-      expect(settings.state['pendingAccountUUID'], isNull);
-      // Combine, not replace: the local log is still here and re-dirtied so
-      // it uploads into the account.
+      expect(settings.state['pendingAccountUUID'], 'acct-new');
+      expect(settings.state['lastSyncAccountUUID'], isNull);
       expect(await operations.byUuids([op.uuid]), isNotEmpty);
-      expect(await qsos.hasUnsynced(), isTrue);
     });
 
     test('the user answering the banner mid-check wins over the silent adoption', () async {
@@ -1283,24 +1282,6 @@ void main() {
       // Replace's answer stands — the local log really was backed up and
       // cleared, not merged.
       expect(await operations.byUuids([op.uuid]), isEmpty);
-    });
-
-    test('an account reporting no counts at all is still asked about', () async {
-      // Silence is not "empty". Reading a payload that predates these
-      // fields as an empty account would merge this device's log into a
-      // stranger's history without ever asking.
-      final op = await operations.create(stationCall: 'KI2D');
-      await qsos.add(op.uuid, {
-        'their': {'call': 'W1AW'},
-      });
-      transport.responder = (method, args) => {
-        'current_account': {'uuid': 'acct-new'},
-      };
-
-      await engine.runOneRound();
-
-      expect(settings.state['pendingAccountUUID'], 'acct-new');
-      expect(settings.state['lastSyncAccountUUID'], isNull);
     });
 
     test('a pending account choice pauses sync entirely', () async {
@@ -2384,37 +2365,28 @@ void main() {
       expect(await qsos.watchForOperation('op1').first, isEmpty); // not merged
     });
 
-    test('a mid-stream change into an EMPTY account is adopted silently, fetching to find out', () async {
-      // The only path that makes _canAdoptAccountSilently spend its own
-      // network call: local log present, so the cheap check says nothing,
-      // and the `sync` response carries no totals to judge the account by.
+    test('a mid-stream change into an EMPTY account is still asked about', () async {
+      // The zero totals are bait: an engine that fetches the account to
+      // judge it by its emptiness adopts here and combines unasked.
       settings.state = {'lastSyncAccountUUID': 'acct-1', 'completedFullSync': true};
       final op = await operations.create(stationCall: 'KI2D');
       await qsos.add(op.uuid, {
         'their': {'call': 'W1AW'},
       });
-      final methods = <String>[];
-      transport.responder = (method, args) {
-        methods.add(method);
-        return method == 'getAccountData'
-            ? {
-                'operations': {'total': 0},
-                'qsos': {'total': 0},
-              }
-            : {
-                'account': {'uuid': 'acct-2'},
-              };
-      };
+      transport.responder = (method, args) => method == 'getAccountData'
+          ? {
+              'operations': {'total': 0},
+              'qsos': {'total': 0},
+            }
+          : {
+              'account': {'uuid': 'acct-2'},
+            };
 
       await engine.runOneRound();
 
-      expect(methods, contains('getAccountData'));
-      expect(settings.state['lastSyncAccountUUID'], 'acct-2');
-      expect(settings.state['pendingAccountUUID'], isNull);
-      // Combine, not replace — the local log is kept and re-dirtied so it
-      // uploads into the account it just joined.
+      expect(settings.state['pendingAccountUUID'], 'acct-2');
+      expect(settings.state['lastSyncAccountUUID'], 'acct-1');
       expect(await operations.byUuids([op.uuid]), isNotEmpty);
-      expect(await qsos.hasUnsynced(), isTrue);
     });
 
     test('an account change mid-stream is adopted silently when this device has nothing logged', () async {
