@@ -87,6 +87,21 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
   /// snapshot.
   int _generation = 0;
 
+  /// Issued to each [refreshControlsFor] as it starts, in order; a result may
+  /// apply only if no LATER-issued one has been applied already.
+  ///
+  /// A callsign is refreshed twice — once off the offline lookup, again off the
+  /// online one — and the two are unawaited with no ordering between them. The
+  /// later one knows more (the online pass is where a caller's STATE comes
+  /// from), so it has to win however the two finish: without this, a slow
+  /// offline refresh returning after a fast online one overwrites the fresher
+  /// controls with a snapshot taken before the state was known. It is the
+  /// APPLIED one that is compared, not the latest issued: an offline refresh
+  /// that lands first is still applied, so an online one that then fails
+  /// leaves the offline answer in place rather than nothing at all.
+  int _refreshTicket = 0;
+  int _appliedTicket = 0;
+
   /// Refs entered via activity controls for the QSO being composed, keyed by
   /// control key.
   final Map<String, List<Map<String, dynamic>>> _controlRefs = {};
@@ -171,8 +186,11 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
     final refresh = config().refreshActivityControls;
     if (refresh == null) return;
     final requestGeneration = _generation;
+    final ticket = ++_refreshTicket;
     final fetched = await refresh(draftQsoData(activeCall));
     if (isDisposed || config().callAtCursor() != activeCall) return;
+    // A later-issued refresh has already been applied — see [_refreshTicket].
+    if (ticket < _appliedTicket) return;
     // The operation's own activity/ref set changed while this was in
     // flight — that fetch was issued against the OLD set, and applying it
     // now would silently reshadow the fresh operation-level controls the
@@ -181,6 +199,7 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
     // Null is "the fetch failed", so the panel keeps the controls it is
     // already showing rather than blanking the QSO in progress.
     if (fetched == null) return;
+    _appliedTicket = ticket;
     _refreshedControls = fetched;
     onControlsRefreshed();
     notify();

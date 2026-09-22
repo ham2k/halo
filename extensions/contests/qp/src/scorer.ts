@@ -64,6 +64,7 @@ import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham
 import { isMobile, ourLocationText, powerMultiplier, refOfType, str, TYPE } from "./entry.ts"
 import {
   allInParty,
+  defaultTheirLocation,
   entityPrefixOf,
   type PartyLocation,
   parseLocations,
@@ -336,7 +337,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     const entityPrefix = entityPrefixOf(qso)
     const qsoRef = refOfType(qso as Record<string, unknown>)
     const typed = str(qsoRef?.location).trim()
-    const fallback = sheet.lastLocation[call] ?? defaultLocationFor(party, entityPrefix)
+    const fallback = sheet.lastLocation[call] ?? defaultTheirLocation(party, qso)
     const standing: Standing = { weAreInParty, theyAreInParty: false }
     let theirLocations = parseLocations(party, typed || fallback, { entityPrefix, standing })
     standing.theyAreInParty = allInParty(theirLocations)
@@ -532,14 +533,6 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
       },
     }
   },
-}
-
-/// A location for a station that sent none — their entity, where the party asks
-/// for one, and nothing at all for a US or Canadian station, who is expected to
-/// send a state or a county.
-function defaultLocationFor(party: QsoParty, entityPrefix: string): string {
-  if (!entityPrefix || entityPrefix === 'K' || entityPrefix === 'VE') return ''
-  return party.options.dxLocationIsPrefix ? entityPrefix : 'DX'
 }
 
 /// One band's line of the summary table: every mode the party can be worked

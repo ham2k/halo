@@ -444,6 +444,17 @@ export interface RefGeojson {
 export interface LoggingControlDescriptor {
   key: string
   label: string
+  /// The same name in fewer characters, for a field the logging row has
+  /// squeezed below its own label's width — `QP Loc` where [label] is
+  /// `QP Location`.
+  ///
+  /// The core picks between the two by MEASURING [label] against the width the
+  /// field was resolved to, so an extension states what the short form is and
+  /// never when to use it. Omitted, a label too wide for its field is
+  /// ellipsized (docs/design/logging-fields.md, "a field's label must
+  /// never wrap") — which names the field no better than nothing does, so any
+  /// control whose label runs past about six characters wants one.
+  shortLabel?: string
   /// A Material Design Icons name (e.g. 'pine-tree') or, prefixed with
   /// 'fa-', a FontAwesome6 solid-style name (e.g. 'fa-tree') — same
   /// convention as app-polo's own icon rendering. Falls back to a

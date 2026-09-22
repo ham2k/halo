@@ -196,7 +196,6 @@ export interface PartyOptions {
   removeCountySuffixes: boolean
   /// What this party calls its subdivisions — CPQP's are Districts.
   labelForCounties: string
-  labelForCounty: string
 }
 
 /// The one-time bonuses, all zero unless a party names them.
@@ -486,7 +485,6 @@ function optionsOf(raw: RawParty): PartyOptions {
     pointsWhenTheyAreOutOfParty: num(o.pointsWhenTheyAreOutOfParty),
     removeCountySuffixes: bool(o.removeCountySuffixes),
     labelForCounties: str(o.labelForCounties) ?? 'Counties',
-    labelForCounty: str(o.labelForCounty) ?? 'County',
   }
 }
 

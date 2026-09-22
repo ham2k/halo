@@ -196,14 +196,91 @@ void main() {
         },
       ]);
       addTearDown(h.model.dispose);
-      h.model.applySuggestedValues();
+      h.model.applySuggestedValues(call: 'W1AW');
       expect(h.model.controllerFor('cq/zone').text, '14', reason: 'untouched: the lookup fills it');
       expect(h.model.isTouched('cq/zone'), isFalse);
       h.model.restore('cq/zone', '05');
-      h.model.applySuggestedValues();
+      h.model.applySuggestedValues(call: 'W1AW');
       expect(h.model.controllerFor('cq/zone').text, '05');
       expect(h.model.valueOf('cq/zone'), '05');
       expect(h.model.isTouched('cq/zone'), isTrue);
+    });
+
+    test('a prefill is taken back when the callsign it was made for leaves the field', () {
+      // Driven by the call field, not by a refresh: correcting W6ABC to a
+      // station the lookup has nothing for — or whose refresh fails, or is
+      // dropped — never reaches `applySuggestedValues`, and the old guess left
+      // behind is a legal value in an untouched field, which nothing tints and
+      // `refsWithTextValues` files as the new station's exchange.
+      final h = _Harness(controls: [
+        {..._zone, 'input': {..._zone['input'] as Map, 'suggestedValue': '14'}},
+      ]);
+      addTearDown(h.model.dispose);
+      h.model.applySuggestedValues(call: 'W6ABC');
+      expect(h.model.valueOf('cq/zone'), '14');
+
+      h.model.withdrawSuggestionsExcept(call: 'W2XYZ');
+      expect(h.model.valueOf('cq/zone'), '', reason: 'the guess for the old callsign does not survive it');
+      expect(h.model.controllerFor('cq/zone').text, '');
+      expect(h.model.refsWithTextValues(const []), isEmpty);
+
+      // And the new caller's own suggestion goes in once it arrives.
+      h.controls = [
+        {..._zone, 'input': {..._zone['input'] as Map, 'suggestedValue': '05'}},
+      ];
+      h.model.applySuggestedValues(call: 'W2XYZ');
+      expect(h.model.valueOf('cq/zone'), '05');
+
+      // Clearing the field takes it back too.
+      h.model.withdrawSuggestionsExcept(call: '');
+      expect(h.model.valueOf('cq/zone'), '');
+    });
+
+    test('a prefill stands while its callsign does, whatever else refreshes', () {
+      // `loggingControls` is also called with no `qso` — a plain operation
+      // refresh — and every contest then declares no `suggestedValue`. That is
+      // "nobody was asked", not "no suggestion for this caller": treated
+      // alike, any other refresh of the panel would wipe the prefill.
+      final h = _Harness(controls: [
+        {..._zone, 'input': {..._zone['input'] as Map, 'suggestedValue': '14'}},
+      ]);
+      addTearDown(h.model.dispose);
+      h.model.applySuggestedValues(call: 'W6ABC');
+      expect(h.model.valueOf('cq/zone'), '14');
+
+      h.controls = [_zone];
+      h.model.applySuggestedValues(call: 'W6ABC');
+      h.model.withdrawSuggestionsExcept(call: 'W6ABC');
+      expect(h.model.valueOf('cq/zone'), '14', reason: 'same callsign, so the guess still stands');
+    });
+
+    test('a field holding several calls is never prefilled', () {
+      // One exchange field is logged for every call in `K2ABC,W1AW`. Filled
+      // with the station at the cursor's exchange, it would be logged as the
+      // other's too — and adding the second call takes back a prefill already
+      // made for the first, for the same reason.
+      final h = _Harness(controls: [
+        {..._zone, 'input': {..._zone['input'] as Map, 'suggestedValue': '14'}},
+      ]);
+      addTearDown(h.model.dispose);
+      h.model.applySuggestedValues(call: '');
+      expect(h.model.valueOf('cq/zone'), '', reason: 'the panel passes no call for a multi-call field');
+
+      h.model.applySuggestedValues(call: 'K2ABC');
+      expect(h.model.valueOf('cq/zone'), '14');
+      h.model.withdrawSuggestionsExcept(call: '');
+      expect(h.model.valueOf('cq/zone'), '', reason: 'a second call was added');
+    });
+
+    test('what the operator typed over a prefill is theirs, and never taken back', () {
+      final h = _Harness(controls: [
+        {..._zone, 'input': {..._zone['input'] as Map, 'suggestedValue': '14'}},
+      ]);
+      addTearDown(h.model.dispose);
+      h.model.applySuggestedValues(call: 'W6ABC');
+      h.model.typed('cq/zone', '15');
+      h.model.withdrawSuggestionsExcept(call: 'W2XYZ');
+      expect(h.model.valueOf('cq/zone'), '15');
     });
   });
 
@@ -326,6 +403,24 @@ void main() {
   group('serial previews', () {
     late HaLoDatabase db;
     setUp(() => db = HaLoDatabase(NativeDatabase.memory()));
+
+    testWidgets('a serial preview is not a suggestion, and is never taken back as one', (tester) async {
+      // Serial previews land in an untouched field too. A contest that declares
+      // no `suggestedValue` must not thereby wipe the number the sequence is
+      // about to issue.
+      final sequences = SequencesRepository(db);
+      final h = _Harness(controls: [_serial], sequences: sequences, source: _Source(sequences));
+      addTearDown(h.model.dispose);
+      h.draft = {'band': '20m'};
+      h.call = 'W1';
+      await h.model.refreshSerialPreviews();
+      expect(h.model.valueOf('cq/serial'), '1');
+
+      h.model.applySuggestedValues(call: 'W1');
+      h.model.withdrawSuggestionsExcept(call: '');
+      expect(h.model.valueOf('cq/serial'), '1');
+    });
+
     tearDown(() => db.close());
 
     testWidgets('an idle draft holds no number; the first edit takes one; a wipe lets it go and refills',

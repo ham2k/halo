@@ -167,6 +167,53 @@ InputDecoration mainFieldDecoration(
   return base.copyWith(contentPadding: padding.copyWith(left: side, right: side));
 }
 
+/// Which of a control's two labels a field [width] wide can actually show.
+///
+/// A main field is routinely narrower than its own label — that is what
+/// [mainFieldDecoration]'s `labelMaxLines: 1` exists for, and an ellipsized
+/// "QP Loca…" names the field no better than nothing does. An extension that
+/// declares a `shortLabel` gets it used instead, at the width where the full
+/// one stops fitting; the ellipsis stays the last resort for a field too narrow
+/// for either.
+///
+/// [horizontalPadding] is the field's FULL inset — the same number
+/// [mainFieldDecoration] is given.
+///
+/// Two corrections stand between that and what the label may paint in, and
+/// getting either wrong shows the short label at every width:
+///
+///  * a FLOATING label is painted at [floatingLabelScale], and `InputDecorator`
+///    lays it out at full size and then shrinks it — so it is given
+///    `1 / floatingLabelScale` of the room it will occupy, and the measurement
+///    here, which is also at full size, is compared against that;
+///  * Material's own [materialFilledInputGap] is added to the CONTENT, not to
+///    the label, so the label keeps the part of it that
+///    [mainFieldDecoration] gave back as negative content padding.
+///
+/// [mainFieldLabelWidth] is the arithmetic, kept apart because the only honest
+/// test of it renders a real field and compares the two.
+String mainFieldLabel(
+  BuildContext context, {
+  required String label,
+  String? shortLabel,
+  required double width,
+  required double horizontalPadding,
+}) {
+  if (shortLabel == null || shortLabel.isEmpty || shortLabel == label) return label;
+  final available = mainFieldLabelWidth(width: width, horizontalPadding: horizontalPadding);
+  return textWidth(context, label, poloFieldLabelStyle(context)) <= available ? label : shortLabel;
+}
+
+/// What `InputDecorator` gives a [mainFieldDecoration] label to lay out in,
+/// measured at the label's own font size rather than the size it paints at.
+double mainFieldLabelWidth({required double width, required double horizontalPadding}) =>
+    (width - horizontalPadding + materialFilledInputGap) / floatingLabelScale;
+
+/// Material's `_kFinalLabelScale` — private, and the reason
+/// [mainFieldLabelWidth] is pinned by a test against a rendered field rather
+/// than trusted.
+const floatingLabelScale = 0.75;
+
 /// The width [chars] characters of a main field's monospace value paint at,
 /// plus the caret's reserved strip — everything a field needs EXCEPT its own
 /// horizontal padding, which the caller adds because the row can take that

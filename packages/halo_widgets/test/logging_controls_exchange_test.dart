@@ -1054,6 +1054,117 @@ void main() {
     });
   });
 
+  testWidgets('the controls are refreshed again once the online lookup lands', (tester) async {
+    // The offline pass knows the caller's COUNTRY; only the online one knows
+    // their STATE — and a QSO party's suggestion is the state. Refreshed off
+    // the offline pass alone, W1WA's field stayed blank until the operator
+    // happened to retype the call and hit the cache.
+    const exchange = {
+      'key': 'c/exchange',
+      'label': 'Exch',
+      'icon': 'flag-checkered',
+      'input': {'kind': 'text', 'refType': 'c', 'field': 'exchange'},
+    };
+    await tester.pumpWidget(MaterialApp(
+      home: Scaffold(
+        body: LoggingControls(
+          log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+          radio: baseRadio(),
+          lookups: LookupHooks(
+            lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
+                {'guess': online ? {'state': 'MA'} : <String, dynamic>{}},
+          ),
+          activities: ActivityHooks(
+            activityControls: const [exchange],
+            // The hint is whatever state the QSO carries when asked — the shape
+            // a QSO party's control takes.
+            refreshActivityControls: (qso) async {
+              final state = ((qso['their'] as Map?)?['guess'] as Map?)?['state'] as String?;
+              return [
+                {
+                  ...exchange,
+                  'input': {...exchange['input'] as Map, 'placeholder': ?state},
+                },
+              ];
+            },
+          ),
+        ),
+      ),
+    ));
+
+    await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1WA');
+    await tester.pumpAndSettle();
+    final field = tester.widget<TextField>(find.widgetWithText(TextField, 'Exch'));
+    expect(field.decoration?.hintText, 'MA', reason: 'the state arrived with the online pass, and was asked for');
+  });
+
+  group('a prefill and the callsign it was made for', () {
+    const exchange = {
+      'key': 'c/exchange',
+      'label': 'Exch',
+      'icon': 'flag-checkered',
+      'input': {'kind': 'text', 'refType': 'c', 'field': 'exchange'},
+    };
+
+    /// A contest that suggests `CA` for W6ABC and cannot fetch at all for
+    /// anybody else — the refresh a withdrawal must not depend on.
+    Future<void> pumpPanel(WidgetTester tester) async {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: LoggingControls(
+            log: LogHooks(operation: running(['c']), qsosRepository: qsos),
+            radio: baseRadio(),
+            lookups: LookupHooks(
+              lookup: (call, {required qso, required operation, required online, recentContext = false}) async =>
+                  {'guess': <String, dynamic>{}},
+            ),
+            activities: ActivityHooks(
+              activityControls: const [exchange],
+              refreshActivityControls: (qso) async => (qso['their'] as Map?)?['call'] == 'W6ABC'
+                  ? [
+                      {
+                        ...exchange,
+                        'input': {...exchange['input'] as Map, 'suggestedValue': 'CA'},
+                      },
+                    ]
+                  : null,
+            ),
+          ),
+        ),
+      ));
+    }
+
+    String exch(WidgetTester tester) =>
+        tester.widget<TextField>(find.widgetWithText(TextField, 'Exch')).controller!.text;
+
+    testWidgets('is taken back when the call is corrected, even if nothing is fetched for the new one', (tester) async {
+      // Correcting W6ABC to K2XYZ whose refresh fails: nothing refreshes, so a
+      // withdrawal that waited on a refresh would leave `CA` in an untouched
+      // field — a legal code nothing tints, logged as K2XYZ's exchange.
+      await pumpPanel(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W6ABC');
+      await tester.pumpAndSettle();
+      expect(exch(tester), 'CA');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K2XYZ');
+      await tester.pumpAndSettle();
+      expect(exch(tester), '', reason: "W6ABC's exchange must not be logged for K2XYZ");
+    });
+
+    testWidgets('is never made for a field holding several calls', (tester) async {
+      // One exchange field is logged for every call in the list, so one
+      // station's exchange in it would be logged for all of them.
+      await pumpPanel(tester);
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W6ABC');
+      await tester.pumpAndSettle();
+      expect(exch(tester), 'CA');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'K2XYZ,W6ABC');
+      await tester.pumpAndSettle();
+      expect(exch(tester), '', reason: 'a second call joined, and the lookup for W6ABC fills nothing now');
+    });
+  });
+
   group('a refresh that could not fetch', () {
     // `refreshActivityControls` fires when a callsign lookup resolves, mid-QSO,
     // while the operator is typing. Its result is installed over
@@ -1116,8 +1227,13 @@ void main() {
     testWidgets('an empty answer still means the activities want no controls', (tester) async {
       // The mutation this catches: folding empty in with null would make a
       // control impossible to remove for a QSO once it had been shown.
-      var call = 0;
-      await pumpTyping(tester, (_) async => call++ == 0 ? [exchange] : const []);
+      // Keyed on the callsign, not on how many times it was asked: a call is
+      // refreshed once per lookup pass, and a counter would read the second
+      // pass for W1AW as the answer for K1ABC.
+      await pumpTyping(
+        tester,
+        (qso) async => (qso['their'] as Map?)?['call'] == 'W1AW' ? [exchange] : const [],
+      );
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pumpAndSettle();
@@ -1172,11 +1288,14 @@ void main() {
 
     testWidgets('a per-QSO refresh already in flight when a ref is added cannot reshadow it on return',
         (tester) async {
-      // The race `ActivityRefsModel.controlsChanged` guards, distinct from the test
-      // above: there the stale refresh had already LANDED before the ref was
-      // added. Here it's still IN FLIGHT — issued before, resolving after —
-      // so the generation it started against has to be checked on return, not
-      // just cleared going in.
+      // Distinct from the test above: there the stale refresh had already
+      // LANDED before the ref was added. Here it's still IN FLIGHT — issued
+      // before, resolving after. Two guards stop it here, because the ref add
+      // also re-issues a refresh: the generation it started against, and the
+      // refresh ticket, which the newer refresh has moved past. This test is
+      // the end-to-end property; the generation guard on its own — a
+      // `controlsChanged` with no refresh issued after it — is pinned in
+      // activity_refs_model_test.dart.
       final completers = <Completer<List<Map<String, dynamic>>?>>[];
       await pumpTyping(tester, (_) {
         final completer = Completer<List<Map<String, dynamic>>?>();
@@ -1186,8 +1305,12 @@ void main() {
 
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump(const Duration(milliseconds: 300)); // past the lookup debounce
-      await tester.pump(); // offline lookup resolves, _lookupFor is set, refresh #1 is issued
-      expect(completers, hasLength(1));
+      await tester.pump(); // the lookup resolves and a refresh is issued per pass
+      // Every refresh issued before the ref is added is stale once it is — how
+      // many there are depends on how many lookup passes landed, which is not
+      // what this test is about.
+      final staleCount = completers.length;
+      expect(staleCount, greaterThan(0));
 
       // The ref is added — a fresh `activityControls` identity — WHILE
       // refresh #1 is still pending. Per the fix above, that also re-issues
@@ -1217,16 +1340,17 @@ void main() {
         ),
       ));
       await tester.pump();
-      expect(completers, hasLength(2), reason: 'adding the ref re-issued a refresh for the resolved lookup');
+      expect(completers, hasLength(staleCount + 1), reason: 'adding the ref re-issued a refresh for the resolved lookup');
 
-      // Resolve #1 (the stale, pre-ref-add refresh) AFTER #2 (the fresh one)
-      // — the actual race, not just two calls that happen to finish in
-      // issue order.
-      completers[1].complete(const [exchange]);
+      // Resolve the stale, pre-ref-add refreshes AFTER the fresh one — the
+      // actual race, not just calls that happen to finish in issue order.
+      completers.last.complete(const [exchange]);
       await tester.pumpAndSettle();
       expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget, reason: 'the fresh refresh landed');
 
-      completers[0].complete(const []);
+      for (final stale in completers.take(staleCount)) {
+        stale.complete(const []);
+      }
       await tester.pumpAndSettle();
       expect(find.widgetWithText(TextField, 'Exch'), findsOneWidget,
           reason: 'the stale refresh landing late must not blank the field the fresh one just set');

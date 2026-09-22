@@ -117,6 +117,14 @@ Two consequences worth knowing before changing any of this:
   `IntrinsicHeight` that widens the log button, taking back more room than the
   squeeze just found. `poloFieldDecoration`'s `labelMaxLines` is what pins it;
   Material's own `labelText` has no line limit.
+
+  A clipped label still names the field badly, so an extension control may
+  declare a `shortLabel` beside its `label` — `QP Loc` for `QP Location`. The
+  core measures the full label against the width the field was resolved to
+  (`mainFieldLabel`) and swaps in the short one where it no longer fits;
+  the ellipsis stays the last resort for a field too narrow for either. The
+  measurement and the paint share one style (`poloFieldLabelStyle`), because a
+  measurement taken in a different style is a measurement of nothing.
 - **A field's real inset is more than its `contentPadding`.** Material adds 4pt
   a side to every `filled` field of its own accord (`_kInputExtraPadding`),
   which no `InputDecoration` field exposes. Step 3 counts it as part of what

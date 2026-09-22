@@ -46,6 +46,7 @@ import type {
   ExportRequest,
   ExportResult,
   FormElement,
+  HistoryForCallOptions,
   HookContext,
   JSONValue,
   LoggingControlDescriptor,
@@ -63,8 +64,9 @@ import {
   theirLocationForFile,
   exchangeInheritPrefix,
   exchangeOptionsFor,
+  loggedExchangeFor,
+  pastExchangeHolds,
   exchangeTransforms,
-  fallbackTheirLocation,
   preferredCodesFor,
 } from "./exchange.ts"
 import {
@@ -84,6 +86,7 @@ import { tFor } from "./i18n.ts"
 import {
   allInParty,
   COUNTY_LINE_SEPARATOR,
+  defaultTheirLocation,
   entityPrefixOf,
   guessedStateOf,
   nameForLocation,
@@ -95,6 +98,7 @@ import {
   daysUntil,
   hasAlreadyRun,
   partyFor,
+  partyStates,
   type QsoParty,
   ROVING_STATION_CLASSES,
   setupOrderOf,
@@ -138,6 +142,63 @@ function partySubtitle(party: QsoParty): string {
 function partyLabel(party: QsoParty): string {
   const year = new Date(party.startMillis || Date.now()).getUTCFullYear()
   return `${party.name} ${year}`
+}
+
+/// This station's contacts matching [options], newest first — or `null` when
+/// the host could not answer.
+///
+/// Asked of the host with its filters rather than read off the whole log:
+/// the answer is a handful of rows from an indexed query instead of every
+/// contact in a multi-thousand-QSO contest log, on a path that runs for each
+/// lookup pass of each callsign. Enough rows to step past contacts whose
+/// exchange was left blank to the one that was not.
+///
+/// A host with no log access answers `[]` and is no failure. A rejection is:
+/// a malformed option, a database error, a bridge failure. It is reported and
+/// answered as `null` rather than thrown, because a throw fails this whole
+/// hook and freezes every extension's per-QSO controls on the panel — and
+/// kept apart from `[]`, because "could not ask" must not read as "never
+/// worked them", which would let an earlier running answer over what the
+/// operator copied minutes ago.
+async function callHistory(
+  ctx: HookContext,
+  call: string,
+  options: HistoryForCallOptions,
+): Promise<Record<string, JSONValue>[] | null> {
+  if (!ctx.getHistoryForCall) return []
+  try {
+    return await ctx.getHistoryForCall(call, { limit: 10, ...options })
+  } catch (e) {
+    console.warn(`[qp] call history unavailable, no earlier exchange offered:`, e)
+    return null
+  }
+}
+
+/// What [call] sent us before: in this operation, else in an earlier running
+/// of the same party.
+///
+/// This operation's comes first and is taken as it is — the operator copied
+/// it from this station minutes ago. An earlier running is found through the
+/// operation's party ref (`{ type: 'qp', ref: 'NY' }`, which past HaLo and PoLo
+/// logs both carry) and has to still hold (`pastExchangeHolds`): the prefix
+/// match can reach another party, and the station can have moved.
+async function priorExchange(
+  ctx: HookContext,
+  party: QsoParty,
+  call: string,
+  operationUuid: string,
+  options: { code: string }[],
+  guessedState: string,
+): Promise<string> {
+  if (!operationUuid) return ''
+  const here = await callHistory(ctx, call, { operation: operationUuid, refType: TYPE })
+  // Could not ask about this operation: an earlier running must not answer
+  // over what may be in it.
+  if (here === null) return ''
+  const found = loggedExchangeFor(here, call)
+  if (found) return found
+  const before = await callHistory(ctx, call, { refType: TYPE, refPrefix: party.key, excludeOperation: operationUuid })
+  return loggedExchangeFor(before ?? [], call, (location) => pastExchangeHolds(party, options, guessedState, location))
 }
 
 const ActivityHook = {
@@ -230,7 +291,7 @@ const ActivityHook = {
         type: 'field',
         fieldType: 'text',
         key: 'location',
-        label: t('ourLocationLabel', { county: party.options.labelForCounty }),
+        label: t('ourLocationLabel'),
         value: ourLocationText(undefined, ref),
         placeholder: Object.keys(party.counties)[0],
       })
@@ -326,9 +387,27 @@ const ActivityHook = {
 
     const guessedState = qso ? guessedStateOf(qso as Record<string, unknown>) : ''
     const options = exchangeOptionsFor(party, qso)
+    // Only asked for when there is a callsign: this hook is also called with no
+    // QSO at all — on every operation change, from the spots panel, from an
+    // import — and none of those can use the answer.
+    const call = str((qso?.their as Record<string, JSONValue> | undefined)?.call)
+    const logged = call ? await priorExchange(ctx, party, call, str(operation.uuid), options, guessedState) : ''
+    // Otherwise the value an empty exchange is scored and filed as anyway,
+    // so a prefill left alone changes nothing about the log.
+    const hint = defaultTheirLocation(party, (qso ?? {}) as Record<string, JSONValue>)
+    // Except an in-party caller's own state: it is not an exchange anyone
+    // sends, so it is shown as a hint — which New York station this is —
+    // while the county goes in the field. Ruled out by name rather than by
+    // "not in the list": a station with no list (DX, or Alaska and Hawaii
+    // where the party counts them as DX) has nothing to check it against.
+    const hintIsExchange = !partyStates(party).has(hint) &&
+      (options.length === 0 || options.some((option) => option.code === hint))
+    const suggested = logged || (hintIsExchange ? hint : '')
+    const placeholder = suggested ? '' : hint
     controls.push({
       key: 'qp/location',
-      label: t('theirLocationLabel', { county: party.options.labelForCounty }),
+      label: t('theirLocationLabel'),
+      shortLabel: t('theirLocationShortLabel'),
       icon: manifest.icon,
       color: manifest.accentColor,
       order: 40,
@@ -344,10 +423,13 @@ const ActivityHook = {
         // A county line is two codes and a separator, so the field is longer
         // than any one of them — and DX entity prefixes can be four.
         maxLength: party.options.countyLine ? 13 : 6,
-        // Ranking, not pre-filling: a lookup's state is right often enough to
-        // be worth floating that state's counties to the top, and wrong often
-        // enough that writing one in would be worse than useless (§5.3).
+        // The guessed state's counties float up for the caller who sends one
+        // of those — a county is never guessed, only ranked.
         preferredCodes: preferredCodesFor(party, guessedState),
+        // Written in where it is an exchange, hinted where it is not — see
+        // `suggested` and `placeholder` above.
+        ...(suggested ? { suggestedValue: suggested } : {}),
+        ...(placeholder ? { placeholder } : {}),
         ...(party.options.countyLine
           ? {
             multiValue: {

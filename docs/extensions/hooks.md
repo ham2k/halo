@@ -499,8 +499,11 @@ interface ActivityHook {
   suggest?(args: SuggestArgs, ctx): Promise<ActivitySuggestion[]>
   processQsoBeforeSave?(args: { qso, operation }, ctx): Promise<Patch | null>
 }
-// LoggingControlDescriptor: {key, label, icon?, color?, order?, optionType?,
-//   allowsMultiple?, editable?, input}
+// LoggingControlDescriptor: {key, label, shortLabel?, icon?, color?, order?,
+//   optionType?, allowsMultiple?, editable?, input}
+// `shortLabel` is the same name in fewer characters, for a field the logging
+// row has squeezed below its label's width. The core measures and picks; the
+// extension only says what the short form is.
 // SuggestArgs: {operation, location?: {lat, lon}, callsign?, searchTerm?, scoped?}
 // ActivitySuggestion: Ref & {distance?, relevance?, allowsMultiple?}
 

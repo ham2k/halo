@@ -10,6 +10,7 @@ import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../config/dev_bridge.dart';
+import '../../services/hook_payloads.dart';
 import '../../services/halo_services.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/cat/equipment.dart';
@@ -922,7 +923,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
             activities: ActivityHooks(
               activityControls: widget.loggingControls,
               refreshActivityControls: (qso) => widget.services.extensions
-                  .loggingControls(widget.operation.data, qso: qso)
+                  .loggingControls(operationPayloadFor(widget.operation), qso: qso)
                   .then((result) => result.loadFailed ? null : result.controls),
               decorateRef: widget.services.extensions.decorateRef,
             ),

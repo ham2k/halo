@@ -524,6 +524,28 @@ BoxConstraints haloDialogConstraints(BuildContext context) {
   return BoxConstraints(maxWidth: maxDialogWidth, maxHeight: maxHeight);
 }
 
+/// The style a [poloFieldDecoration] label paints at. The label always floats,
+/// so there is one style rather than Material's resting/floating pair.
+///
+/// Public because a field narrow enough to clip its own label has to MEASURE it
+/// to decide whether it fits (`mainFieldLabel`), and a measurement taken in a
+/// different style than the one that paints is a measurement of nothing.
+///
+/// Built on the text theme's `bodyLarge`, which is what `InputDecorator`
+/// builds a floating label on before merging this over it, so paint and
+/// measurement share one base. Without it the measurement inherits the
+/// caller's ambient `DefaultTextStyle` instead — `bodyMedium` under a
+/// Scaffold, a quarter point of letter spacing tighter per glyph — and every label
+/// measures narrower than it paints, and a field sized to the measurement clips
+/// it.
+TextStyle poloFieldLabelStyle(BuildContext context, {Color? labelColor}) {
+  final theme = Theme.of(context);
+  return (theme.textTheme.bodyLarge ?? const TextStyle()).merge(TextStyle(
+    fontSize: 14 * MediaQuery.textScalerOf(context).scale(1.0),
+    color: labelColor ?? theme.colorScheme.onSurfaceVariant,
+  ));
+}
+
 /// Ham2K's compact text-field decoration, used for every text field in the
 /// app: the label always floating at the top-left corner (not Material's
 /// "large placeholder until focused" default), and tight, consistent
@@ -560,6 +582,7 @@ InputDecoration poloFieldDecoration(
   final color = labelColor ?? theme.colorScheme.onSurfaceVariant;
   final isDarkTheme = theme.brightness == Brightness.dark;
   final double scale = MediaQuery.textScalerOf(context).scale(1.0);
+  final labelStyle = poloFieldLabelStyle(context, labelColor: labelColor);
   final metrics = LayoutDensity.metricsOf(context);
   return InputDecoration(
     // Exactly one of these two: InputDecoration asserts on both being set.
@@ -577,7 +600,7 @@ InputDecoration poloFieldDecoration(
     errorText: errorText,
     isDense: true,
     floatingLabelBehavior: FloatingLabelBehavior.always,
-    floatingLabelStyle: TextStyle(fontSize: 14 * scale, color: color),
+    floatingLabelStyle: labelStyle,
     // Vertical padding is density-resolved; horizontal is not. This pair sets
     // the field's height, and through the fields row's IntrinsicHeight it also
     // sets the submit button's diameter and the information area's minimum

@@ -989,8 +989,47 @@ interface OptionsInputDescriptor {
 ```
 
 so a QSO party can surface the counties of the caller's guessed state first
-while still allowing any value — better than a prefill, which would be wrong
-often enough to be annoying.
+while still allowing any value — better than a prefill, which for a COUNTY
+would be wrong often enough to be annoying.
+
+A QSO party uses all three mechanisms, each for what it is right about:
+
+- **`preferredCodes`** — the guessed state's counties float to the top. No
+  lookup guesses a county, so a county is only ever ranked.
+- **`suggestedValue`** — what this station already sent us earlier in the
+  operation, else in an earlier running of the same party, else what the log
+  would claim for them anyway. Both histories come from `getHistoryForCall`:
+  this operation's by uuid, taken as copied; earlier runnings through the
+  OPERATION's party ref (`refType: 'qp'`, `refPrefix: 'NY'` — past HaLo and
+  PoLo logs both carry it), and only while they still hold — every code one
+  this party offers (a prefix reaches `NEQP` from `NE`) and, where the lookup
+  knows their state now, in it (they may have moved). The fallback is
+  their state, or `DX` or their prefix for a DX station — the very function
+  the scorer and both exports fall back to for an empty
+  exchange (`defaultTheirLocation`), so a prefill left alone scores and files
+  exactly as a blank would have — the operator sees the value the log will
+  carry instead of finding out afterwards. A prefill belongs to the callsign
+  it was made for: the core takes it back as soon as that call leaves the
+  field, whether or not anything is fetched for the next one, and never makes
+  one for a field holding several calls — one exchange field is logged for
+  every call in the list.
+- **`placeholder`** — only for the one value that is not an exchange: an
+  in-party caller's own state. `NY` in the New York QSO Party is the exchange
+  nobody sends, so it is not offered and a prefill of it would be logged red
+  and as-is if unnoticed; as a hint it still says which New York station this
+  is, while the county goes in the field.
+
+A party's own states are not offered at all. An in-state caller sends a
+county and nobody outside the party is in those states, so `NY` in the New
+York QSO Party is an exchange no station could have given — and it resolves
+cleanly to the state, which is exactly why the field has to tint it rather
+than accept it.
+
+An exchange left empty is scored and filed as that same hint rather than
+refused: the alternative is `missingExchange` — a contact worth nothing and a
+Cabrillo row the file never writes — for a QSO that plainly happened. That
+holds even for an in-state caller, whose own state is not what they sent;
+crediting what is known beats refusing the contact.
 
 Worked examples, all expressible with the above:
 
@@ -1000,7 +1039,7 @@ Worked examples, all expressible with the above:
 | ARRL DX | state *or* power | `placeholder` from `their.guess.state` (never filled — polo hints only) |
 | NAQP | name | `suggestedValue` from a prior QSO via `ctx.getQsos`, else `their.guess.name` |
 | NAQP | location | `suggestedValue` derived from state / entity prefix |
-| QSO party | county | `optionSet` + `preferredCodes` from the guessed state |
+| QSO party | county | `optionSet` + `preferredCodes` from the guessed state; `suggestedValue` = what they sent earlier, else what an empty exchange scores as; `placeholder` = an in-party caller's own state |
 | IARU HF | zone/HQ | `placeholder` from the guessed ITU zone |
 
 **Deliberately NOT added: `select` / `segmented`.** Polo uses those only for

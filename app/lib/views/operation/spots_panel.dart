@@ -19,6 +19,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:halo_core/halo_core.dart';
 import 'package:halo_widgets/halo_widgets.dart';
 
+import '../../services/hook_payloads.dart';
 import '../../services/halo_services.dart';
 import '../../services/spots_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
@@ -958,7 +959,7 @@ class _SpotsPanelState extends State<SpotsPanel> {
   Future<void> _loadActivityControls() async {
     await widget.services.extensions.start();
     if (!mounted) return;
-    final result = await widget.services.extensions.loggingControls(widget.operation.data);
+    final result = await widget.services.extensions.loggingControls(operationPayloadFor(widget.operation));
     if (!mounted) return;
     // Logged, not surfaced: what this costs is a generic icon on spot rows,
     // which is a degradation the operator can see for themselves — unlike a

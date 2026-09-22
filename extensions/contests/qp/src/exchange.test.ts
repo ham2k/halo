@@ -19,12 +19,14 @@ import {
   exchangeInheritPrefix,
   exchangeOptionsFor,
   exchangeTransforms,
-  fallbackTheirLocation,
+  loggedExchangeFor,
+  pastExchangeHolds,
   ourLocationForQso,
   preferredCodesFor,
   resolvedExchanges,
   theirLocationForFile,
 } from "./exchange.ts"
+import { defaultTheirLocation } from "./location.ts"
 import { partyFor, type QsoParty } from "./parties.ts"
 
 function party(key: string): QsoParty {
@@ -140,20 +142,43 @@ test('a contact with nobody in the party is left out of the file', () => {
   assert.equal(cabrilloRowsFor(party('NY'), qso({ location: 'CT' }), operation('ALB'), 'N0DEV').length, 1)
 })
 
-test('an exchange nobody copied is not invented for the file', () => {
-  // The scorer refuses to score a contact whose exchange was never typed
-  // (`missingExchange`), so writing the lookup's guessed state into the file
-  // would claim a contact the scoreboard already declined. polo writes the
-  // guess; the two sides have to agree, and the score is the honest one.
-  assert.equal(fallbackTheirLocation(party('NY'), qso({ state: 'NJ' })), '')
+test('an exchange nobody typed falls back to what we know of where they are', () => {
+  // The exchange is what they SENT, and this is the gap where nothing was
+  // copied at all: rather than score the contact zero and file nothing, both
+  // sides read the state the QSO carries — asserted on `their.state` by an
+  // operator or an import, or the callsign lookup's own guess. The scorer and
+  // the file read one function, so they cannot disagree about it.
+  assert.equal(defaultTheirLocation(party('NY'), qso({ state: 'NJ' })), 'NJ')
   const rows = cabrilloRowsFor(party('NY'), qso({ state: 'NJ' }), operation('ALB'), 'N0DEV')
-  assert.deepEqual(rows, [], 'a contact with nothing to claim is not claimed')
+  assert.equal(rows.length, 1)
+  assert.equal(rows[0][5].trim(), 'NJ')
 
+  // Nothing known: still nothing claimed. A contact we cannot place is one the
+  // scorer refuses (`missingExchange`), and a file may not claim what the
+  // scoreboard declined.
+  assert.equal(defaultTheirLocation(party('NY'), qso()), '')
+  assert.deepEqual(cabrilloRowsFor(party('NY'), qso(), operation('ALB'), 'N0DEV'), [])
+
+  // A state that means nothing to this party is not a state. `parseLocations`
+  // would drop it anyway; refusing it HERE is what keeps the fallback from
+  // reporting a location it cannot resolve.
+  assert.equal(defaultTheirLocation(party('NY'), qso({ state: 'ZZ' })), '')
+  // A state NAME is not a state code. `normalizeLocation` would read
+  // `MINNESOTA` as a five-plus-character county and take its first two letters
+  // — `MI`, Michigan — so the log and the file would both claim the wrong
+  // state with nothing looking wrong anywhere.
+  assert.equal(defaultTheirLocation(party('NY'), qso({ state: 'MINNESOTA' })), '')
+
+
+  // Only consulted for a station in the party's own country. A DX lookup's
+  // `state` is its own country's subdivision and the two-letter codes collide —
+  // a German `NS` is not Nova Scotia.
+  assert.equal(defaultTheirLocation(party('NY'), qso({ entityPrefix: 'DL', state: 'NS' })), 'DX')
   // A DX station's exchange IS their entity — nobody asks them to send one, so
   // this is what they gave us, not a guess.
-  assert.equal(fallbackTheirLocation(party('NY'), qso({ entityPrefix: 'DL' })), 'DX')
+  assert.equal(defaultTheirLocation(party('NY'), qso({ entityPrefix: 'DL' })), 'DX')
   // Where a party asks for the prefix instead of the word DX (15 of them do).
-  assert.equal(fallbackTheirLocation(party('WA'), qso({ entityPrefix: 'DL' })), 'DL')
+  assert.equal(defaultTheirLocation(party('WA'), qso({ entityPrefix: 'DL' })), 'DL')
 })
 
 test('the file claims a contact only where the score does', () => {
@@ -171,8 +196,8 @@ test('the file says what the scoreboard claimed for an Alaskan contact', () => {
   // The scorer credits an Alaskan station as the state `AK`; a file writing
   // `DX` for the same contact would not support the multiplier already
   // claimed — the divergence `location.ts` exists to prevent.
-  assert.equal(fallbackTheirLocation(party('NY'), qso({ entityPrefix: 'KL' })), 'AK')
-  assert.equal(fallbackTheirLocation(party('NY'), qso({ entityPrefix: 'KH6' })), 'HI')
+  assert.equal(defaultTheirLocation(party('NY'), qso({ entityPrefix: 'KL' })), 'AK')
+  assert.equal(defaultTheirLocation(party('NY'), qso({ entityPrefix: 'KH6' })), 'HI')
 })
 
 test('Idaho strips a rover suffix from the callsign, and nobody else does', () => {
@@ -244,14 +269,164 @@ test('7QP offers its neighbours\' counties, because its entrants work them', () 
   assert.ok(codes.some((code) => party('7QP').otherCounties[code] !== undefined))
 })
 
-test('the guessed state floats its counties up, and never fills the field', () => {
-  // Ranking rather than prefilling (§5.3): a location guess is wrong often
-  // enough that writing it in would be worse than useless.
+test('the guessed state floats its counties up, and never fills a county in', () => {
+  // A COUNTY is only ever ranked: no lookup guesses one, so writing one in
+  // would be worse than useless (§5.3). The state itself is the other half of
+  // the same guess and IS written in where it is the whole exchange — see the
+  // prefill test below.
   const preferred = preferredCodesFor(party('7QP'), 'OR')
   assert.ok(preferred.includes('ORDES'))
-  assert.ok(preferred.includes('OR'))
   assert.deepEqual(preferred.some((code) => code.startsWith('WA')), false)
+  // Oregon's own code is NOT floated up: `OR` is one of 7QP's states, so it is
+  // not an exchange any station sends and the field does not offer it. A
+  // suggestion the same field then tints red is worse than none.
+  assert.deepEqual(preferred.includes('OR'), false)
+  // A state from outside the party is both offered and floated.
+  assert.ok(preferredCodesFor(party('NY'), 'NJ').includes('NJ'))
   assert.deepEqual(preferredCodesFor(party('NY'), ''), [])
+})
+
+test('a Hawaiian or an Alaskan picks from the list, like any other US station', () => {
+  // KH6 and KL7 are US states whose stations do not sign K. In the Hawaii QSO
+  // Party a Hawaiian is the one station that sends one of its multipliers —
+  // left to the DX path, exactly they would type it into a field with no
+  // list and no tint for a typo.
+  const hi = party('HI')
+  const hawaiian = exchangeOptionsFor(hi, qso({ entityPrefix: 'KH6' })).map((option) => option.code)
+  assert.ok(hawaiian.includes('HON'), 'the Hawaii multipliers are offered')
+  assert.deepEqual(hawaiian.includes('HI'), false, "the party's own state is not")
+
+  // Elsewhere they send their state, from the same list a K station gets.
+  const alaskan = exchangeOptionsFor(party('NY'), qso({ entityPrefix: 'KL7' })).map((option) => option.code)
+  assert.ok(alaskan.includes('AK'))
+
+  // A party that counts them as DX asks them for nothing, as any DX station.
+  const dx = { ...hi, options: { ...hi.options, alaskaAndHawaiiAreDX: true } }
+  assert.deepEqual(exchangeOptionsFor(dx, qso({ entityPrefix: 'KH6' })), [])
+})
+
+test('the party\'s own state is not an exchange anybody sends', () => {
+  // In NYQP an in-state station sends a COUNTY, and nobody outside New York is
+  // in New York — so `NY` is an exchange no station could have given. It
+  // resolves cleanly to the state, which is exactly why the field has to
+  // refuse it: accepted, it scores the contact under out-of-party rules and
+  // files a state multiplier for a county nobody copied.
+  const codes = exchangeOptionsFor(party('NY'), qso({ entityPrefix: 'K' })).map((option) => option.code)
+  assert.deepEqual(codes.includes('NY'), false)
+  assert.ok(codes.includes('NJ'), 'every other state is still an exchange')
+  assert.ok(codes.includes('ALB'), 'and the counties are what an in-state station sends')
+
+  // Every state a multi-state party covers, not just the one its key names.
+  const sevenQp = exchangeOptionsFor(party('7QP'), qso({ entityPrefix: 'K' })).map((option) => option.code)
+  for (const state of ['OR', 'WA', 'ID', 'UT', 'WY', 'MT']) {
+    assert.deepEqual(sevenQp.includes(state), false, state)
+  }
+  assert.ok(sevenQp.includes('CA'))
+
+  // A Canadian party refuses its own province for the same reason.
+  const bc = exchangeOptionsFor(party('BC'), qso({ entityPrefix: 'VE' })).map((option) => option.code)
+  assert.deepEqual(bc.includes('BC'), false)
+  assert.ok(bc.includes('ON'))
+})
+
+test('the hint is what the log will claim if nothing is typed', () => {
+  // One function for the field's suggestion and the fallback, so the field
+  // cannot offer one thing while the score records another. It goes in as a
+  // value where it is an exchange (an out-of-party state, `DX`) and as a hint
+  // where it is not (the party's own state).
+  const ny = party('NY')
+  const hint = (q: Record<string, JSONValue>) => defaultTheirLocation(ny, q)
+
+  // Out of the party the state IS what they will send…
+  assert.equal(hint(qso({ entityPrefix: 'K', state: 'PA' })), 'PA')
+  // …in the party it is not, and the hint says so anyway: it is how the
+  // operator sees WHICH New York station this is while typing the county.
+  assert.equal(hint(qso({ entityPrefix: 'K', state: 'NY' })), 'NY')
+  // A DX station is never asked to type an exchange at all, so the hint is
+  // what the file will write for them.
+  assert.equal(hint(qso({ entityPrefix: 'DL' })), 'DX')
+  assert.equal(defaultTheirLocation(party('WA'), qso({ entityPrefix: 'DL' })), 'DL')
+  // Nothing known, nothing hinted.
+  assert.equal(hint(qso()), '')
+  // No entity at all — no callsign yet, or one the country file cannot place
+  // — is a QSO we cannot place, not a DX contact. Answered `DX`, it would be
+  // the suggestion shown in every empty entry row.
+  assert.equal(defaultTheirLocation(party('NY'), {}), '')
+  assert.equal(defaultTheirLocation(party('NY'), { their: { call: 'Q0ZZZ' } } as Record<string, JSONValue>), '')
+})
+
+test('what this station sent us earlier is offered before any guess', () => {
+  // Not a guess at all: an exchange the operator already copied from this same
+  // station, and the one the scorer and both exports would silently fall back
+  // to for a blank second-band contact. Offering it means the operator
+  // confirms it instead of finding out afterwards that it was assumed.
+  // Histories are NEWEST first, as `getHistoryForCall` answers.
+  const entry = (call: string, location: string, band = '20m') =>
+    ({ their: { call }, band, refs: [{ type: 'qp', location }] }) as Record<string, JSONValue>
+  const history = [entry('K1ABC', 'ERI')]
+  assert.equal(loggedExchangeFor(history, 'K1ABC'), 'ERI')
+  assert.equal(loggedExchangeFor(history, 'k1abc'), 'ERI', 'the log is not case-sensitive')
+  assert.equal(loggedExchangeFor(history, ''), '')
+
+  // The LATEST county they gave, not the first: a rover who drove into the
+  // next county sends the new one, and offering the old one would re-log a
+  // county they have left.
+  assert.equal(loggedExchangeFor([entry('K1ABC', 'CHA', '40m'), entry('K1ABC', 'ERI')], 'K1ABC'), 'CHA')
+
+  // A contact whose exchange was never copied teaches this nothing, and an
+  // event marker is not a contact.
+  const blanks = [entry('K1ABC', 'ZZZ', 'event'), entry('K1ABC', '', '15m'), entry('K1ABC', 'ERI')]
+  assert.equal(loggedExchangeFor(blanks, 'K1ABC'), 'ERI')
+
+  // Another station's contact is not theirs. A host older than the history
+  // filters answers the latest contacts it has; the callsign is checked again
+  // here so such an answer cannot put somebody else's county in the field.
+  assert.equal(loggedExchangeFor([entry('K2XYZ', 'ALB'), entry('K1ABC', 'ERI')], 'K1ABC'), 'ERI')
+  assert.equal(loggedExchangeFor([entry('K2XYZ', 'ALB')], 'K1ABC'), '')
+})
+
+test('an exchange from an earlier running of the party is offered only while it still holds', () => {
+  const ny = party('NY')
+  const us = exchangeOptionsFor(ny, qso({ entityPrefix: 'K' }))
+  const holds = (location: string, guessedState = '') => pastExchangeHolds(ny, us, guessedState, location)
+
+  // Their county from last year, and the lookup still puts them in New York.
+  assert.equal(holds('ERI', 'NY'), true)
+  assert.equal(holds('ERI/CHA', 'NY'), true, 'a county line holds when every county does')
+  // Nothing known about where they are now: the county is all there is.
+  assert.equal(holds('ERI'), true)
+
+  // They moved. The lookup says Pennsylvania now, so last year's New York
+  // county is not what they will send — their state is.
+  assert.equal(holds('ERI', 'PA'), false)
+  assert.equal(holds('PA', 'PA'), true)
+  assert.equal(holds('NJ', 'PA'), false, 'a state they left is no better than a county they left')
+
+  // Not this party at all. Past runnings are found by the party key as a
+  // PREFIX, and `NE` — Nebraska — is a prefix of `NEQP`, New England. The
+  // answer does not say which operation a contact came from, so a code this
+  // party does not offer is the tell.
+  const ne = party('NE')
+  const neOptions = exchangeOptionsFor(ne, qso({ entityPrefix: 'K' }))
+  const newEngland = Object.keys(party('NEQP').counties).find((code) => ne.counties[code] === undefined)!
+  assert.equal(pastExchangeHolds(ne, neOptions, '', newEngland), false)
+
+  // And the party's own state is not an exchange here, whatever it was there.
+  assert.equal(holds('NY', 'NY'), false)
+})
+
+test('an earlier running is consulted only through the check, and this operation not at all', () => {
+  // The check is what `loggedExchangeFor` is handed for past runnings: the
+  // first exchange that still holds wins, newest first.
+  const entry = (location: string) =>
+    ({ their: { call: 'K2ABC' }, band: '20m', refs: [{ type: 'qp', location }] }) as Record<string, JSONValue>
+  const ny = party('NY')
+  const us = exchangeOptionsFor(ny, qso({ entityPrefix: 'K' }))
+  const past = [entry('ERI'), entry('ALB')]
+  assert.equal(loggedExchangeFor(past, 'K2ABC', (l) => pastExchangeHolds(ny, us, 'PA', l)), '')
+  assert.equal(loggedExchangeFor(past, 'K2ABC', (l) => pastExchangeHolds(ny, us, 'NY', l)), 'ERI')
+  // Unchecked, as this operation's history is: the operator just copied it.
+  assert.equal(loggedExchangeFor(past, 'K2ABC'), 'ERI')
 })
 
 test('the declared entry classes become the Cabrillo CATEGORY lines', () => {

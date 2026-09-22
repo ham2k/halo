@@ -17,6 +17,7 @@ import 'package:halo_extension_host/halo_extension_host.dart';
 import 'error_reporting_service.dart';
 import 'extension_scoring.dart';
 import 'extension_service.dart';
+import 'hook_payloads.dart';
 
 /// Decides whether the checkpoints a rescore cached can stand in for the log
 /// on the live path, and what has to be replayed onto them. Null means a cold

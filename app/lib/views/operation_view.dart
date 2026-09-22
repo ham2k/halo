@@ -20,6 +20,7 @@ import '../services/halo_services.dart';
 import '../services/error_reporting_service.dart';
 import '../services/cat/zero_beat.dart';
 import '../services/extension_service.dart' show TemplateError;
+import '../services/hook_payloads.dart';
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/wake_lock_service.dart';
@@ -1327,7 +1328,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
 
   Future<void> _refreshLoggingControls(Operation operation) async {
     final requestId = ++_loggingControlsRequestId;
-    final result = await widget.services.extensions.loggingControls(operation.data);
+    final result = await widget.services.extensions.loggingControls(operationPayloadFor(operation));
     if (!mounted || requestId != _loggingControlsRequestId) return;
     // A fetch that failed says nothing about what the activities want, so the
     // panel keeps what it is already showing rather than blanking a live

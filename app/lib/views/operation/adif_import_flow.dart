@@ -26,6 +26,7 @@ import '../../services/adif_import_plan.dart';
 import '../../services/adif_import_service.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/extension_service.dart' show ExtensionInfo;
+import '../../services/hook_payloads.dart';
 import '../../services/status_bar_service.dart';
 import '../../tools/operation_title.dart';
 import '../../services/halo_services.dart';
@@ -446,7 +447,7 @@ Future<AdifImportPlan> _planFor(
 /// set would be empty exactly where it matters, and merging a park-to-park
 /// contact would drop one of its parks.
 Future<({Set<String> types, bool unknown})> _stackingRefTypes(HaLoServices services, Operation operation) async {
-  final result = await services.extensions.loggingControls(operation.data);
+  final result = await services.extensions.loggingControls(operationPayloadFor(operation));
   // A fan-out that failed yields the same empty-ish set as an operation whose
   // activities simply don't stack, and only one of them costs the operator a
   // reference. The caller has to be able to tell them apart.

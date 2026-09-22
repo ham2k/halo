@@ -18,7 +18,6 @@
     "stateCountsForInState": true,
     "countiesCountForInState": false,
     "labelForCounties": "Districts",
-    "labelForCounty": "District",
     "entity": "VE"
   },
   "points": {

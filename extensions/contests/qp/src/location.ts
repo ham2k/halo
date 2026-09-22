@@ -25,6 +25,8 @@
 //     counted properly in the scoresheet here (`scorer.ts`), so it limits
 //     rather than erases.
 
+import type { JSONValue } from "@ham2k/extension-sdk"
+
 import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 
 import {
@@ -232,6 +234,51 @@ export function parseLocations(
     })
   }
   return locations
+}
+
+/// What a station who sent us no exchange is recorded as — the ONE answer the
+/// scorer and both exports read, so a contact cannot be scored under one
+/// location and filed under another.
+///
+/// In the party's own country, what the lookup says: `their.state` if the
+/// operator or an import asserted one, else the callsign lookup's guess. It is
+/// consulted only here, where the alternative is `missingExchange` and a
+/// contact worth nothing — the entry row still asks the operator for the
+/// exchange, and still ranks counties rather than inventing one, because a
+/// county is the thing a lookup cannot know.
+///
+/// The guess is refused unless it RESOLVES against this party, and consulted
+/// only for a K or VE station: a DX lookup's `state` is its own country's
+/// subdivision, and two-letter codes collide — a German `NS` is not Nova
+/// Scotia. Outside those two countries the exchange is the entity, which no
+/// party asks a DX station to type.
+export function defaultTheirLocation(party: QsoParty, qso: Record<string, JSONValue>): string {
+  const entityPrefix = entityPrefixOf(qso as Record<string, unknown>)
+  // A station in no known entity — no callsign yet, or one the country file
+  // cannot place — is a QSO we cannot place, not a DX contact
+  // (`normalizeLocation` draws the same line). Answering `DX` here would slip
+  // past the scorer, which normalizes it back to nothing without an entity,
+  // and be offered as the suggestion in an empty entry row.
+  if (!entityPrefix) return ''
+  if (entityPrefix === 'K' || entityPrefix === 'VE') {
+    const guessed = guessedStateOf(qso as Record<string, unknown>)
+    // A state CODE, and only that. `normalizeLocation` reads anything longer
+    // than four characters as a county carrying its state in its first two, so
+    // a lookup that hands back a NAME would resolve `MINNESOTA` to `MI` —
+    // Michigan — and both the score and the file would claim the wrong state
+    // with nothing looking wrong anywhere. Every US state, DC and every
+    // Canadian province is two characters; a longer answer has told us nothing
+    // we can file.
+    if (guessed.length !== 2 || !normalizeLocation(party, guessed, { entityPrefix })) return ''
+    return guessed
+  }
+  // Alaska and Hawaii are US STATES that do not send `K`, and the scorer
+  // credits them as such — so a file that wrote `DX` for one would not support
+  // the multiplier the scoreboard already claimed. Unless the party counts them
+  // as DX, which none of the shipped ones does.
+  const state = stateForEntity(entityPrefix)
+  if (state && !party.options.alaskaAndHawaiiAreDX) return state
+  return party.options.dxLocationIsPrefix && entityPrefix ? entityPrefix : 'DX'
 }
 
 /// The state an entity's stations are in, for the two that are US states but

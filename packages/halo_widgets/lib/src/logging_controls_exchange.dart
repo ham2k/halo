@@ -97,6 +97,13 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   /// (docs/design/contests.md §5.3).
   final Set<String> _touched = {};
 
+  /// Per control, the value [applySuggestedValues] last wrote and the callsign
+  /// it was written for — so that only a value this put there is ever taken
+  /// away (a serial preview lands in an untouched field too,
+  /// `refreshSerialPreviews`), and only once that callsign has left the field
+  /// ([withdrawSuggestionsExcept]).
+  final Map<String, ({String value, String call})> _suggestedValues = {};
+
   /// One controller per control, created on demand and disposed with the
   /// model.
   final Map<String, TextEditingController> _controllers = {};
@@ -287,6 +294,7 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   void clear() {
     _values.clear();
     _touched.clear();
+    _suggestedValues.clear();
     // Dropped, not kept: a wipe must let the next refresh re-fill the serial
     // fields, and the change-detection in `refreshSerialPreviews` would
     // otherwise see the same declarations and leave them blank.
@@ -298,17 +306,56 @@ class ExchangeFieldsModel extends ChangeNotifier with PanelModel {
   }
 
   /// Applies each control's `suggestedValue` — a callsign-lookup-derived
-  /// prefill — to fields the operator hasn't touched. Called when the
-  /// controls are re-fetched after a lookup resolves.
-  void applySuggestedValues() {
+  /// prefill — to fields the operator hasn't touched. Called when the controls
+  /// are re-fetched after a lookup resolves, with the one [call] they were
+  /// fetched for.
+  ///
+  /// Only ever writes. Taking a prefill back is [withdrawSuggestionsExcept]'s,
+  /// driven by the call field itself: a refresh that fails, or is dropped,
+  /// never reaches here, and a prefill left for a callsign that has since
+  /// changed is a legal option code in an untouched field, which nothing
+  /// tints and `refsWithTextValues` files as the new station's exchange.
+  ///
+  /// [call] is empty when the field holds several calls: one exchange field is
+  /// logged for every call in the list, and one station's exchange written
+  /// into it would be logged for all of them.
+  void applySuggestedValues({required String call}) {
+    if (call.isEmpty) return;
     for (final control in config().textControls()) {
       final key = control['key'] as String;
       if (_touched.contains(key)) continue;
-      final suggested = (control['input'] as Map)['suggestedValue'] as String?;
-      if (suggested == null || suggested.isEmpty) continue;
-      if (_values[key] == suggested) continue;
+      final suggested = (control['input'] as Map)['suggestedValue'] as String? ?? '';
+      if (suggested.isEmpty) continue;
+      final held = _suggestedValues[key];
+      final current = _values[key] ?? '';
+      // Not ours to overwrite: either something else wrote it (a serial
+      // preview, a value restored off a saved QSO) or it moved without being
+      // marked typed. Either way the field wins over a guess.
+      if (held == null ? current.isNotEmpty : current != held.value) continue;
+      _suggestedValues[key] = (value: suggested, call: call);
+      if (suggested == current) continue;
       _values[key] = suggested;
       controllerFor(key).text = suggested;
+    }
+  }
+
+  /// Takes back every prefill made for a callsign other than [call] — the one
+  /// call now in the field, or empty when there is none or there are several.
+  ///
+  /// Called on every edit of the call field, so it holds whether or not the
+  /// new callsign's refresh ever succeeds: correcting `W6ABC` to a station
+  /// the lookup has nothing for, clearing the field, or adding a second call
+  /// all leave no earlier station's exchange behind. A value the operator has
+  /// typed over, or anything this did not write, is left alone.
+  void withdrawSuggestionsExcept({required String call}) {
+    for (final entry in _suggestedValues.entries.toList()) {
+      final key = entry.key;
+      final held = entry.value;
+      if (held.call == call && call.isNotEmpty) continue;
+      _suggestedValues.remove(key);
+      if (_touched.contains(key) || (_values[key] ?? '') != held.value) continue;
+      _values[key] = '';
+      controllerFor(key).text = '';
     }
   }
 
@@ -926,7 +973,15 @@ class ExchangeField extends StatelessWidget {
   Widget build(BuildContext context) {
     final key = control['key'] as String;
     final input = control['input'] as Map;
-    final label = (control['label'] as String?) ?? key;
+    // The row squeezes this field well below its own label's width, so which
+    // label it shows is a function of the width it was resolved to.
+    final label = mainFieldLabel(
+      context,
+      label: (control['label'] as String?) ?? key,
+      shortLabel: control['shortLabel'] as String?,
+      width: width,
+      horizontalPadding: padding,
+    );
     final value = model.valueOf(key).trim();
 
     // A serial is digits, never uppercased. The number shown is the one the

@@ -1569,6 +1569,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   Iterable<String> get _callsInField => _callText.callsInField;
   String get _callAtCursor => _callText.callAtCursor;
 
+  /// The one call in the field, or empty when there is none or there are
+  /// several — which is when an exchange may be prefilled for it.
+  String get _singleCallInField {
+    final calls = _callText.callsInField.toList();
+    return calls.length == 1 ? calls.single : '';
+  }
+
   /// The operation QSON with `uuid` folded in — same shape as the Dart
   /// side's `qsonPayloadFor` gives every coarse hook call. Command hooks
   /// need the uuid to fetch log data through the runtime's
@@ -1756,7 +1763,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// the refreshed controls may have introduced a serial field, or changed
   /// the band a per-band sequence keys off.
   void _onActivityControlsRefreshed() {
-    _exchange.applySuggestedValues();
+    _exchange.applySuggestedValues(call: _singleCallInField);
     unawaited(_exchange.refreshSerialPreviews());
   }
 
@@ -2596,6 +2603,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     // that `_wipe` does — which is exactly what the spots list wants to hear
     // about. A suggestion filling the field never reaches here.
     widget.session.onCallEdited?.call();
+    // Before anything else reacts: a prefill made for the call that just
+    // changed must not outlive it, whether or not the new call's lookup and
+    // refresh ever land.
+    _exchange.withdrawSuggestionsExcept(call: _singleCallInField);
     setState(() {});
     // The first character of a call is what takes a serial number.
     unawaited(_exchange.refreshSerialPreviews());
@@ -2658,19 +2669,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// it just applied are filtered out as already-claimed on the next pass,
   /// which then applies nothing and re-triggers nothing.
   ///
-  /// QSO-scoped activity controls (e.g. POTA's DXCC-derived placeholder)
-  /// are refreshed off the offline pass ONLY, deliberately not again after
-  /// the online pass. Two reasons: (1) the offline pass's callsign-annotation
-  /// pre-step already resolves the DXCC entity a placeholder/prefix depends
-  /// on — the online pass adds QRZ/HamDB detail that doesn't change that
-  /// entity, so a second refresh would almost always re-fetch the same
-  /// descriptors; (2) two independent unawaited refreshes for the same call,
-  /// with no ordering guarantee between them, could race — a slower
-  /// offline-triggered refresh resolving after a faster online-triggered one
-  /// would overwrite the fresher result with a stale one. A single refresh
-  /// point sidesteps that entirely. A cache hit refreshes too: typing back to
-  /// a call reaches the lookup only through the cache, and its guessed refs
-  /// were just cleared.
+  /// QSO-scoped activity controls are refreshed off BOTH passes. The offline
+  /// pass resolves the DXCC entity (POTA's prefix placeholder needs only
+  /// that), but a caller's STATE arrives only with the online pass — and a
+  /// QSO party's suggestion is the state: refreshed off the offline pass alone,
+  /// the field stays blank until the call is retyped and hits the cache. The
+  /// two refreshes are unawaited with no ordering between
+  /// them; [ActivityRefsModel]'s refresh ticket makes the later-issued one win
+  /// however they finish, so a slow offline refresh cannot overwrite a fast
+  /// online one. A cache hit refreshes too: typing back to a call reaches the
+  /// lookup only through the cache, and its guessed refs were just cleared.
   void _onLookupResolved(String call, Map<String, dynamic>? result, LookupPhase phase) {
     switch (phase) {
       case LookupPhase.cached:
@@ -2679,6 +2687,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
         unawaited(_refs.refreshControlsFor(call));
       case LookupPhase.online:
         if (_refs.applyGuessRefs(result, call)) _relookupForRefsChanged();
+        unawaited(_refs.refreshControlsFor(call));
     }
   }
 

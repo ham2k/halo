@@ -5,9 +5,14 @@
 // docs/design/logging-fields.md lists, in the order it lists them. The
 // widget suite sees them through rendered widths; these pin the arithmetic.
 
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:halo_widgets/src/logging_controls_metrics.dart';
+import 'package:halo_widgets/src/theme.dart';
 
 // Round numbers a test can reason about: a callsign floor of 60, a field
 // floor of 20, and 8 of padding, so a field's floor is 28.
@@ -89,5 +94,121 @@ void main() {
     expect(r.layout.fieldPadding, 0);
     expect(r.layout.widths, [20, 20]);
     expect(r.squeezed, isTrue);
+  });
+
+
+  // The label half of the same squeeze: a field narrower than "QP Location"
+  // shows "QP Loc" rather than an ellipsized "QP Loca…", which names the field
+  // no better than nothing does.
+  testWidgets('a squeezed field falls back to its short label, and only then', (tester) async {
+    late BuildContext context;
+    await tester.pumpWidget(MaterialApp(
+      home: Builder(builder: (ctx) {
+        context = ctx;
+        return const SizedBox();
+      }),
+    ));
+
+    String pick(double width, {String? shortLabel}) => mainFieldLabel(
+          context,
+          label: 'QP Location',
+          shortLabel: shortLabel,
+          width: width,
+          horizontalPadding: 8,
+        );
+
+    // Measured, not assumed: the threshold is whatever the label actually
+    // paints at under this font and text scaler, so the test states the rule
+    // rather than a pixel count that a font change would quietly invalidate.
+    final full = textWidth(context, 'QP Location', poloFieldLabelStyle(context));
+    final fits = full * floatingLabelScale + 8 - materialFilledInputGap;
+    expect(pick(fits + 1, shortLabel: 'QP Loc'), 'QP Location');
+    expect(pick(fits - 1, shortLabel: 'QP Loc'), 'QP Loc');
+
+    // No short label declared: the decoration's own ellipsis is the fallback,
+    // so the full label comes back however narrow the field is.
+    expect(pick(20), 'QP Location');
+    expect(pick(20, shortLabel: ''), 'QP Location');
+  });
+
+  // The arithmetic in [mainFieldLabelWidth] restates two things Material keeps
+  // private — that a floating label is laid out at full size and painted at
+  // `_kFinalLabelScale`, and that the extra gap on a filled field goes to the
+  // content rather than the label. A restatement is only as good as the day it
+  // was written, so this renders a real field and reads the box back: it fails
+  // the day either of those changes, which is the whole point of it.
+  testWidgets('the label budget is what InputDecorator actually hands the label', (tester) async {
+    for (final (width, padding) in [(76.0, 16.0), (76.0, 8.0), (76.0, 0.0), (110.0, 16.0), (110.0, 0.0)]) {
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: SizedBox(
+              width: width,
+              child: Builder(
+                builder: (ctx) => TextField(
+                  decoration: mainFieldDecoration(ctx, 'QP Location', horizontalPadding: padding),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ));
+      final painted = tester.getSize(find.text('QP Location')).width;
+      expect(
+        mainFieldLabelWidth(width: width, horizontalPadding: padding),
+        moreOrLessEquals(painted, epsilon: 0.01),
+        reason: 'width $width, padding $padding',
+      );
+    }
+  });
+
+  // The property the two tests above only approximate: with a short label
+  // available, the label an operator actually SEES is never cut off, at any
+  // width the row can hand a field. Under the real theme and the real Roboto,
+  // because both matter — Material paints a floating label on `bodyLarge`,
+  // whose letter spacing is wider than the ambient `bodyMedium` a bare
+  // `textWidth` would measure with, and the stand-in test font has no letter
+  // shapes to be wide with. Measured against that, "QP Location" read 2.75pt
+  // narrower than it painted and was chosen for fields it did not fit.
+  group('under the real theme and font', () {
+    setUpAll(() async {
+      final bytes = await File('../../app/assets/fonts/Roboto.ttf').readAsBytes();
+      await (FontLoader('Roboto')..addFont(Future.value(ByteData.view(bytes.buffer)))).load();
+    });
+
+    testWidgets('a label with a short form is never shown cut off', (tester) async {
+      for (var width = 40.0; width <= 100.0; width += 1) {
+        for (final padding in [0.0, 8.0, 16.0]) {
+          await tester.pumpWidget(MaterialApp(
+            theme: buildHaLoTheme(Brightness.light),
+            home: Scaffold(
+              body: Center(
+                child: SizedBox(
+                  width: width,
+                  child: Builder(builder: (context) {
+                    final label = mainFieldLabel(
+                      context,
+                      label: 'QP Location',
+                      shortLabel: 'QP Loc',
+                      width: width,
+                      horizontalPadding: padding,
+                    );
+                    return TextField(decoration: mainFieldDecoration(context, label, horizontalPadding: padding));
+                  }),
+                ),
+              ),
+            ),
+          ));
+          final shown = find.byWidgetPredicate((w) => w is Text && (w.data == 'QP Location'));
+          if (shown.evaluate().isEmpty) continue;
+          final paragraph = tester.renderObject<RenderParagraph>(shown);
+          expect(
+            paragraph.didExceedMaxLines,
+            isFalse,
+            reason: 'at width $width, padding $padding the full label was chosen and then cut off',
+          );
+        }
+      }
+    });
   });
 }

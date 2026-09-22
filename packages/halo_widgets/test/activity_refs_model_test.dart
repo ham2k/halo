@@ -261,6 +261,54 @@ void main() {
       expect(h.model.controls, [_hunter], reason: 'fetched against the old operation-level set');
     });
 
+    test('the later of two refreshes for one call wins, however they finish', () async {
+      // A call is refreshed off the offline lookup and again off the online
+      // one, and only the online pass knows the caller's STATE — which is a QSO
+      // party's whole hint. The two are unawaited with no ordering between
+      // them, so the slow one can land last; letting it apply would put the
+      // stateless controls back over the ones that knew where the caller was.
+      final h = _Harness(controls: [_hunter]);
+      addTearDown(h.model.dispose);
+      final offlineGate = Completer<void>();
+      h.refresh = (qso) async {
+        await offlineGate.future;
+        return [_hunter];
+      };
+      final offline = h.model.refreshControlsFor('W1AW');
+
+      h.refresh = (qso) async => [_hunter, _sota];
+      await h.model.refreshControlsFor('W1AW');
+      expect(h.model.controls, [_hunter, _sota]);
+
+      offlineGate.complete();
+      await offline;
+      expect(h.model.controls, [_hunter, _sota], reason: 'the earlier-issued refresh finished last, and lost');
+    });
+
+    test('an earlier refresh that lands first stands when the later one fails', () async {
+      // The other half of the ordering rule. What stops a refresh is a LATER
+      // one having already been applied, not a later one having started:
+      // otherwise an offline refresh that lands while the online one is still
+      // out is thrown away, and an online one that then fails leaves the
+      // panel with neither.
+      final h = _Harness(controls: [_hunter]);
+      addTearDown(h.model.dispose);
+      h.refresh = (qso) async => [_hunter, _sota];
+      final offline = h.model.refreshControlsFor('W1AW');
+      final onlineGate = Completer<void>();
+      h.refresh = (qso) async {
+        await onlineGate.future;
+        return null;
+      };
+      final online = h.model.refreshControlsFor('W1AW');
+
+      await offline;
+      expect(h.model.controls, [_hunter, _sota], reason: 'the offline answer landed first, and applies');
+      onlineGate.complete();
+      await online;
+      expect(h.model.controls, [_hunter, _sota], reason: 'a failed online refresh keeps it');
+    });
+
     test('a refresh that resolves after the panel is gone touches nothing', () async {
       // Switching operations mid-lookup is routine. No addTearDown here: the
       // test disposes the model itself, and a second dispose asserts.
