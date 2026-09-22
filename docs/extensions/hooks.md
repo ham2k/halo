@@ -1288,13 +1288,14 @@ numeric value patches; local-only controls and animation frames make no bridge
 calls. Controls with `continuous: true` send `change` events during dragging and a
 final `commit` on release; pending movements are coalesced to the newest value.
 Numeric text supports `scale`, `truncate`, `modulo`, and `minIntegerDigits`
-for local numeric formatting. KI2D’s Radio Panel uses these for its Modern
+for local numeric formatting; bindings accept `scale`, `truncate` and `modulo`
+too, applied to the value before the ramp. KI2D’s Radio Panel uses these for its Modern
 frequency groups; its settings offer Modern/LCD styles and radio selection. Local sliders may use `hover` and `discrete` hourly buckets. Text `samples`
 may hold numbers or preformatted strings; control `valueLabels` supplies accessible
 value descriptions. Transform/opacity bindings may also supply numeric `samples`,
 equally spaced over their `input` range, instead of the `output` ramp. The host
 interpolates and clamps these locally; chart markers and callouts can follow
-individual readings without bridge calls. See [the prototype contract and migration plan](../design/svg-scenes.md)
+individual readings without bridge calls. See [the design notes and open milestones](../design/svg-scenes.md)
 and the `k2hrc-svg-scenes` sample. This API is experimental.
 
 Scene-capable hosts also supply `args.environment` on **render and event** calls:

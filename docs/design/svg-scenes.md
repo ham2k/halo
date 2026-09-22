@@ -106,11 +106,12 @@ already sent to hardware; real CAT integration must reconcile against telemetry.
 Runtime replacement remounts scene state and invalidates old results. Removal drops
 queued actions and ignores late responses.
 
-The radio sample deliberately keeps `requested` and `reported` frequency separate.
-It simulates a two-second CAT acknowledgment on subsequent telemetry ticks, offers
+The simulated radio in the `k2hrc-svg-scenes` sample deliberately keeps
+`requested` and `reported` frequency separate. It simulates a two-second CAT acknowledgment on subsequent telemetry ticks, offers
 external tuning and connection toggles, and rejects tuning when disconnected.
 Its knob and slider bind to requested frequency; the needle follows reported
-frequency. It sends **no real CAT commands**. LED flicker is explicitly decorative,
+frequency. It sends **no real CAT commands**; KI2D’s Radio Panel is the one that
+does. LED flicker is explicitly decorative,
 not a claim that a radio emitted individual activity events.
 
 ## Comparable systems and reuse decision
@@ -130,26 +131,32 @@ state machines. This is an authoring/API assessment, not a benchmark against Riv
 
 ## Next milestones
 
-1. Review this contract against the three reference panels. Resolve responsive
-   layouts, theme/localized text, units, screen-reader value formatting, and chart
-   series updates before calling the API stable. Preserve no-script/no-network artwork.
-2. Continuous controls are implemented with coalescing and final-value delivery.
-   Extend command expiry, cancellation and per-control reconciliation; measure
-   radio-specific command budgets and test concurrent telemetry.
-3. Weather reference implemented in two forms: the native panel uses the scene
-   renderer for its chart, and the optional extension **KI2D’s Weather Panel** owns fetching,
-   caching, units, responsive layout and scene generation in TypeScript. It uses
-   the public render environment for theme and typography. Hover, tap, drag,
-   keyboard and screen-reader adjustment inspect hourly columns locally.
-4. Solar reference implemented through the same API, including flux/Kp/wind
-   charts, band conditions, responsive layouts, caching and partial-feed failures.
-   Review both reference panels before extracting shared chart helpers.
-5. KI2D’s Radio Panel is connected to the designated local radio through the CAT
-   adapter, with requested/reported frequency separation, paced continuous tuning,
-   a native mode menu, connection control and receive meter. Modern and LCD styles
-   support a selected radio per placement. Extend the FLEX-6600 checks to other rigs.
-6. Profile the three real panels together across desktop/mobile/web and establish
-   supported complexity limits. Hardware coverage beyond the FLEX-6600 remains outstanding.
+The three reference panels are complete: weather, solar, and radio, each with
+responsive layouts from the render environment, English and Spanish text, and
+cached or reconciled state. What remains before the contract stops being
+experimental:
+
+1. **Publish the reference panels.** They install only from a file and are in no
+   catalog. Build 170 is the first release whose host supports them; older hosts
+   show an unavailable message.
+2. **Settle the schema.** Document the limits the parser enforces
+   (`scene_model.dart`) in the public contract. Decide whether charts need a series
+   patch: `onEvent` and triggers patch only numeric values, so any change to a
+   chart's data re-renders the whole scene. Weather and solar each carry their own
+   `svg()`/`sample()` helpers; extract shared chart helpers, or decide not to. Give
+   the radio knob `valueLabels`: a screen reader announces its raw number.
+3. **Own the command lifecycle, or say the extension does.** The host has no
+   command expiry or cancellation. An event is bounded only by the hook budget, and
+   `tuneRadio` calls queue behind a 250 ms pace with no expiry, so a queued tune
+   can reach the rig after the panel has shown the action failing. Reconciliation
+   of requested against reported state exists only inside the radio panel
+   (unconfirmed after five seconds), not as a host facility.
+4. **Hardware and platforms.** Radio reads, tuning, and mode changes are verified
+   on a FLEX-6600 (firmware 4.2.20) on macOS only. Exercise other rigs and the
+   other platforms. The Flex meter socket opens for every connected Flex, whether
+   or not a panel reads `signalDbm`.
+5. **Profile** the three panels together on desktop, mobile and web, in profile
+   builds of the app, and set supported complexity limits from the results.
 
 ## Initial measurements and validation (2026-09-17)
 
@@ -167,10 +174,8 @@ profile build of the app with the panels placed in a layout:
 These are local browser measurements, not a cross-device frame-rate guarantee or
 native GPU measurements. Browser frame-timing delivery includes a few residual
 frames around visibility changes, so hidden-frame percentiles are not meaningful.
-An earlier run exposed queued refreshes after hiding; dispatch now checks current
-dock visibility and has a regression test. The native macOS profile build was
-blocked by Flutter/Xcode's framework architecture check (it reported both `arm64`
-and `x86_64` present while rejecting the combined architecture request). No native
+Dispatch checks current dock visibility, so a hidden panel queues no refreshes; a
+regression test holds it. No native measurement has been taken, so no native
 performance claim is made.
 
 Validation covers malformed scenes, scaled input, local-only chart inspection,
@@ -179,7 +184,7 @@ reduced motion and hidden tickers. The real bundled JS extension is exercised
 through the production service and through a widget gesture. Existing panel
 refresh-budget, catalog and per-instance-trigger tests also pass. TypeScript
 checks, SDK packaging, sample builds/manifest validation, and sample `.h2kext`
-packing pass. The full repository pre-merge gate has not been run.
+packing pass.
 
 ## Weather integration validation (2026-09-17)
 
@@ -195,8 +200,8 @@ successfully; these checks do not constitute cross-platform performance profilin
 
 `PanelRenderArgs.environment` and `clock` are documented in
 [the panel hook contract](../extensions/hooks.md). The renderer is domain-neutral:
-all weather fetching, caching, units, condition labels and geometry for **SVG
-Weather** live in TypeScript. Font names describe fonts available in the host;
+all weather fetching, caching, units, condition labels and geometry for **KI2D’s
+Weather Panel** live in TypeScript. Font names describe fonts available in the host;
 scene text layers render them natively with OS accessibility scaling. SVG artwork
 remains vector-only and cannot fetch fonts or other external resources.
 
@@ -205,20 +210,18 @@ workflow runner). After adding an actual weather-bundle widget integration test,
 the extension group passed again (329 tests). Targeted Flutter analysis, TypeScript
 checking and SDK packaging passed. The real app was checked with KI2D’s Weather Panel
 enabled in the operation dock in both light and dark themes; live Open-Meteo data
-rendered successfully. The full pre-merge gate and cross-platform profiling remain
-outstanding.
+rendered successfully.
 
 ## Solar integration validation (2026-09-17)
 
 The extensions and extension-host test groups passed (1,402 tests reported by the
 workflow runner), including UTC parsing, day/night band pairing, partial-feed
 failures, wind aggregation, cache budgets and newest-point inspection. The actual
-Solar Weather bundle renders through the production panel service in a widget
+KI2D’s Solar Panel bundle renders through the production panel service in a widget
 test; inspection sends no extension event or extra fetch. TypeScript checking,
 bundle validation and targeted Flutter analysis passed. Live hamqsl indices and
 NOAA flux/Kp charts were verified in the real app, with the extension enabled in
-the panel picker and added to the operation layout. Full pre-merge validation and
-cross-platform profiling are still outstanding.
+the panel picker and added to the operation layout.
 
 ## Radio integration validation (2026-09-17)
 
@@ -229,5 +232,7 @@ confirmed versus requested frequency. A widget gesture exercises the actual
 radio bundle through the production panel service and CAT host API.
 TypeScript checking, SDK packaging and targeted Flutter analysis passed. The
 extension is enabled and added to the real app layout; its disconnected state
-renders correctly without scene errors. Physical-radio validation, the full
-pre-merge gate and cross-platform performance profiling remain outstanding.
+renders correctly without scene errors. Against a FLEX-6600 (firmware 4.2.20) on
+macOS, the packed panel read the rig's frequency and mode through the real
+runtime, tuned it and restored it; with `requiresRadioWrite` removed from the
+manifest, the same chain was refused at `listRadios` and the rig never moved.

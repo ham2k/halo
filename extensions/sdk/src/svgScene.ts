@@ -82,7 +82,7 @@ export interface SvgSceneControl {
   hover?: boolean
   /** Accessible descriptions indexed by (value - min) / step. */
   valueLabels?: string[]
-  /** Knobs use relative horizontal/upward dragging. Default: step per scene unit. */
+  /** Knobs use relative horizontal/upward dragging. Value per scene unit; default 1. */
   sensitivity?: number
 }
 
