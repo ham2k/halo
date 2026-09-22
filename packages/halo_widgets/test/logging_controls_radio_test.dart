@@ -5,6 +5,7 @@
 // VFO, following a connected radio, the Band and Mode dropdowns, the reports
 // a mode implies, Power, and the sideband a frequency resolves to.
 
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -16,6 +17,7 @@ import 'support/logging_controls_harness.dart';
 
 void main() {
   installLoggingHarness();
+  mousePickTests();
 
   testWidgets('the Radio control has no Station Configuration button when nothing can open one', (tester) async {
     await tester.pumpWidget(host());
@@ -2493,4 +2495,128 @@ void main() {
     expect(find.text('LSB'), findsWidgets);
     expect(find.text('SSB'), findsNothing);
   });
+}
+
+// A mouse click is a pointer down, frames, then a pointer up. On desktop
+// the pointer DOWN on a menu entry is a tap outside the text field, which
+// unfocuses it; a blur that closes the menu then removes the entry before
+// the pointer UP can select it. `tester.tap` sends both events with no frame
+// between, so only a gesture with a pump in the middle can catch this.
+Future<void> clickAcrossAFrame(WidgetTester tester, Finder finder) async {
+  final gesture = await tester.startGesture(tester.getCenter(finder), kind: PointerDeviceKind.mouse);
+  await tester.pump();
+  await gesture.up();
+  await tester.pump(const Duration(milliseconds: 250));
+  await tester.pump();
+}
+
+void mousePickTests() {
+  testWidgets('a mouse click on a Mode entry selects it when the field was focused by a click on its text', (
+    tester,
+  ) async {
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']),
+    ));
+    await openControl(tester, MdiIcons.radio);
+
+    // A click on the field's text, not its arrow: this is the path that
+    // leaves the text field itself focused while the menu is open.
+    await clickAcrossAFrame(tester, find.widgetWithText(TextField, 'Mode'));
+    expect(find.widgetWithText(MenuItemButton, 'CW').hitTestable(), findsOneWidget);
+
+    await clickAcrossAFrame(tester, find.widgetWithText(MenuItemButton, 'CW').hitTestable());
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+    expect(fakeRadio.vfoA.mode, 'CW');
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('a mouse click on a Band entry selects it when the field was focused by a click on its text', (
+    tester,
+  ) async {
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledBands: ['40m', '20m', '15m']),
+    ));
+    await openControl(tester, MdiIcons.radio);
+
+    await clickAcrossAFrame(tester, find.widgetWithText(TextField, 'Band'));
+    expect(find.widgetWithText(MenuItemButton, '40m').hitTestable(), findsOneWidget);
+
+    await clickAcrossAFrame(tester, find.widgetWithText(MenuItemButton, '40m').hitTestable());
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Band')).controller!.text, '40m');
+    expect(fakeRadio.vfoA.band, '40m');
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('a mouse click on the entry a typed filter left showing selects that entry', (tester) async {
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']),
+    ));
+    await openControl(tester, MdiIcons.radio);
+
+    await clickAcrossAFrame(tester, find.widgetWithText(TextField, 'Mode'));
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'F');
+    await tester.pump();
+    expect(find.widgetWithText(MenuItemButton, 'FT8').hitTestable(), findsOneWidget);
+    expect(find.widgetWithText(MenuItemButton, 'SSB').hitTestable(), findsNothing);
+
+    // The pointer down blurs the field. A commit that clears the filter
+    // there re-expands the menu under the still-pressed pointer, and the
+    // release then lands on whichever entry now sits at that spot.
+    await clickAcrossAFrame(tester, find.widgetWithText(MenuItemButton, 'FT8').hitTestable());
+    expect(fakeRadio.vfoA.mode, 'FT8');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'FT8');
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('typed Mode text a press released off the entry left behind commits on the next click elsewhere', (
+    tester,
+  ) async {
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']),
+    ));
+    await openControl(tester, MdiIcons.radio);
+
+    await clickAcrossAFrame(tester, find.widgetWithText(TextField, 'Mode'));
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'C');
+    await tester.pump();
+
+    // The press blurs the field; sliding off the entry before releasing
+    // picks nothing, and the blur held its commit back for a pick that
+    // never came. The field is unfocused with 'C' in it and the menu up.
+    final entry = find.widgetWithText(MenuItemButton, 'CW').hitTestable();
+    final gesture = await tester.startGesture(tester.getCenter(entry), kind: PointerDeviceKind.mouse);
+    await tester.pump();
+    await gesture.moveBy(const Offset(0, 200));
+    await tester.pump();
+    await gesture.up();
+    await tester.pump();
+    expect(fakeRadio.vfoA.mode, isNot('CW'), reason: 'test setup: nothing picked and nothing committed yet');
+
+    // The click that closes the menu is the last event this text will ever
+    // get — without a commit riding on it, the field reads 'C' and the QSO
+    // logs the old mode.
+    await clickAcrossAFrame(tester, find.widgetWithText(TextField, 'Frequency'));
+    expect(fakeRadio.vfoA.mode, 'CW');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('Tab out of a focused Mode field takes its open menu down', (tester) async {
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']),
+    ));
+    await openControl(tester, MdiIcons.radio);
+
+    await clickAcrossAFrame(tester, find.widgetWithText(TextField, 'Mode'));
+    expect(find.widgetWithText(MenuItemButton, 'CW').hitTestable(), findsOneWidget);
+
+    // No pointer is involved, so the menu's own tap region never fires: the
+    // blur is the only thing left that can close the overlay. Without it,
+    // the menu stays up over whatever field Tab moved on to.
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).focusNode!.hasFocus, isFalse);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 }
