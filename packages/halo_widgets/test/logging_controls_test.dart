@@ -1011,6 +1011,72 @@ void main() {
       expect(find.byIcon(undoIcon), findsNothing);
     });
 
+    testWidgets('reverting a typed grid takes back the edit itself, not just what the field shows', (tester) async {
+      // A grid reaches the record only once the field was touched, and a
+      // touched grid also stamps the square's center on it as lat/lon. So a
+      // Revert that restores the VALUES and leaves the flag standing saves a
+      // coordinate the operator never entered — and a coordinate outranks a
+      // grid wherever one is read (docs/design/locations.md), so the invented
+      // pair then wins over the square it was derived from.
+      //
+      // The test above reverts Sent, which no flag gates; it passes either
+      // way. This one is why Revert resets the session before repopulating.
+      // The fixture carries every field the panel itself would write, because
+      // a record missing one never compares equal to the draft and would show
+      // Revert from the moment it opened — a fixture that cannot reach
+      // "unchanged" cannot test a button for returning to it.
+      final existing = (await tester.runAsync(() => qsos.add(operation.uuid, {
+            'their': {'call': 'W1AW', 'sent': '59', 'grid': 'FN31pr'},
+            'our': {'call': 'KI2D', 'sent': '59'},
+            'band': '20m',
+            'mode': 'SSB',
+            'freq': 14285.0,
+            'startAtMillis': 1000000,
+            'refs': <dynamic>[],
+          })))!;
+      expect((existing.data['their'] as Map)['lat'], isNull, reason: 'an imported record with a square and no fix');
+
+      await tester.pumpWidget(host(
+        session: LoggingSession(editingQso: existing, onEditCanceled: () {}),
+        prefs: const LoggingPreferences(showGridField: true),
+      ));
+      await tester.pump();
+      expect(find.byIcon(deleteIcon), findsOneWidget, reason: 'nothing edited yet');
+
+      await tester.enterText(find.widgetWithText(TextField, 'Grid'), 'FN20aa');
+      await tester.pump();
+      expect(find.byIcon(undoIcon), findsOneWidget, reason: 'the edit is offered back');
+
+      await tester.tap(find.byIcon(undoIcon));
+      await tester.pump();
+
+      // As stored, not uppercased: the formatter acts on what is typed, and
+      // this value was put back by the panel.
+      expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Grid')).controller!.text, 'FN31pr');
+      expect(find.byIcon(deleteIcon), findsOneWidget,
+          reason: 'the record is unchanged again, so the button is Delete once more');
+      expect(find.byIcon(undoIcon), findsNothing);
+
+      // And the save that follows writes nothing new. Polled on the write
+      // STAMP, not on the content: "unchanged" is the expected state, so
+      // every assertion below is equally true of the record the fixture
+      // created, and a save that never ran at all would read exactly the
+      // same. The stamp moving is the only thing that says one happened.
+      await tester.tap(find.byType(FilledButton));
+      var saved = existing;
+      for (var i = 0; i < 20 && saved.data['updatedAtMillis'] == existing.data['updatedAtMillis']; i++) {
+        await tester.pump(const Duration(milliseconds: 10));
+        saved = (await tester.runAsync(() => qsos.watchForOperation(operation.uuid).first))!.single;
+      }
+      expect(saved.data['updatedAtMillis'], isNot(existing.data['updatedAtMillis']),
+          reason: 'the save really ran, so what follows is a claim about what it wrote');
+
+      final their = saved.data['their'] as Map;
+      expect(their['grid'], 'FN31pr', reason: 'the stored square, exactly as it was');
+      expect(their['lat'], isNull, reason: 'no coordinate was invented from the square the operator typed over');
+      expect(their['lon'], isNull);
+    });
+
     testWidgets('Escape while editing discards changes and ends the editing session, unlike Revert (issue #199)', (tester) async {
       final existingQso = (await tester.runAsync(() => qsos.add(operation.uuid, {
             'their': {'call': 'W1AW', 'sent': '59'},

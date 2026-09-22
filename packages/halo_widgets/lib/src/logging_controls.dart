@@ -1216,8 +1216,15 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   }
 
   /// Editing-session bookkeeping that must never leak from one QSO context
-  /// into the next — shared by the editingQso-change and suggestedQso-change
-  /// paths in `didUpdateWidget`, which both start a fresh context.
+  /// into the next.
+  ///
+  /// Called wherever the fields are about to be written from a record: the
+  /// editingQso and suggestedQso paths in `didUpdateWidget`, and Revert,
+  /// which reloads the record the operator is already on. That last one is
+  /// why anything cleared here has to be something `QsoDraft.applyData`
+  /// puts back from the record — Revert is a reload, not a fresh start, and
+  /// a field reset here and restored by nothing would go missing from the
+  /// contact with nothing said.
   void _resetEditingSessionState() {
     _pendingDelete = false;
     // Dropped with the undo slot that `resetSession` clears, so the two
@@ -2982,7 +2989,16 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
     } else if (_qsoDataChanged()) {
       icon = MdiIcons.undo;
       actionLabel = t.loggingControls.revert;
-      onPressed = () => _populateFromEditingQso(editingQso);
+      // Reset THEN populate, the pairing every other load of a record uses:
+      // the values alone are not the edit. A touched flag left standing is
+      // still an edit as far as the record is concerned, so the button would
+      // go on reading Revert and a save would write the field back — and for
+      // the grid, the square's centre as a coordinate the operator never
+      // entered.
+      onPressed = () {
+        _resetEditingSessionState();
+        _populateFromEditingQso(editingQso);
+      };
     } else {
       icon = MdiIcons.trashCanOutline;
       actionLabel = t.common.delete;

@@ -10,11 +10,17 @@
 // are listed below at the size they had when listed, and that number is a
 // CEILING, not a licence: a listed file may drift a little above it — the
 // same hundred lines the stale check tolerates below it, room for a fix, not
-// for a feature — and never further, because the ceiling itself is never
-// raised. When a change shrinks a listed file the entry comes down with it,
-// off the list once it is under budget. The list only ever shrinks.
-// Splitting a file is the way off it; adding a file to it is the last
-// resort, with a card that says when it comes off.
+// for a feature — and never further on its own. When a change shrinks a
+// listed file the entry comes down with it, off the list once it is under
+// budget. Splitting a file is the way off it; adding a file to it is the
+// last resort, with a card that says when it comes off.
+//
+// A number here goes UP only when the maintainer says so, asked directly and
+// answered directly. Nothing else may raise one — not to land the change in
+// hand, not as tidying, and never quietly: a budget that the work can edit
+// is not a budget. Tripping this guard is a stop-and-ask, and an answer that
+// moves a number is recorded against the entry, so the next reader sees a
+// decision rather than a drift.
 //
 // Generated code is exempt: a `.g.dart` file is as long as its generator
 // makes it and nobody reads it top to bottom.
@@ -32,9 +38,12 @@ const _budget = 1500;
 const _slack = 100;
 
 /// Path → the line count it had when it was listed. Lower a number when
-/// the file shrinks; never raise one.
+/// the file shrinks. Raising one is the maintainer's call and carries a
+/// comment saying so, per the note at the top of this file.
 const _ceilings = <String, int>{
-  '../packages/halo_widgets/lib/src/logging_controls.dart': 3896,
+  // Above the budget by the maintainer's answer, not by drift. HALO-673 is
+  // the extraction; this number comes down with it.
+  '../packages/halo_widgets/lib/src/logging_controls.dart': 4009,
   'lib/services/extension_service.dart': 3842,
   'lib/views/operation/spots_panel.dart': 3647,
   'lib/views/operation_view.dart': 3252,
@@ -99,7 +108,8 @@ void main() {
       }
       seen.add(file.path);
       if (lines > ceiling + _slack) {
-        grew.add('${file.path}: $lines lines, ceiling $ceiling — split it; the ceiling does not go up');
+        grew.add('${file.path}: $lines lines, ceiling $ceiling — split it, or move what you are adding '
+            'to where it belongs. Do not raise the ceiling: if you think it has to move, stop and ask.');
       } else if (lines <= _budget) {
         stale.add('${file.path}: now $lines lines, under the budget — remove it from the list');
       } else if (lines <= ceiling - _slack) {
