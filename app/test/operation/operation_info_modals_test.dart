@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: MPL-2.0
 //
 // The two info modals a narrow Operation View opens: the Call Info detail
-// (tap the compact call-info area) and the operation's own stats (tap a day
-// header in the QSO list). Both panels are ListViews, so a modal pane that
+// (tap the info area while it shows a call) and the operation's own stats (tap
+// a day header in the QSO list, or the info area showing anything else). Both
+// panels are ListViews, so a modal pane that
 // wraps them in ITS scroll view hands them unbounded height and they lay out
 // to nothing — the pane opens blank, header and all, with no exception to say
 // so. These tests therefore assert content INSIDE the panel, never that a
@@ -117,6 +118,28 @@ void main() {
     );
     // Never the call detail: the header stands for the operation, not for
     // whichever QSO the tap before it happened to select.
+    expect(find.byType(CallInfoPanel), findsNothing);
+
+    await unmount(tester);
+  });
+
+  // The whole strip is one target: with nothing in the call field it shows the
+  // operation's statistics, and a press there stands for the operation the way
+  // a day header does. A wiring that only handed the panel the call tap would
+  // leave this state dead — a splash on nothing.
+  testWidgets('the info area with no call in hand opens the operation stats, like a day header', (tester) async {
+    await buildServices();
+    await pumpAt(tester, 430);
+
+    // The timer icon is the statistics state's stable handle.
+    await tester.tap(find.byIcon(MdiIcons.timerOutline));
+    await tester.pumpAndSettle();
+
+    expect(find.byType(InformationPanel), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(InformationPanel), matching: find.text('Operation Stats')),
+      findsOneWidget,
+    );
     expect(find.byType(CallInfoPanel), findsNothing);
 
     await unmount(tester);

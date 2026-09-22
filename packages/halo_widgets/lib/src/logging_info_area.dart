@@ -38,6 +38,7 @@ class LoggingInfoArea extends StatelessWidget {
     required this.noticeLabel,
     required this.workedBeforeLabel,
     required this.onCallInfoTap,
+    required this.onOperationInfoTap,
     required this.onOpenLink,
   });
 
@@ -82,18 +83,30 @@ class LoggingInfoArea extends StatelessWidget {
   final String Function(String key)? noticeLabel;
   final String? Function(List<int> startTimes)? workedBeforeLabel;
 
-  /// Opens the call-info detail panel (a modal on narrow layouts). Carried by
-  /// the content alone: the warning row above it says something about our
-  /// own radio, and a tap there answering with a panel about the station
-  /// being worked would be an answer to a question nobody asked — and one
-  /// the same pill does not give in the stats or grid-only states, where
-  /// there is no gesture at all.
+  /// The whole area is one tap target, the way the QSO list's day headers
+  /// are: while the call-info content is on show a press opens that station's
+  /// detail; with anything else — the statistics, a grid alone, a command's
+  /// message, even over a call in hand — it opens the operation's own info.
+  /// Routed by what is ON SCREEN, not by whether a call is typed: the host's
+  /// copy of the call info is null while a message has the space, so a call
+  /// tap from under a message would reach a host with no call to open, and
+  /// on a layout with no Info pane do nothing at all. The warning pills are part
+  /// of the target too: they ride above the content wherever it stands, and a
+  /// press that landed on one and did nothing would read as a dead area, not
+  /// as a distinction.
   final VoidCallback? onCallInfoTap;
+  final VoidCallback? onOperationInfoTap;
   final void Function(String url)? onOpenLink;
 
   @override
   Widget build(BuildContext context) {
-    if (warnings.isEmpty) return _tappableContent();
+    final onTap = message == null && callInfo != null ? onCallInfoTap : onOperationInfoTap;
+    if (onTap == null) return _body();
+    return GestureDetector(behavior: HitTestBehavior.opaque, onTap: onTap, child: _body());
+  }
+
+  Widget _body() {
+    if (warnings.isEmpty) return _content();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
@@ -109,15 +122,9 @@ class LoggingInfoArea extends StatelessWidget {
           children: [for (final warning in warnings) noticePill(theme, warning, level: NoticeLevel.alert)],
         ),
         const SizedBox(height: Space.xxs),
-        _tappableContent(),
+        _content(),
       ],
     );
-  }
-
-  Widget _tappableContent() {
-    final content = _content();
-    if (callInfo == null || onCallInfoTap == null) return content;
-    return GestureDetector(behavior: HitTestBehavior.opaque, onTap: onCallInfoTap, child: content);
   }
 
   Widget _content() {
@@ -151,7 +158,7 @@ class LoggingInfoArea extends StatelessWidget {
     }
     if (gridOnlyLine case final line?) {
       // The same shape as the call-info panel, minus everything that needs a
-      // callsign: no lookup, no scoring pills, and nothing to open on tap.
+      // callsign: no lookup and no scoring pills.
       return CallInfoSummary(
         data: const CallInfoData(call: ''),
         locationLine: line,

@@ -621,28 +621,34 @@ void main() {
       expect(tester.takeException(), isNull, reason: 'the two pills must not overflow their row');
     });
 
-    // The warning is about OUR radio. Answering a tap on it with the detail
-    // panel for the station being worked answers a question nobody asked —
-    // and the same pill offers no gesture at all in the stats state.
-    testWidgets('tapping the pill does not open the other station\'s detail panel', (tester) async {
-      var opened = 0;
+    // The pill rides above whatever the area shows and is part of the same
+    // tap target: the panel's wiring decides which host callback a press
+    // reaches by what is in hand, so a wiring that gated the gesture on the
+    // content would leave the pill dead.
+    testWidgets('tapping the pill opens the operation info with no call, the station\'s detail with one',
+        (tester) async {
+      var callOpened = 0, operationOpened = 0;
       await tester.pumpWidget(host(
         radio: baseRadio().copyWith(radioService: fakeRadio),
-        lookups: LookupHooks(onCallInfoTap: () => opened++),
+        lookups: LookupHooks(onCallInfoTap: () => callOpened++, onOperationInfoTap: () => operationOpened++),
       ));
       await tester.pump();
+
+      await tester.tap(find.text('No Band'));
+      await tester.pump();
+      expect((callOpened, operationOpened), (0, 1), reason: 'nothing in the field: the operation is what there is');
+
       await tester.enterText(find.widgetWithText(TextField, 'Their call'), 'W1AW');
       await tester.pump(const Duration(milliseconds: 400));
       await tester.pump(const Duration(milliseconds: 300));
 
       await tester.tap(find.text('No Band'));
       await tester.pump();
-      expect(opened, 0);
+      expect((callOpened, operationOpened), (1, 1));
 
-      // …while the call-info line beside it still opens it.
       await tester.tap(find.byIcon(MdiIcons.account));
       await tester.pump();
-      expect(opened, 1, reason: 'the call-info content is still the tap target');
+      expect((callOpened, operationOpened), (2, 1), reason: 'the call-info content is the same target');
     });
 
     // An event row is not a contact and needs no band, so it must not be

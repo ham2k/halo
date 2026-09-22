@@ -1451,7 +1451,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     );
   }
 
-  /// Tap on the compact call-info area: on wide layouts the detail
+  /// Tap on the info area while it shows the call info: on wide layouts the detail
   /// already lives on the Info tab, so just surface it; on narrow, open it as a
   /// modal (which re-reads the latest `_callInfo` on rebuild via the modal's
   /// own key, so live updates flow through while it's open).
@@ -1496,12 +1496,13 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     return true;
   }
 
-  /// Tap on a day header in the QSO list: the operation's own info — its stats
-  /// and scoring, the counterpart to the call-info area standing for the
-  /// contact. Same two presentations as [_handleCallInfoTap], and the same
-  /// consequence on wide: the Info pane shows what it shows, which is the
-  /// call detail while one is being composed. The modal, which is this tap's
-  /// own, is the stats unconditionally.
+  /// Tap on a day header in the QSO list, or on the info area while it shows
+  /// anything but the call info: the operation's own info — its stats and
+  /// scoring, the counterpart to the call detail standing for the contact.
+  /// Same two presentations as [_handleCallInfoTap], and the same consequence
+  /// on wide: the Info pane shows what it shows, which is the call detail
+  /// while one is being composed. The modal, which is this tap's own, is the
+  /// stats unconditionally.
   Future<void> _handleOperationInfoTap(Operation operation, List<Qso> qsos) async {
     if (_revealInfoPane()) return;
     await showModalPane<void>(

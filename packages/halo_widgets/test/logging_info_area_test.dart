@@ -3,7 +3,8 @@
 //
 // The info area's priority order and its one gesture, on their own: which of
 // its four states wins, that the missing-band warnings ride above whichever
-// one does, and that only the call-info state answers a tap.
+// one does, and that a tap anywhere on it opens the call detail while the
+// call info shows and the operation's info otherwise.
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
@@ -18,6 +19,7 @@ Widget _host({
   String? gridOnlyLine,
   List<String> stats = const ['3 QSOs'],
   VoidCallback? onCallInfoTap,
+  VoidCallback? onOperationInfoTap,
 }) =>
     MaterialApp(
       home: Scaffold(
@@ -33,6 +35,7 @@ Widget _host({
             noticeLabel: null,
             workedBeforeLabel: null,
             onCallInfoTap: onCallInfoTap,
+            onOperationInfoTap: onOperationInfoTap,
             onOpenLink: null,
           ),
         ),
@@ -80,16 +83,39 @@ void main() {
     expect(warning.dy, lessThan(message.dy));
   });
 
-  testWidgets('only the call-info content answers a tap: not the warnings, not the statistics', (tester) async {
-    var taps = 0;
-    await tester.pumpWidget(_host(callInfo: _w1aw, warnings: const ['No Band'], onCallInfoTap: () => taps++));
-    await tester.tap(_w1awPanel);
-    expect(taps, 1);
-    await tester.tap(find.text('No Band'));
-    expect(taps, 1, reason: 'the warning is about our own radio, not the station');
+  // Which of the two callbacks fires is decided by what the area shows, never
+  // by where the finger lands: a warning pill above a call opens the call, the
+  // same pill above the statistics opens the operation. A command message over
+  // a call in hand is the trap: the host holds no call info while a message has
+  // the space, so routing that tap to the call would open nothing.
+  testWidgets('a tap anywhere opens the call detail while the call shows, the operation info otherwise',
+      (tester) async {
+    var callTaps = 0, operationTaps = 0;
+    Widget host({CallInfoData? callInfo, String? message, String? gridOnlyLine}) => _host(
+          callInfo: callInfo,
+          message: message,
+          gridOnlyLine: gridOnlyLine,
+          warnings: const ['No Band'],
+          onCallInfoTap: () => callTaps++,
+          onOperationInfoTap: () => operationTaps++,
+        );
 
-    await tester.pumpWidget(_host(onCallInfoTap: () => taps++));
+    await tester.pumpWidget(host(callInfo: _w1aw));
+    await tester.tap(_w1awPanel);
+    await tester.tap(find.text('No Band'));
+    expect((callTaps, operationTaps), (2, 0), reason: 'the pill is part of the same target');
+
+    await tester.pumpWidget(host());
     await tester.tap(find.text('3 QSOs'));
-    expect(taps, 1, reason: 'there is no station to open a panel about');
+    await tester.tap(find.text('No Band'));
+    expect((callTaps, operationTaps), (2, 2));
+
+    await tester.pumpWidget(host(gridOnlyLine: '1,234 km NE'));
+    await tester.tap(find.text('1,234 km NE'));
+    expect((callTaps, operationTaps), (2, 3), reason: 'a grid alone names no station');
+
+    await tester.pumpWidget(host(callInfo: _w1aw, message: 'Tune to **14285**'));
+    await tester.tap(find.byType(MarkdownBody));
+    expect((callTaps, operationTaps), (2, 4), reason: 'the message has the space, and the host no call to open');
   });
 }

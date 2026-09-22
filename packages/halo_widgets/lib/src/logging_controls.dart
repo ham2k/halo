@@ -3479,11 +3479,6 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
                         signature: _infoAreaSignature(fieldsLocked: fieldsLocked, deletedQso: deletedQso),
                         strip: widget.strip.aboveEntryRow,
                         actionButton: _buildWipeOrEditButton(accentTheme),
-                        // The tap-to-open-the-detail-panel gesture is applied
-                        // inside `_buildInfoArea`, to the call-info content
-                        // alone — the missing-band/mode row above it is about
-                        // this station's radio, and must not answer a tap with
-                        // a panel about the other one.
                         child: fieldsLocked
                             ? LockedFormWarning(theme: theme, text: _lockedWarningText(deletedQso))
                             : _buildInfoArea(accentTheme),
@@ -3758,6 +3753,7 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       noticeLabel: widget.lookups.scoreNoticeLabel,
       workedBeforeLabel: widget.lookups.workedBeforeLabel,
       onCallInfoTap: widget.lookups.onCallInfoTap,
+      onOperationInfoTap: widget.lookups.onOperationInfoTap,
       onOpenLink: widget.lookups.onOpenLink,
     );
   }

@@ -107,8 +107,9 @@ class LoggingPanel extends StatefulWidget {
   /// say in whether it is wanted. See [LoggingSession.onPeerDraftChanged].
   final PeerDraftChanged? onPeerDraftChanged;
 
-  /// Fires when the compact call-info area is tapped — the operation view opens
-  /// the detail (modal on narrow, focuses the Info tab on wide).
+  /// Fires when the info area is tapped while it shows the call info — the
+  /// operation view opens the detail (modal on narrow, focuses the Info tab
+  /// on wide).
   final VoidCallback? onCallInfoTap;
 
   /// Keys CW message [n] (1-based) — the keyer area's message buttons, the
@@ -131,8 +132,9 @@ class LoggingPanel extends StatefulWidget {
   /// keys by the same answer.
   final bool keyingPhone;
 
-  /// Fires when a day header in the QSO list is tapped — the operation view
-  /// opens the operation's own info the same two ways.
+  /// Fires when a day header in the QSO list is tapped, or the info area
+  /// while it shows anything but the call info — the operation view opens
+  /// the operation's own info the same two ways.
   final VoidCallback? onOperationInfoTap;
 
   const LoggingPanel({
@@ -905,6 +907,7 @@ class _LoggingPanelState extends State<LoggingPanel> {
               workedBeforeLabel: (times) => workedBeforeLabel(context, times),
               onCallInfoChanged: widget.onCallInfoChanged,
               onCallInfoTap: widget.onCallInfoTap,
+              onOperationInfoTap: widget.onOperationInfoTap,
             ),
             activities: ActivityHooks(
               activityControls: widget.loggingControls,

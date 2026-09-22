@@ -540,6 +540,7 @@ class LookupHooks {
     this.workedBeforeLabel,
     this.onCallInfoChanged,
     this.onCallInfoTap,
+    this.onOperationInfoTap,
     this.onOpenLink,
   });
 
@@ -599,9 +600,16 @@ class LookupHooks {
   /// Info tab on wide layouts), null when the call-info panel isn't showing.
   final CallInfoChanged? onCallInfoChanged;
 
-  /// Fires when the user taps the compact call-info area — the host opens the
-  /// detail panel (a modal on narrow layouts, or focuses the Info tab on wide).
+  /// Fires when the user taps the info area while it shows the call-info
+  /// content — the host opens the detail panel (a modal on narrow layouts, or
+  /// focuses the Info tab on wide).
   final VoidCallback? onCallInfoTap;
+
+  /// Fires when the user taps the info area while it shows anything else —
+  /// the statistics, a grid alone, a command's message — the host opens the
+  /// operation's own info the same two ways, as it does for a QSO-list day
+  /// header.
+  final VoidCallback? onOperationInfoTap;
 
   /// Opens a link tapped in a call note. Null leaves the note's links styled
   /// but inert; the controls stay free of any url_launcher dependency either
@@ -627,6 +635,7 @@ class LookupHooks {
     String? Function(List<int> startTimes)? workedBeforeLabel,
     CallInfoChanged? onCallInfoChanged,
     VoidCallback? onCallInfoTap,
+    VoidCallback? onOperationInfoTap,
     InlineMarkdownOpenLink? onOpenLink,
   }) =>
       LookupHooks(
@@ -641,6 +650,7 @@ class LookupHooks {
         workedBeforeLabel: workedBeforeLabel ?? this.workedBeforeLabel,
         onCallInfoChanged: onCallInfoChanged ?? this.onCallInfoChanged,
         onCallInfoTap: onCallInfoTap ?? this.onCallInfoTap,
+        onOperationInfoTap: onOperationInfoTap ?? this.onOperationInfoTap,
         onOpenLink: onOpenLink ?? this.onOpenLink,
       );
 }

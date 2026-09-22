@@ -69,8 +69,13 @@ reference controls use to say a field is filled in.
 **Information area.** Presents information to the user: details for the
 current callsign, or a summary of operation statistics when no callsign is
 entered. Content usually comes from extensions as markdown and can link to
-external resources or internal navigation. Tapping the area can open a
-screen or pane with more detail.
+external resources or internal navigation. The whole area is one tap
+target, the way the QSO list's day headers are: while it shows a callsign's
+details a press opens that station's detail; while it shows anything else,
+a command's message over a typed call included, it opens the operation's own
+info, exactly what a day header opens. Either way the Info
+pane is revealed in place when the layout holds one, and a modal opens
+otherwise.
 
 ## How wide each main field is
 
@@ -488,9 +493,10 @@ information area is replaced by that warning outright, and this never runs.
 Nothing in either state can log a contact, so nothing is lost by staying
 quiet there.
 
-Tapping the pill does nothing. The area's tap opens the *other station's*
-detail panel, which is no answer to a question about our own radio, so the
-gesture is applied to the call-info content and not to the warning above it.
+Tapping the pill does what tapping anywhere else on the area does. Which
+detail opens is decided by what the area shows, not by where the finger
+lands, and a pill that stood above the content and ignored the press would
+read as a dead patch on an area that otherwise answers one.
 
 The mode pill is the narrower of the two: nothing the operator can do in the
 panel empties the mode, since it starts on the hardcoded `SSB` above and every
