@@ -185,6 +185,12 @@ export interface PartyOptions {
   /// DC is scored as Maryland. Per polo's NOTES: rules saying "50 states" with
   /// no mention of DC mean true; rules naming DC explicitly mean false.
   dcCountsAsMaryland: boolean
+  /// A US or Canadian station outside the party sends its ARRL/RAC SECTION, not
+  /// its state or province (PA). Strict: a state is valid only where a section
+  /// shares its abbreviation, because the sponsor's checker reads the same list
+  /// — so `dcCountsAsMaryland` and `alaskaAndHawaiiAreDX` have nothing to say
+  /// under it (`MDC` and `PAC` are sections of their own).
+  sectionsForOutOfState: boolean
   /// An in-state station counts its OWN state as a multiplier as well as the
   /// county the contact came from.
   stateCountsForInState: boolean
@@ -481,6 +487,7 @@ function optionsOf(raw: RawParty): PartyOptions {
     entity: str(o.entity)?.toUpperCase() === "VE" ? "VE" : "K",
     countyLine: bool(o.countyLine),
     dcCountsAsMaryland: bool(o.dcCountsAsMaryland),
+    sectionsForOutOfState: bool(o.sectionsForOutOfState),
     stateCountsForInState: bool(o.stateCountsForInState),
     // These two default TRUE — the ordinary case is that counties are
     // multipliers, and only four files say otherwise.

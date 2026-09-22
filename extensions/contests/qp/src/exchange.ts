@@ -19,13 +19,15 @@ import {
   defaultTheirLocation,
   entityPrefixOf,
   nameForLocation,
+  ourOwnCodes,
+  outOfPartyTables,
   parseLocations,
   splitLocations,
   type Standing,
   stateForEntity,
 } from "./location.ts"
-import { CANADIAN_PROVINCES, US_STATES } from "./locations.ts"
-import { partyStates, type QsoParty, stateForCounty, WARC_BANDS } from "./parties.ts"
+import { STATE_FOR_SECTION } from "./locations.ts"
+import { type QsoParty, stateForCounty, WARC_BANDS } from "./parties.ts"
 
 export function theirLocationForFile(
   party: QsoParty,
@@ -37,11 +39,15 @@ export function theirLocationForFile(
   const their = (qso.their as Record<string, JSONValue>) ?? {}
   const call = str(their.call).toUpperCase()
   const remembered = call ? lastLocation?.[call] : undefined
-  const text = str(qsoRef?.location).trim() || remembered || defaultTheirLocation(party, qso)
+  const typed = str(qsoRef?.location).trim()
+  // `received` as the scorer means it: only what the operator copied, so the
+  // file and the score refuse the same exchanges and fall back on the same ones.
+  const received = typed !== ""
+  const text = typed || remembered || defaultTheirLocation(party, qso)
   const standing: Standing = { weAreInParty, theyAreInParty: false }
-  let locations = parseLocations(party, text, { entityPrefix, standing })
+  let locations = parseLocations(party, text, { entityPrefix, standing, received })
   standing.theyAreInParty = allInParty(locations)
-  if (standing.theyAreInParty) locations = parseLocations(party, text, { entityPrefix, standing })
+  if (standing.theyAreInParty) locations = parseLocations(party, text, { entityPrefix, standing, received })
   if (call && locations.length > 0 && lastLocation) {
     lastLocation[call] = locations.map((location) => location.code).join(COUNTY_LINE_SEPARATOR)
   }
@@ -140,15 +146,16 @@ export function cabrilloRowsFor(
   const typed = str(qsoRef?.location).trim()
   const remembered = call ? lastLocation?.[call] : undefined
   const theirText = typed || remembered || defaultTheirLocation(party, qso)
+  const received = typed !== ""
 
   const ourLocations = parseLocations(party, ourLocationForQso(qso, operation, segments))
   const weAreIn = allInParty(ourLocations)
 
   const standing: Standing = { weAreInParty: weAreIn, theyAreInParty: false }
-  let theirLocations = parseLocations(party, theirText, { entityPrefix, standing })
+  let theirLocations = parseLocations(party, theirText, { entityPrefix, standing, received })
   standing.theyAreInParty = allInParty(theirLocations)
   if (standing.theyAreInParty) {
-    theirLocations = parseLocations(party, theirText, { entityPrefix, standing })
+    theirLocations = parseLocations(party, theirText, { entityPrefix, standing, received })
   }
 
   const ours = ourLocations.map((location) => location.sent)
@@ -235,10 +242,18 @@ export function exchangeOptionsFor(party: QsoParty, qso: Record<string, JSONValu
   // accepting it as the state it resolves to. (`partyStates` is the same set
   // the scorer reads to catch an operator who typed their state where their
   // county belongs; this is the other end of that mistake.)
-  const ours = partyStates(party)
+  // `ourOwnCodes`, not `partyStates`: a SECTION lies inside a state without
+  // sharing its code, so PAQP's own `EPA` and `WPA` are exactly as unsendable
+  // as `NY` is in the New York QSO Party and slip a plain state comparison.
+  const ours = ourOwnCodes(party)
   const notOurs = (options: { code: string; name?: string }[]) => options.filter((option) => !ours.has(option.code))
-  const states = notOurs([...asOptions(US_STATES), { code: "DC", name: nameForLocation(party, "DC") }])
-  const provinces = notOurs(asOptions(CANADIAN_PROVINCES))
+  // Where the exchange is a section none of the DC question applies: `MDC` is
+  // in the table, and `DC` is not something the sponsor accepts.
+  const tables = outOfPartyTables(party)
+  const states = notOurs(
+    party.options.sectionsForOutOfState ? asOptions(tables.us) : [...asOptions(tables.us), { code: "DC", name: nameForLocation(party, "DC") }],
+  )
+  const provinces = notOurs(asOptions(tables.canada))
 
   // Alaska and Hawaii are US states whose stations do not sign `K`. They send
   // a county or a state like any other US station — and in the Hawaii QSO
@@ -246,7 +261,7 @@ export function exchangeOptionsFor(party: QsoParty, qso: Record<string, JSONValu
   // Left to the DX path below, exactly they would get no list to pick from
   // and no tint for a typo. Unless the party counts them as DX, which no
   // shipped one does.
-  const usState = entity === "K" || (stateForEntity(entity) !== "" && !party.options.alaskaAndHawaiiAreDX)
+  const usState = entity === "K" || (stateForEntity(party, entity) !== "" && !party.options.alaskaAndHawaiiAreDX)
   if (usState) {
     return party.options.entity === "VE" ? states : [...ourCounties, ...states]
   }
@@ -375,10 +390,17 @@ export function pastExchangeHolds(party: QsoParty, options: { code: string }[], 
 }
 
 /// The state (or province) an exchange code places a station in: a county by
-/// the state it belongs to, anything else as itself.
+/// the state it belongs to, a section by the state it lies in, anything else as
+/// itself.
+///
+/// The section step is what lets a past exchange survive the comparison at all
+/// where the party speaks sections: what was stored is `EMA` and what the
+/// lookup answers is `MA`, so without it they never match and the prefill is
+/// simply dead for every out-of-state station.
 function stateOfCode(party: QsoParty, code: string): string {
   const isCounty = party.counties[code] !== undefined || party.otherCounties[code] !== undefined
-  return isCounty ? stateForCounty(party, code) : code
+  if (isCounty) return stateForCounty(party, code)
+  return STATE_FOR_SECTION[code] ?? code
 }
 
 /// The codes floated to the top of the suggestion list: the counties of the
@@ -390,5 +412,15 @@ export function preferredCodesFor(party: QsoParty, guessedState: string): string
   // party it is not offered at all (`exchangeOptionsFor`), and floating a
   // value to the top of a list it is not in would offer the operator an
   // exchange the same field then tints as wrong.
-  return partyStates(party).has(guessedState) ? counties : [...counties, guessedState]
+  const ours = ourOwnCodes(party)
+  if (!party.options.sectionsForOutOfState) return ours.has(guessedState) ? counties : [...counties, guessedState]
+  // A lookup answers with a STATE and the field holds sections, so the state
+  // itself is in no list and ranking by it would rank nothing. Every section of
+  // that state is floated instead, since no lookup can say which of
+  // California's nine they are sitting in.
+  const tables = outOfPartyTables(party)
+  const sections = [...Object.keys(tables.us), ...Object.keys(tables.canada)].filter(
+    (code) => !ours.has(code) && (STATE_FOR_SECTION[code] ?? code) === guessedState,
+  )
+  return [...counties, ...sections]
 }

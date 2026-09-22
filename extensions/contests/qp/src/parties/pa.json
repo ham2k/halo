@@ -9,8 +9,8 @@
   "secondEnd": "2026-10-11 22:00Z",
   "cabrilloName": "PA-QSO-PARTY",
   "notes": "",
-  "internalNotes": "Not supported: QRP x2 multiplier, and ARRL/RAC sections as in-state multipliers (states and provinces are counted instead, so EPA and WPA are missed).",
-  "lastUpdated": "2026-09-17 12:00Z",
+  "internalNotes": "Out-of-state stations send their ARRL/RAC section, and a state is only valid where a section shares its abbreviation. Not supported: the EPA and WPA multipliers the sponsor adds when rescoring (rules 12.d).",
+  "lastUpdated": "2026-09-18 12:00Z",
   "status": "Verified for 2026 against paqso.org (rules rev 08/25/26)",
   "uniqueness": "perBandAndMode",
   "exchange": ["Number", "Location"],
@@ -23,7 +23,7 @@
     "perActivatedCountyRoverOnly": true
   },
   "options": {
-    "dcCountsAsMaryland": true,
+    "sectionsForOutOfState": true,
     "countyLine": true,
     "selfSpotting": true,
     "dxIsMultiplier": true,
@@ -36,6 +36,9 @@
   "points": {
     "PHONE": 1,
     "CW": 2
+  },
+  "powerMultiplier": {
+    "QRP": 2
   },
   "counties": {
     "ADA": "Adams",

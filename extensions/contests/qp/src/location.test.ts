@@ -8,7 +8,7 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
 
-import { allInParty, entityPrefixOf, nameForLocation, normalizeLocation, parseLocations, splitLocations } from "./location.ts"
+import { allInParty, entityPrefixOf, nameForLocation, normalizeLocation, parseLocations, splitLocations, stateForEntity } from "./location.ts"
 import { partyFor, type QsoParty } from "./parties.ts"
 
 function party(key: string): QsoParty {
@@ -51,24 +51,41 @@ test("an unknown location falls back to where the callsign says they are", () =>
   const ny = party("NY")
   // A DX station's exchange is their entity, and no party asks them to type it.
   assert.equal(normalizeLocation(ny, "ZZZ", { entityPrefix: "DL" }), "DX")
-  // Alaska and Hawaii are states, unless the party says they are DX (NEQP
-  // carries the option and sets it FALSE, so no shipped party turns it on).
-  assert.equal(normalizeLocation(ny, "KL7", { entityPrefix: "KL7" }), "AK")
+  // Alaska and Hawaii are states they SEND, like any other.
   assert.equal(normalizeLocation(ny, "AK"), "AK")
   // A callsign we could not place at all resolves to nothing rather than to
   // `DX`: an unlookup-able call is a QSO we cannot score, not a DX contact.
   assert.equal(normalizeLocation(ny, "ZZZ"), "")
 })
 
-test("Alaska is KL in the country file, and a state in every shipped party", () => {
+test("Alaska is KL in the country file, which is what a station sending NOTHING is read as", () => {
   // polo tests for `KL7`, which the bundled country file never answers — so an
-  // Alaskan station whose exchange could not be read scored as DX rather than
-  // as the state multiplier they are. `naqp` documents the same correction.
+  // Alaskan station who sent no exchange at all was read as DX rather than as
+  // the state multiplier they are. `naqp` documents the same correction. This
+  // is the ONE place a prefix still answers for a location: a station who sent
+  // nothing, where the prefix is the best there is.
   const ny = party("NY")
-  assert.equal(normalizeLocation(ny, "ZZZ", { entityPrefix: "KL" }), "AK")
-  assert.equal(normalizeLocation(ny, "ZZZ", { entityPrefix: "KH6" }), "HI")
+  assert.equal(stateForEntity(ny, "KL"), "AK")
+  assert.equal(stateForEntity(ny, "KH6"), "HI")
   // What polo would have written stays readable, for a synced or imported log.
-  assert.equal(normalizeLocation(ny, "ZZZ", { entityPrefix: "KL7" }), "AK")
+  assert.equal(stateForEntity(ny, "KL7"), "AK")
+})
+
+test("an unreadable exchange from a Hawaiian is a typo, not the state their prefix names", () => {
+  // They send a county or a state like any other US station, and the entry row
+  // offers them that list and tints what is not on it — so a code nobody can
+  // read is their mis-copy, and reading it as `HI` would make a multiplier out
+  // of a mis-hearing while the score rises and nothing is flagged.
+  const ny = party("NY")
+  assert.equal(normalizeLocation(ny, "ZZZ", { entityPrefix: "KH6" }), "")
+  assert.equal(normalizeLocation(ny, "ZZZ", { entityPrefix: "KL" }), "")
+  assert.equal(normalizeLocation(ny, "ZZZ", { entityPrefix: "KL7" }), "")
+  // Exactly as it is for a station signing `K`, which is the point.
+  assert.equal(normalizeLocation(ny, "ZZZ", { entityPrefix: "K" }), "")
+  // What they actually send still reads.
+  assert.equal(normalizeLocation(ny, "HI", { entityPrefix: "KH6" }), "HI")
+  // A genuinely DX station is still DX.
+  assert.equal(normalizeLocation(ny, "ZZZ", { entityPrefix: "DL" }), "DX")
 })
 
 test("a long code that is nobody's county is read as its state", () => {

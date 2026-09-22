@@ -62,7 +62,16 @@ import { superModeForMode } from "@ham2k/lib-operation-data"
 import type { ContestScorer, JSONValue, QsoScoreVerdict, ScoreTally } from "@ham2k/extension-sdk"
 
 import { isMobile, ourLocationText, powerMultiplier, refOfType, str, TYPE } from "./entry.ts"
-import { allInParty, defaultTheirLocation, entityPrefixOf, type PartyLocation, parseLocations, type Standing } from "./location.ts"
+import {
+  allInParty,
+  defaultTheirLocation,
+  entityPrefixOf,
+  ourOwnCodes,
+  outOfPartyTables,
+  type PartyLocation,
+  parseLocations,
+  type Standing,
+} from "./location.ts"
 import { CANADIAN_PROVINCES, US_STATES } from "./locations.ts"
 import { isInParty, normalizeCode, partyStates, partyFor, pointsForMode, type QsoParty, scoringModeFor, stateForCounty, WARC_BANDS } from "./parties.ts"
 
@@ -227,8 +236,9 @@ function multipliersFor(
     }
   }
 
-  if (US_STATES[code] || code === "DC") return { keys: [`${prefix}${code}`], state: code }
-  if (CANADIAN_PROVINCES[code]) return { keys: [`${prefix}${code}`], province: code }
+  const tables = outOfPartyTables(party)
+  if (tables.us[code] || code === "DC") return { keys: [`${prefix}${code}`], state: code }
+  if (tables.canada[code]) return { keys: [`${prefix}${code}`], province: code }
 
   if (code === "DX") {
     const entity = entityOf(location)
@@ -315,7 +325,7 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     // multiplier keys, no own-county multiplier, no activated-county bonus. The
     // contact still counts for what it is worth; the operator is told, on every
     // QSO, that the setup needs a county.
-    const ourStates = weAreInParty ? undefined : partyStates(party)
+    const ourStates = weAreInParty ? undefined : ourOwnCodes(party)
     const typedOurState = ourStates !== undefined && ourLocations.some((location) => ourStates.has(location.code))
     sheet.weAreInParty ??= weAreInParty
     // The first DECLARED multiplier wins, not the first QSO's answer: `??=`
@@ -332,14 +342,20 @@ export const QsoPartyScorer: ContestScorer<QpScoresheet> = {
     const qsoRef = refOfType(qso as Record<string, unknown>)
     const typed = str(qsoRef?.location).trim()
     const fallback = sheet.lastLocation[call] ?? defaultTheirLocation(party, qso)
+    // `received` is what the operator COPIED, and only that. A fallback is not
+    // an exchange anyone gave us: `defaultTheirLocation` deliberately answers
+    // an in-party station's own state, because refusing a contact that plainly
+    // happened is the worse reading — while the same code TYPED is a mis-copy
+    // to be fixed.
+    const received = typed !== ""
     const standing: Standing = { weAreInParty, theyAreInParty: false }
-    let theirLocations = parseLocations(party, typed || fallback, { entityPrefix, standing })
+    let theirLocations = parseLocations(party, typed || fallback, { entityPrefix, standing, received })
     standing.theyAreInParty = allInParty(theirLocations)
     if (standing.theyAreInParty) {
       // Resolution depends on both sides' standing (a party where an in-party
       // pair multiplies by state), so once theirs is known it is resolved
       // again — cheap, and the only way the two ends agree.
-      theirLocations = parseLocations(party, typed || fallback, { entityPrefix, standing })
+      theirLocations = parseLocations(party, typed || fallback, { entityPrefix, standing, received })
     }
     const theyAreInParty = standing.theyAreInParty
 
@@ -629,14 +645,34 @@ function longSummaryFor(party: QsoParty, sheet: QpScoresheet, bonusPoints: numbe
   // out-of-party station's multipliers are its counties, and printing fifty
   // states they can never claim reads as fifty missing ones.
   if (sheet.weAreInParty) {
-    parts.push(`### ${fmtInteger(Object.keys(sheet.states).length)} US States`)
-    const states = Object.keys(US_STATES)
-    if (!party.options.dcCountsAsMaryland) states.push("DC")
+    const sections = party.options.sectionsForOutOfState
+    const tables = outOfPartyTables(party)
+    // A code inside the party is one nobody can send us, so it is no part of a
+    // chase list — PAQP's own `EPA` and `WPA`, and the party's own state
+    // everywhere else. Shown anyway once it HAS been counted: the heading reads
+    // `sheet.states` while the list reads the party's table, and a code held by
+    // one and hidden by the other prints a count above nothing struck. An
+    // in-party station's own state reaches the sheet exactly that way, from a
+    // contact whose exchange was never copied (`defaultTheirLocation`).
+    //
+    // Unless the party's own ground is a multiplier by another route: NEQP
+    // scores an in-party contact by STATE and CO counts its own alongside the
+    // county, so there those codes are exactly what the list exists to show as
+    // still needed. A chase list answers "what is left", and hiding the six
+    // New England states until they are worked answers "what is done".
+    const o = party.options
+    const ownGroundMultiplies = o.stateCountsForInState || !(o.countiesAreMultForInState && o.countiesCountForInState)
+    const ours = ownGroundMultiplies ? new Set<string>() : ourOwnCodes(party)
+    const chaseable = (table: Record<string, number>, codes: string[]) => codes.filter((code) => !ours.has(code) || table[code] !== undefined)
+
+    parts.push(`### ${fmtInteger(Object.keys(sheet.states).length)} ${sections ? "ARRL Sections" : "US States"}`)
+    const states = chaseable(sheet.states, Object.keys(tables.us))
+    if (!sections && !party.options.dcCountsAsMaryland) states.push("DC")
     parts.push(states.map((code) => worked(sheet.states, code)).join(" "))
 
-    parts.push(`### ${fmtInteger(Object.keys(sheet.provinces).length)} Canadian Provinces`)
+    parts.push(`### ${fmtInteger(Object.keys(sheet.provinces).length)} ${sections ? "RAC Sections" : "Canadian Provinces"}`)
     parts.push(
-      Object.keys(CANADIAN_PROVINCES)
+      chaseable(sheet.provinces, Object.keys(tables.canada))
         .map((code) => worked(sheet.provinces, code))
         .join(" "),
     )

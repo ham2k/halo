@@ -628,3 +628,142 @@ test("SD and CA score as their sponsors publish for 2026", () => {
   // California: phone is worth 3 points from 2026, the same as CW.
   assert.equal(run([qso({ location: "ALAM", mode: "SSB" })], { party: "CA", ourLocation: "NY" }).scores[0].value, 3)
 })
+
+test("PA: a station outside Pennsylvania is worth its SECTION, and a state is not one", () => {
+  // The sponsor's checker reads the ARRL/RAC list, so the score may only claim
+  // what that list holds. The trap is a state table standing in for it: `CA`
+  // and `NY` then score as one multiplier each where the rules have nine and
+  // four, and `EMA` — a perfectly good exchange — scores zero as a typo.
+  const worked = run(
+    ["EMA", "WMA", "LAX", "SF", "MDC", "GH", "ONE", "CT"].map((location, index) =>
+      qso({
+        call: `K1AA${index}`,
+        location,
+        entityPrefix: location === "GH" || location === "ONE" ? "VE" : "K",
+      }),
+    ),
+    { party: "PA", ourLocation: "ELK" },
+  )
+  assert.deepEqual(
+    worked.scores.map((score) => score.value),
+    [2, 2, 2, 2, 2, 2, 2, 2],
+  )
+  assert.deepEqual(Object.keys(worked.sheet.mults).sort(), ["CT", "EMA", "GH", "LAX", "MDC", "ONE", "SF", "WMA"])
+  assert.deepEqual(Object.keys(worked.sheet.provinces).sort(), ["GH", "ONE"])
+
+  // A state that is not also a section is a bad exchange — never a guess at
+  // which of its sections was meant, and never the state multiplier.
+  const states = run(
+    ["CA", "NY", "MA", "MD", "DC", "ON"].map((location, index) =>
+      qso({
+        call: `K2AA${index}`,
+        location,
+        entityPrefix: location === "ON" ? "VE" : "K",
+      }),
+    ),
+    { party: "PA", ourLocation: "ELK" },
+  )
+  for (const score of states.scores) assert.deepEqual(score.alerts, ["invalidExchange"])
+  assert.deepEqual(states.sheet.mults, {})
+
+  // Puerto Rico is a section, so an untyped KP4 is `PR` and not the DX
+  // multiplier; Hawaii is in the Pacific section, not a state of its own.
+  const islands = run([qso({ call: "KP4AA", entityPrefix: "KP4", location: "" }), qso({ call: "KH6AA", entityPrefix: "KH6", location: "" })], {
+    party: "PA",
+    ourLocation: "ELK",
+  })
+  assert.deepEqual(Object.keys(islands.sheet.mults).sort(), ["PAC", "PR"])
+  assert.deepEqual(islands.sheet.entities, {})
+})
+
+test("PA: an entrant outside Pennsylvania enters from a section", () => {
+  // `EMA` has to resolve as OUR location too, or a Massachusetts entrant can
+  // only operate by typing a state the sponsor then rejects in every QSO line.
+  const outside = run([qso({ location: "ELK" }), qso({ call: "K1XYZ", location: "WMA" })], { party: "PA", ourLocation: "EMA" })
+  assert.equal(outside.scores[0].value, 2)
+  assert.deepEqual(Object.keys(outside.sheet.mults), ["ELK"])
+  // Two stations outside the party are still not a contest QSO.
+  assert.deepEqual(outside.scores[1].alerts, ["invalidExchange"])
+  // And a state is no more our location than it is theirs.
+  assert.deepEqual(run([qso({ location: "ELK" })], { party: "PA", ourLocation: "MA" }).scores[0].alerts, ["ourLocation"])
+
+  // And our own SECTION is the mistake this party makes easy: `EPA` resolves
+  // cleanly, so nothing else objects, and the whole log would be scored under
+  // out-of-state rules — no own-county multiplier, no activated-county bonus,
+  // the wrong multiplier keys — with every Cabrillo line claiming an exchange
+  // no Pennsylvania station may send. Caught only because the alert reads the
+  // party's own GROUND; a plain state comparison has no `EPA` in it.
+  const ownSection = run([qso({ location: "MGY" })], { party: "PA", ourLocation: "EPA" })
+  assert.deepEqual(ownSection.scores[0].alerts, ["ourLocation"])
+  assert.ok((ownSection.scores[0].value as number) > 0, "the contact still counts for what it is worth")
+})
+
+test("PA: QRP doubles the QSO points, and the bonus station is added after", () => {
+  // Rule 10.d multiplies QSO POINTS, so the 200 K3ZMC pays stays 200. Folding
+  // the power factor over the bonus as well would hand a QRP entrant 400.
+  const qrp = run([qso({ call: "K3ZMC", location: "MGY" })], { party: "PA", ourLocation: "ELK", power: "QRP" })
+  assert.equal(qrp.summary().total, 2 * 1 * 2 + 200)
+  const low = run([qso({ call: "K3ZMC", location: "MGY" })], { party: "PA", ourLocation: "ELK", power: "LOW" })
+  assert.equal(low.summary().total, 2 * 1 + 200)
+})
+
+test("the chase list leaves out multipliers the party itself puts out of reach", () => {
+  // A Pennsylvania station sends one of 67 counties and never its own section,
+  // so `EPA` and `WPA` are two entries an operator could hunt forever.
+  const pa = run([qso({ location: "MGY" })], { party: "PA", ourLocation: "ELK" }).summary().longSummary as string
+  assert.doesNotMatch(pa, /\bEPA\b/)
+  assert.doesNotMatch(pa, /\bWPA\b/)
+  // Only the party's OWN ground goes: every other state's sections are there
+  // to be chased, and so are the counties.
+  assert.match(pa, /\bEMA\b/)
+  assert.match(pa, /\bMDC\b/)
+  assert.match(pa, /\bELK\b/)
+
+  // But where the party's own ground IS a multiplier, it is exactly what the
+  // list exists to show as still needed. NEQP scores an in-party contact by
+  // STATE, so its six are the in-state multipliers — hiding them until they
+  // are worked answers "what is done" when the question is "what is left".
+  const neqp = run([qso({ location: "MAWOR" })], { party: "NEQP", ourLocation: "MABAR" }).summary().longSummary as string
+  for (const code of ["CT", "ME", "NH", "RI", "VT"]) assert.match(neqp, new RegExp(`\\b${code}\\b`), `NEQP hides ${code}`)
+
+  // The same with plain states: Maryland's entrants work counties, so nobody
+  // sends `MD` and it is no part of the chase list.
+  const md = run([qso({ location: "ALY" })], { party: "MD", ourLocation: "ANA" }).summary().longSummary as string
+  assert.doesNotMatch(md, /\bMD\b/)
+  assert.match(md, /\bVA\b/)
+})
+
+test("a code inside the party is refused as a copied exchange, and only as one", () => {
+  // `EPA` is not something a Pennsylvania station can send — they send one of
+  // 67 counties — so taking it would claim a multiplier the sponsor's checker
+  // strikes and write it into the submitted file.
+  const sent = run([qso({ call: "K3ABC", location: "EPA" })], { party: "PA", ourLocation: "ELK" })
+  assert.equal(sent.scores[0].value, 0)
+  assert.deepEqual(sent.scores[0].alerts, ["invalidExchange"])
+  assert.deepEqual(sent.sheet.states, {})
+
+  // A contact whose exchange was never copied is a different question, and
+  // `defaultTheirLocation` has already answered it: refusing a contact that
+  // plainly happened is the worse reading, so the state stands.
+  const guessed = run([qso({ call: "K3XYZ", location: "", state: "PA" })], { party: "MD", ourLocation: "ANA" })
+  assert.ok((guessed.scores[0].value as number) > 0)
+
+  // Our OWN location is a setup field and not something copied off the air, so
+  // an entrant who typed their state there is told so and goes on scoring.
+  const ours = run([qso({ location: "ALY" })], { party: "MD", ourLocation: "MD" })
+  assert.deepEqual(ours.scores[0].alerts, ["ourLocation"])
+  assert.ok((ours.scores[0].value as number) > 0, "the contact still counts for what it is worth")
+})
+
+test("the chase list shows every code the scoresheet counted, reachable or not", () => {
+  // The heading counts `sheet.states` while the list comes from the party's
+  // table, so a code the sheet holds and the table hides prints "1 ARRL
+  // Sections" above a line with nothing struck in it. An in-party station's
+  // own state reaches the sheet exactly that way, from a contact whose
+  // exchange was never copied.
+  const { sheet, summary } = run([qso({ location: "MGY" })], { party: "PA", ourLocation: "ELK" })
+  sheet.states.EPA = 1
+  const detail = summary().longSummary as string
+  assert.match(detail, /\*\*~~EPA~~\*\*/)
+  assert.doesNotMatch(detail, /\bWPA\b/)
+})

@@ -1150,7 +1150,7 @@ stating before someone designs against the wrong half:
 | `iaru-hf` | Nothing. ITU zone and continent come from the bundled country file. |
 | `naqp` | 110 location codes — 613 bytes — which the table above already assigns *inline in the extension*. |
 | `arrl-dx` (shipped, M2) | Nothing. It uppercases what the operator typed and uses that as the multiplier key. |
-| ARRL/RAC sections | Only FD and WFD, which are activities and appear in neither §7's sequence nor §9's twelve contests. |
+| ARRL/RAC sections | FD and WFD, which are activities and appear in neither §7's sequence nor §9's twelve contests — and, since PAQP's 2026 rules, `qp`, whose out-of-state exchange IS the section. It carries its own copy, as FD and WFD do since M11: the table is under a kilobyte and `ContestScorer` is synchronous, so a scorer could not await a cross-extension lookup even if one existed. |
 
 So `operation-data` is **deferred until a real consumer appears** rather than
 built speculatively at M4. The table above stands as the plan for when one does.

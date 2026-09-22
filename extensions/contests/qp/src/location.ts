@@ -29,8 +29,8 @@ import type { JSONValue } from "@ham2k/extension-sdk"
 
 import { entityPrefixForCall } from "../../../sdk/src/dxcc.ts"
 
-import { CANADIAN_PROVINCES, DISTRICT_OF_COLUMBIA, MARYLAND_AND_DC, US_STATES } from "./locations.ts"
-import { isInParty, type QsoParty, stateForCounty } from "./parties.ts"
+import { CANADIAN_PROVINCES, CANADIAN_SECTIONS, DISTRICT_OF_COLUMBIA, MARYLAND_AND_DC, STATE_FOR_SECTION, US_SECTIONS, US_STATES } from "./locations.ts"
+import { isInParty, partyStates, type QsoParty, stateForCounty } from "./parties.ts"
 
 function str(value: unknown): string {
   return typeof value === "string" ? value : ""
@@ -76,6 +76,62 @@ export interface Standing {
 /// against the same bundled country file; `KL7` is kept alongside it because a
 /// synced or imported record may carry what polo wrote.
 const STATE_ENTITIES: Record<string, string> = { KL: "AK", KL7: "AK", KH6: "HI" }
+
+/// The same question where the exchange is a SECTION: more entities answer it,
+/// because Puerto Rico, the Virgin Islands and the Pacific possessions are ARRL
+/// sections and no state at all. Without them a `KP4` whose exchange went
+/// untyped claims the DX multiplier, for a station the sponsor scores as `PR`.
+const SECTION_ENTITIES: Record<string, string> = {
+  KL: "AK",
+  KL7: "AK",
+  KH0: "PAC",
+  KH1: "PAC",
+  KH2: "PAC",
+  KH3: "PAC",
+  KH4: "PAC",
+  KH5: "PAC",
+  KH6: "PAC",
+  KH7: "PAC",
+  KH8: "PAC",
+  KH9: "PAC",
+  KP4: "PR",
+  KP2: "VI",
+}
+
+/// The two tables an out-of-party US or Canadian exchange is read against —
+/// states and provinces, or sections where the party asks for those. Every
+/// reader goes through this, so the field, the scorer, the summary and the
+/// file cannot disagree about which vocabulary a party speaks.
+export function outOfPartyTables(party: QsoParty): { us: Record<string, string>; canada: Record<string, string> } {
+  return party.options.sectionsForOutOfState ? { us: US_SECTIONS, canada: CANADIAN_SECTIONS } : { us: US_STATES, canada: CANADIAN_PROVINCES }
+}
+
+const OUR_OWN_CODES = new WeakMap<QsoParty, Set<string>>()
+
+/// Every code in the party's out-of-party vocabulary that lies INSIDE the
+/// party. Nobody sends one: in the party the exchange is a county, and outside
+/// it nobody is in those states to begin with.
+///
+/// `partyStates` alone answers this where the vocabulary is states — the set
+/// `exchangeOptionsFor` has always filtered by — but a SECTION lies in a state
+/// without sharing its code, so PAQP's own `EPA` and `WPA` slip through it.
+/// Both are read here, and every reader asks this rather than `partyStates`.
+///
+/// Memoized: `normalizeLocation` asks on every location of every QSO, live on
+/// each keystroke and again on a rescore, and the answer is a property of the
+/// party.
+export function ourOwnCodes(party: QsoParty): Set<string> {
+  const cached = OUR_OWN_CODES.get(party)
+  if (cached) return cached
+  const ours = partyStates(party)
+  const tables = outOfPartyTables(party)
+  const codes = new Set<string>()
+  for (const code of [...Object.keys(tables.us), ...Object.keys(tables.canada)]) {
+    if (ours.has(STATE_FOR_SECTION[code] ?? code)) codes.add(code)
+  }
+  OUR_OWN_CODES.set(party, codes)
+  return codes
+}
 
 /// The separators a county line may be typed with. A comma is accepted because
 /// the operator may well reach for one; the canonical form written back out is
@@ -139,7 +195,11 @@ export function guessedStateOf(qso: Record<string, unknown> | undefined): string
 /// Takes no `standing`: which side each end is on decides what a location
 /// MULTIPLIES (`multCodeFor`), never what it resolves to — a county stays the
 /// county that was sent, in the log, the checklist and the Cabrillo alike.
-export function normalizeLocation(party: QsoParty, code: string, { entityPrefix = "" }: { entityPrefix?: string } = {}): string {
+export function normalizeLocation(
+  party: QsoParty,
+  code: string,
+  { entityPrefix = "", received = false }: { entityPrefix?: string; received?: boolean } = {},
+): string {
   let location = code.trim().toUpperCase()
   if (!location) return ""
 
@@ -155,27 +215,54 @@ export function normalizeLocation(party: QsoParty, code: string, { entityPrefix 
   // in its first two characters — a neighbouring party's county, or a typo.
   if (location.length > 4) location = location.slice(0, 2)
 
-  if (location === "DC" || location === "MD") {
-    return party.options.dcCountsAsMaryland ? "MD" : location
-  }
-  if (US_STATES[location]) {
-    if (party.options.alaskaAndHawaiiAreDX && (location === "AK" || location === "HI")) return "DX"
-    return location
-  }
-  if (CANADIAN_PROVINCES[location]) return location
+  // A code inside the party is answered with a county and never with itself
+  // (`ourOwnCodes`), so one arriving as an EXCHANGE is a mis-copy and resolves
+  // to nothing — reported as a bad exchange, with the QSO still in front of the
+  // operator to fix. Taking it would claim a multiplier the sponsor's own
+  // checker strikes, and write it into the submitted file.
+  //
+  // Only what was COPIED: our own location is a setup field, and an entrant who
+  // typed their state where their county belongs is answered by the scorer's
+  // own `ourLocation` alert rather than by having every contact refused.
+  if (received && ourOwnCodes(party).has(location)) return ""
 
-  // Nothing we recognize: fall back to where the callsign says they are. A
-  // station with no entity at all resolves to nothing rather than to `DX` —
-  // an unlookup-able callsign is a QSO we cannot place, not a DX contact.
-  const state = STATE_ENTITIES[entityPrefix]
-  if (state) return party.options.alaskaAndHawaiiAreDX ? "DX" : state
-  // A station in the party's OWN country sends a county or a state, so an
-  // unrecognized value from one is a typo and resolves to nothing — which the
-  // scorer reports as a bad exchange, with the QSO still in front of the
-  // operator to fix. polo answers `DX` here, which scores the contact, claims a
-  // `DX:K` multiplier in the twenty parties that count entities separately, and
-  // lists "K" among the DX entities worked.
+  if (party.options.sectionsForOutOfState) {
+    // Strict, and deliberately so: a state is accepted only where a section
+    // shares its abbreviation. Guessing `CA` into one of nine sections would
+    // write a multiplier into the file that nobody sent.
+    if (US_SECTIONS[location] || CANADIAN_SECTIONS[location]) return location
+  } else {
+    if (location === "DC" || location === "MD") {
+      return party.options.dcCountsAsMaryland ? "MD" : location
+    }
+    if (US_STATES[location]) {
+      if (party.options.alaskaAndHawaiiAreDX && (location === "AK" || location === "HI")) return "DX"
+      return location
+    }
+    if (CANADIAN_PROVINCES[location]) return location
+  }
+
+  // Nothing we recognize. A station in the party's OWN country sends a county,
+  // a state or a section, so an unrecognized value from one is a TYPO and
+  // resolves to nothing — which the scorer reports as a bad exchange, with the
+  // QSO still in front of the operator to fix. polo answers `DX` here, which
+  // scores the contact, claims a `DX:K` multiplier in the twenty parties that
+  // count entities separately, and lists "K" among the DX entities worked.
+  //
+  // Alaska, Hawaii and the Pacific possessions are in that country too, though
+  // they do not sign `K`. What they send is read like anyone else's, and a code
+  // that is not one of those is their typo — no more the state their PREFIX
+  // names than `ZZZ` from a Californian is California. Answering with that
+  // state would make a multiplier out of a mis-hearing, and silently: the
+  // score rises and nothing is flagged. The entry row offers these stations
+  // the same list as any other US station and tints what is not on it
+  // (`exchangeOptionsFor`), so there is nothing for a guess to rescue. Where a
+  // station SENT nothing at all, the prefix is still the best answer there is,
+  // and `defaultTheirLocation` gives it.
+  //
+  // Unless the party counts them as DX, in which case they fall through to it.
   if (entityPrefix === "K" || entityPrefix === "VE") return ""
+  if (!party.options.alaskaAndHawaiiAreDX && stateForEntity(party, entityPrefix)) return ""
   return entityPrefix ? "DX" : ""
 }
 
@@ -198,6 +285,10 @@ export function nameForLocation(party: QsoParty, code: string, entityPrefix = ""
   const location = code.toUpperCase()
   const county = party.counties[location] ?? party.otherCounties[location]
   if (county) return county
+  if (party.options.sectionsForOutOfState) {
+    const section = US_SECTIONS[location] ?? CANADIAN_SECTIONS[location]
+    if (section) return section
+  }
   if (location === "DC") return party.options.dcCountsAsMaryland ? MARYLAND_AND_DC : DISTRICT_OF_COLUMBIA
   if (location === "MD") return party.options.dcCountsAsMaryland ? MARYLAND_AND_DC : US_STATES.MD
   if (US_STATES[location]) return US_STATES[location]
@@ -210,12 +301,20 @@ export function nameForLocation(party: QsoParty, code: string, entityPrefix = ""
 export function parseLocations(
   party: QsoParty,
   text: string | undefined,
-  { entityPrefix = "", standing }: { entityPrefix?: string; standing?: Standing } = {},
+  {
+    entityPrefix = "",
+    standing,
+    received = false,
+  }: {
+    entityPrefix?: string
+    standing?: Standing
+    received?: boolean
+  } = {},
 ): PartyLocation[] {
   const seen = new Set<string>()
   const locations: PartyLocation[] = []
   for (const raw of splitLocations(text)) {
-    const code = normalizeLocation(party, raw, { entityPrefix })
+    const code = normalizeLocation(party, raw, { entityPrefix, received })
     if (!code || seen.has(code)) continue
     seen.add(code)
     locations.push({
@@ -269,7 +368,7 @@ export function defaultTheirLocation(party: QsoParty, qso: Record<string, JSONVa
   // credits them as such — so a file that wrote `DX` for one would not support
   // the multiplier the scoreboard already claimed. Unless the party counts them
   // as DX, which none of the shipped ones does.
-  const state = stateForEntity(entityPrefix)
+  const state = stateForEntity(party, entityPrefix)
   if (state && !party.options.alaskaAndHawaiiAreDX) return state
   return party.options.dxLocationIsPrefix && entityPrefix ? entityPrefix : "DX"
 }
@@ -277,8 +376,9 @@ export function defaultTheirLocation(party: QsoParty, qso: Record<string, JSONVa
 /// The state an entity's stations are in, for the two that are US states but
 /// do not send `K` — read by the export so its fallback cannot disagree with
 /// the scorer about an Alaskan or Hawaiian contact.
-export function stateForEntity(entityPrefix: string): string {
-  return STATE_ENTITIES[entityPrefix] ?? ""
+export function stateForEntity(party: QsoParty, entityPrefix: string): string {
+  const table = party.options.sectionsForOutOfState ? SECTION_ENTITIES : STATE_ENTITIES
+  return table[entityPrefix] ?? ""
 }
 
 /// Whether every location given is inside the party — the test both sides'

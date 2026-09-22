@@ -83,6 +83,7 @@ import {
   entityPrefixOf,
   guessedStateOf,
   nameForLocation,
+  ourOwnCodes,
   parseLocations,
   splitLocations,
 } from "./location.ts"
@@ -374,7 +375,7 @@ const ActivityHook = {
     // while the county goes in the field. Ruled out by name rather than by
     // "not in the list": a station with no list (DX, or Alaska and Hawaii
     // where the party counts them as DX) has nothing to check it against.
-    const hintIsExchange = !partyStates(party).has(hint) && (options.length === 0 || options.some((option) => option.code === hint))
+    const hintIsExchange = !ourOwnCodes(party).has(hint) && (options.length === 0 || options.some((option) => option.code === hint))
     const suggested = logged || (hintIsExchange ? hint : "")
     const placeholder = suggested ? "" : hint
     controls.push({

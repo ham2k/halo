@@ -240,3 +240,21 @@ test("South Dakota submits as SDQSOP, the registered Cabrillo name", () => {
   // renames the contest in every submitted log, with no other test noticing.
   assert.equal(party("SD").cabrilloName, "SDQSOP")
 })
+
+test("every party offered keys its counties by CODE, which the state rules read", () => {
+  // `stateForCounty` reads a county code longer than four characters as its
+  // state's two letters plus the county's — right for 7QP's `ORDES`, and
+  // nonsense for a file keyed by NAMES: `Cape Breton` reads as `CA`, and
+  // `partyStates` then reports California as the party's own ground. Every
+  // reader of that set inherits the mistake — the entry row stops offering
+  // California, and the scorer refuses it as an exchange.
+  //
+  // NSARA is keyed that way and ships disabled, which is the only reason
+  // nothing is broken today. This is the gate for the day it is enabled, or
+  // another file is written the same way.
+  for (const party of SUPPORTED_PARTIES) {
+    for (const code of Object.keys(party.counties)) {
+      assert.match(code, /^[A-Z0-9]{2,6}$/, `${party.key} keys a county as ${JSON.stringify(code)}`)
+    }
+  }
+})
