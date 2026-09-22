@@ -163,6 +163,8 @@ class MapboxWebviewMapView extends StatefulWidget {
       }, $notifyClicks);
     window.poloSetMarkers = handle.setMarkers;
     window.poloSetLines = handle.setLines;
+    window.poloPatchMarkers = handle.patchMarkers;
+    window.poloPatchLines = handle.patchLines;
     window.poloSetShapes = handle.setShapes;
     window.poloSetProjection = handle.setProjection;
     window.poloMoveTo = handle.moveTo;
@@ -305,8 +307,27 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
     } else if (oldWidget.isDark != widget.isDark) {
       _applyDark();
     }
-    if (!listEquals(oldWidget.markers, widget.markers)) _applyMarkers();
-    if (!listEquals(oldWidget.lines, widget.lines)) _applyLines();
+    // A patch carries what changed; the set carries everything. One logged
+    // contact is one marker and one line either way, but as a set it is every
+    // contact's, encoded here and parsed in the webview, per emission. The
+    // same list instance — a pane that is hidden, a rebuild for a reason the
+    // map does not read — is not even diffed.
+    if (!identical(oldWidget.markers, widget.markers)) {
+      final markers = diffMarkers(oldWidget.markers, widget.markers);
+      if (patchIsSmaller(markers, total: widget.markers.length)) {
+        _patchMarkers(markers);
+      } else if (!listEquals(oldWidget.markers, widget.markers)) {
+        _applyMarkers();
+      }
+    }
+    if (!identical(oldWidget.lines, widget.lines)) {
+      final lines = diffLines(oldWidget.lines, widget.lines);
+      if (patchIsSmaller(lines, total: widget.lines.length)) {
+        _patchLines(lines);
+      } else if (!listEquals(oldWidget.lines, widget.lines)) {
+        _applyLines();
+      }
+    }
     if (!listEquals(oldWidget.shapes, widget.shapes)) _applyShapes();
   }
 
@@ -333,6 +354,16 @@ class _MapboxWebviewMapViewState extends State<MapboxWebviewMapView> with Widget
   Future<void> _applyLines() async {
     final data = jsonEncode(mapLinesPayload(widget.lines));
     await _controller?.evaluateJavascript(source: 'window.poloSetLines($data);');
+  }
+
+  Future<void> _patchMarkers(MapDiff<MapMarkerData> diff) async {
+    final data = jsonEncode(mapMarkersPatchPayload(diff));
+    await _controller?.evaluateJavascript(source: 'window.poloPatchMarkers($data);');
+  }
+
+  Future<void> _patchLines(MapDiff<MapLineData> diff) async {
+    final data = jsonEncode(mapLinesPatchPayload(diff));
+    await _controller?.evaluateJavascript(source: 'window.poloPatchLines($data);');
   }
 
   Future<void> _applyShapes() async {

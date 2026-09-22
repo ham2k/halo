@@ -126,24 +126,38 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   // not be mistakable for the station itself.
   static const _unknownBandColor = Color(0xFFFF0000);
 
-  /// Memoized facade output plus the inputs it was computed from — the QSO
-  /// stream only emits a new list instance when data actually changes, so
-  /// identical() on it (plus the scalar inputs) lets every other rebuild
-  /// (unrelated settings notifications, tab switches, theme pokes) skip
-  /// re-deriving hundreds of markers and densified great-circle lines.
-  List<Qso>? _builtQsos;
-  String? _builtGrid;
+  /// One contact's share of the map, kept across emissions: derived once per
+  /// stamp and reused until the contact is edited, so an emission — four per
+  /// logged contact on a long log — re-derives the contacts that changed and
+  /// nothing else. What every contact shares (the QTH it draws to, units,
+  /// colours, locale, dark) is checked first; a change there empties the cache.
+  final _contacts = <String, _ContactOnMap>{};
+  _SharedMapInputs? _builtWith;
 
-  // The operation's resolved coordinate, alongside its grid: with an exact
-  // location stored, two positions inside one square are different maps, and
-  // comparing the grid alone would serve the first one's markers for both.
-  GridLocation? _builtQth;
-  bool? _builtMiles;
-  HaLoColors? _builtColors;
-  AppLocale? _builtLocale;
-  bool? _builtDark;
+  /// The last list this pane derived from — the identity check that lets an
+  /// unrelated rebuild (a settings notification, a tab switch) skip even the
+  /// walk.
+  List<Qso>? _builtQsos;
   List<MapMarkerData> _markers = const [];
   List<MapLineData> _lines = const [];
+
+  /// The QTHs the cached contacts drew to, by display grid. Any difference
+  /// from the current resolution empties the cache: a grid that moved, one
+  /// that is gone (its lines would hang to a circle no longer drawn), and one
+  /// that appeared (contacts derived before it had a coordinate drew no line).
+  Map<String, ({String display, GridLocation location})> _builtQthGrids = const {};
+
+  static bool _sameQthGrids(Map<String, ({String display, GridLocation location})> a, Map<String, ({String display, GridLocation location})> b) {
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      final other = b[entry.key];
+      if (other == null) return false;
+      if (other.location.latitude != entry.value.location.latitude || other.location.longitude != entry.value.location.longitude) {
+        return false;
+      }
+    }
+    return true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -160,15 +174,23 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
     // backend all have to agree on it. Also what the OSM backend picks its
     // tile source by, so its map and its markers agree too.
     final isDark = mapStyleIsDark(widget.settings.mapStyle, appIsDark: theme.brightness == Brightness.dark);
-    _ensureData(context, isDark: isDark);
+    // Nothing is derived while the pane is hidden, and the backend is handed
+    // the very lists it already has — so neither a diff nor a bridge call
+    // happens for it, not even for the keystroke-driven highlight. The dock
+    // keeps a hidden pane mounted, and every emission of a long log would
+    // otherwise cost it the same as a pane someone is looking at. The
+    // dependency this reads rebuilds it on reveal, and the identity check
+    // then catches it up.
+    final visible = DockPaneVisibility.of(context);
+    if (visible) _ensureData(context, isDark: isDark);
 
     // The current QSO's highlight is derived every build (it changes on every
     // keystroke, so it can't share `_ensureData`'s heavy memo) and appended
     // last, so backends draw it on top. Cheap: one location resolve plus one
     // great-circle.
-    final highlight = _buildHighlight(theme, isDark: isDark);
-    final markers = highlight.markers.isEmpty ? _markers : [..._markers, ...highlight.markers];
-    final lines = highlight.lines.isEmpty ? _lines : [..._lines, ...highlight.lines];
+    final highlight = visible ? _buildHighlight(theme, isDark: isDark) : null;
+    final markers = highlight == null || highlight.markers.isEmpty ? _markers : [..._markers, ...highlight.markers];
+    final lines = highlight == null || highlight.lines.isEmpty ? _lines : [..._lines, ...highlight.lines];
 
     if (markers.isEmpty) {
       return Center(
@@ -298,68 +320,70 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
   }
 
   void _ensureData(BuildContext context, {required bool isDark}) {
-    final poloColors = HaLoColors.of(context);
-    final miles = widget.settings.distanceUnits == DistanceUnits.miles;
-    final locale = LocaleSettings.currentLocale;
-    if (identical(_builtQsos, widget.qsos) &&
-        _builtGrid == widget.operation.grid &&
-        _builtQth == widget.operation.location &&
-        _builtMiles == miles &&
-        _builtColors == poloColors &&
-        _builtLocale == locale &&
-        _builtDark == isDark) {
-      return;
-    }
+    final shared = _SharedMapInputs(
+      grid: widget.operation.grid,
+      qth: widget.operation.location,
+      miles: widget.settings.distanceUnits == DistanceUnits.miles,
+      colors: HaLoColors.of(context),
+      locale: LocaleSettings.currentLocale,
+      dark: isDark,
+    );
+    if (identical(_builtQsos, widget.qsos) && _builtWith == shared) return;
+    if (_builtWith != shared) _contacts.clear();
     _builtQsos = widget.qsos;
-    _builtGrid = widget.operation.grid;
-    _builtQth = widget.operation.location;
-    _builtMiles = miles;
-    _builtColors = poloColors;
-    _builtLocale = locale;
-    _builtDark = isDark;
+    _builtWith = shared;
 
     final lineColor = isDark ? _lineColorDark : _lineColorLight;
     final qsoStroke = isDark ? _qsoStrokeDark : _qsoStrokeLight;
 
-    final qsoMarkers = <MapMarkerData>[];
-    final lines = <MapLineData>[];
     // Distinct station spots, keyed by uppercased DISPLAY grid so case
     // variants of the same locator ('FN20ab' vs 'FN20AB') don't stack
     // duplicate QTH circles — one operation usually has one, but a per-QSO
     // `our.grid` (location change across a break) adds more. Keying by the
     // displayed locator rather than the raw coordinate also collapses the
     // metres of GPS jitter between two fixes taken from the same chair, which
-    // would otherwise draw a circle each.
+    // would otherwise draw a circle each. The FIRST contact naming a grid
+    // places it, in log order, and only a contact that draws a dot of its own
+    // may place one — resolved over the whole log before any contact is
+    // derived, so a cached contact and a fresh one draw to the same spot.
     final qthGrids = <String, ({String display, GridLocation location})>{};
-
     void addQth(String grid, GridLocation location) => qthGrids.putIfAbsent(grid.toUpperCase(), () => (display: grid, location: location));
-
     final operationGrid = widget.operation.displayGrid;
     if (operationGrid != null) {
       if (widget.operation.location case final qth?) addQth(operationGrid, qth);
     }
-
     for (final qso in widget.qsos) {
       if (!qso.isRealContact) continue;
-      final location = locationForQsoInfo(exact: qso.theirExactLocation, grid: qso.theirGrid, entityPrefix: qso.theirEntityPrefix, state: qso.theirState);
-      if (location == null) continue;
-
       final qthGrid = qso.ourDisplayGrid ?? operationGrid;
-      GridLocation? qth;
-      if (qthGrid != null) {
-        qth = qthGrids[qthGrid.toUpperCase()]?.location ?? qso.ourLocation;
-        if (qth != null) addQth(qthGrid, qth);
-      }
-
-      qsoMarkers.add(_markerForQso(qso, location, qth, poloColors, miles: miles, strokeColor: qsoStroke));
-
-      if (qth != null) {
-        final segments = greatCirclePoints(location, qth);
-        for (var i = 0; i < segments.length; i++) {
-          lines.add(MapLineData(id: '${qso.uuid}/$i', points: segments[i], color: lineColor));
-        }
-      }
+      if (qthGrid == null || qthGrids.containsKey(qthGrid.toUpperCase())) continue;
+      final own = qso.ourLocation;
+      if (own == null) continue;
+      // Resolved only for a contact about to place a NEW grid — rare — so the
+      // walk stays an identity check for everything else.
+      if (locationForQsoInfo(exact: qso.theirExactLocation, grid: qso.theirGrid, entityPrefix: qso.theirEntityPrefix, state: qso.theirState) == null) continue;
+      addQth(qthGrid, own);
     }
+    if (!_sameQthGrids(_builtQthGrids, qthGrids)) _contacts.clear();
+    _builtQthGrids = qthGrids;
+
+    final seen = <String>{};
+    final qsoMarkers = <MapMarkerData>[];
+    final lines = <MapLineData>[];
+    for (final qso in widget.qsos) {
+      if (!qso.isRealContact) continue;
+      seen.add(qso.uuid);
+      var entry = _contacts[qso.uuid];
+      // A contact with no stamp cannot say whether it changed: derived every
+      // time. Synced records from before stamps existed arrive that way, and a
+      // peer's edit to one arrives stamp-less too.
+      if (entry == null || entry.stamp == null || entry.stamp != qso.updatedAtMillis) {
+        entry = _derive(qso, qthGrids, operationGrid, shared.colors, miles: shared.miles, lineColor: lineColor, strokeColor: qsoStroke);
+        _contacts[qso.uuid] = entry;
+      }
+      if (entry.marker case final marker?) qsoMarkers.add(marker);
+      lines.addAll(entry.lines);
+    }
+    _contacts.removeWhere((uuid, _) => !seen.contains(uuid));
 
     // Weak-signal (smaller) circles draw last so they stay visible and
     // tappable on top of larger ones — same layering as app-polo — and the
@@ -374,12 +398,38 @@ class _MapPanelState extends State<MapPanel> with WebviewSupportProbe<MapPanel> 
           longitude: entry.value.location.longitude,
           label: entry.value.display,
           kind: MapMarkerKind.qth,
-          color: poloColors.bandColor('other'),
+          color: shared.colors.bandColor('other'),
           strokeColor: _qthStroke,
           popupTitle: t.map.qthPopupTitle(grid: entry.value.display),
         ),
     ];
     _lines = lines;
+  }
+
+  /// One contact's marker and line, from the QTH map resolved over the whole
+  /// log — never from the contact's own fix alone, or two contacts naming one
+  /// grid could draw to two spots.
+  _ContactOnMap _derive(
+    Qso qso,
+    Map<String, ({String display, GridLocation location})> qthGrids,
+    String? operationGrid,
+    HaLoColors colors, {
+    required bool miles,
+    required Color lineColor,
+    required Color strokeColor,
+  }) {
+    final location = locationForQsoInfo(exact: qso.theirExactLocation, grid: qso.theirGrid, entityPrefix: qso.theirEntityPrefix, state: qso.theirState);
+    if (location == null) return _ContactOnMap(stamp: qso.updatedAtMillis, marker: null, lines: const []);
+    final qthGrid = qso.ourDisplayGrid ?? operationGrid;
+    final qth = qthGrid == null ? null : qthGrids[qthGrid.toUpperCase()]?.location ?? qso.ourLocation;
+    final marker = _markerForQso(qso, location, qth, colors, miles: miles, strokeColor: strokeColor);
+    if (qth == null) return _ContactOnMap(stamp: qso.updatedAtMillis, marker: marker, lines: const []);
+    final segments = greatCirclePoints(location, qth);
+    return _ContactOnMap(
+      stamp: qso.updatedAtMillis,
+      marker: marker,
+      lines: [for (var i = 0; i < segments.length; i++) MapLineData(id: '${qso.uuid}/$i', points: segments[i], color: lineColor)],
+    );
   }
 
   /// The current QSO's highlight, using the logging panel's accent colours —
@@ -568,4 +618,42 @@ Color mapHighlightColor(Color base) {
     }
   }
   return (markers: [marker], lines: lines);
+}
+
+/// What one contact contributes to the map, and the stamp it was derived
+/// under. [marker] is null for a contact with no location to place. The stamp
+/// is the whole contract: two writes to one contact inside the same
+/// millisecond, with an emission between them, serve the first derivation
+/// until the next stamp — a window no path through the UI reaches.
+class _ContactOnMap {
+  final int? stamp;
+  final MapMarkerData? marker;
+  final List<MapLineData> lines;
+  const _ContactOnMap({required this.stamp, required this.marker, required this.lines});
+}
+
+/// Everything a contact's marker and line depend on besides the contact
+/// itself. Compared as a value: a change to any of it invalidates every cached
+/// contact at once.
+class _SharedMapInputs {
+  final String? grid;
+  final GridLocation? qth;
+  final bool miles;
+  final HaLoColors colors;
+  final AppLocale locale;
+  final bool dark;
+  const _SharedMapInputs({required this.grid, required this.qth, required this.miles, required this.colors, required this.locale, required this.dark});
+
+  @override
+  bool operator ==(Object other) =>
+      other is _SharedMapInputs &&
+      grid == other.grid &&
+      qth == other.qth &&
+      miles == other.miles &&
+      colors == other.colors &&
+      locale == other.locale &&
+      dark == other.dark;
+
+  @override
+  int get hashCode => Object.hash(grid, qth, miles, colors, locale, dark);
 }

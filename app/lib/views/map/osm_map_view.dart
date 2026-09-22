@@ -71,6 +71,7 @@ class _OsmMapViewState extends State<OsmMapView> {
   @override
   void didUpdateWidget(OsmMapView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _pruneCaches();
     if (!listEquals(oldWidget.markers, widget.markers)) {
       if (!widget.markers.any((m) => m.id == _selectedMarkerId)) _selectedMarkerId = null;
       // Refit only when the BASE markers change (a QSO logged), not on each
@@ -211,39 +212,64 @@ class _OsmMapViewState extends State<OsmMapView> {
     ],
   );
 
+  /// The layer objects by id, kept across builds and replaced only for an
+  /// entry whose data changed: a rebuild of this widget — every emission of a
+  /// long log, every settings notification — otherwise turned thousands of
+  /// contacts back into `LatLng` lists and `Marker` subtrees for the layers to
+  /// diff against what they already had.
+  final _polylines = <String, ({MapLineData data, Polyline line})>{};
+  final _markerWidgets = <String, ({MapMarkerData data, Marker marker})>{};
+
+  Polyline _polylineFor(MapLineData line) {
+    final cached = _polylines[line.id];
+    if (cached != null && cached.data == line) return cached.line;
+    final built = Polyline(
+      points: [for (final p in line.points) LatLng(p.latitude, p.longitude)],
+      color: line.color,
+      // The current QSO's line is drawn thick so it stands out.
+      strokeWidth: line.highlight ? 6 : 1.5,
+    );
+    _polylines[line.id] = (data: line, line: built);
+    return built;
+  }
+
+  Marker _markerFor(MapMarkerData marker) {
+    final cached = _markerWidgets[marker.id];
+    if (cached != null && cached.data == marker) return cached.marker;
+    final built = Marker(
+      point: LatLng(marker.latitude, marker.longitude),
+      // A generous transparent hit area around the small circle.
+      width: 28 * marker.sizeFactor,
+      height: 28 * marker.sizeFactor,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () => widget.onMarkerTap != null ? widget.onMarkerTap!(marker.id) : setState(() => _selectedMarkerId = marker.id),
+        child: Center(child: MapCircleMarker(marker: marker)),
+      ),
+    );
+    _markerWidgets[marker.id] = (data: marker, marker: built);
+    return built;
+  }
+
+  /// Drops cache entries for ids no longer drawn, so a long session does not
+  /// hold every contact ever deleted.
+  void _pruneCaches() {
+    final lineIds = {for (final l in widget.lines) l.id};
+    final markerIds = {for (final m in widget.markers) m.id};
+    _polylines.removeWhere((id, _) => !lineIds.contains(id));
+    _markerWidgets.removeWhere((id, _) => !markerIds.contains(id));
+  }
+
   PolylineLayer _lineLayer(List<MapLineData> lines) => PolylineLayer(
     // Off (default is ~0.4): the great-circle arcs are already densified
     // to a smooth curve by greatCirclePoints, and flutter_map's
     // Douglas–Peucker simplification otherwise collapses each into a few
     // straight segments — the whole point of the densified points is lost.
     simplificationTolerance: 0,
-    polylines: [
-      for (final line in lines)
-        Polyline(
-          points: [for (final p in line.points) LatLng(p.latitude, p.longitude)],
-          color: line.color,
-          // The current QSO's line is drawn thick so it stands out.
-          strokeWidth: line.highlight ? 6 : 1.5,
-        ),
-    ],
+    polylines: [for (final line in lines) _polylineFor(line)],
   );
 
-  MarkerLayer _markerLayer(List<MapMarkerData> markers) => MarkerLayer(
-    markers: [
-      for (final marker in markers)
-        Marker(
-          point: LatLng(marker.latitude, marker.longitude),
-          // A generous transparent hit area around the small circle.
-          width: 28 * marker.sizeFactor,
-          height: 28 * marker.sizeFactor,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: () => widget.onMarkerTap != null ? widget.onMarkerTap!(marker.id) : setState(() => _selectedMarkerId = marker.id),
-            child: Center(child: MapCircleMarker(marker: marker)),
-          ),
-        ),
-    ],
-  );
+  MarkerLayer _markerLayer(List<MapMarkerData> markers) => MarkerLayer(markers: [for (final marker in markers) _markerFor(marker)]);
 }
 
 /// The OSM credit the tile usage policy requires, in the map's bottom-right.

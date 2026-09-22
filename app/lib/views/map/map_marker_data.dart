@@ -263,7 +263,8 @@ Map<String, dynamic> mapLinesPayload(List<MapLineData> lines) => {
     for (final line in lines)
       {
         'type': 'Feature',
-        'properties': {'color': mapColorToHex(line.color), 'highlight': line.highlight},
+        // The id is what a patch removes or replaces by (`mapLinesPatchPayload`).
+        'properties': {'id': line.id, 'color': mapColorToHex(line.color), 'highlight': line.highlight},
         'geometry': {
           'type': 'LineString',
           'coordinates': [
@@ -387,4 +388,81 @@ Map<String, dynamic> mapShapesPayload(List<MapShapeData> shapes) => {
         },
       },
   ],
+};
+
+/// What changed between two id-keyed lists: the entries to add or replace,
+/// each with its index in the new list, and the ids to drop. A backend that
+/// patches its source with this instead of replacing it sends one logged
+/// contact's marker and line over the bridge rather than every contact's —
+/// at a few thousand contacts the whole set is tens of megabytes of JSON per
+/// emission, parsed twice.
+///
+/// Order is part of what a set says (the layers draw in list order, and the
+/// host sorts contacts so smaller circles land on top), and a patch names
+/// only what changed. So a patch is offered only when the entries present in
+/// BOTH lists kept their relative order ([orderKept]): the far side then
+/// replaces changed entries in place and inserts new ones at their indices,
+/// and the result is the host's list exactly. A list whose unchanged entries
+/// moved — a board re-sorted — is a set.
+typedef MapDiff<T> = ({List<T> upserts, List<int> indices, List<String> removeIds, bool orderKept});
+
+MapDiff<T> diffById<T>(List<T> before, List<T> after, String Function(T) idOf) {
+  final previous = {for (final item in before) idOf(item): item};
+  final afterIds = {for (final item in after) idOf(item)};
+  final upserts = <T>[];
+  final indices = <int>[];
+  final keptAfter = <String>[];
+  for (var i = 0; i < after.length; i++) {
+    final item = after[i];
+    final id = idOf(item);
+    final was = previous.remove(id);
+    if (was != null) keptAfter.add(id);
+    // `==` is each type's own: a line compares by id and endpoints, a marker by
+    // every field, so a changed popup title is a replacement and a line that
+    // merely moved in the list is not.
+    if (was == null || was != item) {
+      upserts.add(item);
+      indices.add(i);
+    }
+  }
+  final keptBefore = [
+    for (final item in before)
+      if (afterIds.contains(idOf(item))) idOf(item),
+  ];
+  var orderKept = keptBefore.length == keptAfter.length;
+  for (var i = 0; orderKept && i < keptBefore.length; i++) {
+    orderKept = keptBefore[i] == keptAfter[i];
+  }
+  return (upserts: upserts, indices: indices, removeIds: previous.keys.toList(), orderKept: orderKept);
+}
+
+MapDiff<MapMarkerData> diffMarkers(List<MapMarkerData> before, List<MapMarkerData> after) => diffById(before, after, (m) => m.id);
+
+MapDiff<MapLineData> diffLines(List<MapLineData> before, List<MapLineData> after) => diffById(before, after, (l) => l.id);
+
+/// Whether a patch is worth sending in place of the whole set. A patch that
+/// touches most of the set — the first paint, a theme change that recolours
+/// every line — costs the same JSON as the set plus a merge on the far side,
+/// so the set goes instead; and one that cannot reproduce the list's order
+/// (see [MapDiff]) is not a patch at all.
+bool patchIsSmaller<T>(MapDiff<T> diff, {required int total}) {
+  final touched = diff.upserts.length + diff.removeIds.length;
+  return diff.orderKept && total > 0 && touched > 0 && touched * 2 < total;
+}
+
+/// The patch shapes `poloPatchMarkers` / `poloPatchLines` take: the entries
+/// to add or replace in the wire shape the set verbs take, each entry's index
+/// in the host's list, and the ids to drop. A line patch carries no opacity:
+/// every base line shares one, and a change to it recolours every line, which
+/// is a set.
+Map<String, dynamic> mapMarkersPatchPayload(MapDiff<MapMarkerData> diff) => {
+  'upsert': mapMarkersPayload(diff.upserts),
+  'indices': diff.indices,
+  'removeIds': diff.removeIds,
+};
+
+Map<String, dynamic> mapLinesPatchPayload(MapDiff<MapLineData> diff) => {
+  'upsert': mapLinesPayload(diff.upserts)['features'],
+  'indices': diff.indices,
+  'removeIds': diff.removeIds,
 };

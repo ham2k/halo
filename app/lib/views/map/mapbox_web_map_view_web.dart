@@ -104,6 +104,9 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
   web.HTMLDivElement? _container;
   JSObject? _handle;
 
+  /// Whether the first full set has reached the script — what a patch merges into.
+  bool _dataApplied = false;
+
   /// Drives [MapUnavailableState]. Set when the map gives up, cleared by the
   /// script's 'recovered' signal — a map that recovers must not keep the
   /// empty state.
@@ -190,6 +193,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
       _applyMarkers();
       _applyLines();
       _applyShapes();
+      _dataApplied = true;
     });
   }
 
@@ -205,8 +209,28 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     } else if (oldWidget.isDark != widget.isDark) {
       _applyDark();
     }
-    if (!listEquals(oldWidget.markers, widget.markers)) _applyMarkers();
-    if (!listEquals(oldWidget.lines, widget.lines)) _applyLines();
+    // See MapboxWebviewMapView.didUpdateWidget: a patch over the set. Not
+    // before the first full set has gone over (`_dataApplied`): a patch
+    // merges into what the script holds, and until then it holds nothing —
+    // the post-frame apply reads the widget's lists as they stand, so nothing
+    // that lands in that window is lost.
+    if (!_dataApplied) return;
+    if (!identical(oldWidget.markers, widget.markers)) {
+      final markers = diffMarkers(oldWidget.markers, widget.markers);
+      if (patchIsSmaller(markers, total: widget.markers.length)) {
+        _handle?.callMethod('patchMarkersJson'.toJS, jsonEncode(mapMarkersPatchPayload(markers)).toJS);
+      } else if (!listEquals(oldWidget.markers, widget.markers)) {
+        _applyMarkers();
+      }
+    }
+    if (!identical(oldWidget.lines, widget.lines)) {
+      final lines = diffLines(oldWidget.lines, widget.lines);
+      if (patchIsSmaller(lines, total: widget.lines.length)) {
+        _handle?.callMethod('patchLinesJson'.toJS, jsonEncode(mapLinesPatchPayload(lines)).toJS);
+      } else if (!listEquals(oldWidget.lines, widget.lines)) {
+        _applyLines();
+      }
+    }
     if (!listEquals(oldWidget.shapes, widget.shapes)) _applyShapes();
   }
 
@@ -256,6 +280,7 @@ class _MapboxWebMapViewState extends State<MapboxWebMapView> {
     if (identical(controller?.onMoveTo, _moveTo)) controller?.onMoveTo = null;
     _handle?.callMethod('remove'.toJS);
     _handle = null;
+    _dataApplied = false;
     super.dispose();
   }
 

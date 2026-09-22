@@ -10,9 +10,13 @@
 //
 // Exposes `window.poloMapGl.create(container, style, styleDark, initialDark,
 // onEvent, notifyClicks)` returning a handle with `setMarkersJson`,
-// `setLinesJson`, `setShapesJson`, `setProjection`, `moveTo`, and `remove`. Data crosses as JSON
-// strings — both callers already have the payload serialized, and strings
-// keep the interop layer trivial on each side.
+// `setLinesJson`, `setShapesJson`, `patchMarkersJson`, `patchLinesJson`,
+// `setProjection`, `moveTo`, and `remove`. Data crosses as JSON strings —
+// both callers already have the payload serialized, and strings keep the
+// interop layer trivial on each side. A patch (`{upsert, removeIds}`, see
+// `mapLinesPatchPayload`) is what a caller sends when a few of thousands of
+// entries changed: the script keeps the last set and merges into it, so one
+// logged contact costs one feature over the bridge rather than every contact's.
 //
 // `notifyClicks` (default false) is for a caller that wants to render its
 // own reveal/action UI in Flutter instead of this script's built-in HTML
@@ -608,6 +612,40 @@ window.poloMapGl = window.poloMapGl || {
       report('recovered', 'a payload applied after a style timeout');
     }
 
+    // A patch is the set the host would otherwise resend, minus everything
+    // that did not change: `removeIds` drops, `upsert` replaces an entry by
+    // id in place or inserts a new one at its `indices` position in the
+    // host's list. The host sends a patch only when the entries both lists
+    // share kept their relative order, so this reproduces its list exactly —
+    // draw order included. Merged here and applied through the set path, so
+    // pending/replay state and the camera fit behave as for a set.
+    function mergePatch(last, idOf, patch) {
+      const removed = new Set(patch.removeIds || []);
+      const kept = last.filter(function (e) { return !removed.has(idOf(e)); });
+      const position = new Map(kept.map(function (e, i) { return [idOf(e), i]; }));
+      const inserts = [];
+      (patch.upsert || []).forEach(function (e, n) {
+        const at = position.get(idOf(e));
+        if (at !== undefined) kept[at] = e;
+        else inserts.push({ index: (patch.indices || [])[n], entry: e });
+      });
+      inserts.sort(function (a, b) { return a.index - b.index; });
+      inserts.forEach(function (ins) {
+        const index = typeof ins.index === 'number' ? Math.min(ins.index, kept.length) : kept.length;
+        kept.splice(index, 0, ins.entry);
+      });
+      return kept;
+    }
+
+    function patchMarkers(patch) {
+      setMarkers(mergePatch(lastMarkersData || [], function (m) { return m.id; }, patch));
+    }
+
+    function patchLines(patch) {
+      const last = lastLinesData || { opacity: 1.0, features: [] };
+      setLines({ opacity: last.opacity, features: mergePatch(last.features, function (f) { return f.properties.id; }, patch) });
+    }
+
     function setMarkers(data) {
       lastMarkersData = data;
       if (styleSwapInFlight) return;
@@ -749,6 +787,10 @@ window.poloMapGl = window.poloMapGl || {
       // thing to pass.
       setMarkersJson: function (json) { setMarkers(JSON.parse(json)); },
       setLinesJson: function (json) { setLines(JSON.parse(json)); },
+      patchMarkers: patchMarkers,
+      patchLines: patchLines,
+      patchMarkersJson: function (json) { patchMarkers(JSON.parse(json)); },
+      patchLinesJson: function (json) { patchLines(JSON.parse(json)); },
       setShapesJson: function (json) { setShapes(JSON.parse(json)); },
       setProjection: function (name) {
         if (map.isStyleLoaded()) { applyProjection(name); return; }
