@@ -52,6 +52,14 @@ bool looksLikeAdif(String filename) {
 /// not a smaller one.
 bool adifImportInFlight = false;
 
+/// The most records one file may bring into an operation.
+///
+/// Checked on the file's own record count, before the extension hooks, the
+/// plan or the write see any of it: those are the passes a whole-log file
+/// overwhelms, so a cap applied after them protects nothing. A whole log
+/// belongs in the Logs destination's import, which this does not limit.
+const maxOperationImportRecords = 1000;
+
 /// The filter handed to the picker.
 ///
 /// Android greys out anything outside the requested MIME types, and `.adi` /
@@ -174,9 +182,38 @@ Future<void> importAdifFile(
   adifImportInFlight = true;
   try {
     statusBar.setMessage(key: 'adifImport:status', text: t.reading(filename: filename));
+    final Uint8List bytes;
+    final int recordCount;
+    try {
+      bytes = await file.readAsBytes();
+      recordCount = countAdifRecords(bytes);
+    } catch (e, stack) {
+      _reportFailure(services, 'adifImport:read', e, stack, t.failed(filename: filename, error: '$e'));
+      if (context.mounted) {
+        await _showNotice(context, t.failed(filename: filename, error: e.toString()));
+      }
+      return;
+    }
+    if (recordCount > maxOperationImportRecords) {
+      final message = t.tooMany(
+        filename: filename,
+        count: formatNumber(recordCount),
+        limit: formatNumber(maxOperationImportRecords),
+      );
+      statusBar.clear('adifImport:status');
+      // The files this refuses are the slowest to read, so the pane may be
+      // gone by now — and then the notice is the only trace the drop left.
+      if (context.mounted) {
+        await _showNotice(context, message);
+      } else {
+        statusBar.showNotice(key: 'adifImport:tooMany', text: message);
+      }
+      return;
+    }
+
     final AdifImportPlan plan;
     try {
-      plan = await _planFor(services, operation, file, filename);
+      plan = await _planFor(services, operation, bytes, filename);
     } catch (e, stack) {
       _reportFailure(services, 'adifImport:plan', e, stack, t.failed(filename: filename, error: '$e'));
       if (context.mounted) {
@@ -369,11 +406,11 @@ List<String> failedProgramNames(Iterable<ExtensionInfo> available, Set<String> f
 Future<AdifImportPlan> _planFor(
   HaLoServices services,
   Operation operation,
-  XFile file,
+  Uint8List bytes,
   String filename,
 ) async {
   final stacking = await _stackingRefTypes(services, operation);
-  final log = parseAdifLogBytes(await file.readAsBytes());
+  final log = parseAdifLogBytes(bytes);
   final outcome = await AdifImportService(services.extensions.host).applyHooks(log.qsos);
 
   return planAdifImport(

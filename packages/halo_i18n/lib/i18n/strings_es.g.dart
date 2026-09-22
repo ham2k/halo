@@ -1077,6 +1077,7 @@ class _Translations$adifImport$es extends Translations$adifImport$en {
 	@override String shortfall({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.';
 	@override String get busy => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.';
 	@override String get oneFileOnly => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.';
+	@override String tooMany({required Object filename, required Object count, required Object limit}) => '${filename} tiene ${count} QSOs. Una operación puede importar como máximo ${limit} a la vez.';
 }
 
 // Path: offline
@@ -4873,6 +4874,7 @@ extension on TranslationsEs {
 			'adifImport.shortfall' => ({required Object written, required Object planned}) => 'Solo se aplicaron ${written} de ${planned} — el registro cambió mientras decidías.',
 			'adifImport.busy' => 'Ya hay una importación en curso. Espera a que termine antes de empezar otra.',
 			'adifImport.oneFileOnly' => 'Suelta un archivo ADIF a la vez — el orden decide qué datos prevalecen.',
+			'adifImport.tooMany' => ({required Object filename, required Object count, required Object limit}) => '${filename} tiene ${count} QSOs. Una operación puede importar como máximo ${limit} a la vez.',
 			'offline.statusOffline' => 'Internet: SIN CONEXIÓN',
 			'offline.statusOnline' => 'Internet: conectado',
 			'offline.noRoute' => 'No hay ninguna conexión de red.',

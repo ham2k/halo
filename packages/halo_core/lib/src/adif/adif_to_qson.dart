@@ -111,6 +111,20 @@ class AdifLog {
 /// bytes and a decoded string has already lost them.
 AdifLog parseAdifLog(String text) => parseAdifLogBytes(utf8.encode(text));
 
+/// How many records [bytes] holds — the count [parseAdifLogBytes] would
+/// convert, without building a single QSON map.
+///
+/// Tokenized rather than a scan for `<EOR>`: a field VALUE may contain that
+/// text, and only the declared lengths say where values end. Empty records are
+/// not counted, the same as the conversion skips them.
+int countAdifRecords(List<int> bytes) {
+  var count = 0;
+  for (final segment in parseAdifBytes(bytes)) {
+    if (segment.type == AdifSegmentType.record && segment.fields.isNotEmpty) count++;
+  }
+  return count;
+}
+
 /// Parses ADIF bytes into QSON.
 ///
 /// Never throws on malformed input: the tokenizer recovers what it can (see
