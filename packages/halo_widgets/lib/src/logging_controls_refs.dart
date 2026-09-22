@@ -42,6 +42,10 @@ typedef ActivityRefsConfig = ({
   String Function() callAtCursor,
 });
 
+/// Which refs a lookup guessed, and for which call. Parked alongside a
+/// parked draft — see [ActivityRefsModel.takeGuessSnapshot].
+typedef GuessProvenance = ({String? forCall, List<Map<String, dynamic>> guessed});
+
 /// The activity refs' state. See the file comment.
 class ActivityRefsModel extends ChangeNotifier with PanelModel {
   ActivityRefsModel({
@@ -331,6 +335,55 @@ class ActivityRefsModel extends ChangeNotifier with PanelModel {
       removed = true;
     }
     return removed;
+  }
+
+  /// Which refs a lookup put here, and for which call — the provenance a
+  /// draft's own data cannot carry, because [toData] writes refs and not
+  /// where they came from.
+  ///
+  /// Taken where the draft itself is parked (a wipe, a detour through an
+  /// earlier contact) and handed back to [restoreGuesses] with it. Without
+  /// the pair, a restored guess is indistinguishable from a ref the operator
+  /// typed, and the next correction to the callsign leaves the old call's
+  /// park on the contact.
+  /// Copied, not aliased: the caller holds this across the [clear] that
+  /// follows, and a snapshot sharing the model's own list would be one
+  /// in-place append away from following it.
+  GuessProvenance takeGuessSnapshot() => (forCall: _guessedFor, guessed: List.of(_guessed));
+
+  /// Re-marks the refs a [takeGuessSnapshot] remembered, after a restore has
+  /// put them back.
+  ///
+  /// The restore rebuilds every ref from plain data, so the maps now in the
+  /// field are NEW instances and the identity [clearGuessedRefs] takes them
+  /// back by would match nothing. Each remembered guess is therefore
+  /// re-pointed at the live map carrying the same `(type, ref)`.
+  ///
+  /// A guess with no live match is one the operator deleted before the
+  /// restore, and it stays in the list as its own map: `alreadyGiven`
+  /// compares by value, so the re-lookup still declines to propose it a
+  /// second time and the deletion sticks, while the identity take-back
+  /// matches nothing and so removes nothing.
+  void restoreGuesses(GuessProvenance snapshot) {
+    _guessedFor = snapshot.forCall;
+    _guessed = [
+      for (final guess in snapshot.guessed) _liveRefMatching(guess) ?? guess,
+    ];
+  }
+
+  /// The ref currently in the field carrying the same `(type, ref)` as
+  /// [guess], if any — identity, not equality, is what the caller needs.
+  Map<String, dynamic>? _liveRefMatching(Map<String, dynamic> guess) {
+    bool matches(Map<String, dynamic> ref) => ref['type'] == guess['type'] && ref['ref'] == guess['ref'];
+    for (final list in _controlRefs.values) {
+      for (final ref in list) {
+        if (matches(ref)) return ref;
+      }
+    }
+    for (final ref in _unmatched) {
+      if (matches(ref)) return ref;
+    }
+    return null;
   }
 
   // ---- Fields ----

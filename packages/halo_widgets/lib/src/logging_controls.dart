@@ -447,6 +447,13 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// yet saved — mirrors app-polo's `_willBeDeleted` staged-delete flag.
   bool _pendingDelete = false;
 
+  /// The guessed-ref provenance parked beside each of the draft's own two
+  /// parking slots: the wipe's undo, and the detour through an earlier
+  /// contact. See [ActivityRefsModel.takeGuessSnapshot] for why the draft
+  /// cannot carry this itself.
+  GuessProvenance? _undoGuesses;
+  GuessProvenance? _composingGuesses;
+
   /// Why this operation may not be written right now, or null when it may —
   /// a travelled clock over a non-test operation today, a shared operation
   /// this device only reads later (`WritePolicy`).
@@ -946,16 +953,21 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
       // a name entered via the More pane.
       if (oldWidget.session.editingQso == null && widget.session.editingQso != null) {
         _draft.snapshotComposing();
+        // Parked with it, for the reason given at [_handleWipeTap]: the
+        // reset below forgets which refs were a lookup's.
+        _composingGuesses = _refs.takeGuessSnapshot();
       }
       _resetEditingSessionState();
       if (widget.session.editingQso != null) {
         _populateFromEditingQso(widget.session.editingQso!);
       } else {
         final composingSnapshot = _draft.takeComposingSnapshot();
+        final composingGuesses = _composingGuesses;
+        _composingGuesses = null;
         _resetLocalFields();
         // Overlaid back on top of the blank fields _resetLocalFields just
         // seeded.
-        if (composingSnapshot != null) _restoreDraft(composingSnapshot);
+        if (composingSnapshot != null) _restoreDraft(composingSnapshot, guesses: composingGuesses);
       }
       // Self- vs other-spot eligibility can differ per extension (e.g. only
       // self-spotting an operation with an activation ref) — re-fetch
@@ -1208,6 +1220,10 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// paths in `didUpdateWidget`, which both start a fresh context.
   void _resetEditingSessionState() {
     _pendingDelete = false;
+    // Dropped with the undo slot that `resetSession` clears, so the two
+    // cannot drift apart: provenance outliving the draft it belongs to is
+    // the shape of the bug this whole pairing exists to prevent.
+    _undoGuesses = null;
     _draft.resetSession();
   }
 
@@ -2811,7 +2827,12 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   /// even if the user keeps typing — see `_buildWipeOrEditButton`), then
   /// wipes the form.
   void _handleWipeTap() {
+    // Beside the draft, never inside it: [QsoDraft.toData] writes the refs
+    // and not which of them a lookup proposed, and the wipe below is what
+    // forgets that.
+    _undoGuesses = _refs.takeGuessSnapshot();
     _draft.undoSlot.set(_draft.toData(), onExpire: () {
+      _undoGuesses = null;
       if (mounted) setState(() {});
     });
     _wipe();
@@ -2820,16 +2841,22 @@ class _LoggingControlsState extends State<LoggingControls> with WidgetsBindingOb
   void _restoreFromUndoSlot() {
     final data = _draft.undoSlot.take();
     if (data == null) return;
-    _restoreDraft(data);
+    final guesses = _undoGuesses;
+    _undoGuesses = null;
+    _restoreDraft(data, guesses: guesses);
   }
 
   /// Puts one of the draft's own records ([QsoDraft.toData]) back — a wipe
   /// undone, or a detour through an earlier contact returned from. One
   /// method for both, or the next rule added to one path is missed by the
   /// other.
-  void _restoreDraft(Map<String, dynamic> data) {
+  void _restoreDraft(Map<String, dynamic> data, {GuessProvenance? guesses}) {
     _draft.populate(() {
       _applyFieldsFromData(data, restoringDraft: true);
+      // Before the lookup below, and before any correction to the callsign:
+      // the refs are back but nothing yet says which of them a lookup put
+      // there, and an unmarked guess is never taken back.
+      if (guesses != null) _refs.restoreGuesses(guesses);
       _time.manualStartAtMillis = data['startAtMillis'] as int?;
       setState(() {});
     });

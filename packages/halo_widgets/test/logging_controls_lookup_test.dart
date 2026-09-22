@@ -2087,5 +2087,135 @@ void main() {
         isTrue,
       );
     });
+
+    // A restore puts the refs back as plain data, and plain data cannot say
+    // which of them a lookup proposed. Without the provenance travelling
+    // beside the draft, a restored park reads as the operator's own and no
+    // correction to the callsign ever takes it back — the contact is logged
+    // at a park the station was never at, with the chip lit and nothing on
+    // screen wrong.
+    group('a guess survives the draft being parked and put back', () {
+      Widget hostWithGuess(
+        ({
+          Future<Map<String, dynamic>?> Function(String, {
+            required Map<String, dynamic> qso,
+            required Map<String, dynamic> operation,
+            required bool online,
+            bool recentContext,
+          }) fn,
+          List<Map<String, dynamic>> seenQsos,
+          List<bool> seenRecentContext,
+        }) lookup, {
+        Qso? editingQso,
+      }) =>
+          MaterialApp(
+            home: Scaffold(
+              body: LoggingControls(
+                log: baseLog(),
+                session: LoggingSession(editingQso: editingQso, onEditCanceled: () {}),
+                radio: baseRadio(),
+                lookups: LookupHooks(lookup: lookup.fn),
+                activities: ActivityHooks(activityControls: const [hunter]),
+              ),
+            ),
+          );
+
+      testWidgets('a wipe undone keeps the park a lookup proposed, so correcting the call still takes it back',
+          (tester) async {
+        final lookup = refLookup(const [
+          {'type': 'potaHunter', 'ref': 'US-2080'}
+        ], forCall: 'KI2D');
+        await tester.pumpWidget(hostWithGuess(lookup));
+
+        await typeCall(tester, 'KI2D');
+        expect(find.text('✓ POTA'), findsOneWidget, reason: 'the park was picked up');
+
+        await tester.tap(find.bySemanticsIdentifier('action.wipe'));
+        await tester.pump();
+        await tester.tap(find.byIcon(MdiIcons.undo));
+        await tester.pump();
+        expect(find.text('✓ POTA'), findsOneWidget, reason: 'the undo brought the park back');
+
+        // The correction. This is the assertion the bug turned vacuous: the
+        // park came back unmarked, so nothing recognised it as the old
+        // call's and KI2E was logged at KI2D's park.
+        await typeCall(tester, 'KI2E');
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        final logged = await waitForQsos(tester, 1);
+
+        expect(logged.single.theirCall, 'KI2E');
+        expect(
+          (logged.single.data['refs'] as List?) ?? const [],
+          isNot(contains(containsPair('ref', 'US-2080'))),
+          reason: 'the park answered a question about KI2D, who is not the station being worked',
+        );
+      });
+
+      testWidgets('a detour through an earlier contact keeps it too', (tester) async {
+        final lookup = refLookup(const [
+          {'type': 'potaHunter', 'ref': 'US-2080'}
+        ], forCall: 'KI2D');
+        await tester.pumpWidget(hostWithGuess(lookup));
+
+        await typeCall(tester, 'KI2D');
+        expect(find.text('✓ POTA'), findsOneWidget);
+
+        // Away to an earlier contact and back — the draft is parked and
+        // restored, exactly as the undo path does it.
+        final earlier = (await tester.runAsync(() => qsos.add(operation.uuid, {
+              'their': {'call': 'W1AW'},
+              'startAtMillis': 1000000,
+              'freq': 14285.0,
+            })))!;
+        await tester.pumpWidget(hostWithGuess(lookup, editingQso: earlier));
+        await tester.pump();
+        await tester.pumpWidget(hostWithGuess(lookup));
+        await tester.pump();
+        expect(find.text('✓ POTA'), findsOneWidget, reason: 'the parked draft came back with its park');
+
+        await typeCall(tester, 'KI2E');
+        await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+        final logged = await waitForQsos(tester, 2);
+        final composed = logged.firstWhere((qso) => qso.theirCall == 'KI2E');
+
+        expect(
+          (composed.data['refs'] as List?) ?? const [],
+          isNot(contains(containsPair('ref', 'US-2080'))),
+        );
+      });
+
+      testWidgets('a guess the operator deleted before the wipe stays deleted after the undo', (tester) async {
+        // The other half of the provenance: the model gives a guess once per
+        // call, so that deleting one does not simply invite the re-lookup to
+        // put it straight back. An undo that restored only the refs still in
+        // the field would lose that, and hand back the park just removed.
+        final lookup = refLookup(const [
+          {'type': 'potaHunter', 'ref': 'US-2080'}
+        ], forCall: 'KI2D');
+        await tester.pumpWidget(hostWithGuess(lookup));
+
+        await typeCall(tester, 'KI2D');
+        expect(find.text('✓ POTA'), findsOneWidget);
+
+        // Delete it from the field the operator's own way.
+        await tester.tap(find.ancestor(of: find.text('✓ POTA'), matching: find.byType(ChoiceChip)));
+        await tester.pump(const Duration(milliseconds: 250));
+        await tester.pump();
+        await tester.enterText(find.widgetWithText(TextField, 'POTA'), '');
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pump();
+        expect(find.text('✓ POTA'), findsNothing, reason: 'the operator removed it');
+
+        await tester.tap(find.bySemanticsIdentifier('action.wipe'));
+        await tester.pump();
+        await tester.tap(find.byIcon(MdiIcons.undo));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 350));
+        await tester.pump();
+
+        expect(find.text('✓ POTA'), findsNothing,
+            reason: 'the re-lookup must not hand back the park the operator deleted');
+      });
+    });
   });
 }
