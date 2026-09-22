@@ -1197,10 +1197,11 @@ checkpoint, with the `qsos` logged since it, stands in for the whole-log read:
 the harness copies the checkpoint, replays that tail onto it (continuing the
 day `resumeDay` names, so no scorer's per-day tally restarts mid-day) and
 scores the candidate against the result. The host sends a checkpoint only when
-it can prove the log is what the checkpoint folded plus appended contacts
-(`scoreQso`), or when the log has not moved since the checkpoint was written
-(`scoreCandidates`, which sends no tail yet); otherwise the harness reads the
-log through `ctx.getQsos` and folds it cold.
+it can prove the log is what the checkpoint folded plus appended contacts;
+otherwise the harness reads the log through `ctx.getQsos` and folds it cold.
+The batched `scoreQsos` resumes the same way: after the first pass of a
+session, an append arrives as `resumeFrom` plus the appended contacts, and only
+their verdicts come back.
 `scoreCandidates` answers the same question for many at once, which is what the
 Spots Panel asks to mark the spots already worked: the log is folded once per
 scorer and every candidate scored against a COPY of the result, so no candidate

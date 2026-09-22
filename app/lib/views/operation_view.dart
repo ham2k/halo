@@ -21,6 +21,7 @@ import '../services/error_reporting_service.dart';
 import '../services/cat/zero_beat.dart';
 import '../services/extension_service.dart' show TemplateError;
 import '../services/hook_payloads.dart';
+import '../services/scoring_service.dart' show checkpointDigestOf;
 import '../services/panel_service.dart';
 import '../services/settings_service.dart';
 import '../services/wake_lock_service.dart';
@@ -1375,9 +1376,8 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     _maybeScheduleRescore();
   }
 
-  /// Debounced live rescore (DESIGN.md §11's per-edit TODO). Fires only when
-  /// the fingerprint moves, and records it only once a rescore actually runs
-  /// with a host — so an edit that arrives while the runtime is still booting
+  /// Debounced live rescore. Fires only when the fingerprint moves, and
+  /// records it only once a rescore actually runs with a host — so an edit that arrives while the runtime is still booting
   /// isn't silently marked scored. The score-cache/localData writes a rescore
   /// makes flow back to the UI through the QSO and operation streams; neither
   /// perturbs the fingerprint (`local_data` carries no stamp), so there's no
@@ -1396,21 +1396,12 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     });
   }
 
-  String _fingerprintFor(List<Qso> qsos) => qsos.map((q) => '${q.uuid}:${q.updatedAtMillis ?? ''}').join(',');
-
-  /// A cheap "has the log changed?" signal for the Spots Panel, which scores
-  /// its spots against the log. Count alone would miss an edit, and
-  /// [_fingerprintFor] is far too heavy to build on every rebuild of a long
-  /// log — `updatedAtMillis` only moves forward, so its maximum plus the count
-  /// catches an insert, a delete and an edit alike.
-  String _logRevisionFor(List<Qso> qsos) {
-    var latest = 0;
-    for (final qso in qsos) {
-      final at = qso.updatedAtMillis ?? 0;
-      if (at > latest) latest = at;
-    }
-    return '${qsos.length}:$latest';
-  }
+  /// The count and the checkpoint digest — every uuid with its stamp,
+  /// order-free — which is what a pass stamps its checkpoint with, so the two
+  /// agree about whether anything moved. An O(N) walk with no allocation, on a
+  /// path that runs on the UI isolate for every emission of a long log; the
+  /// Spots Panel takes the same value as its "has the log changed?" signal.
+  String _fingerprintFor(List<Qso> qsos) => '${qsos.length}:${checkpointDigestOf(qsos)}';
 
   /// The same Callsign field as Settings → Callsign, offered when a new
   /// operation was started with no profile callsign: the save lands in the
@@ -2838,7 +2829,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
                 onSuggestionSettled: _suggestionSettled,
                 closeSlidesSerial: _closeSlidesSerial,
                 onLogQso: _logQsoFromSpot,
-                logRevision: _logRevisionFor(qsos),
+                logRevision: _fingerprintFor(qsos),
                 qsos: qsos,
                 // Same payload the map panel highlights from, so the two panes
                 // agree on which station is being worked and on the

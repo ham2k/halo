@@ -382,19 +382,23 @@ fast-path, never truth**:
 - Cached values render immediately so list scroll never waits on the JS runtime
   (today's property, `scoring_service.dart:4-9`), then are replaced when the
   fresh pass lands.
-- Within a session the incremental path applies: an append scores from the
-  end-scoresheet; a mid-log edit replays from the nearest day checkpoint (§5.2).
+- Within a session the incremental path applies: an append replays only the
+  appended contacts onto the cached end-scoresheet, and so does the live
+  call-info check and the spots board (`resolveScoringResume` in
+  `scoring_service.dart` is the one rule for all three). A mid-log edit, a
+  delete, or a change to the operation folds the whole log again — a
+  checkpoint cannot un-fold a contact.
 
-This **already happens today**, but only incidentally: `_lastScoredFingerprint`
-is ephemeral view state (`operation_view.dart:364-378`), `null` on a fresh open,
-so the first QSO-stream emission always mismatches and schedules a rescore.
-That is worth stating as an explicit invariant, because persisting the
-fingerprint — an obvious "don't rescore what we already scored" optimization —
-would silently reintroduce stale scores after an extension update, with no error.
-
-One useful consequence: **checkpoints never need to be persisted.** Every open
-rebuilds them from a full pass, so they can live in memory for the session, and
-there is no checkpoint invalidation or versioning story to build.
+`ScoringService` owns that invariant: it resumes from a cached checkpoint only
+for an operation whose whole log THIS runtime has already folded and written,
+and forgets every such operation when the extension runtime's generation
+ticks (an extension installed, updated or switched off). The checkpoints
+themselves live in `local_data`, device-local and never synced, so a
+checkpoint written by a scorer that no longer exists or no longer agrees is
+simply never resumed from — there is no checkpoint versioning story to
+build. The tempting shortcut — "don't rescore what we already scored" from
+the cache alone — would silently reintroduce stale scores after an extension
+update, with no error.
 
 ### 5.1.3 Segments (M6) — the shape actually being built
 
@@ -2027,8 +2031,13 @@ recorded where they belong (§5.3, §5.4) rather than only here:
   puts a full pass at 6ms for 1,000 QSOs and 31ms for 5,000, so a worst-case
   mid-log replay is imperceptible and a per-*K*-QSO axis buys nothing. Resuming
   from the cached end-scoresheet still makes an append ~6x cheaper at 5,000
-  QSOs, so the capability stays in the contract — but it needs no Dart-side
-  plumbing at these sizes.
+  QSOs, so the capability stays in the contract. That figure is the fold
+  alone; what a pass costs the app is the whole-log read, the bridge crossing
+  and the score-cache write around it — about 350 ms per pass at 5,000
+  contacts on a desktop, against ~95 ms for an append that replays its tail —
+  so the Dart side does resume: every pass but the first after an open, and
+  both live paths, hand each scorer its checkpoint and the contacts since it
+  (§5.1.2).
   The same benchmark caught the fold being **quadratic**: copying the
   accumulated state per QSO cost 289ms at 5,000 QSOs. Scorers may now mutate
   the scoresheet they're handed, with the harness taking one defensive copy of

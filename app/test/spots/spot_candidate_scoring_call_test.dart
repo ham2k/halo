@@ -166,9 +166,10 @@ void main() {
     expect(result?.containsKey('loud'), isTrue);
   });
 
-  // The cached scoresheet lets a scorer skip folding the whole log, which is
-  // the dominant cost of a pass on a long log.
-  test('a supplied scoresheet reaches its own scorer as resumeFrom', () async {
+  // The cached checkpoint lets a scorer skip folding the whole log, which is
+  // the dominant cost of a pass on a long log; the tail beside it is what the
+  // checkpoint has not folded.
+  test('a supplied checkpoint reaches its own scorer as resumeFrom, with its day and the tail', () async {
     final host = _host(const <String, dynamic>{});
     final service = _ServiceWithHost(host);
 
@@ -176,11 +177,16 @@ void main() {
       operation: const {'stationCall': 'N0DEV'},
       operationUuid: 'op-1',
       candidates: {'a': _candidate('K1ABC')},
-      scoresheets: const {'core': {'workedByCall': {}}},
+      resume: (
+        checkpoints: {'core': (sheet: const {'workedByCall': {}}, day: 86400000)},
+        tail: [const {'uuid': 'c', 'their': {'call': 'K1ABC'}}],
+      ),
     );
 
     final args = host.calls.firstWhere((c) => c.method == 'scoreCandidates').args as Map;
     expect(args['resumeFrom'], const {'workedByCall': {}});
+    expect(args['resumeDay'], 86400000);
+    expect(args['qsos'], [const {'uuid': 'c', 'their': {'call': 'K1ABC'}}]);
   });
 
   // Omitting it must send NO `resumeFrom` at all rather than a null one: the

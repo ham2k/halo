@@ -21,6 +21,7 @@ import 'package:halo_widgets/halo_widgets.dart';
 
 import '../../services/hook_payloads.dart';
 import '../../services/halo_services.dart';
+import '../../services/scoring_service.dart';
 import '../../services/spots_service.dart';
 import 'package:halo_i18n/halo_i18n.dart';
 
@@ -772,18 +773,12 @@ class _SpotsPanelState extends State<SpotsPanel> {
   bool _spotScoresStale = false;
 
   /// Coalesces bursts of triggers into one pass. A run of contacts logged in a
-  /// pileup moves `logRevision` per QSO, and each pass is a whole-log fold per
-  /// scorer on the same runtime that serves the logging panel's own
+  /// pileup moves `logRevision` per QSO, and each pass scores every spot on
+  /// the board on the same runtime that serves the logging panel's own
   /// call-info scoring — so scoring every intermediate state costs the operator
   /// the responsiveness of the field they are typing in. Longer than that
   /// panel's own 300ms: nothing here is per-keystroke.
   Timer? _scoreDebounce;
-
-  /// The log this panel last kicked off a scoring pass for. A cached scoresheet
-  /// (see `_refreshSpotScores`) is only usable while this still matches, since
-  /// `ScoringService` writes that cache on its own debounce and it lags the log
-  /// by exactly the window in which a just-worked spot must strike.
-  String? _scoredLogRevision;
 
   String? _lastVfoBand;
   String? _lastVfoMode;
@@ -1122,14 +1117,13 @@ class _SpotsPanelState extends State<SpotsPanel> {
   /// so the log the candidates are judged against is folded per segment —
   /// otherwise a pre-contest contact makes a fresh station read as a duplicate.
   ///
-  /// Resumes from `ScoringService`'s cached scoresheets when the log has not
-  /// moved since this panel last scored, which is the case for every pass the
-  /// 2-minute spot refresh drives — the expensive whole-log fold is skipped and
-  /// only the candidates are scored. A pass triggered BY a log change runs cold
-  /// instead: that cache is written on the rescore's own debounce, so at the one
-  /// moment that matters — the second after working a station — it does not yet
-  /// contain the contact, and resuming from it would leave the spot unstruck
-  /// until some later pass.
+  /// Resumes from `ScoringService`'s cached checkpoints whenever the log this
+  /// panel holds is what they folded plus appended contacts — the same rule
+  /// the call-info pills use (`resolveScoringResume`), so the second after
+  /// working a station the new contact travels as the tail and the spot
+  /// strikes at once, and the 2-minute refresh replays nothing at all. Only a
+  /// log the checkpoints cannot account for (an edit, a delete, a change to
+  /// the operation) costs a whole-log fold.
   Future<void> _refreshSpotScores() async {
     if (_scoringSpots) {
       _spotScoresStale = true;
@@ -1154,16 +1148,17 @@ class _SpotsPanelState extends State<SpotsPanel> {
           return;
         }
 
-        final logMoved = _scoredLogRevision != widget.logRevision;
-        _scoredLogRevision = widget.logRevision;
-
         final segmented = SegmentedOperation.from(operation: widget.operation.data, qsos: widget.qsos);
         final scored = await widget.services.extensions.scoreCandidates(
           operation: segmented.current,
           operationUuid: widget.operation.uuid,
           candidates: candidates,
           segments: segmented.isSegmented ? segmented.payload : null,
-          scoresheets: logMoved ? null : _cachedScoresheets,
+          resume: resolveScoringResume(
+            scoring: widget.operation.localData['scoring'] as Map<String, dynamic>?,
+            operationUpdatedAtMillis: widget.operation.updatedAtMillis,
+            qsos: widget.qsos,
+          ),
           huntedRefTypes: _huntedRefTypes,
         );
         if (!mounted) return;
@@ -1188,18 +1183,6 @@ class _SpotsPanelState extends State<SpotsPanel> {
     } finally {
       _scoringSpots = false;
     }
-  }
-
-  /// `ScoringService`'s cached end-of-log scoresheets, keyed by scorer, or null
-  /// before the first rescore of this operation has landed. Never synced —
-  /// `local_data` is device-local (DESIGN.md §4).
-  Map<String, dynamic>? get _cachedScoresheets {
-    final scoring = widget.operation.localData['scoring'] as Map<String, dynamic>?;
-    if (scoring == null) return null;
-    final sheets = {
-      for (final entry in scoring.entries) entry.key: ?(entry.value as Map?)?['scoresheet'],
-    };
-    return sheets.isEmpty ? null : sheets;
   }
 
   /// The activity types this operation has hunted, cached by `ScoringService`.

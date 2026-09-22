@@ -134,20 +134,101 @@ int checkpointDigestOf(Iterable<Qso> rows) {
   return digest;
 }
 
+/// The day sections after a pass resumed from a checkpoint: [cached] is what
+/// the checkpoint's pass left, [fresh] what the tail's pass returned.
+///
+/// A resumed pass folds only the tail, so it reports sections for the tail's
+/// days alone, and the harness counts a day's contacts from the tail's first
+/// (`DayScoreSummary.count`). The scorer's own tallies in `scores` continue
+/// the checkpoint and are whole; the count beside them is not. So a day the
+/// tail continues keeps the fresh tallies and SUMS the two counts, a day the
+/// tail opened is appended, and every earlier day stays as it was. Days come
+/// back ascending, which is the order a full pass produces them in.
+List<Map<String, dynamic>> mergeDaySections(List<dynamic>? cached, List<dynamic>? fresh) {
+  final byDay = <int, Map<String, dynamic>>{};
+  for (final section in (cached ?? const []).whereType<Map<dynamic, dynamic>>()) {
+    final day = (section['day'] as num?)?.toInt();
+    if (day != null) byDay[day] = section.cast<String, dynamic>();
+  }
+  for (final section in (fresh ?? const []).whereType<Map<dynamic, dynamic>>()) {
+    final day = (section['day'] as num?)?.toInt();
+    if (day == null) continue;
+    final previous = byDay[day];
+    final count = ((section['count'] as num?)?.toInt() ?? 0) + ((previous?['count'] as num?)?.toInt() ?? 0);
+    byDay[day] = {...section.cast<String, dynamic>(), 'count': count};
+  }
+  final days = byDay.keys.toList()..sort();
+  return [for (final day in days) byDay[day]!];
+}
+
 class ScoringService {
   final ExtensionService extensions;
   final QsosRepository qsos;
   final OperationsRepository operations;
 
-  ScoringService({required this.extensions, required this.qsos, required this.operations});
+  /// The operations whose whole log THIS runtime has folded and written. A
+  /// pass may resume from a cached checkpoint only for one of these: a
+  /// checkpoint from an earlier launch, or from before an extension was
+  /// installed, updated or switched off, was written by a scorer that may no
+  /// longer exist or no longer agree, and resuming from it would carry its
+  /// verdicts forward with no error anywhere (docs/design/contests.md
+  /// §5.1.2). Added only once a full pass has WRITTEN — a pass that found no
+  /// scorer, an empty log or a failing runtime spends nothing — and cleared
+  /// whenever the runtime generation ticks.
+  final _foldedFully = <String>{};
 
-  /// Scores every QSO currently logged for [operation] and caches the
-  /// results. Degrades silently if the extension runtime isn't ready or the
-  /// hook call fails — scoring is a display enhancement, never load-bearing,
-  /// so callers don't need to handle a thrown error.
-  Future<void> rescoreOperation(Operation operation) async {
+  /// The pass in flight per operation. A second request queues behind it and
+  /// reads the operation afresh when its turn comes, so it continues the
+  /// write it waited for: two passes reading the same stale checkpoint and
+  /// racing to write would let the slower one persist a sheet the other had
+  /// already superseded.
+  final _inFlight = <String, Future<void>>{};
+
+  ScoringService({required this.extensions, required this.qsos, required this.operations}) {
+    extensions.runtimeGeneration.addListener(_onRuntimeGenerationChanged);
+  }
+
+  void _onRuntimeGenerationChanged() => _foldedFully.clear();
+
+  /// Scores the QSOs logged for the operation [operation] names and caches
+  /// the results. Degrades silently if the extension runtime isn't ready or
+  /// the hook call fails — scoring is a display enhancement, never
+  /// load-bearing, so callers don't need to handle a thrown error.
+  ///
+  /// A pass folds the whole log only when it has to. When the log is exactly
+  /// what the cached checkpoints folded plus appended contacts
+  /// ([resolveScoringResume], the one rule the live paths use too), every
+  /// scorer gets its checkpoint and just those contacts to replay, and only
+  /// their verdicts are written: a fold is forward-only, so an append never
+  /// changes an earlier contact's verdict. The whole log goes over when the
+  /// rule says cold; when this runtime has not yet folded the operation in
+  /// full ([_foldedFully]); when a scorer the log just started needing has no
+  /// checkpoint, or one fails on the tail — a pass writes every scorer's
+  /// verdict for a contact together, and a contact carrying half of them
+  /// would render without the rest; when there is nothing to replay although
+  /// something moved (a stamp the rule cannot see); and when the caller asks
+  /// with [full].
+  ///
+  /// The operation is read afresh when the pass runs, not taken from the
+  /// caller's copy: the caller's may predate a pass that just wrote.
+  Future<void> rescoreOperation(Operation operation, {bool full = false}) {
+    final uuid = operation.uuid;
+    final previous = _inFlight[uuid] ?? Future<void>.value();
+    final next = previous.then((_) => _run(uuid, full: full));
+    _inFlight[uuid] = next;
+    // A block body, deliberately: `whenComplete` waits on a future its
+    // callback returns, and `Map.remove` returns the very future being
+    // completed.
+    return next.whenComplete(() {
+      if (identical(_inFlight[uuid], next)) _inFlight.remove(uuid);
+    });
+  }
+
+  Future<void> _run(String uuid, {required bool full}) async {
     final host = extensions.host;
     if (host == null) return;
+    final operation = await operations.get(uuid);
+    if (operation == null) return;
 
     final all = await qsos.watchForOperation(operation.uuid).first;
     final qsoList = all.where((q) => !q.isEvent).toList();
@@ -210,8 +291,21 @@ class ScoringService {
       );
       if (scorers.isEmpty) return;
 
+      final cachedScoring = operation.localData['scoring'] as Map<String, dynamic>?;
+      final resume = full || !_foldedFully.contains(uuid)
+          ? null
+          : resolveScoringResume(
+              scoring: cachedScoring,
+              operationUpdatedAtMillis: operation.updatedAtMillis,
+              qsos: all,
+            );
+      final append = resume != null &&
+          resume.tail.isNotEmpty &&
+          scorers.every((scorer) => resume.checkpoints.containsKey(scorer.key));
+
       final payload = {
-        ...qsonPayloadFor(operation: operation, qsos: qsoList),
+        ...qsonPayloadFor(operation: operation, qsos: append ? const [] : qsoList),
+        if (append) 'qsos': resume.tail,
         // Only when there is something to resolve — an unsegmented operation
         // sends nothing extra and the harness takes its existing path.
         if (segmented.isSegmented) 'segments': segmented.payload,
@@ -221,12 +315,21 @@ class ScoringService {
       // cost the operation its core scoring, so each result is collected on its
       // own and a failed one is simply absent below.
       final results = await Future.wait(scorers.map((scorer) async {
+        final resumedFrom = append ? resume.checkpoints[scorer.key] : null;
         final result = await extensions.scoreQsos(
           scorerKey: scorer.key,
-          args: {...payload, 'ref': ?scorer.ref},
+          args: {
+            ...payload,
+            'ref': ?scorer.ref,
+            'resumeFrom': ?resumedFrom?.sheet,
+            'resumeDay': ?resumedFrom?.day,
+          },
         );
         return (key: scorer.key, fallback: scorer.fallback, result: result);
       }));
+      // On a full pass a scorer that failed is absent from every contact
+      // alike; on a tail it would be absent from the newest contact alone.
+      if (append && results.any((entry) => entry.result == null)) return _run(uuid, full: true);
 
       // Per-QSO verdicts are namespaced by scorer — `{core: {...}, cqww: {...}}`
       // — so several scorers can annotate the same QSO without colliding.
@@ -261,7 +364,9 @@ class ScoringService {
           }
         }
         scoringByScorer[entry.key] = {
-          'daySections': result['daySections'],
+          'daySections': append
+              ? mergeDaySections((cachedScoring?[entry.key] as Map?)?['daySections'] as List?, result['daySections'] as List?)
+              : result['daySections'],
           'operationSummary': result['operationSummary'],
           // The end-of-log checkpoint, kept so a later append and the live paths
           // can resume from it instead of re-folding the whole log — and the
@@ -289,6 +394,7 @@ class ScoringService {
         for (final entry in scoresByUuid.entries) entry.key: jsonEncode(entry.value),
       });
       await operations.updateLocalData(operation.uuid, {'scoring': scoringByScorer});
+      if (!append) _foldedFully.add(uuid);
     } catch (e, st) {
       debugPrint('[scoring] rescoreOperation failed: $e');
       ErrorReportingService.report(e, st, context: 'scoring:rescore-operation');

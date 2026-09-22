@@ -240,21 +240,17 @@ mixin ExtensionScoring {
   /// the caller: it is how the hook reaches the log, and an [operation] map
   /// without it scores every candidate against an EMPTY log — no errors, no
   /// warnings, just nothing ever reported as a duplicate.
-  /// [scoresheets] are `ScoringService`'s cached end-of-log scoresheets, keyed
-  /// by scorer — `Operation.localData['scoring'][key]['scoresheet']`. Supplying
-  /// them skips the whole-log fold each scorer would otherwise do, which on a
+  /// [resume] is as [scoreQso]'s: the cached checkpoints by scorer and the
+  /// contacts logged since them, from `ScoringService`'s
+  /// `resolveScoringResume`, which is the one place that decides when they
+  /// may be sent. A scorer that gets one skips the whole-log fold, which on a
   /// long log is the dominant cost of a pass.
-  ///
-  /// Only pass them when the log has not moved since that cache was written: a
-  /// scoresheet is a checkpoint, not a live view, so resuming from a stale one
-  /// judges candidates against a log missing its most recent contacts. The
-  /// caller knows which of the two it has; this cannot tell.
   Future<Map<String, Map<String, List<String>>>?> scoreCandidates({
     required Map<String, dynamic> operation,
     required String operationUuid,
     required Map<String, Map<String, dynamic>> candidates,
     List<Map<String, dynamic>>? segments,
-    Map<String, dynamic>? scoresheets,
+    ScoringResume? resume,
     Set<String> huntedRefTypes = const {},
   }) async {
     final host = this.host;
@@ -299,6 +295,8 @@ mixin ExtensionScoring {
 
     await Future.wait(scorers.map((scorer) async {
       try {
+        final checkpoint = resume?.checkpoints[scorer.key];
+        final tail = resume?.tail;
         final result = await host.invokeHook(
           'scoring',
           key: scorer.key,
@@ -308,7 +306,11 @@ mixin ExtensionScoring {
             'candidates': payload,
             'ref': ?scorer.ref,
             'segments': ?segments,
-            'resumeFrom': ?scoresheets?[scorer.key],
+            // As scoreQso's: absent, not null, without a checkpoint, and the
+            // tail only beside one.
+            'resumeFrom': ?checkpoint?.sheet,
+            'resumeDay': ?checkpoint?.day,
+            if (checkpoint != null && tail != null && tail.isNotEmpty) 'qsos': tail,
           },
           // Longer than scoreQso's: this folds the whole log once and then
           // scores every candidate, where that scores one.
