@@ -80,12 +80,14 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
       commit: commitBandText,
       clearFilter: () => _bandFilter = '',
       menu: bandMenu,
+      frame: bandFrame,
       step: stepBand,
     );
     modeFocus = _dropdownCommitFocusNode(
       commit: commitModeText,
       clearFilter: () => _modeFilter = '',
       menu: modeMenu,
+      frame: modeFrame,
       step: stepMode,
     );
   }
@@ -120,6 +122,16 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
   final modeMenu = MenuController();
   late final FocusNode bandFocus;
   late final FocusNode modeFocus;
+
+  // A focus node around each whole dropdown — never focusable or a Tab stop
+  // itself (the Focus widget that mounts it says so), so the focus ladder
+  // (docs/design/logging-fields.md) sees only the field. Its `hasFocus`
+  // covers every node inside: the field, the node of DropdownMenu's own
+  // that takes focus when its arrow opens the menu, and the menu overlay
+  // itself. Focus leaving the FRAME is what ends an interaction with the
+  // dropdown — see [_dropdownCommitFocusNode].
+  final bandFrame = FocusNode(debugLabel: 'Band dropdown');
+  final modeFrame = FocusNode(debugLabel: 'Mode dropdown');
 
   // The active menu filter — what the user actually typed — kept separate
   // from the field's display text, which arrow navigation overwrites with
@@ -316,6 +328,8 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     modeController.dispose();
     bandFocus.dispose();
     modeFocus.dispose();
+    bandFrame.dispose();
+    modeFrame.dispose();
     freqFocus.dispose();
     powerController.dispose();
     powerFocus.dispose();
@@ -849,14 +863,16 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
 
   /// A dropdown field's focus node, wired to [commit] typed text on Enter
   /// (letting the event continue toward the root Enter-logs-the-QSO
-  /// shortcut, so a logged QSO gets the just-committed value) and on focus
-  /// leaving the field. Focus handed to another node (Tab, a command moving
-  /// focus) also closes [menu], so the overlay doesn't linger; a pointer
-  /// down elsewhere closes it through the menu's own tap region. The
-  /// focus-loss commit is deferred a microtask: a pick from the menu can
-  /// move focus out before onSelected fires, and the pick must win over
-  /// the typed text. Gaining focus [clearFilter]s, so each fresh interaction
-  /// starts unfiltered.
+  /// shortcut, so a logged QSO gets the just-committed value) and when
+  /// focus leaves [frame] — the whole dropdown, not just the field: an
+  /// arrow-opened menu holds focus on a node of DropdownMenu's own, and a
+  /// Tab from there is as much a departure as one from the field. Focus
+  /// handed to another node (Tab, a command moving focus) also closes
+  /// [menu], so the overlay doesn't linger; a pointer down elsewhere closes
+  /// it through the menu's own tap region. The focus-loss commit is deferred
+  /// a microtask: a pick from the menu can move focus out before onSelected
+  /// fires, and the pick must win over the typed text. The field gaining
+  /// focus [clearFilter]s, so each fresh interaction starts unfiltered.
   ///
   /// Arrow keys with the menu CLOSED [step] the actual selection directly;
   /// with the menu open they're left to DropdownMenu's own shortcuts, which
@@ -867,33 +883,38 @@ class RadioControlModel extends ChangeNotifier with PanelModel {
     required VoidCallback commit,
     required VoidCallback clearFilter,
     required MenuController menu,
+    required FocusNode frame,
     required void Function(int delta) step,
   }) {
     final node = FocusNode();
     node.addListener(() {
-      if (node.hasFocus) {
-        clearFilter();
-      } else {
-        // Closed only when focus went to another NODE (Tab, a command moving
-        // focus) — nothing else takes an overlay down for those. The
-        // dropdown's own arrow moves focus to a node of its own on opening,
-        // so pressed while this field is focused it opens a menu this closes
-        // at once; the field is only focused then after an Escape. A blur that
-        // merely drops focus to the scope is a desktop pointer DOWN outside
-        // the text field, and a click on one of the menu's own entries is
-        // exactly that: closing here would remove the entry before the
-        // pointer up can select it, and the pick is lost. The menu's own tap
-        // region already closes it for a pointer down anywhere else.
-        if (menu.isOpen && FocusManager.instance.primaryFocus is! FocusScopeNode) menu.close();
-        // A menu still open past the blur is that pointer down on an entry,
-        // and the click finishes the interaction: a pick reaches onSelected,
-        // which supersedes any typed text. Committing here instead would
-        // clear the filter and re-expand the menu under the pressed pointer,
-        // so the release lands on a different entry, or on none and leaves
-        // the menu up. A press released off the entry leaves the typed text
-        // to [_onMenuTapOutside].
-        if (!menu.isOpen) scheduleMicrotask(commit);
-      }
+      if (node.hasFocus) clearFilter();
+    });
+    // Listened on the frame, not the field: `hasFocus` here stays true while
+    // focus moves between the field and the dropdown's own nodes, and turns
+    // false only when focus leaves the dropdown altogether.
+    frame.addListener(() {
+      if (frame.hasFocus) return;
+      // Closed only when focus went to another NODE (Tab, a command moving
+      // focus) — nothing else takes an overlay down for those. A blur that
+      // merely drops focus to the scope is a desktop pointer DOWN outside
+      // the text field, and a click on one of the menu's own entries is
+      // exactly that: closing here would remove the entry before the
+      // pointer up can select it, and the pick is lost. The menu's own tap
+      // region already closes it for a pointer down anywhere else.
+      final open = menu.isOpen;
+      final left = FocusManager.instance.primaryFocus is! FocusScopeNode;
+      if (open && left) menu.close();
+      // A menu that stays open past the blur is that pointer down on an
+      // entry, and the click finishes the interaction: a pick reaches
+      // onSelected, which supersedes any typed text. Committing here instead
+      // would clear the filter and re-expand the menu under the pressed
+      // pointer, so the release lands on a different entry, or on none and
+      // leaves the menu up. A press released off the entry leaves the typed
+      // text to [_onMenuTapOutside]. Decided from what was asked, not from
+      // `isOpen` after the close: the menu stays open for the length of
+      // its closing animation, and still reads as open here.
+      if (!open || left) scheduleMicrotask(commit);
     });
     node.onKeyEvent = (n, event) {
       if (event is! KeyDownEvent && event is! KeyRepeatEvent) return KeyEventResult.ignored;
@@ -1186,43 +1207,51 @@ class RadioControlFields extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Same tap-region group as the menu itself (MenuAnchor keys it on
-        // the MenuController), so this fires for the pointer downs that
-        // close the menu from outside and for no other — see
-        // [RadioControlModel.onBandMenuTapOutside].
-        TapRegion(
-          groupId: model.bandMenu,
-          onTapOutside: (_) => model.onBandMenuTapOutside(),
-          // DropdownMenu's own trailing arrow is a plain, unstyled IconButton
-          // (see dropdown_menu.dart) — with no style of its own it picks up
-          // Material 3's default toggle-button treatment, which paints a
-          // filled circle behind the glyph even when the menu is closed.
-          child: IconButtonTheme(
-            data: dropdownArrowTheme,
-            child: DropdownMenu<String>(
-              trailingIcon: dropdownTrailingIcon,
-              selectedTrailingIcon: dropdownSelectedTrailingIcon,
-              controller: model.bandController,
-              focusNode: model.bandFocus,
-              menuController: model.bandMenu,
-              initialSelection: model.band,
-              label: Text(t.qsoEditForm.band),
-              width: 86,
-              menuHeight: dropdownMenuMaxHeight(context),
-              // Pick-only menus. With search on (the default), every rebuild
-              // whose field text matches an entry re-runs scrollToHighlight —
-              // and this row rebuilds every second (the Time chip's clock), so
-              // an open menu kept snapping back to the selected item while the
-              // user scrolled.
-              enableSearch: false,
-              textStyle: textStyle,
-              inputDecorationTheme: decorationTheme,
-              dropdownMenuEntries: model.bandMenuEntries,
-              onSelected: (value) {
-                if (value == null) return;
-                model.pickBand(value);
-                onPicked();
-              },
+        // The frame: see [RadioControlModel.bandFrame]. Not a Tab stop and
+        // never focused itself; it only marks which nodes are the dropdown's.
+        Focus(
+          focusNode: model.bandFrame,
+          canRequestFocus: false,
+          skipTraversal: true,
+          includeSemantics: false,
+          // Same tap-region group as the menu itself (MenuAnchor keys it on
+          // the MenuController), so this fires for the pointer downs that
+          // close the menu from outside and for no other — see
+          // [RadioControlModel.onBandMenuTapOutside].
+          child: TapRegion(
+            groupId: model.bandMenu,
+            onTapOutside: (_) => model.onBandMenuTapOutside(),
+            // DropdownMenu's own trailing arrow is a plain, unstyled IconButton
+            // (see dropdown_menu.dart) — with no style of its own it picks up
+            // Material 3's default toggle-button treatment, which paints a
+            // filled circle behind the glyph even when the menu is closed.
+            child: IconButtonTheme(
+              data: dropdownArrowTheme,
+              child: DropdownMenu<String>(
+                trailingIcon: dropdownTrailingIcon,
+                selectedTrailingIcon: dropdownSelectedTrailingIcon,
+                controller: model.bandController,
+                focusNode: model.bandFocus,
+                menuController: model.bandMenu,
+                initialSelection: model.band,
+                label: Text(t.qsoEditForm.band),
+                width: 86,
+                menuHeight: dropdownMenuMaxHeight(context),
+                // Pick-only menus. With search on (the default), every rebuild
+                // whose field text matches an entry re-runs scrollToHighlight —
+                // and this row rebuilds every second (the Time chip's clock), so
+                // an open menu kept snapping back to the selected item while the
+                // user scrolled.
+                enableSearch: false,
+                textStyle: textStyle,
+                inputDecorationTheme: decorationTheme,
+                dropdownMenuEntries: model.bandMenuEntries,
+                onSelected: (value) {
+                  if (value == null) return;
+                  model.pickBand(value);
+                  onPicked();
+                },
+              ),
             ),
           ),
         ),
@@ -1259,33 +1288,39 @@ class RadioControlFields extends StatelessWidget {
           ),
         ),
         const SizedBox(width: Space.sm),
-        // Same two wrappers, for the same reasons, as the Band dropdown above.
-        TapRegion(
-          groupId: model.modeMenu,
-          onTapOutside: (_) => model.onModeMenuTapOutside(),
-          child: IconButtonTheme(
-            data: dropdownArrowTheme,
-            child: DropdownMenu<String>(
-              trailingIcon: dropdownTrailingIcon,
-              selectedTrailingIcon: dropdownSelectedTrailingIcon,
-              controller: model.modeController,
-              focusNode: model.modeFocus,
-              menuController: model.modeMenu,
-              initialSelection: model.displayedMode,
-              label: Text(t.loggingControls.mode),
-              width: 86,
-              menuHeight: dropdownMenuMaxHeight(context),
-              // See the Band dropdown: search off so rebuilds don't re-scroll
-              // the open menu to the selection.
-              enableSearch: false,
-              textStyle: textStyle,
-              inputDecorationTheme: decorationTheme,
-              dropdownMenuEntries: model.modeMenuEntries,
-              onSelected: (value) {
-                if (value == null) return;
-                model.pickMode(value);
-                onPicked();
-              },
+        // Same three wrappers, for the same reasons, as the Band dropdown above.
+        Focus(
+          focusNode: model.modeFrame,
+          canRequestFocus: false,
+          skipTraversal: true,
+          includeSemantics: false,
+          child: TapRegion(
+            groupId: model.modeMenu,
+            onTapOutside: (_) => model.onModeMenuTapOutside(),
+            child: IconButtonTheme(
+              data: dropdownArrowTheme,
+              child: DropdownMenu<String>(
+                trailingIcon: dropdownTrailingIcon,
+                selectedTrailingIcon: dropdownSelectedTrailingIcon,
+                controller: model.modeController,
+                focusNode: model.modeFocus,
+                menuController: model.modeMenu,
+                initialSelection: model.displayedMode,
+                label: Text(t.loggingControls.mode),
+                width: 86,
+                menuHeight: dropdownMenuMaxHeight(context),
+                // See the Band dropdown: search off so rebuilds don't re-scroll
+                // the open menu to the selection.
+                enableSearch: false,
+                textStyle: textStyle,
+                inputDecorationTheme: decorationTheme,
+                dropdownMenuEntries: model.modeMenuEntries,
+                onSelected: (value) {
+                  if (value == null) return;
+                  model.pickMode(value);
+                  onPicked();
+                },
+              ),
             ),
           ),
         ),

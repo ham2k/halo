@@ -2607,6 +2607,69 @@ void mousePickTests() {
     expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
   }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
+  testWidgets('the arrow opens the Mode menu while the field itself holds focus', (tester) async {
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']),
+    ));
+    await openControl(tester, MdiIcons.radio);
+
+    // A click on the text opens the menu with the field focused; Escape
+    // closes the menu and leaves the focus where it was.
+    await clickAcrossAFrame(tester, find.widgetWithText(TextField, 'Mode'));
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).focusNode!.hasFocus, isTrue,
+        reason: 'test setup: Escape keeps the field focused');
+
+    // Opening by the arrow hands focus to a node of the dropdown's own.
+    // Read as focus LEAVING the field, that blur closes the menu the same
+    // click just opened.
+    final arrow = find.descendant(
+      of: find.widgetWithText(DropdownMenu<String>, 'Mode'),
+      matching: find.byType(IconButton),
+    ).hitTestable();
+    await clickAcrossAFrame(tester, arrow);
+    expect(find.widgetWithText(MenuItemButton, 'CW').hitTestable(), findsOneWidget);
+
+    await clickAcrossAFrame(tester, find.widgetWithText(MenuItemButton, 'CW').hitTestable());
+    expect(fakeRadio.vfoA.mode, 'CW');
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  testWidgets('Tab out of an arrow-opened Mode menu takes it down and commits the typed text', (tester) async {
+    await tester.pumpWidget(host(
+      radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']),
+    ));
+    await openControl(tester, MdiIcons.radio);
+
+    await clickAcrossAFrame(tester, find.widgetWithText(TextField, 'Mode'));
+    await tester.enterText(find.widgetWithText(TextField, 'Mode'), 'C');
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    final arrow = find.descendant(
+      of: find.widgetWithText(DropdownMenu<String>, 'Mode'),
+      matching: find.byType(IconButton),
+    ).hitTestable();
+    await clickAcrossAFrame(tester, arrow);
+    expect(find.widgetWithText(MenuItemButton, 'CW').hitTestable(), findsOneWidget, reason: 'test setup');
+    expect(fakeRadio.vfoA.mode, isNot('CW'), reason: 'test setup: nothing committed yet');
+
+    // The arrow left focus on a node of the dropdown's own, not on the
+    // field. A departure watched only from the field never sees this Tab:
+    // the menu stays up over the field Tab moved on to, and the field keeps
+    // showing 'C' for a mode the VFO never received.
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump();
+    expect(find.byType(MenuItemButton).hitTestable(), findsNothing);
+    expect(fakeRadio.vfoA.mode, 'CW');
+    expect(tester.widget<TextField>(find.widgetWithText(TextField, 'Mode')).controller!.text, 'CW');
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
   testWidgets('Tab out of a focused Mode field takes its open menu down', (tester) async {
     await tester.pumpWidget(host(
       radio: baseRadio().copyWith(radioService: fakeRadio, enabledModes: ['SSB', 'CW', 'FT8']),
