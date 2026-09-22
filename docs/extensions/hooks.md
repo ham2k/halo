@@ -1168,14 +1168,16 @@ interface ScoringHook {
   scoreQso?(args: ScoreQsoRequest, ctx): Promise<QsoScoreNotices>
   scoreCandidates?(args: ScoreCandidatesRequest, ctx): Promise<ScoreCandidatesResult>
 }
-// ScoreQsosRequest: {operation, qsos, ref?, resumeFrom?}
+// ScoreQsosRequest: {operation, qsos, ref?, segments?, resumeFrom?, resumeDay?}
 // ScoreQsosResult:  {
 //   qsoScores: Record<uuid, QsoScoreVerdict>,   // one per QSO claimed; see above
 //   daySections: {day, count, scores: Record<tallyKey, ScoreTally>}[],
 //   operationSummary: Record<tallyKey, ScoreTally>,
 //   scoresheet,                                  // checkpoint to resume from
+//   scoresheetDay?,                              // the day it ends on, handed back as resumeDay
 // }
-// ScoreCandidatesRequest: {operation, candidates: {key, qso}[], ref?, segments?, resumeFrom?}
+// ScoreQsoRequest:        {operation, qso, excludeUuid?, ref?, segments?, resumeFrom?, resumeDay?, qsos?}
+// ScoreCandidatesRequest: {operation, candidates: {key, qso}[], ref?, segments?, resumeFrom?, resumeDay?, qsos?}
 // ScoreCandidatesResult:  Record<candidateKey, QsoScoreNotices>
 ```
 
@@ -1187,7 +1189,15 @@ both live paths for free.
 A candidate that carries no `startAtMillis` (the draft's time is still
 automatic) reaches the scorer stamped with the current time on both live
 paths, so a day-bucketed rule judges it as of now rather than at the epoch; a
-candidate that states a time keeps it.
+candidate that states a time keeps it. On both live paths a `resumeFrom`
+checkpoint, with the `qsos` logged since it, stands in for the whole-log read:
+the harness copies the checkpoint, replays that tail onto it (continuing the
+day `resumeDay` names, so no scorer's per-day tally restarts mid-day) and
+scores the candidate against the result. The host sends a checkpoint only when
+it can prove the log is what the checkpoint folded plus appended contacts
+(`scoreQso`), or when the log has not moved since the checkpoint was written
+(`scoreCandidates`, which sends no tail yet); otherwise the harness reads the
+log through `ctx.getQsos` and folds it cold.
 `scoreCandidates` answers the same question for many at once, which is what the
 Spots Panel asks to mark the spots already worked: the log is folded once per
 scorer and every candidate scored against a COPY of the result, so no candidate

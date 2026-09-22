@@ -42,7 +42,8 @@ import 'catalog_service.dart' show CatalogUnreachable;
 import 'data_file_manager.dart' show DataFileRemoveHookFailed;
 import 'extension_catalog_migration.dart'
     show BundleWouldNotEvaluate, CatalogNotWired, SettingsNotWired, UpgradeLeftNoRuntime;
-import 'extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
+import 'extension_scoring.dart' show ScoringHookFailure;
+import 'extension_service.dart' show MalformedSpotDataException;
 import 'windows_webview.dart' show WindowsWebViewUnavailable;
 import 'map_error_reporter.dart' show MapError;
 import 'app_storage.dart' show PreferencesFileUnreadable;
@@ -420,7 +421,7 @@ class ErrorPolicy {
     ),
     ErrorRule(
       id: 'scoring-hook-failed',
-      reason: 'one scoring hook threw or timed out (extension_service.dart\'s ScoringHookFailure) '
+      reason: 'one scoring hook threw or timed out (extension_scoring.dart\'s ScoringHookFailure) '
           '— a defect in that extension, and nothing the operator can act on mid-activation; the '
           'pass drops that scorer\'s verdicts rather than keeping stale ones, so the board reads '
           'available rather than worked',

@@ -446,10 +446,13 @@ the entry row.
 
 The live single-candidate pass (`ScoringHook.scoreQso`) follows that same
 segment, for the same reason — the scoring pills and the primary fields have to
-agree about what is running. It gets the timeline as well: it always runs cold
-(the host sends no `resumeFrom`), so it rebuilds the scoresheet from the log on
-every keystroke, and that rebuild has to be segmented too or a contest's dupe
-check counts contacts made before it started.
+agree about what is running. It gets the timeline as well: when the host can
+prove the cached checkpoint still describes the log (`resolveScoringResume` in
+`scoring_service.dart` — the contacts it folded still digest to the value it
+recorded, so none was edited or deleted, and everything since comes after
+them in log order), the pass resumes from it and replays only the contacts
+logged since; otherwise it rebuilds the scoresheet from the log. Either fold has to be segmented, or a contest's dupe check counts
+contacts made before it started.
 
 **Segments REPLACE, and they do not carry forward.** A `break`/`start` states
 what is true for the stretch that follows. A segment that names `refs` owns them

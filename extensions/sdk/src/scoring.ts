@@ -47,8 +47,18 @@ const DAY_IN_MILLIS = 1000 * 60 * 60 * 24
 /// So the harness takes exactly one copy of any checkpoint it's given, at the
 /// boundary, and a scorer can never corrupt a cached scoresheet through it.
 /// One O(state) copy per call keeps the fold O(N) overall.
-function copyCheckpoint<S extends Scoresheet>(sheet: S): S {
+function copySheet<S extends Scoresheet>(sheet: S): S {
   return JSON.parse(JSON.stringify(sheet)) as S
+}
+
+/// A COPY of the checkpoint's sheet, never the cached object itself — a scorer
+/// may mutate what it is handed — with the day it ends on (`resumeDay`). The
+/// day has to come from the caller because the fold cannot recover it from the
+/// sheet: without it, the first contact replayed onto a checkpoint reads as a
+/// new day whatever the time, and an activity that resets its per-day worked
+/// maps on that flag then forgets every contact worked today.
+function openCheckpoint<S extends Scoresheet>(resumeFrom: JSONValue, resumeDay: number | undefined): { sheet: S; day: number | undefined } {
+  return { sheet: copySheet(resumeFrom as S), day: typeof resumeDay === 'number' ? resumeDay : undefined }
 }
 
 /// UTC calendar day a QSO falls in, following app-polo/web-lofi's convention.
@@ -131,9 +141,12 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     onQso?: (uuid: string | undefined, score: QsoScoreVerdict) => void,
     onDayEnd?: (day: number, count: number, sheet: S) => void,
     segments?: OperationSegmentPayload[],
-  ): S {
+    startDay?: number,
+  ): { sheet: S; day: number | undefined } {
     let sheet = scoresheet
-    let currentDay: number | undefined
+    // The day the checkpoint ended on, when resuming: a tail that continues it
+    // must not open with `isNewDay`.
+    let currentDay: number | undefined = startDay
     let dayCount = 0
     // Segments advance WITH the fold rather than being searched per QSO — the
     // loop is already chronological, so this is a pointer, not a lookup.
@@ -177,7 +190,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
       onQso?.(typeof qso.uuid === 'string' ? qso.uuid : undefined, result.score)
     }
     if (currentDay !== undefined) onDayEnd?.(currentDay, dayCount, sheet)
-    return sheet
+    return { sheet, day: currentDay }
   }
 
   /// The log folded up to now, ready for a not-yet-logged candidate to be
@@ -185,20 +198,32 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
   ///
   /// The returned sheet is always the harness's own — never the caller's
   /// cached checkpoint — so a scorer mutating it can't corrupt the cache.
+  /// `day` is the day the sheet ends on, or undefined when nothing says (an
+  /// empty log, a checkpoint with no day). The live verdicts never read it —
+  /// `isNewDay` only ever moves a scorer's per-day tallies, which the live
+  /// paths discard — but a replayed tail must not open a day mid-day.
   async function liveScoresheet(
     args: {
       operation: Record<string, JSONValue>
       ref?: Record<string, JSONValue>
       segments?: OperationSegmentPayload[]
       resumeFrom?: JSONValue
+      resumeDay?: number
+      qsos?: Record<string, JSONValue>[]
     },
     ctx: HookContext,
     excludeUuid?: string,
-  ): Promise<S> {
+  ): Promise<{ sheet: S; day: number | undefined }> {
     if (args.resumeFrom !== undefined) {
-      // The cached end-of-log scoresheet — no whole-log read, which is the
-      // point: this runs on every debounced keystroke.
-      return copyCheckpoint(args.resumeFrom as S)
+      // The cached end-of-log checkpoint — no whole-log read, which is the
+      // point: this runs on every debounced keystroke. `qsos` is the tail
+      // logged since it, replayed onto the copy; the host sends only contacts
+      // the checkpoint has not folded (it has no way to un-fold one), so an
+      // edit or a delete arrives as no `resumeFrom` at all.
+      const { sheet, day } = openCheckpoint<S>(args.resumeFrom, args.resumeDay)
+      const tail = chronological(args.qsos ?? []).filter((q) => !excludeUuid || q.uuid !== excludeUuid)
+      if (tail.length === 0) return { sheet, day }
+      return fold(sheet, tail, args, ctx, undefined, undefined, args.segments, day)
     }
     // Cold cache: rebuild from the log, skipping the record being edited so
     // it can't flag itself as its own duplicate.
@@ -229,14 +254,13 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
       const qsos = chronological(args.qsos)
       // `resumeFrom` means `qsos` is only the tail to replay from a checkpoint;
       // without one this is a full pass from a blank scoresheet.
-      const start = args.resumeFrom !== undefined
-        ? copyCheckpoint(args.resumeFrom as S)
-        : scorer.startScoresheet({ operation: args.operation, ref: args.ref }, ctx)
+      const resumed = args.resumeFrom !== undefined ? openCheckpoint<S>(args.resumeFrom, args.resumeDay) : undefined
+      const start = resumed?.sheet ?? scorer.startScoresheet({ operation: args.operation, ref: args.ref }, ctx)
 
       const qsoScores: Record<string, QsoScoreVerdict> = {}
       const daySections: DayScoreSummary[] = []
 
-      const end = fold(
+      const { sheet: end, day: endDay } = fold(
         start,
         qsos,
         args,
@@ -252,6 +276,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
           })
         },
         args.segments,
+        resumed?.day,
       )
 
       return {
@@ -262,6 +287,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
           ctx,
         ),
         scoresheet: end as JSONValue,
+        ...(endDay !== undefined && { scoresheetDay: endDay }),
       }
     },
 
@@ -269,7 +295,7 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     /// its notices/alerts. Nothing is recorded — the resulting scoresheet is
     /// discarded, which is exactly why one `scoreQso` can serve both paths.
     async scoreQso(args: ScoreQsoRequest, ctx: HookContext): Promise<QsoScoreNotices> {
-      const sheet = await liveScoresheet(args, ctx, args.excludeUuid)
+      const { sheet } = await liveScoresheet(args, ctx, args.excludeUuid)
       const { score } = scorer.scoreQso(
         { scoresheet: sheet, qso: candidateAsOfNow(args.qso), operation: args.operation, ref: args.ref, isNewDay: false },
         ctx,
@@ -293,12 +319,12 @@ export function contestScorer<S extends Scoresheet = Scoresheet>(
     /// contract that makes the batch fold linear. Without it the first
     /// candidate's call would count as worked for every candidate after it.
     async scoreCandidates(args: ScoreCandidatesRequest, ctx: HookContext): Promise<ScoreCandidatesResult> {
-      const base = await liveScoresheet(args, ctx)
+      const { sheet: base } = await liveScoresheet(args, ctx)
       const result: ScoreCandidatesResult = {}
       for (const candidate of args.candidates) {
         const { score } = scorer.scoreQso(
           {
-            scoresheet: copyCheckpoint(base),
+            scoresheet: copySheet(base),
             qso: candidateAsOfNow(candidate.qso),
             operation: args.operation,
             ref: args.ref,

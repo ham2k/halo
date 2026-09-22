@@ -1235,6 +1235,12 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
     setState(() => _operation = patched);
     _setCommandContext(patched);
     if (operation == null) return;
+    // A saved change to the operation itself — a reference corrected, an
+    // exchange edited — changes what every contact scores as, so it is a
+    // rescore like a logged contact is. Only once one is held: on open the
+    // log's first emission schedules the pass, and a second from here would
+    // fold the whole log twice.
+    if (previous != null && previous.updatedAtMillis != operation.updatedAtMillis) _maybeScheduleRescore();
 
     // With no profile callsign yet (fresh install — no onboarding flow
     // exists), the callsign editor takes the Activities pane's place:
@@ -1387,9 +1393,10 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// with a host — so an edit that arrives while the runtime is still booting
   /// isn't silently marked scored. The score-cache/localData writes a rescore
   /// makes flow back to the UI through the QSO and operation streams; neither
-  /// perturbs the fingerprint, so there's no feedback loop.
+  /// perturbs the fingerprint (`local_data` carries no stamp), so there's no
+  /// feedback loop.
   void _maybeScheduleRescore() {
-    final fingerprint = _fingerprintFor(_latestQsos);
+    final fingerprint = '${_operation?.updatedAtMillis}|${_fingerprintFor(_latestQsos)}';
     if (fingerprint == _lastScoredFingerprint) return;
     _rescoreDebounce?.cancel();
     _rescoreDebounce = Timer(const Duration(milliseconds: 750), () async {

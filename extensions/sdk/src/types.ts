@@ -1062,6 +1062,9 @@ export interface ScoreTally {
 /// with that day's accumulated tallies per rule key.
 export interface DayScoreSummary {
   day: number
+  /// Contacts this pass folded on the day. On a pass resumed from a checkpoint
+  /// that is the tail's share of the day, not the day's total — the tallies in
+  /// `scores` continue the checkpoint; this count does not.
   count: number
   scores: Record<string, ScoreTally>
 }
@@ -1092,6 +1095,11 @@ export interface ScoreQsosRequest {
   /// the tail to replay from that point rather than the whole log, so appending
   /// a QSO doesn't re-fold the operation.
   resumeFrom?: JSONValue
+  /// The day `resumeFrom` ends on — `ScoreQsosResult.scoresheetDay` from the
+  /// pass that produced it. Without it the first contact of the tail reads as
+  /// a new day whatever its time, and a scorer that resets per-day state on
+  /// that flag resets it mid-day.
+  resumeDay?: number
 }
 
 export interface ScoreQsosResult {
@@ -1103,8 +1111,11 @@ export interface ScoreQsosResult {
   /// running totals) — cached on the operation, not any one QSO.
   operationSummary: Record<string, ScoreTally>
   /// End-of-pass scoresheet, cached by the core and handed back as
-  /// `resumeFrom` on the next append.
+  /// `resumeFrom` on the next append and on the live paths.
   scoresheet?: JSONValue
+  /// The day (UTC midnight, millis) the pass ended on, to hand back as
+  /// `resumeDay` beside `scoresheet`. Absent when the pass folded nothing.
+  scoresheetDay?: number
 }
 
 /// Scores a single in-progress (not-yet-logged) QSO for the logging panel's
@@ -1130,6 +1141,15 @@ export interface ScoreQsoRequest {
   /// end-of-log scoresheet, so the candidate can be scored against it directly
   /// instead of re-folding the whole log on every keystroke.
   resumeFrom?: JSONValue
+  /// As `ScoreQsosRequest.resumeDay`: the day `resumeFrom` ends on.
+  resumeDay?: number
+  /// With `resumeFrom`: the contacts logged SINCE that checkpoint, replayed
+  /// onto it before the candidate is scored — the second or two between a
+  /// contact and the rescore that folds it, which is exactly when the next
+  /// call is being typed. Only contacts the checkpoint has not seen belong
+  /// here; a checkpoint cannot un-fold a contact, so an edit or a delete means
+  /// no `resumeFrom` at all. Ignored without one.
+  qsos?: Record<string, JSONValue>[]
 }
 
 /// Merged, de-duped notice/alert keys for one candidate QSO — e.g.
@@ -1165,6 +1185,10 @@ export interface ScoreCandidatesRequest {
   segments?: OperationSegmentPayload[]
   /// The cached end-of-log scoresheet, as `ScoreQsoRequest.resumeFrom`.
   resumeFrom?: JSONValue
+  /// As `ScoreQsoRequest.resumeDay`.
+  resumeDay?: number
+  /// As `ScoreQsoRequest.qsos`: the tail since the checkpoint.
+  qsos?: Record<string, JSONValue>[]
 }
 
 /// Keyed by `ScoreCandidatesRequest.candidates[].key`. Every candidate comes

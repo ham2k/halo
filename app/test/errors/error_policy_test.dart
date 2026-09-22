@@ -33,7 +33,8 @@ import 'package:ham2k_logger/services/bottom_chrome_squeezed.dart';
 import 'package:ham2k_logger/services/error_policy.dart';
 import 'package:halo_core/halo_core.dart'
     show LogFromNewerBuild, MalformedQsonDataException, QsonFieldType, QsonTypeViolation;
-import 'package:ham2k_logger/services/extension_service.dart' show MalformedSpotDataException, ScoringHookFailure;
+import 'package:ham2k_logger/services/extension_scoring.dart' show ScoringHookFailure;
+import 'package:ham2k_logger/services/extension_service.dart' show MalformedSpotDataException;
 import 'package:ham2k_logger/services/windows_webview.dart' show WindowsWebViewUnavailable;
 import 'package:ham2k_logger/services/map_error_reporter.dart' show MapError;
 import 'package:ham2k_logger/services/data_file_manager.dart' show DataFileRemoveHookFailed;

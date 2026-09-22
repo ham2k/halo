@@ -4,7 +4,7 @@
 // Reading `operations.local_data.scoring`, which is keyed by SCORER
 // (docs/design/contests.md §5.1):
 //
-//   {core: {daySections, operationSummary, scoresheet}, cqww: {…}}
+//   {core: {daySections, operationSummary, scoresheet, scoresheetDay, checkpoint}, cqww: {…}}
 //
 // An older cached blob can still hold the flat pre-scorer-keyed shape
 // (`{daySections, operationSummary}` at the top level), so a consumer that

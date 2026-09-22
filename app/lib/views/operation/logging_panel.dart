@@ -15,6 +15,7 @@ import 'package:halo_i18n/halo_i18n.dart';
 import '../../services/cat/equipment.dart';
 import '../../services/error_reporting_service.dart';
 import '../../services/link_opener.dart';
+import '../../services/scoring_service.dart';
 import '../../services/settings_service.dart';
 import '../../tools/call_location_line.dart';
 import '../../tools/operation_stats.dart';
@@ -891,16 +892,28 @@ class _LoggingPanelState extends State<LoggingPanel> {
               // no activity on its own refs, so without this the pills fall back
               // to the core dupe rule and call a station worked at another park a
               // plain duplicate (docs/design/activities.md §4).
-              scoreQso: ({required operation, required qso, excludeUuid, segments}) =>
-                  widget.services.extensions.scoreQso(
-                    operation: operation,
-                    qso: qso,
-                    excludeUuid: excludeUuid,
-                    segments: segments,
-                    huntedRefTypes: ((widget.operation.localData['huntedRefTypes'] as List?) ?? const [])
-                        .whereType<String>()
-                        .toSet(),
-                  ),
+              scoreQso: ({required operation, required qso, excludeUuid, segments}) {
+                // The last rescore's checkpoints, when the log this panel holds
+                // is exactly what they folded plus appended contacts — so the
+                // pills resume from a cached sheet instead of re-folding a
+                // long log on every keystroke (resolveScoringResume says when).
+                final resume = resolveScoringResume(
+                  scoring: widget.operation.localData['scoring'] as Map<String, dynamic>?,
+                  operationUpdatedAtMillis: widget.operation.updatedAtMillis,
+                  qsos: widget.qsos,
+                  excludeUuid: excludeUuid,
+                );
+                return widget.services.extensions.scoreQso(
+                  operation: operation,
+                  qso: qso,
+                  excludeUuid: excludeUuid,
+                  segments: segments,
+                  huntedRefTypes: ((widget.operation.localData['huntedRefTypes'] as List?) ?? const [])
+                      .whereType<String>()
+                      .toSet(),
+                  resume: resume,
+                );
+              },
               scoreNoticeLabel: (key) => scoreNoticeLabel(context, key),
               workedBefore: (call, {excludingQsoUuid}) =>
                   widget.services.qsos.historyStartTimesForCall(call, excludingUuid: excludingQsoUuid),

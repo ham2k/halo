@@ -35,7 +35,7 @@ const _slack = 100;
 /// the file shrinks; never raise one.
 const _ceilings = <String, int>{
   '../packages/halo_widgets/lib/src/logging_controls.dart': 3896,
-  'lib/services/extension_service.dart': 4060,
+  'lib/services/extension_service.dart': 3842,
   'lib/views/operation/spots_panel.dart': 3647,
   'lib/views/operation_view.dart': 3252,
   'lib/views/operation/activities_view.dart': 3071,
