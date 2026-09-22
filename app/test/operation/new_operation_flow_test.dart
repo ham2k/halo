@@ -95,9 +95,9 @@ void main() {
     await tester.enterText(find.descendant(of: find.byType(HaloDialog), matching: find.byType(TextField)), 'ki2d');
     await tester.pump();
     expect(
-      find.descendant(of: find.byType(HaloDialog), matching: find.text('ki2d')),
+      find.descendant(of: find.byType(HaloDialog), matching: find.text('KI2D')),
       findsOneWidget,
-      reason: 'the typed callsign should be in the dialog field',
+      reason: 'the typed callsign should be in the dialog field, uppercased as typed',
     );
     await tester.tap(find.descendant(of: find.byType(HaloDialog), matching: find.text('Save')));
     await tester.pumpAndSettle();

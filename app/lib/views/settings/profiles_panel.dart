@@ -97,7 +97,7 @@ class _ProfilesPanelState extends State<ProfilesPanel> {
       title: context.t.common.callsign,
       fieldLabel: context.t.common.callsign,
       fieldInitial: widget.services.settings.activeProfile.operatorCall,
-      fieldCapitalization: TextCapitalization.characters,
+      callsign: true,
     );
     if (result == null) return;
     await widget.services.setOperatorCall(result);
@@ -213,8 +213,8 @@ class _PersonalInfoDialogState extends State<_PersonalInfoDialog> {
 
   void _save() => Navigator.of(context).pop({
     for (final entry in _controllers.entries)
-      // The section is a code, and TextCapitalization is only a keyboard hint
-      // that a hardware keyboard ignores — so the uppercasing happens here.
+      // Uppercased here too: the field's formatter only runs on an edit, and a
+      // section that arrived lowercase (sync, import) may never have had one.
       entry.key: entry.key == 'operatorSection' ? entry.value.text.toUpperCase() : entry.value.text,
   });
 
@@ -248,6 +248,14 @@ class _PersonalInfoDialogState extends State<_PersonalInfoDialog> {
                 'operatorSection' => TextCapitalization.characters,
                 _ => TextCapitalization.words,
               },
+              // Codes and addresses, not prose: nothing for a keyboard to
+              // suggest or correct.
+              autocorrect: key != 'operatorEmail' && key != 'operatorSection',
+              enableSuggestions: key != 'operatorEmail' && key != 'operatorSection',
+              // The section is a code, and TextCapitalization is only a
+              // keyboard hint that a hardware keyboard ignores — so it is
+              // uppercased as typed.
+              inputFormatters: key == 'operatorSection' ? const [UpperCaseTextFormatter()] : null,
               decoration: poloFieldDecoration(context, _labelFor(key)),
               onSubmitted: (_) => _save(),
             ),

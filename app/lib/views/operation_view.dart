@@ -1358,13 +1358,7 @@ class _OperationViewState extends State<OperationView> with DockHost<OperationVi
   /// created before the callsign existed. Cancelling leaves both unset —
   /// the operation's own settings can fix it later.
   Future<void> _promptForCallsign(Operation operation) async {
-    final result = await editOneFieldDialog(
-      context,
-      title: context.t.common.callsign,
-      fieldLabel: context.t.common.callsign,
-      fieldInitial: '',
-      fieldCapitalization: TextCapitalization.characters,
-    );
+    final result = await editOneFieldDialog(context, title: context.t.common.callsign, fieldLabel: context.t.common.callsign, fieldInitial: '', callsign: true);
     if (result == null || result.trim().isEmpty) return;
     // Profile first, because the operation write is the one that can fail:
     // `WritePolicy` refuses it on a travelled clock, and an operation created

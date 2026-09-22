@@ -432,12 +432,19 @@ Future<String?> editOneFieldDialog(
   required String fieldLabel,
   required String fieldInitial,
   TextCapitalization fieldCapitalization = TextCapitalization.none,
+  bool callsign = false,
   String saveLabel = 'Save',
 }) {
   return showHaloDialog<String>(
     context: context,
-    builder: (context) =>
-        _OneFieldDialog(title: title, fieldLabel: fieldLabel, fieldInitial: fieldInitial, fieldCapitalization: fieldCapitalization, saveLabel: saveLabel),
+    builder: (context) => _OneFieldDialog(
+      title: title,
+      fieldLabel: fieldLabel,
+      fieldInitial: fieldInitial,
+      fieldCapitalization: fieldCapitalization,
+      callsign: callsign,
+      saveLabel: saveLabel,
+    ),
   );
 }
 
@@ -446,6 +453,10 @@ class _OneFieldDialog extends StatefulWidget {
   final String fieldLabel;
   final String fieldInitial;
   final TextCapitalization fieldCapitalization;
+
+  /// The field holds one callsign: shaped by [_CallsignField], and warned
+  /// about when it doesn't parse. [fieldCapitalization] is then moot.
+  final bool callsign;
   final String saveLabel;
 
   const _OneFieldDialog({
@@ -453,6 +464,7 @@ class _OneFieldDialog extends StatefulWidget {
     required this.fieldLabel,
     required this.fieldInitial,
     required this.fieldCapitalization,
+    required this.callsign,
     required this.saveLabel,
   });
 
@@ -475,14 +487,31 @@ class _OneFieldDialogState extends State<_OneFieldDialog> {
   Widget build(BuildContext context) {
     return HaloDialog(
       title: Text(widget.title),
-      content: TextField(
-        selectAllOnFocus: false,
-        controller: _controller,
-        autofocus: true,
-        textCapitalization: widget.fieldCapitalization,
-        decoration: poloFieldDecoration(context, widget.fieldLabel),
-        onSubmitted: (_) => _save(),
-      ),
+      content: widget.callsign
+          ? ListenableBuilder(
+              listenable: _controller,
+              builder: (context, _) {
+                final call = _controller.text.trim();
+                return _CallsignField(
+                  controller: _controller,
+                  autofocus: true,
+                  decoration: poloFieldDecoration(
+                    context,
+                    widget.fieldLabel,
+                    errorText: call.isEmpty || looksLikeCallsign(call) ? null : context.t.dialogs.callChange.invalidCallsign(call: call),
+                  ),
+                  onSubmitted: (_) => _save(),
+                );
+              },
+            )
+          : TextField(
+              selectAllOnFocus: false,
+              controller: _controller,
+              autofocus: true,
+              textCapitalization: widget.fieldCapitalization,
+              decoration: poloFieldDecoration(context, widget.fieldLabel),
+              onSubmitted: (_) => _save(),
+            ),
       cancel: TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(context.t.common.cancel)),
       actions: [FilledButton(onPressed: _save, child: Text(widget.saveLabel))],
     );
@@ -862,13 +891,10 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            TextField(
-              selectAllOnFocus: false,
+            _CallsignField(
               controller: _stationCallController,
               autofocus: true,
-              textCapitalization: TextCapitalization.characters,
-              style: const TextStyle(fontFamily: 'RobotoMono'),
-              inputFormatters: [TextInputFormatter.withFunction((oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()))],
+              allowCommas: true,
               decoration: poloFieldDecoration(context, context.t.dialogs.stationCallsign, errorText: _invalidCallsignsText(_invalidStationCalls)),
               onSubmitted: (_) => _save(),
             ),
@@ -877,13 +903,9 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
             // (`QsosRepository.restampSegmentStationCall`).
             if (_contactsFailed) _adviceNote(context.t.dialogs.callChange.contactsUnreadable),
             const SizedBox(height: Space.lg),
-            TextField(
-              selectAllOnFocus: false,
+            _CallsignField(
               controller: _operatorCallController,
               enabled: _operatorApplies,
-              textCapitalization: TextCapitalization.characters,
-              style: const TextStyle(fontFamily: 'RobotoMono'),
-              inputFormatters: [TextInputFormatter.withFunction((oldValue, newValue) => newValue.copyWith(text: newValue.text.toUpperCase()))],
               decoration: poloFieldDecoration(
                 context,
                 context.t.settings.operatorCall,
@@ -960,4 +982,43 @@ class _OperationDetailsDialogState extends State<_OperationDetailsDialog> {
       ],
     );
   }
+}
+
+/// A field that holds a callsign — or, with [allowCommas], a list of them —
+/// and nothing else: see `CallsignTextFormatter`. Every callsign field in
+/// these dialogs goes through here, so none of them is left with a keyboard
+/// that suggests, autocorrects, or admits a space.
+class _CallsignField extends StatelessWidget {
+  final TextEditingController controller;
+  final InputDecoration decoration;
+  final bool autofocus;
+  final bool enabled;
+  final bool allowCommas;
+  final ValueChanged<String> onSubmitted;
+
+  const _CallsignField({
+    required this.controller,
+    required this.decoration,
+    required this.onSubmitted,
+    this.autofocus = false,
+    this.enabled = true,
+    this.allowCommas = false,
+  });
+
+  @override
+  Widget build(BuildContext context) => TextField(
+    selectAllOnFocus: false,
+    controller: controller,
+    autofocus: autofocus,
+    enabled: enabled,
+    textCapitalization: TextCapitalization.characters,
+    autocorrect: false,
+    enableSuggestions: false,
+    smartDashesType: SmartDashesType.disabled,
+    smartQuotesType: SmartQuotesType.disabled,
+    style: const TextStyle(fontFamily: 'RobotoMono'),
+    inputFormatters: [CallsignTextFormatter(list: allowCommas)],
+    decoration: decoration,
+    onSubmitted: onSubmitted,
+  );
 }

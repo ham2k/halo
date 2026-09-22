@@ -159,6 +159,62 @@ class MobileDotToSlashFormatter extends TextInputFormatter {
   }
 }
 
+/// The input shaping for a field that holds a callsign and nothing else — a
+/// settings or dialog field, not the logging panel's Call field, which also
+/// takes commands and frequencies and so admits more. Live, not at save time:
+/// a hardware keyboard ignores `TextCapitalization`, and a stray character the
+/// operator can't see in a field is one they can't fix.
+///
+/// Uppercases, turns "." into the "/" it was meant to be (on a phone "/" sits
+/// behind a second keyboard layer; this field holds no frequency for a "." to
+/// belong to), and drops anything but letters, digits and "/".
+///
+/// A separator — whitespace, ";" or "," — is never simply dropped: with it
+/// gone, two calls run together ("W1AW K2ABC" → "W1AWK2ABC") and read as one
+/// plausible callsign that no validation warns about. So with [list] (a field
+/// holding several calls, see `splitStationCalls`) a run of separators becomes
+/// one comma, and without it a single space, which keeps a pasted pair
+/// visibly wrong. A lone separator TYPED into a single-call field is refused
+/// instead: there it can only be a slip, and the key visibly doing nothing is
+/// feedback enough.
+///
+/// Pair with `autocorrect: false` and `enableSuggestions: false`, or the soft
+/// keyboard still suggests and corrects a callsign into a word.
+class CallsignTextFormatter extends TextInputFormatter {
+  final bool list;
+
+  const CallsignTextFormatter({this.list = false});
+
+  static final _separators = RegExp(r'[\s;,]+');
+  static final _listDisallowed = RegExp(r'[^A-Z0-9/,]');
+  static final _singleDisallowed = RegExp(r'[^A-Z0-9/ ]');
+
+  String _shape(String text) {
+    final mapped = text.toUpperCase().replaceAll('.', '/').replaceAll(_separators, list ? ',' : ' ');
+    return mapped.replaceAll(list ? _listDisallowed : _singleDisallowed, '');
+  }
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text;
+    final caret = newValue.selection.isValid ? newValue.selection.end.clamp(0, text.length) : text.length;
+    if (!list && text.length == oldValue.text.length + 1 && caret > 0 && _separators.hasMatch(text[caret - 1])) {
+      return oldValue;
+    }
+    // Shaped either side of the caret so it stays put relative to what was typed.
+    final before = _shape(text.substring(0, caret));
+    var after = _shape(text.substring(caret));
+    final separator = list ? ',' : ' ';
+    if (before.endsWith(separator) && after.startsWith(separator)) after = after.substring(1);
+    final shaped = before + after;
+    if (shaped == text) return newValue;
+    return TextEditingValue(
+      text: shaped,
+      selection: TextSelection.collapsed(offset: before.length),
+    );
+  }
+}
+
 /// Routes a space typed on an on-screen keyboard to [onSpace] — the same
 /// handler the panel's hardware Space shortcut ([_LoggingControlsState._handleSpace])
 /// uses to rotate focus / run call-field command shortcuts.

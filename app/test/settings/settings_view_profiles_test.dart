@@ -170,12 +170,45 @@ void main() {
     await tester.tap(find.text('ARRL Section'));
     await tester.pumpAndSettle();
     // Lowercase on purpose: TextCapitalization is only a keyboard hint, and a
-    // desktop keyboard ignores it — the dialog's own uppercasing is the rule.
+    // desktop keyboard ignores it — the field's own uppercasing is the rule,
+    // and it applies as typed, so the operator sees what will be stored.
     await tester.enterText(find.byType(TextField).at(sectionField), 'eny');
+    await tester.pump();
+    expect(tester.widget<TextField>(find.byType(TextField).at(sectionField)).controller!.text, 'ENY');
     await tester.tap(find.text('Save'));
     await tester.pumpAndSettle();
 
     expect(settings.activeProfile.operatorSection, 'ENY');
+  });
+
+  testWidgets('the profile callsign takes a callsign and nothing else', (tester) async {
+    // The same field shaping as the Operation Details dialog: no spaces, no
+    // punctuation but "/", and no keyboard suggestions.
+    final settings = await pumpProfilesPanel(tester, entityPrefix: 'K');
+    await tester.tap(find.widgetWithText(ListTile, 'Callsign'));
+    await tester.pumpAndSettle();
+
+    final field = find.byType(TextField);
+    expect(tester.widget<TextField>(field).enableSuggestions, isFalse);
+    await tester.enterText(field, 'ki2d/p !');
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(settings.activeProfile.operatorCall, 'KI2D/P');
+  });
+
+  testWidgets('a profile callsign that does not parse is warned about, not refused', (tester) async {
+    final settings = await pumpProfilesPanel(tester, entityPrefix: 'K');
+    await tester.tap(find.widgetWithText(ListTile, 'Callsign'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byType(TextField), '12345');
+    await tester.pump();
+    expect(find.text(t.dialogs.callChange.invalidCallsign(call: '12345')), findsOneWidget);
+    await tester.tap(find.text('Save'));
+    await tester.pumpAndSettle();
+
+    expect(settings.activeProfile.operatorCall, '12345');
   });
 
   // The dialog mirrors the rows: no section row, no section field. (A stored
